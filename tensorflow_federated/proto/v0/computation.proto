@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package tensorflow_federated.v0;
+
+// A serializable data structure to represent, store, and exchange federated
+// computations. A unit of composition and the lowest and smallest programmable
+// abstraction layer that a range of higher-level APIs will be layered upon.
+// Structured around the minimum set of concepts and abstractions that provide
+// the level of expressiveness. Not intended for consumption by most users.
+message Computation {
+  // TODO(b/112643462): Populate this data structure.
+}
