@@ -8,5 +8,21 @@ package tensorflow_federated.v0;
 // Structured around the minimum set of concepts and abstractions that provide
 // the level of expressiveness. Not intended for consumption by most users.
 message Computation {
-  // TODO(b/112643462): Populate this data structure.
+  // The type signature of this computation. All computations are functions.
+  FunctionType type = 1;
+}
+
+// A generic representation of an arbitrary type.
+message Type {
+  oneof type {
+    FunctionType function = 1;
+  }
+}
+
+// A representation of a functional type. Functions must have at most a single
+// parameter and a single result. Multiple parameters or results to be modeled
+// as compound types (e.g., as structures).
+message FunctionType {
+  Type parameter = 1;
+  Type result = 2;
 }

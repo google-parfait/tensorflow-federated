@@ -18,12 +18,15 @@ from __future__ import division
 from __future__ import print_function
 
 import unittest
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 
 class SanityTest(unittest.TestCase):
 
   def test_sanity(self):
-    self.assertEqual(1, 1)
+    c = pb.Computation(
+        type=pb.FunctionType(parameter=pb.Type(function=pb.FunctionType())))
+    self.assertEqual(c.type.parameter.WhichOneof('type'), 'function')
 
 
 if __name__ == '__main__':
