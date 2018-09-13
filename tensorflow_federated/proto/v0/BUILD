@@ -1,21 +1,17 @@
-load("//tensorflow_federated:build_defs.bzl", "federated_py_proto_library")
+load("@protobuf_archive//:protobuf.bzl", "py_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
-proto_library(
-    name = "tensorflow_federated_v0_proto",
-    srcs = [
-        "computation.proto",
-    ],
-    deps = [],
-)
-
-federated_py_proto_library(
+py_proto_library(
     name = "tensorflow_federated_v0_py_pb2",
-    srcs = [
-        "computation.proto",
+    srcs = ["computation.proto"],
+    default_runtime = "@protobuf_archive//:protobuf_python",
+    protoc = "@protobuf_archive//:protoc",
+    srcs_version = "PY2AND3",
+    deps = [
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+        "@protobuf_archive//:protobuf_python",
     ],
-    deps = [":tensorflow_federated_v0_proto"],
 )
