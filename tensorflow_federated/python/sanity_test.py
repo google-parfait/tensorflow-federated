@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import unittest
 
+from tensorflow.core.framework import tensor_shape_pb2
 from tensorflow.core.framework import types_pb2
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -29,8 +30,14 @@ class SanityTest(unittest.TestCase):
   def test_sanity(self):
     _ = types_pb2.DT_FLOAT
     c = pb.Computation(
-        type=pb.FunctionType(parameter=pb.Type(function=pb.FunctionType())))
-    self.assertEqual(c.type.parameter.WhichOneof('type'), 'function')
+        type=pb.FunctionType(
+            parameter=pb.Type(
+                tensor=pb.TensorType(
+                    dtype=types_pb2.DT_FLOAT,
+                    shape=tensor_shape_pb2.TensorShapeProto(
+                        dim=[tensor_shape_pb2.TensorShapeProto.Dim(size=5)])))))
+    self.assertEqual(c.type.parameter.WhichOneof('type'), 'tensor')
+    self.assertEqual(c.type.parameter.tensor.shape.dim[0].size, 5)
 
 
 if __name__ == '__main__':

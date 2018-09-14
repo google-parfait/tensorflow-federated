@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package tensorflow_federated.v0;
 
+import "tensorflow/core/framework/tensor_shape.proto";
+import "tensorflow/core/framework/types.proto";
+
 // A serializable data structure to represent, store, and exchange federated
 // computations. A unit of composition and the lowest and smallest programmable
 // abstraction layer that a range of higher-level APIs will be layered upon.
@@ -16,6 +19,9 @@ message Computation {
 message Type {
   oneof type {
     FunctionType function = 1;
+    StructureType structure = 2;
+    SequenceType sequence = 3;
+    TensorType tensor = 4;
   }
 }
 
@@ -25,4 +31,34 @@ message Type {
 message FunctionType {
   Type parameter = 1;
   Type result = 2;
+}
+
+// A representation of a type of a structure. A structure is a compound type,
+// similar to a struct in C, that defines a finite set of named members, the
+// types of which are known statically. The ordering of members is undefined.
+message StructureType {
+  map<string, Type> member = 1;
+}
+
+// A representation of a type of a sequence. A sequence is a data structure
+// that contains multiple elements of the same type that can be accessed only
+// in a sequential manner, i.e., through an iterator. For now, we assume that
+// a sequence can only be consumed once, i.e., there's no concept of iterator
+// reset, as this facilitates high-performance implementations. We may add a
+// notion of resettability in the future by introducing additional fields here
+// while keeping non-resettability of sequences as the default.
+message SequenceType {
+  Type element = 1;
+}
+
+// A representation of a type of a single tensor in TensorFlow. Aspects such
+// as sparseness are not intended to be represented at this level.
+message TensorType {
+  // Only simple scalar tensor types are currently supported here, i.e., this
+  // specifically excludes types such as DT_VARIANT and DT_RESOURCE.
+  .tensorflow.DataType dtype = 1;
+
+  // Undefined dimensions are allowed. Defined and undefined dimensions are to
+  // be considered distinct for type checking purposes.
+  .tensorflow.TensorShapeProto shape = 2;
 }
