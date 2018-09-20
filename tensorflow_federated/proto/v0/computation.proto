@@ -18,12 +18,17 @@ message Computation {
 // A generic representation of an arbitrary type, defined as a variant over a
 // number of primitive and compound types that can be nested. Note that not all
 // nestings expressible with this structure may be valid, e.g., it may not make
-// sense to declare a sequence of functions. However, rather than constraining
-// the set of possible nestings at the syntactic level, which would increase
-// boilerplate and could prove limiting in the future, we keep this variant
-// structure simple, and we let the set of all valid type nestings be determined
-// by the set of the currently supported operators, along with the notion of
-// well-formedness of a type signature that will be enforced programmatically.
+// sense to declare a sequence of functions, or a federated type in which
+// individual member values are themselves federated. However, rather than
+// constraining the set of possible nestings at the syntactic level, which would
+// increase boilerplate and could prove limiting in the future, we keep this
+// variant structure simple, and we let the set of all valid type nestings be
+// determined by the set of the currently supported operators. The current
+// limitations on nesting are as follows:
+// - FederatedType and FunctionType cannot be nested within a FederatedType or
+//   within a SequenceType. Currently, these may only be nested within a
+//   NamedTupleType.
+// - A SequenceType currently cannot be nested within another SequenceType.
 message Type {
   oneof type {
     FunctionType function = 1;
@@ -31,6 +36,8 @@ message Type {
     SequenceType sequence = 3;
     TensorType tensor = 4;
     AbstractType abstract = 5;
+    PlacementType placement = 6;
+    FederatedType federated = 7;
   }
 }
 
@@ -42,6 +49,8 @@ message Type {
 // the API surface, but the ability to express this is useful in defining type
 // signatures for federated communication operators, and to support various
 // types of extensibility.
+// Concise syntax for examples of functional types: "T -> T'", where T, T' are
+// the types of parameter and result, respectively.
 message FunctionType {
   Type parameter = 1;
   Type result = 2;
@@ -53,6 +62,9 @@ message FunctionType {
 // order and can be referred to by their position within the tuple. Note that
 // besides named tuples, this abstract type can also be used to represent dicts,
 // OrderedDicts, and regular tuples in Python.
+// Concise syntax for examples of tuple types: "T_i" or "name_i=T_i" separated
+// by commas and optionally enclosed in "<>" (e.g., "<bool, foo=string>"),
+// where name_i is the optional name, and T_i is the type of i-th element.
 message NamedTupleType {
   repeated Element element = 1;
   message Element {
@@ -68,12 +80,16 @@ message NamedTupleType {
 // reset, as this facilitates high-performance implementations. We may add a
 // notion of resettability in the future by introducing additional fields here
 // while keeping non-resettability of sequences as the default.
+// Concise syntax for examples of sequence types: "T*", where T is the type of
+// elements.
 message SequenceType {
   Type element = 1;
 }
 
 // A representation of a type of a single tensor in TensorFlow. Aspects such
 // as sparseness are not intended to be represented at this level.
+// Concise syntax for examples of tensor types: "dtype[shape]" or "dtype" for
+// scalars, e.g., "bool[10]".
 message TensorType {
   // Only simple scalar tensor types are currently supported here, i.e., this
   // specifically excludes types such as DT_VARIANT and DT_RESOURCE.
@@ -94,9 +110,180 @@ message TensorType {
 // is semantically identical to the original before renaming). The label may be
 // modified by the compiler (e.g., due to naming conflicts).
 // An AbstractType T might be used, for example, to define a signature of a
-// generic operator federated_sum : T@clients -> T@server (where @ indicates
-// placement).
+// generic aggregation operator as "federated_sum: {T}@clients -> T@server".
+// Concise syntax for examples of abstract types: variations of uppercase "T",
+// e.g., as in "T -> T'".
 message AbstractType {
   // The label used to refer to this abstract type within a type signature.
   string label = 1;
+}
+
+// A representation of an instance of a built-in opaque type that conceptually
+// represents a (membership of some) collective of participants in a distributed
+// system that may participate in some part of a federated computation.
+//
+// In a typical federated computation, there would typically be at least one
+// group of client devices, one or more groups of intermediate aggregators in a
+// multi-tiered server architecture, and a central coordinator (perhaps a
+// singleton group). With each of these groups, one would associate a separate
+// placement (a separate instance of the built-in "placement" type).
+//
+// Placements are intended to be passed as arguments to some of the federated
+// communication operators to determine the group of participants involved in
+// the underlying federated communication protocol.
+//
+// In addition, placements can be used to define federated types (see below),
+// i.e., types, values of which are hosted by members of a given collective, and
+// thus potentially distributed across multiple locations. In a fully-specified
+// federated computation, each concrete value (e.g., tensor) would typically
+// have an associated concrete placement value to indicate which group of system
+// participants (clients, aggregator or coordinator instances, etc.) it is
+// hosted on.
+//
+// While placement is a first-class type, instances of which may be passed as
+// parameters or returned as results, it is not equivalent to a simple vector
+// of device addresses. A computation cannot list, add, remove, or test for
+// existence of a particular device in a placement, as membership could be
+// determined or influenced by factors outside of the programmer's control. For
+// example, the membership of the collective of client devices represented by
+// a "client" placement will depend on which devices choose to join the system
+// and further influenced by factors such as failures and network delays. In
+// most types of environments, the membership of a given group of participants
+// could be dynamically evolving over time. Federated computations are defined
+// at a higher level of abstraction that does not involve dealing with the
+// identities of the individual devices.
+//
+// The two ways of specifying a placement that correspond to the two fields in
+// the oneof below have distinct purposes. Placement labels are used to
+// construct template types of federated communication operators that can be
+// applied to federated values. For example, consider the type signature below:
+//
+// federated_broadcast: T, p: placement -> T@p
+//
+// Here, "p" is a placement label, the role of which is simply to link the left
+// and right sides of the type signature. The represenation of this type
+// signature will use PlacementLabel on the left side.
+//
+// Concrete placement values are essentially placement literals. They are used
+// to bind types to specific placements with definite global meaning in a
+// particular type of runtime environment.
+message Placement {
+  oneof placement {
+    PlacementLabel label = 1;
+    PlacementValue value = 2;
+  }
+}
+
+// A representation of an abstract placement identified by a string label.
+// All occurrences of this abstract placement label within a type signature are
+// interpreted as referring to the same specific placement, similarly to how
+// this is done for abstract type labels (except that equality of placement
+// labels indicates equality of values, not just types). The abstract placement
+// label does not have any specific meaning otherwise, and it is not intended to
+// be compared with anything other than another abstract placement label
+// contained within the same type signature. A bijective renaming of all
+// abstract placement labels contained in a type signature is a semantic no-op.
+// The label may be modified by the compiler (e.g., due to name conflicts).
+message PlacementLabel {
+  // The label used to refer to this specific placement within a type signature.
+  string label = 1;
+}
+
+// A representation of a specific placement defined globally by the runtime
+// environment, and embedded as a literal of the "placement" type within a type
+// signature (the same bult-in type that is represented by "PlacementType", see
+// also below). Unlike the abstract placement labels, the URIs in these values
+// have a definite global meaning for all computations executed within the same
+// environment. The exact set of such global placement URIs and their meaning
+// will depend on the system architecture and the capabilities of the platform.
+// For example, in a production setting, these might include dedicated URIs to
+// represent clients, intermediate aggregators, and coordinator placements.
+message PlacementValue {
+  // The globally unique URI that defines a specific global placement instance.
+  // For example, an URI might represent the global collective of all mobile
+  // devices running a certain app, or it might represent the specific
+  // well-known address of a central coordinator. The exact naming schemes and
+  // interpretation of these URIs is TBD, and will be documented later.
+  string uri = 1;
+}
+
+// A representation of a federated type, i.e., one in which member components of
+// the federated value are hosted on a collective of devices in a distributed
+// system (where in some cases, that collective may be a singleton). As noted
+// above in the comment on "PlacementType", examples of such collectives could
+// include client devices, intermediate aggregators, central coordinator, etc.,
+// with one or more participants. Note that a federated type is a dependent
+// type, as the placement label or value contained herein binds it to a specific
+// placement, either one that's defined globally, or one that's supplied as a
+// parameter and defined in another part of a computation's type signature.
+// Concise syntax for federated types: "T@p" or "{T}@p" when "all_equal" is True
+// or False, respectively, where "T" is the type of members, and "p" is either
+// a placement label or a placement value (generally clear from context).
+message FederatedType {
+  // The placement instance that identifies the collective of participants in
+  // a distributed system on which member components of this federated value
+  // are hosted.
+  //
+  // If the federated type appears as a part of a functional type signature,
+  // this placement will generally be defined using a PlacementLabel to bind it
+  // to the type of the parameter, e.g., as below:
+  //
+  // federated_broadcast: T, p: placement -> T@p
+  //
+  // In the above "T@p" is a federated type, with label "p" (represented in the
+  // type as a PlacementLabel) simply serving as a reference to the parameter
+  // on the left.
+  //
+  // On the other hand, if a federated type appears on its own, not tied to the
+  // placement of any function parameter, the placement specified here will be
+  // a concrete placement literal (represented by a PlacementValue).
+  Placement placement = 1;
+
+  // A bit that, if set, indicates that the member components of the federated
+  // value are all equal (if not set, member components may vary). This
+  // distinction is only meaningful for placements that represent collectives,
+  // such as clients or intermediate aggregators. For placements that represent
+  // centralized components (such as a central coordinator), this property is
+  // trivially satisfied (and still documented by setting this bit to True).
+  bool all_equal = 2;
+
+  // The type of the local member components of the federated value, i.e., the
+  // components that are locally hosted on each individual participant (member
+  // of the collective determined by the "placement" above).
+  Type member = 3;
+}
+
+// A representation of the type of placements (see the discussion above by the
+// definition of the Placement message that represents instances of this type).
+// This message is only used in situations, where placement is passed as a
+// first-class value (e.g., in the argument to broadcast). The specfications of
+// federated types only refer to specific placements (see Placement above).
+// Note that there is only a single primitive "placement" type. The embedded
+// field "instance_label" does not qualify the type and does not affect type
+// equality. It is only used to annotate the instance of this type as it appears
+// in a type signature in order to form dependent types.
+// Concise syntax for the placement type: "placement" for the type itself, and
+// "p: placement" to annotate the specific entry in the type signature with the
+// label "p".
+message PlacementType {
+  // An optional label that can be used to refer to the specific instance of the
+  // "placement" type represented by this entry in the type signature. If this
+  // field is present in the PlacementType message, generally as a parameter in
+  // a functional type signature, the label is associated with the specific
+  // placement value supplied in that parameter, which allows it to be used to
+  // specify a federated type hosted by the collective of participants
+  // represented by this placement. For example, consider this type signature:
+  //
+  // federated_broadcast: T, p: placement -> T@p
+  //
+  // The type specification of the 2nd element of the broadcast argument tuple
+  // would be PlacementType(instance_label=PlacementLabel(label='p')). Here, the
+  // type of the second element is still simply "placement"; as noted above,
+  // there is only one such built-in type to represent all sorts of collectives.
+  // The presence of the label only associates 'p' with the value of the second
+  // element of the parameter tuple. On the right side, the pecification of the
+  // federated result type contains Placement(label=PlacementLabel(label='p')),
+  // thus binding the placement of the result to the value in the argument. When
+  // comparing types, the presence of this label is ignored.
+  PlacementLabel instance_label = 1;
 }
