@@ -15,29 +15,50 @@ message Computation {
   FunctionType type = 1;
 }
 
-// A generic representation of an arbitrary type.
+// A generic representation of an arbitrary type, defined as a variant over a
+// number of primitive and compound types that can be nested. Note that not all
+// nestings expressible with this structure may be valid, e.g., it may not make
+// sense to declare a sequence of functions. However, rather than constraining
+// the set of possible nestings at the syntactic level, which would increase
+// boilerplate and could prove limiting in the future, we keep this variant
+// structure simple, and we let the set of all valid type nestings be determined
+// by the set of the currently supported operators, along with the notion of
+// well-formedness of a type signature that will be enforced programmatically.
 message Type {
   oneof type {
     FunctionType function = 1;
-    StructureType structure = 2;
+    NamedTupleType tuple = 2;
     SequenceType sequence = 3;
     TensorType tensor = 4;
+    AbstractType abstract = 5;
   }
 }
 
 // A representation of a functional type. Functions must have at most a single
 // parameter and a single result. Multiple parameters or results to be modeled
-// as compound types (e.g., as structures).
+// as compound types (e.g., as named tuples). Note that since functions accept
+// generic types, one can declare functions as parameters or results of other
+// functions. We may not support functions as first-class values directly in
+// the API surface, but the ability to express this is useful in defining type
+// signatures for federated communication operators, and to support various
+// types of extensibility.
 message FunctionType {
   Type parameter = 1;
   Type result = 2;
 }
 
-// A representation of a type of a structure. A structure is a compound type,
-// similar to a struct in C, that defines a finite set of named members, the
-// types of which are known statically. The ordering of members is undefined.
-message StructureType {
-  map<string, Type> member = 1;
+// A representation of a type of a named tuple. A named tuple is a compound type
+// based on a similar type in Python that defines a finite set of named members,
+// the types of which are known statically, that are arranged in a prescribed
+// order and can be referred to by their position within the tuple. Note that
+// besides named tuples, this abstract type can also be used to represent dicts,
+// OrderedDicts, and regular tuples in Python.
+message NamedTupleType {
+  repeated Element element = 1;
+  message Element {
+    string name = 1;
+    Type value = 2;
+  }
 }
 
 // A representation of a type of a sequence. A sequence is a data structure
@@ -61,4 +82,21 @@ message TensorType {
   // Undefined dimensions are allowed. Defined and undefined dimensions are to
   // be considered distinct for type checking purposes.
   .tensorflow.TensorShapeProto shape = 2;
+}
+
+// A representation of an abstract type identified by a string label (analogous
+// to "typename T" in C++, with "T" being the label). All occurrences of an
+// abstract type with the same label within a type signature are interpreted as
+// referring to the same concrete type. Abstract types can thus be used to
+// represent templates similar to templates in C++. The label does not have any
+// specific meaning otherwise. Any bijective renaming of all labels within a
+// type signature is semantically a no-op (i.e., the resulting type definition
+// is semantically identical to the original before renaming). The label may be
+// modified by the compiler (e.g., due to naming conflicts).
+// An AbstractType T might be used, for example, to define a signature of a
+// generic operator federated_sum : T@clients -> T@server (where @ indicates
+// placement).
+message AbstractType {
+  // The label used to refer to this abstract type within a type signature.
+  string label = 1;
 }
