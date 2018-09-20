@@ -4,3 +4,5 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff
+    - title: Computation
+      path: /federated/api_docs/python/tff/Computation

@@ -11,16 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TensorFlow Federated library."""
+"""Tests for ComputationImpl."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.core.api.computation_base import Computation
+import unittest
+
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
+
+from tensorflow_federated.python.core.impl import computation_impl as ci
 
 
-# Used by doc generation script.
-_allowed_symbols = [
-    "Computation",
-]
+class ComputationTest(unittest.TestCase):
+
+  def test_something(self):
+    ci.ComputationImpl(pb.Computation())
+    self.assertRaises(TypeError, ci.ComputationImpl, 10)
+
+
+if __name__ == '__main__':
+  unittest.main()

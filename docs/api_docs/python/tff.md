@@ -4,3 +4,10 @@
 </div>
 
 # Module: tff
+
+TensorFlow Federated library.
+
+## Classes
+
+[`class Computation`](./tff/Computation.md): An abstract interface that all federated computations implement.
+
