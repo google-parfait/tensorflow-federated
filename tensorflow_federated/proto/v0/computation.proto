@@ -13,6 +13,13 @@ import "tensorflow/core/framework/types.proto";
 message Computation {
   // The type signature of this computation. All computations are functions.
   FunctionType type = 1;
+
+  // The specification of the computation.
+  oneof computation {
+    // Built-in federated communication operators such as broadcast, federated
+    // sum, etc., and custom operators added to the framework.
+    Intrinsic intrinsic = 3;
+  }
 }
 
 // A generic representation of an arbitrary type, defined as a variant over a
@@ -286,4 +293,19 @@ message PlacementType {
   // thus binding the placement of the result to the value in the argument. When
   // comparing types, the presence of this label is ignored.
   PlacementLabel instance_label = 1;
+}
+
+// A representation of an intrinsic function. Intrinsics are functions that are
+// known to the framework, and uniquely identified by a URI. This includes both
+// the standard federated communication operators, such as, e.g., broadcast,
+// federated sum, secure aggregation, and custom operators that might be added
+// by the user to the pipeline. The compiler recognizes the intrinsics, and
+// replaces them with a suitable implementation. Intrinsics may be both generic
+// and specialized, low- and high-level. The exact naming scheme used to
+// identify them, and how it can be extended to support new operators defined by
+// external contributors, will be described elsewhere.
+message Intrinsic {
+  // The URI that uniquely identifies the intrinsic within the set of operators
+  // built into the framework.
+  string uri = 1;
 }

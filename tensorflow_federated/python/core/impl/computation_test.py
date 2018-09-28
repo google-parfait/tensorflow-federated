@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl import computation_impl as ci
 class ComputationTest(unittest.TestCase):
 
   def test_something(self):
-    ci.ComputationImpl(pb.Computation())
+    ci.ComputationImpl(pb.Computation(intrinsic=pb.Intrinsic(uri='broadcast')))
     self.assertRaises(TypeError, ci.ComputationImpl, 10)
 
 
