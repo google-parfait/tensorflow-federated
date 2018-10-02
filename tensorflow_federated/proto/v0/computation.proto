@@ -5,20 +5,168 @@ package tensorflow_federated.v0;
 import "tensorflow/core/framework/tensor_shape.proto";
 import "tensorflow/core/framework/types.proto";
 
-// A serializable data structure to represent, store, and exchange federated
-// computations. A unit of composition and the lowest and smallest programmable
-// abstraction layer that a range of higher-level APIs will be layered upon.
-// Structured around the minimum set of concepts and abstractions that provide
-// the level of expressiveness. Not intended for consumption by most users.
+// A core data structure that contains a serialized representation of a unit of
+// processing to perform by the TensorFlow Federated framework. This data
+// structure is the primary unit of composition and the means by which we
+// represent, store, and exchange federated computations and their constituents
+// between system components. It is the lowest and smallest programmable
+// abstraction layer that a range of higher-level APIs will be layered upon,
+// structured around the minimum set of concepts and abstractions that provide
+// a level of expressiveness sufficient to efficiently support current and
+// anticipated uses. This layer is not intended for consumption by most users.
+//
+// In its most general sense, an instance of a Computation as defined here is
+// simply an expression that produces a certain value. The structure of this
+// expression, typically nested, determines how this value is intended to be
+// computed (hence the term "computation"). We may use terms "expression" and
+// "computation" interchangeably in this and other files, although technically,
+// the term "computation" refers to a process, whereas "expression" refers to
+// a specification of that process.
 message Computation {
-  // The type signature of this computation. All computations are functions.
-  FunctionType type = 1;
+  // The type of what's represented by this structure, which may be functional
+  // or non-functional. If it is a TensorFlow block or a lambda expression,
+  // the type will be functional. If it is a Tuple, or a Call that returns a
+  // tensor or a tuple in the result, the type will be non-functional.
+  //
+  // A Call is a typical way to represent an invocation of a top-level federated
+  // computation with all its parameters fully specified. Thus, a top-level
+  // computation with all of its parameters filled in may have a non-functional
+  // type (the same as type of the result it computes). The illustrative
+  // example to think of is "(x -> x + 10)(20)", the type of which is an int, a
+  // non-functional type. If a top-level federated computation has all of its
+  // parameters filled in, it will assume a similar form.
+  Type type = 1;
 
-  // The specification of the computation.
+  // The specification of the computation to perform.
+  //
+  // A hypothetical example of a federated computation definition in Python,
+  // expressed in a yet-to-be-defined syntax, might translate into definitions
+  // in a serialized form as shown below.
+  //
+  // @tff.computation
+  // def fed_eval(model):
+  //
+  //   @tfe.defun
+  //   def local_eval(model):
+  //     ...
+  //     return {'loss': ..., 'accuracy': ...}
+  //
+  //   client_model = tff.federated_broadcast(model)
+  //   client_metrics = tff.federated_map(local_eval, client_model)
+  //   return tff.federated_average(client_metrics)
+  //
+  //
+  // fed_eval = Computation(lambda=Lambda(
+  //     parameter_name='model',
+  //     result=Computation(block=Block(
+  //         local=[
+  //             Block.Local(name='local_eval', value=Computation(
+  //                 tensorflow=TensorFlow(...))),
+  //             Block.Local(name='client_model', value=Computation(
+  //                 call=Call(
+  //                     function=Computation(
+  //                         intrinsic=Intrinsic(uri='federated_broadcast')),
+  //                     argument=Computation(
+  //                         reference=Reference(name='model'))))),
+  //             Block.Local(name='client_metrics', value=Computation(
+  //                 call=Call(
+  //                     function=Computation(
+  //                         intrinsic=Intrinsic(uri='federated_map')),
+  //                     argument=Computation(
+  //                         tuple=Tuple(element=[
+  //                             Tuple.Element(
+  //                                 value=Computation(
+  //                                     reference=Reference(
+  //                                         name='local_eval'))),
+  //                             Tuple.Element(
+  //                                 value=Computation(
+  //                                     reference=Reference(
+  //                                         name='local_client_model')))
+  //                         ])))))],
+  //         result=Computation(
+  //             call=Call(
+  //                 function=Computation(
+  //                     intrinsic=Intrinsic(uri='federated_average')),
+  //                 argument=Computation(
+  //                     reference=Reference(name='client_metrics'))))))))
+  //
   oneof computation {
-    // Built-in federated communication operators such as broadcast, federated
-    // sum, etc., and custom operators added to the framework.
+    // NON-COMPOSITIONAL CONSTRUCTS.
+    //
+    // The following constructs are the basic building blocks that can be
+    // composed into larger computations with the use of the compositional
+    // constructs defined below.
+
+    // TensorFlow computation. TensorFlow computations have functional type
+    // signatures that cannot contain FederatedTypes, as they execute locally.
+    // In order to construct a TensorFlow computation that maps a federated
+    // value pointwise, one must use a federated map intrinstc (to be defined).
+    //
+    // TODO(b/113112455): Start defining the standard intrinsics and reference
+    // them here and elsewhere as appropriate.
+    TensorFlow tensorflow = 2;
+
+    // A built-in federated communication operator such as broadcast, federated
+    // sum, etc., or one of the custom operators added to the framework, and
+    // recognized by the compiler pipeline. Intrinsics have functional types,
+    // and most are defined as templates that can opperate on abstract types,
+    // and/or federated values with arbitrary placements.
     Intrinsic intrinsic = 3;
+
+    // COMPOSITIONAL CONSTRUCTS.
+    //
+    // The following constructs can be used to combine simpler computations
+    // into more complex ones. For example, they can be used to express the
+    // top-level orchestration logic of a federated computation that combines
+    // blocks of client-side and server-side TensorFlow code with federated
+    // communication operators such as federated aggregation or broadcast.
+
+    // A lambda expression is the primary means of defining new parameterized
+    // computations. lambdas always have functional types.
+    Lambda lambda = 4;
+
+    // A block of computation logic, i.e., a series of expressions that refer
+    // to one-another. This mechanism is intended as a primary means of
+    // breaking down longer sequences of processing into simpler parts. A block
+    // can have a functional or a non-functional type (matching the type of its
+    // result), as it is primarily a mechanism for organizing code.
+    Block block = 5;
+
+    // A reference to a name defined in a surrounding context, such as a Lambda
+    // or a Block, with the usual scoping rules (the name refers to the
+    // innermost scope in which it is defined). Always matches the type of the
+    // the parameter it references, i.e., T if the type of the lambda is T->T'.
+    // For example, in a Lambda "x : int -> foo(x)", which associates locally
+    // name "x" with its parameter, the reference to "x" will be of type "int",
+    // just as the parameter of the lambda in which the name "x" is defined.
+    Reference reference = 6;
+
+    // A function call is the primary means of using lambdas, TensorFlow blocks,
+    // and other types of functional constructs to compute a specific result in
+    // a concrete context. The type of the call is the same as the type of the
+    // result of the function being called, i.e., a call with parameter of type
+    // T to a function of type T -> T' has type T'.
+    Call call = 7;
+
+    // A named tuple is explicitly constructed from individual member values.
+    Tuple tuple = 8;
+
+    // A selection by name or index from the result of another expression that
+    // returns a named tuple. The type of the selection matches the type of the
+    // tuple element being selected (known statically, as the name or index is
+    // known statically, rather than computed).
+    //
+    // NOTE: In higher layers of the API, we will offer convenience mechanisms
+    // such as selection from a federated type. For example, if "x" is of a
+    // federated type "{<foo=int, bar=string>}@clients", we will allow notation
+    // such as "x.foo" as a convenient shortcut for a pointwise selection that
+    // might be written as "federated_map(x, y->y.foo)" in a more complete form
+    // even though "x" is technically not a tuple. Here at the level of
+    // the Computation proto, however, we will represent computations in their
+    // fully fleshed-out form, with map and other implicit operators already
+    // injected at construction time by the framework as it translates a Python
+    // source cosde that defines a computation into this serialized form.
+    Selection selection = 9;
   }
 }
 
@@ -295,6 +443,11 @@ message PlacementType {
   PlacementLabel instance_label = 1;
 }
 
+// A representation of a block of TensorFlow code.
+message TensorFlow {
+  // TODO(b/113112455): Define this.
+}
+
 // A representation of an intrinsic function. Intrinsics are functions that are
 // known to the framework, and uniquely identified by a URI. This includes both
 // the standard federated communication operators, such as, e.g., broadcast,
@@ -308,4 +461,168 @@ message Intrinsic {
   // The URI that uniquely identifies the intrinsic within the set of operators
   // built into the framework.
   string uri = 1;
+}
+
+// A representation of a parameterized computation defined as a lambda
+// expression that consists of a single parameter name, and an expression that
+// contains references to this parameter name (the "name" computation variant).
+// Lambdas can be nested, e.g., the result can also be a lambda or contain a
+// lambda. Inner lambdas are allowed to refer to the parameter defined in the
+// outer lambdas. We assume the usual rules of name hiding: inner names obscure
+// the outer names.
+//
+// Concise syntax for lambdas: "parameter_name -> comp" where "comp" represents
+// a parameterized computation that produces the result, or in the more general
+// form "parameter_name : T -> comp" to indicate that parameter is of type "T".
+// For example, a lambda that takes a 2-tuple of an unary operator and an
+// integer as input, and returns the result of calling the unary operator
+// on the integer, can be written as "x -> x.func(x.arg)", or in the full form
+// with type annotation as "x: <func=(int->int), arg=int> -> x.func(x.arg)".
+message Lambda {
+  // The name to use internally within this lambda to refer to the parameter.
+  // The parameter is mandatory. The name defined here can be used internally
+  // anywhere in the result computation, except if overridden in a nested
+  // lambda, where it can be hidden by a parameter with a conflicting name.
+  string parameter_name = 1;
+
+  // A computation that represents the result of applying the lambda to the
+  // parameter. The result may (almost always will) contain references to the
+  // parameter defined above.
+  Computation result = 2;
+
+  // Note that a Lambda as a whole must have a functional type T -> T', where
+  // T' is the type of the result, and T is the type of all references to the
+  // parameter within the result.
+}
+
+// A representation of a body of computation logic broken down into a sequence
+// of local definitions that gradually build up towards a single final result
+// expression. A block defines a sequence of local names, each associated with
+// a computation. Computations associated with names introduced later can
+// refer to names introduced earlier. At the end of a block is a single result
+// computation defined in terms of those locals. It is similar to LET* in LISP.
+//
+// The intended usage of this abstraction is to break down complex processing
+// into simpler, smaller, easier to understand units that are easier to work
+// with in this broken-down representation, as opposed to a single monolithic
+// complex expression. We expect it to be used, e.g., to represent top-level
+// federated orchestration logic.
+//
+// A block is technically a redundant abstraction, as it can be equivalently
+// represented using lambda expressions. For example, a simple block of the
+// form "let x=y in z" is equivalent to "(x->z)(y)". Larger blocks can likewise
+// be represented similarly as nested lambdas. The main purpose of introducing
+// this abstraction is simplicity. While expressible via lambdas, a sequential
+// representation is preferred over nested lambdas as it is more readable and
+// easier to debug, and more closely matches how code is expected to be executed
+// by a runtime environment, in which higher-order functions may be unsupported.
+//
+// One way to think of blocks is as a generalization of a GraphDef, and such,
+// a mechanism for constructing data flow graphs that can include TensorFlow
+// blocks and various federated communication operators as processing nodes.
+// Indeed, this is the primary intended usage of blocks. In this interpretation
+// a block can be thought of as a direct acyclic graph, with the locals and
+// the result being the graph "nodes". Locals represent various partial results
+// computed along the way, and the result is the "op" that represents the
+// output. Each node has associated with it an expression (computation) that
+// specifies how to derive its value from the values represented by other nodes
+// referenced by name. The presence of such reference to one node's name inside
+// another node's expression (computation) can be interpreted as a dependency
+// edge in a data flow graph. Indeed, the data flow interpretation corresponds
+// to the manner in which processing is expected to flow.
+//
+// Concise syntax: "let name_1=comp_1, ...., name_k=comp_k in comp" with
+// "name_k" and "comp_k" representing the names of the locals, and computations
+// that compute the results that those names represent. For example, a complex
+// expression "x.func(x.arg)" can be represented in a slightly more expanded
+// form as "let f=x.func, v=x.arg in f(v)".
+message Block {
+  // One or more locals defined within the block, each associating a name with a
+  // computation. Computations, whether those associated with the locals, or
+  // that associated with the result below, can contain references to names
+  // defined earlier, here or in the surrounding context. Self-references are
+  // prohibited. All names introduced here must be different. Since execution
+  // semantics at this level is purely functional without side effects, the
+  // ordering in which the locals are declared is not significant, as it is only
+  // the dependencies between the computations that effectively determine the
+  // causal relationships that constrain the order of execution.
+  //
+  // Blocks can be nested, just as lambdas, and the same name scoping rules
+  // apply, i.e., blocks (or lambdas) contained within an embedded computation,
+  // whether in a local or in the result, are allowed to refer to names defined
+  // in an outer lambda or block (unless obscured by a nested declaration).
+  // If names defined in the outer context conflict with those defined in the
+  // inner congtext (here), the inner names hide outer names in the context in
+  // which they are defined. Thus, for example, in "x -> let x=1, y=x+1 in y",
+  // the "x=1" would hide the lambda parameter, and therefore "y=x+1" would
+  // refer to the inner "x".
+  repeated Local local = 1;
+  message Local {
+    string name = 1;
+    Computation value = 2;
+  }
+
+  // The result computation. Always required. The computation typically refers
+  // to locals defined above by name, just like the result in a lambda.
+  Computation result = 2;
+}
+
+// A reference to a computation defined as a local in a block, or to the
+// parameter of a lambda.
+message Reference {
+  string name = 1;
+}
+
+// A representation of a function call.
+//
+// The concise notation for function calls is "f(x)" or "f()", where "f" is the
+// function, and "x" is the optional argument.
+message Call {
+  // A computation that represents the function to call. The value that this
+  // represents must be of a functional type.
+  Computation function = 1;
+
+  // A computation that represents the argument to the function specified above.
+  // Present if and only if "function" declares a parameter. Must match the
+  // function's parameter type (i.e., the function's parameter type must be
+  // assignable from the argument type).
+  Computation argument = 2;
+}
+
+// A representation of a named tuple constructor.
+//
+// The concise representation of a tuple constructor is "<>"-enclosed and
+// comma-separated list of value or "name=value" sections, for example "<1,2>"
+// or "<foo=1,bar=2>".
+message Tuple {
+  // The ordering of tuple elements is significant, and determines the type of
+  // the value represented by the expression. The names are optional.
+  repeated Element element = 1;
+  message Element {
+    string name = 1;
+    Computation value = 2;
+  }
+}
+
+// A representation of a value selected from a named tuple returned by another
+// computation.
+//
+// The concise representation of a selection is "x[index]" for positional
+// selection, and "x.name" for name-based selection, where "x" represents the
+// source from which to select. For example, in lambda "x -> x.func(x.val)",
+// the "x.func" and "x.val" both represent selections of named members "func"
+// and "val" from the named tuple "x", respectively.
+message Selection {
+  // The source of selection, always required. This is a computation that
+  // returns a named tuple (possibly nested), from which to select an element
+  // by name or by index.
+  Computation source = 1;
+
+  // A specification of what to select from the context (named tuple). Indexes,
+  // when applied to named tuples, are 0-based, i.e., "[0]" selects the first
+  // element.
+  oneof selection {
+    string name = 2;
+    int32 index = 3;
+  }
 }

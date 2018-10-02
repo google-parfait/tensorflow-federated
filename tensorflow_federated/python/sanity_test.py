@@ -28,7 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 class SanityTest(unittest.TestCase):
 
   def test_sanity(self):
-    c = pb.Computation(type=pb.FunctionType(parameter=pb.Type(
+    c = pb.Computation(type=pb.Type(function=pb.FunctionType(parameter=pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(
                 name='foo', value=pb.Type(tensor=pb.TensorType(
@@ -37,16 +37,12 @@ class SanityTest(unittest.TestCase):
                         dim=[tensor_shape_pb2.TensorShapeProto.Dim(size=5)])))),
             pb.NamedTupleType.Element(
                 name='bar', value=pb.Type(placement=pb.PlacementType(
-                    instance_label=pb.PlacementLabel(label='clients'))))]))))
-    self.assertEqual(
-        c.type.parameter.tuple.element[0].name, 'foo')
-    self.assertEqual(
-        c.type.parameter.tuple.element[0].value.tensor.shape.dim[0].size, 5)
-    self.assertEqual(
-        c.type.parameter.tuple.element[1].name, 'bar')
-    self.assertEqual(
-        c.type.parameter.tuple.element[1].value.placement.instance_label.label,
-        'clients')
+                    instance_label=pb.PlacementLabel(label='clients'))))])))))
+    params = c.type.function.parameter.tuple.element
+    self.assertEqual(params[0].name, 'foo')
+    self.assertEqual(params[0].value.tensor.shape.dim[0].size, 5)
+    self.assertEqual(params[1].name, 'bar')
+    self.assertEqual(params[1].value.placement.instance_label.label, 'clients')
 
 
 if __name__ == '__main__':
