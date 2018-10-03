@@ -17,8 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import unittest
+# Dependency imports
+import tensorflow as tf
 
+import unittest
 from tensorflow.core.framework import tensor_shape_pb2
 from tensorflow.core.framework import types_pb2
 
@@ -43,6 +45,9 @@ class SanityTest(unittest.TestCase):
     self.assertEqual(params[0].value.tensor.shape.dim[0].size, 5)
     self.assertEqual(params[1].name, 'bar')
     self.assertEqual(params[1].value.placement.instance_label.label, 'clients')
+
+  def test_tensorflow_import(self):
+    self.assertIsNotNone(tf.constant(10))
 
 
 if __name__ == '__main__':

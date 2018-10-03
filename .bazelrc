@@ -1,0 +1,1 @@
+build --define=grpc_no_ares=true
