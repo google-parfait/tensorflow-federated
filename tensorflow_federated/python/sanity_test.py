@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+import six
 import tensorflow as tf
 
 import unittest
@@ -48,6 +49,9 @@ class SanityTest(unittest.TestCase):
 
   def test_tensorflow_import(self):
     self.assertIsNotNone(tf.constant(10))
+
+  def test_six_import(self):
+    self.assertIsInstance('asdf', six.string_types)
 
 
 if __name__ == '__main__':
