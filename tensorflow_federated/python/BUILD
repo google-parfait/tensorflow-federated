@@ -6,7 +6,7 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "python",
     srcs = ["__init__.py"],
-    deps = ["//tensorflow_federated/python/core/api:computation_base"],
+    deps = ["//tensorflow_federated/python/core/api"],
 )
 
 py_test(
@@ -15,6 +15,7 @@ py_test(
     srcs = ["sanity_test.py"],
     deps = [
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/core:protos_all_py",
         "@six_archive//:six",

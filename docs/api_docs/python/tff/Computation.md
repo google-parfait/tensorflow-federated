@@ -11,7 +11,7 @@
 
 
 
-An abstract interface that all federated computations implement.
+An abstract interface for all classes that represent computations.
 
 ## Properties
 

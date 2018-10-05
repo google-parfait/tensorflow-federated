@@ -6,3 +6,15 @@ toc:
       path: /federated/api_docs/python/tff
     - title: Computation
       path: /federated/api_docs/python/tff/Computation
+    - title: FunctionType
+      path: /federated/api_docs/python/tff/FunctionType
+    - title: NamedTupleType
+      path: /federated/api_docs/python/tff/NamedTupleType
+    - title: SequenceType
+      path: /federated/api_docs/python/tff/SequenceType
+    - title: TensorType
+      path: /federated/api_docs/python/tff/TensorType
+    - title: to_type
+      path: /federated/api_docs/python/tff/to_type
+    - title: Type
+      path: /federated/api_docs/python/tff/Type

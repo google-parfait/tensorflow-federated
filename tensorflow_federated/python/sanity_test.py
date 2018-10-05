@@ -27,6 +27,8 @@ from tensorflow.core.framework import types_pb2
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.core import api as fc
+
 
 class SanityTest(unittest.TestCase):
 
@@ -52,6 +54,9 @@ class SanityTest(unittest.TestCase):
 
   def test_six_import(self):
     self.assertIsInstance('asdf', six.string_types)
+
+  def test_core_api(self):
+    self.assertEqual(str(fc.to_type(tf.int32)), 'int32')
 
 
 if __name__ == '__main__':

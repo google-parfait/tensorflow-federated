@@ -11,3 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""TensorFlow Federated Core API."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from tensorflow_federated.python.core.api.computation_base import Computation
+
+from tensorflow_federated.python.core.api.types import FunctionType
+from tensorflow_federated.python.core.api.types import NamedTupleType
+from tensorflow_federated.python.core.api.types import SequenceType
+from tensorflow_federated.python.core.api.types import TensorType
+from tensorflow_federated.python.core.api.types import to_type
+from tensorflow_federated.python.core.api.types import Type

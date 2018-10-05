@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines the abstract interface that all computations implement."""
-
+"""Defines the abstract interface for classes that represent computations."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +21,7 @@ import abc
 
 
 class Computation(object):
-  """An abstract interface that all federated computations implement."""
+  """An abstract interface for all classes that represent computations."""
 
   __metaclass__ = abc.ABCMeta
 

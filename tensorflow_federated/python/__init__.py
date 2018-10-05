@@ -17,10 +17,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.core.api.computation_base import Computation
+# We are doing a wildcard import here, since symbols to export have already been
+# explicitly whitelisted in core/api, and it makes no sense to repeat them here.
+# pylint: disable=wildcard-import
+from tensorflow_federated.python.core.api import *
 
 
 # Used by doc generation script.
 _allowed_symbols = [
     "Computation",
+    "FunctionType",
+    "NamedTupleType",
+    "SequenceType",
+    "TensorType",
+    "Type",
+    "to_type",
 ]
