@@ -2,8 +2,11 @@ syntax = "proto3";
 
 package tensorflow_federated.v0;
 
+import "tensorflow/core/framework/graph.proto";
 import "tensorflow/core/framework/tensor_shape.proto";
 import "tensorflow/core/framework/types.proto";
+
+import "tensorflow/core/protobuf/meta_graph.proto";
 
 // A core data structure that contains a serialized representation of a unit of
 // processing to perform by the TensorFlow Federated framework. This data
@@ -443,9 +446,123 @@ message PlacementType {
   PlacementLabel instance_label = 1;
 }
 
-// A representation of a block of TensorFlow code.
+// A representation of a section of TensorFlow code.
+//
+// The type signature associated with this type of computation must be defined
+// only in terms of tensors, tuples, and sequences. Sequences cannot be nested.
+//
+// At the moment, we only allow sequences as a parameters (note that pointwise
+// transformations of sequences can still be expressed using a map intrinsic).
+// This restriction may be relaxed in the future when support for handling data
+// sets as first-class objects in TensorFlow evolves.
+//
+// Note that unlike in polymorphic functions created by tf.defuns, the chosen
+// representation requires all type signatures, including those of individual
+// elements of a sequence, to be fully specified. In case of sequences, the
+// structure of their elements is effectively encoded in the parts of the graph
+// that constitute the serialized representation of tf.Datasets and iterators.
+//
+// While we will offer support for writing polymorphic TensorFlow logic, types
+// will be captured automatically and made concrete based on usage at the Python
+// level of the API. Users of TFF will not need to declare them explicitly, but
+// template specialization will happen before computation logic gets serialized.
 message TensorFlow {
-  // TODO(b/113112455): Define this.
+  // WARNING: The internal structure of this message can change in a backwards-
+  // incompatible manner. At the moment, the implementation of the Core API is
+  // the only component that can construct, analyze, or create any dependencies
+  // on this structure.
+
+  // The semantics is as follows: the graph embedded here will be instantiated,
+  // with all placeholder components of the parameter bound to concrete tensors
+  // or, in case of sequences, to iterators associated with concrete datasets.
+  // The compomnents of the result will then all be simultaneously evaluated in
+  // what corresponds to a single Session.run() in non-eager mode.
+
+  // NOTE: Currently, there is no way to represent any higher-level scripting
+  // over the graph. We require that all control flow logic be expressed using
+  // control dependencies and other TensorFlow constructs and triggered by the
+  // evaluation of outputs within a single Session.run(), as postulated above.
+  // Depending on how restrictive this turns out to be we might, or might not,
+  // add a script that describes a sequence of Session.run() calls, one-off or
+  // repeated in a loop, as an optional component in a TensorFlow computation,
+  // to address the impedance mismatch between push- and pull-based styles of
+  // processing supported by various parts of the target execution environment.
+
+  // A serialized representation of a TensorFlow graph to execute.
+  //
+  // NOTE: This representation may evolve, e.g., get replaced with a MetaGraph,
+  // SavedModel, or a similar structure. Dependencies on the exact form of the
+  // graph encoding used here should be kept to minimum, and proxied by wrapper
+  // libraries for composing computations in python/core/impl/.
+  //
+  // TODO(b/117428091): Update this representation based on the emerging TF 2.0
+  // serialization standards as needed if/when they meet the constraints of the
+  // target production environments, and provided that they don't introduce
+  // additional complexity.
+  .tensorflow.GraphDef graph_def = 1;
+
+  // A pair of bindings for the parameter and the result. The parameter binding
+  // can be omitted if the computation does not declare a parameter. The result
+  // binding is mandatory, as all TensorFlow computations must declare results.
+  Binding parameter = 2;
+  Binding result = 3;
+
+  // A general representation of a binding of either a parameter or a result to
+  // a part of the embedded TensorFlow graph. Note that the structure of the
+  // binding is nested, and parallels the structure of the corresponding part of
+  // the type signature.
+  message Binding {
+    oneof binding {
+      // A binding associated with a tuple in the type signature. Specifies an
+      // individual binding for each element of the tuple.
+      NamedTupleBinding tuple = 1;
+
+      // A binding associated with a (logical) tensor in the type signature.
+      // Associates that tensor to one or more (concrete) tensors in the graph.
+      TensorBinding tensor = 2;
+
+      // A binding associated with a sequence. Associates the sequence with a
+      // part of the TensorFlow graph that will represent a data set iterator,
+      // next element, or an equivalent iterator-like structure.
+      SequenceBinding sequence = 3;
+    }
+  }
+
+  // A binding of a named tuple declared in the type signature to parts of the
+  // embedded TensorFlow graph.
+  message NamedTupleBinding {
+    // Bindings for elements of the tuple. The number of elements in this field
+    // must be equal to the number of tuple elements declared in the type
+    // signature, with the k-th binding declared here corresponding to the k-th
+    // tuple element in the type signature. The element names are omitted since
+    // they are redundant (correspondence is established by element order).
+    repeated Binding element = 1;
+  }
+
+  // A representation of a single tensor declared in the type signature in the
+  // serialized graph representation embedded here.
+  message TensorBinding {
+    oneof binding {
+      // The name of a dense tensor in a TensorFlow graph that corresponds to a
+      // single tensor component in the type signature.
+      string tensor_name = 1;
+
+      // NOTE: This structure may eventually be extended with non-dense tensor
+      // encodings, such as .tensorflow.TensorInfo.CooSparse.
+    }
+  }
+
+  // A representation of a sequence declared in the type signature.
+  message SequenceBinding {
+    oneof binding {
+      // The name of the placeholder tensor that represents the string handle
+      // of the data set iterator associated with the sequence.
+      string iterator_string_handle_name = 1;
+
+      // NOTE: This structure will likely evolve and get extended with other
+      // means of encoding data sets in the serialized graph representation.
+    }
+  }
 }
 
 // A representation of an intrinsic function. Intrinsics are functions that are
