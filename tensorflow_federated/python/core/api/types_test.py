@@ -47,6 +47,12 @@ class TypesTest(unittest.TestCase):
     self.assertFalse(t.is_assignable_from(types.TensorType(tf.int32, [10, 10])))
     self.assertTrue(t.is_assignable_from(types.TensorType(tf.int32, 10)))
 
+  def test_tensor_type_is_assignable_with_undefined_dims(self):
+    t1 = types.TensorType(tf.int32, [None])
+    t2 = types.TensorType(tf.int32, [10])
+    self.assertTrue(t1.is_assignable_from(t2))
+    self.assertFalse(t2.is_assignable_from(t1))
+
   def test_tensor_type_repr(self):
     self.assertEqual(repr(types.TensorType(tf.int32)), 'TensorType(tf.int32)')
     self.assertEqual(
@@ -73,6 +79,7 @@ class TypesTest(unittest.TestCase):
   def test_named_tuple_type_str(self):
     self.assertEqual(str(types.NamedTupleType([tf.int32])), '<int32>')
     self.assertEqual(str(types.NamedTupleType([('a', tf.int32)])), '<a=int32>')
+    self.assertEqual(str(types.NamedTupleType(('a', tf.int32))), '<a=int32>')
     self.assertEqual(
         str(types.NamedTupleType([tf.int32, tf.bool])),
         '<int32,bool>')
@@ -193,6 +200,12 @@ class TypesTest(unittest.TestCase):
     t = types.to_type(s)
     self.assertIsInstance(t, types.NamedTupleType)
     self.assertEqual(str(t), '<int32,bool>')
+
+  def test_to_type_with_singleton_named_tf_type(self):
+    s = ('a', tf.int32)
+    t = types.to_type(s)
+    self.assertIsInstance(t, types.NamedTupleType)
+    self.assertEqual(str(t), '<a=int32>')
 
   def test_to_type_with_list_of_named_tf_types(self):
     s = [('a', tf.int32), ('b', tf.bool)]

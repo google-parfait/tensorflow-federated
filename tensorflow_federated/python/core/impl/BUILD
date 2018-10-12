@@ -22,3 +22,27 @@ py_test(
         "@org_tensorflow//tensorflow/core:protos_all_py",
     ],
 )
+
+py_library(
+    name = "serialization",
+    srcs = ["serialization.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_test(
+    name = "serialization_test",
+    size = "small",
+    srcs = ["serialization_test.py"],
+    deps = [
+        ":serialization",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)

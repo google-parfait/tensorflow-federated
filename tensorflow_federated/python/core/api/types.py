@@ -94,9 +94,19 @@ class TensorType(Type):
     if not isinstance(other, Type):
       raise TypeError('Expected {}, found "{}".'.format(
           Type.__name__, type(other).__name__))
+    def _shape_is_assignable_from(x, y):
+      def _dimension_is_assignable_from(x, y):
+        # Either the first dimension is undefined or it has the same size as
+        # the second.
+        return (x.value is None) or (x.value == y.value)
+      # Shapes must have equal ranks, and all dimensions in first have to be
+      # assignable from the corresponding dimensions in the second.
+      return ((x.ndims == y.ndims) and ((x.dims is None) or all(
+          _dimension_is_assignable_from(x.dims[k], y.dims[k])
+          for k in xrange(x.ndims))))
     return (isinstance(other, TensorType) and
             (self.dtype == other.dtype) and
-            (self.shape == other.shape))
+            _shape_is_assignable_from(self.shape, other.shape))
 
   def __repr__(self):
     return (
@@ -140,20 +150,18 @@ class NamedTupleType(Type):
           list.__name__, type(elements).__name__))
     if not elements:
       raise ValueError('A named tuple must contain at least one element.')
-    self._elements = [
-        # If it is an instance of Type, record it as an element without a name.
-        ((None, e) if isinstance(e, Type) else (
-            # If it is a 2-tuple the consists of a string name and something
-            # that's convertible to a type, record it as a named element tuple.
-            (e[0], to_type(e[1]))
-            if (isinstance(e, tuple) and
-                (len(e) == 2) and
-                isinstance(e[0], string_types))
-            else (
-                # Otherwise, whatever was passed as the element is expected to
-                # be convertible to Type.
-                (None, to_type(e)))))
-        for e in elements]
+    def _is_named_element(e):
+      return (isinstance(e, tuple) and (len(e) == 2) and
+              isinstance(e[0], string_types))
+    def _map_element(e):
+      return ((None, e) if isinstance(e, Type)
+              else (
+                  (e[0], to_type(e[1])) if _is_named_element(e)
+                  else (
+                      (None, to_type(e)))))
+    self._elements = (
+        [(elements[0], to_type(elements[1]))] if _is_named_element(elements)
+        else [_map_element(e) for e in elements])
 
   @property
   def elements(self):
@@ -278,6 +286,7 @@ def to_type(spec):
         [tf.int32, tf.bool]
         (tf.int32, tf.bool)
         [('a', tf.int32), ('b', tf.bool)]
+        ('a', tf.int32)
         collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
 
       Examples of arguments convertible to nested named tuple types:
