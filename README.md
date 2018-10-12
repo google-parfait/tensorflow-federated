@@ -1,26 +1,33 @@
 # TensorFlow Federated
 
-**TensorFlow Federated** (TFF) is a framework for implementing algorithms for
-federated learning and other computations on privacy-sensitive decentralized
-data.
+**TensorFlow Federated** is a framework for implementing federated learning
+algorithms and other computations on privacy-sensitive decentralized data.
 
 TODO(b/112658581): Add TFF high level overview.
 
 ## Installation
 
-TODO(b/112659350): Add TFF installation instructions.
-
-## Dependencies
-
-TODO(b/112658587): Add TFF dependency information.
+See the [setup](docs/setup.md) documentations for instructions on how to
+install TensorFlow Federated as a package or build TensorFlow Federated from
+source.
 
 ## Getting Started
 
-TODO(b/112659243): Add TFF getting started instructions.
+See the [get started](docs/get_started.md) documentation for instructions on
+how to use TensorFlow Federated.
+
+## Contributing
+
+If you want to contribute to TensorFlow Federated, be sure to review the
+[contribution guidelines](CONTRIBUTING.md).
+
+## Issues
+
+Use [GitHub issues](https://github.com/tensorflow/federated/issues) for tracking
+requests and bugs.
 
 ## Questions
 
-Please direct any questions about working with TFF to
-[Stack Overflow](https://stackoverflow.com) using the
+Please direct questions to [Stack Overflow](https://stackoverflow.com) using the
 [tensorflow-federated](https://stackoverflow.com/questions/tagged/tensorflow-federated)
 tag.

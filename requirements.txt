@@ -1,0 +1,8 @@
+# Required to build Tensorflow from source.
+enum34
+keras_applications
+keras_preprocessing
+mock
+numpy
+six
+wheel
