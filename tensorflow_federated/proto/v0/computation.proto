@@ -116,6 +116,9 @@ message Computation {
     // and/or federated values with arbitrary placements.
     Intrinsic intrinsic = 3;
 
+    // An external source of data to be used by a computation.
+    Data data = 10;
+
     // COMPOSITIONAL CONSTRUCTS.
     //
     // The following constructs can be used to combine simpler computations
@@ -170,6 +173,8 @@ message Computation {
     // injected at construction time by the framework as it translates a Python
     // source cosde that defines a computation into this serialized form.
     Selection selection = 9;
+
+    // NEXT ID: 11
   }
 }
 
@@ -741,5 +746,30 @@ message Selection {
   oneof selection {
     string name = 2;
     int32 index = 3;
+  }
+}
+
+// A specification of an external source of data to be used by a computation.
+//
+// Data streams are curently expected to always be nested structures composed
+// of sequences, named tuples, and tensor types. Sequences cannot be nested.
+// Named tuples may appear at the outer level (to return multiple sequences,
+// e.g., training and testing samples), or at the element level (if sequences
+// contain structured elements, e.g., examples already parsed into individual
+// features).
+//
+// Although data could conceivably be modeled via intrinsics, we factor it out
+// to more conveniently express various types of input pipelines without having
+// to pack everything into a URI. Sources of data could include training
+// examples emitted by a mobile app, files on a filesystem, data to obtain from
+// a location on the web, etc., and the specification, in addition to the
+// origin of the data, could include things like example selection criteria,
+// data decoding or simple transformations. For now, this structure is simply a
+// URI to be interpreted by the runtime environment. To be extended as needed.
+message Data {
+  oneof data {
+    // A specification of the data stream as a URI to be interpreted by the
+    // environment.
+    string uri = 1;
   }
 }
