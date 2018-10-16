@@ -3,6 +3,22 @@ package(default_visibility = ["//tensorflow_federated/python/core/api:__subpacka
 licenses(["notice"])  # Apache 2.0
 
 py_library(
+    name = "anonymous_tuple",
+    srcs = ["anonymous_tuple.py"],
+    deps = ["@six_archive//:six"],
+)
+
+py_test(
+    name = "anonymous_tuple_test",
+    size = "small",
+    srcs = ["anonymous_tuple_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        "@six_archive//:six",
+    ],
+)
+
+py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
     deps = [
@@ -20,6 +36,30 @@ py_test(
         ":computation_impl",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_library(
+    name = "graph_utils",
+    srcs = ["graph_utils.py"],
+    deps = [
+        ":anonymous_tuple",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "graph_utils_test",
+    size = "small",
+    srcs = ["graph_utils_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":graph_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
