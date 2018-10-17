@@ -116,6 +116,60 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
         'graph.'.format(repr(parameter_type)))
 
 
+def capture_result_from_graph(result):
+  """Captures a result stamped into a tf.Graph as a type signature and binding.
+
+  Args:
+    result: The result to capture, a Python object that is composed of tensors,
+      possibly nested within Python structures such as dictionaries, lists,
+      tuples, or named tuples.
+
+  Returns:
+    A tuple (type_spec, binding), where 'type_spec' is an instance of types.Type
+    that describes the type of the result, and 'binding'is an instance of
+    TensorFlow.Binding that indicates how parts of the result type relate to the
+    tensors and ops that appear in the result.
+
+  Raises:
+    TypeError: if the argument or any of its parts are of an uexpected type.
+  """
+  # TODO(b/113112885): The emerging extensions for serializing SavedModels may
+  # end up introducing similar concepts of bindings, etc., we should look here
+  # into the possibility of reusing some of that code when it's available.
+  if tf.contrib.framework.is_tensor(result):
+    return (types.TensorType(result.dtype, result.shape),
+            pb.TensorFlow.Binding(tensor=pb.TensorFlow.TensorBinding(
+                tensor_name=result.name)))
+  elif '_asdict' in type(result).__dict__:
+    # Special handling needed for collections.namedtuples since they do not have
+    # anything in the way of a shared base class. Note we don't want to rely on
+    # the fact that collections.namedtuples inherit from 'tuple' because we'd be
+    # failing to retain the information about naming of tuple members.
+    # pylint: disable=protected-access
+    return capture_result_from_graph(result._asdict())
+    # pylint: enable=protected-access
+  elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
+    # This also handles 'OrderedDict', as it inherits from 'dict'.
+    name_value_pairs = (
+        anonymous_tuple.to_elements(result)
+        if isinstance(result, anonymous_tuple.AnonymousTuple)
+        else result.iteritems())
+    element_name_type_binding_triples = [
+        ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs]
+    return (types.NamedTupleType([((e[0], e[1]) if e[0] else e[1])
+                                  for e in element_name_type_binding_triples]),
+            pb.TensorFlow.Binding(tuple=pb.TensorFlow.NamedTupleBinding(
+                element=[e[2] for e in element_name_type_binding_triples])))
+  elif isinstance(result, (list, tuple)):
+    element_type_binding_pairs = [capture_result_from_graph(e) for e in result]
+    return (types.NamedTupleType([e[0] for e in element_type_binding_pairs]),
+            pb.TensorFlow.Binding(tuple=pb.TensorFlow.NamedTupleBinding(
+                element=[e[1] for e in element_type_binding_pairs])))
+  else:
+    raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
+        type(result).__name__))
+
+
 def get_nested_structure_dtypes_and_shapes(type_spec):
   """Returns dtypes and shapes corresponding to a nested structure of tensors.
 

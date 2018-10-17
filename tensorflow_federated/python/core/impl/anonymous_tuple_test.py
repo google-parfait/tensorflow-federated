@@ -22,12 +22,14 @@ from __future__ import print_function
 import unittest
 
 from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
+from tensorflow_federated.python.core.impl.anonymous_tuple import to_elements
 
 
 class AnonymousTupleTest(unittest.TestCase):
 
   def test_empty(self):
-    x = AnonymousTuple([])
+    v = []
+    x = AnonymousTuple(v)
     self.assertEqual(len(x), 0)
     self.assertRaises(IndexError, lambda _: x[0], None)
     self.assertEqual(list(iter(x)), [])
@@ -35,9 +37,11 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertRaises(ValueError, lambda _: x.foo, None)
     self.assertEqual(x, AnonymousTuple([]))
     self.assertNotEqual(x, AnonymousTuple([('foo', 10)]))
+    self.assertEqual(to_elements(x), v)
 
   def test_single_unnamed(self):
-    x = AnonymousTuple([(None, 10)])
+    v = [(None, 10)]
+    x = AnonymousTuple(v)
     self.assertEqual(len(x), 1)
     self.assertRaises(IndexError, lambda _: x[1], None)
     self.assertEqual(x[0], 10)
@@ -48,9 +52,11 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertNotEqual(x, AnonymousTuple([('foo', 10)]))
     self.assertEqual(x, AnonymousTuple([(None, 10)]))
     self.assertNotEqual(x, AnonymousTuple([(None, 10), ('foo', 20)]))
+    self.assertEqual(to_elements(x), v)
 
   def test_single_named(self):
-    x = AnonymousTuple([('foo', 20)])
+    v = [('foo', 20)]
+    x = AnonymousTuple(v)
     self.assertEqual(len(x), 1)
     self.assertEqual(x[0], 20)
     self.assertRaises(IndexError, lambda _: x[1], None)
@@ -63,9 +69,11 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertNotEqual(x, AnonymousTuple([(None, 20)]))
     self.assertEqual(x, AnonymousTuple([('foo', 20)]))
     self.assertNotEqual(x, AnonymousTuple([('foo', 20), ('bar', 30)]))
+    self.assertEqual(to_elements(x), v)
 
   def test_multiple_named_and_unnamed(self):
-    x = AnonymousTuple([(None, 10), ('foo', 20), ('bar', 30)])
+    v = [(None, 10), ('foo', 20), ('bar', 30)]
+    x = AnonymousTuple(v)
     self.assertEqual(len(x), 3)
     self.assertEqual(x[0], 10)
     self.assertEqual(x[1], 20)
@@ -79,6 +87,7 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertEqual(x, AnonymousTuple([(None, 10), ('foo', 20), ('bar', 30)]))
     self.assertNotEqual(
         x, AnonymousTuple([('foo', 10), ('bar', 20), (None, 30)]))
+    self.assertEqual(to_elements(x), v)
 
 
 if __name__ == '__main__':

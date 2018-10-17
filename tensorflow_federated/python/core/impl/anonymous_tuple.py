@@ -116,3 +116,32 @@ class AnonymousTuple(object):
 
   def __ne__(self, other):
     return not self == other
+
+
+def to_elements(an_anonymous_tuple):
+  """Retrieves the list of (name, value) pairs from an anonymous tuple.
+
+  Modeled as a module function rather than a method of AnonymousTuple to avoid
+  naming conflicts with the tuple attributes, and so as not to expose the user
+  to this implementation-oriented functionality.
+
+  Args:
+    an_anonymous_tuple: An instance of AnonymousTuple.
+
+  Returns:
+    The list of (name, value) pairs in which names can be None. Identical to
+    the format that's accepted by the tuple constructor.
+
+  Raises:
+    TypeError: if the argument is not an AnonymousTuple.
+  """
+  if not isinstance(an_anonymous_tuple, AnonymousTuple):
+    raise TypeError('Expected {}, found{}.'.format(
+        AnonymousTuple.__name__, type(an_anonymous_tuple).__name__))
+  # pylint: disable=protected-access
+  index_to_name = {
+      idx: name for name, idx in an_anonymous_tuple._name_to_index.iteritems()}
+  return [(index_to_name.get(idx), val)
+          for idx, val in enumerate(an_anonymous_tuple._element_array)]
+  # pylint: enable=protected-access
+
