@@ -67,6 +67,7 @@ py_library(
     name = "serialization",
     srcs = ["serialization.py"],
     deps = [
+        ":graph_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
