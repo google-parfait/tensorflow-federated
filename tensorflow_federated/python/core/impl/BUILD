@@ -44,6 +44,7 @@ py_library(
     srcs = ["graph_utils.py"],
     deps = [
         ":anonymous_tuple",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -57,6 +58,8 @@ py_test(
     deps = [
         ":anonymous_tuple",
         ":graph_utils",
+        ":test_utils",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -85,5 +88,45 @@ py_test(
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_library(
+    name = "test_utils",
+    srcs = ["test_utils.py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+)
+
+py_test(
+    name = "test_utils_test",
+    size = "small",
+    srcs = ["test_utils_test.py"],
+    deps = [
+        ":test_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "type_utils",
+    srcs = ["type_utils.py"],
+    deps = [
+        ":anonymous_tuple",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "type_utils_test",
+    size = "small",
+    srcs = ["type_utils_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":test_utils",
+        ":type_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )

@@ -27,6 +27,8 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import test_utils
+from tensorflow_federated.python.core.impl import type_utils
 
 from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 
@@ -53,9 +55,9 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertEqual(handle.dtype, tf.string)
       self.assertIsInstance(type_spec, types.SequenceType)
       output_dtypes, output_shapes = (
-          graph_utils.get_nested_structure_dtypes_and_shapes(type_spec.element))
-      self._assert_nest_struct_is(val.output_types, output_dtypes)
-      self._assert_nest_struct_is(val.output_shapes, output_shapes)
+          type_utils.type_to_tf_dtypes_and_shapes(type_spec.element))
+      test_utils.assert_nested_struct_eq(val.output_types, output_dtypes)
+      test_utils.assert_nested_struct_eq(val.output_shapes, output_shapes)
     else:
       self.assertEqual(binding_oneof, 'tuple')
       self.assertIsInstance(type_spec, types.NamedTupleType)
@@ -76,13 +78,6 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertEqual(x.op.type, 'Placeholder')
     self.assertTrue(x.graph is graph)
 
-  def _assert_nest_struct_is(self, x, y):
-    """Verifies that nested structures 'x' and 'y' are the same."""
-    tf.contrib.framework.nest.assert_same_structure(x, y)
-    self.assertEqual(
-        tf.contrib.framework.nest.flatten(x),
-        tf.contrib.framework.nest.flatten(y))
-
   def _checked_capture_result(self, result):
     """Returns the captured result type after first verifying the binding."""
     type_spec, binding = graph_utils.capture_result_from_graph(result)
@@ -99,13 +94,6 @@ class GraphUtilsTest(tf.test.TestCase):
         val,
         graph if graph else tf.get_default_graph())
     return val
-
-  def _do_test_nested_structure_dtypes_and_shapes(self, spec, dtypes, shapes):
-    """Tests 'get_nested_structure_dtypes_and_shapes' against the given args."""
-    actual_dtypes, actual_shapes = (
-        graph_utils.get_nested_structure_dtypes_and_shapes(spec))
-    self._assert_nest_struct_is(actual_dtypes, dtypes)
-    self._assert_nest_struct_is(actual_shapes, shapes)
 
   def test_stamp_parameter_in_graph_with_scalar_int_explicit_graph(self):
     my_graph = tf.Graph()
@@ -135,50 +123,27 @@ class GraphUtilsTest(tf.test.TestCase):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter('foo', types.SequenceType(tf.bool))
     self.assertIsInstance(x, tf.data.Dataset)
-    self._assert_nest_struct_is(x.output_types, tf.bool)
-    self._assert_nest_struct_is(x.output_shapes, tf.TensorShape([]))
+    test_utils.assert_nested_struct_eq(x.output_types, tf.bool)
+    test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo', types.SequenceType((tf.int32, [50])))
     self.assertIsInstance(x, tf.data.Dataset)
-    self._assert_nest_struct_is(x.output_types, tf.int32)
-    self._assert_nest_struct_is(x.output_shapes, tf.TensorShape([50]))
+    test_utils.assert_nested_struct_eq(x.output_types, tf.int32)
+    test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
 
   def test_stamp_parameter_in_graph_with_tensor_pair_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter('foo', types.SequenceType(
           [('A', (tf.float32, [3, 4, 5])), ('B', (tf.int32, [1]))]))
     self.assertIsInstance(x, tf.data.Dataset)
-    self._assert_nest_struct_is(
+    test_utils.assert_nested_struct_eq(
         x.output_types, {'A': tf.float32, 'B': tf.int32})
-    self._assert_nest_struct_is(
+    test_utils.assert_nested_struct_eq(
         x.output_shapes,
         {'A': tf.TensorShape([3, 4, 5]), 'B': tf.TensorShape([1])})
-
-  def test_get_nested_structure_dtypes_and_shapes_with_int_scalar(self):
-    self._do_test_nested_structure_dtypes_and_shapes(
-        tf.int32, tf.int32, tf.TensorShape([]))
-
-  def test_get_nested_structure_dtypes_and_shapes_with_int_vector(self):
-    self._do_test_nested_structure_dtypes_and_shapes(
-        (tf.int32, [10]), tf.int32, tf.TensorShape([10]))
-
-  def test_get_nested_structure_dtypes_and_shapes_with_tensor_triple(self):
-    self._do_test_nested_structure_dtypes_and_shapes(
-        [('a', (tf.int32, [5])), ('b', tf.bool), ('c', (tf.float32, [3]))],
-        {'a': tf.int32, 'b': tf.bool, 'c': tf.float32},
-        {'a': tf.TensorShape([5]),
-         'b': tf.TensorShape([]),
-         'c': tf.TensorShape([3])})
-
-  def test_get_nested_structure_dtypes_and_shapes_with_two_level_tuple(self):
-    self._do_test_nested_structure_dtypes_and_shapes(
-        [('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])],
-        {'a': tf.bool, 'b': {'c': tf.float32, 'd': tf.int32}},
-        {'a': tf.TensorShape([]), 'b': {
-            'c': tf.TensorShape([]), 'd': tf.TensorShape([20])}})
 
   def test_capture_result_with_int_scalar(self):
     self.assertEqual(

@@ -17,8 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-
 # Dependency imports
 
 from six import string_types
@@ -30,6 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
+from tensorflow_federated.python.core.impl import type_utils
 
 
 def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
@@ -96,7 +95,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
                 element=element_bindings)))
   elif isinstance(parameter_type, types.SequenceType):
     dtypes, shapes = (
-        get_nested_structure_dtypes_and_shapes(parameter_type.element))
+        type_utils.type_to_tf_dtypes_and_shapes(parameter_type.element))
     with graph.as_default():
       handle = tf.placeholder(tf.string, shape=[])
       it = tf.data.Iterator.from_string_handle(handle, dtypes, shapes)
@@ -168,51 +167,3 @@ def capture_result_from_graph(result):
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         type(result).__name__))
-
-
-def get_nested_structure_dtypes_and_shapes(type_spec):
-  """Returns dtypes and shapes corresponding to a nested structure of tensors.
-
-  The returned dtypes and shapes match those used by tf.Datasets to indicate
-  the type and shape of their elements. They can be used, e.g., as arguments in
-  constructing an iterator over a string handle.
-
-  Args:
-    type_spec: Type specification, either an instance of types.Type, or
-      something convertible to it. Ther type specification must be composed of
-      only named tuples and tensors. In all named tuples that appear in the
-      type spec, all the elements must be named.
-
-  Returns:
-    A pair of parallel nested structures with the dtypes and shapes of tensors
-    defined in type_spec. The layout of the two structures returned is the same
-    as the layout of the nesdted type defined by type_spec. Named tuples are
-    represented as dictionaries.
-
-  Raises:
-    ValueError: if the type_spec is composed of something other than named
-      tuples and tensors, or if any of the elements in named tuples are unnamed.
-  """
-  type_spec = types.to_type(type_spec)
-  if isinstance(type_spec, types.TensorType):
-    return (type_spec.dtype, type_spec.shape)
-  elif isinstance(type_spec, types.NamedTupleType):
-    output_dtypes = collections.OrderedDict()
-    output_shapes = collections.OrderedDict()
-    for e in type_spec.elements:
-      element_name = e[0]
-      element_spec = e[1]
-      if element_name is None:
-        # TODO(b/113112108): Possibly remove this limitation.
-        raise ValueError(
-            'When a sequence appears as a part of a parameter to a section of '
-            'TensorFlow code, in the type signature of elements of that '
-            'sequence all named tuples must have their elements explicitly '
-            'named, and this does not appear to be the case in {}.'.format(
-                str(type_spec)))
-      element_output = get_nested_structure_dtypes_and_shapes(element_spec)
-      output_dtypes[element_name] = element_output[0]
-      output_shapes[element_name] = element_output[1]
-    return (output_dtypes, output_shapes)
-  else:
-    raise ValueError('Unsupported type {}.'.format(type(type_spec).__name__))
