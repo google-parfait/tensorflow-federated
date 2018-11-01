@@ -53,6 +53,24 @@ class TypesTest(unittest.TestCase):
     self.assertTrue(t1.is_assignable_from(t2))
     self.assertFalse(t2.is_assignable_from(t1))
 
+  def test_type_ordering(self):
+    t1 = types.TensorType(tf.int32, [None])
+    t2 = types.TensorType(tf.int32, [10])
+    t3 = types.TensorType(tf.int32, [10])
+    self.assertGreater(t1, t2)
+    self.assertLess(t2, t1)
+    self.assertNotEqual(t1, t2)
+    self.assertNotEqual(t2, t1)
+    self.assertEqual(t2, t2)
+    self.assertEqual(t2, t3)
+    self.assertEqual(t3, t2)
+    self.assertLessEqual(t2, t1)
+    self.assertLessEqual(t2, t3)
+    self.assertLessEqual(t3, t2)
+    self.assertGreaterEqual(t1, t2)
+    self.assertGreaterEqual(t2, t3)
+    self.assertGreaterEqual(t3, t2)
+
   def test_tensor_type_repr(self):
     self.assertEqual(repr(types.TensorType(tf.int32)), 'TensorType(tf.int32)')
     self.assertEqual(
@@ -106,10 +124,13 @@ class TypesTest(unittest.TestCase):
     t3 = types.NamedTupleType([tf.int32, ('b', tf.bool)])
     t4 = types.NamedTupleType([tf.int32, ('a', tf.string)])
     t5 = types.NamedTupleType([tf.int32])
+    t6 = types.NamedTupleType([tf.int32, tf.bool])
     self.assertTrue(t1.is_assignable_from(t2))
     self.assertFalse(t1.is_assignable_from(t3))
     self.assertFalse(t1.is_assignable_from(t4))
     self.assertFalse(t1.is_assignable_from(t5))
+    self.assertTrue(t6.is_assignable_from(t1))
+    self.assertFalse(t1.is_assignable_from(t6))
 
   def test_sequence_type_repr(self):
     self.assertEqual(

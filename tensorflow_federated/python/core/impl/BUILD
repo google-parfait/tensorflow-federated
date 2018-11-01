@@ -40,6 +40,29 @@ py_test(
 )
 
 py_library(
+    name = "func_utils",
+    srcs = ["func_utils.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":type_utils",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "func_utils_test",
+    size = "small",
+    srcs = ["func_utils_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":func_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
     deps = [

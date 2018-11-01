@@ -54,6 +54,28 @@ class Type(object):
     """Returns a concise representation of this type."""
     raise NotImplementedError
 
+  # Types are partially ordered by the relation of assignability: if type T is
+  # assignable from type T', so T' is more narrowly specialized than T, we say
+  # that T >= T'.
+
+  def __ge__(self, other):
+    return self.is_assignable_from(other)
+
+  def __le__(self, other):
+    return other.__ge__(self)
+
+  def __eq__(self, other):
+    return self.__ge__(other) and self.__le__(other)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+  def __gt__(self, other):
+    return self.__ge__(other) and not self.__le__(other)
+
+  def __lt__(self, other):
+    return self.__le__(other) and not self.__ge__(other)
+
 
 class TensorType(Type):
   """An implementation of Type for representing types of tensors in TFF."""
@@ -177,7 +199,7 @@ class NamedTupleType(Type):
     other_elements = other.elements
     return (
         (len(self._elements) == len(other_elements)) and all(
-            ((self._elements[k][0] == other_elements[k][0]) and
+            ((self._elements[k][0] in [other_elements[k][0], None]) and
              (self._elements[k][1].is_assignable_from(other_elements[k][1])))
             for k in xrange(len(self._elements))))
 

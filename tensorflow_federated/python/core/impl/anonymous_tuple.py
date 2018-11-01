@@ -117,6 +117,15 @@ class AnonymousTuple(object):
   def __ne__(self, other):
     return not self == other
 
+  def __repr__(self):
+    return 'AnonymousTuple([{}])'.format(', '.join(
+        '({}, {})'.format(e[0], repr(e[1])) for e in to_elements(self)))
+
+  def __str__(self):
+    return '<{}>'.format(','.join(
+        ('{}={}'.format(e[0], str(e[1])) if e[0] else str(e[1]))
+        for e in to_elements(self)))
+
 
 def to_elements(an_anonymous_tuple):
   """Retrieves the list of (name, value) pairs from an anonymous tuple.
@@ -144,4 +153,3 @@ def to_elements(an_anonymous_tuple):
   return [(index_to_name.get(idx), val)
           for idx, val in enumerate(an_anonymous_tuple._element_array)]
   # pylint: enable=protected-access
-

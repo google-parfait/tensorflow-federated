@@ -38,6 +38,8 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertEqual(x, AnonymousTuple([]))
     self.assertNotEqual(x, AnonymousTuple([('foo', 10)]))
     self.assertEqual(to_elements(x), v)
+    self.assertEqual(repr(x), 'AnonymousTuple([])')
+    self.assertEqual(str(x), '<>')
 
   def test_single_unnamed(self):
     v = [(None, 10)]
@@ -53,6 +55,8 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertEqual(x, AnonymousTuple([(None, 10)]))
     self.assertNotEqual(x, AnonymousTuple([(None, 10), ('foo', 20)]))
     self.assertEqual(to_elements(x), v)
+    self.assertEqual(repr(x), 'AnonymousTuple([(None, 10)])')
+    self.assertEqual(str(x), '<10>')
 
   def test_single_named(self):
     v = [('foo', 20)]
@@ -70,6 +74,8 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertEqual(x, AnonymousTuple([('foo', 20)]))
     self.assertNotEqual(x, AnonymousTuple([('foo', 20), ('bar', 30)]))
     self.assertEqual(to_elements(x), v)
+    self.assertEqual(repr(x), 'AnonymousTuple([(foo, 20)])')
+    self.assertEqual(str(x), '<foo=20>')
 
   def test_multiple_named_and_unnamed(self):
     v = [(None, 10), ('foo', 20), ('bar', 30)]
@@ -88,6 +94,9 @@ class AnonymousTupleTest(unittest.TestCase):
     self.assertNotEqual(
         x, AnonymousTuple([('foo', 10), ('bar', 20), (None, 30)]))
     self.assertEqual(to_elements(x), v)
+    self.assertEqual(
+        repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
+    self.assertEqual(str(x), '<10,foo=20,bar=30>')
 
 
 if __name__ == '__main__':
