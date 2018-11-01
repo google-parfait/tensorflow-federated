@@ -49,7 +49,7 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # values are not allowed, but *args are, and the input signature may
     # overlap with *args.
     self.assertEqual(
-        fu.get_defun_argspec(
+        fu.get_argspec(
             tf_function.Defun(tf.int32, tf.bool, tf.float32, tf.float32)(
                 lambda x, y, *z: None)),
         inspect.ArgSpec(
@@ -62,7 +62,7 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # In a non-eager defun with no input signature, the same restrictions as in
     # a typed defun apply.
     self.assertEqual(
-        fu.get_defun_argspec(
+        fu.get_argspec(
             tf_function.Defun()(lambda x, y, *z: None)),
         inspect.ArgSpec(
             args=['x', 'y'],
@@ -140,9 +140,20 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ([tf.int32, tf.int32], True),
       ([tf.int32, ('b', tf.int32)], True),
       ([('a', tf.int32), ('b', tf.int32)], True),
-      ([('a', tf.int32), tf.int32], False))
-  def test_is_argument_tuple_type(self, type_spec, expected_result):
-    self.assertEqual(fu.is_argument_tuple_type(type_spec), expected_result)
+      ([('a', tf.int32), tf.int32], False),
+      (AnonymousTuple([(None, 1), ('a', 2)]), True),
+      (AnonymousTuple([('a', 1), (None, 2)]), False))
+  def test_is_argument_tuple(self, arg, expected_result):
+    self.assertEqual(fu.is_argument_tuple(arg), expected_result)
+
+  @parameterized.parameters(
+      (AnonymousTuple([(None, 1)]), [1], {}),
+      (AnonymousTuple([(None, 1), ('a', 2)]), [1], {'a': 2}))
+  def test_unpack_args_from_anonymous_tuple(
+      self, tuple_with_args, expected_args, expected_kwargs):
+    self.assertEqual(
+        fu.unpack_args_from_tuple(tuple_with_args),
+        (expected_args, expected_kwargs))
 
   @parameterized.parameters(
       ([tf.int32], [tf.int32], {}),
@@ -150,12 +161,28 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ([tf.int32, tf.bool], [tf.int32, tf.bool], {}),
       ([tf.int32, ('b', tf.bool)], [tf.int32], {'b': tf.bool}),
       ([('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}))
-  def test_get_argument_types_from_tuple(
-      self, type_spec, expected_args, expected_kwargs):
-    args, kwargs = fu.get_argument_types_from_tuple(type_spec)
+  def test_unpack_args_from_tuple_type(
+      self, tuple_with_args, expected_args, expected_kwargs):
+    args, kwargs = fu.unpack_args_from_tuple(tuple_with_args)
     self.assertEqual(args, [types.to_type(a) for a in expected_args])
     self.assertEqual(
         kwargs, {k: types.to_type(v) for k, v in expected_kwargs.iteritems()})
+
+  def test_pack_args_into_anonymous_tuple(self):
+    self.assertEqual(
+        fu.pack_args_into_anonymous_tuple(1, a=10),
+        AnonymousTuple([(None, 1), ('a', 10)]))
+    self.assertIn(
+        fu.pack_args_into_anonymous_tuple(1, 2, a=10, b=20), [
+            AnonymousTuple([(None, 1), (None, 2), ('a', 10), ('b', 20)]),
+            AnonymousTuple([(None, 1), (None, 2), ('b', 20), ('a', 10)])])
+    self.assertIn(
+        fu.pack_args_into_anonymous_tuple(a=10, b=20), [
+            AnonymousTuple([('a', 10), ('b', 20)]),
+            AnonymousTuple([('b', 20), ('a', 10)])])
+    self.assertEqual(
+        fu.pack_args_into_anonymous_tuple(1),
+        AnonymousTuple([(None, 1)]))
 
   @parameterized.parameters(
       (1, lambda: 10, None, None, None, 10),
@@ -174,6 +201,41 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
         func, parameter_type, unpack)
     actual_result = wrapped_fn(arg) if parameter_type else wrapped_fn()
     self.assertEqual(actual_result, expected_result)
+
+  def test_polymorphic_function(self):
+
+    class TestFunction(object):
+
+      def __init__(self, name, parameter_type):
+        self._name = name
+        self._parameter_type = parameter_type
+
+      def __call__(self, *args, **kwargs):
+        return 'name={},type={},args=({})'.format(
+            self._name, str(self._parameter_type), ','.join(
+                [str(a) for a in args] +
+                ['{}={}'.format(k, str(v)) for k, v in kwargs.iteritems()]))
+
+    class TestFunctionFactory(object):
+
+      def __init__(self):
+        self._count = 0
+
+      def __call__(self, parameter_type):
+        self._count = self._count + 1
+        return TestFunction(str(self._count), parameter_type)
+
+    fn = fu.PolymorphicFunction(TestFunctionFactory())
+    self.assertEqual(fn(10), 'name=1,type=<int32>,args=(10)')
+    self.assertEqual(
+        fn(20, x=True), 'name=2,type=<int32,x=bool>,args=(20,x=True)')
+    self.assertEqual(fn(True), 'name=3,type=<bool>,args=(True)')
+    self.assertEqual(fn(30, x=40), 'name=4,type=<int32,x=int32>,args=(30,x=40)')
+    self.assertEqual(fn(50), 'name=1,type=<int32>,args=(50)')
+    self.assertEqual(
+        fn(0, x=False), 'name=2,type=<int32,x=bool>,args=(0,x=False)')
+    self.assertEqual(fn(False), 'name=3,type=<bool>,args=(False)')
+    self.assertEqual(fn(60, x=70), 'name=4,type=<int32,x=int32>,args=(60,x=70)')
 
 
 if __name__ == '__main__':

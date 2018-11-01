@@ -55,11 +55,11 @@ def is_defun(func):
       # pylint: enable=protected-access
 
 
-def get_defun_argspec(func):
-  """Returns the inspect.ArgSpec structure for the given target defun 'func'.
+def get_argspec(func):
+  """Returns the inspect.ArgSpec structure for the given function/defun 'func'.
 
   Args:
-    func: The defun to analyze, an object such that is_defun() is True on it.
+    func: The Python function or defun to analyze.
 
   Returns:
     The corresponding instance of inspect.ArgSpec.
@@ -67,10 +67,12 @@ def get_defun_argspec(func):
   Raises:
     TypeError: if the argument is not of a supported type.
   """
+  if isinstance(func, py_types.FunctionType):
+    return inspect.getargspec(func)
   # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
   # currently omitted due to issues with visibility, using tf_inspect.getargspec
   # that works in eager mode.
-  if isinstance(func, (
+  elif isinstance(func, (
       # There does not appear to be a robust way to distinguish between typed
       # and polymorphic defuns, so we refer to private class names again.
       # pylint: disable=protected-access
@@ -86,7 +88,9 @@ def get_defun_argspec(func):
         'Support for defuns of type {} has not been implemented yet.'.format(
             type(func).__name__))
   else:
-    raise TypeError('Expected a defun, found {}.'.format(type(func).__name__))
+    raise TypeError(
+        'Expected a Python function or a defun, found {}.'.format(
+            type(func).__name__))
 
 
 def get_callargs_for_argspec(argspec, *args, **kwargs):
@@ -182,21 +186,28 @@ def is_argspec_compatible_with_types(argspec, *args, **kwargs):
   return True
 
 
-def is_argument_tuple_type(type_spec):
-  """Determines if 'type_spec' is interpretable as a type of an argument tuple.
+def is_argument_tuple(arg):
+  """Determines if 'arg' is interpretable as an argument tuple.
 
   Args:
-    type_spec: An instance of types.Type, or somethign convertible to it by
-      calling types.to_type().
+    arg: A value or type to test.
 
   Returns:
-    True iff 'type_spec', or the result of applying types.to_type() to it, is a
-    NamedTupleType in which all unnamed elements precede all named elements.
+    True iff 'arg' is either an anonymous tuple in which all unnamed elements
+    precede named ones, or a named tuple typle with this property, or something
+    that can be converted into the latter by types.to_type().
+
+  Raises:
+    TypeError: if the argument is neither an AnonymousTuple, nor a type spec.
   """
-  type_spec = types.to_type(type_spec)
-  if not isinstance(type_spec, types.NamedTupleType):
-    return False
-  elements = type_spec.elements
+  if isinstance(arg, anonymous_tuple.AnonymousTuple):
+    elements = anonymous_tuple.to_elements(arg)
+  else:
+    arg = types.to_type(arg)
+    if isinstance(arg, types.NamedTupleType):
+      elements = arg.elements
+    else:
+      return False
   max_unnamed = -1
   min_named = len(elements)
   for idx, element in enumerate(elements):
@@ -207,33 +218,51 @@ def is_argument_tuple_type(type_spec):
   return max_unnamed < min_named
 
 
-def get_argument_types_from_tuple(type_spec):
+def unpack_args_from_tuple(tuple_with_args):
   """Extracts argument types from a named tuple type.
 
   Args:
-    type_spec: An instance of types.NamedTupleType (or something convertible to
-      it by types.to_type()), on which is_argument_tuple_type() is True.
+    tuple_with_args: An instance of either an AnonymousTuple or
+      types.NamedTupleType (or something convertible to it by types.to_type()),
+      on which is_argument_tuple() is True.
 
   Returns:
-    A pair (args, kwargs) in which the values are instances of types.Type that
-      represent the types of arguments represented by individual fields of the
-      argument tuple 'type_spec'.
+    A pair (args, kwargs) containing tuple elements from 'tuple_with_args'.
 
   Raises:
-    ValueError: if 'type_spec' is not a valid argument tuple type.
+    TypeError: if 'tuple_with_args' is of a wrong type.
   """
-  type_spec = types.to_type(type_spec)
-  if not is_argument_tuple_type(type_spec):
-    raise ValueError('Not a valid argument tuple type: {}.'.format(
-        str(type_spec)))
+  if isinstance(tuple_with_args, anonymous_tuple.AnonymousTuple):
+    elements = anonymous_tuple.to_elements(tuple_with_args)
+  else:
+    tuple_with_args = types.to_type(tuple_with_args)
+    if isinstance(tuple_with_args, types.NamedTupleType):
+      elements = tuple_with_args.elements
+    else:
+      raise TypeError('Expected an argument tuple, found {}.'.format(
+          type(tuple_with_args).__name__))
   args = []
   kwargs = {}
-  for e in type_spec.elements:
+  for e in elements:
     if e[0]:
       kwargs[e[0]] = e[1]
     else:
       args.append(e[1])
   return (args, kwargs)
+
+
+def pack_args_into_anonymous_tuple(*args, **kwargs):
+  """Packs positional and keyword arguments into an anonymous tuple.
+
+  Args:
+    *args: Positional arguments.
+    **kwargs: Keyword arguments.
+
+  Returns:
+    An anoymous tuple containing all the arguments.
+  """
+  return anonymous_tuple.AnonymousTuple(
+      [(None, arg) for arg in args] + list(kwargs.iteritems()))
 
 
 def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
@@ -284,17 +313,10 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
   """
   # TODO(b/113112885): Revisit whether the 3-way 'unpack' knob is sufficient
   # for our needs, or more options are needed.
-
-  if isinstance(func, py_types.FunctionType):
-    argspec = inspect.getargspec(func)
-  elif is_defun(func):
-    argspec = get_defun_argspec(func)
-  else:
-    raise TypeError('Expected a Python function or defun, found {}.'.format(
-        type(func).__name__))
   if unpack not in [True, False, None]:
     raise TypeError(
         'The unpack argument has an unexpected value {}.'.format(repr(unpack)))
+  argspec = get_argspec(func)
   parameter_type = types.to_type(parameter_type)
   if not parameter_type:
     if is_argspec_compatible_with_types(argspec):
@@ -315,8 +337,8 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
           'The supplied function with argspec {} cannot accept a value of '
           'type {} as a single arghument.'.format(
               str(argspec), str(parameter_type)))
-    if is_argument_tuple_type(parameter_type):
-      arg_types, kwarg_types = get_argument_types_from_tuple(parameter_type)
+    if is_argument_tuple(parameter_type):
+      arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
       unpack_possible = is_argspec_compatible_with_types(
           argspec, *arg_types, **kwarg_types)
     else:
@@ -413,3 +435,42 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       return (lambda fn, pt: lambda arg: _call(fn, pt, arg))(
           func, parameter_type)
       # pylint: enable=unnecessary-lambda,undefined-variable
+
+
+class PolymorphicFunction(object):
+  """A generic polymorphic function that accepts arguments of diverse types."""
+
+  def __init__(self, concrete_function_factory):
+    """Crates a polymorphic function with a given function factory.
+
+    Args:
+      concrete_function_factory: A callable that accepts a (non-None) TFF type
+        as an argument, and returns a single-parameter concrete function that's
+        been instantiated to accept an argument of this type.
+    """
+    self._concrete_function_factory = concrete_function_factory
+    self._concrete_function_cache = {}
+
+  def __call__(self, *args, **kwargs):
+    """Invokes this polymorphic function with a given set of arguments.
+
+    Args:
+      *args: Positional args.
+      **kwargs: Keyword args.
+
+    Returns:
+      The result of calling a concrete function, instantiated on demand based
+      on the argument types (and cached for future calls).
+    """
+    # TODO(b/113112885): We may need to normalize individuals args, such that
+    # the type is more predictable and uniform (e.g., if someone supplies an
+    # unordered dictionary), possibly by converting dict-like and tuple-like
+    # containters into anonymous tuples.
+    packed_arg = pack_args_into_anonymous_tuple(*args, **kwargs)
+    arg_type = type_utils.infer_type(packed_arg)
+    key = repr(arg_type)
+    concrete_fn = self._concrete_function_cache.get(key)
+    if not concrete_fn:
+      concrete_fn = self._concrete_function_factory(arg_type)
+      self._concrete_function_cache[key] = concrete_fn
+    return concrete_fn(*args, **kwargs)
