@@ -21,11 +21,10 @@ import inspect
 import itertools
 
 # Dependency imports
-
 from absl.testing import parameterized
-
 import tensorflow as tf
 
+# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
 
 from tensorflow_federated.python.core.api import types

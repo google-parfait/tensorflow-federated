@@ -21,9 +21,7 @@ import abc
 import collections
 
 # Dependency imports
-
 from six import string_types
-
 import tensorflow as tf
 
 

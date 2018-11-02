@@ -20,9 +20,7 @@ import collections
 
 # Dependency imports
 import numpy as np
-
 from six import string_types
-
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import types

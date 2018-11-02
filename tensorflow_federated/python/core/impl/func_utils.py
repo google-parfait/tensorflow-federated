@@ -20,6 +20,7 @@ from __future__ import print_function
 import inspect
 import types as py_types
 
+# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
 
 from tensorflow_federated.python.core.api import types
