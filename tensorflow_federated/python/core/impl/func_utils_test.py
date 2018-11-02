@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import inspect
 import itertools
 
@@ -167,21 +168,60 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(
         kwargs, {k: types.to_type(v) for k, v in expected_kwargs.iteritems()})
 
-  def test_pack_args_into_anonymous_tuple(self):
+  def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(
-        fu.pack_args_into_anonymous_tuple(1, a=10),
+        fu.pack_args_into_anonymous_tuple([1], {'a': 10}),
         AnonymousTuple([(None, 1), ('a', 10)]))
     self.assertIn(
-        fu.pack_args_into_anonymous_tuple(1, 2, a=10, b=20), [
+        fu.pack_args_into_anonymous_tuple([1, 2], {'a': 10, 'b': 20}), [
             AnonymousTuple([(None, 1), (None, 2), ('a', 10), ('b', 20)]),
             AnonymousTuple([(None, 1), (None, 2), ('b', 20), ('a', 10)])])
     self.assertIn(
-        fu.pack_args_into_anonymous_tuple(a=10, b=20), [
+        fu.pack_args_into_anonymous_tuple([], {'a': 10, 'b': 20}), [
             AnonymousTuple([('a', 10), ('b', 20)]),
             AnonymousTuple([('b', 20), ('a', 10)])])
     self.assertEqual(
-        fu.pack_args_into_anonymous_tuple(1),
+        fu.pack_args_into_anonymous_tuple([1], {}),
         AnonymousTuple([(None, 1)]))
+
+  @parameterized.parameters(
+      ([1], {}, [tf.int32], [(None, 1)]),
+      ([1, True], {}, [tf.int32, tf.bool], [(None, 1), (None, True)]),
+      ([1, True], {}, [('x', tf.int32), ('y', tf.bool)],
+       [('x', 1), ('y', True)]),
+      ([1], {'y': True}, [('x', tf.int32), ('y', tf.bool)],
+       [('x', 1), ('y', True)]),
+      ([], {'x': 1, 'y': True}, [('x', tf.int32), ('y', tf.bool)],
+       [('x', 1), ('y', True)]),
+      ([], collections.OrderedDict([('y', True), ('x', 1)]),
+       [('x', tf.int32), ('y', tf.bool)],
+       [('x', 1), ('y', True)]))
+  def test_pack_args_into_anonymous_tuple_with_type_spec_expect_success(
+      self, args, kwargs, type_spec, elements):
+    self.assertEqual(
+        fu.pack_args_into_anonymous_tuple(args, kwargs, type_spec),
+        AnonymousTuple(elements))
+
+  @parameterized.parameters(
+      ([1], {}, [(tf.bool)]),
+      ([], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]))
+  def test_pack_args_into_anonymous_tuple_with_type_spec_expect_failure(
+      self, args, kwargs, type_spec):
+    with self.assertRaises(TypeError):
+      fu.pack_args_into_anonymous_tuple(args, kwargs, type_spec)
+
+  @parameterized.parameters(
+      (None, [], {}, 'None'),
+      (tf.int32, [1], {}, '1'),
+      ([tf.int32, tf.bool], [1, True], {}, '<1,True>'),
+      ([('x', tf.int32), ('y', tf.bool)], [1, True], {}, '<x=1,y=True>'),
+      ([('x', tf.int32), ('y', tf.bool)], [1], {'y': True}, '<x=1,y=True>'),
+      ([tf.int32, tf.bool], [AnonymousTuple([(None, 1), (None, True)])], {},
+       '<1,True>'))
+  def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
+    self.assertEqual(
+        str(fu.pack_args(parameter_type, args, kwargs)),
+        expected_value_string)
 
   @parameterized.parameters(
       (1, lambda: 10, None, None, None, 10),
@@ -203,17 +243,16 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_polymorphic_function(self):
 
-    class TestFunction(object):
+    class TestFunction(fu.ConcreteFunction):
 
       def __init__(self, name, parameter_type):
         self._name = name
-        self._parameter_type = parameter_type
+        super(TestFunction, self).__init__(
+            types.FunctionType(parameter_type, tf.string))
 
-      def __call__(self, *args, **kwargs):
-        return 'name={},type={},args=({})'.format(
-            self._name, str(self._parameter_type), ','.join(
-                [str(a) for a in args] +
-                ['{}={}'.format(k, str(v)) for k, v in kwargs.iteritems()]))
+      def _invoke(self, arg):
+        return 'name={},type={},arg={}'.format(
+            self._name, str(self.type_signature.parameter), str(arg))
 
     class TestFunctionFactory(object):
 
@@ -225,16 +264,40 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
         return TestFunction(str(self._count), parameter_type)
 
     fn = fu.PolymorphicFunction(TestFunctionFactory())
-    self.assertEqual(fn(10), 'name=1,type=<int32>,args=(10)')
+    self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>')
     self.assertEqual(
-        fn(20, x=True), 'name=2,type=<int32,x=bool>,args=(20,x=True)')
-    self.assertEqual(fn(True), 'name=3,type=<bool>,args=(True)')
-    self.assertEqual(fn(30, x=40), 'name=4,type=<int32,x=int32>,args=(30,x=40)')
-    self.assertEqual(fn(50), 'name=1,type=<int32>,args=(50)')
+        fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>')
+    self.assertEqual(fn(True), 'name=3,type=<bool>,arg=<True>')
+    self.assertEqual(fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>')
+    self.assertEqual(fn(50), 'name=1,type=<int32>,arg=<50>')
     self.assertEqual(
-        fn(0, x=False), 'name=2,type=<int32,x=bool>,args=(0,x=False)')
-    self.assertEqual(fn(False), 'name=3,type=<bool>,args=(False)')
-    self.assertEqual(fn(60, x=70), 'name=4,type=<int32,x=int32>,args=(60,x=70)')
+        fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>')
+    self.assertEqual(fn(False), 'name=3,type=<bool>,arg=<False>')
+    self.assertEqual(fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>')
+
+  def test_concrete_function(self):
+
+    class TestFunction(fu.ConcreteFunction):
+
+      def __init__(self, type_signature, invoke_func):
+        super(TestFunction, self).__init__(type_signature)
+        self._invoke_func = invoke_func
+
+      def _invoke(self, arg):
+        return self._invoke_func(arg)
+
+    fn = TestFunction(types.FunctionType(tf.int32, tf.bool), lambda x: x > 10)
+    self.assertEqual(fn(5), False)
+    self.assertEqual(fn(15), True)
+
+    fn = TestFunction(
+        types.FunctionType([('x', tf.int32), ('y', tf.int32)], tf.bool),
+        lambda arg: arg.x > arg.y)
+    self.assertEqual(fn(5, 10), False)
+    self.assertEqual(fn(10, 5), True)
+    self.assertEqual(fn(y=10, x=5), False)
+    self.assertEqual(fn(y=5, x=10), True)
+    self.assertEqual(fn(10, y=5), True)
 
 
 if __name__ == '__main__':

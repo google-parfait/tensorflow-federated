@@ -40,6 +40,7 @@ py_library(
     deps = [
         ":anonymous_tuple",
         ":type_utils",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
     ],
 )
