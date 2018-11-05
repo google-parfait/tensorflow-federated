@@ -35,6 +35,27 @@ py_test(
 )
 
 py_library(
+    name = "computation_wrapper",
+    srcs = ["computation_wrapper.py"],
+    deps = [
+        ":func_utils",
+        "//tensorflow_federated/python/core/api:types",
+    ],
+)
+
+py_test(
+    name = "computation_wrapper_test",
+    size = "small",
+    srcs = ["computation_wrapper_test.py"],
+    deps = [
+        ":computation_wrapper",
+        ":type_utils",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "func_utils",
     srcs = ["func_utils.py"],
     deps = [
