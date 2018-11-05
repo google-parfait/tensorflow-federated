@@ -27,6 +27,9 @@ from tensorflow_federated.python.core.impl import computation_impl as ci
 class ComputationTest(unittest.TestCase):
 
   def test_something(self):
+    # TODO(b/113112108): Delete and replace these with meaningful tests once
+    # enough infrastructure is in place.
+
     # A hypothetical example of a federated computation definition in Python,
     # expressed in a yet-to-be-defined syntax.
     #
@@ -43,51 +46,60 @@ class ComputationTest(unittest.TestCase):
     #   return tff.federated_average(client_metrics)
     #
     # The corresponding representation as computation.proto.
-    fed_eval = pb.Computation(**{'lambda': pb.Lambda(
-        parameter_name='model',
-        result=pb.Computation(block=pb.Block(
-            local=[
-                pb.Block.Local(name='local_eval', value=pb.Computation(
-                    tensorflow=pb.TensorFlow())),
-                pb.Block.Local(name='client_model', value=pb.Computation(
+    fed_eval = pb.Computation(**{
+        'type': pb.Type(function=pb.FunctionType()),
+        'lambda': pb.Lambda(
+            parameter_name='model',
+            result=pb.Computation(block=pb.Block(
+                local=[
+                    pb.Block.Local(name='local_eval', value=pb.Computation(
+                        tensorflow=pb.TensorFlow())),
+                    pb.Block.Local(name='client_model', value=pb.Computation(
+                        call=pb.Call(
+                            function=pb.Computation(
+                                intrinsic=pb.Intrinsic(
+                                    uri='federated_broadcast')),
+                            argument=pb.Computation(
+                                reference=pb.Reference(name='model'))))),
+                    pb.Block.Local(name='client_metrics', value=pb.Computation(
+                        call=pb.Call(
+                            function=pb.Computation(
+                                intrinsic=pb.Intrinsic(uri='federated_map')),
+                            argument=pb.Computation(
+                                tuple=pb.Tuple(element=[
+                                    pb.Tuple.Element(
+                                        value=pb.Computation(
+                                            reference=pb.Reference(
+                                                name='local_eval'))),
+                                    pb.Tuple.Element(
+                                        value=pb.Computation(
+                                            reference=pb.Reference(
+                                                name='local_client_model')))
+                                ])))))],
+                result=pb.Computation(
                     call=pb.Call(
                         function=pb.Computation(
-                            intrinsic=pb.Intrinsic(uri='federated_broadcast')),
+                            intrinsic=pb.Intrinsic(uri='federated_average')),
                         argument=pb.Computation(
-                            reference=pb.Reference(name='model'))))),
-                pb.Block.Local(name='client_metrics', value=pb.Computation(
-                    call=pb.Call(
-                        function=pb.Computation(
-                            intrinsic=pb.Intrinsic(uri='federated_map')),
-                        argument=pb.Computation(
-                            tuple=pb.Tuple(element=[
-                                pb.Tuple.Element(
-                                    value=pb.Computation(
-                                        reference=pb.Reference(
-                                            name='local_eval'))),
-                                pb.Tuple.Element(
-                                    value=pb.Computation(
-                                        reference=pb.Reference(
-                                            name='local_client_model')))])))))],
-            result=pb.Computation(
-                call=pb.Call(
-                    function=pb.Computation(
-                        intrinsic=pb.Intrinsic(uri='federated_average')),
-                    argument=pb.Computation(
-                        reference=pb.Reference(name='client_metrics')))))))})
+                            reference=pb.Reference(
+                                name='client_metrics')))))))})
     ci.ComputationImpl(fed_eval)
 
     # This will successfully construct a lambda "x -> x.func(x.arg)".
-    ci.ComputationImpl(pb.Computation(**{'lambda': pb.Lambda(
-        parameter_name='x', result=pb.Computation(call=pb.Call(
-            function=pb.Computation(selection=pb.Selection(
-                source=pb.Computation(reference=pb.Reference(name='x')),
-                name='func')),
-            argument=pb.Computation(selection=pb.Selection(
-                source=pb.Computation(reference=pb.Reference(name='x')),
-                name='arg')))))}))
+    ci.ComputationImpl(pb.Computation(**{
+        'type': pb.Type(function=pb.FunctionType()),
+        'lambda': pb.Lambda(
+            parameter_name='x', result=pb.Computation(call=pb.Call(
+                function=pb.Computation(selection=pb.Selection(
+                    source=pb.Computation(reference=pb.Reference(name='x')),
+                    name='func')),
+                argument=pb.Computation(selection=pb.Selection(
+                    source=pb.Computation(reference=pb.Reference(name='x')),
+                    name='arg')))))}))
 
-    ci.ComputationImpl(pb.Computation(intrinsic=pb.Intrinsic(uri='broadcast')))
+    ci.ComputationImpl(pb.Computation(**{
+        'type': pb.Type(function=pb.FunctionType()),
+        'intrinsic': pb.Intrinsic(uri='broadcast')}))
 
     # This should fail, as "10" is not an instance of pb.Computation.
     self.assertRaises(TypeError, ci.ComputationImpl, 10)

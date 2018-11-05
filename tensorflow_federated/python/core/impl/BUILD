@@ -19,8 +19,9 @@ py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
     deps = [
+        ":func_utils",
+        ":serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
-        "//tensorflow_federated/python/core/api:computation_base",
     ],
 )
 
@@ -40,6 +41,26 @@ py_library(
     deps = [
         ":func_utils",
         "//tensorflow_federated/python/core/api:types",
+    ],
+)
+
+py_library(
+    name = "computation_wrapper_instances",
+    srcs = ["computation_wrapper_instances.py"],
+    deps = [
+        ":computation_impl",
+        ":computation_wrapper",
+        ":serialization",
+    ],
+)
+
+py_test(
+    name = "computation_wrapper_instances_test",
+    size = "small",
+    srcs = ["computation_wrapper_instances_test.py"],
+    deps = [
+        ":computation_wrapper_instances",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 

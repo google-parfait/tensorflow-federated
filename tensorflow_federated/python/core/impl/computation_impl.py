@@ -19,10 +19,11 @@ from __future__ import print_function
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
-from tensorflow_federated.python.core.api import computation_base as cb
+from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import serialization
 
 
-class ComputationImpl(cb.Computation):
+class ComputationImpl(func_utils.ConcreteFunction):
   """An implementation of the base interface cb.Computation."""
 
   def __init__(self, computation_proto):
@@ -35,13 +36,10 @@ class ComputationImpl(cb.Computation):
     if not isinstance(computation_proto, pb.Computation):
       raise TypeError('Expected {}, found "{}".'.format(
           pb.Computation.__name__, type(computation_proto).__name__))
+    super(ComputationImpl, self).__init__(
+        serialization.deserialize_type(computation_proto.type))
     self._computation_proto = computation_proto
 
-  @property
-  def type_signature(self):
-    # TODO(b/112643462): Implement this.
-    raise NotImplementedError
-
-  def __call__(self, *args, **kwargs):
+  def _invoke(self, arg):
     # TODO(b/112643462): Implement this.
     raise NotImplementedError
