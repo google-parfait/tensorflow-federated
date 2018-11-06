@@ -20,13 +20,18 @@ Converts the argument into an instance of Type.
 
       tf.int32
       (tf.int32, [10])
+      (tf.int32, [None])
 
-    Examples of arguments convertible to named tuple types:
+    Examples of arguments convertible to flat named tuple types:
 
       [tf.int32, tf.bool]
       (tf.int32, tf.bool)
       [('a', tf.int32), ('b', tf.bool)]
+      ('a', tf.int32)
       collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
+
+    Examples of arguments convertible to nested named tuple types:
+
       (tf.int32, (tf.float32, tf.bool))
       (tf.int32, (('x', tf.float32), tf.bool))
       ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))

@@ -9,6 +9,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":computation_base",
+        ":computations",
         ":types",
     ],
 )
@@ -16,6 +17,24 @@ py_library(
 py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
+)
+
+py_library(
+    name = "computations",
+    srcs = ["computations.py"],
+    deps = [
+        "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
+    ],
+)
+
+py_test(
+    name = "computations_test",
+    size = "small",
+    srcs = ["computations_test.py"],
+    deps = [
+        ":computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(

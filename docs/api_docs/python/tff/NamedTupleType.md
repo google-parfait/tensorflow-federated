@@ -2,7 +2,13 @@
 <meta itemprop="name" content="tff.NamedTupleType" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="elements"/>
+<meta itemprop="property" content="__eq__"/>
+<meta itemprop="property" content="__ge__"/>
+<meta itemprop="property" content="__gt__"/>
 <meta itemprop="property" content="__init__"/>
+<meta itemprop="property" content="__le__"/>
+<meta itemprop="property" content="__lt__"/>
+<meta itemprop="property" content="__ne__"/>
 <meta itemprop="property" content="is_assignable_from"/>
 </div>
 
@@ -48,6 +54,54 @@ Constructs a new instance from the given element types.
 
 
 ## Methods
+
+<h3 id="__eq__"><code>__eq__</code></h3>
+
+``` python
+__eq__(other)
+```
+
+
+
+<h3 id="__ge__"><code>__ge__</code></h3>
+
+``` python
+__ge__(other)
+```
+
+
+
+<h3 id="__gt__"><code>__gt__</code></h3>
+
+``` python
+__gt__(other)
+```
+
+
+
+<h3 id="__le__"><code>__le__</code></h3>
+
+``` python
+__le__(other)
+```
+
+
+
+<h3 id="__lt__"><code>__lt__</code></h3>
+
+``` python
+__lt__(other)
+```
+
+
+
+<h3 id="__ne__"><code>__ne__</code></h3>
+
+``` python
+__ne__(other)
+```
+
+
 
 <h3 id="is_assignable_from"><code>is_assignable_from</code></h3>
 
