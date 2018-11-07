@@ -22,5 +22,8 @@ from tensorflow_federated.python.core.impl.computation_wrapper import Computatio
 from tensorflow_federated.python.core.impl.serialization import serialize_py_func_as_tf_computation
 
 
-tensorflow_wrapper = ComputationWrapper(
-    lambda fn, pt: ComputationImpl(serialize_py_func_as_tf_computation(fn, pt)))
+def _tf_wrapper_fn(target_fn, parameter_type):
+  comp_pb = serialize_py_func_as_tf_computation(target_fn, parameter_type)
+  return ComputationImpl(comp_pb)
+
+tensorflow_wrapper = ComputationWrapper(_tf_wrapper_fn)
