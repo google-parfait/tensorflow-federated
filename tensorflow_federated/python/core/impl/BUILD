@@ -19,6 +19,7 @@ py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
     deps = [
+        ":context_stack",
         ":func_utils",
         ":serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -74,6 +75,37 @@ py_test(
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
+)
+
+py_library(
+    name = "context_base",
+    srcs = ["context_base.py"],
+)
+
+py_library(
+    name = "context_stack",
+    srcs = ["context_stack.py"],
+    deps = [
+        ":context_base",
+        ":default_context",
+    ],
+)
+
+py_test(
+    name = "context_stack_test",
+    size = "small",
+    srcs = ["context_stack_test.py"],
+    deps = [
+        ":context_base",
+        ":context_stack",
+        ":default_context",
+    ],
+)
+
+py_library(
+    name = "default_context",
+    srcs = ["default_context.py"],
+    deps = [":context_base"],
 )
 
 py_library(
