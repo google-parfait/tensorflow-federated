@@ -64,17 +64,22 @@ deactivate
 
 ### Using Docker on Ubuntu
 
-#### 1. Install Docker.
+#### 1. Install Docker
 
 [Install Docker](https://docs.docker.com/install/) on your local machine.
 
-#### 2. Clone the latest Tensorflow Federated source
+#### 2. Install Bazel
+
+[Install Bazel](https://docs.bazel.build/versions/master/install.html), the
+build tool used to compile Tensorflow Federated.
+
+#### 3. Clone the latest Tensorflow Federated source
 
 ```bash
 git clone https://github.com/tensorflow/federated.git
 ```
 
-#### 2. Start a Docker container.
+#### 4. Start a Docker container
 
 ```bash
 docker run -it \
