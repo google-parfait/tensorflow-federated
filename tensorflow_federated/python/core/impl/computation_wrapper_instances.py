@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from tensorflow_federated.python.core.impl.computation_impl import ComputationImpl
 from tensorflow_federated.python.core.impl.computation_wrapper import ComputationWrapper
-from tensorflow_federated.python.core.impl.serialization import serialize_py_func_as_tf_computation
+from tensorflow_federated.python.core.impl.tensorflow_serialization import serialize_py_func_as_tf_computation
 
 
 def _tf_wrapper_fn(target_fn, parameter_type):

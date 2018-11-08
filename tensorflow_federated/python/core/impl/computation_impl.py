@@ -20,7 +20,7 @@ from __future__ import print_function
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.core.impl import func_utils
-from tensorflow_federated.python.core.impl import serialization
+from tensorflow_federated.python.core.impl import type_serialization
 
 from tensorflow_federated.python.core.impl.context_stack import context_stack
 
@@ -39,7 +39,7 @@ class ComputationImpl(func_utils.ConcreteFunction):
       raise TypeError('Expected {}, found "{}".'.format(
           pb.Computation.__name__, type(computation_proto).__name__))
     super(ComputationImpl, self).__init__(
-        serialization.deserialize_type(computation_proto.type))
+        type_serialization.deserialize_type(computation_proto.type))
     self._computation_proto = computation_proto
 
   def _invoke(self, arg):

@@ -11,49 +11,48 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for serialization.py."""
+"""Tests for type_serialization.py."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import types
 
-from tensorflow_federated.python.core.impl import serialization
+from tensorflow_federated.python.core.impl import type_serialization
 
 
-class SerializationTest(tf.test.TestCase):
+class TypeSerializationTest(tf.test.TestCase):
 
   def test_serialize_type_with_tensor_dtype_without_shape(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type(tf.int32)),
+        _compact_repr(type_serialization.serialize_type(tf.int32)),
         'tensor { dtype: DT_INT32 shape { } }')
 
   def test_serialize_type_with_tensor_dtype_with_shape(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type((tf.int32, [10, 20]))),
+        _compact_repr(type_serialization.serialize_type((tf.int32, [10, 20]))),
         'tensor { dtype: DT_INT32 '
         'shape { dim { size: 10 } dim { size: 20 } } }')
 
   def test_serialize_type_with_tensor_dtype_with_shape_undefined_dim(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type((tf.int32, [None]))),
+        _compact_repr(type_serialization.serialize_type((tf.int32, [None]))),
         'tensor { dtype: DT_INT32 '
         'shape { dim { size: -1 } } }')
 
   def test_serialize_type_with_string_sequence(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type(
+        _compact_repr(type_serialization.serialize_type(
             types.SequenceType(tf.string))),
         'sequence { element { tensor { dtype: DT_STRING shape { } } } }')
 
   def test_serialize_type_with_tensor_tuple(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type(
+        _compact_repr(type_serialization.serialize_type(
             [('x', tf.int32), ('y', tf.string), tf.float32, ('z', tf.bool)])),
         'tuple { '
         'element { name: "x" value { tensor { dtype: DT_INT32 shape { } } } } '
@@ -63,7 +62,7 @@ class SerializationTest(tf.test.TestCase):
 
   def test_serialize_type_with_nested_tuple(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type(
+        _compact_repr(type_serialization.serialize_type(
             [('x', [('y', [('z', tf.bool)])])])),
         'tuple { element { name: "x" value { '
         'tuple { element { name: "y" value { '
@@ -73,7 +72,7 @@ class SerializationTest(tf.test.TestCase):
 
   def test_serialize_type_with_function(self):
     self.assertEqual(
-        _compact_repr(serialization.serialize_type(
+        _compact_repr(type_serialization.serialize_type(
             types.FunctionType((tf.int32, tf.int32), tf.bool))),
         'function { parameter { tuple { '
         'element { value { tensor { dtype: DT_INT32 shape { } } } } '
@@ -111,56 +110,13 @@ class SerializationTest(tf.test.TestCase):
     """
     for t in type_list:
       t1 = types.to_type(t)
-      p1 = serialization.serialize_type(t1)
-      t2 = serialization.deserialize_type(p1)
-      p2 = serialization.serialize_type(t2)
+      p1 = type_serialization.serialize_type(t1)
+      t2 = type_serialization.deserialize_type(p1)
+      p2 = type_serialization.serialize_type(t2)
       self.assertEqual(repr(t1), repr(t2))
       self.assertEqual(repr(p1), repr(p2))
       self.assertTrue(t1.is_assignable_from(t2))
       self.assertTrue(t2.is_assignable_from(t1))
-
-  def test_serialize_tensorflow_with_no_parameter(self):
-    comp = serialization.serialize_py_func_as_tf_computation(
-        lambda: tf.constant(99))
-    self.assertEqual(
-        str(serialization.deserialize_type(comp.type)), '( -> int32)')
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    results = tf.Session().run(tf.import_graph_def(
-        comp.tensorflow.graph_def, None, [
-            comp.tensorflow.result.tensor.tensor_name]))
-    self.assertEqual(results, [99])
-
-  def test_serialize_tensorflow_with_simple_add_three_lambda(self):
-    comp = serialization.serialize_py_func_as_tf_computation(
-        lambda x: x + 3, tf.int32)
-    self.assertEqual(
-        str(serialization.deserialize_type(comp.type)), '(int32 -> int32)')
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    parameter = tf.constant(1000)
-    results = tf.Session().run(tf.import_graph_def(
-        comp.tensorflow.graph_def,
-        {comp.tensorflow.parameter.tensor.tensor_name: parameter},
-        [comp.tensorflow.result.tensor.tensor_name]))
-    self.assertEqual(results, [1003])
-
-  def test_serialize_tensorflow_with_data_set_sum_lambda(self):
-    # TODO(b/113112885): When support for Dataset.reduce() becomes available,
-    # replace with "lambda ds: ds.reduce(np.int64(0), lambda x, y: x + y)".
-    def _legacy_dataset_reducer_example(ds):
-      return tf.contrib.data.reduce_dataset(ds, tf.contrib.data.Reducer(
-          lambda _: np.int64(0), lambda x, y: x + y, lambda x: x))
-    comp = serialization.serialize_py_func_as_tf_computation(
-        _legacy_dataset_reducer_example, types.SequenceType(tf.int64))
-    self.assertEqual(
-        str(serialization.deserialize_type(comp.type)), '(int64* -> int64)')
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    parameter = tf.data.Dataset.range(5)
-    results = tf.Session().run(tf.import_graph_def(
-        comp.tensorflow.graph_def,
-        {comp.tensorflow.parameter.sequence.iterator_string_handle_name: (
-            parameter.make_one_shot_iterator().string_handle())},
-        [comp.tensorflow.result.tensor.tensor_name]))
-    self.assertEqual(results, [10])
 
 
 def _compact_repr(m):

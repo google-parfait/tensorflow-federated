@@ -21,7 +21,7 @@ py_library(
     deps = [
         ":context_stack",
         ":func_utils",
-        ":serialization",
+        ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
     ],
 )
@@ -51,7 +51,7 @@ py_library(
     deps = [
         ":computation_impl",
         ":computation_wrapper",
-        ":serialization",
+        ":tensorflow_serialization",
     ],
 )
 
@@ -161,10 +161,11 @@ py_test(
 )
 
 py_library(
-    name = "serialization",
-    srcs = ["serialization.py"],
+    name = "tensorflow_serialization",
+    srcs = ["tensorflow_serialization.py"],
     deps = [
         ":graph_utils",
+        ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -172,11 +173,12 @@ py_library(
 )
 
 py_test(
-    name = "serialization_test",
+    name = "tensorflow_serialization_test",
     size = "small",
-    srcs = ["serialization_test.py"],
+    srcs = ["tensorflow_serialization_test.py"],
     deps = [
-        ":serialization",
+        ":tensorflow_serialization",
+        ":type_serialization",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -194,6 +196,27 @@ py_test(
     srcs = ["test_utils_test.py"],
     deps = [
         ":test_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "type_serialization",
+    srcs = ["type_serialization.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "type_serialization_test",
+    size = "small",
+    srcs = ["type_serialization_test.py"],
+    deps = [
+        ":type_serialization",
+        "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
