@@ -227,6 +227,7 @@ py_library(
     deps = [
         ":anonymous_tuple",
         "//tensorflow_federated/python/core/api:types",
+        "//tensorflow_federated/python/core/api:value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
@@ -240,6 +241,33 @@ py_test(
         ":anonymous_tuple",
         ":test_utils",
         ":type_utils",
+        ":values",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "values",
+    srcs = ["values.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":func_utils",
+        ":type_utils",
+        "//tensorflow_federated/python/core/api:types",
+        "//tensorflow_federated/python/core/api:value_base",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "values_test",
+    size = "small",
+    srcs = ["values_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":values",
+        "//tensorflow_federated/python/core/api:types",
+        "//tensorflow_federated/python/core/api:value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

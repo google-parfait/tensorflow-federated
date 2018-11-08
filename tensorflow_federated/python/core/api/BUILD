@@ -55,3 +55,8 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "value_base",
+    srcs = ["value_base.py"],
+)

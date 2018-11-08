@@ -25,6 +25,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl import values
 
 from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 
@@ -33,6 +34,10 @@ class TypeUtilsTest(tf.test.TestCase):
 
   def test_infer_type_with_none(self):
     self.assertEqual(type_utils.infer_type(None), None)
+
+  def test_infer_type_with_tff_value(self):
+    self.assertEqual(
+        str(type_utils.infer_type(values.Reference('foo', tf.bool))), 'bool')
 
   def test_infer_type_with_scalar_int_tensor(self):
     self.assertEqual(str(type_utils.infer_type(tf.constant(1))), 'int32')
@@ -217,6 +222,19 @@ class TypeUtilsTest(tf.test.TestCase):
     test_utils.assert_nested_struct_eq(
         shapes, {'a': tf.TensorShape([]),
                  'b': {'c': tf.TensorShape([]), 'd': tf.TensorShape([20])}})
+
+  def test_get_named_tuple_element_type(self):
+    type_spec = [('a', tf.int32), ('b', tf.bool)]
+    self.assertEqual(
+        str(type_utils.get_named_tuple_element_type(type_spec, 'a')), 'int32')
+    self.assertEqual(
+        str(type_utils.get_named_tuple_element_type(type_spec, 'b')), 'bool')
+    with self.assertRaises(ValueError):
+      type_utils.get_named_tuple_element_type(type_spec, 'c')
+    with self.assertRaises(TypeError):
+      type_utils.get_named_tuple_element_type(tf.int32, 'a')
+    with self.assertRaises(TypeError):
+      type_utils.get_named_tuple_element_type(type_spec, 10)
 
 
 if __name__ == '__main__':

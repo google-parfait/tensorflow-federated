@@ -24,6 +24,7 @@ from six import string_types
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
 
@@ -48,6 +49,8 @@ def infer_type(arg):
   # TODO(b/113112885): Implement the remaining cases here on the need basis.
   if arg is None:
     return None
+  elif isinstance(arg, value_base.Value):
+    return arg.type_signature
   elif tf.contrib.framework.is_tensor(arg):
     return types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, (np.generic, np.ndarray)):
@@ -183,3 +186,34 @@ def type_to_tf_dtypes_and_shapes(type_spec):
     return (output_dtypes, output_shapes)
   else:
     raise ValueError('Unsupported type {}.'.format(type(type_spec).__name__))
+
+
+def get_named_tuple_element_type(type_spec, name):
+  """Returns the type of a named tuple member.
+
+  Args:
+    type_spec: Type specification, either an instance of types.Type or something
+      convertible to it by types.to_type().
+    name: The string name of the named tuple member.
+
+  Returns:
+    The TFF type of the element.
+
+  Raises:
+    TypeError: if arguments are of the wrong types.
+    ValueError: if the tuple does not have an element with the given name.
+  """
+  if not isinstance(name, string_types):
+    raise TypeError('Expected a string, found {}.'.format(type(name).__name__))
+  type_spec = types.to_type(type_spec)
+  if not isinstance(type_spec, types.NamedTupleType):
+    raise TypeError('Expected {}, found {}.'.format(
+        types.NamedTupleType.__name__, type(type_spec).__name__))
+  elements = type_spec.elements
+  for elem_name, elem_type in elements:
+    if name == elem_name:
+      return elem_type
+  raise ValueError(
+      'The name \'{}\' of the element does not correspond to '
+      'any of the names {} in the named tuple type.'.format(
+          name, str([e[0] for e in elements if e[0]])))
