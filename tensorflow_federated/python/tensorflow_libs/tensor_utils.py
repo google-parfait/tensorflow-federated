@@ -20,6 +20,8 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 
 def is_scalar(tensor):
   """Returns True iff the given tensor is a scalar.
@@ -35,6 +37,6 @@ def is_scalar(tensor):
   """
   if not tf.contrib.framework.is_tensor(tensor):
     raise TypeError('Expected a tensor, found "{}".'.format(
-        type(tensor).__name__))
+        py_typecheck.type_string(type(tensor))))
   return (hasattr(tensor, 'get_shape') and
           all(dim == 1 for dim in tensor.get_shape()))

@@ -5,7 +5,10 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "anonymous_tuple",
     srcs = ["anonymous_tuple.py"],
-    deps = ["@six_archive//:six"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@six_archive//:six",
+    ],
 )
 
 py_test(
@@ -23,6 +26,7 @@ py_library(
         ":func_utils",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -41,6 +45,7 @@ py_library(
     srcs = ["computation_wrapper.py"],
     deps = [
         ":func_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
     ],
 )
@@ -88,6 +93,7 @@ py_library(
     deps = [
         ":context_base",
         ":default_context",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -114,6 +120,7 @@ py_library(
     deps = [
         ":anonymous_tuple",
         ":type_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
     ],
@@ -139,6 +146,7 @@ py_library(
         ":anonymous_tuple",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
@@ -167,6 +175,7 @@ py_library(
         ":graph_utils",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -205,6 +214,7 @@ py_library(
     srcs = ["type_serialization.py"],
     deps = [
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -226,6 +236,7 @@ py_library(
     srcs = ["type_utils.py"],
     deps = [
         ":anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -255,6 +266,7 @@ py_library(
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
         "@six_archive//:six",

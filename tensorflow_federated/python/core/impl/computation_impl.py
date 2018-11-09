@@ -19,6 +19,8 @@ from __future__ import print_function
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_serialization
 
@@ -35,9 +37,7 @@ class ComputationImpl(func_utils.ConcreteFunction):
       computation_proto: The protocol buffer that represents the computation,
         an instance of pb.Computation.
     """
-    if not isinstance(computation_proto, pb.Computation):
-      raise TypeError('Expected {}, found "{}".'.format(
-          pb.Computation.__name__, type(computation_proto).__name__))
+    py_typecheck.check_type(computation_proto, pb.Computation)
     super(ComputationImpl, self).__init__(
         type_serialization.deserialize_type(computation_proto.type))
     self._computation_proto = computation_proto

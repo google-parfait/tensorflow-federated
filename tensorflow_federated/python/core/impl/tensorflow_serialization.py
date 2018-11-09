@@ -25,6 +25,8 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import graph_utils
@@ -62,10 +64,7 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
   # Document all accepted forms with examples in the API, and point to there
   # from here.
 
-  if not isinstance(target, py_types.FunctionType):
-    raise TypeError('Expected target to be a function type, found {}.'.format(
-        type(target).__name__))
-
+  py_typecheck.check_type(target, py_types.FunctionType)
   parameter_type = types.to_type(parameter_type)
   argspec = inspect.getargspec(target)
 

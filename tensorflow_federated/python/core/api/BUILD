@@ -41,6 +41,7 @@ py_library(
     name = "types",
     srcs = ["types.py"],
     deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],

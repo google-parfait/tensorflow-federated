@@ -21,6 +21,8 @@ import collections
 
 from six import string_types
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 
 class AnonymousTuple(object):
   """Represents an anonymous named tuple."
@@ -70,9 +72,7 @@ class AnonymousTuple(object):
       TypeError: if the 'elements' are not a list, or if any of the items on
         the list is not a pair with a string at the first position.
     """
-    if not isinstance(elements, list):
-      raise TypeError('Expected {}, found {}.'.format(
-          type(list).__name__, type(elements).__name__))
+    py_typecheck.check_type(elements, list)
     for e in elements:
       if not (isinstance(e, tuple) and
               (len(e) == 2) and
@@ -94,9 +94,7 @@ class AnonymousTuple(object):
     return self._name_to_index.keys()
 
   def __getitem__(self, key):
-    if not isinstance(key, int):
-      raise TypeError('Expected key to be of type {}, found {}.'.format(
-          int.__name__, type(key).__name__))
+    py_typecheck.check_type(key, int)
     if key < 0 or key >= len(self._element_array):
       raise IndexError(
           'Element index {} is out of range, tuple has {} elements.'.format(
@@ -144,9 +142,7 @@ def to_elements(an_anonymous_tuple):
   Raises:
     TypeError: if the argument is not an AnonymousTuple.
   """
-  if not isinstance(an_anonymous_tuple, AnonymousTuple):
-    raise TypeError('Expected {}, found{}.'.format(
-        AnonymousTuple.__name__, type(an_anonymous_tuple).__name__))
+  py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
   # pylint: disable=protected-access
   index_to_name = {
       idx: name for name, idx in an_anonymous_tuple._name_to_index.iteritems()}

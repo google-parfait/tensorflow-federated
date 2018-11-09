@@ -5,7 +5,10 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(

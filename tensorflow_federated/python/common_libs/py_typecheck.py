@@ -37,30 +37,18 @@ def check_type(target, type_spec, label=None):
   if not isinstance(target, type_spec):
     raise TypeError('Expected {}{}, found {}.'.format(
         ('{} to be of type '.format(label) if label else ''),
-        _type_spec_as_string(type_spec),
-        _type_spec_as_string(type(target))))
+        type_string(type_spec),
+        type_string(type(target))))
 
 
-def _check_is_type_spec(type_spec):
-  """Determines if 'type_spec' is a valid type_spec.
-
-  Args:
-    type_spec: Either a Python type, or a tuple of Python types; the same as
-      what's accepted by isinstance.
-
-  Raises:
-    TypeError: if 'type_spec' is not as defined above.
-  """
-  if not (isinstance(type_spec, type) or
-          isinstance(type_spec, (tuple, list)) and
-          type_spec and
-          all(isinstance(x, type) for x in type_spec)):
-    raise TypeError(
-        'Expected a type, or a tuple or list of types, found {}.'.format(
-            _type_spec_as_string(type(type_spec))))
+def check_callable(target, label=None):
+  if not callable(target):
+    raise TypeError('Expected {} callable, found non-callable {}.'.format(
+        ('{} to be'.format(label) if label else 'a'),
+        type_string(type(target))))
 
 
-def _type_spec_as_string(type_spec):
+def type_string(type_spec):
   """Creates a string representation of 'type_spec' for error reporting.
 
   Args:
@@ -79,10 +67,31 @@ def _type_spec_as_string(type_spec):
             else '{}.{}'.format(type_spec.__module__, type_spec.__name__))
   else:
     assert isinstance(type_spec, (tuple, list))
-    type_names = [_type_spec_as_string(x) for x in type_spec]
+    type_names = [type_string(x) for x in type_spec]
     if len(type_names) == 1:
       return type_names[0]
     elif len(type_names) == 2:
       return '{} or {}'.format(*type_names)
     else:
       return ', '.join(type_names[0:-1] + ['or {}'.format(type_names[-1])])
+
+
+def _check_is_type_spec(type_spec):
+  """Determines if 'type_spec' is a valid type_spec.
+
+  Args:
+    type_spec: Either a Python type, or a tuple of Python types; the same as
+      what's accepted by isinstance.
+
+  Raises:
+    TypeError: if 'type_spec' is not as defined above.
+  """
+  if isinstance(type_spec, type):
+    return
+  if (isinstance(type_spec, (tuple, list)) and
+      type_spec and
+      all(isinstance(x, type) for x in type_spec)):
+    return
+  raise TypeError(
+      'Expected a type, or a tuple or list of types, found {}.'.format(
+          type_string(type(type_spec))))

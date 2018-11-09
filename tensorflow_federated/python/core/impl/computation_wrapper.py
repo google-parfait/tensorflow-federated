@@ -21,6 +21,8 @@ import types as py_types
 
 # Dependency imports
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import func_utils
@@ -81,9 +83,8 @@ def _wrap(func, parameter_type, wrapper_fn):
   concrete_fn = wrapper_fn(
       func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type),
       parameter_type)
-  if not isinstance(concrete_fn, func_utils.ConcreteFunction):
-    raise TypeError('Expected the wrapper to return {}, got {}.'.format(
-        func_utils.ConcreteFunction.__name__, type(concrete_fn).__name__))
+  py_typecheck.check_type(
+      concrete_fn, func_utils.ConcreteFunction, 'value returned by the wrapper')
   if concrete_fn.type_signature.parameter != parameter_type:
     raise TypeError(
         'Expected a concrete function that takes parameter {}, got one '
@@ -319,9 +320,7 @@ class ComputationWrapper(object):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not callable(wrapper_fn):
-      raise TypeError(
-          'Expected a callable, found {}.'.format(type(wrapper_fn).__name__))
+    py_typecheck.check_callable(wrapper_fn)
     self._wrapper_fn = wrapper_fn
 
   def __call__(self, *args):
@@ -364,7 +363,8 @@ class ComputationWrapper(object):
         raise TypeError(
             'The function/defun should be followed by at most one type spec '
             'argument, but found {} additional arguments of types {}.'.format(
-                str(len(args) - 1), str([type(a).__name__ for a in args[1:]])))
+                str(len(args) - 1), str([
+                    py_typecheck.type_string(type(a)) for a in args[1:]])))
       return _wrap(args[0],
                    types.to_type(args[1]) if len(args) > 1 else None,
                    self._wrapper_fn)
@@ -382,4 +382,4 @@ class ComputationWrapper(object):
       raise TypeError(
           'The types of arguments {} do not correspond to any of the '
           'supported modes of usage.'.format(
-              str([type(a).__name__ for a in args])))
+              str([py_typecheck.type_string(type(a)) for a in args])))

@@ -22,6 +22,8 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.api import types
 
 
@@ -47,9 +49,7 @@ def serialize_type(type_spec):
   if type_spec is None:
     return None
   target = types.to_type(type_spec)
-  if not isinstance(target, types.Type):
-    raise TypeError('Argument {} is not convertible to {}.'.format(
-        type(type_spec).__name__, types.Type.__name__))
+  py_typecheck.check_type(target, types.Type)
   if isinstance(target, types.TensorType):
     return pb.Type(tensor=pb.TensorType(
         dtype=target.dtype.as_datatype_enum,
@@ -89,9 +89,7 @@ def deserialize_type(type_proto):
   # TODO(b/113112885): Implement deserialization of the remaining types.
   if type_proto is None:
     return None
-  if not isinstance(type_proto, pb.Type):
-    raise TypeError('Expected {}, found {}.'.format(
-        pb.Type.__name__, type(type_proto).__name__))
+  py_typecheck.check_type(type_proto, pb.Type)
   type_variant = type_proto.WhichOneof('type')
   if type_variant is None:
     return None

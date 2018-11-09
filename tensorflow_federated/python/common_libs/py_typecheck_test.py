@@ -63,6 +63,18 @@ class PyTypeCheckTest(unittest.TestCase):
         'a',
         (int, bool, float))
 
+  def test_check_callable(self):
+    try:
+      py_typecheck.check_callable(lambda x: x + 10)
+    except TypeError:
+      self.fail('Function {} raised TypeError unexpectedly.'.format(
+          py_typecheck.check_callable.__name__))
+    self.assertRaisesRegexp(
+        TypeError,
+        'Expected a callable, found non-callable int.',
+        py_typecheck.check_callable,
+        10)
+
 
 if __name__ == '__main__':
   unittest.main()

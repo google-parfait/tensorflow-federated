@@ -17,9 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from contextlib import contextmanager
-
+import contextlib
 import threading
+
+from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import default_context
@@ -40,7 +41,7 @@ class ContextStack(threading.local):
     assert isinstance(ctx, context_base.Context)
     return ctx
 
-  @contextmanager
+  @contextlib.contextmanager
   def install(self, ctx):
     """A context manager that temporarily installs a new context on the stack.
 
@@ -58,9 +59,7 @@ class ContextStack(threading.local):
     Raises:
       TypeError: if 'ctx' is not a valid inastance of context_base.Context.
     """
-    if not isinstance(ctx, context_base.Context):
-      raise TypeError('Expected the context to be of type {}, found {}.'.format(
-          context_base.Context.__name__, type(ctx).__name__))
+    py_typecheck.check_type(ctx, context_base.Context)
     self._stack.append(ctx)
     try:
       yield ctx

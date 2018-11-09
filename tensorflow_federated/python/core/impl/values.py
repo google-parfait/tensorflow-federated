@@ -26,6 +26,8 @@ from six import string_types
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
@@ -65,9 +67,7 @@ class Value(value_base.Value):
       return [e[0] for e in self._type_signature.elements if e[0]]
 
   def __getattr__(self, name):
-    if not isinstance(name, string_types):
-      raise TypeError(
-          'Expected a string, found {}.'.format(type(name).__name__))
+    py_typecheck.check_type(name, string_types)
     try:
       return Selection(self, name=name)
     except ValueError as err:
@@ -83,9 +83,7 @@ class Value(value_base.Value):
       return len(self._type_signature.elements)
 
   def __getitem__(self, key):
-    if not isinstance(key, int):
-      raise TypeError(
-          'Expected an integer index, found {}.'.format(type(key).__name__))
+    py_typecheck.check_type(key, int)
     try:
       return Selection(self, index=key)
     except ValueError as err:
@@ -130,9 +128,7 @@ class Reference(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(name, string_types):
-      raise TypeError(
-          'Expected a string, found {}.'.format(type(name).__name__))
+    py_typecheck.check_type(name, string_types)
     super(Reference, self).__init__(type_spec)
     self._name = name
     self._context = context
@@ -190,9 +186,7 @@ class Selection(Value):
           'Expected the source of selection to be a TFF named tuple, '
           'instead found it to be of type {}.'.format(str(source_type)))
     if name is not None:
-      if not isinstance(name, string_types):
-        raise TypeError('Expected the name to be a string, found {}.'.format(
-            type(name).__name__))
+      py_typecheck.check_type(name, string_types)
       if not name:
         raise ValueError('The name of the selected element cannot be empty.')
       else:
@@ -204,20 +198,17 @@ class Selection(Value):
         self._index = None
     else:
       # Index must have been specified, since name is None.
-      if not isinstance(index, int):
-        raise TypeError('Expected index to be an int, found {}.'.format(
-            type(index).__name__))
+      py_typecheck.check_type(index, int)
+      elements = source_type.elements
+      if index >= 0 and index < len(elements):
+        super(Selection, self).__init__(elements[index][1])
+        self._name = None
+        self._index = index
       else:
-        elements = source_type.elements
-        if index >= 0 and index < len(elements):
-          super(Selection, self).__init__(elements[index][1])
-          self._name = None
-          self._index = index
-        else:
-          raise ValueError(
-              'The index of the selected element {} does not fit into the '
-              'valid range 0..{} determined by the source type '
-              'signature.'.format(index, str(len(elements) - 1)))
+        raise ValueError(
+            'The index of the selected element {} does not fit into the '
+            'valid range 0..{} determined by the source type '
+            'signature.'.format(index, str(len(elements) - 1)))
 
   @property
   def name(self):
@@ -311,15 +302,11 @@ class Call(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(func, value_base.Value):
-      raise TypeError(
-          'Expected func to be {}, found {}.'.format(
-              value_base.Value.__name__, type(func).__name__))
+    py_typecheck.check_type(func, value_base.Value)
     if not isinstance(func.type_signature, types.FunctionType):
       raise TypeError(
           'Expected func to be of a functional type, '
-          'but found that its type is {}.'.format(
-              str(func.type_signature)))
+          'but found that its type is {}.'.format(str(func.type_signature)))
     if func.type_signature.parameter is not None:
       if arg is None:
         raise TypeError(
@@ -336,7 +323,7 @@ class Call(Value):
     elif arg is not None:
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
-          'an argument of type {}.'.format(type(arg).__name__))
+          'an argument of type {}.'.format(py_typecheck.type_string(type(arg))))
     super(Call, self).__init__(func.type_signature.result)
     # By now, this condition should hold, so we only double-check in debug mode.
     assert (arg is not None) == (func.type_signature.parameter is not None)
@@ -381,10 +368,7 @@ class Lambda(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(parameter_name, string_types):
-      raise TypeError(
-          'Expected parameter name to be a string, found {}.'.format(
-              type(parameter_name).__name__))
+    py_typecheck.check_type(parameter_name, string_types)
     if parameter_type is None:
       raise TypeError('A lambda expression must have a valid parameter type.')
     parameter_type = types.to_type(parameter_type)
@@ -452,7 +436,7 @@ class Block(Value):
             'convertible to it, but found {}: {}.'.format(
                 name,
                 value_base.Value.__name__,
-                type(element[1]).__name__,
+                py_typecheck.type_string(type(element[1])),
                 str(err)))
       updated_locals.append((name, value))
     result = to_value(result)
@@ -498,9 +482,7 @@ class Intrinsic(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(uri, string_types):
-      raise TypeError(
-          'Expected a string URI, found {}.'.format(type(uri).__name__))
+    py_typecheck.check_type(uri, string_types)
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
@@ -538,9 +520,7 @@ class Data(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(uri, string_types):
-      raise TypeError(
-          'Expected a string URI, found {}.'.format(type(uri).__name__))
+    py_typecheck.check_type(uri, string_types)
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
@@ -574,12 +554,9 @@ class Computation(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(proto, pb.Computation):
-      raise TypeError('Expected {}, found {}.'.format(
-          pb.Computation.__name__, type(proto).__name__))
-    if name is not None and not isinstance(name, string_types):
-      raise TypeError('Expected the name be a string, found {}.'.format(
-          type(name).__name__))
+    py_typecheck.check_type(proto, pb.Computation)
+    if name is not None:
+      py_typecheck.check_type(name, string_types)
     super(Computation, self).__init__(
         type_serialization.deserialize_type(proto.type))
     self._proto = proto
@@ -627,4 +604,4 @@ def to_value(arg):
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(
-            type(arg).__name__))
+            py_typecheck.type_string(type(arg))))

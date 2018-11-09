@@ -24,6 +24,8 @@ import collections
 from six import string_types
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 
 class Type(object):
   """An abstract interface for all classes that represent TFF types."""
@@ -90,11 +92,8 @@ class TensorType(Type):
     Raises:
       TypeError: if arguments are of the wrong types.
     """
-    if isinstance(dtype, tf.DType):
-      self._dtype = dtype
-    else:
-      raise TypeError('Expected {}, found "{}" in dtype.'.format(
-          tf.DType.__name__, type(dtype).__name__))
+    py_typecheck.check_type(dtype, tf.DType)
+    self._dtype = dtype
     if shape is None:
       self._shape = tf.TensorShape([])
     elif isinstance(shape, tf.TensorShape):
@@ -111,9 +110,7 @@ class TensorType(Type):
     return self._shape
 
   def is_assignable_from(self, other):
-    if not isinstance(other, Type):
-      raise TypeError('Expected {}, found "{}".'.format(
-          Type.__name__, type(other).__name__))
+    py_typecheck.check_type(other, Type)
     def _shape_is_assignable_from(x, y):
       def _dimension_is_assignable_from(x, y):
         # Either the first dimension is undefined or it has the same size as
@@ -163,11 +160,9 @@ class NamedTupleType(Type):
       TypeError: if the arguments are of the wrong types.
       ValueError: if the named tuple contains no elements.
     """
+    py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
     if isinstance(elements, collections.OrderedDict):
       elements = elements.items()
-    elif not isinstance(elements, (list, tuple)):
-      raise TypeError('Expected {}, found "{}".'.format(
-          list.__name__, type(elements).__name__))
     if not elements:
       raise ValueError('A named tuple must contain at least one element.')
     def _is_named_element(e):
@@ -189,9 +184,7 @@ class NamedTupleType(Type):
     return list(self._elements)
 
   def is_assignable_from(self, other):
-    if not isinstance(other, Type):
-      raise TypeError('Expected {}, found "{}".'.format(
-          Type.__name__, type(other).__name__))
+    py_typecheck.check_type(other, Type)
     if not isinstance(other, NamedTupleType):
       return False
     other_elements = other.elements
@@ -230,9 +223,7 @@ class SequenceType(Type):
     return self._element
 
   def is_assignable_from(self, other):
-    if not isinstance(other, Type):
-      raise TypeError('Expected {}, found "{}".'.format(
-          Type.__name__, type(other).__name__))
+    py_typecheck.check_type(other, Type)
     return (isinstance(other, SequenceType) and
             self.element.is_assignable_from(other.element))
 
@@ -267,9 +258,7 @@ class FunctionType(Type):
     return self._result
 
   def is_assignable_from(self, other):
-    if not isinstance(other, Type):
-      raise TypeError('Expected {}, found "{}".'.format(
-          Type.__name__, type(other).__name__))
+    py_typecheck.check_type(other, Type)
     return (isinstance(other, FunctionType) and
             (((other.parameter is None) and (self.parameter is None)) or
              ((other.parameter is not None) and (self.parameter is not None) and
@@ -341,4 +330,4 @@ def to_type(spec):
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
-            type(spec).__name__))
+            py_typecheck.type_string(type(spec))))

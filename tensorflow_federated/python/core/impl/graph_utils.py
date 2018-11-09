@@ -23,6 +23,8 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
@@ -60,14 +62,11 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
     TypeError: if the arguments are of the wrong types.
     ValueError: if the parameter type cannot be stamped in a TensorFlow graph.
   """
-  if not isinstance(parameter_name, string_types):
-    raise TypeError('Expected the name to be a string, found {}'.format(
-        type(parameter_name).__name__))
+  py_typecheck.check_type(parameter_name, string_types)
   if graph is None:
     graph = tf.get_default_graph()
-  elif not isinstance(graph, tf.Graph):
-    raise TypeError('Expected the graph to be of type {}, found {}'.format(
-        tf.Graph.__name__, type(graph).__name__))
+  else:
+    py_typecheck.check_type(graph, tf.Graph)
   if parameter_type is None:
     return (None, None)
   parameter_type = types.to_type(parameter_type)
@@ -164,4 +163,4 @@ def capture_result_from_graph(result):
                 element=[e[1] for e in element_type_binding_pairs])))
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
-        type(result).__name__))
+        py_typecheck.type_string(type(result))))

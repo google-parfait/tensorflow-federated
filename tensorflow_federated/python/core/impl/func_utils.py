@@ -24,6 +24,8 @@ import types as py_types
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
 
+from tensorflow_federated.python.common_libs import py_typecheck
+
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import types
 
@@ -89,11 +91,11 @@ def get_argspec(func):
   elif is_defun(func):
     raise TypeError(
         'Support for defuns of type {} has not been implemented yet.'.format(
-            type(func).__name__))
+            py_typecheck.type_string(type(func))))
   else:
     raise TypeError(
         'Expected a Python function or a defun, found {}.'.format(
-            type(func).__name__))
+            py_typecheck.type_string(type(func))))
 
 
 def get_callargs_for_argspec(argspec, *args, **kwargs):
@@ -114,9 +116,7 @@ def get_callargs_for_argspec(argspec, *args, **kwargs):
     TypeError: if the arguments are of the wrong types, or if the 'args' and
       'kwargs' combo is not compatible with 'argspec'.
   """
-  if not isinstance(argspec, inspect.ArgSpec):
-    raise TypeError('Expected {}, found {}.'.format(
-        type(inspect.ArgSpec).__name__, type(argspec).__name__))
+  py_typecheck.check_type(argspec, inspect.ArgSpec)
   result = {}
   num_specargs = len(argspec.args) if argspec.args else 0
   num_defaults = len(argspec.defaults) if argspec.defaults else 0
@@ -239,11 +239,8 @@ def unpack_args_from_tuple(tuple_with_args):
     elements = anonymous_tuple.to_elements(tuple_with_args)
   else:
     tuple_with_args = types.to_type(tuple_with_args)
-    if isinstance(tuple_with_args, types.NamedTupleType):
-      elements = tuple_with_args.elements
-    else:
-      raise TypeError('Expected an argument tuple, found {}.'.format(
-          type(tuple_with_args).__name__))
+    py_typecheck.check_type(tuple_with_args, types.NamedTupleType)
+    elements = tuple_with_args.elements
   args = []
   kwargs = {}
   for e in elements:
@@ -284,57 +281,56 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
   if not type_spec:
     return anonymous_tuple.AnonymousTuple(
         [(None, arg) for arg in args] + list(kwargs.iteritems()))
-  elif not isinstance(type_spec, types.NamedTupleType):
-    raise TypeError('Expected {}, found {}.'.format(
-        types.NamedTupleType.__name__, types(type_spec).__name__))
-  elif not is_argument_tuple(type_spec):
-    raise TypeError(
-        'Parameter type {} does not have a structure of an argument '
-        'tuple, and cannot be populated from multiple positional and '
-        'keyword arguments'.format(str(type_spec)))
   else:
-    result_elements = []
-    positions_used = set()
-    keywords_used = set()
-    for index, (name, elem_type) in enumerate(type_spec.elements):
-      if index < len(args):
-        if name is not None and name in kwargs:
-          raise TypeError('Argument {} specified twice.'.format(name))
-        else:
-          arg_value = args[index]
+    py_typecheck.check_type(type_spec, types.NamedTupleType)
+    if not is_argument_tuple(type_spec):
+      raise TypeError(
+          'Parameter type {} does not have a structure of an argument '
+          'tuple, and cannot be populated from multiple positional and '
+          'keyword arguments'.format(str(type_spec)))
+    else:
+      result_elements = []
+      positions_used = set()
+      keywords_used = set()
+      for index, (name, elem_type) in enumerate(type_spec.elements):
+        if index < len(args):
+          if name is not None and name in kwargs:
+            raise TypeError('Argument {} specified twice.'.format(name))
+          else:
+            arg_value = args[index]
+            arg_type = type_utils.infer_type(arg_value)
+            if not elem_type.is_assignable_from(arg_type):
+              raise TypeError(
+                  'Positional argument at {} has type {}, which is '
+                  'incompatible with the expected type {} at the matching '
+                  'position of the parameter type tuple.'.format(
+                      index, str(arg_type), str(elem_type)))
+            result_elements.append((name, arg_value))
+            positions_used.add(index)
+        elif name is not None and name in kwargs:
+          arg_value = kwargs[name]
           arg_type = type_utils.infer_type(arg_value)
           if not elem_type.is_assignable_from(arg_type):
             raise TypeError(
-                'Positional argument at {} has type {}, which is incompatible '
-                'with the expected type {} at the matching position of the '
-                'parameter type tuple.'.format(
-                    index, str(arg_type), str(elem_type)))
+                'Keyword argument named {} has type {}, which is incompatible '
+                'with the expected type {} at position {} of the parameter '
+                'type tuple.'.format(
+                    name, str(arg_type), str(elem_type), index))
           result_elements.append((name, arg_value))
-          positions_used.add(index)
-      elif name is not None and name in kwargs:
-        arg_value = kwargs[name]
-        arg_type = type_utils.infer_type(arg_value)
-        if not elem_type.is_assignable_from(arg_type):
-          raise TypeError(
-              'Keyword argument named {} has type {}, which is incompatible '
-              'with the expected type {} at position {} of the parameter type '
-              'tuple.'.format(
-                  name, str(arg_type), str(elem_type), index))
-        result_elements.append((name, arg_value))
-        keywords_used.add(name)
-      elif name:
-        raise TypeError('Argument named {} is missing.'.format(name))
-      else:
-        raise TypeError('Argument at position {} is missing.'.format(index))
-    positions_missing = set(xrange(len(args))).difference(positions_used)
-    if positions_missing:
-      raise TypeError('Positional arguments at {} not used.'.format(
-          positions_missing))
-    keywords_missing = set(kwargs.keys()).difference(keywords_used)
-    if keywords_missing:
-      raise TypeError('Keyword arguments at {} not used.'.format(
-          keywords_missing))
-    return anonymous_tuple.AnonymousTuple(result_elements)
+          keywords_used.add(name)
+        elif name:
+          raise TypeError('Argument named {} is missing.'.format(name))
+        else:
+          raise TypeError('Argument at position {} is missing.'.format(index))
+      positions_missing = set(xrange(len(args))).difference(positions_used)
+      if positions_missing:
+        raise TypeError('Positional arguments at {} not used.'.format(
+            positions_missing))
+      keywords_missing = set(kwargs.keys()).difference(keywords_used)
+      if keywords_missing:
+        raise TypeError('Keyword arguments at {} not used.'.format(
+            keywords_missing))
+      return anonymous_tuple.AnonymousTuple(result_elements)
 
 
 def pack_args(parameter_type, args, kwargs):
@@ -523,10 +519,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
         Raises:
           TypeError: if types don't match.
         """
-        if not isinstance(arg, anonymous_tuple.AnonymousTuple):
-          raise TypeError('Expected {}, found {}.'.format(
-              type(anonymous_tuple.AnonymousTuple).__name__,
-              type(arg).__name__))
+        py_typecheck.check_type(arg, anonymous_tuple.AnonymousTuple)
         args = []
         for idx, expected_type in enumerate(arg_types):
           element_value = arg[idx]
@@ -587,9 +580,7 @@ class ConcreteFunction(computation_base.Computation):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if not isinstance(type_signature, types.FunctionType):
-      raise TypeError('Expected {}, found {}.'.format(
-          types.FunctionType.__name__, type(type_signature).__name__))
+    py_typecheck.check_type(type_signature, types.FunctionType)
     self._type_signature = type_signature
 
   @property
@@ -660,9 +651,8 @@ class PolymorphicFunction(object):
     concrete_fn = self._concrete_function_cache.get(key)
     if not concrete_fn:
       concrete_fn = self._concrete_function_factory(arg_type)
-      if not isinstance(concrete_fn, ConcreteFunction):
-        raise TypeError('Expected a concrete function ({}), got {}.'.format(
-            ConcreteFunction.__name__, type(concrete_fn).__name__))
+      py_typecheck.check_type(
+          concrete_fn, ConcreteFunction, 'concrete function')
       if concrete_fn.type_signature.parameter != arg_type:
         raise TypeError(
             'Expected a concrete function that takes parameter {}, got one '
