@@ -18,16 +18,20 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import zlib
 
 # Dependency imports
 
 from six import string_types
+
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -311,6 +315,11 @@ class Call(Value):
       raise TypeError(
           'Expected func to be {}, found {}.'.format(
               value_base.Value.__name__, type(func).__name__))
+    if not isinstance(func.type_signature, types.FunctionType):
+      raise TypeError(
+          'Expected func to be of a functional type, '
+          'but found that its type is {}.'.format(
+              str(func.type_signature)))
     if func.type_signature.parameter is not None:
       if arg is None:
         raise TypeError(
@@ -351,6 +360,241 @@ class Call(Value):
     return ('{}({})'.format(str(self._function), str(self._argument))
             if self._argument is not None
             else '{}()'.format(str(self._function)))
+
+
+class Lambda(Value):
+  """A representation of a TFF lambda expression."""
+
+  def __init__(self, parameter_name, parameter_type, result):
+    """Creates a lambda expression.
+
+    Args:
+      parameter_name: The (string) name of the parameter accepted by the lambda.
+        This name can be used by Reference() instances in the body of the lambda
+        to refer to the parameter.
+      parameter_type: The type of the parameter, an instance of types.Type or
+        something convertible to it by types.to_type().
+      result: The resulting value produced by the expression that forms the body
+        of the lambda. Must be an instance of Value, or something convertible to
+        it by to_value() below.
+
+    Raises:
+      TypeError: if the arguments are of the wrong types.
+    """
+    if not isinstance(parameter_name, string_types):
+      raise TypeError(
+          'Expected parameter name to be a string, found {}.'.format(
+              type(parameter_name).__name__))
+    if parameter_type is None:
+      raise TypeError('A lambda expression must have a valid parameter type.')
+    parameter_type = types.to_type(parameter_type)
+    assert isinstance(parameter_type, types.Type)
+    result = to_value(result)
+    super(Lambda, self).__init__(
+        types.FunctionType(parameter_type, result.type_signature))
+    self._parameter_name = parameter_name
+    self._parameter_type = parameter_type
+    self._result = result
+
+  @property
+  def parameter_name(self):
+    return self._parameter_name
+
+  @property
+  def parameter_type(self):
+    return self._parameter_type
+
+  @property
+  def result(self):
+    return self._result
+
+  def __repr__(self):
+    return ('Lambda(\'{}\', {}, {})'.format(
+        self._parameter_name, repr(self._parameter_type), repr(self._result)))
+
+  def __str__(self):
+    return '({} -> {})'.format(self._parameter_name, str(self._result))
+
+
+class Block(Value):
+  """A representation of a block of TFF code."""
+
+  def __init__(self, local_symbols, result):
+    """Creates a block of TFF code.
+
+    Args:
+      local_symbols: The list of one or more local declarations, each of which
+        is a 2-tuple (name, value), with 'name' being the string name of a
+        local symbol being defined, and 'value' being the instance of Value or
+        an entity convertible to Value that will be locally bound to that name.
+      result: The result value, an instance of Value or something convertible
+        to it by to_value() below.
+
+    Raises:
+      TypeError: if the arguments are of the wrong types.
+    """
+    updated_locals = []
+    for index, element in enumerate(local_symbols):
+      if (not isinstance(element, tuple) or
+          (len(element) != 2) or
+          not isinstance(element[0], string_types)):
+        raise TypeError(
+            'Expected the locals to be a list of 2-element tuples with string '
+            'name as their first element, but this is not the case for the '
+            'local at position {} in the sequence: {}.'.format(
+                index, str(element)))
+      name = element[0]
+      try:
+        value = to_value(element[1])
+      except TypeError as err:
+        raise TypeError(
+            'Expected local {} to be an instance of {} or something '
+            'convertible to it, but found {}: {}.'.format(
+                name,
+                value_base.Value.__name__,
+                type(element[1]).__name__,
+                str(err)))
+      updated_locals.append((name, value))
+    result = to_value(result)
+    super(Block, self).__init__(result.type_signature)
+    self._locals = updated_locals
+    self._result = result
+
+  @property
+  def locals(self):
+    return list(self._locals)
+
+  @property
+  def result(self):
+    return self._result
+
+  def __repr__(self):
+    return ('Block([{}], {})'.format(
+        ', '.join('(\'{}\', {})'.format(k, repr(v)) for k, v in self._locals),
+        repr(self._result)))
+
+  def __str__(self):
+    return ('(let {} in {})'.format(
+        ','.join('{}={}'.format(k, str(v)) for k, v in self._locals),
+        str(self._result)))
+
+
+class Intrinsic(Value):
+  """A representation of an intrinsic.
+
+  This class does not deal with parsing intrinsic URIs and verifying their
+  types, it is only a container. Parsing and type analysis are a responsibility
+  or a component external to this module.
+  """
+
+  def __init__(self, uri, type_spec):
+    """Creates an intrinsic.
+
+    Args:
+      uri: The URI of the intrinsic.
+      type_spec: Either the types.Type that represents the type of this
+        intrinsic, or something convertible to it by types.to_type().
+
+    Raises:
+      TypeError: if the arguments are of the wrong types.
+    """
+    if not isinstance(uri, string_types):
+      raise TypeError(
+          'Expected a string URI, found {}.'.format(type(uri).__name__))
+    if type_spec is None:
+      raise TypeError(
+          'Intrinsic {} cannot be created without a TFF type.'.format(uri))
+    type_spec = types.to_type(type_spec)
+    super(Intrinsic, self).__init__(type_spec)
+    self._uri = uri
+
+  @property
+  def uri(self):
+    return self._uri
+
+  def __repr__(self):
+    return 'Intrinsic(\'{}\', {})'.format(self._uri, repr(self.type_signature))
+
+  def __str__(self):
+    return self._uri
+
+
+class Data(Value):
+  """A representation of data (an input pipeline).
+
+  This class does not deal with parsing data URIs and verifying correctness,
+  it is only a container. Parsing and type analysis are a responsibility
+  or a component external to this module.
+  """
+
+  def __init__(self, uri, type_spec):
+    """Creates a representation of data.
+
+    Args:
+      uri: The URI that characterizes the data.
+      type_spec: Either the types.Type that represents the type of this data,
+        or something convertible to it by types.to_type().
+
+    Raises:
+      TypeError: if the arguments are of the wrong types.
+    """
+    if not isinstance(uri, string_types):
+      raise TypeError(
+          'Expected a string URI, found {}.'.format(type(uri).__name__))
+    if type_spec is None:
+      raise TypeError(
+          'Intrinsic {} cannot be created without a TFF type.'.format(uri))
+    type_spec = types.to_type(type_spec)
+    super(Data, self).__init__(type_spec)
+    self._uri = uri
+
+  @property
+  def uri(self):
+    return self._uri
+
+  def __repr__(self):
+    return 'Data(\'{}\', {})'.format(self._uri, repr(self.type_signature))
+
+  def __str__(self):
+    return self._uri
+
+
+class Computation(Value):
+  """A representation of a fully constructed and serialized computation."""
+
+  def __init__(self, proto, name=None):
+    """Creates a representation of a fully constructed computation.
+
+    Args:
+      proto: An instance of pb.Computation with the computation logic.
+      name: An optional string name to associate with this computation, used
+        only for debugging purposes. If the name is not specified (None), it
+        is autogenerated as a hexadecimal string from the hash of the proto.
+
+    Raises:
+      TypeError: if the arguments are of the wrong types.
+    """
+    if not isinstance(proto, pb.Computation):
+      raise TypeError('Expected {}, found {}.'.format(
+          pb.Computation.__name__, type(proto).__name__))
+    if name is not None and not isinstance(name, string_types):
+      raise TypeError('Expected the name be a string, found {}.'.format(
+          type(name).__name__))
+    super(Computation, self).__init__(
+        type_serialization.deserialize_type(proto.type))
+    self._proto = proto
+    self._name = name if name is not None else (
+        '{:x}'.format(zlib.adler32(repr(self._proto)) & 0xFFFFFFFF))
+
+  @property
+  def proto(self):
+    return self._proto
+
+  def __repr__(self):
+    return 'Computation({}, {})'.format(self._name, repr(self.type_signature))
+
+  def __str__(self):
+    return 'comp({})'.format(self._name)
 
 
 def to_value(arg):

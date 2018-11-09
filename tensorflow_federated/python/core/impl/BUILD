@@ -252,7 +252,9 @@ py_library(
     deps = [
         ":anonymous_tuple",
         ":func_utils",
+        ":type_serialization",
         ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
         "@six_archive//:six",
@@ -265,6 +267,7 @@ py_test(
     srcs = ["values_test.py"],
     deps = [
         ":anonymous_tuple",
+        ":tensorflow_serialization",
         ":values",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
