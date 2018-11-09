@@ -286,3 +286,26 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "value_utils",
+    srcs = ["value_utils.py"],
+    deps = [
+        ":values",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:types",
+    ],
+)
+
+py_test(
+    name = "value_utils_test",
+    srcs = ["value_utils_test.py"],
+    deps = [
+        ":func_utils",
+        ":value_utils",
+        ":values",
+        "//tensorflow_federated/python/core/api:types",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
