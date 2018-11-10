@@ -40,6 +40,16 @@ class TensorUtilsTest(tf.test.TestCase):
   def test_is_scalar_with_nonscalar_tf_variable(self):
     self.assertFalse(tu.is_scalar(tf.Variable([0.0, 1.0], 'notscalar')))
 
+  def test_metrics_sum(self):
+    with self.test_session() as sess:
+      v = tf.placeholder(tf.float32)
+      sum_tensor, update_op = tu.metrics_sum(v)
+      sess.run(tf.local_variables_initializer())
+      sess.run(update_op, feed_dict={v: [1.0, 2.0]})
+      self.assertEqual(sess.run(sum_tensor), 3.0)
+      sess.run(update_op, feed_dict={v: [3.0]})
+      self.assertEqual(sess.run(sum_tensor), 6.0)
+
 
 if __name__ == '__main__':
   tf.test.main()

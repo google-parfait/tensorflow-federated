@@ -40,3 +40,25 @@ def is_scalar(tensor):
         py_typecheck.type_string(type(tensor))))
   return (hasattr(tensor, 'get_shape') and
           all(dim == 1 for dim in tensor.get_shape()))
+
+
+def metrics_sum(values, name=None):
+  """A function like tf.metrics.mean, but for a simple sum.
+
+  Args:
+    values: A rank-1 tensor to be summed.
+    name: Optional name for the op.
+
+  Returns:
+    A tuple of:
+      sum: A variable holding the current sum of all 'values' seen so far.
+      update_op: An opt to run on each minibatch.
+  """
+  with tf.variable_scope(name, 'metrics_sum', (values,)):
+    sum_var = tf.get_variable(
+        'sum', [], values.dtype,
+        initializer=tf.zeros_initializer,
+        collections=[tf.GraphKeys.LOCAL_VARIABLES],
+        trainable=False)
+    update_op = tf.assign_add(sum_var, tf.reduce_sum(values))
+    return sum_var, update_op
