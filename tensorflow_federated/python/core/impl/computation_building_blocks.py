@@ -35,10 +35,53 @@ from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
+def _check_computation_oneof(computation_proto, expected_computation_oneof):
+  py_typecheck.check_type(computation_proto, pb.Computation)
+  computation_oneof = computation_proto.WhichOneof('computation')
+  if computation_oneof != expected_computation_oneof:
+    raise TypeError('Expected a {} computation, found {}.'.format(
+        expected_computation_oneof, computation_oneof))
+
+
 class ComputationBuildingBlock(object):
   """A generic base class for all computation building blocks defined below."""
 
   __metaclass__ = abc.ABCMeta
+
+  _deserializer_dict = None  # Defined at the end of this file.
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    """Returns an instance of a derived class based on 'computation_proto'.
+
+    Args:
+      computation_proto: An instance of pb.Computation.
+
+    Returns:
+      An instance of a class that implements 'ComputationBuildingBlock' and
+      that contains the deserialized logic from in 'computation_proto'.
+
+    Raises:
+      NotImplementedError: if computation_proto contains a kind of computation
+        for which deserialization has not been implemented yet.
+      ValueError: if deserialization failed due to the argument being invalid.
+    """
+    py_typecheck.check_type(computation_proto, pb.Computation)
+    computation_oneof = computation_proto.WhichOneof('computation')
+    deserializer = cls._deserializer_dict.get(computation_oneof)
+    if deserializer is not None:
+      deserialized = deserializer(computation_proto)
+      type_spec = type_serialization.deserialize_type(computation_proto.type)
+      if deserialized.type_signature != type_spec:
+        raise ValueError(
+            'The type {} derived from the computation structure does not '
+            'match the type {} declared in its signature'.format(
+                str(deserialized.type_signature), str(type_spec)))
+      return deserialized
+    else:
+      raise NotImplementedError(
+          'Deserialization for computations of type {} has not been '
+          'implemented yet.'.format(computation_oneof))
 
   def __init__(self, type_spec):
     """Constructs a computation building block with the given TFF type.
@@ -53,6 +96,14 @@ class ComputationBuildingBlock(object):
   def type_signature(self):
     return self._type_signature
 
+  @abc.abstractproperty
+  def proto(self):
+    """Returns a serialized form of this object as a pb.Computation instance."""
+    raise NotImplementedError
+
+  # TODO(b/113112885): Add memoization after identifying a suitable externally
+  # available standard library that works in Python 2/3.
+
   @abc.abstractmethod
   def __repr__(self):
     raise NotImplementedError
@@ -64,6 +115,13 @@ class ComputationBuildingBlock(object):
 
 class Reference(ComputationBuildingBlock):
   """A reference to a name defined earlier, e.g., in a Lambda."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'reference')
+    return cls(
+        str(computation_proto.reference.name),
+        type_serialization.deserialize_type(computation_proto.type))
 
   def __init__(self, name, type_spec, context=None):
     """Creates a reference to 'name' of type 'type_spec' in context 'context'.
@@ -85,6 +143,12 @@ class Reference(ComputationBuildingBlock):
     self._context = context
 
   @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        reference=pb.Reference(name=self._name))
+
+  @property
   def name(self):
     return self._name
 
@@ -104,6 +168,20 @@ class Reference(ComputationBuildingBlock):
 
 class Selection(ComputationBuildingBlock):
   """A selection by name or index from another tuple-typed value."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'selection')
+    selection = ComputationBuildingBlock.from_proto(
+        computation_proto.selection.source)
+    selection_oneof = computation_proto.selection.WhichOneof('selection')
+    if selection_oneof == 'name':
+      return cls(selection, name=str(computation_proto.selection.name))
+    elif selection_oneof == 'index':
+      return cls(selection, index=computation_proto.selection.index)
+    else:
+      raise ValueError('Unknown selection type \'{}\' in {}.'.format(
+          selection_oneof, str(computation_proto)))
 
   def __init__(self, source, name=None, index=None):
     """A selection from 'source' by a string or numeric 'name_or_index'.
@@ -161,6 +239,15 @@ class Selection(ComputationBuildingBlock):
             'signature.'.format(index, str(len(elements) - 1)))
 
   @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        selection=(
+            pb.Selection(source=self._source.proto, name=self._name)
+            if self._name is not None
+            else pb.Selection(source=self._source.proto, index=self._index)))
+
+  @property
   def name(self):
     return self._name
 
@@ -183,6 +270,12 @@ class Selection(ComputationBuildingBlock):
 
 class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
   """A tuple with one or more values as named or unnamed elements."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'tuple')
+    return cls([(str(e.name), ComputationBuildingBlock.from_proto(e.value))
+                for e in computation_proto.tuple.element])
 
   def __init__(self, elements):
     """Constructs a tuple from the given list of elements.
@@ -215,6 +308,15 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         for e in elements]))
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
 
+  @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        tuple=pb.Tuple(element=[
+            (pb.Tuple.Element(name=k, value=v.proto)
+             if k else pb.Tuple.Element(value=v.proto))
+            for k, v in anonymous_tuple.to_elements(self)]))
+
   def __repr__(self):
     return 'Tuple([{}])'.format(', '.join(
         '({}, {})'.format(
@@ -227,6 +329,15 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
 
 class Call(ComputationBuildingBlock):
   """A representation of a TFF function call."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'call')
+    return cls(
+        ComputationBuildingBlock.from_proto(computation_proto.call.function),
+        ComputationBuildingBlock.from_proto(computation_proto.call.argument)
+        if computation_proto.call.argument
+        else None)
 
   def __init__(self, func, arg=None):
     """Creates a call to 'func' with argument 'arg'.
@@ -267,6 +378,15 @@ class Call(ComputationBuildingBlock):
     self._argument = arg
 
   @property
+  def proto(self):
+    call = (
+        pb.Call(function=self._function.proto, argument=self._argument.proto)
+        if self._argument is not None
+        else pb.Call(function=self._function.proto))
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature), call=call)
+
+  @property
   def function(self):
     return self._function
 
@@ -287,6 +407,15 @@ class Call(ComputationBuildingBlock):
 
 class Lambda(ComputationBuildingBlock):
   """A representation of a TFF lambda expression."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'lambda')
+    the_lambda = getattr(computation_proto, 'lambda')
+    return cls(str(the_lambda.parameter_name),
+               type_serialization.deserialize_type(
+                   computation_proto.type.function.parameter),
+               ComputationBuildingBlock.from_proto(the_lambda.result))
 
   def __init__(self, parameter_name, parameter_type, result):
     """Creates a lambda expression.
@@ -316,6 +445,14 @@ class Lambda(ComputationBuildingBlock):
     self._result = result
 
   @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature), **{
+            'lambda': pb.Lambda(
+                parameter_name=self._parameter_name,
+                result=self._result.proto)})
+
+  @property
   def parameter_name(self):
     return self._parameter_name
 
@@ -337,6 +474,14 @@ class Lambda(ComputationBuildingBlock):
 
 class Block(ComputationBuildingBlock):
   """A representation of a block of TFF code."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'block')
+    return cls(
+        [(str(loc.name), ComputationBuildingBlock.from_proto(loc.value))
+         for loc in computation_proto.block.local],
+        ComputationBuildingBlock.from_proto(computation_proto.block.result))
 
   def __init__(self, local_symbols, result):
     """Creates a block of TFF code.
@@ -372,6 +517,15 @@ class Block(ComputationBuildingBlock):
     self._result = result
 
   @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        block=pb.Block(**{
+            'local': [
+                pb.Block.Local(name=k, value=v.proto) for k, v in self._locals],
+            'result': self._result.proto}))
+
+  @property
   def locals(self):
     return list(self._locals)
 
@@ -398,6 +552,12 @@ class Intrinsic(ComputationBuildingBlock):
   or a component external to this module.
   """
 
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'intrinsic')
+    return cls(computation_proto.intrinsic.uri,
+               type_serialization.deserialize_type(computation_proto.type))
+
   def __init__(self, uri, type_spec):
     """Creates an intrinsic.
 
@@ -418,6 +578,12 @@ class Intrinsic(ComputationBuildingBlock):
     self._uri = uri
 
   @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        intrinsic=pb.Intrinsic(uri=self._uri))
+
+  @property
   def uri(self):
     return self._uri
 
@@ -435,6 +601,12 @@ class Data(ComputationBuildingBlock):
   it is only a container. Parsing and type analysis are a responsibility
   or a component external to this module.
   """
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'data')
+    return cls(computation_proto.data.uri,
+               type_serialization.deserialize_type(computation_proto.type))
 
   def __init__(self, uri, type_spec):
     """Creates a representation of data.
@@ -454,6 +626,12 @@ class Data(ComputationBuildingBlock):
     type_spec = types.to_type(type_spec)
     super(Data, self).__init__(type_spec)
     self._uri = uri
+
+  @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        data=pb.Data(uri=self._uri))
 
   @property
   def uri(self):
@@ -500,3 +678,17 @@ class CompiledComputation(ComputationBuildingBlock):
 
   def __str__(self):
     return 'comp({})'.format(self._name)
+
+
+# pylint: disable=protected-access
+ComputationBuildingBlock._deserializer_dict = {
+    'reference': Reference.from_proto,
+    'selection': Selection.from_proto,
+    'tuple': Tuple.from_proto,
+    'call': Call.from_proto,
+    'lambda': Lambda.from_proto,
+    'block': Block.from_proto,
+    'intrinsic': Intrinsic.from_proto,
+    'data': Data.from_proto,
+    'tensorflow': CompiledComputation}
+# pylint: enable=protected-access

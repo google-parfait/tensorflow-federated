@@ -40,6 +40,7 @@ py_test(
         ":anonymous_tuple",
         ":computation_building_blocks",
         ":tensorflow_serialization",
+        ":type_serialization",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

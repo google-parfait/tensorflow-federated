@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import computation_building_blocks as bb
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl import type_serialization
 
 
 class ComputationBuildingBlocksTest(unittest.TestCase):
@@ -38,6 +39,13 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     self.assertEqual(str(x.type_signature), 'int32')
     self.assertEqual(repr(x), 'Reference(\'foo\', TensorType(tf.int32))')
     self.assertEqual(str(x), 'foo')
+    x_proto = x.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(x_proto.type)),
+        str(x.type_signature))
+    self.assertEqual(x_proto.WhichOneof('computation'), 'reference')
+    self.assertEqual(x_proto.reference.name, x.name)
+    self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_selection_class(self):
     x = bb.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)])
@@ -73,6 +81,17 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
       _ = bb.Selection(x, index=2)
     with self.assertRaises(ValueError):
       _ = bb.Selection(x, index=-1)
+    y_proto = y.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(y_proto.type)),
+        str(y.type_signature))
+    self.assertEqual(y_proto.WhichOneof('computation'), 'selection')
+    self.assertEqual(str(y_proto.selection.source), str(x.proto))
+    self.assertEqual(str(y_proto.selection.name), 'bar')
+    self._serialize_deserialize_roundtrip_test(y)
+    self._serialize_deserialize_roundtrip_test(z)
+    self._serialize_deserialize_roundtrip_test(x0)
+    self._serialize_deserialize_roundtrip_test(x1)
 
   def test_basic_functionality_of_tuple_class(self):
     x = bb.Reference('foo', tf.int32)
@@ -91,6 +110,14 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     self.assertIs(z[0], x)
     self.assertIs(z[1], y)
     self.assertEqual(','.join(str(e) for e in iter(z)), 'foo,bar')
+    z_proto = z.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(z_proto.type)),
+        str(z.type_signature))
+    self.assertEqual(z_proto.WhichOneof('computation'), 'tuple')
+    self.assertEqual(
+        [str(e.name) for e in z_proto.tuple.element], ['', 'y'])
+    self._serialize_deserialize_roundtrip_test(z)
 
   def test_basic_functionality_of_call_class(self):
     x = bb.Reference('foo', types.FunctionType(tf.int32, tf.bool))
@@ -110,6 +137,14 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     w = bb.Reference('bak', tf.float32)
     with self.assertRaises(TypeError):
       bb.Call(x, w)
+    z_proto = z.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(z_proto.type)),
+        str(z.type_signature))
+    self.assertEqual(z_proto.WhichOneof('computation'), 'call')
+    self.assertEqual(str(z_proto.call.function), str(x.proto))
+    self.assertEqual(str(z_proto.call.argument), str(y.proto))
+    self._serialize_deserialize_roundtrip_test(z)
 
   def test_basic_functionality_of_lambda_class(self):
     arg_name = 'arg'
@@ -135,6 +170,15 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
         'Selection(Reference(\'arg\', {0}), name=\'x\'))))'.format(
             arg_type_repr))
     self.assertEqual(str(x), '(arg -> arg.f(arg.f(arg.x)))')
+    x_proto = x.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(x_proto.type)),
+        str(x.type_signature))
+    self.assertEqual(x_proto.WhichOneof('computation'), 'lambda')
+    self.assertEqual(str(getattr(x_proto, 'lambda').parameter_name), arg_name)
+    self.assertEqual(
+        str(getattr(x_proto, 'lambda').result), str(x.result.proto))
+    self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_block_class(self):
     x = bb.Block(
@@ -156,6 +200,17 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
         'index=0))], '
         'Reference(\'y\', TensorType(tf.int32)))')
     self.assertEqual(str(x), '(let x=arg,y=x[0] in y)')
+    x_proto = x.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(x_proto.type)),
+        str(x.type_signature))
+    self.assertEqual(x_proto.WhichOneof('computation'), 'block')
+    self.assertEqual(str(x_proto.block.result), str(x.result.proto))
+    for idx, loc_proto in enumerate(x_proto.block.local):
+      loc_name, loc_value = x.locals[idx]
+      self.assertEqual(str(loc_proto.name), loc_name)
+      self.assertEqual(str(loc_proto.value), str(loc_value.proto))
+      self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_intrinsic_class(self):
     x = bb.Intrinsic('add_one', types.FunctionType(tf.int32, tf.int32))
@@ -166,6 +221,13 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
         'Intrinsic(\'add_one\', '
         'FunctionType(TensorType(tf.int32), TensorType(tf.int32)))')
     self.assertEqual(str(x), 'add_one')
+    x_proto = x.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(x_proto.type)),
+        str(x.type_signature))
+    self.assertEqual(x_proto.WhichOneof('computation'), 'intrinsic')
+    self.assertEqual(str(x_proto.intrinsic.uri), x.uri)
+    self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_data_class(self):
     x = bb.Data('/tmp/mydata', types.SequenceType(tf.int32))
@@ -174,6 +236,13 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     self.assertEqual(
         repr(x), 'Data(\'/tmp/mydata\', SequenceType(TensorType(tf.int32)))')
     self.assertEqual(str(x), '/tmp/mydata')
+    x_proto = x.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(x_proto.type)),
+        str(x.type_signature))
+    self.assertEqual(x_proto.WhichOneof('computation'), 'data')
+    self.assertEqual(str(x_proto.data.uri), x.uri)
+    self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_compiled_computation_class(self):
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
@@ -188,6 +257,20 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     self.assertTrue(re.match(r'comp\([0-9a-f]+\)', str(x)))
     y = bb.CompiledComputation(comp, name='foo')
     self.assertEqual(str(y), 'comp(foo)')
+    self._serialize_deserialize_roundtrip_test(x)
+
+  def _serialize_deserialize_roundtrip_test(self, target):
+    """Performs roundtrip serialization/deserialization of the given target.
+
+    Args:
+      target: An instane of ComputationBuildingBlock to serialize-deserialize.
+    """
+    assert isinstance(target, bb.ComputationBuildingBlock)
+    proto = target.proto
+    target2 = bb.ComputationBuildingBlock.from_proto(proto)
+    proto2 = target2.proto
+    self.assertEqual(str(target), str(target2))
+    self.assertEqual(str(proto), str(proto2))
 
 
 if __name__ == '__main__':
