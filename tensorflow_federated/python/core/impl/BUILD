@@ -19,6 +19,58 @@ py_test(
 )
 
 py_library(
+    name = "computation_building_blocks",
+    srcs = ["computation_building_blocks.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":type_serialization",
+        ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:types",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "computation_building_blocks_test",
+    size = "small",
+    srcs = ["computation_building_blocks_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        ":computation_building_blocks",
+        ":tensorflow_serialization",
+        "//tensorflow_federated/python/core/api:types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "computation_building_utils",
+    srcs = ["computation_building_utils.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":value_impl",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:types",
+    ],
+)
+
+py_test(
+    name = "computation_building_utils_test",
+    srcs = ["computation_building_utils_test.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":computation_building_utils",
+        ":func_utils",
+        ":value_impl",
+        "//tensorflow_federated/python/core/api:types",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
     deps = [
@@ -250,18 +302,20 @@ py_test(
     srcs = ["type_utils_test.py"],
     deps = [
         ":anonymous_tuple",
+        ":computation_building_blocks",
         ":test_utils",
         ":type_utils",
-        ":values",
+        ":value_impl",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
 py_library(
-    name = "values",
-    srcs = ["values.py"],
+    name = "value_impl",
+    srcs = ["value_impl.py"],
     deps = [
         ":anonymous_tuple",
+        ":computation_building_blocks",
         ":func_utils",
         ":type_serialization",
         ":type_utils",
@@ -274,37 +328,15 @@ py_library(
 )
 
 py_test(
-    name = "values_test",
+    name = "value_impl_test",
     size = "small",
-    srcs = ["values_test.py"],
+    srcs = ["value_impl_test.py"],
     deps = [
         ":anonymous_tuple",
         ":tensorflow_serialization",
-        ":values",
+        ":value_impl",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "value_utils",
-    srcs = ["value_utils.py"],
-    deps = [
-        ":values",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:types",
-    ],
-)
-
-py_test(
-    name = "value_utils_test",
-    srcs = ["value_utils_test.py"],
-    deps = [
-        ":func_utils",
-        ":value_utils",
-        ":values",
-        "//tensorflow_federated/python/core/api:types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

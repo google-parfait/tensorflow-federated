@@ -25,23 +25,11 @@ import unittest
 
 from tensorflow_federated.python.core.api import types
 
+from tensorflow_federated.python.core.impl import computation_building_utils as bu
 from tensorflow_federated.python.core.impl import func_utils
-from tensorflow_federated.python.core.impl import value_utils
-from tensorflow_federated.python.core.impl import values
 
 
-class ValueUtilsTest(parameterized.TestCase):
-
-  @parameterized.parameters(
-      ([tf.bool, ('a', tf.int32)], '<foo[0],a=foo.a>'),
-      ([tf.bool, tf.float32, tf.int32], '<foo[0],foo[1],foo[2]>'),
-      ([('a', tf.bool), ('b', tf.int32), ('c', tf.bool)],
-       '<a=foo.a,b=foo.b,c=foo.c>'))
-  def test_expand_tuple(self, type_spec, tuple_str):
-    type_spec = types.to_type(type_spec)
-    tuple_val = value_utils.expand_tuple(values.Reference('foo', type_spec))
-    self.assertEqual(str(tuple_val.type_signature), str(type_spec))
-    self.assertEqual(str(tuple_val), tuple_str)
+class ComputationBuildingUtilsTest(parameterized.TestCase):
 
   @parameterized.parameters(
       (lambda f, x: f(f(x)),
@@ -60,7 +48,7 @@ class ValueUtilsTest(parameterized.TestCase):
     parameter_name = 'foo'
     parameter_type = types.to_type(parameter_type)
     func = func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type)
-    result = value_utils.zero_or_one_arg_func_to_lambda(
+    result = bu.zero_or_one_arg_func_to_lambda(
         func, parameter_name, parameter_type)
     self.assertEqual(str(result), func_str)
 

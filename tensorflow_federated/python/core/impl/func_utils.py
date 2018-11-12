@@ -28,6 +28,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import type_utils
@@ -205,6 +206,8 @@ def is_argument_tuple(arg):
   """
   if isinstance(arg, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(arg)
+  elif isinstance(arg, value_base.Value):
+    return is_argument_tuple(arg.type_signature)
   else:
     arg = types.to_type(arg)
     if isinstance(arg, types.NamedTupleType):
@@ -235,8 +238,16 @@ def unpack_args_from_tuple(tuple_with_args):
   Raises:
     TypeError: if 'tuple_with_args' is of a wrong type.
   """
+  if not is_argument_tuple(tuple_with_args):
+    raise TypeError('Not an argument tuple: {}.'.format(str(tuple_with_args)))
   if isinstance(tuple_with_args, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(tuple_with_args)
+  elif isinstance(tuple_with_args, value_base.Value):
+    elements = [
+        (name, getattr(tuple_with_args, name)) if name
+        else (None, tuple_with_args[index])
+        for index, (name, _) in enumerate(
+            tuple_with_args.type_signature.elements)]
   else:
     tuple_with_args = types.to_type(tuple_with_args)
     py_typecheck.check_type(tuple_with_args, types.NamedTupleType)
@@ -519,7 +530,8 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
         Raises:
           TypeError: if types don't match.
         """
-        py_typecheck.check_type(arg, anonymous_tuple.AnonymousTuple)
+        py_typecheck.check_type(
+            arg, (anonymous_tuple.AnonymousTuple, value_base.Value))
         args = []
         for idx, expected_type in enumerate(arg_types):
           element_value = arg[idx]

@@ -20,33 +20,12 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import types
 
-from tensorflow_federated.python.core.impl import values
-
-
-def expand_tuple(arg):
-  """Expands a value of a tuple type into an instance of values.Tuple.
-
-  Args:
-    arg: An instance of value_base.Value, or something convertible to it, that
-      has a TFF type of a named tuple.
-
-  Returns:
-    Either 'arg' itself if it's already a values.Tuple, or a new instance of
-    values.Tuple with embedded instances of value.Selection for all elements
-    of 'arg'.
-  """
-  arg = values.to_value(arg)
-  if isinstance(arg, values.Tuple):
-    return arg
-  else:
-    py_typecheck.check_type(arg.type_signature, types.NamedTupleType)
-    return values.Tuple([
-        (name, getattr(arg, name)) if name else (None, arg[index])
-        for index, (name, _) in enumerate(arg.type_signature.elements)])
+from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import value_impl
 
 
 def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
-  """Converts a zero- or one-argument 'func' into a corresponding values.Lambda.
+  """Converts a zero- or one-argument 'func' into a lambda building block.
 
   Args:
     func: A function with 0 or 1 arguments that contains orchestration logic,
@@ -56,7 +35,8 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
     parameter_type: The TFF type of the parameter, or None if there's none.
 
   Returns:
-    An instance of values.Lambda containing the orchestration logic from 'func'.
+    An instance of computation_building_blocks.Lambda that contains the logic
+    from 'func'.
 
   Raises:
     ValueError: if 'func' is incompatible with 'parameter_type'.
@@ -64,10 +44,10 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
   py_typecheck.check_callable(func)
   parameter_type = types.to_type(parameter_type)
   if parameter_type:
-    arg = values.Reference(parameter_name, parameter_type)
-    if isinstance(parameter_type, types.NamedTupleType):
-      arg = expand_tuple(arg)
-    result = func(arg)
+    result = func(value_impl.ValueImpl(
+        computation_building_blocks.Reference(parameter_name, parameter_type)))
   else:
     result = func()
-  return values.Lambda(parameter_name, parameter_type, values.to_value(result))
+  result = value_impl.to_value(result)
+  return computation_building_blocks.Lambda(
+      parameter_name, parameter_type, value_impl.ValueImpl.get_comp(result))

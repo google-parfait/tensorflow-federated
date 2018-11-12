@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Implementations of the abstract interface Value in api/value_base."""
+"""Classes representing various kinds of computations in a deserialized form."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -29,21 +29,19 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import types
-from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
-from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
-class Value(value_base.Value):
-  """A generic base class for values that appear in TFF computations."""
+class ComputationBuildingBlock(object):
+  """A generic base class for all computation building blocks defined below."""
 
   __metaclass__ = abc.ABCMeta
 
   def __init__(self, type_spec):
-    """Constructs a value of the given type.
+    """Constructs a computation building block with the given TFF type.
 
     Args:
       type_spec: An instance of types.Type, or something convertible to it via
@@ -55,63 +53,16 @@ class Value(value_base.Value):
   def type_signature(self):
     return self._type_signature
 
-  def __dir__(self):
-    if not isinstance(self._type_signature, types.NamedTupleType):
-      raise TypeError(
-          'Operator dir() is only suppored for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._type_signature)))
-    else:
-      # Not pre-creating or memoizing the list, as we do not expect this to be
-      # a common enough operation to warrant doing so.
-      return [e[0] for e in self._type_signature.elements if e[0]]
+  @abc.abstractmethod
+  def __repr__(self):
+    raise NotImplementedError
 
-  def __getattr__(self, name):
-    py_typecheck.check_type(name, string_types)
-    try:
-      return Selection(self, name=name)
-    except ValueError as err:
-      raise AttributeError(str(err))
-
-  def __len__(self):
-    if not isinstance(self._type_signature, types.NamedTupleType):
-      raise TypeError(
-          'Operator len() is only supported for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._type_signature)))
-    else:
-      return len(self._type_signature.elements)
-
-  def __getitem__(self, key):
-    py_typecheck.check_type(key, int)
-    try:
-      return Selection(self, index=key)
-    except ValueError as err:
-      raise KeyError(str(err))
-
-  def __iter__(self):
-    if not isinstance(self._type_signature, types.NamedTupleType):
-      raise TypeError(
-          'Operator iter() is only supported for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._type_signature)))
-    else:
-      for index in range(len(self._type_signature.elements)):
-        yield Selection(self, index=index)
-
-  def __call__(self, *args, **kwargs):
-    if not isinstance(self._type_signature, types.FunctionType):
-      raise SyntaxError(
-          'Function-like invocation is only supported for values of '
-          'functional types, but the value being invoked is of type '
-          '{} that does not support invocation.'.format(
-              str(self._type_signature)))
-    else:
-      arg = func_utils.pack_args(self._type_signature.parameter, args, kwargs)
-      return Call(self, arg)
+  @abc.abstractmethod
+  def __str__(self):
+    raise NotImplementedError
 
 
-class Reference(Value):
+class Reference(ComputationBuildingBlock):
   """A reference to a name defined earlier, e.g., in a Lambda."""
 
   def __init__(self, name, type_spec, context=None):
@@ -151,7 +102,7 @@ class Reference(Value):
             else self._name)
 
 
-class Selection(Value):
+class Selection(ComputationBuildingBlock):
   """A selection by name or index from another tuple-typed value."""
 
   def __init__(self, source, name=None, index=None):
@@ -160,8 +111,8 @@ class Selection(Value):
     Exactly one of 'name' or 'index' must be specified (not None).
 
     Args:
-      source: The source value to select from, either an instance of Value or
-        something convertible to it by to_value().
+      source: The source value to select from (an instance of
+        ComputationBuildingBlock).
       name: A string name of the element to be selected.
       index: A numeric index of the element to be selected.
 
@@ -177,9 +128,8 @@ class Selection(Value):
     if name is not None and index is not None:
       raise ValueError(
           'Cannot simultaneously specify a name and an index, choose one.')
-    if source is None:
-      raise TypeError('The source of selection cannot be None.')
-    self._source = to_value(source)
+    py_typecheck.check_type(source, ComputationBuildingBlock)
+    self._source = source
     source_type = self._source.type_signature
     if not isinstance(source_type, types.NamedTupleType):
       raise TypeError(
@@ -231,7 +181,7 @@ class Selection(Value):
         else '{}[{}]'.format(str(self._source), self._index))
 
 
-class Tuple(Value, anonymous_tuple.AnonymousTuple):
+class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
   """A tuple with one or more values as named or unnamed elements."""
 
   def __init__(self, elements):
@@ -250,15 +200,17 @@ class Tuple(Value, anonymous_tuple.AnonymousTuple):
     # of selection interfaces should override that in the generic class 'Value'
     # to favor simplified expressions where simplification is possible.
     def _map_element(e):
-      if (not isinstance(e, Value) and
-          isinstance(e, tuple) and
-          (len(e) == 2) and
-          (e[0] is None or isinstance(e[0], string_types))):
-        return (e[0], to_value(e[1]))
+      if isinstance(e, ComputationBuildingBlock):
+        return (None, e)
+      elif (isinstance(e, tuple) and
+            (len(e) == 2) and
+            (e[0] is None or isinstance(e[0], string_types))):
+        py_typecheck.check_type(e[1], ComputationBuildingBlock)
+        return (e[0], e[1])
       else:
-        return (None, to_value(e))
+        raise TypeError('Unexpected tuple element: {}.'.format(str(e)))
     elements = [_map_element(e) for e in elements]
-    Value.__init__(self, types.NamedTupleType([
+    ComputationBuildingBlock.__init__(self, types.NamedTupleType([
         ((e[0], e[1].type_signature) if e[0] else e[1].type_signature)
         for e in elements]))
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
@@ -272,23 +224,8 @@ class Tuple(Value, anonymous_tuple.AnonymousTuple):
   def __str__(self):
     return anonymous_tuple.AnonymousTuple.__str__(self)
 
-  def __dir__(self):
-    return anonymous_tuple.AnonymousTuple.__dir__(self)
 
-  def __getattr__(self, name):
-    return anonymous_tuple.AnonymousTuple.__getattr__(self, name)
-
-  def __len__(self):
-    return anonymous_tuple.AnonymousTuple.__len__(self)
-
-  def __getitem__(self, index):
-    return anonymous_tuple.AnonymousTuple.__getitem__(self, index)
-
-  def __iter__(self):
-    return anonymous_tuple.AnonymousTuple.__iter__(self)
-
-
-class Call(Value):
+class Call(ComputationBuildingBlock):
   """A representation of a TFF function call."""
 
   def __init__(self, func, arg=None):
@@ -302,7 +239,7 @@ class Call(Value):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(func, value_base.Value)
+    py_typecheck.check_type(func, ComputationBuildingBlock)
     if not isinstance(func.type_signature, types.FunctionType):
       raise TypeError(
           'Expected func to be of a functional type, '
@@ -312,7 +249,6 @@ class Call(Value):
         raise TypeError(
             'The invoked function expects an argument of type {}, '
             'but got None instead.'.format(str(func.type_signature.parameter)))
-      arg = to_value(arg)
       if not func.type_signature.parameter.is_assignable_from(
           arg.type_signature):
         raise TypeError(
@@ -349,7 +285,7 @@ class Call(Value):
             else '{}()'.format(str(self._function)))
 
 
-class Lambda(Value):
+class Lambda(ComputationBuildingBlock):
   """A representation of a TFF lambda expression."""
 
   def __init__(self, parameter_name, parameter_type, result):
@@ -362,8 +298,7 @@ class Lambda(Value):
       parameter_type: The type of the parameter, an instance of types.Type or
         something convertible to it by types.to_type().
       result: The resulting value produced by the expression that forms the body
-        of the lambda. Must be an instance of Value, or something convertible to
-        it by to_value() below.
+        of the lambda. Must be an instance of ComputationBuildingBlock.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -373,7 +308,7 @@ class Lambda(Value):
       raise TypeError('A lambda expression must have a valid parameter type.')
     parameter_type = types.to_type(parameter_type)
     assert isinstance(parameter_type, types.Type)
-    result = to_value(result)
+    py_typecheck.check_type(result, ComputationBuildingBlock)
     super(Lambda, self).__init__(
         types.FunctionType(parameter_type, result.type_signature))
     self._parameter_name = parameter_name
@@ -400,7 +335,7 @@ class Lambda(Value):
     return '({} -> {})'.format(self._parameter_name, str(self._result))
 
 
-class Block(Value):
+class Block(ComputationBuildingBlock):
   """A representation of a block of TFF code."""
 
   def __init__(self, local_symbols, result):
@@ -409,10 +344,10 @@ class Block(Value):
     Args:
       local_symbols: The list of one or more local declarations, each of which
         is a 2-tuple (name, value), with 'name' being the string name of a
-        local symbol being defined, and 'value' being the instance of Value or
-        an entity convertible to Value that will be locally bound to that name.
-      result: The result value, an instance of Value or something convertible
-        to it by to_value() below.
+        local symbol being defined, and 'value' being the instance of
+          ComputationBuildingBlock, the output of which will be locally bound
+          to that name.
+      result: An instance of ComputationBuildingBlock that computes the result.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -428,18 +363,10 @@ class Block(Value):
             'local at position {} in the sequence: {}.'.format(
                 index, str(element)))
       name = element[0]
-      try:
-        value = to_value(element[1])
-      except TypeError as err:
-        raise TypeError(
-            'Expected local {} to be an instance of {} or something '
-            'convertible to it, but found {}: {}.'.format(
-                name,
-                value_base.Value.__name__,
-                py_typecheck.type_string(type(element[1])),
-                str(err)))
+      value = element[1]
+      py_typecheck.check_type(value, ComputationBuildingBlock)
       updated_locals.append((name, value))
-    result = to_value(result)
+    py_typecheck.check_type(result, ComputationBuildingBlock)
     super(Block, self).__init__(result.type_signature)
     self._locals = updated_locals
     self._result = result
@@ -463,7 +390,7 @@ class Block(Value):
         str(self._result)))
 
 
-class Intrinsic(Value):
+class Intrinsic(ComputationBuildingBlock):
   """A representation of an intrinsic.
 
   This class does not deal with parsing intrinsic URIs and verifying their
@@ -501,7 +428,7 @@ class Intrinsic(Value):
     return self._uri
 
 
-class Data(Value):
+class Data(ComputationBuildingBlock):
   """A representation of data (an input pipeline).
 
   This class does not deal with parsing data URIs and verifying correctness,
@@ -539,7 +466,7 @@ class Data(Value):
     return self._uri
 
 
-class Computation(Value):
+class CompiledComputation(ComputationBuildingBlock):
   """A representation of a fully constructed and serialized computation."""
 
   def __init__(self, proto, name=None):
@@ -557,7 +484,7 @@ class Computation(Value):
     py_typecheck.check_type(proto, pb.Computation)
     if name is not None:
       py_typecheck.check_type(name, string_types)
-    super(Computation, self).__init__(
+    super(CompiledComputation, self).__init__(
         type_serialization.deserialize_type(proto.type))
     self._proto = proto
     self._name = name if name is not None else (
@@ -568,40 +495,8 @@ class Computation(Value):
     return self._proto
 
   def __repr__(self):
-    return 'Computation({}, {})'.format(self._name, repr(self.type_signature))
+    return 'CompiledComputation({}, {})'.format(
+        self._name, repr(self.type_signature))
 
   def __str__(self):
     return 'comp({})'.format(self._name)
-
-
-def to_value(arg):
-  """Converts the argument into an instance of Value.
-
-  Args:
-    arg: Either an instance of Value, or an argument convertible to Value.
-      The argument must not be None. The types of non-Value arguments that are
-      currently convertible to Value include the following:
-
-      * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all of
-        which are converted into instances of Tuple.
-
-  Returns:
-    An instance of Value corresponding to the given 'arg'.
-
-  Raises:
-    TypeError: if 'arg' is of an unsupported type.
-  """
-  if isinstance(arg, Value):
-    return arg
-  elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    return Tuple(anonymous_tuple.to_elements(arg))
-  elif '_asdict' in vars(type(arg)):
-    return to_value(arg._asdict())
-  elif isinstance(arg, dict):
-    return Tuple(list(arg.iteritems()))
-  elif isinstance(arg, (tuple, list)):
-    return Tuple(list(arg))
-  else:
-    raise TypeError(
-        'Unable to interpret an argument of type {} as a TFF value.'.format(
-            py_typecheck.type_string(type(arg))))

@@ -23,9 +23,10 @@ import collections
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl import values
+from tensorflow_federated.python.core.impl import value_impl
 
 from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 
@@ -37,7 +38,8 @@ class TypeUtilsTest(tf.test.TestCase):
 
   def test_infer_type_with_tff_value(self):
     self.assertEqual(
-        str(type_utils.infer_type(values.Reference('foo', tf.bool))), 'bool')
+        str(type_utils.infer_type(value_impl.ValueImpl(
+            computation_building_blocks.Reference('foo', tf.bool)))), 'bool')
 
   def test_infer_type_with_scalar_int_tensor(self):
     self.assertEqual(str(type_utils.infer_type(tf.constant(1))), 'int32')
