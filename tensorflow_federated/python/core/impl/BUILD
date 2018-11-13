@@ -107,6 +107,7 @@ py_library(
     name = "computation_wrapper_instances",
     srcs = ["computation_wrapper_instances.py"],
     deps = [
+        ":computation_building_utils",
         ":computation_impl",
         ":computation_wrapper",
         ":tensorflow_serialization",
@@ -119,6 +120,7 @@ py_test(
     srcs = ["computation_wrapper_instances_test.py"],
     deps = [
         ":computation_wrapper_instances",
+        "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

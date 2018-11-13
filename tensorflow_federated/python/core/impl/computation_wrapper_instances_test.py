@@ -20,6 +20,10 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import types
+
+from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 
 
@@ -68,6 +72,22 @@ class ComputationWrapperInstancesTest(tf.test.TestCase):
         list(tf.Session().run(result, feed_dict={x: n, y: 3})
              for n in [1, 20, 5, 10, 30]),
         [[4], [23], [8], [13], [33]])
+
+  def test_composite_computation_wrapper(self):
+    @computation_wrapper_instances.composite_computation_wrapper(
+        (types.FunctionType(tf.int32, tf.int32), tf.int32))
+    def foo(f, x):
+      return f(f(x))
+    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertEqual(
+        str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
+
+    # TODO(b/113112885): Remove this protected member access as noted above.
+    comp = foo._computation_proto
+
+    building_block = (
+        computation_building_blocks.ComputationBuildingBlock.from_proto(comp))
+    self.assertEqual(str(building_block), '(arg -> arg[0](arg[0](arg[1])))')
 
 
 if __name__ == '__main__':
