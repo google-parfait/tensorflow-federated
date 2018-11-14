@@ -32,12 +32,12 @@ def _tf_wrapper_fn(target_fn, parameter_type):
 tensorflow_wrapper = ComputationWrapper(_tf_wrapper_fn)
 
 
-def _composite_computation_wrapper_fn(target_fn, parameter_type):
+def _federated_computation_wrapper_fn(target_fn, parameter_type):
   target_lambda = computation_building_utils.zero_or_one_arg_func_to_lambda(
       target_fn, 'arg' if parameter_type else None, parameter_type)
   comp_pb = target_lambda.proto
   return ComputationImpl(comp_pb)
 
 
-composite_computation_wrapper = ComputationWrapper(
-    _composite_computation_wrapper_fn)
+federated_computation_wrapper = ComputationWrapper(
+    _federated_computation_wrapper_fn)

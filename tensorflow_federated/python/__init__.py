@@ -31,6 +31,7 @@ _allowed_symbols = [
     "SequenceType",
     "TensorType",
     "Type",
+    "federated_computation",
     "tf_computation",
     "to_type",
 ]

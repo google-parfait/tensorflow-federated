@@ -23,5 +23,9 @@ TensorFlow Federated library.
 
 ## Functions
 
+[`federated_computation(...)`](./tff/federated_computation.md): Decorates/wraps Python functions as TFF federated/composite computations.
+
+[`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
+
 [`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of Type.
 

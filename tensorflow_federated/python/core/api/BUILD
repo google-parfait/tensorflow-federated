@@ -33,6 +33,8 @@ py_test(
     srcs = ["computations_test.py"],
     deps = [
         ":computations",
+        ":types",
+        ":value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

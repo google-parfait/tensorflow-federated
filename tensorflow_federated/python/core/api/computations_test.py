@@ -21,11 +21,13 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations as fc
+from tensorflow_federated.python.core.api import types as ft
+from tensorflow_federated.python.core.api import value_base as vb
 
 
 class ComputationsTest(tf.test.TestCase):
 
-  def test_first_mode_of_usage_as_non_polymorphic_wrapper(self):
+  def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(self):
     # Wrapping a lambda with a parameter.
     foo = fc.tf_computation(lambda x: x > 10, tf.int32)
     self.assertEqual(str(foo.type_signature), '(int32 -> bool)')
@@ -44,7 +46,7 @@ class ComputationsTest(tf.test.TestCase):
     bak = fc.tf_computation(bak_func)
     self.assertEqual(str(bak.type_signature), '( -> int32)')
 
-  def test_second_mode_of_usage_as_non_polymorphic_decorator(self):
+  def test_tf_comp_second_mode_of_usage_as_non_polymorphic_decorator(self):
     # Decorating a Python function with a parameter.
     @fc.tf_computation(tf.int32)
     def foo(x):
@@ -57,7 +59,7 @@ class ComputationsTest(tf.test.TestCase):
       return tf.constant(10)
     self.assertEqual(str(bar.type_signature), '( -> int32)')
 
-  def test_third_mode_of_usage_as_polymorphic_callable(self):
+  def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(self):
     # Wrapping a lambda.
     foo = fc.tf_computation(lambda x: x > 0)  # pylint: disable=unused-variable
 
@@ -70,6 +72,35 @@ class ComputationsTest(tf.test.TestCase):
     # Currently polymorphic callables, even though already fully supported,
     # cannot be easily tested, since little happens under the hood until they
     # are actually invoked.
+
+  def test_fed_comp_typical_usage_as_decorator_with_unlabeled_type(self):
+    @fc.federated_computation((ft.FunctionType(tf.int32, tf.int32), tf.int32))
+    def foo(f, x):
+      assert isinstance(f, vb.Value)
+      assert isinstance(x, vb.Value)
+      assert str(f.type_signature) == '(int32 -> int32)'
+      assert str(x.type_signature) == 'int32'
+      result_value = f(f(x))
+      assert isinstance(result_value, vb.Value)
+      assert str(result_value.type_signature) == 'int32'
+      return result_value
+
+    # TODO(b/113112108): Add an invocation to make the test more meaningful.
+
+    self.assertEqual(
+        str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
+
+  def test_fed_comp_typical_usage_as_decorator_with_labeled_type(self):
+    @fc.federated_computation((
+        ('f', ft.FunctionType(tf.int32, tf.int32)),
+        ('x', tf.int32)))
+    def foo(f, x):
+      return f(f(x))
+
+    # TODO(b/113112108): Add an invocation to make the test more meaningful.
+
+    self.assertEqual(
+        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
 
 
 if __name__ == '__main__':

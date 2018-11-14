@@ -9,7 +9,7 @@
 tff.tf_computation(*args)
 ```
 
-Decorates or wraps Python functions and TF defuns as TFF computations.
+Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
 This symbol can be used as either a decorator (`@tf_computation`) or a wrapper
 applied to a function given to it as an argument. The supported patterns and

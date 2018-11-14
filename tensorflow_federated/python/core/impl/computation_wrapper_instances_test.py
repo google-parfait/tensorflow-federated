@@ -73,8 +73,8 @@ class ComputationWrapperInstancesTest(tf.test.TestCase):
              for n in [1, 20, 5, 10, 30]),
         [[4], [23], [8], [13], [33]])
 
-  def test_composite_computation_wrapper(self):
-    @computation_wrapper_instances.composite_computation_wrapper(
+  def test_federated_computation_wrapper(self):
+    @computation_wrapper_instances.federated_computation_wrapper(
         (types.FunctionType(tf.int32, tf.int32), tf.int32))
     def foo(f, x):
       return f(f(x))

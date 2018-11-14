@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from tensorflow_federated.python.core.api.computation_base import Computation
 
+from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 
 from tensorflow_federated.python.core.api.types import FunctionType
