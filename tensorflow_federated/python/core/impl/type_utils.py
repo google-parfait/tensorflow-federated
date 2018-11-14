@@ -217,3 +217,110 @@ def get_named_tuple_element_type(type_spec, name):
       'The name \'{}\' of the element does not correspond to '
       'any of the names {} in the named tuple type.'.format(
           name, str([e[0] for e in elements if e[0]])))
+
+
+def check_well_formed(type_spec):
+  """Checks that 'type_spec' represents a well-formed type.
+
+  WARNING: This function is only partially implemented. See the documentation
+  in 'computation.proto' for what factors determine well-formedness.
+
+  Args:
+    type_spec: The type specification to check, either an instance of
+      types.Type or something convertible to it by types.to_type().
+
+  Raises:
+    TypeError: if arguments are of the wrong types, or if 'type_spec' is not a
+      well-formed TFF type.
+  """
+  # TODO(b/113112885): Implement the remainder of this function, and document
+  # the conditions for well-formedness here as well.
+  check_all_abstract_types_are_bound(type_spec)
+
+
+def check_all_abstract_types_are_bound(type_spec):
+  """Checks that all abstract types labels appearing in 'type_spec' are bound.
+
+  For abstract types to be bound, it means that type labels appearing on the
+  result side of functional type signatures must also appear on the parameter
+  side. This check is intended to verify that abstract types are only used to
+  model template-like type signatures, and can always be reduce to a concrete
+  type by specializing templates to work with specific sets of arguments.
+
+  Examples of valid types that pass this check successfully:
+
+    int32
+    (int32 -> int32)
+    ( -> int32)
+    (T -> T)
+    ((T -> T) -> bool)
+    (( -> T) -> T)
+    (<T*, ((T, T) -> T)> -> T)
+    (T* -> int32)
+    ( -> (T -> T))
+    <T, (U -> U), U> -> <T, U>
+
+  Examples of invalid types that fail this check because 'T' is unbound:
+
+    T
+    (int32 -> T)
+    ( -> T)
+    (T -> U)
+
+  Args:
+    type_spec: An instance of types.Type, or something convertible to it.
+
+  Raises:
+    TypeError: if arguments are of the wrong types, or if unbound type labels
+      occur in 'type_spec'.
+  """
+  def _check_or_get_unbound_abstract_type_labels(
+      type_spec, bound_labels, check):
+    """Checks or collects abstract type labels from 'type_spec'.
+
+    This is a helper function used by 'check_abstract_types_are_bound', not to
+    be exported out of this module.
+
+    Args:
+      type_spec: An instance of types.Type.
+      bound_labels: A set of string labels that refer to 'bound' abstract types,
+        i.e., ones that appear on the parameter side of a functional type.
+      check: A bool value. If True, no new unbound type labels are permitted,
+        and if False, any new labels encountered are returned as a set.
+
+    Returns:
+      If check is False, a set of new abstract type labels introduced in
+      'type_spec' that don't yet appear in the set 'bound_labels'. If check is
+      True, always returns an empty set.
+
+    Raises:
+      TypeError: if unbound labels are found and check is True.
+    """
+    py_typecheck.check_type(type_spec, types.Type)
+    if isinstance(type_spec, types.TensorType):
+      return set()
+    elif isinstance(type_spec, types.SequenceType):
+      return _check_or_get_unbound_abstract_type_labels(
+          type_spec.element, bound_labels, check)
+    elif isinstance(type_spec, types.NamedTupleType):
+      return set().union(*[
+          _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
+          for _, v in type_spec.elements])
+    elif isinstance(type_spec, types.AbstractType):
+      if type_spec.label in bound_labels:
+        return set()
+      elif not check:
+        return set([type_spec.label])
+      else:
+        raise TypeError('Unbound type label \'{}\'.'.format(type_spec.label))
+    elif isinstance(type_spec, types.FunctionType):
+      parameter_labels = (
+          set() if not type_spec.parameter
+          else _check_or_get_unbound_abstract_type_labels(
+              type_spec.parameter, bound_labels, False))
+      result_labels = _check_or_get_unbound_abstract_type_labels(
+          type_spec.result, bound_labels.union(parameter_labels), check)
+      return parameter_labels.union(result_labels)
+
+  _check_or_get_unbound_abstract_type_labels(
+      types.to_type(type_spec), set(), True)

@@ -20,8 +20,11 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+
+from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import test_utils
@@ -31,7 +34,7 @@ from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 
 
-class TypeUtilsTest(tf.test.TestCase):
+class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_infer_type_with_none(self):
     self.assertEqual(type_utils.infer_type(None), None)
@@ -237,6 +240,45 @@ class TypeUtilsTest(tf.test.TestCase):
       type_utils.get_named_tuple_element_type(tf.int32, 'a')
     with self.assertRaises(TypeError):
       type_utils.get_named_tuple_element_type(type_spec, 10)
+
+  # pylint: disable=g-long-lambda
+  @parameterized.parameters(
+      *[types.to_type(spec) for spec in ((lambda t, u: [
+          # In constructing test cases, occurrences of 't' in all expressions
+          # below are replaced with an abstract type 'T'.
+          tf.int32,
+          types.FunctionType(tf.int32, tf.int32),
+          types.FunctionType(None, tf.int32),
+          types.FunctionType(t, t),
+          [types.FunctionType(t, t), tf.bool],
+          types.FunctionType(types.FunctionType(None, t), t),
+          types.FunctionType(
+              (types.SequenceType(t), types.FunctionType((t, t), t)), t),
+          types.FunctionType(types.SequenceType(t), tf.int32),
+          types.FunctionType(None, types.FunctionType(t, t)),
+          # In the test cases below, in addition to the 't' replacement above,
+          # all occurrences of 'u' are replaced with an abstract type 'U'
+          types.FunctionType([t, types.FunctionType(u, u), u], [t, u])
+      ])(types.AbstractType('T'), types.AbstractType('U')))])
+  # pylint: enable=g-long-lambda
+  def test_check_abstract_types_are_bound_valid_cases(self, type_spec):
+    type_utils.check_well_formed(type_spec)
+    type_utils.check_all_abstract_types_are_bound(type_spec)
+
+  @parameterized.parameters(
+      *[types.to_type(spec) for spec in ((lambda t, u: [
+          # In constructing test cases, similarly to the above, occurrences of
+          # 't' and 'u' in all expressions below are replaced with abstract
+          # types 'T' and 'U'.
+          t,
+          types.FunctionType(tf.int32, t),
+          types.FunctionType(None, t),
+          types.FunctionType(t, u)
+      ])(types.AbstractType('T'), types.AbstractType('U')))])
+  def test_check_abstract_types_are_bound_invalid_cases(self, type_spec):
+    self.assertRaises(TypeError, type_utils.check_well_formed, type_spec)
+    self.assertRaises(
+        TypeError, type_utils.check_all_abstract_types_are_bound, type_spec)
 
 
 if __name__ == '__main__':

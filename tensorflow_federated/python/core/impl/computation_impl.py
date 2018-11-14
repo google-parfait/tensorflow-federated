@@ -23,6 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl import type_utils
 
 from tensorflow_federated.python.core.impl.context_stack import context_stack
 
@@ -38,8 +39,9 @@ class ComputationImpl(func_utils.ConcreteFunction):
         an instance of pb.Computation.
     """
     py_typecheck.check_type(computation_proto, pb.Computation)
-    super(ComputationImpl, self).__init__(
-        type_serialization.deserialize_type(computation_proto.type))
+    type_spec = type_serialization.deserialize_type(computation_proto.type)
+    type_utils.check_well_formed(type_spec)
+    super(ComputationImpl, self).__init__(type_spec)
     self._computation_proto = computation_proto
 
   def _invoke(self, arg):

@@ -78,18 +78,21 @@ py_library(
         ":context_stack",
         ":func_utils",
         ":type_serialization",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
 py_test(
-    name = "computation_test",
+    name = "computation_impl_test",
     size = "small",
-    srcs = ["computation_test.py"],
+    srcs = ["computation_impl_test.py"],
     deps = [
         ":computation_impl",
+        ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -309,6 +312,7 @@ py_test(
         ":test_utils",
         ":type_utils",
         ":value_impl",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

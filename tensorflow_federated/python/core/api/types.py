@@ -274,6 +274,34 @@ class FunctionType(Type):
         str(self._parameter) if self._parameter else '', str(self._result))
 
 
+class AbstractType(Type):
+  """An implementation of Type for representing abstract types in TFF."""
+
+  def __init__(self, label):
+    """Constructs a new instance from the given string label.
+
+    Args:
+      label: A string label of an abstract type. All occurences of the label
+        within a computation's type signature refer to the same concrete type.
+    """
+    py_typecheck.check_type(label, string_types)
+    self._label = str(label)
+
+  @property
+  def label(self):
+    return self._label
+
+  def is_assignable_from(self, other):
+    py_typecheck.check_type(other, Type)
+    return isinstance(other, AbstractType) and self.label == other.label
+
+  def __repr__(self):
+    return 'AbstractType(\'{}\')'.format(self._label)
+
+  def __str__(self):
+    return self._label
+
+
 # TODO(b/113112108): Define the representations of all the remaining TFF types.
 
 
