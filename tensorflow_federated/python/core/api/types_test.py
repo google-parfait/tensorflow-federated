@@ -194,9 +194,9 @@ class TypesTest(unittest.TestCase):
     self.assertRaises(TypeError, types.AbstractType, 10)
     t1_other = types.AbstractType('T1')
     t2 = types.AbstractType('T2')
-    self.assertTrue(t1.is_assignable_from(t1))
-    self.assertTrue(t1.is_assignable_from(t1_other))
-    self.assertFalse(t1.is_assignable_from(t2))
+    self.assertRaises(ValueError, t1.is_assignable_from, t1)
+    self.assertRaises(ValueError, t1.is_assignable_from, t1_other)
+    self.assertRaises(ValueError, t1.is_assignable_from, t2)
 
   def test_to_type_with_tensor_type(self):
     s = types.TensorType(tf.int32)

@@ -293,7 +293,10 @@ class AbstractType(Type):
 
   def is_assignable_from(self, other):
     py_typecheck.check_type(other, Type)
-    return isinstance(other, AbstractType) and self.label == other.label
+
+    # TODO(b/113112108): Revise this to extend the relation of assignability to
+    # abstract types.
+    raise ValueError('Abstract types are not comparable.')
 
   def __repr__(self):
     return 'AbstractType(\'{}\')'.format(self._label)
