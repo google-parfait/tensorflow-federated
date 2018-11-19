@@ -23,6 +23,7 @@ import tensorflow as tf
 
 import unittest
 
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
@@ -257,6 +258,20 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     self.assertTrue(re.match(r'comp\([0-9a-f]+\)', str(x)))
     y = bb.CompiledComputation(comp, name='foo')
     self.assertEqual(str(y), 'comp(foo)')
+    self._serialize_deserialize_roundtrip_test(x)
+
+  def test_basic_functionality_of_placement_class(self):
+    x = bb.Placement(placements.CLIENTS)
+    self.assertEqual(str(x.type_signature), 'placement')
+    self.assertEqual(x.uri, 'clients')
+    self.assertEqual(repr(x), 'Placement(\'clients\')')
+    self.assertEqual(str(x), 'CLIENTS')
+    x_proto = x.proto
+    self.assertEqual(
+        str(type_serialization.deserialize_type(x_proto.type)),
+        str(x.type_signature))
+    self.assertEqual(x_proto.WhichOneof('computation'), 'placement')
+    self.assertEqual(str(x_proto.placement.uri), x.uri)
     self._serialize_deserialize_roundtrip_test(x)
 
   def _serialize_deserialize_roundtrip_test(self, target):

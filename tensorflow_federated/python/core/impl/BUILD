@@ -23,6 +23,7 @@ py_library(
     srcs = ["computation_building_blocks.py"],
     deps = [
         ":anonymous_tuple",
+        ":placement_literals",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -41,6 +42,7 @@ py_test(
         ":computation_building_blocks",
         ":tensorflow_serialization",
         ":type_serialization",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -227,6 +229,18 @@ py_test(
 )
 
 py_library(
+    name = "placement_literals",
+    srcs = ["placement_literals.py"],
+)
+
+py_test(
+    name = "placement_literals_test",
+    size = "small",
+    srcs = ["placement_literals_test.py"],
+    deps = [":placement_literals"],
+)
+
+py_library(
     name = "tensorflow_serialization",
     srcs = ["tensorflow_serialization.py"],
     deps = [
@@ -324,6 +338,7 @@ py_library(
         ":anonymous_tuple",
         ":computation_building_blocks",
         ":func_utils",
+        ":placement_literals",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -342,6 +357,7 @@ py_test(
         ":anonymous_tuple",
         ":tensorflow_serialization",
         ":value_impl",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
         "@absl_py//absl/testing:parameterized",

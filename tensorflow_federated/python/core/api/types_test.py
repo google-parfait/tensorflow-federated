@@ -198,6 +198,14 @@ class TypesTest(unittest.TestCase):
     self.assertRaises(ValueError, t1.is_assignable_from, t1_other)
     self.assertRaises(ValueError, t1.is_assignable_from, t2)
 
+  def test_placement_type(self):
+    t1 = types.PlacementType()
+    self.assertEqual(repr(t1), 'PlacementType()')
+    self.assertEqual(str(t1), 'placement')
+    t2 = types.PlacementType()
+    self.assertTrue(t1.is_assignable_from(t1))
+    self.assertTrue(t1.is_assignable_from(t2))
+
   def test_to_type_with_tensor_type(self):
     s = types.TensorType(tf.int32)
     t = types.to_type(s)

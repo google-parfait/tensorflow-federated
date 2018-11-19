@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import placement_literals
 
 
 class ValueImpl(value_base.Value):
@@ -152,6 +153,7 @@ def to_value(arg):
 
       * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all of
         which are converted into instances of Tuple.
+      * Placement literals, converted into instances of `Placement`.
 
   Returns:
     An instance of Value corresponding to the given 'arg'.
@@ -173,6 +175,8 @@ def to_value(arg):
   elif isinstance(arg, (tuple, list)):
     return ValueImpl(computation_building_blocks.Tuple([
         ValueImpl.get_comp(to_value(x)) for x in arg]))
+  elif isinstance(arg, placement_literals.PlacementLiteral):
+    return ValueImpl(computation_building_blocks.Placement(arg))
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(

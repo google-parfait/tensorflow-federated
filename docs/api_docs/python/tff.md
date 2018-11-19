@@ -1,6 +1,8 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
 <meta itemprop="name" content="tff" />
 <meta itemprop="path" content="Stable" />
+<meta itemprop="property" content="CLIENTS"/>
+<meta itemprop="property" content="SERVER"/>
 </div>
 
 # Module: tff
@@ -28,4 +30,10 @@ TensorFlow Federated library.
 [`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
 [`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of Type.
+
+## Other Members
+
+<h3 id="CLIENTS"><code>CLIENTS</code></h3>
+
+<h3 id="SERVER"><code>SERVER</code></h3>
 

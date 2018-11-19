@@ -65,6 +65,8 @@ def serialize_type(type_spec):
     return pb.Type(function=pb.FunctionType(
         parameter=serialize_type(target.parameter),
         result=serialize_type(target.result)))
+  elif isinstance(target, types.PlacementType):
+    return pb.Type(placement=pb.PlacementType())
   else:
     raise NotImplementedError
 
@@ -107,5 +109,7 @@ def deserialize_type(type_proto):
     return types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),
         result=deserialize_type(type_proto.function.result))
+  elif type_variant == 'placement':
+    return types.PlacementType()
   else:
     raise NotImplementedError('Unknown type variant {}.'.format(type_variant))

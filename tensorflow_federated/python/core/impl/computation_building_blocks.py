@@ -31,6 +31,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
+from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
@@ -680,6 +681,48 @@ class CompiledComputation(ComputationBuildingBlock):
     return 'comp({})'.format(self._name)
 
 
+class Placement(ComputationBuildingBlock):
+  """A class for representing placement literals in computation definitions."""
+
+  @classmethod
+  def from_proto(cls, computation_proto):
+    _check_computation_oneof(computation_proto, 'placement')
+    py_typecheck.check_type(
+        type_serialization.deserialize_type(computation_proto.type),
+        types.PlacementType)
+    return cls(placement_literals.uri_to_placement_literal(
+        str(computation_proto.placement.uri)))
+
+  def __init__(self, literal):
+    """Constructs a new placement instance for the given placement literal.
+
+    Args:
+      literal: The placement literal.
+
+    Raises:
+      TypeError: if the arguments are of the wrong types.
+    """
+    py_typecheck.check_type(literal, placement_literals.PlacementLiteral)
+    super(Placement, self).__init__(types.PlacementType())
+    self._literal = literal
+
+  @property
+  def proto(self):
+    return pb.Computation(
+        type=type_serialization.serialize_type(self.type_signature),
+        placement=pb.Placement(uri=self._literal.uri))
+
+  @property
+  def uri(self):
+    return self._literal.uri
+
+  def __repr__(self):
+    return 'Placement(\'{}\')'.format(self.uri)
+
+  def __str__(self):
+    return str(self._literal)
+
+
 # pylint: disable=protected-access
 ComputationBuildingBlock._deserializer_dict = {
     'reference': Reference.from_proto,
@@ -690,5 +733,6 @@ ComputationBuildingBlock._deserializer_dict = {
     'block': Block.from_proto,
     'intrinsic': Intrinsic.from_proto,
     'data': Data.from_proto,
+    'placement': Placement.from_proto,
     'tensorflow': CompiledComputation}
 # pylint: enable=protected-access

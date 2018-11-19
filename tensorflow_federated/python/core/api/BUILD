@@ -10,6 +10,7 @@ py_library(
     deps = [
         ":computation_base",
         ":computations",
+        ":placements",
         ":types",
     ],
 )
@@ -36,6 +37,14 @@ py_test(
         ":types",
         ":value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "placements",
+    srcs = ["placements.py"],
+    deps = [
+        "//tensorflow_federated/python/core/impl:placement_literals",
     ],
 )
 

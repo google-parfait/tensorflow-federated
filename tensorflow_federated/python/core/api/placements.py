@@ -11,29 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TensorFlow Federated library."""
+"""Defines common types of placements for use in defining TFF computations."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# We are doing a wildcard import here, since symbols to export have already been
-# explicitly whitelisted in core/api, and it makes no sense to repeat them here.
-# pylint: disable=wildcard-import
-from tensorflow_federated.python.core.api import *
+
+from tensorflow_federated.python.core.impl import placement_literals
 
 
-# Used by doc generation script.
-_allowed_symbols = [
-    "CLIENTS",
-    "Computation",
-    "FunctionType",
-    "NamedTupleType",
-    "SERVER",
-    "SequenceType",
-    "TensorType",
-    "Type",
-    "federated_computation",
-    "tf_computation",
-    "to_type",
-]
+# The collective of all the client devices, a TFF placement constant.
+CLIENTS = placement_literals.CLIENTS
+
+
+# The single top-level central coordinator, a TFF placement constant.
+SERVER = placement_literals.SERVER

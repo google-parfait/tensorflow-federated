@@ -25,6 +25,7 @@ import tensorflow as tf
 
 import unittest
 
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
@@ -163,6 +164,12 @@ class ValueImplTest(parameterized.TestCase):
         anonymous_tuple.AnonymousTuple([('a', x), ('b', y)]))
     self.assertIsInstance(v, value_base.Value)
     self.assertEqual(str(v), '<a=foo,b=bar>')
+
+  def test_to_value_for_placement_literals(self):
+    clients = value_impl.to_value(placements.CLIENTS)
+    self.assertIsInstance(clients, value_base.Value)
+    self.assertEqual(str(clients.type_signature), 'placement')
+    self.assertEqual(str(clients), 'CLIENTS')
 
 
 if __name__ == '__main__':

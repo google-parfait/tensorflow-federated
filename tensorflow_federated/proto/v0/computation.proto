@@ -174,7 +174,10 @@ message Computation {
     // source cosde that defines a computation into this serialized form.
     Selection selection = 9;
 
-    // NEXT ID: 11
+    // A placement literal.
+    Placement placement = 11;
+
+    // NEXT ID: 12
   }
 }
 
@@ -281,9 +284,10 @@ message AbstractType {
   string label = 1;
 }
 
-// A representation of an instance of a built-in opaque type that conceptually
-// represents a (membership of some) collective of participants in a distributed
-// system that may participate in some part of a federated computation.
+// The term `placement` refers to a representation of an instance of a built-in
+// opaque type that conceptually represents a (membership of some) collective
+// of participants in a distributed system that may participate in some part of
+// a federated computation.
 //
 // In a typical federated computation, there would typically be at least one
 // group of client devices, one or more groups of intermediate aggregators in a
@@ -315,11 +319,14 @@ message AbstractType {
 // could be dynamically evolving over time. Federated computations are defined
 // at a higher level of abstraction that does not involve dealing with the
 // identities of the individual devices.
-//
-// The two ways of specifying a placement that correspond to the two fields in
-// the oneof below have distinct purposes. Placement labels are used to
-// construct template types of federated communication operators that can be
-// applied to federated values. For example, consider the type signature below:
+
+// A specification of a placement in a federated type. There are two ways of
+// specifying a placement in this context that correspond to the two fields in
+// the oneof below. Placement labels are used to construct template types of
+// federated communication operators that can be applied to federated values.
+// They relate all the identically-labeled placements that appear in the type
+// signature without prescribing what specifically those placements must be.
+// For example, consider the type signature below:
 //
 // federated_broadcast: T, p: placement -> T@p
 //
@@ -327,13 +334,14 @@ message AbstractType {
 // and right sides of the type signature. The represenation of this type
 // signature will use PlacementLabel on the left side.
 //
-// Concrete placement values are essentially placement literals. They are used
-// to bind types to specific placements with definite global meaning in a
+// Concrete placement values are essentially placement literals, same as those
+// that might appear in a computation body. They are used to bind types to
+// specific placements with definite global meaning in a
 // particular type of runtime environment.
-message Placement {
+message PlacementSpec {
   oneof placement {
     PlacementLabel label = 1;
-    PlacementValue value = 2;
+    Placement value = 2;
   }
 }
 
@@ -354,14 +362,14 @@ message PlacementLabel {
 
 // A representation of a specific placement defined globally by the runtime
 // environment, and embedded as a literal of the "placement" type within a type
-// signature (the same bult-in type that is represented by "PlacementType", see
-// also below). Unlike the abstract placement labels, the URIs in these values
-// have a definite global meaning for all computations executed within the same
-// environment. The exact set of such global placement URIs and their meaning
-// will depend on the system architecture and the capabilities of the platform.
-// For example, in a production setting, these might include dedicated URIs to
-// represent clients, intermediate aggregators, and coordinator placements.
-message PlacementValue {
+// signature or a computation definition. Unlike the abstract placement labels,
+// the URIs in these placement values have a definite global meaning for all
+// computations executed within the same environment. The exact set of global
+// placement URIs and their meaning will depend on the system architecture and
+// the capabilities of the platform. For example, in a production setting, these
+// might include dedicated URIs to represent clients, intermediate aggregators,
+// and coordinator placements.
+message Placement {
   // The globally unique URI that defines a specific global placement instance.
   // For example, an URI might represent the global collective of all mobile
   // devices running a certain app, or it might represent the specific
@@ -383,8 +391,8 @@ message PlacementValue {
 // or False, respectively, where "T" is the type of members, and "p" is either
 // a placement label or a placement value (generally clear from context).
 message FederatedType {
-  // The placement instance that identifies the collective of participants in
-  // a distributed system on which member components of this federated value
+  // A specification of placement that identifies the collective of participants
+  // in a distributed system on which member components of this federated value
   // are hosted.
   //
   // If the federated type appears as a part of a functional type signature,
@@ -400,7 +408,7 @@ message FederatedType {
   // On the other hand, if a federated type appears on its own, not tied to the
   // placement of any function parameter, the placement specified here will be
   // a concrete placement literal (represented by a PlacementValue).
-  Placement placement = 1;
+  PlacementSpec placement = 1;
 
   // A bit that, if set, indicates that the member components of the federated
   // value are all equal (if not set, member components may vary). This

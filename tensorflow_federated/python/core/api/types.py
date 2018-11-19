@@ -305,7 +305,26 @@ class AbstractType(Type):
     return self._label
 
 
-# TODO(b/113112108): Define the representations of all the remaining TFF types.
+class PlacementType(Type):
+  """An implementation of Type for representing the placement type in TFF.
+
+  There is only one placement type, a TFF built-in, just as there is only one
+  'int' or 'str' type in Python. All instances of this class represent the same
+  built-in TFF placement type.
+  """
+
+  def is_assignable_from(self, other):
+    py_typecheck.check_type(other, Type)
+    return isinstance(other, PlacementType)
+
+  def __repr__(self):
+    return 'PlacementType()'
+
+  def __str__(self):
+    return 'placement'
+
+
+# TODO(b/113112108): Define the representation of federated types.
 
 
 def to_type(spec):

@@ -79,6 +79,11 @@ class TypeSerializationTest(tf.test.TestCase):
         'element { value { tensor { dtype: DT_INT32 shape { } } } } '
         '} } result { tensor { dtype: DT_BOOL shape { } } } }')
 
+  def test_serialize_type_with_placement(self):
+    self.assertEqual(
+        _compact_repr(type_serialization.serialize_type(types.PlacementType())),
+        'placement { }')
+
   def test_serialize_deserialize_tensor_types(self):
     self._serialize_deserialize_roundtrip_test([
         tf.int32,
@@ -101,6 +106,10 @@ class TypeSerializationTest(tf.test.TestCase):
     self._serialize_deserialize_roundtrip_test([
         types.FunctionType(tf.int32, tf.bool),
         types.FunctionType(None, tf.bool)])
+
+  def test_serialize_deserialize_placement_type(self):
+    self._serialize_deserialize_roundtrip_test([
+        types.PlacementType()])
 
   def _serialize_deserialize_roundtrip_test(self, type_list):
     """Performs roundtrip serialization/deserialization of the given types.
