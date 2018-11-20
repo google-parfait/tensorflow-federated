@@ -16,6 +16,5 @@ py_test(
     deps = [
         "//tensorflow_federated/python/core/api",
         "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
