@@ -20,6 +20,7 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import type_serialization
@@ -84,6 +85,13 @@ class TypeSerializationTest(tf.test.TestCase):
         _compact_repr(type_serialization.serialize_type(types.PlacementType())),
         'placement { }')
 
+  def test_serialize_type_with_federated_bool(self):
+    self.assertEqual(
+        _compact_repr(type_serialization.serialize_type(
+            types.FederatedType(tf.bool, placements.CLIENTS, True))),
+        'federated { placement { value { uri: "clients" } } all_equal: true '
+        'member { tensor { dtype: DT_BOOL shape { } } } }')
+
   def test_serialize_deserialize_tensor_types(self):
     self._serialize_deserialize_roundtrip_test([
         tf.int32,
@@ -110,6 +118,11 @@ class TypeSerializationTest(tf.test.TestCase):
   def test_serialize_deserialize_placement_type(self):
     self._serialize_deserialize_roundtrip_test([
         types.PlacementType()])
+
+  def test_serialize_deserialize_federated_types(self):
+    self._serialize_deserialize_roundtrip_test([
+        types.FederatedType(tf.int32, placements.CLIENTS, True),
+        types.FederatedType(tf.int32, placements.CLIENTS, False)])
 
   def _serialize_deserialize_roundtrip_test(self, type_list):
     """Performs roundtrip serialization/deserialization of the given types.

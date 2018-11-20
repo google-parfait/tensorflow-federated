@@ -14,10 +14,8 @@ py_test(
     size = "small",
     srcs = ["sanity_test.py"],
     deps = [
-        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api",
         "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/core:protos_all_py",
         "@six_archive//:six",
     ],
 )

@@ -2,6 +2,7 @@
 
 *  <a href="./tff.md"><code>tff</code></a>
 *  <a href="./tff/Computation.md"><code>tff.Computation</code></a>
+*  <a href="./tff/FederatedType.md"><code>tff.FederatedType</code></a>
 *  <a href="./tff/FunctionType.md"><code>tff.FunctionType</code></a>
 *  <a href="./tff/NamedTupleType.md"><code>tff.NamedTupleType</code></a>
 *  <a href="./tff/SequenceType.md"><code>tff.SequenceType</code></a>

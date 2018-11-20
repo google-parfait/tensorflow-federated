@@ -19,7 +19,7 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-An implementation of Type for representing types of tensors in TFF.
+An implementation of `Type` for representing types of tensors in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -34,10 +34,10 @@ Constructs a new instance from the given dtype and shape.
 
 #### Args:
 
-* <b>`dtype`</b>: An instance of tf.DType.
-* <b>`shape`</b>: An optional instance of tf.TensorShape or an argument that can be
-    passed to its constructor (such as a list or a tuple), or None for the
-    default scalar shape. Unspecified shapes are not supported.
+* <b>`dtype`</b>: An instance of `tf.DType`.
+* <b>`shape`</b>: An optional instance of `tf.TensorShape` or an argument that can be
+    passed to its constructor (such as a `list` or a `tuple`), or `None` for
+    the default scalar shape. Unspecified shapes are not supported.
 
 
 #### Raises:

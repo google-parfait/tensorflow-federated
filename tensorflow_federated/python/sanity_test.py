@@ -22,10 +22,6 @@ import six
 import tensorflow as tf
 
 import unittest
-from tensorflow.core.framework import tensor_shape_pb2
-from tensorflow.core.framework import types_pb2
-
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.core import api as fc
 
@@ -33,21 +29,11 @@ from tensorflow_federated.python.core import api as fc
 class SanityTest(unittest.TestCase):
 
   def test_sanity(self):
-    c = pb.Computation(type=pb.Type(function=pb.FunctionType(parameter=pb.Type(
-        tuple=pb.NamedTupleType(element=[
-            pb.NamedTupleType.Element(
-                name='foo', value=pb.Type(tensor=pb.TensorType(
-                    dtype=types_pb2.DT_FLOAT,
-                    shape=tensor_shape_pb2.TensorShapeProto(
-                        dim=[tensor_shape_pb2.TensorShapeProto.Dim(size=5)])))),
-            pb.NamedTupleType.Element(
-                name='bar', value=pb.Type(placement=pb.PlacementType(
-                    instance_label=pb.PlacementLabel(label='clients'))))])))))
-    params = c.type.function.parameter.tuple.element
-    self.assertEqual(params[0].name, 'foo')
-    self.assertEqual(params[0].value.tensor.shape.dim[0].size, 5)
-    self.assertEqual(params[1].name, 'bar')
-    self.assertEqual(params[1].value.placement.instance_label.label, 'clients')
+    @fc.federated_computation(fc.FederatedType(tf.int32, fc.CLIENTS))
+    def foo(x):
+      return x
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> {int32}@CLIENTS)')
 
   def test_tensorflow_import(self):
     self.assertIsNotNone(tf.constant(10))

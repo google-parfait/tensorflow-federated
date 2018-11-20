@@ -19,7 +19,7 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-An implementation of Type for representing functional types in TFF.
+An implementation of `Type` for representing functional types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -35,9 +35,9 @@ Constructs a new instance from the given parameter and result types.
 #### Args:
 
 * <b>`parameter`</b>: A specification of the parameter type, either an instance of
-    Type or something convertible to it by to_type().
+    `Type` or something convertible to it by `to_type()`.
 * <b>`result`</b>: A specification of the result type, either an instance of
-    Type or something convertible to it by to_type().
+    `Type` or something convertible to it by `to_type()`.
 
 
 

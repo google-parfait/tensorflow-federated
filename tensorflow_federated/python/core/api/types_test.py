@@ -24,6 +24,7 @@ import tensorflow as tf
 
 import unittest
 
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
 
@@ -205,6 +206,39 @@ class TypesTest(unittest.TestCase):
     t2 = types.PlacementType()
     self.assertTrue(t1.is_assignable_from(t1))
     self.assertTrue(t1.is_assignable_from(t2))
+
+  def test_federated_type(self):
+    t1 = types.FederatedType(tf.int32, placements.CLIENTS)
+    self.assertEqual(str(t1.member), 'int32')
+    self.assertIs(t1.placement, placements.CLIENTS)
+    self.assertFalse(t1.all_equal)
+    self.assertEqual(
+        repr(t1),
+        'FederatedType(TensorType(tf.int32), '
+        'PlacementLiteral(\'clients\'), False)')
+    self.assertEqual(str(t1), '{int32}@CLIENTS')
+    self.assertTrue(t1.is_assignable_from(t1))
+    t2 = types.FederatedType(tf.int32, placements.CLIENTS, all_equal=True)
+    self.assertEqual(str(t2), 'int32@CLIENTS')
+    self.assertTrue(t1.is_assignable_from(t2))
+    self.assertTrue(t2.is_assignable_from(t2))
+    self.assertFalse(t2.is_assignable_from(t1))
+    t3 = types.FederatedType(
+        types.TensorType(tf.int32, [10]), placements.CLIENTS)
+    t4 = types.FederatedType(
+        types.TensorType(tf.int32, [None]), placements.CLIENTS)
+    self.assertTrue(t4.is_assignable_from(t3))
+    self.assertFalse(t3.is_assignable_from(t4))
+    t5 = types.FederatedType(
+        types.TensorType(tf.int32, [10]), placements.SERVER)
+    self.assertFalse(t3.is_assignable_from(t5))
+    self.assertFalse(t5.is_assignable_from(t3))
+    t6 = types.FederatedType(
+        types.TensorType(tf.int32, [10]), placements.CLIENTS, all_equal=True)
+    self.assertTrue(t3.is_assignable_from(t6))
+    self.assertTrue(t4.is_assignable_from(t6))
+    self.assertFalse(t6.is_assignable_from(t3))
+    self.assertFalse(t6.is_assignable_from(t4))
 
   def test_to_type_with_tensor_type(self):
     s = types.TensorType(tf.int32)

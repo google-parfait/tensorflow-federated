@@ -18,7 +18,7 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-An implementation of Type for representing types of sequences in TFF.
+An implementation of `Type` for representing types of sequences in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -30,8 +30,8 @@ Constructs a new instance from the given element type.
 
 #### Args:
 
-* <b>`element`</b>: A specification of the element type, either an instance of Type
-    or something convertible to it by to_type().
+* <b>`element`</b>: A specification of the element type, either an instance of `Type`
+    or something convertible to it by `to_type()`.
 
 
 

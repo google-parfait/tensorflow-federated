@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import *
 _allowed_symbols = [
     "CLIENTS",
     "Computation",
+    "FederatedType",
     "FunctionType",
     "NamedTupleType",
     "SERVER",

@@ -26,6 +26,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import types
 
+from tensorflow_federated.python.core.impl import placement_literals
+
 
 def serialize_type(type_spec):
   """Serializes 'type_spec' as a pb.Type.
@@ -67,6 +69,18 @@ def serialize_type(type_spec):
         result=serialize_type(target.result)))
   elif isinstance(target, types.PlacementType):
     return pb.Type(placement=pb.PlacementType())
+  elif isinstance(target, types.FederatedType):
+    if isinstance(target.placement, placement_literals.PlacementLiteral):
+      return pb.Type(federated=pb.FederatedType(
+          member=serialize_type(target.member),
+          placement=pb.PlacementSpec(value=pb.Placement(
+              uri=target.placement.uri)),
+          all_equal=target.all_equal))
+    else:
+      raise NotImplementedError(
+          'Serialization of federated types with placements specifications '
+          'of type {} is not currently implemented yet.'.format(
+              type(target.placement)))
   else:
     raise NotImplementedError
 
@@ -111,5 +125,17 @@ def deserialize_type(type_proto):
         result=deserialize_type(type_proto.function.result))
   elif type_variant == 'placement':
     return types.PlacementType()
+  elif type_variant == 'federated':
+    placement_oneof = type_proto.federated.placement.WhichOneof('placement')
+    if placement_oneof == 'value':
+      return types.FederatedType(
+          member=deserialize_type(type_proto.federated.member),
+          placement=placement_literals.uri_to_placement_literal(
+              type_proto.federated.placement.value.uri),
+          all_equal=type_proto.federated.all_equal)
+    else:
+      raise NotImplementedError(
+          'Deserialization of federated types with placement spec as {} '
+          'is not currently implemented yet.'.format(placement_oneof))
   else:
     raise NotImplementedError('Unknown type variant {}.'.format(type_variant))

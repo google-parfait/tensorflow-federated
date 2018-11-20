@@ -285,6 +285,7 @@ py_library(
     name = "type_serialization",
     srcs = ["type_serialization.py"],
     deps = [
+        ":placement_literals",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
@@ -298,6 +299,7 @@ py_test(
     srcs = ["type_serialization_test.py"],
     deps = [
         ":type_serialization",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

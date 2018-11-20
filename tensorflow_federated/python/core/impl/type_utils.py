@@ -302,6 +302,9 @@ def check_all_abstract_types_are_bound(type_spec):
     elif isinstance(type_spec, types.SequenceType):
       return _check_or_get_unbound_abstract_type_labels(
           type_spec.element, bound_labels, check)
+    elif isinstance(type_spec, types.FederatedType):
+      return _check_or_get_unbound_abstract_type_labels(
+          type_spec.member, bound_labels, check)
     elif isinstance(type_spec, types.NamedTupleType):
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)

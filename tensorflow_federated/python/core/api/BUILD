@@ -53,6 +53,7 @@ py_library(
     srcs = ["types.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:placement_literals",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
@@ -63,6 +64,7 @@ py_test(
     size = "small",
     srcs = ["types_test.py"],
     deps = [
+        ":placements",
         ":types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

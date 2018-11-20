@@ -26,6 +26,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
+from tensorflow_federated.python.core.impl import placement_literals
+
 
 class Type(object):
   """An abstract interface for all classes that represent TFF types."""
@@ -37,10 +39,10 @@ class Type(object):
     """Determines whether this TFF type is assignable from another TFF type.
 
     Args:
-      other: Another type, an instance of Type.
+      other: Another type, an instance of `Type`.
 
     Returns:
-      True if self is assignable from other, False otherwise.
+      `True` if self is assignable from other, `False` otherwise.
     """
     raise NotImplementedError
 
@@ -78,16 +80,16 @@ class Type(object):
 
 
 class TensorType(Type):
-  """An implementation of Type for representing types of tensors in TFF."""
+  """An implementation of `Type` for representing types of tensors in TFF."""
 
   def __init__(self, dtype, shape=None):
     """Constructs a new instance from the given dtype and shape.
 
     Args:
-      dtype: An instance of tf.DType.
-      shape: An optional instance of tf.TensorShape or an argument that can be
-        passed to its constructor (such as a list or a tuple), or None for the
-        default scalar shape. Unspecified shapes are not supported.
+      dtype: An instance of `tf.DType`.
+      shape: An optional instance of `tf.TensorShape` or an argument that can be
+        passed to its constructor (such as a `list` or a `tuple`), or `None` for
+        the default scalar shape. Unspecified shapes are not supported.
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -143,17 +145,17 @@ class TensorType(Type):
 
 
 class NamedTupleType(Type):
-  """An implementation of Type for representing types of named tuples in TFF."""
+  """An implementation of `Type` for representing named tuple types in TFF."""
 
   def __init__(self, elements):
     """Constructs a new instance from the given element types.
 
     Args:
       elements: A list of element specifications. Each element specification
-        is either a type spec (an instance of Type or something convertible to
-        it via to_type() below) for the element, or a pair (name, spec) for
+        is either a type spec (an instance of `Type` or something convertible to
+        it via `to_type()`) for the element, or a pair (name, spec) for
         elements that have defined names. Alternatively, one can supply here
-        an instance of collections.OrderedDict mapping element names to their
+        an instance of `collections.OrderedDict` mapping element names to their
         types (or things that are convertible to types).
 
     Raises:
@@ -207,14 +209,14 @@ class NamedTupleType(Type):
 
 
 class SequenceType(Type):
-  """An implementation of Type for representing types of sequences in TFF."""
+  """An implementation of `Type` for representing types of sequences in TFF."""
 
   def __init__(self, element):
     """Constructs a new instance from the given element type.
 
     Args:
-      element: A specification of the element type, either an instance of Type
-        or something convertible to it by to_type().
+      element: A specification of the element type, either an instance of `Type`
+        or something convertible to it by `to_type()`.
     """
     self._element = to_type(element)
 
@@ -235,16 +237,16 @@ class SequenceType(Type):
 
 
 class FunctionType(Type):
-  """An implementation of Type for representing functional types in TFF."""
+  """An implementation of `Type` for representing functional types in TFF."""
 
   def __init__(self, parameter, result):
     """Constructs a new instance from the given parameter and result types.
 
     Args:
       parameter: A specification of the parameter type, either an instance of
-        Type or something convertible to it by to_type().
+        `Type` or something convertible to it by `to_type()`.
       result: A specification of the result type, either an instance of
-        Type or something convertible to it by to_type().
+        `Type` or something convertible to it by `to_type()`.
     """
     self._parameter = to_type(parameter)
     self._result = to_type(result)
@@ -275,7 +277,7 @@ class FunctionType(Type):
 
 
 class AbstractType(Type):
-  """An implementation of Type for representing abstract types in TFF."""
+  """An implementation of `Type` for representing abstract types in TFF."""
 
   def __init__(self, label):
     """Constructs a new instance from the given string label.
@@ -306,10 +308,10 @@ class AbstractType(Type):
 
 
 class PlacementType(Type):
-  """An implementation of Type for representing the placement type in TFF.
+  """An implementation of `Type` for representing the placement type in TFF.
 
   There is only one placement type, a TFF built-in, just as there is only one
-  'int' or 'str' type in Python. All instances of this class represent the same
+  `int` or `str` type in Python. All instances of this class represent the same
   built-in TFF placement type.
   """
 
@@ -324,38 +326,105 @@ class PlacementType(Type):
     return 'placement'
 
 
-# TODO(b/113112108): Define the representation of federated types.
+class FederatedType(Type):
+  """An implementation of `Type` for representing federated types in TFF."""
+
+  def __init__(self, member, placement, all_equal=False):
+    """Constructs a new federated type instance.
+
+    Args:
+      member: An instance of `Type` (or something convertible to it) that
+        represents the type of the member components of each value of this
+        federated type.
+      placement: The specification of placement that the member components
+        of this federated type are hosted on. Must be either a placement
+        literal such as `SERVER` or `CLIENTS` to refer to a globally defined
+        placement, or a placement label to refer to a placement defined in
+        other parts of a type signature. Specifying placement labels is not
+        implemented yet.
+      all_equal: A `bool` value that indicates whether all members of the
+        federated type are equal (`True`), or are allowed to differ (`False`).
+    """
+    if not isinstance(placement, placement_literals.PlacementLiteral):
+      raise NotImplementedError(
+          'At the moment, only specifying placement literals is implemented.')
+    py_typecheck.check_type(all_equal, bool)
+    self._member = to_type(member)
+    self._placement = placement
+    self._all_equal = all_equal
+
+  # TODO(b/113112108): Extend this to support federated types parameterized
+  # by abstract placement labels, such as those used in generic types of
+  # federated operators.
+
+  @property
+  def member(self):
+    return self._member
+
+  @property
+  def placement(self):
+    return self._placement
+
+  @property
+  def all_equal(self):
+    return self._all_equal
+
+  def is_assignable_from(self, other):
+    py_typecheck.check_type(other, Type)
+    if (not isinstance(other, FederatedType) or
+        not self._member.is_assignable_from(other.member) or
+        self._all_equal and not other.all_equal):
+      return False
+    for val in [self, other]:
+      py_typecheck.check_type(
+          val.placement, placement_literals.PlacementLiteral)
+    return self.placement is other.placement
+
+  def __repr__(self):
+    return 'FederatedType({}, {}, {})'.format(
+        repr(self._member), repr(self._placement), repr(self._all_equal))
+
+  def __str__(self):
+    return ('{}@{}'.format(str(self._member), str(self._placement))
+            if self._all_equal
+            else '{{{}}}@{}'.format(str(self._member), str(self._placement)))
 
 
 def to_type(spec):
-  """Converts the argument into an instance of Type.
+  """Converts the argument into an instance of `Type`.
 
   Args:
-    spec: Either an instance of Type, or an argument convertible to Type.
+    spec: Either an instance of `Type`, or an argument convertible to Type.
       Assorted examples of type specifications are included below.
 
       Examples of arguments convertible to tensor types:
 
+        ```
         tf.int32
         (tf.int32, [10])
         (tf.int32, [None])
+        ```
 
       Examples of arguments convertible to flat named tuple types:
 
+        ```
         [tf.int32, tf.bool]
         (tf.int32, tf.bool)
         [('a', tf.int32), ('b', tf.bool)]
         ('a', tf.int32)
         collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
+        ```
 
       Examples of arguments convertible to nested named tuple types:
 
+        ```
         (tf.int32, (tf.float32, tf.bool))
         (tf.int32, (('x', tf.float32), tf.bool))
         ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
+        ```
 
   Returns:
-    An instance of tb.Type corresponding to the given spec.
+    An instance of `Type` corresponding to the given spec.
   """
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.

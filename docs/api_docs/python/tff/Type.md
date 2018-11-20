@@ -78,12 +78,12 @@ Determines whether this TFF type is assignable from another TFF type.
 
 #### Args:
 
-* <b>`other`</b>: Another type, an instance of Type.
+* <b>`other`</b>: Another type, an instance of `Type`.
 
 
 #### Returns:
 
-True if self is assignable from other, False otherwise.
+`True` if self is assignable from other, `False` otherwise.
 
 
 

@@ -18,7 +18,7 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-An implementation of Type for representing types of named tuples in TFF.
+An implementation of `Type` for representing named tuple types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -31,10 +31,10 @@ Constructs a new instance from the given element types.
 #### Args:
 
 * <b>`elements`</b>: A list of element specifications. Each element specification
-    is either a type spec (an instance of Type or something convertible to
-    it via to_type() below) for the element, or a pair (name, spec) for
+    is either a type spec (an instance of `Type` or something convertible to
+    it via `to_type()`) for the element, or a pair (name, spec) for
     elements that have defined names. Alternatively, one can supply here
-    an instance of collections.OrderedDict mapping element names to their
+    an instance of `collections.OrderedDict` mapping element names to their
     types (or things that are convertible to types).
 
 

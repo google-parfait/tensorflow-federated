@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
 
+from tensorflow_federated.python.core.api.types import FederatedType
 from tensorflow_federated.python.core.api.types import FunctionType
 from tensorflow_federated.python.core.api.types import NamedTupleType
 from tensorflow_federated.python.core.api.types import SequenceType
