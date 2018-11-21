@@ -25,6 +25,7 @@ import tensorflow as tf
 
 import unittest
 
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
@@ -170,6 +171,12 @@ class ValueImplTest(parameterized.TestCase):
     self.assertIsInstance(clients, value_base.Value)
     self.assertEqual(str(clients.type_signature), 'placement')
     self.assertEqual(str(clients), 'CLIENTS')
+
+  def test_to_value_for_computations(self):
+    val = value_impl.to_value(
+        computations.tf_computation(lambda: tf.constant(10)))
+    self.assertIsInstance(val, value_base.Value)
+    self.assertEqual(str(val.type_signature), '( -> int32)')
 
 
 if __name__ == '__main__':

@@ -10,6 +10,7 @@ py_library(
     deps = [
         ":computation_base",
         ":computations",
+        ":intrinsics",
         ":placements",
         ":types",
     ],
@@ -36,6 +37,34 @@ py_test(
         ":computations",
         ":types",
         ":value_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "intrinsics",
+    srcs = ["intrinsics.py"],
+    deps = [
+        ":computations",
+        ":placements",
+        ":types",
+        ":value_base",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:computation_building_blocks",
+        "//tensorflow_federated/python/core/impl:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl:value_impl",
+    ],
+)
+
+py_test(
+    name = "intrinsics_test",
+    size = "small",
+    srcs = ["intrinsics_test.py"],
+    deps = [
+        ":computations",
+        ":intrinsics",
+        ":placements",
+        ":types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

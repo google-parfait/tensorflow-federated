@@ -25,11 +25,13 @@ from six import string_types
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import placement_literals
 
@@ -135,12 +137,15 @@ class ValueImpl(value_base.Value):
           '{} that does not support invocation.'.format(
               str(self._comp.type_signature)))
     else:
-      args = [to_value(x) for x in args]
-      kwargs = {k: to_value(v) for k, v in kwargs.iteritems()}
-      arg = func_utils.pack_args(
-          self._comp.type_signature.parameter, args, kwargs)
-      return ValueImpl(computation_building_blocks.Call(
-          self._comp, ValueImpl.get_comp(to_value(arg))))
+      if args or kwargs:
+        args = [to_value(x) for x in args]
+        kwargs = {k: to_value(v) for k, v in kwargs.iteritems()}
+        arg = func_utils.pack_args(
+            self._comp.type_signature.parameter, args, kwargs)
+        arg = ValueImpl.get_comp(to_value(arg))
+      else:
+        arg = None
+      return ValueImpl(computation_building_blocks.Call(self._comp, arg))
 
 
 def to_value(arg):
@@ -154,6 +159,7 @@ def to_value(arg):
       * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all of
         which are converted into instances of Tuple.
       * Placement literals, converted into instances of `Placement`.
+      * Computations.
 
   Returns:
     An instance of Value corresponding to the given 'arg'.
@@ -177,6 +183,10 @@ def to_value(arg):
         ValueImpl.get_comp(to_value(x)) for x in arg]))
   elif isinstance(arg, placement_literals.PlacementLiteral):
     return ValueImpl(computation_building_blocks.Placement(arg))
+  elif isinstance(arg, computation_base.Computation):
+    return ValueImpl(
+        computation_building_blocks.CompiledComputation(
+            computation_impl.ComputationImpl.get_proto(arg)))
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(

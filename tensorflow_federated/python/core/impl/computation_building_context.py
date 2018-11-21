@@ -11,30 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for sanity."""
+"""The implementation of a context to use in building federated computations."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-import tensorflow as tf
-
-import unittest
-
-from tensorflow_federated.python.core import api as fc
+from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import value_impl
 
 
-class SanityTest(unittest.TestCase):
+class ComputationBuildingContext(context_base.Context):
+  """The context for building federated computations."""
 
-  def test_core_api(self):
-    @fc.federated_computation(fc.FederatedType(tf.bool, fc.CLIENTS))
-    def foo(x):
-      return fc.federated_sum(
-          fc.federated_map(x, fc.tf_computation(tf.to_int32, tf.bool)))
-    self.assertEqual(
-        str(foo.type_signature), '({bool}@CLIENTS -> int32@SERVER)')
-
-
-if __name__ == '__main__':
-  unittest.main()
+  def invoke(self, comp, arg):
+    func = value_impl.to_value(comp)
+    return func(arg) if arg is not None else func()

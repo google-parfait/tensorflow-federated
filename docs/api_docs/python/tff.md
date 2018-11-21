@@ -3,6 +3,9 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="CLIENTS"/>
 <meta itemprop="property" content="SERVER"/>
+<meta itemprop="property" content="federated_broadcast"/>
+<meta itemprop="property" content="federated_map"/>
+<meta itemprop="property" content="federated_sum"/>
 </div>
 
 # Module: tff
@@ -38,4 +41,10 @@ TensorFlow Federated library.
 <h3 id="CLIENTS"><code>CLIENTS</code></h3>
 
 <h3 id="SERVER"><code>SERVER</code></h3>
+
+<h3 id="federated_broadcast"><code>federated_broadcast</code></h3>
+
+<h3 id="federated_map"><code>federated_map</code></h3>
+
+<h3 id="federated_sum"><code>federated_sum</code></h3>
 

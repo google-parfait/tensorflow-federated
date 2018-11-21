@@ -11,28 +11,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TensorFlow Federated Core API."""
+"""Tests for types."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.core.api.computation_base import Computation
+# Dependency imports
+import tensorflow as tf
+
+import unittest
 
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
-
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
-
-from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
-
 from tensorflow_federated.python.core.api.types import FederatedType
-from tensorflow_federated.python.core.api.types import FunctionType
-from tensorflow_federated.python.core.api.types import NamedTupleType
-from tensorflow_federated.python.core.api.types import SequenceType
-from tensorflow_federated.python.core.api.types import TensorType
-from tensorflow_federated.python.core.api.types import to_type
-from tensorflow_federated.python.core.api.types import Type
+
+
+class IntrinsicsTest(unittest.TestCase):
+
+  def test_simple(self):
+    @federated_computation(FederatedType(tf.float32, SERVER, True))
+    def foo(x):
+      return federated_sum(
+          federated_map(
+              federated_broadcast(x),
+              tf_computation(lambda x: tf.to_int32(x > 0.5), tf.float32)))
+    self.assertEqual(
+        str(foo.type_signature), '(float32@SERVER -> int32@SERVER)')
+
+
+if __name__ == '__main__':
+  unittest.main()

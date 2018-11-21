@@ -34,7 +34,10 @@ _allowed_symbols = [
     "SequenceType",
     "TensorType",
     "Type",
+    "federated_broadcast",
     "federated_computation",
+    "federated_map",
+    "federated_sum",
     "tf_computation",
     "to_type",
 ]

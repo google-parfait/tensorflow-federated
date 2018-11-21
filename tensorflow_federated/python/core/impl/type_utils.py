@@ -25,6 +25,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
@@ -51,7 +52,7 @@ def infer_type(arg):
   # TODO(b/113112885): Implement the remaining cases here on the need basis.
   if arg is None:
     return None
-  elif isinstance(arg, value_base.Value):
+  elif isinstance(arg, (value_base.Value, computation_base.Computation)):
     return arg.type_signature
   elif tf.contrib.framework.is_tensor(arg):
     return types.TensorType(arg.dtype.base_dtype, arg.shape)

@@ -49,10 +49,33 @@ py_test(
 )
 
 py_library(
+    name = "computation_building_context",
+    srcs = ["computation_building_context.py"],
+    deps = [
+        ":context_base",
+        ":value_impl",
+    ],
+)
+
+py_test(
+    name = "computation_building_context_test",
+    size = "small",
+    srcs = ["computation_building_context_test.py"],
+    deps = [
+        ":computation_building_context",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:value_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "computation_building_utils",
     srcs = ["computation_building_utils.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_building_context",
+        ":context_stack",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
@@ -229,6 +252,27 @@ py_test(
 )
 
 py_library(
+    name = "intrinsic_defs",
+    srcs = ["intrinsic_defs.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:types",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "intrinsic_defs_test",
+    size = "small",
+    srcs = ["intrinsic_defs_test.py"],
+    deps = [
+        ":intrinsic_defs",
+        ":type_utils",
+    ],
+)
+
+py_library(
     name = "placement_literals",
     srcs = ["placement_literals.py"],
 )
@@ -311,6 +355,7 @@ py_library(
     deps = [
         ":anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -339,12 +384,14 @@ py_library(
     deps = [
         ":anonymous_tuple",
         ":computation_building_blocks",
+        ":computation_impl",
         ":func_utils",
         ":placement_literals",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
         "@six_archive//:six",
@@ -359,6 +406,7 @@ py_test(
         ":anonymous_tuple",
         ":tensorflow_serialization",
         ":value_impl",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",

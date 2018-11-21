@@ -31,6 +31,11 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack
 class ComputationImpl(func_utils.ConcreteFunction):
   """An implementation of the base interface cb.Computation."""
 
+  @classmethod
+  def get_proto(cls, value):
+    py_typecheck.check_type(value, cls)
+    return value._computation_proto  # pylint: disable=protected-access
+
   def __init__(self, computation_proto):
     """Constructs a new instance of ComputationImpl from the computation_proto.
 

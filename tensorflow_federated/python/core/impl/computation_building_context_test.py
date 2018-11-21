@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for sanity."""
+"""Tests for value_utils.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,18 +22,20 @@ import tensorflow as tf
 
 import unittest
 
-from tensorflow_federated.python.core import api as fc
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import value_base
+
+from tensorflow_federated.python.core.impl import computation_building_context
 
 
-class SanityTest(unittest.TestCase):
+class ComputationBuildingContextTest(unittest.TestCase):
 
-  def test_core_api(self):
-    @fc.federated_computation(fc.FederatedType(tf.bool, fc.CLIENTS))
-    def foo(x):
-      return fc.federated_sum(
-          fc.federated_map(x, fc.tf_computation(tf.to_int32, tf.bool)))
-    self.assertEqual(
-        str(foo.type_signature), '({bool}@CLIENTS -> int32@SERVER)')
+  def test_something(self):
+    context = computation_building_context.ComputationBuildingContext()
+    comp = computations.tf_computation(lambda: tf.constant(10))
+    result = context.invoke(comp, None)
+    self.assertIsInstance(result, value_base.Value)
+    self.assertEqual(str(result.type_signature), 'int32')
 
 
 if __name__ == '__main__':
