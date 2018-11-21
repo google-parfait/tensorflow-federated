@@ -77,9 +77,16 @@ def _wrap(func, parameter_type, wrapper_fn):
                 func, parameter_type, unpack=True),
             parameter_type)
       # pylint: disable=g-long-lambda,undefined-variable
-      return (lambda wfn, fn: func_utils.PolymorphicFunction(
+      polymorphic_fn = (lambda wfn, fn: func_utils.PolymorphicFunction(
           lambda pt: _wrap_polymorphic(wfn, fn, pt)))(wrapper_fn, func)
       # pylint: enable=g-long-lambda,undefined-variable
+
+      # When applying a decorator, the __doc__ attribute with the documentation
+      # in triple-quotes is not automatically transferred from the function on
+      # which it was applied to the wrapped object, so we must transfer it here
+      # explicitly.
+      polymorphic_fn.__doc__ = getattr(func, '__doc__', None)
+      return polymorphic_fn
   concrete_fn = wrapper_fn(
       func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type),
       parameter_type)
@@ -90,6 +97,9 @@ def _wrap(func, parameter_type, wrapper_fn):
         'Expected a concrete function that takes parameter {}, got one '
         'that takes {}.'.format(
             str(parameter_type), str(concrete_fn.type_signature.parameter)))
+  # When applying a decorator, the __doc__ attribute with the documentation
+  # in triple-quotes is not automatically transferred from the function on
+  concrete_fn.__doc__ = getattr(func, '__doc__', None)
   return concrete_fn
 
 
