@@ -269,6 +269,7 @@ py_test(
     deps = [
         ":intrinsic_defs",
         ":type_utils",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 

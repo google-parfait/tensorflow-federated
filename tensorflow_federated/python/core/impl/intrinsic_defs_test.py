@@ -17,35 +17,44 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# Dependency imports
+from absl.testing import parameterized
 import unittest
 
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_utils
 
 
-class IntrinsicDefsTest(unittest.TestCase):
+def _get_intrinsic_names():
+  return [name for name in dir(intrinsic_defs) if isinstance(
+      getattr(intrinsic_defs, name), intrinsic_defs.IntrinsicDef)]
 
-  def setUp(self):
-    self._defs = [
-        value for value in [
-            getattr(intrinsic_defs, name) for name in dir(intrinsic_defs)]
-        if isinstance(value, intrinsic_defs.IntrinsicDef)]
 
-  def test_names_are_unique(self):
-    found = set()
-    for d in self._defs:
-      self.assertNotIn(d.name, found)
-      found.add(d.name)
+class IntrinsicDefsTest(parameterized.TestCase):
+
+  @parameterized.parameters(*[(name,) for name in _get_intrinsic_names()])
+  def test_names_match_those_in_module(self, name):
+    self.assertEqual(getattr(intrinsic_defs, name).name, name)
 
   def test_uris_are_unique(self):
-    found = set()
-    for d in self._defs:
-      self.assertNotIn(d.uri, found)
-      found.add(d.uri)
+    uris_found = set()
+    for name in _get_intrinsic_names():
+      uri = getattr(intrinsic_defs, name).uri
+      self.assertNotIn(uri, uris_found)
+      uris_found.add(uri)
 
-  def test_types_are_well_formed(self):
-    for d in self._defs:
-      type_utils.check_well_formed(d.type_signature)
+  @parameterized.parameters(*[(name,) for name in _get_intrinsic_names()])
+  def test_types_are_well_formed(self, name):
+    type_utils.check_well_formed(getattr(intrinsic_defs, name).type_signature)
+
+  @parameterized.parameters(
+      ('FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
+      ('FEDERATED_MAP', '(<{T}@CLIENTS,(T -> U)> -> {U}@CLIENTS)'),
+      ('FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
+      ('FEDERATED_ZIP', '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'))
+  def test_type_signature_strings(self, name, type_str):
+    self.assertEqual(
+        str(getattr(intrinsic_defs, name).type_signature), type_str)
 
 
 if __name__ == '__main__':

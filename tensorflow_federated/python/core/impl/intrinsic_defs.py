@@ -99,5 +99,16 @@ FEDERATED_SUM = IntrinsicDef(
     'FEDERATED_SUM',
     'federated_sum',
     types.FunctionType(
-        types.FederatedType(types.AbstractType('T'), placements.CLIENTS, False),
+        types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
         types.FederatedType(types.AbstractType('T'), placements.SERVER, True)))
+
+
+FEDERATED_ZIP = IntrinsicDef(
+    'FEDERATED_ZIP',
+    'federated_zip',
+    types.FunctionType(
+        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+         types.FederatedType(types.AbstractType('U'), placements.CLIENTS)],
+        types.FederatedType(
+            [types.AbstractType('T'), types.AbstractType('U')],
+            placements.CLIENTS)))
