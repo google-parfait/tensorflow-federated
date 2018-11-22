@@ -38,6 +38,7 @@ _allowed_symbols = [
     "federated_computation",
     "federated_map",
     "federated_sum",
+    "federated_zip",
     "tf_computation",
     "to_type",
 ]

@@ -3,9 +3,6 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="CLIENTS"/>
 <meta itemprop="property" content="SERVER"/>
-<meta itemprop="property" content="federated_broadcast"/>
-<meta itemprop="property" content="federated_map"/>
-<meta itemprop="property" content="federated_sum"/>
 </div>
 
 # Module: tff
@@ -30,7 +27,15 @@ TensorFlow Federated library.
 
 ## Functions
 
+[`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
+
 [`federated_computation(...)`](./tff/federated_computation.md): Decorates/wraps Python functions as TFF federated/composite computations.
+
+[`federated_map(...)`](./tff/federated_map.md): Maps a federated value on CLIENTS pointwise using a given mapping function.
+
+[`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a federated value placed on the `CLIENTS`.
+
+[`federated_zip(...)`](./tff/federated_zip.md): Converts a 2-tuple of federated values into a federated 2-tuple value.
 
 [`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
@@ -41,10 +46,4 @@ TensorFlow Federated library.
 <h3 id="CLIENTS"><code>CLIENTS</code></h3>
 
 <h3 id="SERVER"><code>SERVER</code></h3>
-
-<h3 id="federated_broadcast"><code>federated_broadcast</code></h3>
-
-<h3 id="federated_map"><code>federated_map</code></h3>
-
-<h3 id="federated_sum"><code>federated_sum</code></h3>
 

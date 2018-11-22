@@ -8,8 +8,16 @@ toc:
       path: /federated/api_docs/python/tff/Computation
     - title: FederatedType
       path: /federated/api_docs/python/tff/FederatedType
+    - title: federated_broadcast
+      path: /federated/api_docs/python/tff/federated_broadcast
     - title: federated_computation
       path: /federated/api_docs/python/tff/federated_computation
+    - title: federated_map
+      path: /federated/api_docs/python/tff/federated_map
+    - title: federated_sum
+      path: /federated/api_docs/python/tff/federated_sum
+    - title: federated_zip
+      path: /federated/api_docs/python/tff/federated_zip
     - title: FunctionType
       path: /federated/api_docs/python/tff/FunctionType
     - title: NamedTupleType

@@ -40,14 +40,16 @@ class IntrinsicDef(object):
     Args:
       name: The short human-friendly name of this intrinsic.
       uri: The URI of this intrinsic.
-      type_spec: The type of the intrinsic, either an instance of types.Type or
-        something convertible to it.
+      type_spec: The type of the intrinsic, which must be functional, either
+        an instance of types.FunctionType or something convertible to it.
     """
     py_typecheck.check_type(name, string_types)
     py_typecheck.check_type(uri, string_types)
+    type_spec = types.to_type(type_spec)
+    py_typecheck.check_type(type_spec, types.FunctionType)
     self._name = str(name)
     self._uri = str(uri)
-    self._type_signature = types.to_type(type_spec)
+    self._type_signature = type_spec
 
   # TODO(b/113112885): Add support for an optional type checking function that
   # can verify whether this intrinsic is applicable to given kinds of arguments,

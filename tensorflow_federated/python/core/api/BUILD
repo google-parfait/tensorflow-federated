@@ -45,7 +45,6 @@ py_library(
     name = "intrinsics",
     srcs = ["intrinsics.py"],
     deps = [
-        ":computations",
         ":placements",
         ":types",
         ":value_base",
