@@ -49,33 +49,12 @@ py_test(
 )
 
 py_library(
-    name = "computation_building_context",
-    srcs = ["computation_building_context.py"],
-    deps = [
-        ":context_base",
-        ":value_impl",
-    ],
-)
-
-py_test(
-    name = "computation_building_context_test",
-    size = "small",
-    srcs = ["computation_building_context_test.py"],
-    deps = [
-        ":computation_building_context",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:value_base",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
     name = "computation_building_utils",
     srcs = ["computation_building_utils.py"],
     deps = [
         ":computation_building_blocks",
-        ":computation_building_context",
         ":context_stack",
+        ":federated_computation_context",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
@@ -198,6 +177,27 @@ py_library(
 )
 
 py_library(
+    name = "federated_computation_context",
+    srcs = ["federated_computation_context.py"],
+    deps = [
+        ":context_base",
+        ":value_impl",
+    ],
+)
+
+py_test(
+    name = "federated_computation_context_test",
+    size = "small",
+    srcs = ["federated_computation_context_test.py"],
+    deps = [
+        ":federated_computation_context",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:value_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "func_utils",
     srcs = ["func_utils.py"],
     deps = [
@@ -289,7 +289,9 @@ py_library(
     name = "tensorflow_serialization",
     srcs = ["tensorflow_serialization.py"],
     deps = [
+        ":context_stack",
         ":graph_utils",
+        ":tf_computation_context",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -322,6 +324,31 @@ py_test(
     srcs = ["test_utils_test.py"],
     deps = [
         ":test_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "tf_computation_context",
+    srcs = ["tf_computation_context.py"],
+    deps = [
+        ":computation_impl",
+        ":context_base",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+    ],
+)
+
+py_test(
+    name = "tf_computation_context_test",
+    size = "small",
+    srcs = ["tf_computation_context_test.py"],
+    deps = [
+        ":tf_computation_context",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for value_utils.py."""
+"""Tests for federated_computation_context.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,13 +25,13 @@ import unittest
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
 
-from tensorflow_federated.python.core.impl import computation_building_context
+from tensorflow_federated.python.core.impl import federated_computation_context
 
 
-class ComputationBuildingContextTest(unittest.TestCase):
+class FederatedComputationContextTest(unittest.TestCase):
 
   def test_something(self):
-    context = computation_building_context.ComputationBuildingContext()
+    context = federated_computation_context.FederatedComputationContext()
     comp = computations.tf_computation(lambda: tf.constant(10))
     result = context.invoke(comp, None)
     self.assertIsInstance(result, value_base.Value)

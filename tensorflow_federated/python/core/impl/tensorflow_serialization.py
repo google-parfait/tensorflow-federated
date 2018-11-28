@@ -30,7 +30,10 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl import type_serialization
+
+from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 
 def serialize_py_func_as_tf_computation(target, parameter_type=None):
@@ -85,7 +88,9 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
             'Expected the target to declare no parameters, found {}.'.format(
                 repr(argspec.args)))
       parameter_binding = None
-    result = target(*args)
+    context = tf_computation_context.TensorFlowComputationContext()
+    with context_stack.install(context):
+      result = target(*args)
     result_type, result_binding = graph_utils.capture_result_from_graph(result)
 
   return pb.Computation(

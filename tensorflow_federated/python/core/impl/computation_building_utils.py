@@ -21,9 +21,10 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_building_context
-from tensorflow_federated.python.core.impl import context_stack
+from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import value_impl
+
+from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 
 def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
@@ -45,8 +46,8 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
   """
   py_typecheck.check_callable(func)
   parameter_type = types.to_type(parameter_type)
-  context = computation_building_context.ComputationBuildingContext()
-  with context_stack.context_stack.install(context):
+  context = federated_computation_context.FederatedComputationContext()
+  with context_stack.install(context):
     if parameter_type:
       result = func(value_impl.ValueImpl(
           computation_building_blocks.Reference(
