@@ -24,6 +24,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -288,6 +289,25 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
   def test_binary_op(self):
     self.assertEqual(
         str(type_utils.binary_op(tf.bool)), '(<bool,bool> -> bool)')
+
+  @parameterized.parameters(
+      tf.int32,
+      ([tf.int32, tf.int32],),
+      types.FederatedType(tf.int32, placements.CLIENTS),
+      ([tf.complex128, tf.float32, tf.float64],))
+  def test_is_sum_compatible_positive_examples(self, type_spec):
+    self.assertTrue(type_utils.is_sum_compatible(type_spec))
+
+  @parameterized.parameters(
+      tf.bool,
+      tf.string,
+      ([tf.int32, tf.bool],),
+      types.SequenceType(tf.int32),
+      types.PlacementType(),
+      types.FunctionType(tf.int32, tf.int32),
+      types.AbstractType('T'))
+  def test_is_sum_compatible_negative_examples(self, type_spec):
+    self.assertFalse(type_utils.is_sum_compatible(type_spec))
 
 
 if __name__ == '__main__':

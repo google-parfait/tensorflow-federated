@@ -87,6 +87,12 @@ class IntrinsicsTest(unittest.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
 
+  def test_federated_sum_with_client_string(self):
+    with self.assertRaises(TypeError):
+      @federated_computation(FederatedType(tf.string, CLIENTS))
+      def _(x):
+        return federated_sum(x)
+
   def test_federated_sum_with_server_int(self):
     with self.assertRaises(TypeError):
       @federated_computation(FederatedType(tf.int32, SERVER))

@@ -209,6 +209,10 @@ def federated_sum(value):
     raise TypeError(
         'The value to be summed should be placed at the CLIENTS, but it '
         'is placed at {}.'.format(str(value.type_signature.placement)))
+  if not type_utils.is_sum_compatible(value.type_signature):
+    raise TypeError(
+        'The value type {} is not compatible with the sum operator.'.format(
+            str(value.type_signature)))
 
   # TODO(b/113112108): Replace this as noted above.
   result_type = types.FederatedType(

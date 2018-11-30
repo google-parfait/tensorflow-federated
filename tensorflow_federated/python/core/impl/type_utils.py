@@ -359,3 +359,41 @@ def binary_op(type_spec):
   """
   type_spec = types.to_type(type_spec)
   return reduction_op(type_spec, type_spec)
+
+
+def is_numeric_dtype(dtype):
+  """Returns True iff `dtype` is numeric.
+
+  Args:
+    dtype: An instance of tf.DType.
+
+  Returns:
+    True iff `dtype` is numeric, i.e., integer, float, or complex.
+  """
+  py_typecheck.check_type(dtype, tf.DType)
+  return dtype.is_integer or dtype.is_floating or dtype.is_complex
+
+
+def is_sum_compatible(type_spec):
+  """Determines if `type_spec` is a type that can be added to itself.
+
+  Types that are sum-compatible are composed of scalars of numeric types,
+  possibly packaged into nested named tuples, and possibly federated. Types
+  that are sum-incompatible include sequences, functions, abstract types,
+  and placements.
+
+  Args:
+    type_spec: Either an instance of types.Type, or something convertible to it.
+
+  Returns:
+    `True` iff `type_spec` is sum-compatible, `False` otherwise.
+  """
+  type_spec = types.to_type(type_spec)
+  if isinstance(type_spec, types.TensorType):
+    return is_numeric_dtype(type_spec.dtype)
+  elif isinstance(type_spec, types.NamedTupleType):
+    return all(is_sum_compatible(v) for _, v in type_spec.elements)
+  elif isinstance(type_spec, types.FederatedType):
+    return is_sum_compatible(type_spec.member)
+  else:
+    return False
