@@ -11,6 +11,7 @@
 *  <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>
 *  <a href="./tff/federated_computation.md"><code>tff.federated_computation</code></a>
 *  <a href="./tff/federated_map.md"><code>tff.federated_map</code></a>
+*  <a href="./tff/federated_reduce.md"><code>tff.federated_reduce</code></a>
 *  <a href="./tff/federated_sum.md"><code>tff.federated_sum</code></a>
 *  <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *  <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>

@@ -33,6 +33,8 @@ TensorFlow Federated library.
 
 [`federated_map(...)`](./tff/federated_map.md): Maps a federated value on CLIENTS pointwise using a given mapping function.
 
+[`federated_reduce(...)`](./tff/federated_reduce.md): Reduces `value` from `CLIENTS` to `SERVER` using a reduction operator `op`.
+
 [`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a federated value placed on the `CLIENTS`.
 
 [`federated_zip(...)`](./tff/federated_zip.md): Converts a 2-tuple of federated values into a federated 2-tuple value.

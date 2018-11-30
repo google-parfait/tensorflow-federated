@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
 
@@ -119,6 +120,73 @@ def federated_map(value, mapping_fn):
       intrinsic_defs.FEDERATED_MAP.uri,
       types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
+
+
+def federated_reduce(value, zero, op):
+  """Reduces `value` from `CLIENTS` to `SERVER` using a reduction operator `op`.
+
+  This method reduces a set of member constituents of a `value` of federated
+  type `T@CLIENTS` for some `T`, using a given `zero` in the algebra (i.e., the
+  result of reducing an empty set) of some type `U`, and a reduction operator
+  `op` with type signature `(<U,T> -> U)` that incorporates a single `T`-typed
+  member constituent of `value` into the `U`-typed result of partial reduction.
+  In the special case of `T` equal to `U`, this corresponds to the classical
+  notion of reduction of a set using a commutative associative binary operator.
+  The generalized reduction (with `T` not equal to `U`) requires that repeated
+  application of `op` to reduce a set of `T` always yields the same `U`-typed
+  result, regardless of the order in which elements of `T` are processed in the
+  course of the reduction.
+
+  Args:
+    value: A value of a TFF federated type placed at the `CLIENTS`.
+    zero: The result of reducing a value with no constituents.
+    op: An operator with type signature `(<U,T> -> U)`, where `T` is the type
+      of the constituents of `value` and `U` is the type of `zero` to be used
+      in performing the reduction.
+
+  Returns:
+    A representation on the `SERVER` of the result of reducing the set of all
+    member constituents of `value` using the operator `op` into a single item.
+
+  Raises:
+    TypeError: if the arguments are not of the types specified above.
+  """
+  # TODO(b/113112108): Since in most cases, it can be assumed that CLIENTS is
+  # a non-empty collective (or else, the computation fails), specifying zero
+  # at this level of the API should probably be optional. TBD.
+
+  value = value_impl.to_value(value)
+  py_typecheck.check_type(value, value_base.Value)
+  py_typecheck.check_type(value.type_signature, types.FederatedType)
+  if value.type_signature.placement is not placements.CLIENTS:
+    raise TypeError(
+        'The value to be reduced should be placed at the CLIENTS, but it '
+        'is placed at {}.'.format(str(value.type_signature.placement)))
+
+  zero = value_impl.to_value(zero)
+  py_typecheck.check_type(zero, value_base.Value)
+
+  # TODO(b/113112108): We need a check here that zero does not have federated
+  # constituents.
+
+  op = value_impl.to_value(op)
+  py_typecheck.check_type(op, value_base.Value)
+  py_typecheck.check_type(op.type_signature, types.FunctionType)
+  op_type_expected = type_utils.reduction_op(
+      zero.type_signature, value.type_signature.member)
+  if not op_type_expected.is_assignable_from(op.type_signature):
+    raise TypeError('Expected an operator of type {}, got {}.'.format(
+        str(op_type_expected), str(op.type_signature)))
+
+  # TODO(b/113112108): Replace this as noted above.
+  result_type = types.FederatedType(
+      zero.type_signature, placements.SERVER, True)
+  intrinsic = value_impl.ValueImpl(computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_REDUCE.uri,
+      types.FunctionType(
+          [value.type_signature, zero.type_signature, op_type_expected],
+          result_type)))
+  return intrinsic(value, zero, op)
 
 
 def federated_sum(value):

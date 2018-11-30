@@ -14,6 +14,8 @@ toc:
       path: /federated/api_docs/python/tff/federated_computation
     - title: federated_map
       path: /federated/api_docs/python/tff/federated_map
+    - title: federated_reduce
+      path: /federated/api_docs/python/tff/federated_reduce
     - title: federated_sum
       path: /federated/api_docs/python/tff/federated_sum
     - title: federated_zip

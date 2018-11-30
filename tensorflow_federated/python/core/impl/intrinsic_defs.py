@@ -97,6 +97,18 @@ FEDERATED_MAP = IntrinsicDef(
         types.FederatedType(types.AbstractType('U'), placements.CLIENTS)))
 
 
+FEDERATED_REDUCE = IntrinsicDef(
+    'FEDERATED_REDUCE',
+    'federated_reduce',
+    types.FunctionType(
+        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+         types.AbstractType('U'),
+         types.FunctionType(
+             [types.AbstractType('U'), types.AbstractType('T')],
+             types.AbstractType('U'))],
+        types.FederatedType(types.AbstractType('U'), placements.SERVER, True)))
+
+
 FEDERATED_SUM = IntrinsicDef(
     'FEDERATED_SUM',
     'federated_sum',

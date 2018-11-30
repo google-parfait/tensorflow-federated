@@ -280,6 +280,15 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertRaises(
         TypeError, type_utils.check_all_abstract_types_are_bound, type_spec)
 
+  def test_reduction_op(self):
+    self.assertEqual(
+        str(type_utils.reduction_op(tf.float32, tf.int32)),
+        '(<float32,int32> -> float32)')
+
+  def test_binary_op(self):
+    self.assertEqual(
+        str(type_utils.binary_op(tf.bool)), '(<bool,bool> -> bool)')
+
 
 if __name__ == '__main__':
   tf.test.main()
