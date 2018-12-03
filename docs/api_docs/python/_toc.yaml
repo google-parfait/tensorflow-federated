@@ -10,6 +10,8 @@ toc:
       path: /federated/api_docs/python/tff/FederatedType
     - title: federated_broadcast
       path: /federated/api_docs/python/tff/federated_broadcast
+    - title: federated_collect
+      path: /federated/api_docs/python/tff/federated_collect
     - title: federated_computation
       path: /federated/api_docs/python/tff/federated_computation
     - title: federated_map

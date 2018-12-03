@@ -29,6 +29,8 @@ TensorFlow Federated library.
 
 [`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
+[`federated_collect(...)`](./tff/federated_collect.md): Materializes a federated value from `CLIENTS` as a `SERVER` sequence.
+
 [`federated_computation(...)`](./tff/federated_computation.md): Decorates/wraps Python functions as TFF federated/composite computations.
 
 [`federated_map(...)`](./tff/federated_map.md): Maps a federated value on CLIENTS pointwise using a given mapping function.

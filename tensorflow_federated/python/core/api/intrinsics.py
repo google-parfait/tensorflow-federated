@@ -46,12 +46,9 @@ def federated_broadcast(value):
       `SERVER`.
   """
   value = value_impl.to_value(value)
-  py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, types.FederatedType)
-  if value.type_signature.placement is not placements.SERVER:
-    raise TypeError(
-        'The value to be broadcasted should be placed at the SERVER, but it '
-        'is placed at {}.'.format(str(value.type_signature.placement)))
+  type_utils.check_federated_value_placement(
+      value, placements.SERVER, 'value to be broadcasted')
+
   if not value.type_signature.all_equal:
     raise TypeError('The broadcasted value should be equal at all locations.')
 
@@ -63,6 +60,31 @@ def federated_broadcast(value):
       value.type_signature.member, placements.CLIENTS, True)
   intrinsic = value_impl.ValueImpl(computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_BROADCAST.uri,
+      types.FunctionType(value.type_signature, result_type)))
+  return intrinsic(value)
+
+
+def federated_collect(value):
+  """Materializes a federated value from `CLIENTS` as a `SERVER` sequence.
+
+  Args:
+    value: A value of a TFF federated type placed at the `CLIENTS`.
+
+  Returns:
+    A stream of the same type as the member constituents of `value` placed at
+    the `SERVER`.
+
+  Raises:
+    TypeError: if the argument is not a federated TFF value placed at `CLIENTS`.
+  """
+  value = value_impl.to_value(value)
+  type_utils.check_federated_value_placement(
+      value, placements.CLIENTS, 'value to be collected')
+
+  result_type = types.FederatedType(
+      types.SequenceType(value.type_signature.member), placements.SERVER, True)
+  intrinsic = value_impl.ValueImpl(computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_COLLECT.uri,
       types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
 
@@ -90,12 +112,8 @@ def federated_map(value, mapping_fn):
   # is based on to work with federated values of arbitrary placement.
 
   value = value_impl.to_value(value)
-  py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, types.FederatedType)
-  if value.type_signature.placement is not placements.CLIENTS:
-    raise TypeError(
-        'The value to be mapped should be placed at the CLIENTS, but it '
-        'is placed at {}.'.format(str(value.type_signature.placement)))
+  type_utils.check_federated_value_placement(
+      value, placements.CLIENTS, 'value to be mapped')
 
   # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
   # here based on the actual type of the argument.
@@ -156,12 +174,8 @@ def federated_reduce(value, zero, op):
   # at this level of the API should probably be optional. TBD.
 
   value = value_impl.to_value(value)
-  py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, types.FederatedType)
-  if value.type_signature.placement is not placements.CLIENTS:
-    raise TypeError(
-        'The value to be reduced should be placed at the CLIENTS, but it '
-        'is placed at {}.'.format(str(value.type_signature.placement)))
+  type_utils.check_federated_value_placement(
+      value, placements.CLIENTS, 'value to be reduced')
 
   zero = value_impl.to_value(zero)
   py_typecheck.check_type(zero, value_base.Value)
@@ -203,12 +217,9 @@ def federated_sum(value):
     TypeError: if the argument is not a federated TFF value placed at `CLIENTS`.
   """
   value = value_impl.to_value(value)
-  py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, types.FederatedType)
-  if value.type_signature.placement is not placements.CLIENTS:
-    raise TypeError(
-        'The value to be summed should be placed at the CLIENTS, but it '
-        'is placed at {}.'.format(str(value.type_signature.placement)))
+  type_utils.check_federated_value_placement(
+      value, placements.CLIENTS, 'value to be summed')
+
   if not type_utils.is_sum_compatible(value.type_signature):
     raise TypeError(
         'The value type {} is not compatible with the sum operator.'.format(

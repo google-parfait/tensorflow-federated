@@ -397,3 +397,27 @@ def is_sum_compatible(type_spec):
     return is_sum_compatible(type_spec.member)
   else:
     return False
+
+
+def check_federated_value_placement(value, placement, label=None):
+  """Checks that `value` is a federated value placed at `placement`.
+
+  Args:
+    value: The value to check, an instance of value_base.Value.
+    placement: The expected placement.
+    label: An optional string label that describes `value`.
+
+  Raises:
+    TypeError: if `value` is not a value_base.Value of a federated type with
+      the expected placement `placement`.
+  """
+  py_typecheck.check_type(value, value_base.Value)
+  py_typecheck.check_type(value.type_signature, types.FederatedType)
+  if label is not None:
+    py_typecheck.check_type(label, string_types)
+  if value.type_signature.placement is not placement:
+    raise TypeError(
+        'The {} should be placed at {}, but it ' 'is placed at {}.'.format(
+            label if label else 'value', str(placement), str(
+                value.type_signature.placement)))
+

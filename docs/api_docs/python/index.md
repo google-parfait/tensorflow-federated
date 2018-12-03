@@ -9,6 +9,7 @@
 *  <a href="./tff/TensorType.md"><code>tff.TensorType</code></a>
 *  <a href="./tff/Type.md"><code>tff.Type</code></a>
 *  <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>
+*  <a href="./tff/federated_collect.md"><code>tff.federated_collect</code></a>
 *  <a href="./tff/federated_computation.md"><code>tff.federated_computation</code></a>
 *  <a href="./tff/federated_map.md"><code>tff.federated_map</code></a>
 *  <a href="./tff/federated_reduce.md"><code>tff.federated_reduce</code></a>

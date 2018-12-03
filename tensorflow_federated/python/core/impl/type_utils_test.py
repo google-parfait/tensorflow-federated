@@ -24,6 +24,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
@@ -308,6 +309,15 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
       types.AbstractType('T'))
   def test_is_sum_compatible_negative_examples(self, type_spec):
     self.assertFalse(type_utils.is_sum_compatible(type_spec))
+
+  def test_check_federated_value_placement(self):
+    @computations.federated_computation(
+        types.FederatedType(tf.int32, placements.CLIENTS))
+    def _(x):
+      type_utils.check_federated_value_placement(x, placements.CLIENTS)
+      with self.assertRaises(TypeError):
+        type_utils.check_federated_value_placement(x, placements.SERVER)
+      return x
 
 
 if __name__ == '__main__':

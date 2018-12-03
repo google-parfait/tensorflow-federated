@@ -25,6 +25,7 @@ import unittest
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
+from tensorflow_federated.python.core.api.intrinsics import federated_collect
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
@@ -136,6 +137,19 @@ class IntrinsicsTest(unittest.TestCase):
     self.assertEqual(
         str(foo.type_signature),
         '({int32}@CLIENTS -> int32@SERVER)')
+
+  def test_federated_collect_with_client_int(self):
+    @federated_computation(FederatedType(tf.int32, CLIENTS))
+    def foo(x):
+      return federated_collect(x)
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> int32*@SERVER)')
+
+  def test_federated_collect_with_server_int_fails(self):
+    with self.assertRaises(TypeError):
+      @federated_computation(FederatedType(tf.int32, SERVER))
+      def _(x):
+        return federated_collect(x)
 
   def test_num_over_temperature_threshold_example(self):
     @federated_computation([

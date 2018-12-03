@@ -35,6 +35,7 @@ _allowed_symbols = [
     "TensorType",
     "Type",
     "federated_broadcast",
+    "federated_collect",
     "federated_computation",
     "federated_map",
     "federated_reduce",

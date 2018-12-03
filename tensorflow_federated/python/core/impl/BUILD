@@ -401,6 +401,7 @@ py_test(
         ":test_utils",
         ":type_utils",
         ":value_impl",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "@absl_py//absl/testing:parameterized",
