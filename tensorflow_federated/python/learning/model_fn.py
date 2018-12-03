@@ -22,6 +22,7 @@ import abc
 import contextlib
 
 # Dependency imports
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -69,10 +70,9 @@ def set_model_input_tensor(input_tensor):
     _MODEL_INPUT_TENSOR = None
 
 
+@six.add_metaclass(abc.ABCMeta)
 class ModelFn(object):
   """Defines a model used for training or evaluation."""
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
   def build(self):
@@ -93,9 +93,7 @@ class ModelFn(object):
 
 
 class AggregationSpec(object):
-  """ A specification of how to aggregate a Metric across multiple clients.
-
-  """
+  """A specification of how to aggregate a Metric across multiple clients."""
 
   def __init__(self, compute_sum, compute_average_with_weight,
                compute_samples=True):

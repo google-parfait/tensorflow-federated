@@ -19,10 +19,14 @@ from __future__ import print_function
 
 import abc
 
+# Dependency imports
+import six
+
 
 # TODO(b/113112108): Add derived interfaces and functions to support reflection.
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Value(object):
   """An abstract base class for all values in the bodies of TFF computations.
 
@@ -36,8 +40,6 @@ class Value(object):
   Outside of the bodies of composite non-TensorFlow computations, this interface
   is not used. All fully constructed computations implement 'Computation'.
   """
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractproperty
   def type_signature(self):

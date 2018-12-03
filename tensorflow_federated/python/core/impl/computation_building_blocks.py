@@ -21,8 +21,7 @@ import abc
 import zlib
 
 # Dependency imports
-
-from six import string_types
+import six
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
@@ -44,10 +43,9 @@ def _check_computation_oneof(computation_proto, expected_computation_oneof):
         expected_computation_oneof, computation_oneof))
 
 
+@six.add_metaclass(abc.ABCMeta)
 class ComputationBuildingBlock(object):
   """A generic base class for all computation building blocks defined below."""
-
-  __metaclass__ = abc.ABCMeta
 
   _deserializer_dict = None  # Defined at the end of this file.
 
@@ -138,7 +136,7 @@ class Reference(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(name, string_types)
+    py_typecheck.check_type(name, six.string_types)
     super(Reference, self).__init__(type_spec)
     self._name = name
     self._context = context
@@ -215,7 +213,7 @@ class Selection(ComputationBuildingBlock):
           'Expected the source of selection to be a TFF named tuple, '
           'instead found it to be of type {}.'.format(str(source_type)))
     if name is not None:
-      py_typecheck.check_type(name, string_types)
+      py_typecheck.check_type(name, six.string_types)
       if not name:
         raise ValueError('The name of the selected element cannot be empty.')
       else:
@@ -298,7 +296,7 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         return (None, e)
       elif (isinstance(e, tuple) and
             (len(e) == 2) and
-            (e[0] is None or isinstance(e[0], string_types))):
+            (e[0] is None or isinstance(e[0], six.string_types))):
         py_typecheck.check_type(e[1], ComputationBuildingBlock)
         return (e[0], e[1])
       else:
@@ -433,7 +431,7 @@ class Lambda(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(parameter_name, string_types)
+    py_typecheck.check_type(parameter_name, six.string_types)
     if parameter_type is None:
       raise TypeError('A lambda expression must have a valid parameter type.')
     parameter_type = types.to_type(parameter_type)
@@ -502,7 +500,7 @@ class Block(ComputationBuildingBlock):
     for index, element in enumerate(local_symbols):
       if (not isinstance(element, tuple) or
           (len(element) != 2) or
-          not isinstance(element[0], string_types)):
+          not isinstance(element[0], six.string_types)):
         raise TypeError(
             'Expected the locals to be a list of 2-element tuples with string '
             'name as their first element, but this is not the case for the '
@@ -570,7 +568,7 @@ class Intrinsic(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(uri, string_types)
+    py_typecheck.check_type(uri, six.string_types)
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
@@ -620,7 +618,7 @@ class Data(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(uri, string_types)
+    py_typecheck.check_type(uri, six.string_types)
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
@@ -662,7 +660,7 @@ class CompiledComputation(ComputationBuildingBlock):
     """
     py_typecheck.check_type(proto, pb.Computation)
     if name is not None:
-      py_typecheck.check_type(name, string_types)
+      py_typecheck.check_type(name, six.string_types)
     super(CompiledComputation, self).__init__(
         type_serialization.deserialize_type(proto.type))
     self._proto = proto

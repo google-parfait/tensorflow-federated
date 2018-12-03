@@ -21,7 +21,7 @@ import abc
 import collections
 
 # Dependency imports
-from six import string_types
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -29,10 +29,9 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import placement_literals
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Type(object):
   """An abstract interface for all classes that represent TFF types."""
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
   def is_assignable_from(self, other):
@@ -169,7 +168,7 @@ class NamedTupleType(Type):
       raise ValueError('A named tuple must contain at least one element.')
     def _is_named_element(e):
       return (isinstance(e, tuple) and (len(e) == 2) and
-              isinstance(e[0], string_types))
+              isinstance(e[0], six.string_types))
     def _map_element(e):
       return ((None, e) if isinstance(e, Type)
               else (
@@ -286,7 +285,7 @@ class AbstractType(Type):
       label: A string label of an abstract type. All occurences of the label
         within a computation's type signature refer to the same concrete type.
     """
-    py_typecheck.check_type(label, string_types)
+    py_typecheck.check_type(label, six.string_types)
     self._label = str(label)
 
   @property

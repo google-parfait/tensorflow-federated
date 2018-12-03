@@ -20,8 +20,7 @@ from __future__ import print_function
 import abc
 
 # Dependency imports
-
-from six import string_types
+import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -36,10 +35,9 @@ from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import placement_literals
 
 
+@six.add_metaclass(abc.ABCMeta)
 class ValueImpl(value_base.Value):
   """A generic base class for values that appear in TFF computations."""
-
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self, comp):
     """Constructs a value of the given type.
@@ -79,7 +77,7 @@ class ValueImpl(value_base.Value):
       return [e[0] for e in self._comp.type_signature.elements if e[0]]
 
   def __getattr__(self, name):
-    py_typecheck.check_type(name, string_types)
+    py_typecheck.check_type(name, six.string_types)
     if not isinstance(self._comp.type_signature, types.NamedTupleType):
       raise TypeError(
           'Operator getattr() is only supported for named tuples, but the '

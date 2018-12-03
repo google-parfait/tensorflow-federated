@@ -19,7 +19,11 @@ from __future__ import print_function
 
 import abc
 
+# Dependency imports
+import six
 
+
+@six.add_metaclass(abc.ABCMeta)
 class Context(object):
   """Represents the interface to the context that the API executes against.
 
@@ -36,8 +40,6 @@ class Context(object):
   a given current context (instance). Manipulating a context stack is the
   responsibility of the implementation.
   """
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
   def invoke(self, comp, arg):

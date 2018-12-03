@@ -147,6 +147,7 @@ py_test(
 py_library(
     name = "context_base",
     srcs = ["context_base.py"],
+    deps = ["@six_archive//:six"],
 )
 
 py_library(
@@ -206,6 +207,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
+        "@six_archive//:six",
     ],
 )
 

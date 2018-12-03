@@ -19,6 +19,7 @@ py_library(
 py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
+    deps = ["@six_archive//:six"],
 )
 
 py_library(
@@ -102,4 +103,5 @@ py_test(
 py_library(
     name = "value_base",
     srcs = ["value_base.py"],
+    deps = ["@six_archive//:six"],
 )

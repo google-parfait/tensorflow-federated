@@ -19,11 +19,13 @@ from __future__ import print_function
 
 import abc
 
+# Dependency imports
+import six
 
+
+@six.add_metaclass(abc.ABCMeta)
 class Computation(object):
   """An abstract interface for all classes that represent computations."""
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractproperty
   def type_signature(self):

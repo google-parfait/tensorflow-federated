@@ -33,6 +33,8 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+
+# Dependency imports
 import enum
 import six
 
@@ -64,7 +66,8 @@ class StateAggregationMode(enum.Enum):
   CONCAT = 4
 
 
-class EncodingStageInterface(six.with_metaclass(abc.ABCMeta)):
+@six.add_metaclass(abc.ABCMeta)
+class EncodingStageInterface(object):
   """Interface for the core of encoding logic.
 
   This core interface should support encoding being executed in a variety of
@@ -211,7 +214,8 @@ class EncodingStageInterface(six.with_metaclass(abc.ABCMeta)):
     """
 
 
-class AdaptiveEncodingStageInterface(six.with_metaclass(abc.ABCMeta)):
+@six.add_metaclass(abc.ABCMeta)
+class AdaptiveEncodingStageInterface(object):
   """Adaptive version of the `EncodingStageInterface`.
 
   This class has the same functionality as the `EncodingStageInterface`, but in

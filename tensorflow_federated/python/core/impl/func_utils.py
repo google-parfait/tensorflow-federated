@@ -21,6 +21,9 @@ import abc
 import inspect
 import types as py_types
 
+# Dependency imports
+import six
+
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
 
@@ -578,10 +581,9 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       # pylint: enable=unnecessary-lambda,undefined-variable
 
 
+@six.add_metaclass(abc.ABCMeta)
 class ConcreteFunction(computation_base.Computation):
   """An abstract base class for concretely-typed (non-polymorphic) functions."""
-
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self, type_signature):
     """Constructs this concrete function with the give type signature.
