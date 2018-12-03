@@ -27,6 +27,8 @@ TensorFlow Federated library.
 
 ## Functions
 
+[`federated_average(...)`](./tff/federated_average.md): Computes a `SERVER` average of `value` placed on `CLIENTS`.
+
 [`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
 [`federated_collect(...)`](./tff/federated_collect.md): Materializes a federated value from `CLIENTS` as a `SERVER` sequence.

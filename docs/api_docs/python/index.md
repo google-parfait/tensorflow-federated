@@ -8,6 +8,7 @@
 *  <a href="./tff/SequenceType.md"><code>tff.SequenceType</code></a>
 *  <a href="./tff/TensorType.md"><code>tff.TensorType</code></a>
 *  <a href="./tff/Type.md"><code>tff.Type</code></a>
+*  <a href="./tff/federated_average.md"><code>tff.federated_average</code></a>
 *  <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>
 *  <a href="./tff/federated_collect.md"><code>tff.federated_collect</code></a>
 *  <a href="./tff/federated_computation.md"><code>tff.federated_computation</code></a>

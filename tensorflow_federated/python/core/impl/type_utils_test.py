@@ -319,6 +319,21 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
         type_utils.check_federated_value_placement(x, placements.SERVER)
       return x
 
+  @parameterized.parameters(
+      tf.float32,
+      tf.float64,
+      ([('x', tf.float32), ('y', tf.float64)],),
+      types.FederatedType(tf.float32, placements.CLIENTS))
+  def test_is_average_compatible_true(self, type_spec):
+    self.assertTrue(type_utils.is_average_compatible(type_spec))
+
+  @parameterized.parameters(
+      tf.int32,
+      tf.int64,
+      types.SequenceType(tf.float32))
+  def test_is_average_compatible_false(self, type_spec):
+    self.assertFalse(type_utils.is_average_compatible(type_spec))
+
 
 if __name__ == '__main__':
   tf.test.main()

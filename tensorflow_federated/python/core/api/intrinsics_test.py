@@ -24,6 +24,7 @@ import unittest
 
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
+from tensorflow_federated.python.core.api.intrinsics import federated_average
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
 from tensorflow_federated.python.core.api.intrinsics import federated_map
@@ -150,6 +151,38 @@ class IntrinsicsTest(unittest.TestCase):
       @federated_computation(FederatedType(tf.int32, SERVER))
       def _(x):
         return federated_collect(x)
+
+  def test_federated_average_with_client_float32_without_weight(self):
+    @federated_computation(FederatedType(tf.float32, CLIENTS))
+    def foo(x):
+      return federated_average(x)
+    self.assertEqual(
+        str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
+
+  def test_federated_average_with_client_tuple_with_int32_weight(self):
+    @federated_computation([
+        FederatedType([('x', tf.float64), ('y', tf.float64)], CLIENTS),
+        FederatedType(tf.int32, CLIENTS)])
+    def foo(x, y):
+      return federated_average(x, y)
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<{<x=float64,y=float64>}@CLIENTS,{int32}@CLIENTS> '
+        '-> <x=float64,y=float64>@SERVER)')
+
+  def test_federated_average_with_client_int32_fails(self):
+    with self.assertRaises(TypeError):
+      @federated_computation(FederatedType(tf.int32, CLIENTS))
+      def _(x):
+        return federated_average(x)
+
+  def test_federated_average_with_string_weight_fails(self):
+    with self.assertRaises(TypeError):
+      @federated_computation([
+          FederatedType(tf.float32, CLIENTS),
+          FederatedType(tf.string, CLIENTS)])
+      def _(x, y):
+        return federated_average(x, y)
 
   def test_num_over_temperature_threshold_example(self):
     @federated_computation([

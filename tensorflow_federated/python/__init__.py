@@ -34,6 +34,7 @@ _allowed_symbols = [
     "SequenceType",
     "TensorType",
     "Type",
+    "federated_average",
     "federated_broadcast",
     "federated_collect",
     "federated_computation",

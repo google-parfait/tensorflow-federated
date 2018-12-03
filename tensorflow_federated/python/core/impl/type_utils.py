@@ -421,3 +421,26 @@ def check_federated_value_placement(value, placement, label=None):
             label if label else 'value', str(placement), str(
                 value.type_signature.placement)))
 
+
+def is_average_compatible(type_spec):
+  """Determines if `type_spec` can be averaged.
+
+  Types that are average-compatible are composed of scalars of numeric types,
+  either floating-point or complex, possibly packaged into nested named tuples,
+  and possibly federated.
+
+  Args:
+    type_spec: An instance of `types.Type`, or something convertible to it.
+
+  Returns:
+    `True` iff `type_spec` is average-compatible, `False` otherwise.
+  """
+  type_spec = types.to_type(type_spec)
+  if isinstance(type_spec, types.TensorType):
+    return type_spec.dtype.is_floating or type_spec.dtype.is_complex
+  elif isinstance(type_spec, types.NamedTupleType):
+    return all(is_average_compatible(v) for _, v in type_spec.elements)
+  elif isinstance(type_spec, types.FederatedType):
+    return is_average_compatible(type_spec.member)
+  else:
+    return False

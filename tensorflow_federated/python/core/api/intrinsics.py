@@ -29,6 +29,78 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
 
+def federated_average(value, weight=None):
+  """Computes a `SERVER` average of `value` placed on `CLIENTS`.
+
+  Args:
+    value: The value to be averaged. Must be of a TFF federated type placed at
+      `CLIENTS`. The value may be structured, e.g., its member constituents can
+      be named tuples. The tensor types that the value is composed of must be
+      floating-point or complex.
+
+    weight: An optional weight, a TFF federated integer or floating-point tensor
+      value, also placed at `CLIENTS`.
+
+  Returns:
+    A representation at the `SERVER` of an average of the member constituents
+    of `value`, optionally weighted with `weight` if specified (otherwise, the
+    member constituents contributed by all clients are equally weighted).
+
+  Raises:
+    TypeError: if `value` is not a federated TFF value placed at `CLIENTS`, or
+      if `weight` is not a federated integer or a floating-point tensor with
+      the matching placement.
+  """
+  # TODO(b/113112108): Possibly relax the constraints on numeric types, and
+  # inject implicit casts where appropriate. For instance, we might want to
+  # allow `tf.int32` values as the input, and automatically cast them to
+  # `tf.float321 before invoking the average, thus producing a floating-point
+  # result.
+
+  # TODO(b/120439632): Possibly allow the weight to be either structured or
+  # non-scalar, e.g., for the case of averaging a convolutional layer, when
+  # we would want to use a different weight for every filter, and where it
+  # might be cumbersome for users to have to manually slice and assemble a
+  # variable.
+
+  value = value_impl.to_value(value)
+  type_utils.check_federated_value_placement(
+      value, placements.CLIENTS, 'value to be averaged')
+  if not type_utils.is_average_compatible(value.type_signature):
+    raise TypeError(
+        'The value type {} is not compatible with the average operator.'.format(
+            str(value.type_signature)))
+
+  if weight is not None:
+    weight = value_impl.to_value(weight)
+    type_utils.check_federated_value_placement(
+        weight, placements.CLIENTS, 'weight to use in averaging')
+    py_typecheck.check_type(weight.type_signature.member, types.TensorType)
+    if weight.type_signature.member.shape.ndims != 0:
+      raise TypeError('The weight type {} is not a federated scalar.'.format(
+          str(weight.type_signature)))
+    if not (weight.type_signature.member.dtype.is_integer or
+            weight.type_signature.member.dtype.is_floating):
+      raise TypeError(
+          'The weight type {} is not a federated integer or '
+          'floating-point tensor.'.format(str(weight.type_signature)))
+
+  result_type = types.FederatedType(
+      value.type_signature.member, placements.SERVER, True)
+
+  if weight is not None:
+    intrinsic = value_impl.ValueImpl(computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE.uri,
+        types.FunctionType(
+            [value.type_signature, weight.type_signature], result_type)))
+    return intrinsic(value, weight)
+  else:
+    intrinsic = value_impl.ValueImpl(computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_AVERAGE.uri,
+        types.FunctionType(value.type_signature, result_type)))
+    return intrinsic(value)
+
+
 def federated_broadcast(value):
   """Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
