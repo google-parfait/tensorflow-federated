@@ -21,6 +21,7 @@ from collections import OrderedDict
 
 # Dependency imports
 import numpy as np
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.learning import model_fn
@@ -69,7 +70,7 @@ class NoFeaturesRegressionModelFn(model_fn.ModelFn):
             num_examples, name='num_examples'),
         num_minibatches=tensor_utils.metrics_sum(one, name='num_minibatches'),
         label_sum=tensor_utils.metrics_sum(labels, name='label_sum'))
-    for name, (value, update_op) in counters.iteritems():
+    for name, (value, update_op) in six.iteritems(counters):
       metrics.append(model_fn.Metric.sum(name, value))
       update_ops.append(update_op)
 
@@ -91,7 +92,7 @@ class NoFeaturesRegressionModelFn(model_fn.ModelFn):
                                       name='mean_squared_error'),
         abs_error=tf.metrics.mean_absolute_error(
             labels, predictions_per_label, weights=num_examples))
-    for name, (value, update_op) in avg_metrics.iteritems():
+    for name, (value, update_op) in six.iteritems(avg_metrics):
       metrics.append(model_fn.Metric.average(name, value, total_client_weight))
       update_ops.append(update_op)
 
@@ -137,9 +138,8 @@ class NoFeaturesRegressionModelFn(model_fn.ModelFn):
     return {
         location: {
             client_name: [
-                np.array(
-                    [cls.make_tf_example(x) for x in batch], dtype=np.object)
-                for batch in batch_stream
-            ] for client_name, batch_stream in client_data.iteritems()
+                np.array([cls.make_tf_example(x) for x in batch],
+                         dtype=np.object) for batch in batch_stream
+            ] for client_name, batch_stream in six.iteritems(client_data)
         }
     }

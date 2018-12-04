@@ -20,6 +20,7 @@ py_library(
         ":model_fn",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 
@@ -29,6 +30,7 @@ py_test(
     deps = [
         ":model_fn",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 

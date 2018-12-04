@@ -664,8 +664,8 @@ class CompiledComputation(ComputationBuildingBlock):
     super(CompiledComputation, self).__init__(
         type_serialization.deserialize_type(proto.type))
     self._proto = proto
-    self._name = name if name is not None else (
-        '{:x}'.format(zlib.adler32(repr(self._proto)) & 0xFFFFFFFF))
+    self._name = name if name is not None else '{:x}'.format(
+        zlib.adler32(six.b(repr(self._proto))) & 0xFFFFFFFF)
 
   @property
   def proto(self):

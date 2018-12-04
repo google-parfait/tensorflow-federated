@@ -23,6 +23,7 @@ import itertools
 
 # Dependency imports
 from absl.testing import parameterized
+import six
 import tensorflow as tf
 
 # TODO(b/118783928) Fix BUILD target visibility.
@@ -95,13 +96,14 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
           [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
   def test_get_callargs_for_argspec(self, func, args, kwargs):
     argspec = inspect.getargspec(func)
+    expected_error = None
     try:
       expected_callargs = inspect.getcallargs(func, *args, **kwargs)
-      expected_error = None
-    except TypeError as expected_error:
+    except TypeError as e:
+      expected_error = e
       expected_callargs = None
     try:
-      if not expected_error:
+      if expected_error is None:
         result_callargs = fu.get_callargs_for_argspec(argspec, *args, **kwargs)
         self.assertEqual(result_callargs, expected_callargs)
       else:
@@ -130,9 +132,8 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       self, argspec, args, kwargs, expected_result):
     self.assertEqual(
         fu.is_argspec_compatible_with_types(
-            argspec,
-            *[types.to_type(a) for a in args],
-            **{k: types.to_type(v) for k, v in kwargs.iteritems()}),
+            argspec, *[types.to_type(a) for a in args],
+            **{k: types.to_type(v) for k, v in six.iteritems(kwargs)}),
         expected_result)
 
   @parameterized.parameters(
@@ -166,7 +167,8 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
     args, kwargs = fu.unpack_args_from_tuple(tuple_with_args)
     self.assertEqual(args, [types.to_type(a) for a in expected_args])
     self.assertEqual(
-        kwargs, {k: types.to_type(v) for k, v in expected_kwargs.iteritems()})
+        kwargs,
+        {k: types.to_type(v) for k, v in six.iteritems(expected_kwargs)})
 
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(

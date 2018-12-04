@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import __builtin__
+import six
 
 
 def check_type(target, type_spec, label=None):
@@ -63,8 +63,9 @@ def type_string(type_spec):
   """
   _check_is_type_spec(type_spec)
   if isinstance(type_spec, type):
-    return (type_spec.__name__ if type_spec.__module__ == __builtin__.__name__
-            else '{}.{}'.format(type_spec.__module__, type_spec.__name__))
+    return (type_spec.__name__
+            if type_spec.__module__ == six.moves.builtins.__name__ else
+            '{}.{}'.format(type_spec.__module__, type_spec.__name__))
   else:
     assert isinstance(type_spec, (tuple, list))
     type_names = [type_string(x) for x in type_spec]

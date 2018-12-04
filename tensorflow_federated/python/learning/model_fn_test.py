@@ -65,7 +65,7 @@ class ModelFnTest(tf.test.TestCase):
 
       sess.run(model_spec.minibatch_update_ops)
       metrics = sess.run({m.name: m.value_tensor for m in model_spec.metrics})
-      self.assertEqual(metrics.keys(), ['SumX'])
+      self.assertItemsEqual(metrics.keys(), ['SumX'])
       self.assertEqual(metrics['SumX'], 3.0)
 
 

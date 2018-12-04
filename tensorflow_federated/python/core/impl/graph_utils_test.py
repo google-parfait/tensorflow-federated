@@ -63,7 +63,7 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertIsInstance(type_spec, types.NamedTupleType)
       if not isinstance(val, (list, tuple, AnonymousTuple)):
         self.assertIsInstance(val, dict)
-        val = val.values()
+        val = list(val.values())
       for idx, e in enumerate(type_spec.elements):
         self._assert_binding_matches_type_and_value(
             binding.tuple.element[idx], e[1], val[idx], graph)

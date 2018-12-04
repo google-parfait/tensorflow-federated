@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
-from six import string_types
+import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -62,7 +62,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
     TypeError: if the arguments are of the wrong types.
     ValueError: if the parameter type cannot be stamped in a TensorFlow graph.
   """
-  py_typecheck.check_type(parameter_name, string_types)
+  py_typecheck.check_type(parameter_name, six.string_types)
   if graph is None:
     graph = tf.get_default_graph()
   else:
@@ -147,9 +147,8 @@ def capture_result_from_graph(result):
   elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
     # This also handles 'OrderedDict', as it inherits from 'dict'.
     name_value_pairs = (
-        anonymous_tuple.to_elements(result)
-        if isinstance(result, anonymous_tuple.AnonymousTuple)
-        else result.iteritems())
+        anonymous_tuple.to_elements(result) if isinstance(
+            result, anonymous_tuple.AnonymousTuple) else six.iteritems(result))
     element_name_type_binding_triples = [
         ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs]
     return (types.NamedTupleType([((e[0], e[1]) if e[0] else e[1])

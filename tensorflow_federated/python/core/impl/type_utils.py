@@ -20,7 +20,7 @@ import collections
 
 # Dependency imports
 import numpy as np
-from six import string_types
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -70,11 +70,11 @@ def infer_type(arg):
     return infer_type(arg._asdict())
   elif isinstance(arg, dict):
     # This also handles 'OrderedDict', as it inherits from 'dict'.
-    return types.NamedTupleType([
-        (k, infer_type(v)) for k, v in arg.iteritems()])
+    return types.NamedTupleType(
+        [(k, infer_type(v)) for k, v in six.iteritems(arg)])
   # Quickly try special-casing a few very common built-in scalar types before
   # applying any kind of heavier-weight processing.
-  elif isinstance(arg, string_types):
+  elif isinstance(arg, six.string_types):
     return types.TensorType(tf.string)
   else:
     dtype = {bool: tf.bool, int: tf.int32, float: tf.float32}.get(type(arg))
@@ -131,9 +131,9 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
     return tf_dtypes_and_shapes_to_type(dtypes._asdict(), shapes._asdict())
   elif isinstance(dtypes, dict):
     # This also handles 'OrderedDict', as it inherits from 'dict'.
-    return types.NamedTupleType([
-        (name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
-        for name, dtypes_elem in dtypes.iteritems()])
+    return types.NamedTupleType(
+        [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
+         for name, dtypes_elem in six.iteritems(dtypes)])
   elif isinstance(dtypes, (list, tuple)):
     return types.NamedTupleType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
@@ -207,7 +207,7 @@ def get_named_tuple_element_type(type_spec, name):
     TypeError: if arguments are of the wrong types.
     ValueError: if the tuple does not have an element with the given name.
   """
-  py_typecheck.check_type(name, string_types)
+  py_typecheck.check_type(name, six.string_types)
   type_spec = types.to_type(type_spec)
   py_typecheck.check_type(type_spec, types.NamedTupleType)
   elements = type_spec.elements
@@ -414,7 +414,7 @@ def check_federated_value_placement(value, placement, label=None):
   py_typecheck.check_type(value, value_base.Value)
   py_typecheck.check_type(value.type_signature, types.FederatedType)
   if label is not None:
-    py_typecheck.check_type(label, string_types)
+    py_typecheck.check_type(label, six.string_types)
   if value.type_signature.placement is not placement:
     raise TypeError(
         'The {} should be placed at {}, but it ' 'is placed at {}.'.format(

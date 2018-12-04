@@ -121,7 +121,8 @@ class TensorType(Type):
       # assignable from the corresponding dimensions in the second.
       return ((x.ndims == y.ndims) and ((x.dims is None) or all(
           _dimension_is_assignable_from(x.dims[k], y.dims[k])
-          for k in xrange(x.ndims))))
+          for k in six.moves.range(x.ndims))))
+
     return (isinstance(other, TensorType) and
             (self.dtype == other.dtype) and
             _shape_is_assignable_from(self.shape, other.shape))
@@ -191,11 +192,10 @@ class NamedTupleType(Type):
     if not isinstance(other, NamedTupleType):
       return False
     other_elements = other.elements
-    return (
-        (len(self._elements) == len(other_elements)) and all(
-            ((self._elements[k][0] in [other_elements[k][0], None]) and
-             (self._elements[k][1].is_assignable_from(other_elements[k][1])))
-            for k in xrange(len(self._elements))))
+    return ((len(self._elements) == len(other_elements)) and all(
+        ((self._elements[k][0] in [other_elements[k][0], None]) and
+         (self._elements[k][1].is_assignable_from(other_elements[k][1])))
+        for k in six.moves.range(len(self._elements))))
 
   def __repr__(self):
     return (

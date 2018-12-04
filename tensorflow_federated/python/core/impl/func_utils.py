@@ -46,22 +46,24 @@ def is_defun(func):
   Returns:
     True iff 'func' is a supported type of a TF defun.
   """
-  return isinstance(func, (
-      # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
-      # currently omitted due to issues with visibility.
+  return isinstance(
+      func,
+      (
+          # TODO(b/113112885): Add support for tfe Function and
+          # PolymorphicFunction,
+          # currently omitted due to issues with visibility.
 
-      # While these classes can be private to TF users, we need to peek into
-      # the private interfaces of these classes in order to obtain the function
-      # signatures and type information that are otherwise unavailable via
-      # regular public APIs. In order to do so safelty, we need to narrow the
-      # scope down to a few concrete classes, internal structure we create a
-      # dependency on.
-      # TODO(b/113112885): Work towards avoiding this, posisbly by upstreaming
-      # some helper library or extending the public interface.
-      # pylint: disable=protected-access
-      tf_function._DefinedFunction,
-      tf_function._OverloadedFunction))
-      # pylint: enable=protected-access
+          # While these classes can be private to TF users, we need to peek into
+          # the private interfaces of these classes in order to obtain the
+          # function signatures and type information that are otherwise
+          # unavailable via regular public APIs. In order to do so safelty, we
+          # need to narrow the scope down to a few concrete classes, internal
+          # structure we create a dependency on.
+          # TODO(b/113112885): Work towards avoiding this, posisbly by
+          # upstreaming some helper library or extending the public interface.
+          tf_function._DefinedFunction,  # pylint: disable=protected-access
+          tf_function._OverloadedFunction  # pylint: disable=protected-access
+      ))
 
 
 def get_argspec(func):
@@ -81,17 +83,18 @@ def get_argspec(func):
   # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
   # currently omitted due to issues with visibility, using tf_inspect.getargspec
   # that works in eager mode.
-  elif isinstance(func, (
-      # There does not appear to be a robust way to distinguish between typed
-      # and polymorphic defuns, so we refer to private class names again.
-      # pylint: disable=protected-access
-      tf_function._DefinedFunction, tf_function._OverloadedFunction)):
-      # pylint: enable=protected-access
+  elif isinstance(
+      func,
+      (
+          # There does not appear to be a robust way to distinguish between
+          # typed and polymorphic defuns, so we refer to private class names
+          # again.
+          tf_function._DefinedFunction,  # pylint: disable=protected-access
+          tf_function._OverloadedFunction  # pylint: disable=protected-access
+      )):
     # On the non-eager defuns, tf_inspect does not appear to work, so we peek
     # inside to extract arguments.
-    # pylint: disable=protected-access
-    return inspect.getargspec(func._func)
-    # pylint: enable=protected-access
+    return inspect.getargspec(func._func)  # pylint: disable=protected-access
   elif is_defun(func):
     raise TypeError(
         'Support for defuns of type {} has not been implemented yet.'.format(
@@ -142,7 +145,7 @@ def get_callargs_for_argspec(argspec, *args, **kwargs):
       raise TypeError(
           'Argument {} was not specified and does not have a default.'.format(
               specarg))
-  unused_kwargs = {k: v for k, v in kwargs.iteritems() if k not in result}
+  unused_kwargs = {k: v for k, v in six.iteritems(kwargs) if k not in result}
   if argspec.varargs:
     result[argspec.varargs] = args[num_specargs:]
   if argspec.keywords:
@@ -293,8 +296,8 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
   """
   type_spec = types.to_type(type_spec)
   if not type_spec:
-    return anonymous_tuple.AnonymousTuple(
-        [(None, arg) for arg in args] + list(kwargs.iteritems()))
+    return anonymous_tuple.AnonymousTuple([(None, arg) for arg in args] +
+                                          list(six.iteritems(kwargs)))
   else:
     py_typecheck.check_type(type_spec, types.NamedTupleType)
     if not is_argument_tuple(type_spec):
@@ -336,7 +339,8 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
           raise TypeError('Argument named {} is missing.'.format(name))
         else:
           raise TypeError('Argument at position {} is missing.'.format(index))
-      positions_missing = set(xrange(len(args))).difference(positions_used)
+      positions_missing = set(six.moves.range(
+          len(args))).difference(positions_used)
       if positions_missing:
         raise TypeError('Positional arguments at {} not used.'.format(
             positions_missing))
@@ -468,9 +472,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
     if is_argspec_compatible_with_types(argspec):
       # Deliberate wrapping to isolate the caller from 'func', e.g., to prevent
       # the caller from mistakenly specifying args that match func's defaults.
-      # pylint: disable=unnecessary-lambda
-      return lambda: func()
-      # pylint: enable=unnecessary-lambda
+      return lambda: func()  # pylint: disable=unnecessary-lambda
     else:
       raise TypeError(
           'The argspec {} of the supplied function cannot be interpreted as a '
@@ -546,7 +548,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
                     idx, str(expected_type), str(actual_type)))
           args.append(element_value)
         kwargs = {}
-        for name, expected_type in kwarg_types.iteritems():
+        for name, expected_type in six.iteritems(kwarg_types):
           element_value = getattr(arg, name)
           actual_type = type_utils.infer_type(element_value)
           if not expected_type.is_assignable_from(actual_type):

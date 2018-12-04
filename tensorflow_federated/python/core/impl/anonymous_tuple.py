@@ -19,7 +19,8 @@ from __future__ import print_function
 
 import collections
 
-from six import string_types
+# Dependency imports
+import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -74,9 +75,8 @@ class AnonymousTuple(object):
     """
     py_typecheck.check_type(elements, list)
     for e in elements:
-      if not (isinstance(e, tuple) and
-              (len(e) == 2) and
-              (e[0] is None or isinstance(e[0], string_types))):
+      if not (isinstance(e, tuple) and (len(e) == 2) and
+              (e[0] is None or isinstance(e[0], six.string_types))):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {}.'.format(repr(e)))
@@ -103,7 +103,8 @@ class AnonymousTuple(object):
 
   def __getattr__(self, name):
     if name not in self._name_to_index:
-      raise ValueError('The tuple does not have a member "{}".'.format(name))
+      raise AttributeError(
+          'The tuple does not have a member "{}".'.format(name))
     return self._element_array[self._name_to_index[name]]
 
   def __eq__(self, other):
@@ -145,7 +146,9 @@ def to_elements(an_anonymous_tuple):
   py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
   # pylint: disable=protected-access
   index_to_name = {
-      idx: name for name, idx in an_anonymous_tuple._name_to_index.iteritems()}
+      idx: name
+      for name, idx in six.iteritems(an_anonymous_tuple._name_to_index)
+  }
   return [(index_to_name.get(idx), val)
           for idx, val in enumerate(an_anonymous_tuple._element_array)]
   # pylint: enable=protected-access

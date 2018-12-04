@@ -10,6 +10,7 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
+    deps = ["@six_archive//:six"],
 )
 
 py_test(

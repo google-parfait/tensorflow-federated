@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-
 # Dependency imports
 import six
 
@@ -137,7 +136,7 @@ class ValueImpl(value_base.Value):
     else:
       if args or kwargs:
         args = [to_value(x) for x in args]
-        kwargs = {k: to_value(v) for k, v in kwargs.iteritems()}
+        kwargs = {k: to_value(v) for k, v in six.iteritems(kwargs)}
         arg = func_utils.pack_args(
             self._comp.type_signature.parameter, args, kwargs)
         arg = ValueImpl.get_comp(to_value(arg))
@@ -174,8 +173,10 @@ def to_value(arg):
   elif '_asdict' in vars(type(arg)):
     return to_value(arg._asdict())
   elif isinstance(arg, dict):
-    return ValueImpl(computation_building_blocks.Tuple([
-        (k, ValueImpl.get_comp(to_value(v))) for k, v in arg.iteritems()]))
+    return ValueImpl(
+        computation_building_blocks.Tuple([
+            (k, ValueImpl.get_comp(to_value(v))) for k, v in six.iteritems(arg)
+        ]))
   elif isinstance(arg, (tuple, list)):
     return ValueImpl(computation_building_blocks.Tuple([
         ValueImpl.get_comp(to_value(x)) for x in arg]))
