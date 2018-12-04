@@ -162,6 +162,8 @@ class NamedTupleType(Type):
       ValueError: if the named tuple contains no elements.
     """
     py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
+    if '_asdict' in vars(type(elements)):
+      elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
       elements = elements.items()
     if not elements:

@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 
+from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_average
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect

@@ -27,6 +27,8 @@ TensorFlow Federated library.
 
 ## Functions
 
+[`federated_aggregate(...)`](./tff/federated_aggregate.md): Aggregates `value` from `CLIENTS` to `SERVER` using a multi-stage process.
+
 [`federated_average(...)`](./tff/federated_average.md): Computes a `SERVER` average of `value` placed on `CLIENTS`.
 
 [`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a federated value from the `SERVER` to the `CLIENTS`.

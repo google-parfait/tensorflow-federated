@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 # Dependency imports
 import tensorflow as tf
 
@@ -24,6 +26,7 @@ import unittest
 
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
+from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_average
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
@@ -34,6 +37,7 @@ from tensorflow_federated.python.core.api.intrinsics import federated_zip
 from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
 from tensorflow_federated.python.core.api.types import FederatedType
+from tensorflow_federated.python.core.api.types import NamedTupleType
 
 
 class IntrinsicsTest(unittest.TestCase):
@@ -183,6 +187,42 @@ class IntrinsicsTest(unittest.TestCase):
           FederatedType(tf.string, CLIENTS)])
       def _(x, y):
         return federated_average(x, y)
+
+  def test_federated_aggregate_with_client_int(self):
+    # The representation used during the aggregation process will be a named
+    # tuple with 2 elements - the integer 'total' that represents the sum of
+    # elements encountered, and the integer element 'count'.
+    # pylint: disable=invalid-name
+    Accumulator = collections.namedtuple('Accumulator', 'total count')
+    accumulator_type = NamedTupleType(Accumulator(tf.int32, tf.int32))
+
+    # The 'zero' in the algebra will consist of a zero total and a zero count.
+    @tf_computation
+    def make_zero():
+      return Accumulator(tf.constant(0), tf.constant(0))
+
+    # The operator to use during the first stage simply adds an element to the
+    # total and updates the count.
+    @tf_computation([accumulator_type, tf.int32])
+    def accumulate(accu, elem):
+      return Accumulator(accu.total + elem, accu.count + 1)
+
+    # The operator to use during the second stage simply adds total and count.
+    @tf_computation([accumulator_type, accumulator_type])
+    def merge(x, y):
+      return Accumulator(x.total + y.total, x.count + y.count)
+
+    # The operator to use during the final stage simply computes the ratio.
+    @tf_computation(accumulator_type)
+    def report(accu):
+      return tf.to_float(accu.total) / tf.to_float(accu.count)
+
+    @federated_computation(FederatedType(tf.int32, CLIENTS))
+    def foo(x):
+      return federated_aggregate(x, make_zero(), accumulate, merge, report)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
 
   def test_num_over_temperature_threshold_example(self):
     @federated_computation([
