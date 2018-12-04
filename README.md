@@ -7,13 +7,13 @@ TODO(b/112658581): Add TFF high level overview.
 
 ## Installation
 
-See the [setup](g3doc/setup.md) documentations for instructions on how to
+See the [setup](docs/setup.md) documentations for instructions on how to
 install TensorFlow Federated as a package or build TensorFlow Federated from
 source.
 
 ## Getting Started
 
-See the [get started](g3doc/get_started.md) documentation for instructions on
+See the [get started](docs/get_started.md) documentation for instructions on
 how to use TensorFlow Federated.
 
 ## Contributing
