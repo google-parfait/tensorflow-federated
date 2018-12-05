@@ -18,14 +18,13 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+from absl.testing import absltest
 from six import string_types
-
-import unittest
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-class PyTypeCheckTest(unittest.TestCase):
+class PyTypeCheckTest(absltest.TestCase):
 
   def test_check_type(self):
     try:
@@ -42,7 +41,7 @@ class PyTypeCheckTest(unittest.TestCase):
         'Expected .*TestCase, found int.',
         py_typecheck.check_type,
         10,
-        unittest.TestCase)
+        absltest.TestCase)
     self.assertRaisesRegexp(
         TypeError,
         'Expected foo to be of type int, found __main__.PyTypeCheckTest.',
@@ -77,4 +76,4 @@ class PyTypeCheckTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

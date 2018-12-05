@@ -17,12 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import unittest
+# Dependency imports
+from absl.testing import absltest
 
 from tensorflow_federated.python.core.impl import placement_literals
 
 
-class PlacementLiteralsTest(unittest.TestCase):
+class PlacementLiteralsTest(absltest.TestCase):
 
   def test_something(self):
     self.assertNotEqual(
@@ -34,4 +35,4 @@ class PlacementLiteralsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

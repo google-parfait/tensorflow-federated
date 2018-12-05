@@ -18,9 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+from absl.testing import absltest
 import tensorflow as tf
-
-import unittest
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -30,7 +29,7 @@ from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.impl import tf_computation_context
 
 
-class TensorFlowComputationContextTest(unittest.TestCase):
+class TensorFlowComputationContextTest(absltest.TestCase):
 
   def test_invoke_federated_computation_fails(self):
     @computations.federated_computation(
@@ -53,4 +52,4 @@ class TensorFlowComputationContextTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

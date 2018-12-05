@@ -17,7 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import unittest
+# Dependency imports
+from absl.testing import absltest
 
 from tensorflow_federated.python.core.impl.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack import context_stack
@@ -37,7 +38,7 @@ class TestContext(Context):
     return NotImplementedError
 
 
-class ContextStackTest(unittest.TestCase):
+class ContextStackTest(absltest.TestCase):
 
   def test_basic_functionality(self):
 
@@ -57,4 +58,4 @@ class ContextStackTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

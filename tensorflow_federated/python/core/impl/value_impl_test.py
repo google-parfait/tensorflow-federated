@@ -20,10 +20,8 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
-from absl.testing import parameterized
+from absl.testing import absltest
 import tensorflow as tf
-
-import unittest
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
@@ -35,7 +33,7 @@ from tensorflow_federated.python.core.impl import computation_building_blocks as
 from tensorflow_federated.python.core.impl import value_impl
 
 
-class ValueImplTest(parameterized.TestCase):
+class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_reference(self):
     x_comp = bb.Reference('foo', tf.int32)
@@ -51,7 +49,7 @@ class ValueImplTest(parameterized.TestCase):
     x = value_impl.ValueImpl(
         bb.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)]))
     self.assertEqual(dir(x), ['bar', 'baz'])
-    self.assertEqual(len(x), 2)
+    self.assertLen(x, 2)
     y = x.bar
     self.assertIsInstance(y, value_base.Value)
     self.assertEqual(str(y.type_signature), 'int32')
@@ -88,7 +86,7 @@ class ValueImplTest(parameterized.TestCase):
     self.assertEqual(dir(z), ['y'])
     self.assertEqual(str(z.y), 'bar')
     self.assertIs(value_impl.ValueImpl.get_comp(z.y), y_comp)
-    self.assertEqual(len(z), 2)
+    self.assertLen(z, 2)
     self.assertEqual(str(z[0]), 'foo')
     self.assertIs(value_impl.ValueImpl.get_comp(z[0]), x_comp)
     self.assertEqual(str(z[1]), 'bar')
@@ -180,4 +178,4 @@ class ValueImplTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

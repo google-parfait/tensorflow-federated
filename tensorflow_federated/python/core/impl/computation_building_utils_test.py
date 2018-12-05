@@ -18,10 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
-
-import unittest
 
 from tensorflow_federated.python.core.api import types
 
@@ -54,4 +53,4 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

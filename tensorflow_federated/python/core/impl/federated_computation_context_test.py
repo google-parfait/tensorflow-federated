@@ -18,9 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+from absl.testing import absltest
 import tensorflow as tf
-
-import unittest
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
@@ -28,7 +27,7 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import federated_computation_context
 
 
-class FederatedComputationContextTest(unittest.TestCase):
+class FederatedComputationContextTest(absltest.TestCase):
 
   def test_something(self):
     context = federated_computation_context.FederatedComputationContext()
@@ -39,4 +38,4 @@ class FederatedComputationContextTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

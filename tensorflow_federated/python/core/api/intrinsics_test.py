@@ -20,9 +20,8 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+from absl.testing import absltest
 import tensorflow as tf
-
-import unittest
 
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
@@ -40,7 +39,7 @@ from tensorflow_federated.python.core.api.types import FederatedType
 from tensorflow_federated.python.core.api.types import NamedTupleType
 
 
-class IntrinsicsTest(unittest.TestCase):
+class IntrinsicsTest(absltest.TestCase):
 
   def test_federated_broadcast_with_server_all_equal_int(self):
     @federated_computation(FederatedType(tf.int32, SERVER, True))
@@ -240,4 +239,4 @@ class IntrinsicsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

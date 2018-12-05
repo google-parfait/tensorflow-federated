@@ -26,7 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 
 class AnonymousTuple(object):
-  """Represents an anonymous named tuple."
+  """Represents an anonymous named tuple.
 
   Anonymous tuples are similar to named tuples, in that their elements can be
   accessed by name or by index, but unlike collections.namedtuple, they can

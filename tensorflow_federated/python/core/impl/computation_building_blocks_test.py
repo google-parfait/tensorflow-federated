@@ -18,10 +18,10 @@ from __future__ import division
 from __future__ import print_function
 
 import re
-# Dependency imports
-import tensorflow as tf
 
-import unittest
+# Dependency imports
+from absl.testing import absltest
+import tensorflow as tf
 
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
 
 
-class ComputationBuildingBlocksTest(unittest.TestCase):
+class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_reference_class(self):
     x = bb.Reference('foo', tf.int32)
@@ -107,7 +107,7 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
     self.assertEqual(str(z), '<foo,y=bar>')
     self.assertEqual(dir(z), ['y'])
     self.assertIs(z.y, y)
-    self.assertEqual(len(z), 2)
+    self.assertLen(z, 2)
     self.assertIs(z[0], x)
     self.assertIs(z[1], y)
     self.assertEqual(','.join(str(e) for e in iter(z)), 'foo,bar')
@@ -289,4 +289,4 @@ class ComputationBuildingBlocksTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

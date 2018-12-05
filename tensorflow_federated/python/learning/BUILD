@@ -1,3 +1,5 @@
+# Placeholder for internal Python version compatibility macro.
+
 # Eventually we will expose symbols from learning/ that can be used externally
 # via a public __init__.py file.
 package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])

@@ -1,3 +1,5 @@
+# Placeholder for internal Python version compatibility macro.
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
@@ -15,6 +17,7 @@ py_test(
     srcs = ["sanity_test.py"],
     deps = [
         "//tensorflow_federated/python/core/api",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

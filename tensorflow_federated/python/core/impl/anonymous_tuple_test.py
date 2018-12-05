@@ -17,18 +17,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import unittest
+# Dependency imports
+from absl.testing import absltest
 
 from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 from tensorflow_federated.python.core.impl.anonymous_tuple import to_elements
 
 
-class AnonymousTupleTest(unittest.TestCase):
+class AnonymousTupleTest(absltest.TestCase):
 
   def test_empty(self):
     v = []
     x = AnonymousTuple(v)
-    self.assertEqual(len(x), 0)
+    # Explicitly test the implementation of __len__() here so use, assertLen()
+    # instead of assertEmpty().
+    self.assertLen(x, 0)  # pylint: disable=g-generic-assert
     self.assertRaises(IndexError, lambda _: x[0], None)
     self.assertEqual(list(iter(x)), [])
     self.assertEqual(dir(x), [])
@@ -42,7 +45,7 @@ class AnonymousTupleTest(unittest.TestCase):
   def test_single_unnamed(self):
     v = [(None, 10)]
     x = AnonymousTuple(v)
-    self.assertEqual(len(x), 1)
+    self.assertLen(x, 1)
     self.assertRaises(IndexError, lambda _: x[1], None)
     self.assertEqual(x[0], 10)
     self.assertEqual(list(iter(x)), [10])
@@ -59,7 +62,7 @@ class AnonymousTupleTest(unittest.TestCase):
   def test_single_named(self):
     v = [('foo', 20)]
     x = AnonymousTuple(v)
-    self.assertEqual(len(x), 1)
+    self.assertLen(x, 1)
     self.assertEqual(x[0], 20)
     self.assertRaises(IndexError, lambda _: x[1], None)
     self.assertEqual(list(iter(x)), [20])
@@ -78,7 +81,7 @@ class AnonymousTupleTest(unittest.TestCase):
   def test_multiple_named_and_unnamed(self):
     v = [(None, 10), ('foo', 20), ('bar', 30)]
     x = AnonymousTuple(v)
-    self.assertEqual(len(x), 3)
+    self.assertLen(x, 3)
     self.assertEqual(x[0], 10)
     self.assertEqual(x[1], 20)
     self.assertEqual(x[2], 30)
@@ -98,4 +101,4 @@ class AnonymousTupleTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

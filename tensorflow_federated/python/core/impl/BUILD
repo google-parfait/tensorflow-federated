@@ -1,3 +1,5 @@
+# Placeholder for internal Python version compatibility macro.
+
 package(default_visibility = ["//tensorflow_federated/python/core/api:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -15,7 +17,10 @@ py_test(
     name = "anonymous_tuple_test",
     size = "small",
     srcs = ["anonymous_tuple_test.py"],
-    deps = [":anonymous_tuple"],
+    deps = [
+        ":anonymous_tuple",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
@@ -44,6 +49,7 @@ py_test(
         ":type_serialization",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -96,6 +102,7 @@ py_test(
         ":computation_impl",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -168,6 +175,7 @@ py_test(
         ":context_base",
         ":context_stack",
         ":default_context",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -194,6 +202,7 @@ py_test(
         ":federated_computation_context",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:value_base",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -271,6 +280,7 @@ py_test(
     deps = [
         ":intrinsic_defs",
         ":type_utils",
+        "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
     ],
 )
@@ -284,7 +294,10 @@ py_test(
     name = "placement_literals_test",
     size = "small",
     srcs = ["placement_literals_test.py"],
-    deps = [":placement_literals"],
+    deps = [
+        ":placement_literals",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
@@ -351,6 +364,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -443,7 +457,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "//tensorflow_federated/python/core/api:value_base",
-        "@absl_py//absl/testing:parameterized",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

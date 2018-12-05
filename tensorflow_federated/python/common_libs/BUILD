@@ -1,3 +1,5 @@
+# Placeholder for internal Python version compatibility macro.
+
 package(default_visibility = ["//tensorflow_federated/python:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -18,6 +20,7 @@ py_test(
     srcs = ["py_typecheck_test.py"],
     deps = [
         ":py_typecheck",
+        "@absl_py//absl/testing:absltest",
         "@six_archive//:six",
     ],
 )

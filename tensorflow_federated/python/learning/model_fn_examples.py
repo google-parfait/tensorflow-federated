@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from collections import OrderedDict
+import collections
 
 # Dependency imports
 import numpy as np
@@ -65,7 +65,7 @@ class NoFeaturesRegressionModelFn(model_fn.ModelFn):
     # federated_averaging.py.
     with tf.control_dependencies([labels]):
       one = tf.constant(1, name='one_batch')
-    counters = OrderedDict(
+    counters = collections.OrderedDict(
         num_examples=tensor_utils.metrics_sum(
             num_examples, name='num_examples'),
         num_minibatches=tensor_utils.metrics_sum(one, name='num_minibatches'),
@@ -82,7 +82,7 @@ class NoFeaturesRegressionModelFn(model_fn.ModelFn):
     # number of examples summed across batches, which
     # we get via the value variable from the corresponding metrics_sum:
     total_client_weight = counters['num_examples'][0]
-    avg_metrics = OrderedDict(
+    avg_metrics = collections.OrderedDict(
         avg_prediction=tf.metrics.mean(predictions_per_label,
                                        weights=num_examples,
                                        name='mean_prediction'),

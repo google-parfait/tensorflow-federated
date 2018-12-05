@@ -20,15 +20,14 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+from absl.testing import absltest
 import tensorflow as tf
-
-import unittest
 
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
 
-class TypesTest(unittest.TestCase):
+class TypesTest(absltest.TestCase):
 
   def test_tensor_type_dtype_and_shape(self):
     t = types.TensorType(tf.int32, [10])
@@ -314,4 +313,4 @@ class TypesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

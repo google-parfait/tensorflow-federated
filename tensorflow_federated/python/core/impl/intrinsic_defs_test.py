@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+from absl.testing import absltest
 from absl.testing import parameterized
-import unittest
 
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_utils
@@ -58,4 +58,4 @@ class IntrinsicDefsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()
