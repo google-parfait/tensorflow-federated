@@ -131,17 +131,6 @@ class IntrinsicsTest(absltest.TestCase):
       def _(x, y):
         return federated_zip([x, y])
 
-  def test_federated_reduce_with_tf_add_client_int(self):
-    @federated_computation(FederatedType(tf.int32, CLIENTS))
-    def foo(x):
-      # TODO(b/113112108): Possibly add plain constants as a building block.
-      zero = tf_computation(lambda: tf.constant(0))()
-      plus = tf_computation(tf.add, [tf.int32, tf.int32])
-      return federated_reduce(x, zero, plus)
-    self.assertEqual(
-        str(foo.type_signature),
-        '({int32}@CLIENTS -> int32@SERVER)')
-
   def test_federated_collect_with_client_int(self):
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
@@ -195,11 +184,6 @@ class IntrinsicsTest(absltest.TestCase):
     Accumulator = collections.namedtuple('Accumulator', 'total count')
     accumulator_type = NamedTupleType(Accumulator(tf.int32, tf.int32))
 
-    # The 'zero' in the algebra will consist of a zero total and a zero count.
-    @tf_computation
-    def make_zero():
-      return Accumulator(tf.constant(0), tf.constant(0))
-
     # The operator to use during the first stage simply adds an element to the
     # total and updates the count.
     @tf_computation([accumulator_type, tf.int32])
@@ -218,10 +202,20 @@ class IntrinsicsTest(absltest.TestCase):
 
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
-      return federated_aggregate(x, make_zero(), accumulate, merge, report)
+      return federated_aggregate(x, Accumulator(0, 0),
+                                 accumulate, merge, report)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
+
+  def test_federated_reduce_with_tf_add_raw_constant(self):
+    @federated_computation(FederatedType(tf.int32, CLIENTS))
+    def foo(x):
+      plus = tf_computation(tf.add, [tf.int32, tf.int32])
+      return federated_reduce(x, 0, plus)
+    self.assertEqual(
+        str(foo.type_signature),
+        '({int32}@CLIENTS -> int32@SERVER)')
 
   def test_num_over_temperature_threshold_example(self):
     @federated_computation([

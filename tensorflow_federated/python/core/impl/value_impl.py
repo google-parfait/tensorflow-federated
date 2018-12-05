@@ -19,7 +19,9 @@ from __future__ import print_function
 
 import abc
 # Dependency imports
+import numpy as np
 import six
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -32,6 +34,7 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl import tensorflow_serialization
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -145,6 +148,26 @@ class ValueImpl(value_base.Value):
       return ValueImpl(computation_building_blocks.Call(self._comp, arg))
 
 
+def _wrap_constant_as_value(const):
+  """Wraps the given Python constant as a TFF `Value`.
+
+  Args:
+    const: Python constant to be converted to TFF value. Allowable types are
+      `str`, `int`, `float`, `boolean`, or `numpy.ndarray`.
+
+  Returns:
+    Instance of `value_base.Value`.
+  """
+  if not isinstance(const, (str, int, float, bool, np.ndarray)):
+    raise TypeError('Please pass one of str, int, float, bool, or '
+                    'numpy ndarray to value_impl._wrap_constant_as_value')
+  lam = lambda: tf.constant(const)
+  tf_comp = tensorflow_serialization.serialize_py_func_as_tf_computation(lam)
+  compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
+  called_comp = computation_building_blocks.Call(compiled_comp)
+  return ValueImpl(called_comp)
+
+
 def to_value(arg):
   """Converts the argument into an instance of Value.
 
@@ -186,6 +209,8 @@ def to_value(arg):
     return ValueImpl(
         computation_building_blocks.CompiledComputation(
             computation_impl.ComputationImpl.get_proto(arg)))
+  elif isinstance(arg, (str, int, float, bool, np.ndarray)):
+    return _wrap_constant_as_value(arg)
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(

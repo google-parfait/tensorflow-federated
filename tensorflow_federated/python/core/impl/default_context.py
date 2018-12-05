@@ -26,4 +26,4 @@ class DefaultContext(context_base.Context):
   def invoke(self, comp, arg):
     raise NotImplementedError(
         'Cannot invoke computation {} with argument {} in the default '
-        'context, as this capability is not currrently implemented.')
+        'context, as this capability is not currently implemented.')

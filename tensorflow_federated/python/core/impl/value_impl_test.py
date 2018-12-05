@@ -21,6 +21,7 @@ import collections
 
 # Dependency imports
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
@@ -175,6 +176,33 @@ class ValueImplTest(absltest.TestCase):
         computations.tf_computation(lambda: tf.constant(10)))
     self.assertIsInstance(val, value_base.Value)
     self.assertEqual(str(val.type_signature), '( -> int32)')
+
+  def test_constant_mapping(self):
+    raw_int_val = value_impl.to_value(10)
+    self.assertIsInstance(raw_int_val, value_base.Value)
+    self.assertEqual(str(raw_int_val.type_signature), 'int32')
+    raw_float_val = value_impl.to_value(10.0)
+    self.assertIsInstance(raw_float_val, value_base.Value)
+    self.assertEqual(str(raw_float_val.type_signature),
+                     'float32')
+    np_array_val = value_impl.to_value(np.array([10.0]))
+    self.assertIsInstance(np_array_val, value_base.Value)
+    self.assertEqual(str(np_array_val.type_signature),
+                     'float64[1]')
+    lg_np_array_flt = value_impl.to_value(np.ones([10, 10, 10],
+                                                  dtype=np.float32))
+    self.assertIsInstance(lg_np_array_flt, value_base.Value)
+    self.assertEqual(str(lg_np_array_flt.type_signature),
+                     'float32[10,10,10]')
+    lg_np_array_int = value_impl.to_value(np.ones([10, 10, 10],
+                                                  dtype=np.int32))
+    self.assertIsInstance(lg_np_array_int, value_base.Value)
+    self.assertEqual(str(lg_np_array_int.type_signature),
+                     'int32[10,10,10]')
+    raw_string_val = value_impl.to_value('10')
+    self.assertIsInstance(raw_string_val, value_base.Value)
+    self.assertEqual(str(raw_string_val.type_signature),
+                     'string')
 
 
 if __name__ == '__main__':
