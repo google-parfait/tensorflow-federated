@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for serializing to/from TensorFlow computation structure."""
+"""Utilities for serializing TensorFlow computations."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -45,21 +45,22 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
       support for serializing the various kinds of non-eager and eager defuns,
       and eventually aim at full support for and compliance with TF 2.0.
       This function is currently required to declare either zero parameters if
-      parameter_type is None, or exactly one parameter if it's not None. The
-      nested structure of this parameter must correspond to the structure of
+      `parameter_type` is `None`, or exactly one parameter if it's not `None`.
+      The nested structure of this parameter must correspond to the structure of
       the 'parameter_type'. In the future, we may support targets with multiple
       args/keyword args (to be documented in the API and referenced from here).
     parameter_type: The parameter type specification if the target accepts a
-      parameter, or None if the target doesn't declare any parameters. Either
-      an instance of types.Type, or something that's convertible to it by
-      types.to_type().
+      parameter, or `None` if the target doesn't declare any parameters. Either
+      an instance of `types.Type`, or something that's convertible to it by
+      `types.to_type()`.
 
   Returns:
-    The constructed pb.Computation instance with the pb.TensorFlow variant set.
+    The constructed `pb.Computation` instance with the `pb.TensorFlow` variant
+      set.
 
   Raises:
-    TypeError: if the arguments are of the wrong types.
-    ValueError: if the signature of the target is not compatible with the given
+    TypeError: If the arguments are of the wrong types.
+    ValueError: If the signature of the target is not compatible with the given
       parameter type.
   """
   # TODO(b/113112108): Support a greater variety of target type signatures,
@@ -88,7 +89,7 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
             'Expected the target to declare no parameters, found {}.'.format(
                 repr(argspec.args)))
       parameter_binding = None
-    context = tf_computation_context.TensorFlowComputationContext()
+    context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
       result = target(*args)
     result_type, result_binding = graph_utils.capture_result_from_graph(result)

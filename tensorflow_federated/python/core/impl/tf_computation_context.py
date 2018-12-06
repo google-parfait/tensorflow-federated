@@ -17,24 +17,27 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# Dependency imports
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import computation_base
 
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import tensorflow_deserialization
 
 
 class TensorFlowComputationContext(context_base.Context):
   """The context for building TensorFlow computations."""
 
+  def __init__(self, graph):
+    py_typecheck.check_type(graph, tf.Graph)
+    self._graph = graph
+
   def invoke(self, comp, arg):
     py_typecheck.check_type(comp, computation_base.Computation)
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-    comp_oneof = comp_proto.WhichOneof('computation')
-    if comp_oneof != 'tensorflow':
-      raise ValueError(
-          'Only TF computations can be invoked in a TF computation context.')
-
-    # TODO(b/113112885): Implement this.
-    raise NotImplementedError
+    computation_proto = computation_impl.ComputationImpl.get_proto(comp)
+    return tensorflow_deserialization.deserialize_and_call_tf_computation(
+        computation_proto, arg, self._graph)

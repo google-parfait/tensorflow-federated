@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 # Dependency imports
 import six
 import tensorflow as tf
@@ -31,7 +33,7 @@ from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
+def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   """Stamps a parameter of a given type in the given tf.Graph instance.
 
   Tensors are stamped as placeholders, sequences are stamped as data sets
@@ -47,8 +49,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
       for ease of debugging.
     parameter_type: The type of the parameter to stamp. Must be either an
       instance of types.Type (or convertible to it), or None.
-    graph: The optional instance of tf.Graph to stamp in. If not specified,
-      stamping is done in the default graph.
+    graph: The instance of tf.Graph to stamp in.
 
   Returns:
     A tuple (val, binding), where 'val' is a Python object (such as a dataset,
@@ -63,10 +64,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
     ValueError: if the parameter type cannot be stamped in a TensorFlow graph.
   """
   py_typecheck.check_type(parameter_name, six.string_types)
-  if graph is None:
-    graph = tf.get_default_graph()
-  else:
-    py_typecheck.check_type(graph, tf.Graph)
+  py_typecheck.check_type(graph, tf.Graph)
   if parameter_type is None:
     return (None, None)
   parameter_type = types.to_type(parameter_type)
@@ -91,25 +89,40 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph=None):
             pb.TensorFlow.Binding(tuple=pb.TensorFlow.NamedTupleBinding(
                 element=element_bindings)))
   elif isinstance(parameter_type, types.SequenceType):
-    dtypes, shapes = (
-        type_utils.type_to_tf_dtypes_and_shapes(parameter_type.element))
     with graph.as_default():
       handle = tf.placeholder(tf.string, shape=[])
-      it = tf.data.Iterator.from_string_handle(handle, dtypes, shapes)
-      # In order to convert an iterator into something that looks like a data
-      # set, we create a dummy data set that consists of an infinite sequence
-      # of zeroes, and filter it through a map function that invokes
-      # 'it.get_next()' for each of those zeroes.
-      # TODO(b/113112108): Possibly replace this with something more canonical
-      # if and when we can find adequate support for abstractly defined data
-      # sets (at the moment of this writing it does not appear to exist yet).
-      ds = tf.data.Dataset.from_tensors(0).repeat().map(lambda _: it.get_next())
-      return (ds, pb.TensorFlow.Binding(sequence=pb.TensorFlow.SequenceBinding(
-          iterator_string_handle_name=handle.name)))
+    ds = make_dataset_from_string_handle(handle, parameter_type.element)
+    return (ds, pb.TensorFlow.Binding(sequence=pb.TensorFlow.SequenceBinding(
+        iterator_string_handle_name=handle.name)))
   else:
     raise ValueError(
         'Parameter type component {} cannot be stamped into a TensorFlow '
         'graph.'.format(repr(parameter_type)))
+
+
+def make_dataset_from_string_handle(handle, type_spec):
+  """Constructs a `tf.data.Dataset` from a string handle tensor and type spec.
+
+  Args:
+    handle: The tensor that represents the string handle.
+    type_spec: The type spec of elements of the data set, either an instance of
+      `types.Type` or something convertible to it.
+
+  Returns:
+    A corresponding instance of `tf.data.Dataset`.
+  """
+  type_spec = types.to_type(type_spec)
+  dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
+  with handle.graph.as_default():
+    it = tf.data.Iterator.from_string_handle(handle, dtypes, shapes)
+    # In order to convert an iterator into something that looks like a data
+    # set, we create a dummy data set that consists of an infinite sequence
+    # of zeroes, and filter it through a map function that invokes
+    # 'it.get_next()' for each of those zeroes.
+    # TODO(b/113112108): Possibly replace this with something more canonical
+    # if and when we can find adequate support for abstractly defined data
+    # sets (at the moment of this writing it does not appear to exist yet).
+    return tf.data.Dataset.range(1).repeat().map(lambda _: it.get_next())
 
 
 def capture_result_from_graph(result):
@@ -163,3 +176,150 @@ def capture_result_from_graph(result):
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         py_typecheck.type_string(type(result))))
+
+
+def compute_map_from_bindings(source, target):
+  """Computes a dictionary for renaming tensors from a matching bindings pair.
+
+  Args:
+    source: An instance of `pb.TensorFlow.Binding` that contains names
+      of tensors that will form the keys in the dictionary.
+    target: An instance of `pb.TensorFlow.Binding` that contains names
+      of tensors that will form the values in the dictionary. The structure of
+      this binding must be identical as that of the `source`.
+
+  Returns:
+    A dictionary mapping names of tensors in `source` to names of the
+    tensors in the corresponding parts of `target`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+    ValueError: If the bindings have mismatching structures.
+  """
+  py_typecheck.check_type(source, pb.TensorFlow.Binding)
+  py_typecheck.check_type(target, pb.TensorFlow.Binding)
+  source_oneof = source.WhichOneof('binding')
+  target_oneof = target.WhichOneof('binding')
+  if source_oneof != target_oneof:
+    raise ValueError(
+        'Source and target binding variants mismatch: {} vs. {}'.format(
+            source_oneof, target_oneof))
+  if source_oneof == 'tensor':
+    return collections.OrderedDict([
+        (str(source.tensor.tensor_name), str(target.tensor.tensor_name))])
+  elif source_oneof == 'sequence':
+    return collections.OrderedDict([
+        (str(source.sequence.iterator_string_handle_name),
+         str(target.sequence.iterator_string_handle_name))])
+  elif source_oneof == 'tuple':
+    if len(source.tuple.element) != len(target.tuple.element):
+      raise ValueError(
+          'Source and target binding tuple lengths mismatch: {} vs. {}.'.format(
+              len(source.tuple.element), len(target.tuple.element)))
+    else:
+      result = collections.OrderedDict()
+      for source_element, target_element in zip(
+          source.tuple.element, target.tuple.element):
+        result.update(compute_map_from_bindings(source_element, target_element))
+      return result
+  else:
+    raise ValueError('Unsupported type of binding \'{}\'.'.format(source_oneof))
+
+
+def extract_tensor_names_from_binding(binding):
+  """Returns a list of tensor names extracted from a given binding.
+
+  Args:
+    binding: An instance of `pb.TensorFlow.Binding`.
+
+  Returns:
+    All tensor names that appear in `binding`.
+  """
+  py_typecheck.check_type(binding, pb.TensorFlow.Binding)
+  binding_oneof = binding.WhichOneof('binding')
+  if binding_oneof == 'tensor':
+    return [str(binding.tensor.tensor_name)]
+  elif binding_oneof == 'sequence':
+    return [str(binding.sequence.iterator_string_handle_name)]
+  elif binding_oneof == 'tuple':
+    return [name
+            for e in binding.tuple.element
+            for name in extract_tensor_names_from_binding(e)]
+  else:
+    raise ValueError(
+        'Unsupported type of binding \'{}\'.'.format(binding_oneof))
+
+
+def assemble_result_from_graph(type_spec, binding, output_map):
+  """Assembles a result stamped into a `tf.Graph` given type signature/binding.
+
+  This method does roughly the opposite of `capture_result_from_graph`, in that
+  whereas `capture_result_from_graph` starts with a single structured object
+  made up of tensors and computes its type and bindings, this method starts
+  with the type/bindings and constructs a structured object made up of tensors.
+
+  Args:
+    type_spec: The type signature of the result to assemble, an instance of
+      `types.Type` or something convertible to it.
+    binding: The binding that relates the type signature to names of tensors in
+      the graph, an instance of `pb.TensorFlow.Binding`.
+    output_map: The mapping from tensor names that appear in the binding to
+      actual stamped tensors (possibly renamed during import).
+
+  Returns:
+    The assembled result, a Python object that is composed of tensors, possibly
+    nested within Python structures such as anonymous tuples.
+
+  Raises:
+    TypeError: If the argument or any of its parts are of an uexpected type.
+    ValueError: If the arguments are invalid or inconsistent witch other, e.g.,
+      the type and binding don't match, or the tensor is not found in the map.
+  """
+  type_spec = types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, types.Type)
+  py_typecheck.check_type(binding, pb.TensorFlow.Binding)
+  py_typecheck.check_type(output_map, dict)
+  for k, v in six.iteritems(output_map):
+    py_typecheck.check_type(k, six.string_types)
+    if not tf.contrib.framework.is_tensor(v):
+      raise TypeError(
+          'Element with key {} in the output map is {}, not a tensor.'.format(
+              k, py_typecheck.type_string(type(v))))
+
+  binding_oneof = binding.WhichOneof('binding')
+  if isinstance(type_spec, types.TensorType):
+    if binding_oneof != 'tensor':
+      raise ValueError(
+          'Expected a tensor binding, found {}.'.format(binding_oneof))
+    elif binding.tensor.tensor_name not in output_map:
+      raise ValueError(
+          'Tensor named {} not found in the output map.'.format(
+              binding.tensor.tensor_name))
+    else:
+      return output_map[binding.tensor.tensor_name]
+  elif isinstance(type_spec, types.NamedTupleType):
+    if binding_oneof != 'tuple':
+      raise ValueError(
+          'Expected a tuple binding, found {}.'.format(binding_oneof))
+    else:
+      type_elements = type_spec.elements
+      if len(binding.tuple.element) != len(type_elements):
+        raise ValueError(
+            'Mismatching tuple sizes in type ({}) and binding ({}).'.format(
+                len(type_elements), len(binding.tuple.element)))
+      result_elements = []
+      for (element_name, element_type), element_binding in zip(
+          type_elements, binding.tuple.element):
+        element_object = assemble_result_from_graph(
+            element_type, element_binding, output_map)
+        result_elements.append((element_name, element_object))
+      return anonymous_tuple.AnonymousTuple(result_elements)
+  elif isinstance(type_spec, types.SequenceType):
+    if binding_oneof != 'sequence':
+      raise ValueError(
+          'Expected a sequence binding, found {}.'.format(binding_oneof))
+    else:
+      handle = output_map[binding.sequence.iterator_string_handle_name]
+      return make_dataset_from_string_handle(handle, type_spec.element)
+  else:
+    raise ValueError('Unsupported type \'{}\'.'.format(str(type_spec)))

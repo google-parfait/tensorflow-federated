@@ -87,12 +87,11 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def _checked_stamp_parameter(self, name, spec, graph=None):
     """Returns object stamped in the graph after verifying its bindings."""
+    if graph is None:
+      graph = tf.get_default_graph()
     val, binding = graph_utils.stamp_parameter_in_graph(name, spec, graph)
     self._assert_binding_matches_type_and_value(
-        binding,
-        types.to_type(spec),
-        val,
-        graph if graph else tf.get_default_graph())
+        binding, types.to_type(spec), val, graph)
     return val
 
   def test_stamp_parameter_in_graph_with_scalar_int_explicit_graph(self):
@@ -197,6 +196,79 @@ class GraphUtilsTest(tf.test.TestCase):
                 (None, [[tf.constant(10)]])]))),
         '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
 
+  def test_compute_map_from_bindings_with_tuple_of_tensors(self):
+    _, source = graph_utils.capture_result_from_graph(
+        collections.OrderedDict([
+            ('foo', tf.constant(10, name='A')),
+            ('bar', tf.constant(20, name='B'))]))
+    _, target = graph_utils.capture_result_from_graph(
+        collections.OrderedDict([
+            ('foo', tf.constant(30, name='C')),
+            ('bar', tf.constant(40, name='D'))]))
+    result = graph_utils.compute_map_from_bindings(source, target)
+    self.assertEqual(
+        str(result), 'OrderedDict([(\'A:0\', \'C:0\'), (\'B:0\', \'D:0\')])')
+
+  def test_compute_map_from_bindings_with_sequence(self):
+    source = pb.TensorFlow.Binding(
+        sequence=pb.TensorFlow.SequenceBinding(
+            iterator_string_handle_name='foo'))
+    target = pb.TensorFlow.Binding(
+        sequence=pb.TensorFlow.SequenceBinding(
+            iterator_string_handle_name='bar'))
+    result = graph_utils.compute_map_from_bindings(source, target)
+    self.assertEqual(str(result), 'OrderedDict([(\'foo\', \'bar\')])')
+
+  def test_extract_tensor_names_from_binding_with_tuple_of_tensors(self):
+    _, binding = graph_utils.capture_result_from_graph(
+        collections.OrderedDict([
+            ('foo', tf.constant(10, name='A')),
+            ('bar', tf.constant(20, name='B'))]))
+    result = graph_utils.extract_tensor_names_from_binding(binding)
+    self.assertEqual(str(sorted(result)), '[\'A:0\', \'B:0\']')
+
+  def test_extract_tensor_names_from_binding_with_sequence(self):
+    binding = pb.TensorFlow.Binding(
+        sequence=pb.TensorFlow.SequenceBinding(
+            iterator_string_handle_name='foo'))
+    result = graph_utils.extract_tensor_names_from_binding(binding)
+    self.assertEqual(str(sorted(result)), '[\'foo\']')
+
+  def test_assemble_result_from_graph_with_named_tuple(self):
+    type_spec = [('X', tf.int32), ('Y', tf.int32)]
+    binding = pb.TensorFlow.Binding(
+        tuple=pb.TensorFlow.NamedTupleBinding(element=[
+            pb.TensorFlow.Binding(
+                tensor=pb.TensorFlow.TensorBinding(tensor_name='P')),
+            pb.TensorFlow.Binding(
+                tensor=pb.TensorFlow.TensorBinding(tensor_name='Q'))]))
+    output_map = {'P': tf.constant(1, name='A'), 'Q': tf.constant(2, name='B')}
+    result = graph_utils.assemble_result_from_graph(
+        type_spec, binding, output_map)
+    self.assertEqual(
+        str(result),
+        '<X=Tensor("A:0", shape=(), dtype=int32),'
+        'Y=Tensor("B:0", shape=(), dtype=int32)>')
+
+  def test_assemble_result_from_graph_with_sequence(self):
+    type_spec = types.SequenceType([('X', tf.int32), ('Y', tf.int32)])
+    binding = pb.TensorFlow.Binding(
+        sequence=pb.TensorFlow.SequenceBinding(
+            iterator_string_handle_name='foo'))
+    data_set = tf.data.Dataset.from_tensors(
+        {'X': tf.constant(1), 'Y': tf.constant(2)})
+    it = data_set.make_one_shot_iterator()
+    output_map = {
+        'foo': it.string_handle()}
+    result = graph_utils.assemble_result_from_graph(
+        type_spec, binding, output_map)
+    self.assertIsInstance(result, tf.data.Dataset)
+    self.assertEqual(
+        str(result.output_types),
+        'OrderedDict([(\'X\', tf.int32), (\'Y\', tf.int32)])')
+    self.assertEqual(
+        str(result.output_shapes),
+        'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
 
 if __name__ == '__main__':
   tf.test.main()

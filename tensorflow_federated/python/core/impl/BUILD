@@ -300,6 +300,30 @@ py_test(
 )
 
 py_library(
+    name = "tensorflow_deserialization",
+    srcs = ["tensorflow_deserialization.py"],
+    deps = [
+        ":graph_utils",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "tensorflow_deserialization_test",
+    size = "small",
+    srcs = ["tensorflow_deserialization_test.py"],
+    deps = [
+        ":tensorflow_deserialization",
+        ":tensorflow_serialization",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "tensorflow_serialization",
     srcs = ["tensorflow_serialization.py"],
     deps = [
@@ -348,8 +372,10 @@ py_library(
     deps = [
         ":computation_impl",
         ":context_base",
+        ":tensorflow_deserialization",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -358,6 +384,7 @@ py_test(
     size = "small",
     srcs = ["tf_computation_context_test.py"],
     deps = [
+        ":context_stack",
         ":tf_computation_context",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",

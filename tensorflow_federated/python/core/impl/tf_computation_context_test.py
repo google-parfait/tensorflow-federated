@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import tf_computation_context
 
+from tensorflow_federated.python.core.impl.context_stack import context_stack
+
 
 class TensorFlowComputationContextTest(absltest.TestCase):
 
@@ -36,19 +38,25 @@ class TensorFlowComputationContextTest(absltest.TestCase):
         types.FederatedType(tf.int32, placements.SERVER, True))
     def foo(x):
       return intrinsics.federated_broadcast(x)
-    context = tf_computation_context.TensorFlowComputationContext()
+    context = tf_computation_context.TensorFlowComputationContext(
+        tf.get_default_graph())
     with self.assertRaisesRegexp(
-        ValueError,
-        'Only TF computations can be invoked in a TF computation context.'):
+        ValueError, 'Expected a TensorFlow computation.'):
       context.invoke(foo, None)
 
   def test_invoke_tf_computation(self):
-    foo = computations.tf_computation(lambda: tf.constant(10))
-    context = tf_computation_context.TensorFlowComputationContext()
-
-    # TODO(b/113112885): Adjust the test logic after implementing this.
-    with self.assertRaises(NotImplementedError):
-      context.invoke(foo, None)
+    make_10 = computations.tf_computation(lambda: tf.constant(10))
+    add_one = computations.tf_computation(lambda x: tf.add(x, 1), tf.int32)
+    @computations.tf_computation
+    def foo():
+      return add_one(add_one(add_one(make_10())))
+    self.assertEqual(str(foo.type_signature), '( -> int32)')
+    with tf.Graph().as_default() as graph:
+      context = tf_computation_context.TensorFlowComputationContext(
+          tf.get_default_graph())
+      with context_stack.install(context):
+        with tf.Session(graph=graph) as sess:
+          self.assertEqual(sess.run(foo()), 13)
 
 
 if __name__ == '__main__':
