@@ -23,13 +23,12 @@ import numpy as np
 import six
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
-
-from tensorflow_federated.python.core.impl import anonymous_tuple
 
 
 def infer_type(arg):

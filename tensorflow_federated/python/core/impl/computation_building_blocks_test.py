@@ -23,10 +23,11 @@ import re
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
+
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
 
-from tensorflow_federated.python.core.impl import anonymous_tuple
 from tensorflow_federated.python.core.impl import computation_building_blocks as bb
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization

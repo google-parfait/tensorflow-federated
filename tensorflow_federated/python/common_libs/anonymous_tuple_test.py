@@ -20,8 +20,8 @@ from __future__ import print_function
 # Dependency imports
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
-from tensorflow_federated.python.core.impl.anonymous_tuple import to_elements
+from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
+from tensorflow_federated.python.common_libs.anonymous_tuple import to_elements
 
 
 class AnonymousTupleTest(absltest.TestCase):

@@ -5,33 +5,14 @@ package(default_visibility = ["//tensorflow_federated/python/core/api:__subpacka
 licenses(["notice"])  # Apache 2.0
 
 py_library(
-    name = "anonymous_tuple",
-    srcs = ["anonymous_tuple.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@six_archive//:six",
-    ],
-)
-
-py_test(
-    name = "anonymous_tuple_test",
-    size = "small",
-    srcs = ["anonymous_tuple_test.py"],
-    deps = [
-        ":anonymous_tuple",
-        "@absl_py//absl/testing:absltest",
-    ],
-)
-
-py_library(
     name = "computation_building_blocks",
     srcs = ["computation_building_blocks.py"],
     deps = [
-        ":anonymous_tuple",
         ":placement_literals",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "@six_archive//:six",
@@ -43,10 +24,10 @@ py_test(
     size = "small",
     srcs = ["computation_building_blocks_test.py"],
     deps = [
-        ":anonymous_tuple",
         ":computation_building_blocks",
         ":tensorflow_serialization",
         ":type_serialization",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
         "@absl_py//absl/testing:absltest",
@@ -210,8 +191,8 @@ py_library(
     name = "func_utils",
     srcs = ["func_utils.py"],
     deps = [
-        ":anonymous_tuple",
         ":type_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
@@ -224,8 +205,8 @@ py_test(
     size = "small",
     srcs = ["func_utils_test.py"],
     deps = [
-        ":anonymous_tuple",
         ":func_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -236,9 +217,9 @@ py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
     deps = [
-        ":anonymous_tuple",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -251,11 +232,11 @@ py_test(
     size = "small",
     srcs = ["graph_utils_test.py"],
     deps = [
-        ":anonymous_tuple",
         ":graph_utils",
         ":test_utils",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -423,7 +404,7 @@ py_library(
     name = "type_utils",
     srcs = ["type_utils.py"],
     deps = [
-        ":anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
@@ -438,11 +419,11 @@ py_test(
     size = "small",
     srcs = ["type_utils_test.py"],
     deps = [
-        ":anonymous_tuple",
         ":computation_building_blocks",
         ":test_utils",
         ":type_utils",
         ":value_impl",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
@@ -455,13 +436,13 @@ py_library(
     name = "value_impl",
     srcs = ["value_impl.py"],
     deps = [
-        ":anonymous_tuple",
         ":computation_building_blocks",
         ":computation_impl",
         ":computation_wrapper",
         ":func_utils",
         ":placement_literals",
         ":tensorflow_serialization",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:types",
@@ -476,9 +457,9 @@ py_test(
     size = "small",
     srcs = ["value_impl_test.py"],
     deps = [
-        ":anonymous_tuple",
         ":computation_building_blocks",
         ":value_impl",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",

@@ -24,6 +24,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
+
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import types
@@ -32,8 +34,6 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
-
-from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 
 
 class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):

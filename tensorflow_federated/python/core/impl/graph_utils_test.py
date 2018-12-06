@@ -24,13 +24,13 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
+
 from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
-
-from tensorflow_federated.python.core.impl.anonymous_tuple import AnonymousTuple
 
 
 class GraphUtilsTest(tf.test.TestCase):

@@ -10,6 +10,25 @@ licenses(["notice"])  # Apache 2.0
 # and those that deal with TensorFlow belong in 'tensorflow_libs'.
 
 py_library(
+    name = "anonymous_tuple",
+    srcs = ["anonymous_tuple.py"],
+    deps = [
+        ":py_typecheck",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "anonymous_tuple_test",
+    size = "small",
+    srcs = ["anonymous_tuple_test.py"],
+    deps = [
+        ":anonymous_tuple",
+        "@absl_py//absl/testing:absltest",
+    ],
+)
+
+py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     deps = ["@six_archive//:six"],
