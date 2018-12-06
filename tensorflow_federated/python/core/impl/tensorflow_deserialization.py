@@ -88,7 +88,7 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
             'is of a mismatching type {}.'.format(
-                str(type_spec.parameter), str(arg)))
+                str(type_spec.parameter), str(arg_type)))
       else:
         input_map = {k: graph.get_tensor_by_name(v) for k, v in six.iteritems(
             graph_utils.compute_map_from_bindings(
