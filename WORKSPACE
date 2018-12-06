@@ -1,5 +1,7 @@
 workspace(name = "org_tensorflow_federated")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "org_tensorflow",
     sha256 = "8f56efcd9eb04885f0292692a1e162ecfbca5ca08ffa4261d757fbe46f48fc8d",

@@ -39,7 +39,7 @@ cd "federated"
 #### 4. Create a virtual environment
 
 ```bash
-virtualenv --system-site-packages --python python3 "venv"
+virtualenv --python python3 "venv"
 source "venv/bin/activate"
 pip install --upgrade pip
 ```
@@ -53,7 +53,9 @@ pip install --requirement requirements.txt
 #### 6. Test Tensorflow Federated
 
 ```bash
-bazel test ...
+bazel test \
+    --incompatible_remove_native_http_archive=false \
+    -- //tensorflow_federated/...
 ```
 
 #### 7. Exit the virtual environment
@@ -92,5 +94,7 @@ docker run -it \
 #### 5. Test Tensorflow Federated
 
 ```bash
-bazel test ...
+bazel test \
+    --incompatible_remove_native_http_archive=false \
+    -- //tensorflow_federated/...
 ```
