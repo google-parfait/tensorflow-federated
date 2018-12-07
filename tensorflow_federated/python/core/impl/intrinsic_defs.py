@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.api import types
 class IntrinsicDef(object):
   """Represents the definition of an intrinsic.
 
-  This class represents the ultimayte source of ground truth about what kinds of
+  This class represents the ultimate source of ground truth about what kinds of
   intrinsics exist and what their types are. To be consuled by all other code
   that deals with intrinsics.
   """

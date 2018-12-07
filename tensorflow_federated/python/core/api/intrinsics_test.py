@@ -223,7 +223,7 @@ class IntrinsicsTest(absltest.TestCase):
         FederatedType(tf.float32, SERVER, True)])
     def foo(temperatures, threshold):
       return federated_sum(federated_map(
-          federated_zip([temperatures, federated_broadcast(threshold)]),
+          [temperatures, federated_broadcast(threshold)],
           tf_computation(
               lambda x, y: tf.to_int32(tf.greater(x, y)),
               [tf.float32, tf.float32])))

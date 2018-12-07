@@ -264,7 +264,9 @@ def federated_map(value, mapping_fn):
   """Maps a federated value on CLIENTS pointwise using a given mapping function.
 
   Args:
-    value: A value of a TFF federated type placed at the `CLIENTS`.
+    value: A value of a TFF federated type placed at the `CLIENTS`, or a value
+      that can be implicitly converted into a TFF federated type,
+      e.g., by zipping.
     mapping_fn: A mapping function to apply pointwise to member constituents of
       `value` on each of the participants in `CLIENTS`. The parameter of this
       function must be of the same type as the member constituents of `value`.
@@ -275,7 +277,6 @@ def federated_map(value, mapping_fn):
   Raises:
     TypeError: if the arguments are not of the appropriates types.
   """
-  # TODO(b/113112108): Extend this to auto-zip the `value` argument if needed.
 
   # TODO(b/113112108): Possibly lift the restriction that the mapped value must
   # be placed at the clients after adding support for placement labels in the
@@ -283,6 +284,11 @@ def federated_map(value, mapping_fn):
   # is based on to work with federated values of arbitrary placement.
 
   value = value_impl.to_value(value)
+  if isinstance(value.type_signature, types.NamedTupleType):
+    # TODO(b/120569877): Extend federated_zip to n-tuples
+    if len(value.type_signature.elements) == 2:
+      # We've been passed a value which the user expects to be zipped.
+      value = federated_zip(value)
   type_utils.check_federated_value_placement(
       value, placements.CLIENTS, 'value to be mapped')
 
