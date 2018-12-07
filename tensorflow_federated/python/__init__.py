@@ -21,7 +21,7 @@ from __future__ import print_function
 # explicitly whitelisted in core/api, and it makes no sense to repeat them here.
 # pylint: disable=wildcard-import
 from tensorflow_federated.python.core.api import *
-
+# pylint: enable=wildcard-import
 
 # Used by doc generation script.
 _allowed_symbols = [
