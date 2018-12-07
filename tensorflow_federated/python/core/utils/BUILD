@@ -4,7 +4,8 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])  # Apache 2.0
 
-# This is the import for other components of TFF that are layered upon the Core utils.
+# This is the import for other components of TFF that are layered upon the Core
+# utils.
 py_library(
     name = "utils",
     srcs = ["__init__.py"],

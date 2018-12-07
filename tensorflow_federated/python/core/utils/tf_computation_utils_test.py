@@ -35,12 +35,11 @@ class TfComputationUtilsTest(tf.test.TestCase):
     self.assertEqual(str(x.name), 'foo:0')
 
   def test_get_variables_with_named_tuple_type(self):
-    x = tf_computation_utils.get_variables(
-        'foo', [('x', tf.int32), ('y', tf.string), tf.bool])
+    x = tf_computation_utils.get_variables('foo', [('x', tf.int32),
+                                                   ('y', tf.string), tf.bool])
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertEqual(
-        str(x),
-        '<x=<tf.Variable \'foo/x:0\' shape=() dtype=int32_ref>,'
+        str(x), '<x=<tf.Variable \'foo/x:0\' shape=() dtype=int32_ref>,'
         'y=<tf.Variable \'foo/y:0\' shape=() dtype=string_ref>,'
         '<tf.Variable \'foo/2:0\' shape=() dtype=bool_ref>>')
 

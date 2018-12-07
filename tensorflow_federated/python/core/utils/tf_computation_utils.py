@@ -31,11 +31,11 @@ def get_variables(name, type_spec, **kwargs):
   """Creates a set of variables that matches the given `type_spec`.
 
   Args:
-    name: The common name to use for the scope in which all of the variables
-      are to be created.
-    type_spec: An instance of `fc.Type` or something convertible to it. The
-      type signature may only be composed of tensor types and named tuples,
-      possibly nested.
+    name: The common name to use for the scope in which all of the variables are
+      to be created.
+    type_spec: An instance of `fc.Type` or something convertible to it. The type
+      signature may only be composed of tensor types and named tuples, possibly
+      nested.
     **kwargs: Additional keyword args to pass to `tf.get_variable` calls.
 
   Returns:
@@ -55,9 +55,9 @@ def get_variables(name, type_spec, **kwargs):
         name, dtype=type_spec.dtype, shape=type_spec.shape, **kwargs)
   elif isinstance(type_spec, fc.NamedTupleType):
     with tf.variable_scope(name):
-      return anonymous_tuple.AnonymousTuple([
-          (k, get_variables(k if k is not None else str(i), v, **kwargs))
-          for i, (k, v) in enumerate(type_spec.elements)])
+      return anonymous_tuple.AnonymousTuple(
+          [(k, get_variables(k if k is not None else str(i), v, **kwargs))
+           for i, (k, v) in enumerate(type_spec.elements)])
   else:
     raise TypeError(
         'Expected a TFF type signature composed of tensors and named tuples, '
