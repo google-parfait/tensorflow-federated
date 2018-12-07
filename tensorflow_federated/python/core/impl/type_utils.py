@@ -23,6 +23,10 @@ import numpy as np
 import six
 import tensorflow as tf
 
+# TODO(b/118783928) Fix BUILD target visibility.
+from tensorflow.python.framework import tensor_util
+from tensorflow.python.util import nest
+
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -53,7 +57,7 @@ def infer_type(arg):
     return None
   elif isinstance(arg, (value_base.Value, computation_base.Computation)):
     return arg.type_signature
-  elif tf.contrib.framework.is_tensor(arg):
+  elif tensor_util.is_tensor(arg):
     return types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, (np.generic, np.ndarray)):
     return types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
@@ -121,7 +125,7 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   Raises:
     TypeError: if the arguments are of types that weren't recognized.
   """
-  tf.contrib.framework.nest.assert_same_structure(dtypes, shapes)
+  nest.assert_same_structure(dtypes, shapes)
   if isinstance(dtypes, tf.DType):
     return types.TensorType(dtypes, shapes)
   elif '_asdict' in type(dtypes).__dict__:

@@ -20,6 +20,9 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+# TODO(b/118783928) Fix BUILD target visibility.
+from tensorflow.python.framework import tensor_util
+
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
@@ -35,7 +38,7 @@ def is_scalar(tensor):
   Raises:
     TypeError: when the argument is not a tensor.
   """
-  if not tf.contrib.framework.is_tensor(tensor):
+  if not tensor_util.is_tensor(tensor):
     raise TypeError('Expected a tensor, found "{}".'.format(
         py_typecheck.type_string(type(tensor))))
   return (hasattr(tensor, 'get_shape') and

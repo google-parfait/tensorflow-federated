@@ -334,7 +334,6 @@ py_test(
 py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(

@@ -54,11 +54,8 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     self.assertEqual(results, [1003])
 
   def test_serialize_tensorflow_with_data_set_sum_lambda(self):
-    # TODO(b/113112885): When support for Dataset.reduce() becomes available,
-    # replace with "lambda ds: ds.reduce(np.int64(0), lambda x, y: x + y)".
     def _legacy_dataset_reducer_example(ds):
-      return tf.contrib.data.reduce_dataset(ds, tf.contrib.data.Reducer(
-          lambda _: np.int64(0), lambda x, y: x + y, lambda x: x))
+      return ds.reduce(np.int64(0), lambda x, y: x + y)
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
         _legacy_dataset_reducer_example, types.SequenceType(tf.int64))
     self.assertEqual(

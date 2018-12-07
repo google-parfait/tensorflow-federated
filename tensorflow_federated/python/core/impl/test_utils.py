@@ -17,8 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-import tensorflow as tf
+# TODO(b/118783928) Fix BUILD target visibility.
+from tensorflow.python.util import nest
 
 
 def assert_nested_struct_eq(x, y):
@@ -31,9 +31,9 @@ def assert_nested_struct_eq(x, y):
   Raises:
     ValueError: if the structures are not the same.
   """
-  tf.contrib.framework.nest.assert_same_structure(x, y)
-  xl = tf.contrib.framework.nest.flatten(x)
-  yl = tf.contrib.framework.nest.flatten(y)
+  nest.assert_same_structure(x, y)
+  xl = nest.flatten(x)
+  yl = nest.flatten(y)
   if len(xl) != len(yl):
     raise ValueError('The sizes of structures {} and {} mismatch.'.format(
         str(len(xl)), str(len(yl))))
