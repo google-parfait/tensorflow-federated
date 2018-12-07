@@ -146,7 +146,7 @@ def capture_result_from_graph(result):
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
   if tf.contrib.framework.is_tensor(result):
-    return (types.TensorType(result.dtype, result.shape),
+    return (types.TensorType(result.dtype.base_dtype, result.shape),
             pb.TensorFlow.Binding(tensor=pb.TensorFlow.TensorBinding(
                 tensor_name=result.name)))
   elif '_asdict' in type(result).__dict__:

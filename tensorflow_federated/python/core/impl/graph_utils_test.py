@@ -45,7 +45,7 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertTrue(tf.contrib.framework.is_tensor(val))
       self.assertEqual(binding.tensor.tensor_name, val.name)
       self.assertIsInstance(type_spec, types.TensorType)
-      self.assertEqual(type_spec.dtype, val.dtype)
+      self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
       self.assertEqual(repr(type_spec.shape), repr(val.shape))
     elif binding_oneof == 'sequence':
       self.assertIsInstance(val, tf.data.Dataset)
@@ -147,6 +147,14 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_capture_result_with_int_scalar(self):
     self.assertEqual(
         str(self._checked_capture_result(tf.placeholder(tf.int32, shape=[]))),
+        'int32')
+
+  def test_capture_result_with_int_var(self):
+    # Verifies that the variable dtype is not being captured as `int32_ref`,
+    # since TFF has no concept of passing arguments by reference.
+    self.assertEqual(
+        str(self._checked_capture_result(
+            tf.get_variable('foo', dtype=tf.int32, shape=[]))),
         'int32')
 
   def test_capture_result_with_scalar_list(self):
