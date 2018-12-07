@@ -81,8 +81,8 @@ class AnonymousTuple(object):
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {}.'.format(repr(e)))
     self._element_array = [e[1] for e in elements]
-    self._name_to_index = collections.OrderedDict([
-        (e[0], idx) for idx, e in enumerate(elements) if e[0] is not None])
+    self._name_to_index = collections.OrderedDict(
+        [(e[0], idx) for idx, e in enumerate(elements) if e[0] is not None])
 
   def __len__(self):
     return len(self._element_array)

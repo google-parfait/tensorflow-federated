@@ -92,8 +92,8 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(x.bar, 30)
     self.assertRaises(AttributeError, lambda _: x.baz, None)
     self.assertEqual(x, AnonymousTuple([(None, 10), ('foo', 20), ('bar', 30)]))
-    self.assertNotEqual(
-        x, AnonymousTuple([('foo', 10), ('bar', 20), (None, 30)]))
+    self.assertNotEqual(x, AnonymousTuple([('foo', 10), ('bar', 20), (None,
+                                                                      30)]))
     self.assertEqual(to_elements(x), v)
     self.assertEqual(
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')

@@ -36,12 +36,8 @@ class PyTypeCheckTest(absltest.TestCase):
     except TypeError:
       self.fail('Function {} raised TypeError unexpectedly.'.format(
           py_typecheck.check_type.__name__))
-    self.assertRaisesRegexp(
-        TypeError,
-        'Expected .*TestCase, found int.',
-        py_typecheck.check_type,
-        10,
-        absltest.TestCase)
+    self.assertRaisesRegexp(TypeError, 'Expected .*TestCase, found int.',
+                            py_typecheck.check_type, 10, absltest.TestCase)
     self.assertRaisesRegexp(
         TypeError,
         'Expected foo to be of type int, found __main__.PyTypeCheckTest.',
@@ -49,18 +45,11 @@ class PyTypeCheckTest(absltest.TestCase):
         self,
         int,
         label='foo')
-    self.assertRaisesRegexp(
-        TypeError,
-        'Expected int or bool, found str.',
-        py_typecheck.check_type,
-        'a',
-        (int, bool))
-    self.assertRaisesRegexp(
-        TypeError,
-        'Expected int, bool, or float, found str.',
-        py_typecheck.check_type,
-        'a',
-        (int, bool, float))
+    self.assertRaisesRegexp(TypeError, 'Expected int or bool, found str.',
+                            py_typecheck.check_type, 'a', (int, bool))
+    self.assertRaisesRegexp(TypeError,
+                            'Expected int, bool, or float, found str.',
+                            py_typecheck.check_type, 'a', (int, bool, float))
 
   def test_check_callable(self):
     try:
@@ -68,11 +57,9 @@ class PyTypeCheckTest(absltest.TestCase):
     except TypeError:
       self.fail('Function {} raised TypeError unexpectedly.'.format(
           py_typecheck.check_callable.__name__))
-    self.assertRaisesRegexp(
-        TypeError,
-        'Expected a callable, found non-callable int.',
-        py_typecheck.check_callable,
-        10)
+    self.assertRaisesRegexp(TypeError,
+                            'Expected a callable, found non-callable int.',
+                            py_typecheck.check_callable, 10)
 
 
 if __name__ == '__main__':

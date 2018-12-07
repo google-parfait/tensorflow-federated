@@ -27,8 +27,8 @@ def check_type(target, type_spec, label=None):
     target: An object, the Python type of which to check.
     type_spec: Either a Python type, or a tuple of Python types; the same as
       what's accepted by isinstance.
-    label: An optional label associated with the target, used to create a
-      more human-readable error message.
+    label: An optional label associated with the target, used to create a more
+      human-readable error message.
 
   Raises:
     TypeError: when the target is not of one of the types in 'type_spec'.
@@ -36,15 +36,14 @@ def check_type(target, type_spec, label=None):
   _check_is_type_spec(type_spec)
   if not isinstance(target, type_spec):
     raise TypeError('Expected {}{}, found {}.'.format(
-        ('{} to be of type '.format(label) if label else ''),
-        type_string(type_spec),
-        type_string(type(target))))
+        '{} to be of type '.format(label) if label is not None else '',
+        type_string(type_spec), type_string(type(target))))
 
 
 def check_callable(target, label=None):
   if not callable(target):
     raise TypeError('Expected {} callable, found non-callable {}.'.format(
-        ('{} to be'.format(label) if label else 'a'),
+        '{} to be'.format(label) if label is not None else 'a',
         type_string(type(target))))
 
 
@@ -63,9 +62,10 @@ def type_string(type_spec):
   """
   _check_is_type_spec(type_spec)
   if isinstance(type_spec, type):
-    return (type_spec.__name__
-            if type_spec.__module__ == six.moves.builtins.__name__ else
-            '{}.{}'.format(type_spec.__module__, type_spec.__name__))
+    if type_spec.__module__ == six.moves.builtins.__name__:
+      return type_spec.__name__
+    else:
+      return '{}.{}'.format(type_spec.__module__, type_spec.__name__)
   else:
     assert isinstance(type_spec, (tuple, list))
     type_names = [type_string(x) for x in type_spec]
@@ -89,8 +89,7 @@ def _check_is_type_spec(type_spec):
   """
   if isinstance(type_spec, type):
     return
-  if (isinstance(type_spec, (tuple, list)) and
-      type_spec and
+  if (isinstance(type_spec, (tuple, list)) and type_spec and
       all(isinstance(x, type) for x in type_spec)):
     return
   raise TypeError(
