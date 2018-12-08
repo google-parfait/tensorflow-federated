@@ -29,16 +29,13 @@ import collections
 # Dependency imports
 import tensorflow as tf
 
-from tensorflow_federated.python.core import api as fc
-
+from tensorflow_federated import python as tff
 
 # TODO(b/120157713): Transform this into a notebook eventually while retaining
 # the ability to utilize it as an extra unit test of the Core API.
 
-
 # TODO(b/120157713): TBD whether it's desirable or not to standardize on the
 # same model in all tutorials and examples.
-
 
 # The model we will train is a simple linear classifier that given a discrete
 # input class named 'X' predicts a discrete output class named 'Y'. The input
@@ -46,7 +43,6 @@ from tensorflow_federated.python.core import api as fc
 # from 0 to NUM_Y_CLASSES.
 NUM_X_CLASSES = 7
 NUM_Y_CLASSES = 3
-
 
 # The samples of data used to train or evaluate the model will consists of the
 # values of the 2 features 'X' and 'Y'. The data will arrive in batches (e.g.,
@@ -57,20 +53,21 @@ NUM_Y_CLASSES = 3
 # not expressed in the type below). The number of elements is unspecified (the
 # shape of both scalars is [None]), since the individual batches of data might
 # contain unequal numbers of samples not known in advance.
-BATCH_TYPE = fc.NamedTupleType([
-    ('X', fc.TensorType(tf.int32, shape=[None])),
-    ('Y', fc.TensorType(tf.int32, shape=[None]))])
+BATCH_TYPE = tff.NamedTupleType([
+    ('X', tff.TensorType(tf.int32, shape=[None])),
+    ('Y', tff.TensorType(tf.int32, shape=[None])),
+])  # pyformat: disable
 
 
 # The input to training/evaluation is simply a sequence of such batches.
-INPUT_TYPE = fc.SequenceType(BATCH_TYPE)
-
+INPUT_TYPE = tff.SequenceType(BATCH_TYPE)
 
 # The parameters of the model consist of a weight matrix and a bias vector, to
 # be applied to a one-hot encoding of the inputs.
-MODEL_TYPE = fc.NamedTupleType([
-    ('weights', fc.TensorType(tf.float32, [NUM_X_CLASSES, NUM_Y_CLASSES])),
-    ('bias', fc.TensorType(tf.float32, NUM_Y_CLASSES))])
+MODEL_TYPE = tff.NamedTupleType([
+    ('weights', tff.TensorType(tf.float32, [NUM_X_CLASSES, NUM_Y_CLASSES])),
+    ('bias', tff.TensorType(tf.float32, NUM_Y_CLASSES)),
+])  # pyformat: disable
 
 
 # A simple TensorFlow computation that computes loss and accuracy metrics on a
@@ -85,7 +82,7 @@ MODEL_TYPE = fc.NamedTupleType([
 # by the 'extract_features' computation is determined automatically. In this
 # case, it is a TFF named tuple with 2 named elements constructed from elements
 # of the returned Python dictionary.
-@fc.tf_computation([BATCH_TYPE, MODEL_TYPE])
+@tff.tf_computation([BATCH_TYPE, MODEL_TYPE])
 def forward_pass(features, model):
   """Computes loss and accuracy metrics for the given sample batch and model.
 
@@ -93,8 +90,8 @@ def forward_pass(features, model):
     features: A named tuple with 2 elements `X` and `Y` that represent the two
       feature vectors in a single batch. The elements are represented as
       `tf.Tensor`s of the dtypes and shapes as defined in `BATCH_TYPE`.
-    model: A named tuple with 2 elements `weights` and `bias` that represent
-      the model parameters. Each of the parameters is represented here as a
+    model: A named tuple with 2 elements `weights` and `bias` that represent the
+      model parameters. Each of the parameters is represented here as a
       `tf.Tensor`, with dtypes and shapes as defined in `MODEL_TYPE` above.
 
   Returns:
@@ -112,14 +109,13 @@ def forward_pass(features, model):
   is_correct = tf.equal(prediction, features.Y)
   accuracy = tf.reduce_mean(tf.cast(is_correct, tf.float32))
   count = tf.size(features.X)
-  return collections.OrderedDict([
-      ('loss', loss), ('accuracy', accuracy), ('count', count)])
+  return collections.OrderedDict([('loss', loss), ('accuracy', accuracy),
+                                  ('count', count)])
 
 
 # Capturing type signature of the named tuple of statistics (metrics, counters)
 # computed by the model.
 STATS_TYPE = forward_pass.type_signature.result
-
 
 # TODO(b/120157713): Implement the remainder of this example: gradient descent,
 # local training loop, federated averaging of model parameters, etc.

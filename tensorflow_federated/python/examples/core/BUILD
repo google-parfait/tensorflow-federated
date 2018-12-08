@@ -8,7 +8,7 @@ py_library(
     name = "training",
     srcs = ["training.py"],
     deps = [
-        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
