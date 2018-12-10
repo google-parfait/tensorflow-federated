@@ -59,7 +59,8 @@ def metrics_sum(values, name=None):
   """
   with tf.variable_scope(name, 'metrics_sum', (values,)):
     sum_var = tf.get_variable(
-        'sum', [], values.dtype,
+        'sum', [],
+        values.dtype,
         initializer=tf.zeros_initializer,
         collections=[tf.GraphKeys.LOCAL_VARIABLES],
         trainable=False)

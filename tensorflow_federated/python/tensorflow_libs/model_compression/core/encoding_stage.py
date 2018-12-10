@@ -199,14 +199,14 @@ class EncodingStageInterface(object):
     `encode` method.
 
     Args:
-      encoded_tensors: A dictionary containing `Tensor` objects,
-        representing the encoded value.
+      encoded_tensors: A dictionary containing `Tensor` objects, representing
+        the encoded value.
       decode_params: A dictionary, containing the parameters needed for the
         decoding. The structure needs to be the return structure of the
         `get_params` method.
       shape: Required if the `decode_needs_input_shape` property is `True`. A
-        shape of the original input to `encode`, if needed for decoding. Can
-        be either a `Tensor`, or a python object.
+        shape of the original input to `encode`, if needed for decoding. Can be
+        either a `Tensor`, or a python object.
       name: `string`, name of the operation.
 
     Returns:
@@ -366,8 +366,8 @@ class AdaptiveEncodingStageInterface(object):
     Args:
       x: A `Tensor`, input to be encoded.
       encode_params: A dictionary, containing the parameters needed for the
-        encoding. The structure needs to be the return structure of
-        `get_params` method.
+        encoding. The structure needs to be the return structure of `get_params`
+        method.
       name: `string`, name of the operation.
 
     Returns:
@@ -387,14 +387,14 @@ class AdaptiveEncodingStageInterface(object):
     `encode` method.
 
     Args:
-      encoded_tensors: A dictionary containing `Tensor` objects,
-        representing the encoded value.
+      encoded_tensors: A dictionary containing `Tensor` objects, representing
+        the encoded value.
       decode_params: A dictionary, containing the parameters needed for the
-        decoding. The structure needs to be the return structure of
-        `get_params` method.
+        decoding. The structure needs to be the return structure of `get_params`
+        method.
       shape: Required if the `decode_needs_input_shape` property is `True`. A
-        shape of the original input to `encode`, if needed for decoding. Can
-        be either a `Tensor`, or a python object.
+        shape of the original input to `encode`, if needed for decoding. Can be
+        either a `Tensor`, or a python object.
       name: `string`, name of the operation.
 
     Returns:
