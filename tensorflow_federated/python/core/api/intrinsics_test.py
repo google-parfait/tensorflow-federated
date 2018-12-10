@@ -42,121 +42,150 @@ from tensorflow_federated.python.core.api.types import NamedTupleType
 class IntrinsicsTest(absltest.TestCase):
 
   def test_federated_broadcast_with_server_all_equal_int(self):
+
     @federated_computation(FederatedType(tf.int32, SERVER, True))
     def foo(x):
       return federated_broadcast(x)
+
     self.assertEqual(str(foo.type_signature), '(int32@SERVER -> int32@CLIENTS)')
 
   def test_federated_broadcast_with_server_non_all_equal_int(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(FederatedType(tf.int32, SERVER))
       def _(x):
         return federated_broadcast(x)
 
   def test_federated_broadcast_with_client_int(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(FederatedType(tf.int32, CLIENTS, True))
       def _(x):
         return federated_broadcast(x)
 
   def test_federated_broadcast_with_non_federated_val(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(tf.int32)
       def _(x):
         return federated_broadcast(x)
 
   def test_federated_map_with_client_all_equal_int(self):
+
     @federated_computation(FederatedType(tf.int32, CLIENTS, True))
     def foo(x):
       return federated_map(x, tf_computation(lambda x: x > 10, tf.int32))
-    self.assertEqual(
-        str(foo.type_signature), '(int32@CLIENTS -> bool@CLIENTS)')
+
+    self.assertEqual(str(foo.type_signature), '(int32@CLIENTS -> bool@CLIENTS)')
 
   def test_federated_map_with_client_non_all_equal_int(self):
+
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
       return federated_map(x, tf_computation(lambda x: x > 10, tf.int32))
+
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> {bool}@CLIENTS)')
 
   def test_federated_map_with_non_federated_val(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(tf.int32)
       def _(x):
         return federated_map(x, tf_computation(lambda x: x > 10, tf.int32))
 
   def test_federated_sum_with_client_int(self):
+
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
       return federated_sum(x)
+
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
 
   def test_federated_sum_with_client_string(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(FederatedType(tf.string, CLIENTS))
       def _(x):
         return federated_sum(x)
 
   def test_federated_sum_with_server_int(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(FederatedType(tf.int32, SERVER))
       def _(x):
         return federated_sum(x)
 
   def test_federated_zip_with_client_non_all_equal_int_and_bool(self):
+
     @federated_computation([
         FederatedType(tf.int32, CLIENTS),
-        FederatedType(tf.bool, CLIENTS, True)])
+        FederatedType(tf.bool, CLIENTS, True)
+    ])
     def foo(x, y):
       return federated_zip([x, y])
+
     self.assertEqual(
         str(foo.type_signature),
         '(<{int32}@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
   def test_federated_zip_with_client_all_equal_int_and_bool(self):
+
     @federated_computation([
         FederatedType(tf.int32, CLIENTS, True),
-        FederatedType(tf.bool, CLIENTS, True)])
+        FederatedType(tf.bool, CLIENTS, True)
+    ])
     def foo(x, y):
       return federated_zip([x, y])
+
     self.assertEqual(
         str(foo.type_signature),
         '(<int32@CLIENTS,bool@CLIENTS> -> <int32,bool>@CLIENTS)')
 
   def test_federated_zip_with_server_int_and_bool(self):
     with self.assertRaises(TypeError):
-      @federated_computation([
-          FederatedType(tf.int32, SERVER), FederatedType(tf.bool, SERVER)])
+
+      @federated_computation(
+          [FederatedType(tf.int32, SERVER),
+           FederatedType(tf.bool, SERVER)])
       def _(x, y):
         return federated_zip([x, y])
 
   def test_federated_collect_with_client_int(self):
+
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
       return federated_collect(x)
+
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32*@SERVER)')
 
   def test_federated_collect_with_server_int_fails(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(FederatedType(tf.int32, SERVER))
       def _(x):
         return federated_collect(x)
 
   def test_federated_average_with_client_float32_without_weight(self):
+
     @federated_computation(FederatedType(tf.float32, CLIENTS))
     def foo(x):
       return federated_average(x)
+
     self.assertEqual(
         str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
 
   def test_federated_average_with_client_tuple_with_int32_weight(self):
+
     @federated_computation([
         FederatedType([('x', tf.float64), ('y', tf.float64)], CLIENTS),
-        FederatedType(tf.int32, CLIENTS)])
+        FederatedType(tf.int32, CLIENTS)
+    ])
     def foo(x, y):
       return federated_average(x, y)
+
     self.assertEqual(
         str(foo.type_signature),
         '(<{<x=float64,y=float64>}@CLIENTS,{int32}@CLIENTS> '
@@ -164,15 +193,18 @@ class IntrinsicsTest(absltest.TestCase):
 
   def test_federated_average_with_client_int32_fails(self):
     with self.assertRaises(TypeError):
+
       @federated_computation(FederatedType(tf.int32, CLIENTS))
       def _(x):
         return federated_average(x)
 
   def test_federated_average_with_string_weight_fails(self):
     with self.assertRaises(TypeError):
+
       @federated_computation([
           FederatedType(tf.float32, CLIENTS),
-          FederatedType(tf.string, CLIENTS)])
+          FederatedType(tf.string, CLIENTS)
+      ])
       def _(x, y):
         return federated_average(x, y)
 
@@ -202,31 +234,35 @@ class IntrinsicsTest(absltest.TestCase):
 
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
-      return federated_aggregate(x, Accumulator(0, 0),
-                                 accumulate, merge, report)
+      return federated_aggregate(x, Accumulator(0, 0), accumulate, merge,
+                                 report)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
 
   def test_federated_reduce_with_tf_add_raw_constant(self):
+
     @federated_computation(FederatedType(tf.int32, CLIENTS))
     def foo(x):
       plus = tf_computation(tf.add, [tf.int32, tf.int32])
       return federated_reduce(x, 0, plus)
+
     self.assertEqual(
-        str(foo.type_signature),
-        '({int32}@CLIENTS -> int32@SERVER)')
+        str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
 
   def test_num_over_temperature_threshold_example(self):
+
     @federated_computation([
         FederatedType(tf.float32, CLIENTS),
-        FederatedType(tf.float32, SERVER, True)])
+        FederatedType(tf.float32, SERVER, True)
+    ])
     def foo(temperatures, threshold):
-      return federated_sum(federated_map(
-          [temperatures, federated_broadcast(threshold)],
-          tf_computation(
-              lambda x, y: tf.to_int32(tf.greater(x, y)),
-              [tf.float32, tf.float32])))
+      return federated_sum(
+          federated_map(
+              [temperatures, federated_broadcast(threshold)],
+              tf_computation(lambda x, y: tf.to_int32(tf.greater(x, y)),
+                             [tf.float32, tf.float32])))
+
     self.assertEqual(
         str(foo.type_signature),
         '(<{float32}@CLIENTS,float32@SERVER> -> int32@SERVER)')

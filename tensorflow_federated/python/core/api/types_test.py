@@ -86,8 +86,7 @@ class TypesTest(absltest.TestCase):
     self.assertEqual(str(types.TensorType(tf.int32, [None])), 'int32[?]')
     self.assertEqual(
         str(types.TensorType(tf.int32, [None, None])), 'int32[?,?]')
-    self.assertEqual(
-        str(types.TensorType(tf.int32, [None, 10])), 'int32[?,10]')
+    self.assertEqual(str(types.TensorType(tf.int32, [None, 10])), 'int32[?,10]')
 
   def test_named_tuple_type_repr(self):
     self.assertEqual(
@@ -99,8 +98,7 @@ class TypesTest(absltest.TestCase):
     self.assertEqual(str(types.NamedTupleType([('a', tf.int32)])), '<a=int32>')
     self.assertEqual(str(types.NamedTupleType(('a', tf.int32))), '<a=int32>')
     self.assertEqual(
-        str(types.NamedTupleType([tf.int32, tf.bool])),
-        '<int32,bool>')
+        str(types.NamedTupleType([tf.int32, tf.bool])), '<int32,bool>')
     self.assertEqual(
         str(types.NamedTupleType([('a', tf.int32), tf.float32])),
         '<a=int32,float32>')
@@ -108,9 +106,11 @@ class TypesTest(absltest.TestCase):
         str(types.NamedTupleType([('a', tf.int32), ('b', tf.float32)])),
         '<a=int32,b=float32>')
     self.assertEqual(
-        str(types.NamedTupleType([
-            ('a', tf.int32),
-            ('b', types.NamedTupleType([('x', tf.string), ('y', tf.bool)]))])),
+        str(
+            types.NamedTupleType([('a', tf.int32),
+                                  ('b',
+                                   types.NamedTupleType([('x', tf.string),
+                                                         ('y', tf.bool)]))])),
         '<a=int32,b=<x=string,y=bool>>')
 
   def test_named_tuple_type_elements(self):
@@ -168,8 +168,7 @@ class TypesTest(absltest.TestCase):
   def test_function_type_str(self):
     self.assertEqual(
         str(types.FunctionType(tf.int32, tf.bool)), '(int32 -> bool)')
-    self.assertEqual(
-        str(types.FunctionType(None, tf.bool)), '( -> bool)')
+    self.assertEqual(str(types.FunctionType(None, tf.bool)), '( -> bool)')
 
   def test_function_type_parameter_and_result(self):
     t = types.FunctionType(tf.int32, tf.bool)
@@ -212,8 +211,7 @@ class TypesTest(absltest.TestCase):
     self.assertIs(t1.placement, placements.CLIENTS)
     self.assertFalse(t1.all_equal)
     self.assertEqual(
-        repr(t1),
-        'FederatedType(TensorType(tf.int32), '
+        repr(t1), 'FederatedType(TensorType(tf.int32), '
         'PlacementLiteral(\'clients\'), False)')
     self.assertEqual(str(t1), '{int32}@CLIENTS')
     self.assertTrue(t1.is_assignable_from(t1))

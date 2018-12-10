@@ -112,19 +112,21 @@ class TensorType(Type):
 
   def is_assignable_from(self, other):
     py_typecheck.check_type(other, Type)
+
     def _shape_is_assignable_from(x, y):
+
       def _dimension_is_assignable_from(x, y):
         # Either the first dimension is undefined or it has the same size as
         # the second.
         return (x.value is None) or (x.value == y.value)
+
       # Shapes must have equal ranks, and all dimensions in first have to be
       # assignable from the corresponding dimensions in the second.
       return ((x.ndims == y.ndims) and ((x.dims is None) or all(
           _dimension_is_assignable_from(x.dims[k], y.dims[k])
           for k in six.moves.range(x.ndims))))
 
-    return (isinstance(other, TensorType) and
-            (self.dtype == other.dtype) and
+    return (isinstance(other, TensorType) and (self.dtype == other.dtype) and
             _shape_is_assignable_from(self.shape, other.shape))
 
   def __repr__(self):
@@ -152,12 +154,12 @@ class NamedTupleType(Type):
     """Constructs a new instance from the given element types.
 
     Args:
-      elements: A list of element specifications. Each element specification
-        is either a type spec (an instance of `Type` or something convertible to
-        it via `to_type()`) for the element, or a pair (name, spec) for
-        elements that have defined names. Alternatively, one can supply here
-        an instance of `collections.OrderedDict` mapping element names to their
-        types (or things that are convertible to types).
+      elements: A list of element specifications. Each element specification is
+        either a type spec (an instance of `Type` or something convertible to it
+        via `to_type()`) for the element, or a pair (name, spec) for elements
+        that have defined names. Alternatively, one can supply here an instance
+        of `collections.OrderedDict` mapping element names to their types (or
+        things that are convertible to types).
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -170,9 +172,11 @@ class NamedTupleType(Type):
       elements = elements.items()
     if not elements:
       raise ValueError('A named tuple must contain at least one element.')
+
     def _is_named_element(e):
       return (isinstance(e, tuple) and (len(e) == 2) and
               isinstance(e[0], six.string_types))
+
     def _map_element(e):
       if isinstance(e, Type):
         return (None, e)
@@ -258,8 +262,8 @@ class FunctionType(Type):
     Args:
       parameter: A specification of the parameter type, either an instance of
         `Type` or something convertible to it by `to_type()`.
-      result: A specification of the result type, either an instance of
-        `Type` or something convertible to it by `to_type()`.
+      result: A specification of the result type, either an instance of `Type`
+        or something convertible to it by `to_type()`.
     """
     self._parameter = to_type(parameter)
     self._result = to_type(result)
@@ -350,12 +354,11 @@ class FederatedType(Type):
       member: An instance of `Type` (or something convertible to it) that
         represents the type of the member components of each value of this
         federated type.
-      placement: The specification of placement that the member components
-        of this federated type are hosted on. Must be either a placement
-        literal such as `SERVER` or `CLIENTS` to refer to a globally defined
-        placement, or a placement label to refer to a placement defined in
-        other parts of a type signature. Specifying placement labels is not
-        implemented yet.
+      placement: The specification of placement that the member components of
+        this federated type are hosted on. Must be either a placement literal
+        such as `SERVER` or `CLIENTS` to refer to a globally defined placement,
+        or a placement label to refer to a placement defined in other parts of a
+        type signature. Specifying placement labels is not implemented yet.
       all_equal: A `bool` value that indicates whether all members of the
         federated type are equal (`True`), or are allowed to differ (`False`).
     """
@@ -390,8 +393,8 @@ class FederatedType(Type):
         self._all_equal and not other.all_equal):
       return False
     for val in [self, other]:
-      py_typecheck.check_type(
-          val.placement, placement_literals.PlacementLiteral)
+      py_typecheck.check_type(val.placement,
+                              placement_literals.PlacementLiteral)
     return self.placement is other.placement
 
   def __repr__(self):
@@ -448,12 +451,11 @@ def to_type(spec):
     return spec
   elif isinstance(spec, tf.DType):
     return TensorType(spec)
-  elif (isinstance(spec, tuple) and
-        (len(spec) == 2) and
+  elif (isinstance(spec, tuple) and (len(spec) == 2) and
         isinstance(spec[0], tf.DType) and
         (isinstance(spec[1], tf.TensorShape) or
-         (isinstance(spec[1], (list, tuple)) and
-          all((isinstance(x, int) or x is None) for x in spec[1])))):
+         (isinstance(spec[1], (list, tuple)) and all(
+             (isinstance(x, int) or x is None) for x in spec[1])))):
     # We found a 2-element tuple of the form (dtype, shape), where dtype is an
     # instance of tf.DType, and shape is either an instance of tf.TensorShape,
     # or a list, or a tuple that can be fed as argument into a tf.TensorShape.

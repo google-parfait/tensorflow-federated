@@ -43,6 +43,7 @@ class ComputationsTest(tf.test.TestCase):
     # Wrapping a no-parameter Python function.
     def bak_func():
       return tf.constant(10)
+
     bak = fc.tf_computation(bak_func)
     self.assertEqual(str(bak.type_signature), '( -> int32)')
 
@@ -51,12 +52,14 @@ class ComputationsTest(tf.test.TestCase):
     @fc.tf_computation(tf.int32)
     def foo(x):
       return x > 10
+
     self.assertEqual(str(foo.type_signature), '(int32 -> bool)')
 
     # Decorating a no-parameter Python function.
     @fc.tf_computation
     def bar():
       return tf.constant(10)
+
     self.assertEqual(str(bar.type_signature), '( -> int32)')
 
   def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(self):
@@ -74,6 +77,7 @@ class ComputationsTest(tf.test.TestCase):
     # are actually invoked.
 
   def test_fed_comp_typical_usage_as_decorator_with_unlabeled_type(self):
+
     @fc.federated_computation((ft.FunctionType(tf.int32, tf.int32), tf.int32))
     def foo(f, x):
       assert isinstance(f, vb.Value)
@@ -91,9 +95,9 @@ class ComputationsTest(tf.test.TestCase):
         str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
 
   def test_fed_comp_typical_usage_as_decorator_with_labeled_type(self):
-    @fc.federated_computation((
-        ('f', ft.FunctionType(tf.int32, tf.int32)),
-        ('x', tf.int32)))
+
+    @fc.federated_computation((('f', ft.FunctionType(tf.int32, tf.int32)),
+                               ('x', tf.int32)))
     def foo(f, x):
       return f(f(x))
 
