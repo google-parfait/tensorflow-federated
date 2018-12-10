@@ -128,20 +128,21 @@ class TensorType(Type):
             _shape_is_assignable_from(self.shape, other.shape))
 
   def __repr__(self):
-    return (
-        'TensorType({}, {})'.format(
-            repr(self._dtype), repr([dim.value for dim in self._shape.dims]))
-        if self._shape.ndims > 0
-        else 'TensorType({})'.format(repr(self._dtype)))
+    if self._shape.ndims > 0:
+      values = repr([dim.value for dim in self._shape.dims])
+      return 'TensorType({}, {})'.format(repr(self._dtype), values)
+    else:
+      return 'TensorType({})'.format(repr(self._dtype))
 
   def __str__(self):
-    return (
-        '{}[{}]'.format(
-            self._dtype.name,
-            ','.join((str(dim.value) if dim.value else '?')
-                     for dim in self._shape.dims))
-        if self._shape.ndims > 0
-        else self._dtype.name)
+    if self._shape.ndims > 0:
+      values = [
+          str(dim.value) if dim.value is not None else '?'
+          for dim in self._shape.dims
+      ]
+      return '{}[{}]'.format(self._dtype.name, ','.join(values))
+    else:
+      return self._dtype.name
 
 
 class NamedTupleType(Type):
@@ -173,14 +174,17 @@ class NamedTupleType(Type):
       return (isinstance(e, tuple) and (len(e) == 2) and
               isinstance(e[0], six.string_types))
     def _map_element(e):
-      return ((None, e) if isinstance(e, Type)
-              else (
-                  (e[0], to_type(e[1])) if _is_named_element(e)
-                  else (
-                      (None, to_type(e)))))
-    self._elements = (
-        [(elements[0], to_type(elements[1]))] if _is_named_element(elements)
-        else [_map_element(e) for e in elements])
+      if isinstance(e, Type):
+        return (None, e)
+      elif _is_named_element(e):
+        return (e[0], to_type(e[1]))
+      else:
+        return (None, to_type(e))
+
+    if _is_named_element(elements):
+      self._elements = [(elements[0], to_type(elements[1]))]
+    else:
+      self._elements = [_map_element(e) for e in elements]
 
   @property
   def elements(self):
@@ -198,15 +202,23 @@ class NamedTupleType(Type):
         for k in six.moves.range(len(self._elements))))
 
   def __repr__(self):
-    return (
-        'NamedTupleType([{}])'.format(', '.join(
-            '(\'{}\', {})'.format(e[0], repr(e[1])) if e[0] else repr(e[1])
-            for e in self._elements)))
+
+    def _element_repr(e):
+      if e[0] is not None:
+        return '(\'{}\', {})'.format(e[0], repr(e[1]))
+      else:
+        return repr(e[1])
+
+    return 'NamedTupleType([{}])'.format(', '.join(
+        [_element_repr(e) for e in self._elements]))
 
   def __str__(self):
+
+    def _element_str(name, value):
+      return '{}={}'.format(name, str(value)) if name else str(value)
+
     return ('<{}>'.format(','.join(
-        ('{}={}'.format(name, str(value)) if name else str(value))
-        for name, value in self._elements)))
+        [_element_str(name, value) for name, value in self._elements])))
 
 
 class SequenceType(Type):
@@ -274,7 +286,8 @@ class FunctionType(Type):
 
   def __str__(self):
     return '({} -> {})'.format(
-        str(self._parameter) if self._parameter else '', str(self._result))
+        str(self._parameter) if self._parameter is not None else '',
+        str(self._result))
 
 
 class AbstractType(Type):
@@ -386,9 +399,10 @@ class FederatedType(Type):
         repr(self._member), repr(self._placement), repr(self._all_equal))
 
   def __str__(self):
-    return ('{}@{}'.format(str(self._member), str(self._placement))
-            if self._all_equal
-            else '{{{}}}@{}'.format(str(self._member), str(self._placement)))
+    if self._all_equal:
+      return '{}@{}'.format(str(self._member), str(self._placement))
+    else:
+      return '{{{}}}@{}'.format(str(self._member), str(self._placement))
 
 
 def to_type(spec):
