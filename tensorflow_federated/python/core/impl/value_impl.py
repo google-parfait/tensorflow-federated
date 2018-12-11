@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
@@ -147,6 +148,20 @@ class ValueImpl(value_base.Value):
         arg = None
       return ValueImpl(computation_building_blocks.Call(self._comp, arg))
 
+  def __add__(self, other):
+    other = to_value(other)
+    if (not self.type_signature.is_assignable_from(other.type_signature) or
+        not other.type_signature.is_assignable_from(self.type_signature)):
+      raise TypeError('Cannot add {} and {}.'.format(
+          str(self.type_signature), str(other.type_signature)))
+    return ValueImpl(computation_building_blocks.Call(
+        computation_building_blocks.Intrinsic(
+            intrinsic_defs.GENERIC_PLUS.uri,
+            types.FunctionType(
+                [self.type_signature, self.type_signature],
+                self.type_signature)),
+        to_value([self, other])))
+
 
 def _wrap_constant_as_value(const):
   """Wraps the given Python constant as a TFF `Value`.
@@ -189,6 +204,8 @@ def to_value(arg):
   """
   if isinstance(arg, ValueImpl):
     return arg
+  elif isinstance(arg, computation_building_blocks.ComputationBuildingBlock):
+    return ValueImpl(arg)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return ValueImpl(computation_building_blocks.Tuple([
         (k, ValueImpl.get_comp(to_value(v)))

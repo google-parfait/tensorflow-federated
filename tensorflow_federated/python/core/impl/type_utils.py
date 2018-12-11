@@ -233,13 +233,22 @@ def check_well_formed(type_spec):
     type_spec: The type specification to check, either an instance of
       types.Type or something convertible to it by types.to_type().
 
+  Returns:
+    True iff the type is well-formed, otherwise False.
+
   Raises:
     TypeError: if arguments are of the wrong types, or if 'type_spec' is not a
       well-formed TFF type.
   """
-  # TODO(b/113112885): Implement the remainder of this function, and document
-  # the conditions for well-formedness here as well.
-  check_all_abstract_types_are_bound(type_spec)
+  # TODO(b/113112885): Implement this function, and document the conditions for
+  # well-formedness here as well.
+
+  # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
+  # after revising the definition of well-formedness.
+
+  _ = type_spec
+
+  return True
 
 
 def check_all_abstract_types_are_bound(type_spec):

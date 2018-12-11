@@ -247,6 +247,10 @@ class Selection(ComputationBuildingBlock):
             else pb.Selection(source=self._source.proto, index=self._index)))
 
   @property
+  def source(self):
+    return self._source
+
+  @property
   def name(self):
     return self._name
 
@@ -332,11 +336,13 @@ class Call(ComputationBuildingBlock):
   @classmethod
   def from_proto(cls, computation_proto):
     _check_computation_oneof(computation_proto, 'call')
-    return cls(
-        ComputationBuildingBlock.from_proto(computation_proto.call.function),
-        ComputationBuildingBlock.from_proto(computation_proto.call.argument)
-        if computation_proto.call.argument
-        else None)
+    func = ComputationBuildingBlock.from_proto(computation_proto.call.function)
+    arg_proto = computation_proto.call.argument
+    if arg_proto.WhichOneof('computation') is not None:
+      arg = ComputationBuildingBlock.from_proto(arg_proto)
+    else:
+      arg = None
+    return cls(func, arg)
 
   def __init__(self, func, arg=None):
     """Creates a call to 'func' with argument 'arg'.
@@ -676,7 +682,7 @@ class CompiledComputation(ComputationBuildingBlock):
         self._name, repr(self.type_signature))
 
   def __str__(self):
-    return 'comp({})'.format(self._name)
+    return 'comp#{}'.format(self._name)
 
 
 class Placement(ComputationBuildingBlock):

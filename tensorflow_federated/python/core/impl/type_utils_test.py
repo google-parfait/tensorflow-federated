@@ -278,7 +278,6 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
           types.FunctionType(t, u)
       ])(types.AbstractType('T'), types.AbstractType('U')))])
   def test_check_abstract_types_are_bound_invalid_cases(self, type_spec):
-    self.assertRaises(TypeError, type_utils.check_well_formed, type_spec)
     self.assertRaises(
         TypeError, type_utils.check_all_abstract_types_are_bound, type_spec)
 

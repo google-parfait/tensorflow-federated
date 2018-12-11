@@ -123,6 +123,14 @@ class ValueImplTest(absltest.TestCase):
         str(x.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
     self.assertEqual(str(x), '(arg -> arg.f(arg.f(arg.x)))')
 
+  def test_value_impl_with_plus(self):
+    x = value_impl.ValueImpl(bb.Reference('x', tf.int32))
+    y = value_impl.ValueImpl(bb.Reference('y', tf.int32))
+    z = x + y
+    self.assertIsInstance(z, value_base.Value)
+    self.assertEqual(str(z.type_signature), 'int32')
+    self.assertEqual(str(z), 'generic_plus(<x,y>)')
+
   def test_to_value_for_tuple(self):
     x = value_impl.ValueImpl(bb.Reference('foo', tf.int32))
     y = value_impl.ValueImpl(bb.Reference('bar', tf.bool))

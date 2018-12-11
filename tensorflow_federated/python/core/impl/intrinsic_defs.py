@@ -46,7 +46,7 @@ class IntrinsicDef(object):
     py_typecheck.check_type(name, string_types)
     py_typecheck.check_type(uri, string_types)
     type_spec = types.to_type(type_spec)
-    py_typecheck.check_type(type_spec, types.FunctionType)
+    py_typecheck.check_type(type_spec, types.Type)
     self._name = str(name)
     self._uri = str(uri)
     self._type_signature = type_spec
@@ -295,6 +295,7 @@ FEDERATED_WEIGHTED_AVERAGE = IntrinsicDef(
          types.FederatedType(types.AbstractType('U'), placements.CLIENTS)],
         types.FederatedType(types.AbstractType('T'), placements.SERVER, True)))
 
+
 # Zips a tuple of two federated types into a federated tuple.
 #
 # Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS
@@ -307,3 +308,31 @@ FEDERATED_ZIP = IntrinsicDef(
         types.FederatedType(
             [types.AbstractType('T'), types.AbstractType('U')],
             placements.CLIENTS)))
+
+
+# Generic plus operator that accepts a variety of types in federated computation
+# context. The range of types 'T' supported to be defined. It should work in a
+# natural manner for tensors, tuples, federated types, possibly sequences, and
+# maybe even functions (although it's unclear if such generality is desirable).
+#
+# TODO(b/113123410): Define the range of supported types.
+#
+# Type signature: <T,T> -> T
+GENERIC_PLUS = IntrinsicDef(
+    'GENERIC_PLUS',
+    'generic_plus',
+    types.FunctionType(
+        [types.AbstractType('T'), types.AbstractType('T')],
+        types.AbstractType('T')))
+
+
+# Generic zero operator that represents zero-filled values of diverse types (to
+# be defined, but generally similar to that supported by GENERIC_ADD).
+#
+# TODO(b/113123410): Define the range of supported types.
+#
+# Type signature: T
+GENERIC_ZERO = IntrinsicDef(
+    'GENERIC_ZERO',
+    'generic_zero',
+    types.AbstractType('T'))

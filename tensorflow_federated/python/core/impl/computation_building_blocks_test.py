@@ -256,9 +256,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         r'CompiledComputation\([0-9a-f]+, '
         r'FunctionType\(TensorType\(tf\.int32\), TensorType\(tf\.int32\)\)\)',
         repr(x)))
-    self.assertTrue(re.match(r'comp\([0-9a-f]+\)', str(x)))
+    self.assertTrue(re.match(r'comp#[0-9a-f]+', str(x)))
     y = bb.CompiledComputation(comp, name='foo')
-    self.assertEqual(str(y), 'comp(foo)')
+    self.assertEqual(str(y), 'comp#foo')
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_placement_class(self):
