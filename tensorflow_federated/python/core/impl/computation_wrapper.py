@@ -76,10 +76,9 @@ def _wrap(func, parameter_type, wrapper_fn):
             func_utils.wrap_as_zero_or_one_arg_callable(
                 func, parameter_type, unpack=True),
             parameter_type)
-      # pylint: disable=g-long-lambda,undefined-variable
-      polymorphic_fn = (lambda wfn, fn: func_utils.PolymorphicFunction(
-          lambda pt: _wrap_polymorphic(wfn, fn, pt)))(wrapper_fn, func)
-      # pylint: enable=g-long-lambda,undefined-variable
+
+      polymorphic_fn = func_utils.PolymorphicFunction(
+          lambda pt: _wrap_polymorphic(wrapper_fn, func, pt))
 
       # When applying a decorator, the __doc__ attribute with the documentation
       # in triple-quotes is not automatically transferred from the function on

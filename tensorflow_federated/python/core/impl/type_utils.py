@@ -330,10 +330,11 @@ def check_all_abstract_types_are_bound(type_spec):
       else:
         raise TypeError('Unbound type label \'{}\'.'.format(type_spec.label))
     elif isinstance(type_spec, types.FunctionType):
-      parameter_labels = (
-          set() if not type_spec.parameter
-          else _check_or_get_unbound_abstract_type_labels(
-              type_spec.parameter, bound_labels, False))
+      if type_spec.parameter is None:
+        parameter_labels = set()
+      else:
+        parameter_labels = _check_or_get_unbound_abstract_type_labels(
+            type_spec.parameter, bound_labels, False)
       result_labels = _check_or_get_unbound_abstract_type_labels(
           type_spec.result, bound_labels.union(parameter_labels), check)
       return parameter_labels.union(result_labels)

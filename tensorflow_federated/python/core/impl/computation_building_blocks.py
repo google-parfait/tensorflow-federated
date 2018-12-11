@@ -158,11 +158,13 @@ class Reference(ComputationBuildingBlock):
   def __repr__(self):
     return 'Reference(\'{}\', {}{})'.format(
         self._name, repr(self.type_signature),
-        ', {}'.format(repr(self._context)) if self._context else '')
+        ', {}'.format(repr(self._context)) if self._context is not None else '')
 
   def __str__(self):
-    return ('{}@{}'.format(self._name, str(self._context)) if self._context
-            else self._name)
+    if self._context is not None:
+      return '{}@{}'.format(self._name, str(self._context))
+    else:
+      return self._name
 
 
 class Selection(ComputationBuildingBlock):
@@ -239,12 +241,13 @@ class Selection(ComputationBuildingBlock):
 
   @property
   def proto(self):
+    if self._name is not None:
+      selection = pb.Selection(source=self._source.proto, name=self._name)
+    else:
+      selection = pb.Selection(source=self._source.proto, index=self._index)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
-        selection=(
-            pb.Selection(source=self._source.proto, name=self._name)
-            if self._name is not None
-            else pb.Selection(source=self._source.proto, index=self._index)))
+        selection=selection)
 
   @property
   def source(self):
@@ -266,9 +269,10 @@ class Selection(ComputationBuildingBlock):
       return 'Selection({}, index={})'.format(repr(self._source), self._index)
 
   def __str__(self):
-    return (
-        '{}.{}'.format(str(self._source), self._name) if self._name is not None
-        else '{}[{}]'.format(str(self._source), self._index))
+    if self._name is not None:
+      return '{}.{}'.format(str(self._source), self._name)
+    else:
+      return '{}[{}]'.format(str(self._source), self._index)
 
 
 class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
@@ -313,12 +317,16 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
 
   @property
   def proto(self):
+    elements = []
+    for k, v in anonymous_tuple.to_elements(self):
+      if k is not None:
+        element = pb.Tuple.Element(name=k, value=v.proto)
+      else:
+        element = pb.Tuple.Element(value=v.proto)
+      elements.append(element)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
-        tuple=pb.Tuple(element=[
-            (pb.Tuple.Element(name=k, value=v.proto)
-             if k else pb.Tuple.Element(value=v.proto))
-            for k, v in anonymous_tuple.to_elements(self)]))
+        tuple=pb.Tuple(element=elements))
 
   def __repr__(self):
     return 'Tuple([{}])'.format(', '.join(
@@ -384,10 +392,11 @@ class Call(ComputationBuildingBlock):
 
   @property
   def proto(self):
-    call = (
-        pb.Call(function=self._function.proto, argument=self._argument.proto)
-        if self._argument is not None
-        else pb.Call(function=self._function.proto))
+    if self._argument is not None:
+      call = pb.Call(
+          function=self._function.proto, argument=self._argument.proto)
+    else:
+      call = pb.Call(function=self._function.proto)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature), call=call)
 
@@ -400,14 +409,16 @@ class Call(ComputationBuildingBlock):
     return self._argument
 
   def __repr__(self):
-    return ('Call({}, {})'.format(repr(self._function), repr(self._argument))
-            if self._argument is not None
-            else 'Call({})'.format(repr(self._function)))
+    if self._argument is not None:
+      return 'Call({}, {})'.format(repr(self._function), repr(self._argument))
+    else:
+      return 'Call({})'.format(repr(self._function))
 
   def __str__(self):
-    return ('{}({})'.format(str(self._function), str(self._argument))
-            if self._argument is not None
-            else '{}()'.format(str(self._function)))
+    if self._argument is not None:
+      return '{}({})'.format(str(self._function), str(self._argument))
+    else:
+      return '{}()'.format(str(self._function))
 
 
 class Lambda(ComputationBuildingBlock):
@@ -670,8 +681,11 @@ class CompiledComputation(ComputationBuildingBlock):
     super(CompiledComputation, self).__init__(
         type_serialization.deserialize_type(proto.type))
     self._proto = proto
-    self._name = name if name is not None else '{:x}'.format(
-        zlib.adler32(six.b(repr(self._proto))) & 0xFFFFFFFF)
+    if name is not None:
+      self._name = name
+    else:
+      self._name = '{:x}'.format(
+          zlib.adler32(six.b(repr(self._proto))) & 0xFFFFFFFF)
 
   @property
   def proto(self):

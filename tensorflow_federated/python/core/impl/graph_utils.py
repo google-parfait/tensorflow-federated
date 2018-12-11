@@ -162,9 +162,10 @@ def capture_result_from_graph(result):
     # pylint: enable=protected-access
   elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
     # This also handles 'OrderedDict', as it inherits from 'dict'.
-    name_value_pairs = (
-        anonymous_tuple.to_elements(result) if isinstance(
-            result, anonymous_tuple.AnonymousTuple) else six.iteritems(result))
+    if isinstance(result, anonymous_tuple.AnonymousTuple):
+      name_value_pairs = anonymous_tuple.to_elements(result)
+    else:
+      name_value_pairs = six.iteritems(result)
     element_name_type_binding_triples = [
         ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs]
     return (types.NamedTupleType([((e[0], e[1]) if e[0] else e[1])

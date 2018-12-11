@@ -249,11 +249,12 @@ def unpack_args_from_tuple(tuple_with_args):
   if isinstance(tuple_with_args, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(tuple_with_args)
   elif isinstance(tuple_with_args, value_base.Value):
-    elements = [
-        (name, getattr(tuple_with_args, name)) if name
-        else (None, tuple_with_args[index])
-        for index, (name, _) in enumerate(
-            tuple_with_args.type_signature.elements)]
+    elements = []
+    for index, (name, _) in enumerate(tuple_with_args.type_signature.elements):
+      if name is not None:
+        elements.append((name, getattr(tuple_with_args, name)))
+      else:
+        elements.append((None, tuple_with_args[index]))
   else:
     tuple_with_args = types.to_type(tuple_with_args)
     py_typecheck.check_type(tuple_with_args, types.NamedTupleType)
