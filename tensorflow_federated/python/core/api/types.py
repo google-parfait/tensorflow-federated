@@ -409,6 +409,7 @@ class FederatedType(Type):
 
 
 def to_type(spec):
+  # pyformat: disable
   """Converts the argument into an instance of `Type`.
 
   Args:
@@ -417,33 +418,34 @@ def to_type(spec):
 
       Examples of arguments convertible to tensor types:
 
-        ```
-        tf.int32
-        (tf.int32, [10])
-        (tf.int32, [None])
-        ```
+      ```
+      tf.int32
+      (tf.int32, [10])
+      (tf.int32, [None])
+      ```
 
       Examples of arguments convertible to flat named tuple types:
 
-        ```
-        [tf.int32, tf.bool]
-        (tf.int32, tf.bool)
-        [('a', tf.int32), ('b', tf.bool)]
-        ('a', tf.int32)
-        collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
-        ```
+      ```
+      [tf.int32, tf.bool]
+      (tf.int32, tf.bool)
+      [('a', tf.int32), ('b', tf.bool)]
+      ('a', tf.int32)
+      collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
+      ```
 
       Examples of arguments convertible to nested named tuple types:
 
-        ```
-        (tf.int32, (tf.float32, tf.bool))
-        (tf.int32, (('x', tf.float32), tf.bool))
-        ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
-        ```
+      ```
+      (tf.int32, (tf.float32, tf.bool))
+      (tf.int32, (('x', tf.float32), tf.bool))
+      ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
+      ```
 
   Returns:
     An instance of `Type` corresponding to the given spec.
   """
+  # pyformat: enable
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.
 
