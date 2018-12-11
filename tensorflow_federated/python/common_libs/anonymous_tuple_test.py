@@ -99,6 +99,21 @@ class AnonymousTupleTest(absltest.TestCase):
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
 
+  def test_slicing_behavior(self):
+    v = [(None, i) for i in range(0, 50, 10)]
+    x = AnonymousTuple(v)
+    self.assertEqual(x[:], list(range(0, 50, 10)))
+    self.assertEqual(x[::-1], list(reversed(range(0, 50, 10))))
+    self.assertEqual(x[:-1], list(range(0, 40, 10)))
+    self.assertEqual(x[1:], list(range(10, 50, 10)))
+    self.assertEqual(x[-1:], [40])
+
+  def test_getitem_bad_bounds(self):
+    v = [(None, i) for i in range(0, 50, 10)]
+    x = AnonymousTuple(v)
+    with self.assertRaises(IndexError):
+      _ = x[10]
+
 
 if __name__ == '__main__':
   absltest.main()

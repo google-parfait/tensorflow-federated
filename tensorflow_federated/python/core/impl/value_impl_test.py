@@ -68,9 +68,9 @@ class ValueImplTest(absltest.TestCase):
     x1 = x[1]
     self.assertEqual(str(x1.type_signature), 'bool')
     self.assertEqual(str(x1), 'foo[1]')
-    with self.assertRaises(KeyError):
+    with self.assertRaises(IndexError):
       _ = x[2]
-    with self.assertRaises(KeyError):
+    with self.assertRaises(IndexError):
       _ = x[-1]
     self.assertEqual(','.join(str(e) for e in iter(x)), 'foo[0],foo[1]')
     self.assertEqual(
@@ -213,6 +213,52 @@ class ValueImplTest(absltest.TestCase):
     self.assertEqual(str(raw_string_val.type_signature),
                      'string')
 
+  def test_slicing_support_namedtuple(self):
+    x = value_impl.ValueImpl(bb.Reference('foo', tf.int32))
+    y = value_impl.ValueImpl(bb.Reference('bar', tf.bool))
+    v = value_impl.to_value(collections.namedtuple('_', 'a b')(x, y))
+    sliced_v = v[:int(len(v)/2)]
+    self.assertIsInstance(sliced_v, value_base.Value)
+    sliced_v = v[:4:2]
+    self.assertEqual(str(sliced_v), '<foo>')
+    self.assertIsInstance(sliced_v, value_base.Value)
+    sliced_v = v[4::-1]
+    self.assertEqual(str(sliced_v), '<bar,foo>')
+    self.assertIsInstance(sliced_v, value_base.Value)
+    with self.assertRaisesRegexp(IndexError, 'slice 0 elements'):
+      _ = v[2:4]
+
+  def test_slicing_fails_non_namedtuple(self):
+    v = value_impl.to_value(np.ones([10, 10, 10], dtype=np.float32))
+    with self.assertRaisesRegexp(TypeError, 'only supported for named tuples'):
+      _ = v[:1]
+
+  def test_slicing_support_non_tuple_underlying_comp(self):
+    test_bb = bb.Reference('test', [tf.int32]*5)
+    v = value_impl.ValueImpl(test_bb)
+    sliced_v = v[:4:2]
+    self.assertIsInstance(sliced_v, value_base.Value)
+    sliced_v = v[4:2:-1]
+    self.assertIsInstance(sliced_v, value_base.Value)
+    with self.assertRaisesRegexp(IndexError, 'slice 0 elements'):
+      _ = v[2:4:-1]
+
+  def test_slicing_tuple_values(self):
+    for op in [list, tuple]:
+      t = op(range(0, 50, 10))
+      v = value_impl.to_value(t)
+      self.assertEqual((str(v.type_signature)),
+                       '<int32,int32,int32,int32,int32>')
+      self.assertEqual(str(v[:]), str(value_impl.to_value(t)))
+      sliced = v[:2]
+      self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
+      self.assertEqual(str(sliced), str(value_impl.to_value(t[:2])))
+      sliced = v[-3:]
+      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
+      self.assertEqual(str(sliced), str(value_impl.to_value(t[-3:])))
+      sliced = v[::2]
+      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
+      self.assertEqual(str(sliced), str(value_impl.to_value(t[::2])))
 
 if __name__ == '__main__':
   absltest.main()

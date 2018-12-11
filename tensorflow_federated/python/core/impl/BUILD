@@ -551,7 +551,6 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
-        ":computation_wrapper",
         ":func_utils",
         ":intrinsic_defs",
         ":placement_literals",

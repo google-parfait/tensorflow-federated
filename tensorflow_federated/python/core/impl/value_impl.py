@@ -105,20 +105,28 @@ class ValueImpl(value_base.Value):
       return len(self._comp.type_signature.elements)
 
   def __getitem__(self, key):
-    py_typecheck.check_type(key, int)
+    py_typecheck.check_type(key, (int, slice))
     if not isinstance(self._comp.type_signature, types.NamedTupleType):
       raise TypeError(
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    if key < 0 or key >= len(self._comp.type_signature.elements):
-      raise KeyError(
-          'The index of the selected element {} is out of range.'.format(key))
-    if isinstance(self._comp, computation_building_blocks.Tuple):
-      return ValueImpl(self._comp[key])
-    else:
-      return ValueImpl(
-          computation_building_blocks.Selection(self._comp, index=key))
+    elem_length = len(self._comp.type_signature.elements)
+    if isinstance(key, int):
+      if key < 0 or key >= elem_length:
+        raise IndexError(
+            'The index of the selected element {} is out of range.'.format(key))
+      if isinstance(self._comp, computation_building_blocks.Tuple):
+        return ValueImpl(self._comp[key])
+      else:
+        return ValueImpl(
+            computation_building_blocks.Selection(self._comp, index=key))
+    elif isinstance(key, slice):
+      index_range = range(*key.indices(elem_length))
+      if not index_range:
+        raise IndexError('Attempted to slice 0 elements, which is not '
+                         'currently supported.')
+      return to_value([self[k] for k in index_range])
 
   def __iter__(self):
     if not isinstance(self._comp.type_signature, types.NamedTupleType):
@@ -195,6 +203,7 @@ def to_value(arg):
         which are converted into instances of Tuple.
       * Placement literals, converted into instances of `Placement`.
       * Computations.
+      * Python constants of type str, int, float, bool, or numpy ndarray.
 
   Returns:
     An instance of Value corresponding to the given 'arg'.

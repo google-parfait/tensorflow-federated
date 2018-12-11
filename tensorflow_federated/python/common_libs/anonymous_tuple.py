@@ -94,11 +94,12 @@ class AnonymousTuple(object):
     return self._name_to_index.keys()
 
   def __getitem__(self, key):
-    py_typecheck.check_type(key, int)
-    if key < 0 or key >= len(self._element_array):
-      raise IndexError(
-          'Element index {} is out of range, tuple has {} elements.'.format(
-              str(key), str(len(self._element_array))))
+    py_typecheck.check_type(key, (int, slice))
+    if isinstance(key, int):
+      if key < 0 or key >= len(self._element_array):
+        raise IndexError(
+            'Element index {} is out of range, tuple has {} elements.'.format(
+                str(key), str(len(self._element_array))))
     return self._element_array[key]
 
   def __getattr__(self, name):
