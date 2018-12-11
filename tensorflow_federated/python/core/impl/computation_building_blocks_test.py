@@ -99,6 +99,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     x = bb.Reference('foo', tf.int32)
     y = bb.Reference('bar', tf.bool)
     z = bb.Tuple([x, ('y', y)])
+    with self.assertRaises(ValueError):
+      _ = bb.Tuple([('', y)])
     self.assertIsInstance(z, anonymous_tuple.AnonymousTuple)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')
     self.assertEqual(

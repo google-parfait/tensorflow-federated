@@ -124,7 +124,7 @@ class AnonymousTuple(object):
 
   def __str__(self):
     return '<{}>'.format(','.join(
-        ('{}={}'.format(e[0], str(e[1])) if e[0] else str(e[1]))
+        ('{}={}'.format(e[0], str(e[1])) if e[0] is not None else str(e[1]))
         for e in to_elements(self)))
 
 
