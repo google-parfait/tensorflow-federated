@@ -20,7 +20,6 @@ Computes a `SERVER` average of `value` placed on `CLIENTS`.
     `CLIENTS`. The value may be structured, e.g., its member constituents can
     be named tuples. The tensor types that the value is composed of must be
     floating-point or complex.
-
 * <b>`weight`</b>: An optional weight, a TFF federated integer or floating-point tensor
     value, also placed at `CLIENTS`.
 

@@ -15,7 +15,7 @@ Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
 * <b>`value`</b>: A value of a TFF federated type placed at the `SERVER`, all members
     of which are equal (the `all_equal` property of the federated type of
-   `value` is True).
+    `value` is True).
 
 
 #### Returns:

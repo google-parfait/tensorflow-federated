@@ -30,12 +30,12 @@ Constructs a new instance from the given element types.
 
 #### Args:
 
-* <b>`elements`</b>: A list of element specifications. Each element specification
-    is either a type spec (an instance of `Type` or something convertible to
-    it via `to_type()`) for the element, or a pair (name, spec) for
-    elements that have defined names. Alternatively, one can supply here
-    an instance of `collections.OrderedDict` mapping element names to their
-    types (or things that are convertible to types).
+* <b>`elements`</b>: A list of element specifications. Each element specification is
+    either a type spec (an instance of `Type` or something convertible to it
+    via `to_type()`) for the element, or a pair (name, spec) for elements
+    that have defined names. Alternatively, one can supply here an instance
+    of `collections.OrderedDict` mapping element names to their types (or
+    things that are convertible to types).
 
 
 #### Raises:

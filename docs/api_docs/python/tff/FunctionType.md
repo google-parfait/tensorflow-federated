@@ -36,8 +36,8 @@ Constructs a new instance from the given parameter and result types.
 
 * <b>`parameter`</b>: A specification of the parameter type, either an instance of
     `Type` or something convertible to it by `to_type()`.
-* <b>`result`</b>: A specification of the result type, either an instance of
-    `Type` or something convertible to it by `to_type()`.
+* <b>`result`</b>: A specification of the result type, either an instance of `Type`
+    or something convertible to it by `to_type()`.
 
 
 

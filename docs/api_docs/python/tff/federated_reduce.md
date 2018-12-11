@@ -31,9 +31,9 @@ course of the reduction.
 
 * <b>`value`</b>: A value of a TFF federated type placed at the `CLIENTS`.
 * <b>`zero`</b>: The result of reducing a value with no constituents.
-* <b>`op`</b>: An operator with type signature `(<U,T> -> U)`, where `T` is the type
-    of the constituents of `value` and `U` is the type of `zero` to be used
-    in performing the reduction.
+* <b>`op`</b>: An operator with type signature `(<U,T> -> U)`, where `T` is the type of
+    the constituents of `value` and `U` is the type of `zero` to be used in
+    performing the reduction.
 
 
 #### Returns:

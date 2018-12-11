@@ -39,12 +39,11 @@ Constructs a new federated type instance.
 * <b>`member`</b>: An instance of `Type` (or something convertible to it) that
     represents the type of the member components of each value of this
     federated type.
-* <b>`placement`</b>: The specification of placement that the member components
-    of this federated type are hosted on. Must be either a placement
-    literal such as `SERVER` or `CLIENTS` to refer to a globally defined
-    placement, or a placement label to refer to a placement defined in
-    other parts of a type signature. Specifying placement labels is not
-    implemented yet.
+* <b>`placement`</b>: The specification of placement that the member components of
+    this federated type are hosted on. Must be either a placement literal
+    such as `SERVER` or `CLIENTS` to refer to a globally defined placement,
+    or a placement label to refer to a placement defined in other parts of a
+    type signature. Specifying placement labels is not implemented yet.
 * <b>`all_equal`</b>: A `bool` value that indicates whether all members of the
     federated type are equal (`True`), or are allowed to differ (`False`).
 
