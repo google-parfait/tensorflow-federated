@@ -267,6 +267,7 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
     type_utils.check_well_formed(type_spec)
     type_utils.check_all_abstract_types_are_bound(type_spec)
 
+  # pylint: disable=g-long-lambda
   @parameterized.parameters(
       *[types.to_type(spec) for spec in ((lambda t, u: [
           # In constructing test cases, similarly to the above, occurrences of
@@ -277,6 +278,7 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
           types.FunctionType(None, t),
           types.FunctionType(t, u)
       ])(types.AbstractType('T'), types.AbstractType('U')))])
+  # pylint: enable=g-long-lambda
   def test_check_abstract_types_are_bound_invalid_cases(self, type_spec):
     self.assertRaises(
         TypeError, type_utils.check_all_abstract_types_are_bound, type_spec)

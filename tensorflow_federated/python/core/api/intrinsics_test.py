@@ -214,6 +214,7 @@ class IntrinsicsTest(absltest.TestCase):
     # elements encountered, and the integer element 'count'.
     # pylint: disable=invalid-name
     Accumulator = collections.namedtuple('Accumulator', 'total count')
+    # pylint: enable=invalid-name
     accumulator_type = NamedTupleType(Accumulator(tf.int32, tf.int32))
 
     # The operator to use during the first stage simply adds an element to the

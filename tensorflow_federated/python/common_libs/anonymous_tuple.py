@@ -113,6 +113,7 @@ class AnonymousTuple(object):
     return (isinstance(other, AnonymousTuple) and
             (self._element_array == other._element_array) and
             (self._name_to_index == other._name_to_index))
+    # pylint: enable=protected-access
 
   def __ne__(self, other):
     return not self == other
