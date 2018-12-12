@@ -421,15 +421,16 @@ def tf_style_encode(default_name):
   Returns:
     A decorator for the `encode` method.
   """
+
   def actual_decorator(encode_fn):
     """Actual decorator for the `encode` method."""
+
     def actual_encode_fn(self, x, encode_params, name=None):
       """Modified `encode` method."""
       values = list(encode_params.values()) + [x]
       with tf.variable_scope(name, default_name, values):
         x = tf.convert_to_tensor(x)
-        encode_params = nest.map_structure(
-            tf.convert_to_tensor, encode_params)
+        encode_params = nest.map_structure(tf.convert_to_tensor, encode_params)
         return encode_fn(self, x, encode_params, name=name)
 
     return actual_encode_fn
@@ -452,8 +453,10 @@ def tf_style_decode(default_name):
   Returns:
     A decorator for the `decode` method.
   """
+
   def actual_decorator(decode_fn):
     """Actual decorator for the `decode` method."""
+
     def actual_decode_fn(self,
                          encoded_tensors,
                          decode_params,
@@ -467,8 +470,8 @@ def tf_style_decode(default_name):
         decode_params = nest.map_structure(tf.convert_to_tensor, decode_params)
         if shape:
           shape = tf.convert_to_tensor(shape)
-        return decode_fn(self, encoded_tensors, decode_params,
-                         shape=shape, name=name)
+        return decode_fn(
+            self, encoded_tensors, decode_params, shape=shape, name=name)
 
     return actual_decode_fn
 

@@ -65,12 +65,30 @@ class SplitMergeDictTest(parameterized.TestCase):
   def test_split_dict_py_tf_nested(self):
     """Tests that `split_dict_py_tf` works with nested dictionary."""
     const_1, const_2 = tf.constant(1.0), tf.constant(2.0)
-    test_dict = {'nested': {'a': 1.0, 'b': const_1},
-                 'py': 'string', 'tf': const_2}
-    expected_d_py = {'nested': {'a': 1.0, 'b': None},
-                     'py': 'string', 'tf': None}
-    expected_d_tf = {'nested': {'a': None, 'b': const_1},
-                     'py': None, 'tf': const_2}
+    test_dict = {
+        'nested': {
+            'a': 1.0,
+            'b': const_1
+        },
+        'py': 'string',
+        'tf': const_2
+    }
+    expected_d_py = {
+        'nested': {
+            'a': 1.0,
+            'b': None
+        },
+        'py': 'string',
+        'tf': None
+    }
+    expected_d_tf = {
+        'nested': {
+            'a': None,
+            'b': const_1
+        },
+        'py': None,
+        'tf': const_2
+    }
     d_py, d_tf = utils.split_dict_py_tf(test_dict)
     self.assertDictEqual(expected_d_py, d_py)
     self.assertDictEqual(expected_d_tf, d_tf)
@@ -81,6 +99,7 @@ class SplitMergeDictTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       utils.split_dict_py_tf(bad_input)
 
+  # pyformat: disable
   @parameterized.parameters(
       ({}, {}, {}),
       ({'a': {}}, {'a': {}}, {'a': {}}),
@@ -92,6 +111,7 @@ class SplitMergeDictTest(parameterized.TestCase):
        {'a': {'aa': None, 'ab': 12}, 'b': None},
        {'a': {'aa': 11, 'ab': 12}, 'b': 2})
       )
+  # pyformat: enable
   def test_merge_same_structure_dicts(self, dict1, dict2, expected_dict):
     """Tests that `merge_same_structure_dicts` works as expected."""
     self.assertDictEqual(expected_dict,
@@ -99,11 +119,13 @@ class SplitMergeDictTest(parameterized.TestCase):
     self.assertDictEqual(expected_dict,
                          utils.merge_same_structure_dicts(dict2, dict1))
 
+  # pyformat: disable
   @parameterized.parameters(
       ({}),
       ({'py': 1.0, 'tf': tf.constant(1.0)}),
       ({'nested': {'a': 1.0, 'b': tf.constant(1.0)},
         'py': 'string', 'tf': tf.constant(2.0)}))
+  # pyformat: enable
   def test_split_merge_identity(self, **test_dict):
     """Tests that spliting and merging amounts to identity.
 
@@ -117,6 +139,7 @@ class SplitMergeDictTest(parameterized.TestCase):
         *utils.split_dict_py_tf(test_dict))
     self.assertDictEqual(new_dict, test_dict)
 
+  # pyformat: disable
   @parameterized.parameters(
       ('not_a_dict', {'a': None}, TypeError),  # Not a dictionary.
       ({}, {'a': None}, ValueError),  # Not equal length.
@@ -124,6 +147,7 @@ class SplitMergeDictTest(parameterized.TestCase):
       ({'a': {'b': 0}}, {'a': None, 'b': None}, ValueError),  # Bad structure.
       ({'a': 1.0}, {'a': 2.0}, ValueError),  # Both values are set.
       ({1: None}, {1.0: 'value'}, ValueError))  # 1 and 1.0 are not the same.
+  # pyformat: enable
   def test_merge_same_structure_dicts_raises(self,
                                              bad_dict1,
                                              bad_dict2,

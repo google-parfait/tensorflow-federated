@@ -31,8 +31,8 @@ class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
 
   def _test_encode_fn(self, default_scope):
     """Returns decorated test encode method."""
-    return encoding_stage.tf_style_encode(default_scope)(
-        lambda _, x, p, name: x + p['param'])
+    return encoding_stage.tf_style_encode(
+        default_scope)(lambda _, x, p, name: x + p['param'])
 
   def _test_decode_fn(self, default_scope):
     """Returns decorated test decode method."""
@@ -58,8 +58,8 @@ class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
     """Input Tensors from different tf.Graph instances should raise an error."""
     # The test method should not actually use the input valueas, to ensure the
     # error is not raised in a different way.
-    test_encode_fn = encoding_stage.tf_style_encode(self._DEFAULT_SCOPE)(
-        lambda _, x, p, name: tf.constant(0.0))
+    test_encode_fn = encoding_stage.tf_style_encode(
+        self._DEFAULT_SCOPE)(lambda _, x, p, name: tf.constant(0.0))
     graph_1, graph_2 = tf.Graph(), tf.Graph()
     with graph_1.as_default():
       x = tf.constant(2.5)
@@ -72,12 +72,10 @@ class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
   def test_decode_decorator(self, name):
     """Test decode decorator works as expected."""
     test_decode_fn = self._test_decode_fn(self._DEFAULT_SCOPE)
-    decoded_x = self.evaluate(test_decode_fn(
-        None,
-        {'val': np.array([[1.0, 2.0], [3.0, 4.0]], np.float32)},
-        {'param': 1.0},
-        [4],
-        name))
+    decoded_x = self.evaluate(
+        test_decode_fn(None,
+                       {'val': np.array([[1.0, 2.0], [3.0, 4.0]], np.float32)},
+                       {'param': 1.0}, [4], name))
 
     # The graph should contain five nodes. The three above Python constants
     # converted to a Tensor object, the subtraction, and the final reshape.
@@ -92,8 +90,8 @@ class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
     """Input Tensors from different tf.Graph instances should raise an error."""
     # The test method should not actually use the input valueas, to ensure the
     # error is not raised in a different way.
-    test_decode_fn = encoding_stage.tf_style_decode(self._DEFAULT_SCOPE)(
-        lambda _, x, p, shape, name: tf.constant(0.0))
+    test_decode_fn = encoding_stage.tf_style_decode(
+        self._DEFAULT_SCOPE)(lambda _, x, p, shape, name: tf.constant(0.0))
     graph_1, graph_2 = tf.Graph(), tf.Graph()
     with graph_1.as_default():
       x = {'val': tf.constant(2.5)}
