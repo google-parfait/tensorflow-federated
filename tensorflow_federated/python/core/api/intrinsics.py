@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -98,10 +99,10 @@ def federated_aggregate(value, zero, accumulate, merge, report):
     py_typecheck.check_type(op, value_base.Value)
     py_typecheck.check_type(op.type_signature, types.FunctionType)
 
-  accumulate_type_expected = type_utils.reduction_op(
+  accumulate_type_expected = type_constructors.reduction_op(
       zero.type_signature, value.type_signature.member)
-  merge_type_expected = type_utils.reduction_op(zero.type_signature,
-                                                zero.type_signature)
+  merge_type_expected = type_constructors.reduction_op(zero.type_signature,
+                                                       zero.type_signature)
   report_type_expected = types.FunctionType(zero.type_signature,
                                             report.type_signature.result)
   for op_name, op, type_expected in [('accumulate', accumulate,
@@ -365,8 +366,8 @@ def federated_reduce(value, zero, op):
   op = value_impl.to_value(op)
   py_typecheck.check_type(op, value_base.Value)
   py_typecheck.check_type(op.type_signature, types.FunctionType)
-  op_type_expected = type_utils.reduction_op(zero.type_signature,
-                                             value.type_signature.member)
+  op_type_expected = type_constructors.reduction_op(zero.type_signature,
+                                                    value.type_signature.member)
   if not op_type_expected.is_assignable_from(op.type_signature):
     raise TypeError('Expected an operator of type {}, got {}.'.format(
         str(op_type_expected), str(op.type_signature)))

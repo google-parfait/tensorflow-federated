@@ -54,6 +54,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:computation_building_blocks",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl:type_constructors",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl:value_impl",
     ],

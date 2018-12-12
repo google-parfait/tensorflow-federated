@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import value_impl
 
 
@@ -53,5 +53,6 @@ def plus_for(type_spec):
   """
   type_spec = types.to_type(type_spec)
   return value_impl.ValueImpl(
-      computation_building_blocks.Intrinsic(intrinsic_defs.GENERIC_PLUS.uri,
-                                            type_utils.binary_op(type_spec)))
+      computation_building_blocks.Intrinsic(
+          intrinsic_defs.GENERIC_PLUS.uri,
+          type_constructors.binary_op(type_spec)))

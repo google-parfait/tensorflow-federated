@@ -156,8 +156,8 @@ def type_to_tf_dtypes_and_shapes(type_spec):
   Args:
     type_spec: Type specification, either an instance of types.Type, or
       something convertible to it. Ther type specification must be composed of
-      only named tuples and tensors. In all named tuples that appear in the type
-      spec, all the elements must be named.
+      only named tuples and tensors. In all named tuples that appear in the
+      type spec, all the elements must be named.
 
   Returns:
     A pair of parallel nested structures with the dtypes and shapes of tensors
@@ -229,8 +229,8 @@ def check_well_formed(type_spec):
   in 'computation.proto' for what factors determine well-formedness.
 
   Args:
-    type_spec: The type specification to check, either an instance of types.Type
-      or something convertible to it by types.to_type().
+    type_spec: The type specification to check, either an instance of
+      types.Type or something convertible to it by types.to_type().
 
   Returns:
     True iff the type is well-formed, otherwise False.
@@ -342,37 +342,6 @@ def check_all_abstract_types_are_bound(type_spec):
 
   _check_or_get_unbound_abstract_type_labels(
       types.to_type(type_spec), set(), True)
-
-
-def reduction_op(result_type_spec, element_type_spec):
-  """Returns the type of a reduction operator of the form `(<U,T> -> U)`.
-
-  Args:
-    result_type_spec: The type of the result of reduction (`U`). An instance of
-      types.Type, or something convertible to it.
-    element_type_spec: The type of elements to be reduced (`T`). An instance of
-      types.Type, or something convertible to it.
-
-  Returns:
-    The type of the corresponding reduction operator (`(<U,T> -> U)`).
-  """
-  result_type_spec = types.to_type(result_type_spec)
-  element_type_spec = types.to_type(element_type_spec)
-  return types.FunctionType([result_type_spec, element_type_spec],
-                            result_type_spec)
-
-
-def binary_op(type_spec):
-  """Returns the type of a binary operator that operates on `type_spec`.
-
-  Args:
-    type_spec: An instance of types.Type, or something convertible to it.
-
-  Returns:
-    The type of the corresponding binary operator.
-  """
-  type_spec = types.to_type(type_spec)
-  return reduction_op(type_spec, type_spec)
 
 
 def is_numeric_dtype(dtype):

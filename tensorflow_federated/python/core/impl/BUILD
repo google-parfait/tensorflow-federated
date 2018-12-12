@@ -303,6 +303,7 @@ py_library(
     name = "intrinsic_defs",
     srcs = ["intrinsic_defs.py"],
     deps = [
+        ":type_constructors",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:types",
@@ -328,7 +329,7 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":intrinsic_defs",
-        ":type_utils",
+        ":type_constructors",
         ":value_impl",
         "//tensorflow_federated/python/core/api:types",
     ],
@@ -486,6 +487,26 @@ py_test(
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
+    ],
+)
+
+py_library(
+    name = "type_constructors",
+    srcs = ["type_constructors.py"],
+    deps = [
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:types",
+    ],
+)
+
+py_test(
+    name = "type_constructors_test",
+    size = "small",
+    srcs = ["type_constructors_test.py"],
+    deps = [
+        ":type_constructors",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
