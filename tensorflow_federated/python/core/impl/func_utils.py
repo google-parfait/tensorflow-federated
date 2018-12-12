@@ -100,9 +100,8 @@ def get_argspec(func):
         'Support for defuns of type {} has not been implemented yet.'.format(
             py_typecheck.type_string(type(func))))
   else:
-    raise TypeError(
-        'Expected a Python function or a defun, found {}.'.format(
-            py_typecheck.type_string(type(func))))
+    raise TypeError('Expected a Python function or a defun, found {}.'.format(
+        py_typecheck.type_string(type(func))))
 
 
 def get_callargs_for_argspec(argspec, *args, **kwargs):
@@ -151,8 +150,8 @@ def get_callargs_for_argspec(argspec, *args, **kwargs):
   if argspec.keywords:
     result[argspec.keywords] = unused_kwargs
   elif unused_kwargs:
-    raise TypeError('Unexpected keyword arguments in the call: {}'.format(
-        unused_kwargs))
+    raise TypeError(
+        'Unexpected keyword arguments in the call: {}'.format(unused_kwargs))
   return result
 
 
@@ -332,8 +331,8 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
             raise TypeError(
                 'Keyword argument named {} has type {}, which is incompatible '
                 'with the expected type {} at position {} of the parameter '
-                'type tuple.'.format(
-                    name, str(arg_type), str(elem_type), index))
+                'type tuple.'.format(name, str(arg_type), str(elem_type),
+                                     index))
           result_elements.append((name, arg_value))
           keywords_used.add(name)
         elif name:
@@ -343,12 +342,12 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
       positions_missing = set(six.moves.range(
           len(args))).difference(positions_used)
       if positions_missing:
-        raise TypeError('Positional arguments at {} not used.'.format(
-            positions_missing))
+        raise TypeError(
+            'Positional arguments at {} not used.'.format(positions_missing))
       keywords_missing = set(kwargs.keys()).difference(keywords_used)
       if keywords_missing:
-        raise TypeError('Keyword arguments at {} not used.'.format(
-            keywords_missing))
+        raise TypeError(
+            'Keyword arguments at {} not used.'.format(keywords_missing))
       return anonymous_tuple.AnonymousTuple(result_elements)
 
 
@@ -465,8 +464,8 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
   # TODO(b/113112885): Revisit whether the 3-way 'unpack' knob is sufficient
   # for our needs, or more options are needed.
   if unpack not in [True, False, None]:
-    raise TypeError(
-        'The unpack argument has an unexpected value {}.'.format(repr(unpack)))
+    raise TypeError('The unpack argument has an unexpected value {}.'.format(
+        repr(unpack)))
   argspec = get_argspec(func)
   parameter_type = types.to_type(parameter_type)
   if not parameter_type:
@@ -501,8 +500,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       raise TypeError(
           'The supplied function with argspec {} cannot accept a value of '
           'type {} as either a single argument or multiple positional and/or '
-          'keyword arguments.'.format(
-              str(argspec), str(parameter_type)))
+          'keyword arguments.'.format(str(argspec), str(parameter_type)))
     if not unpack_required and unpack_possible and unpack is None:
       raise TypeError(
           'The supplied function with argspec {} could accept a value of '
@@ -516,6 +514,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       assert unpack_required == unpack_possible
       unpack = unpack_possible
     if unpack:
+
       def _unpack_and_call(func, arg_types, kwarg_types, arg):
         """An interceptor function that unpacks 'arg' before calling 'func'.
 
@@ -524,8 +523,8 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
 
         Args:
           func: The function or defun to invoke.
-          arg_types: The list of positional argument types (guaranteed to all
-            be instances of types.Types).
+          arg_types: The list of positional argument types (guaranteed to all be
+            instances of types.Types).
           kwarg_types: The dictionary of keyword argument types (guaranteed to
             all be instances of types.Types).
           arg: The argument to unpack.
@@ -543,22 +542,21 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
           element_value = arg[idx]
           actual_type = type_utils.infer_type(element_value)
           if not expected_type.is_assignable_from(actual_type):
-            raise TypeError(
-                'Expected element at position {} to be '
-                'of type {}, found {}.'.format(
-                    idx, str(expected_type), str(actual_type)))
+            raise TypeError('Expected element at position {} to be '
+                            'of type {}, found {}.'.format(
+                                idx, str(expected_type), str(actual_type)))
           args.append(element_value)
         kwargs = {}
         for name, expected_type in six.iteritems(kwarg_types):
           element_value = getattr(arg, name)
           actual_type = type_utils.infer_type(element_value)
           if not expected_type.is_assignable_from(actual_type):
-            raise TypeError(
-                'Expected element named {} to be '
-                'of type {}, found {}.'.format(
-                    name, str(expected_type), str(actual_type)))
+            raise TypeError('Expected element named {} to be '
+                            'of type {}, found {}.'.format(
+                                name, str(expected_type), str(actual_type)))
           kwargs[name] = element_value
         return func(*args, **kwargs)
+
       # Deliberate wrapping to isolate the caller from the underlying function
       # and the interceptor '_call' again, so those cannot be tampered with,
       # and to force any parameter bindings to be resolved now.
@@ -575,12 +573,13 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               str(parameter_type), str(arg_type)))
         return func(arg)
+
       # Deliberate wrapping to isolate the caller from the underlying function
       # and the interceptor '_call' again, so those cannot be tampered with,
       # and to force any parameter bindings to be resolved now.
       # pylint: disable=unnecessary-lambda,undefined-variable
-      return (lambda fn, pt: lambda arg: _call(fn, pt, arg))(
-          func, parameter_type)
+      return (lambda fn, pt: lambda arg: _call(fn, pt, arg))(func,
+                                                             parameter_type)
       # pylint: enable=unnecessary-lambda,undefined-variable
 
 
@@ -668,8 +667,8 @@ class PolymorphicFunction(object):
     concrete_fn = self._concrete_function_cache.get(key)
     if not concrete_fn:
       concrete_fn = self._concrete_function_factory(arg_type)
-      py_typecheck.check_type(
-          concrete_fn, ConcreteFunction, 'concrete function')
+      py_typecheck.check_type(concrete_fn, ConcreteFunction,
+                              'concrete function')
       if concrete_fn.type_signature.parameter != arg_type:
         raise TypeError(
             'Expected a concrete function that takes parameter {}, got one '

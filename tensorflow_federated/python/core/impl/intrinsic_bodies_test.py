@@ -32,13 +32,15 @@ from tensorflow_federated.python.core.impl import intrinsic_bodies
 
 def _body_str(comp):
   """Returns the string representation of `comp`'s body."""
-  return str(computation_building_blocks.ComputationBuildingBlock.from_proto(
-      computation_impl.ComputationImpl.get_proto(comp)))
+  return str(
+      computation_building_blocks.ComputationBuildingBlock.from_proto(
+          computation_impl.ComputationImpl.get_proto(comp)))
 
 
 class IntrinsicBodiesTest(absltest.TestCase):
 
   def test_federated_sum(self):
+
     @computations.federated_computation(
         types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
@@ -47,8 +49,7 @@ class IntrinsicBodiesTest(absltest.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(
-        _body_str(foo),
-        '(arg -> '
+        _body_str(foo), '(arg -> '
         '(arg -> federated_reduce(<arg[0],generic_zero,generic_plus>))(<arg>))')
 
 

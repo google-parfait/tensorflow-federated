@@ -56,8 +56,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(y.index, None)
     self.assertEqual(str(y.type_signature), 'int32')
     self.assertEqual(
-        repr(y),
-        'Selection(Reference(\'foo\', NamedTupleType(['
+        repr(y), 'Selection(Reference(\'foo\', NamedTupleType(['
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', name=\'bar\')')
     self.assertEqual(str(y), 'foo.bar')
@@ -71,8 +70,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x0.index, 0)
     self.assertEqual(str(x0.type_signature), 'int32')
     self.assertEqual(
-        repr(x0),
-        'Selection(Reference(\'foo\', NamedTupleType(['
+        repr(x0), 'Selection(Reference(\'foo\', NamedTupleType(['
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', index=0)')
     self.assertEqual(str(x0), 'foo[0]')
@@ -119,8 +117,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         str(type_serialization.deserialize_type(z_proto.type)),
         str(z.type_signature))
     self.assertEqual(z_proto.WhichOneof('computation'), 'tuple')
-    self.assertEqual(
-        [str(e.name) for e in z_proto.tuple.element], ['', 'y'])
+    self.assertEqual([str(e.name) for e in z_proto.tuple.element], ['', 'y'])
     self._serialize_deserialize_roundtrip_test(z)
 
   def test_basic_functionality_of_call_class(self):
@@ -131,8 +128,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertIs(z.function, x)
     self.assertIs(z.argument, y)
     self.assertEqual(
-        repr(z),
-        'Call(Reference(\'foo\', '
+        repr(z), 'Call(Reference(\'foo\', '
         'FunctionType(TensorType(tf.int32), TensorType(tf.bool))), '
         'Reference(\'bar\', TensorType(tf.int32)))')
     self.assertEqual(str(z), 'foo(bar)')
@@ -167,8 +163,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         '(\'f\', FunctionType(TensorType(tf.int32), TensorType(tf.int32))), '
         '(\'x\', TensorType(tf.int32))])')
     self.assertEqual(
-        repr(x),
-        'Lambda(\'arg\', {0}, '
+        repr(x), 'Lambda(\'arg\', {0}, '
         'Call(Selection(Reference(\'arg\', {0}), name=\'f\'), '
         'Call(Selection(Reference(\'arg\', {0}), name=\'f\'), '
         'Selection(Reference(\'arg\', {0}), name=\'x\'))))'.format(
@@ -187,17 +182,14 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
   def test_basic_functionality_of_block_class(self):
     x = bb.Block(
         [('x', bb.Reference('arg', (tf.int32, tf.int32))),
-         ('y', bb.Selection(
-             bb.Reference('x', (tf.int32, tf.int32)), index=0))],
+         ('y', bb.Selection(bb.Reference('x', (tf.int32, tf.int32)), index=0))],
         bb.Reference('y', tf.int32))
     self.assertEqual(str(x.type_signature), 'int32')
-    self.assertEqual(
-        [(k, str(v)) for k, v in x.locals],
-        [('x', 'arg'), ('y', 'x[0]')])
+    self.assertEqual([(k, str(v)) for k, v in x.locals], [('x', 'arg'),
+                                                          ('y', 'x[0]')])
     self.assertEqual(str(x.result), 'y')
     self.assertEqual(
-        repr(x),
-        'Block([(\'x\', Reference(\'arg\', '
+        repr(x), 'Block([(\'x\', Reference(\'arg\', '
         'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]))), '
         '(\'y\', Selection(Reference(\'x\', '
         'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)])), '
@@ -221,8 +213,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(x.uri, 'add_one')
     self.assertEqual(
-        repr(x),
-        'Intrinsic(\'add_one\', '
+        repr(x), 'Intrinsic(\'add_one\', '
         'FunctionType(TensorType(tf.int32), TensorType(tf.int32)))')
     self.assertEqual(str(x), 'add_one')
     x_proto = x.proto
@@ -254,10 +245,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     x = bb.CompiledComputation(comp)
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(str(x.proto), str(comp))
-    self.assertTrue(re.match(
-        r'CompiledComputation\([0-9a-f]+, '
-        r'FunctionType\(TensorType\(tf\.int32\), TensorType\(tf\.int32\)\)\)',
-        repr(x)))
+    self.assertTrue(
+        re.match(
+            r'CompiledComputation\([0-9a-f]+, '
+            r'FunctionType\(TensorType\(tf\.int32\), '
+            r'TensorType\(tf\.int32\)\)\)', repr(x)))
     self.assertTrue(re.match(r'comp#[0-9a-f]+', str(x)))
     y = bb.CompiledComputation(comp, name='foo')
     self.assertEqual(str(y), 'comp#foo')

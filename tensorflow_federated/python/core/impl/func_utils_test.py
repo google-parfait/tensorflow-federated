@@ -51,26 +51,20 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # overlap with *args.
     self.assertEqual(
         fu.get_argspec(
-            tf_function.Defun(tf.int32, tf.bool, tf.float32, tf.float32)(
-                lambda x, y, *z: None)),
+            tf_function.Defun(tf.int32, tf.bool, tf.float32,
+                              tf.float32)(lambda x, y, *z: None)),
         inspect.ArgSpec(
-            args=['x', 'y'],
-            varargs='z',
-            keywords=None,
-            defaults=None))
+            args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
   def test_get_defun_argspec_with_untyped_non_eager_defun(self):
     # In a non-eager defun with no input signature, the same restrictions as in
     # a typed defun apply.
     self.assertEqual(
-        fu.get_argspec(
-            tf_function.Defun()(lambda x, y, *z: None)),
+        fu.get_argspec(tf_function.Defun()(lambda x, y, *z: None)),
         inspect.ArgSpec(
-            args=['x', 'y'],
-            varargs='z',
-            keywords=None,
-            defaults=None))
+            args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
+  # pyformat: disable
   @parameterized.parameters(
       itertools.product(
           # Values of 'func' to test.
@@ -94,6 +88,7 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
           [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]],
           # Values of 'kwargs' to test.
           [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
+  # pyformat: enable
   def test_get_callargs_for_argspec(self, func, args, kwargs):
     argspec = inspect.getargspec(func)
     expected_error = None
@@ -108,17 +103,17 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
         self.assertEqual(result_callargs, expected_callargs)
       else:
         with self.assertRaises(TypeError):
-          result_callargs = fu.get_callargs_for_argspec(
-              argspec, *args, **kwargs)
+          result_callargs = fu.get_callargs_for_argspec(argspec, *args,
+                                                        **kwargs)
     except (TypeError, AssertionError) as test_err:
       raise AssertionError(
           'With argspec {}, args {}, kwargs {}, expected callargs {} and '
           'error {}, tested function returned {} and the test has failed '
           'with message: {}'.format(
-              str(argspec), str(args), str(kwargs),
-              str(expected_callargs), str(expected_error),
-              str(result_callargs), str(test_err)))
+              str(argspec), str(args), str(kwargs), str(expected_callargs),
+              str(expected_error), str(result_callargs), str(test_err)))
 
+  # pyformat: disable
   @parameterized.parameters(
       (inspect.getargspec(params[0]),) + params[1:] for params in [
           (lambda a: None, [tf.int32], {}, True),
@@ -127,15 +122,18 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
           (lambda a, b=True: None, [tf.int32], {'b': tf.bool}, True),
           (lambda a, b=True: None, [tf.bool], {'b': tf.bool}, True),
           (lambda a=10, b=True: None, [tf.int32], {'b': tf.bool}, True),
-          (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}, False)])
-  def test_is_argspec_compatible_with_types(
-      self, argspec, args, kwargs, expected_result):
+          (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}, False)]
+  )
+  # pyformat: enable
+  def test_is_argspec_compatible_with_types(self, argspec, args, kwargs,
+                                            expected_result):
     self.assertEqual(
         fu.is_argspec_compatible_with_types(
             argspec, *[types.to_type(a) for a in args],
             **{k: types.to_type(v) for k, v in six.iteritems(kwargs)}),
         expected_result)
 
+  # pyformat: disable
   @parameterized.parameters(
       (tf.int32, False),
       ([tf.int32, tf.int32], True),
@@ -144,26 +142,31 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ([('a', tf.int32), tf.int32], False),
       (AnonymousTuple([(None, 1), ('a', 2)]), True),
       (AnonymousTuple([('a', 1), (None, 2)]), False))
+  # pyformat: enable
   def test_is_argument_tuple(self, arg, expected_result):
     self.assertEqual(fu.is_argument_tuple(arg), expected_result)
 
+  # pyformat: disable
   @parameterized.parameters(
       (AnonymousTuple([(None, 1)]), [1], {}),
       (AnonymousTuple([(None, 1), ('a', 2)]), [1], {'a': 2}))
-  def test_unpack_args_from_anonymous_tuple(
-      self, tuple_with_args, expected_args, expected_kwargs):
+  # pyformat: enable
+  def test_unpack_args_from_anonymous_tuple(self, tuple_with_args,
+                                            expected_args, expected_kwargs):
     self.assertEqual(
         fu.unpack_args_from_tuple(tuple_with_args),
         (expected_args, expected_kwargs))
 
+  # pyformat: disable
   @parameterized.parameters(
       ([tf.int32], [tf.int32], {}),
       ([('a', tf.int32)], [], {'a': tf.int32}),
       ([tf.int32, tf.bool], [tf.int32, tf.bool], {}),
       ([tf.int32, ('b', tf.bool)], [tf.int32], {'b': tf.bool}),
       ([('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}))
-  def test_unpack_args_from_tuple_type(
-      self, tuple_with_args, expected_args, expected_kwargs):
+  # pyformat: enable
+  def test_unpack_args_from_tuple_type(self, tuple_with_args, expected_args,
+                                       expected_kwargs):
     args, kwargs = fu.unpack_args_from_tuple(tuple_with_args)
     self.assertEqual(args, [types.to_type(a) for a in expected_args])
     self.assertEqual(
@@ -175,17 +178,25 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
         fu.pack_args_into_anonymous_tuple([1], {'a': 10}),
         AnonymousTuple([(None, 1), ('a', 10)]))
     self.assertIn(
-        fu.pack_args_into_anonymous_tuple([1, 2], {'a': 10, 'b': 20}), [
+        fu.pack_args_into_anonymous_tuple([1, 2], {
+            'a': 10,
+            'b': 20
+        }), [
             AnonymousTuple([(None, 1), (None, 2), ('a', 10), ('b', 20)]),
-            AnonymousTuple([(None, 1), (None, 2), ('b', 20), ('a', 10)])])
+            AnonymousTuple([(None, 1), (None, 2), ('b', 20), ('a', 10)])
+        ])
     self.assertIn(
-        fu.pack_args_into_anonymous_tuple([], {'a': 10, 'b': 20}), [
+        fu.pack_args_into_anonymous_tuple([], {
+            'a': 10,
+            'b': 20
+        }), [
             AnonymousTuple([('a', 10), ('b', 20)]),
-            AnonymousTuple([('b', 20), ('a', 10)])])
+            AnonymousTuple([('b', 20), ('a', 10)])
+        ])
     self.assertEqual(
-        fu.pack_args_into_anonymous_tuple([1], {}),
-        AnonymousTuple([(None, 1)]))
+        fu.pack_args_into_anonymous_tuple([1], {}), AnonymousTuple([(None, 1)]))
 
+  # pyformat: disable
   @parameterized.parameters(
       ([1], {}, [tf.int32], [(None, 1)]),
       ([1, True], {}, [tf.int32, tf.bool], [(None, 1), (None, True)]),
@@ -198,20 +209,24 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ([], collections.OrderedDict([('y', True), ('x', 1)]),
        [('x', tf.int32), ('y', tf.bool)],
        [('x', 1), ('y', True)]))
+  # pyformat: enable
   def test_pack_args_into_anonymous_tuple_with_type_spec_expect_success(
       self, args, kwargs, type_spec, elements):
     self.assertEqual(
         fu.pack_args_into_anonymous_tuple(args, kwargs, type_spec),
         AnonymousTuple(elements))
 
+  # pyformat: disable
   @parameterized.parameters(
       ([1], {}, [(tf.bool)]),
       ([], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]))
+  # pyformat: enable
   def test_pack_args_into_anonymous_tuple_with_type_spec_expect_failure(
       self, args, kwargs, type_spec):
     with self.assertRaises(TypeError):
       fu.pack_args_into_anonymous_tuple(args, kwargs, type_spec)
 
+      # pyformat: disable
   @parameterized.parameters(
       (None, [], {}, 'None'),
       (tf.int32, [1], {}, '1'),
@@ -220,11 +235,12 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ([('x', tf.int32), ('y', tf.bool)], [1], {'y': True}, '<x=1,y=True>'),
       ([tf.int32, tf.bool], [AnonymousTuple([(None, 1), (None, True)])], {},
        '<1,True>'))
+  # pyformat: enable
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
     self.assertEqual(
-        str(fu.pack_args(parameter_type, args, kwargs)),
-        expected_value_string)
+        str(fu.pack_args(parameter_type, args, kwargs)), expected_value_string)
 
+  # pyformat: disable
   @parameterized.parameters(
       (1, lambda: 10, None, None, None, 10),
       (2, lambda x=1: x + 10, None, None, None, 11),
@@ -236,10 +252,11 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       (6, lambda *args: str(args), [tf.int32, tf.int32], False,
        AnonymousTuple([('x', 5), ('y', 6)]),
        '(AnonymousTuple([(x, 5), (y, 6)]),)'))
+  # pyformat: enable
   def test_wrap_as_zero_or_one_arg_callable(
       self, unused_index, func, parameter_type, unpack, arg, expected_result):
-    wrapped_fn = fu.wrap_as_zero_or_one_arg_callable(
-        func, parameter_type, unpack)
+    wrapped_fn = fu.wrap_as_zero_or_one_arg_callable(func, parameter_type,
+                                                     unpack)
     actual_result = wrapped_fn(arg) if parameter_type else wrapped_fn()
     self.assertEqual(actual_result, expected_result)
 
@@ -293,8 +310,8 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(fn(15), True)
 
     fn = TestFunction(
-        types.FunctionType([('x', tf.int32), ('y', tf.int32)], tf.bool),
-        lambda arg: arg.x > arg.y)
+        types.FunctionType([('x', tf.int32), ('y', tf.int32)],
+                           tf.bool), lambda arg: arg.x > arg.y)
     self.assertEqual(fn(5, 10), False)
     self.assertEqual(fn(10, 5), True)
     self.assertEqual(fn(y=10, x=5), False)

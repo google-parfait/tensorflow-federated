@@ -45,16 +45,16 @@ def _wrap(func, parameter_type, wrapper_fn):
 
   Args:
     func: The function or defun to wrap as a computation.
-    parameter_type: The parameter type accepted by the computation, or None
-      if there is no parameter.
+    parameter_type: The parameter type accepted by the computation, or None if
+      there is no parameter.
     wrapper_fn: The Python callable that performs actual wrapping. It must
       accept two arguments. The first argument will be a Python function that
       takes either zero parameters if the computation is to be a no-parameter
       computation, or exactly one parameter if the computation does have a
       parameter. The second argument will be either None for a no-parameter
       computation, or the type of the computation's parameter (an instance of
-      types.Type) if the computation has one. The object to be returned by
-      this function should be an instance of ConcreteFunction.
+      types.Type) if the computation has one. The object to be returned by this
+      function should be an instance of ConcreteFunction.
 
   Returns:
     Either the result of wrapping (an object that represents the computation),
@@ -74,8 +74,7 @@ def _wrap(func, parameter_type, wrapper_fn):
       def _wrap_polymorphic(wrapper_fn, func, parameter_type):
         return wrapper_fn(
             func_utils.wrap_as_zero_or_one_arg_callable(
-                func, parameter_type, unpack=True),
-            parameter_type)
+                func, parameter_type, unpack=True), parameter_type)
 
       polymorphic_fn = func_utils.PolymorphicFunction(
           lambda pt: _wrap_polymorphic(wrapper_fn, func, pt))
@@ -89,8 +88,8 @@ def _wrap(func, parameter_type, wrapper_fn):
   concrete_fn = wrapper_fn(
       func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type),
       parameter_type)
-  py_typecheck.check_type(
-      concrete_fn, func_utils.ConcreteFunction, 'value returned by the wrapper')
+  py_typecheck.check_type(concrete_fn, func_utils.ConcreteFunction,
+                          'value returned by the wrapper')
   if concrete_fn.type_signature.parameter != parameter_type:
     raise TypeError(
         'Expected a concrete function that takes parameter {}, got one '
@@ -372,8 +371,8 @@ class ComputationWrapper(object):
         raise TypeError(
             'The function/defun should be followed by at most one type spec '
             'argument, but found {} additional arguments of types {}.'.format(
-                str(len(args) - 1), str([
-                    py_typecheck.type_string(type(a)) for a in args[1:]])))
+                str(len(args) - 1),
+                str([py_typecheck.type_string(type(a)) for a in args[1:]])))
       return _wrap(args[0],
                    types.to_type(args[1]) if len(args) > 1 else None,
                    self._wrapper_fn)

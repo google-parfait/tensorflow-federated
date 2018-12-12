@@ -36,15 +36,20 @@ from tensorflow_federated.python.core.impl import transformations
 class CompilerPipelineTest(absltest.TestCase):
 
   def test_compile_computation(self):
+
     @computations.federated_computation([
         types.FederatedType(tf.float32, placements.CLIENTS),
-        types.FederatedType(tf.float32, placements.SERVER, True)])
+        types.FederatedType(tf.float32, placements.SERVER, True)
+    ])
     def foo(temperatures, threshold):
-      return intrinsics.federated_sum(intrinsics.federated_map(
-          [temperatures, intrinsics.federated_broadcast(threshold)],
-          computations.tf_computation(
-              lambda x, y: tf.to_int32(tf.greater(x, y)),
-              [tf.float32, tf.float32])))
+      return intrinsics.federated_sum(
+          intrinsics.federated_map(
+              [temperatures,
+               intrinsics.federated_broadcast(threshold)],
+              computations.tf_computation(
+                  lambda x, y: tf.to_int32(tf.greater(x, y)),
+                  [tf.float32, tf.float32])))
+
     foo_proto = computation_impl.ComputationImpl.get_proto(foo)
     transformed_foo = (
         computation_building_blocks.ComputationBuildingBlock.from_proto(

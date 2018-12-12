@@ -37,14 +37,19 @@ class ComputationImplTest(absltest.TestCase):
 
     # At the moment, this should succeed, as both the computation body and the
     # type are well-formed.
-    computation_impl.ComputationImpl(pb.Computation(**{
-        'type': type_serialization.serialize_type(
-            types.FunctionType(tf.int32, tf.int32)),
-        'intrinsic': pb.Intrinsic(uri='whatever')}))
+    computation_impl.ComputationImpl(
+        pb.Computation(
+            **{
+                'type':
+                    type_serialization.serialize_type(
+                        types.FunctionType(tf.int32, tf.int32)),
+                'intrinsic':
+                    pb.Intrinsic(uri='whatever')
+            }))
 
     # This should fail, as the proto is not well-formed.
-    self.assertRaises(
-        TypeError, computation_impl.ComputationImpl, pb.Computation())
+    self.assertRaises(TypeError, computation_impl.ComputationImpl,
+                      pb.Computation())
 
     # This should fail, as "10" is not an instance of pb.Computation.
     self.assertRaises(TypeError, computation_impl.ComputationImpl, 10)

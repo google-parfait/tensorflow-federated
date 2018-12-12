@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -59,8 +58,8 @@ def compile_computation(computation_proto):
   # Replace intrinsics with their bodies, for now manually in a fixed order.
   # TODO(b/113123410): Replace this with a more automated implementation that
   # does not rely on manual maintenance.
-  for intr, body in [
-      (intrinsic_defs.FEDERATED_SUM, intrinsic_bodies.federated_sum)]:
+  for intr, body in [(intrinsic_defs.FEDERATED_SUM,
+                      intrinsic_bodies.federated_sum)]:
     comp = transformations.replace_intrinsic(comp, intr.uri, body)
 
   # TODO(b/113123410): Add more transformations to simplify and optimize the

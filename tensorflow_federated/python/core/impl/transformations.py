@@ -62,22 +62,23 @@ def transform_postorder(comp, func):
     NotImplementedError: If the argument is a kind of computation building block
       that is currently not recognized.
   """
-  py_typecheck.check_type(
-      comp, computation_building_blocks.ComputationBuildingBlock)
-  if isinstance(comp, (
-      computation_building_blocks.CompiledComputation,
-      computation_building_blocks.Data,
-      computation_building_blocks.Intrinsic,
-      computation_building_blocks.Placement,
-      computation_building_blocks.Reference)):
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if isinstance(
+      comp,
+      (computation_building_blocks.CompiledComputation,
+       computation_building_blocks.Data, computation_building_blocks.Intrinsic,
+       computation_building_blocks.Placement,
+       computation_building_blocks.Reference)):
     return func(comp)
   elif isinstance(comp, computation_building_blocks.Selection):
-    return func(computation_building_blocks.Selection(
-        transform_postorder(comp.source, func), comp.name, comp.index))
+    return func(
+        computation_building_blocks.Selection(
+            transform_postorder(comp.source, func), comp.name, comp.index))
   elif isinstance(comp, computation_building_blocks.Tuple):
-    return func(computation_building_blocks.Tuple([
-        (k, transform_postorder(v, func))
-        for k, v in anonymous_tuple.to_elements(comp)]))
+    return func(
+        computation_building_blocks.Tuple([(k, transform_postorder(
+            v, func)) for k, v in anonymous_tuple.to_elements(comp)]))
   elif isinstance(comp, computation_building_blocks.Call):
     transformed_func = transform_postorder(comp.function, func)
     if comp.argument is not None:
@@ -88,12 +89,14 @@ def transform_postorder(comp, func):
         computation_building_blocks.Call(transformed_func, transformed_arg))
   elif isinstance(comp, computation_building_blocks.Lambda):
     transformed_result = transform_postorder(comp.result, func)
-    return func(computation_building_blocks.Lambda(
-        comp.parameter_name, comp.parameter_type, transformed_result))
+    return func(
+        computation_building_blocks.Lambda(
+            comp.parameter_name, comp.parameter_type, transformed_result))
   elif isinstance(comp, computation_building_blocks.Block):
-    return func(computation_building_blocks.Block(
-        [(k, transform_postorder(v, func)) for k, v in comp.locals],
-        transform_postorder(comp.result, func)))
+    return func(
+        computation_building_blocks.Block(
+            [(k, transform_postorder(v, func)) for k, v in comp.locals],
+            transform_postorder(comp.result, func)))
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
@@ -109,17 +112,20 @@ def name_compiled_computations(comp):
     A modified variant of `comp` with all compiled computations given unique
     names.
   """
+
   def _name_generator():
     n = 0
     while True:
       n = n + 1
       yield str(n)
+
   def _transformation_func(x, name_sequence):
     if not isinstance(x, computation_building_blocks.CompiledComputation):
       return x
     else:
       return computation_building_blocks.CompiledComputation(
           x.proto, six.next(name_sequence))
+
   name_sequence = _name_generator()
   return transform_postorder(
       comp, lambda x: _transformation_func(x, name_sequence))
@@ -144,11 +150,12 @@ def replace_intrinsic(comp, uri, body):
   Raises:
     TypeError: if types do not match somewhere in the course of replacement.
   """
-  py_typecheck.check_type(
-      comp, computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(uri, six.string_types)
   if not callable(body):
     raise TypeError('The body of the intrinsic must be a callable.')
+
   def _transformation_func(comp, uri, body):
     if not isinstance(comp, computation_building_blocks.Intrinsic):
       return comp
@@ -162,4 +169,5 @@ def replace_intrinsic(comp, uri, body):
           computation_impl.ComputationImpl.get_proto(
               computations.federated_computation(
                   wrapped_body, comp.type_signature.parameter)))
+
   return transform_postorder(comp, lambda x: _transformation_func(x, uri, body))

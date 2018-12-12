@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl import func_utils
 
 class ComputationBuildingUtilsTest(parameterized.TestCase):
 
+  # pyformat: disable
   @parameterized.parameters(
       (lambda f, x: f(f(x)),
        [('f', types.FunctionType(tf.int32, tf.int32)),
@@ -43,12 +44,13 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
       (lambda x: (x[1], x[0]),
        (tf.int32, tf.int32),
        '(foo -> <foo[1],foo[0]>)'))
+  # pyformat: enable
   def test_zero_or_one_arg_func_to_lambda(self, func, parameter_type, func_str):
     parameter_name = 'foo'
     parameter_type = types.to_type(parameter_type)
     func = func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type)
-    result = bu.zero_or_one_arg_func_to_lambda(
-        func, parameter_name, parameter_type)
+    result = bu.zero_or_one_arg_func_to_lambda(func, parameter_name,
+                                               parameter_type)
     self.assertEqual(str(result), func_str)
 
 

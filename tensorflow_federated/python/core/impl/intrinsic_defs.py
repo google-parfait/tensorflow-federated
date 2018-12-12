@@ -40,8 +40,8 @@ class IntrinsicDef(object):
     Args:
       name: The short human-friendly name of this intrinsic.
       uri: The URI of this intrinsic.
-      type_spec: The type of the intrinsic, which must be functional, either
-        an instance of types.FunctionType or something convertible to it.
+      type_spec: The type of the intrinsic, which must be functional, either an
+        instance of `types.FunctionType` or something convertible to it.
     """
     py_typecheck.check_type(name, string_types)
     py_typecheck.check_type(uri, string_types)
@@ -78,7 +78,6 @@ class IntrinsicDef(object):
 # TODO(b/113112885): Perhaps add a way for these to get auto-registered to
 # enable things like lookup by URI, etc., similarly to how it's handled in the
 # placement_literals.py.
-
 
 # TODO(b/113112885): Define the generic equivalents of all operators below,
 # i.e., intrinsics that support arbitrary placements, to allow the federated
@@ -146,7 +145,6 @@ class IntrinsicDef(object):
 #
 #     generic_zip: <{T}@p,{U}@p> -> {<T,U>}@p
 
-
 # Computes an aggregate of client items (the first, {T}@CLIENTS-typed parameter)
 # using a multi-stage process in which client items are first partially
 # aggregated at an intermediate layer, then the partial aggregates are further
@@ -177,70 +175,76 @@ class IntrinsicDef(object):
 #
 # Type signature: <{T}@CLIENTS,U,(U,T->U),(U,U->U),(U->R)> -> R@SERVER
 FEDERATED_AGGREGATE = IntrinsicDef(
-    'FEDERATED_AGGREGATE',
-    'federated_aggregate',
+    'FEDERATED_AGGREGATE', 'federated_aggregate',
     types.FunctionType(
-        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-         types.AbstractType('U'),
-         types.FunctionType(
-             [types.AbstractType('U'), types.AbstractType('T')],
-             types.AbstractType('U')),
-         types.FunctionType(
-             [types.AbstractType('U'), types.AbstractType('U')],
-             types.AbstractType('U')),
-         types.FunctionType(types.AbstractType('U'), types.AbstractType('R'))],
-        types.FederatedType(types.AbstractType('R'), placements.SERVER, True)))
-
+        parameter=[
+            types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+            types.AbstractType('U'),
+            types.FunctionType(
+                parameter=[types.AbstractType('U'),
+                           types.AbstractType('T')],
+                result=types.AbstractType('U')),
+            types.FunctionType(
+                parameter=[types.AbstractType('U'),
+                           types.AbstractType('U')],
+                result=types.AbstractType('U')),
+            types.FunctionType(
+                parameter=types.AbstractType('U'),
+                result=types.AbstractType('R'))
+        ],
+        result=types.FederatedType(
+            types.AbstractType('R'), placements.SERVER, True)))
 
 # Computes a simple (equally weighted) average of client items. Only supported
 # for numeric tensor types, or composite structures made up of numeric types.
 #
 # Type signature: {T}@CLIENTS -> T@SERVER
 FEDERATED_AVERAGE = IntrinsicDef(
-    'FEDERATED_AVERAGE',
-    'federated_average',
+    'FEDERATED_AVERAGE', 'federated_average',
     types.FunctionType(
-        types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-        types.FederatedType(types.AbstractType('T'), placements.SERVER, True)))
-
+        parameter=types.FederatedType(
+            types.AbstractType('T'), placements.CLIENTS),
+        result=types.FederatedType(
+            types.AbstractType('T'), placements.SERVER, True)))
 
 # Broadcasts a server item to all clients.
 #
 # Type signature: T@SERVER -> T@CLIENTS
 FEDERATED_BROADCAST = IntrinsicDef(
-    'FEDERATED_BROADCAST',
-    'federated_broadcast',
+    'FEDERATED_BROADCAST', 'federated_broadcast',
     types.FunctionType(
-        types.FederatedType(types.AbstractType('T'), placements.SERVER, True),
-        types.FederatedType(types.AbstractType('T'), placements.CLIENTS, True)))
-
+        parameter=types.FederatedType(
+            types.AbstractType('T'), placements.SERVER, True),
+        result=types.FederatedType(
+            types.AbstractType('T'), placements.CLIENTS, True)))
 
 # Materializes client items as a sequence on the server.
 #
 # Type signature: {T}@CLIENTS -> T*@SERVER
 FEDERATED_COLLECT = IntrinsicDef(
-    'FEDERATED_COLLECT',
-    'federated_collect',
+    'FEDERATED_COLLECT', 'federated_collect',
     types.FunctionType(
-        types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-        types.FederatedType(
-            types.SequenceType(types.AbstractType('T')),
-            placements.SERVER,
+        parameter=types.FederatedType(
+            types.AbstractType('T'), placements.CLIENTS),
+        result=types.FederatedType(
+            types.SequenceType(types.AbstractType('T')), placements.SERVER,
             True)))
-
 
 # Maps member constituents of a client value pointwise uising a given mapping
 # function that operates independently on each client.
 #
 # Type signature: <{T}@CLIENTS,(T->U)> -> {U}@CLIENTS
 FEDERATED_MAP = IntrinsicDef(
-    'FEDERATED_MAP',
-    'federated_map',
+    'FEDERATED_MAP', 'federated_map',
     types.FunctionType(
-        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-         types.FunctionType(types.AbstractType('T'), types.AbstractType('U'))],
-        types.FederatedType(types.AbstractType('U'), placements.CLIENTS)))
-
+        parameter=[
+            types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+            types.FunctionType(
+                parameter=types.AbstractType('T'),
+                result=types.AbstractType('U'))
+        ],
+        result=types.FederatedType(types.AbstractType('U'),
+                                   placements.CLIENTS)))
 
 # Reduces a set of member constituents of a client value using a given 'zero' in
 # the algebra (i.e., the result of reducing an empty set) and a given reduction
@@ -253,28 +257,30 @@ FEDERATED_MAP = IntrinsicDef(
 #
 # Type signature: <{T}@CLIENTS,U,(<U,T>->U)> -> U@SERVER
 FEDERATED_REDUCE = IntrinsicDef(
-    'FEDERATED_REDUCE',
-    'federated_reduce',
+    'FEDERATED_REDUCE', 'federated_reduce',
     types.FunctionType(
-        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-         types.AbstractType('U'),
-         types.FunctionType(
-             [types.AbstractType('U'), types.AbstractType('T')],
-             types.AbstractType('U'))],
-        types.FederatedType(types.AbstractType('U'), placements.SERVER, True)))
-
+        parameter=[
+            types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+            types.AbstractType('U'),
+            types.FunctionType(
+                parameter=[types.AbstractType('U'),
+                           types.AbstractType('T')],
+                result=types.AbstractType('U'))
+        ],
+        result=types.FederatedType(
+            types.AbstractType('U'), placements.SERVER, True)))
 
 # Computes the sum of client values on the server. Only supported for numeric
 # types, or nested structures made up of numeric types.
 #
 # Type signature: {T}@CLIENTS -> T@SERVER
 FEDERATED_SUM = IntrinsicDef(
-    'FEDERATED_SUM',
-    'federated_sum',
+    'FEDERATED_SUM', 'federated_sum',
     types.FunctionType(
-        types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-        types.FederatedType(types.AbstractType('T'), placements.SERVER, True)))
-
+        parameter=types.FederatedType(
+            types.AbstractType('T'), placements.CLIENTS),
+        result=types.FederatedType(
+            types.AbstractType('T'), placements.SERVER, True)))
 
 # Computes a weighted average of client items. Only supported for numeric tensor
 # types, or composite structures made up of numeric types. Weights must be
@@ -288,27 +294,28 @@ FEDERATED_SUM = IntrinsicDef(
 #
 # Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> T@SERVER
 FEDERATED_WEIGHTED_AVERAGE = IntrinsicDef(
-    'FEDERATED_WEIGHTED_AVERAGE',
-    'federated_weighted_average',
+    'FEDERATED_WEIGHTED_AVERAGE', 'federated_weighted_average',
     types.FunctionType(
-        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-         types.FederatedType(types.AbstractType('U'), placements.CLIENTS)],
-        types.FederatedType(types.AbstractType('T'), placements.SERVER, True)))
-
+        parameter=[
+            types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+            types.FederatedType(types.AbstractType('U'), placements.CLIENTS)
+        ],
+        result=types.FederatedType(
+            types.AbstractType('T'), placements.SERVER, True)))
 
 # Zips a tuple of two federated types into a federated tuple.
 #
 # Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS
 FEDERATED_ZIP = IntrinsicDef(
-    'FEDERATED_ZIP',
-    'federated_zip',
+    'FEDERATED_ZIP', 'federated_zip',
     types.FunctionType(
-        [types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
-         types.FederatedType(types.AbstractType('U'), placements.CLIENTS)],
-        types.FederatedType(
-            [types.AbstractType('T'), types.AbstractType('U')],
-            placements.CLIENTS)))
-
+        parameter=[
+            types.FederatedType(types.AbstractType('T'), placements.CLIENTS),
+            types.FederatedType(types.AbstractType('U'), placements.CLIENTS)
+        ],
+        result=types.FederatedType(
+            [types.AbstractType('T'),
+             types.AbstractType('U')], placements.CLIENTS)))
 
 # Generic plus operator that accepts a variety of types in federated computation
 # context. The range of types 'T' supported to be defined. It should work in a
@@ -319,12 +326,11 @@ FEDERATED_ZIP = IntrinsicDef(
 #
 # Type signature: <T,T> -> T
 GENERIC_PLUS = IntrinsicDef(
-    'GENERIC_PLUS',
-    'generic_plus',
+    'GENERIC_PLUS', 'generic_plus',
     types.FunctionType(
-        [types.AbstractType('T'), types.AbstractType('T')],
-        types.AbstractType('T')))
-
+        parameter=[types.AbstractType('T'),
+                   types.AbstractType('T')],
+        result=types.AbstractType('T')))
 
 # Generic zero operator that represents zero-filled values of diverse types (to
 # be defined, but generally similar to that supported by GENERIC_ADD).
@@ -332,7 +338,5 @@ GENERIC_PLUS = IntrinsicDef(
 # TODO(b/113123410): Define the range of supported types.
 #
 # Type signature: T
-GENERIC_ZERO = IntrinsicDef(
-    'GENERIC_ZERO',
-    'generic_zero',
-    types.AbstractType('T'))
+GENERIC_ZERO = IntrinsicDef('GENERIC_ZERO', 'generic_zero',
+                            types.AbstractType('T'))

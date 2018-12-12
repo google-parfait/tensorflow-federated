@@ -27,8 +27,7 @@ class PlacementLiteralsTest(absltest.TestCase):
 
   def test_something(self):
     self.assertNotEqual(
-        str(placement_literals.CLIENTS),
-        str(placement_literals.SERVER))
+        str(placement_literals.CLIENTS), str(placement_literals.SERVER))
     for literal in [placement_literals.CLIENTS, placement_literals.SERVER]:
       self.assertIs(
           placement_literals.uri_to_placement_literal(literal.uri), literal)

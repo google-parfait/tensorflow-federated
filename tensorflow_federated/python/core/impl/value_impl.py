@@ -149,8 +149,8 @@ class ValueImpl(value_base.Value):
       if args or kwargs:
         args = [to_value(x) for x in args]
         kwargs = {k: to_value(v) for k, v in six.iteritems(kwargs)}
-        arg = func_utils.pack_args(
-            self._comp.type_signature.parameter, args, kwargs)
+        arg = func_utils.pack_args(self._comp.type_signature.parameter, args,
+                                   kwargs)
         arg = ValueImpl.get_comp(to_value(arg))
       else:
         arg = None
@@ -162,13 +162,13 @@ class ValueImpl(value_base.Value):
         not other.type_signature.is_assignable_from(self.type_signature)):
       raise TypeError('Cannot add {} and {}.'.format(
           str(self.type_signature), str(other.type_signature)))
-    return ValueImpl(computation_building_blocks.Call(
-        computation_building_blocks.Intrinsic(
-            intrinsic_defs.GENERIC_PLUS.uri,
-            types.FunctionType(
-                [self.type_signature, self.type_signature],
-                self.type_signature)),
-        to_value([self, other])))
+    return ValueImpl(
+        computation_building_blocks.Call(
+            computation_building_blocks.Intrinsic(
+                intrinsic_defs.GENERIC_PLUS.uri,
+                types.FunctionType([self.type_signature, self.type_signature],
+                                   self.type_signature)),
+            to_value([self, other])))
 
 
 def _wrap_constant_as_value(const):
@@ -195,15 +195,13 @@ def to_value(arg):
   """Converts the argument into an instance of Value.
 
   Args:
-    arg: Either an instance of Value, or an argument convertible to Value.
-      The argument must not be None. The types of non-Value arguments that are
-      currently convertible to Value include the following:
-
-      * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all of
-        which are converted into instances of Tuple.
-      * Placement literals, converted into instances of `Placement`.
-      * Computations.
-      * Python constants of type str, int, float, bool, or numpy ndarray.
+    arg: Either an instance of Value, or an argument convertible to Value. The
+      argument must not be None. The types of non-Value arguments that are
+      currently convertible to Value include the following:  * Lists, tuples,
+        anonymous tuples, named tuples, and dictionaries, all of which are
+        converted into instances of Tuple. * Placement literals, converted into
+        instances of `Placement`. * Computations. * Python constants of type
+        str, int, float, bool, or numpy ndarray.
 
   Returns:
     An instance of Value corresponding to the given 'arg'.
@@ -216,9 +214,9 @@ def to_value(arg):
   elif isinstance(arg, computation_building_blocks.ComputationBuildingBlock):
     return ValueImpl(arg)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    return ValueImpl(computation_building_blocks.Tuple([
-        (k, ValueImpl.get_comp(to_value(v)))
-        for k, v in anonymous_tuple.to_elements(arg)]))
+    return ValueImpl(
+        computation_building_blocks.Tuple([(k, ValueImpl.get_comp(
+            to_value(v))) for k, v in anonymous_tuple.to_elements(arg)]))
   elif '_asdict' in vars(type(arg)):
     return to_value(arg._asdict())
   elif isinstance(arg, dict):
@@ -227,8 +225,9 @@ def to_value(arg):
             (k, ValueImpl.get_comp(to_value(v))) for k, v in six.iteritems(arg)
         ]))
   elif isinstance(arg, (tuple, list)):
-    return ValueImpl(computation_building_blocks.Tuple([
-        ValueImpl.get_comp(to_value(x)) for x in arg]))
+    return ValueImpl(
+        computation_building_blocks.Tuple(
+            [ValueImpl.get_comp(to_value(x)) for x in arg]))
   elif isinstance(arg, placement_literals.PlacementLiteral):
     return ValueImpl(computation_building_blocks.Placement(arg))
   elif isinstance(arg, computation_base.Computation):

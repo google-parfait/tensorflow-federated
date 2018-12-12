@@ -47,13 +47,11 @@ class PlacementLiteral(object):
 # TODO(b/113112108): Define the remaining placement literals (e.g., intermediate
 # coordinators). Possibly rename SERVER to COORDINATOR or some such if desired.
 
+CLIENTS = PlacementLiteral('CLIENTS', 'clients',
+                           'The collective of all client devices.')
 
-CLIENTS = PlacementLiteral(
-    'CLIENTS', 'clients', 'The collective of all client devices.')
-
-
-SERVER = PlacementLiteral(
-    'SERVER', 'server', 'The single top-level central coordinator.')
+SERVER = PlacementLiteral('SERVER', 'server',
+                          'The single top-level central coordinator.')
 
 
 def uri_to_placement_literal(uri):

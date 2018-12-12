@@ -90,9 +90,11 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
             'is of a mismatching type {}.'.format(
                 str(type_spec.parameter), str(arg_type)))
       else:
-        input_map = {k: graph.get_tensor_by_name(v) for k, v in six.iteritems(
-            graph_utils.compute_map_from_bindings(
-                computation_proto.tensorflow.parameter, arg_binding))}
+        input_map = {
+            k: graph.get_tensor_by_name(v) for k, v in six.iteritems(
+                graph_utils.compute_map_from_bindings(
+                    computation_proto.tensorflow.parameter, arg_binding))
+        }
     return_elements = graph_utils.extract_tensor_names_from_binding(
         computation_proto.tensorflow.result)
     output_tensors = tf.import_graph_def(

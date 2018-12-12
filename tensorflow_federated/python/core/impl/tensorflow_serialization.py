@@ -43,8 +43,8 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
     target: The entity to convert into and serialize as a TF computation. This
       can currently only be a Python function. In the future, we will add here
       support for serializing the various kinds of non-eager and eager defuns,
-      and eventually aim at full support for and compliance with TF 2.0.
-      This function is currently required to declare either zero parameters if
+      and eventually aim at full support for and compliance with TF 2.0. This
+      function is currently required to declare either zero parameters if
       `parameter_type` is `None`, or exactly one parameter if it's not `None`.
       The nested structure of this parameter must correspond to the structure of
       the 'parameter_type'. In the future, we may support targets with multiple
@@ -95,9 +95,10 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
     result_type, result_binding = graph_utils.capture_result_from_graph(result)
 
   return pb.Computation(
-      type=pb.Type(function=pb.FunctionType(
-          parameter=type_serialization.serialize_type(parameter_type),
-          result=type_serialization.serialize_type(result_type))),
+      type=pb.Type(
+          function=pb.FunctionType(
+              parameter=type_serialization.serialize_type(parameter_type),
+              result=type_serialization.serialize_type(result_type))),
       tensorflow=pb.TensorFlow(
           graph_def=graph.as_graph_def(),
           parameter=parameter_binding,

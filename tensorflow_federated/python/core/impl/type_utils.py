@@ -65,9 +65,8 @@ def infer_type(arg):
     return types.SequenceType(
         tf_dtypes_and_shapes_to_type(arg.output_types, arg.output_shapes))
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    return types.NamedTupleType([
-        (k, infer_type(v)) if k else infer_type(v) for k, v in (
-            anonymous_tuple.to_elements(arg))])
+    return types.NamedTupleType([(k, infer_type(v)) if k else infer_type(v)
+                                 for k, v in anonymous_tuple.to_elements(arg)])
   elif '_asdict' in type(arg).__dict__:
     # Special handling needed for collections.namedtuple.
     return infer_type(arg._asdict())
@@ -140,10 +139,11 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   elif isinstance(dtypes, (list, tuple)):
     return types.NamedTupleType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
-        for idx, dtypes_elem in enumerate(dtypes)])
+        for idx, dtypes_elem in enumerate(dtypes)
+    ])
   else:
-    raise TypeError(
-        'Unrecognized: dtypes {}, shapes {}.'.format(str(dtypes), str(shapes)))
+    raise TypeError('Unrecognized: dtypes {}, shapes {}.'.format(
+        str(dtypes), str(shapes)))
 
 
 def type_to_tf_dtypes_and_shapes(type_spec):
@@ -156,8 +156,8 @@ def type_to_tf_dtypes_and_shapes(type_spec):
   Args:
     type_spec: Type specification, either an instance of types.Type, or
       something convertible to it. Ther type specification must be composed of
-      only named tuples and tensors. In all named tuples that appear in the
-      type spec, all the elements must be named.
+      only named tuples and tensors. In all named tuples that appear in the type
+      spec, all the elements must be named.
 
   Returns:
     A pair of parallel nested structures with the dtypes and shapes of tensors
@@ -217,10 +217,9 @@ def get_named_tuple_element_type(type_spec, name):
   for elem_name, elem_type in elements:
     if name == elem_name:
       return elem_type
-  raise ValueError(
-      'The name \'{}\' of the element does not correspond to '
-      'any of the names {} in the named tuple type.'.format(
-          name, str([e[0] for e in elements if e[0]])))
+  raise ValueError('The name \'{}\' of the element does not correspond to '
+                   'any of the names {} in the named tuple type.'.format(
+                       name, str([e[0] for e in elements if e[0]])))
 
 
 def check_well_formed(type_spec):
@@ -230,8 +229,8 @@ def check_well_formed(type_spec):
   in 'computation.proto' for what factors determine well-formedness.
 
   Args:
-    type_spec: The type specification to check, either an instance of
-      types.Type or something convertible to it by types.to_type().
+    type_spec: The type specification to check, either an instance of types.Type
+      or something convertible to it by types.to_type().
 
   Returns:
     True iff the type is well-formed, otherwise False.
@@ -287,8 +286,9 @@ def check_all_abstract_types_are_bound(type_spec):
     TypeError: if arguments are of the wrong types, or if unbound type labels
       occur in 'type_spec'.
   """
-  def _check_or_get_unbound_abstract_type_labels(
-      type_spec, bound_labels, check):
+
+  def _check_or_get_unbound_abstract_type_labels(type_spec, bound_labels,
+                                                 check):
     """Checks or collects abstract type labels from 'type_spec'.
 
     This is a helper function used by 'check_abstract_types_are_bound', not to
@@ -313,15 +313,16 @@ def check_all_abstract_types_are_bound(type_spec):
     if isinstance(type_spec, types.TensorType):
       return set()
     elif isinstance(type_spec, types.SequenceType):
-      return _check_or_get_unbound_abstract_type_labels(
-          type_spec.element, bound_labels, check)
+      return _check_or_get_unbound_abstract_type_labels(type_spec.element,
+                                                        bound_labels, check)
     elif isinstance(type_spec, types.FederatedType):
-      return _check_or_get_unbound_abstract_type_labels(
-          type_spec.member, bound_labels, check)
+      return _check_or_get_unbound_abstract_type_labels(type_spec.member,
+                                                        bound_labels, check)
     elif isinstance(type_spec, types.NamedTupleType):
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
-          for _, v in type_spec.elements])
+          for _, v in type_spec.elements
+      ])
     elif isinstance(type_spec, types.AbstractType):
       if type_spec.label in bound_labels:
         return set()
@@ -357,8 +358,8 @@ def reduction_op(result_type_spec, element_type_spec):
   """
   result_type_spec = types.to_type(result_type_spec)
   element_type_spec = types.to_type(element_type_spec)
-  return types.FunctionType(
-      [result_type_spec, element_type_spec], result_type_spec)
+  return types.FunctionType([result_type_spec, element_type_spec],
+                            result_type_spec)
 
 
 def binary_op(type_spec):
@@ -429,10 +430,10 @@ def check_federated_value_placement(value, placement, label=None):
   if label is not None:
     py_typecheck.check_type(label, six.string_types)
   if value.type_signature.placement is not placement:
-    raise TypeError(
-        'The {} should be placed at {}, but it ' 'is placed at {}.'.format(
-            label if label else 'value', str(placement), str(
-                value.type_signature.placement)))
+    raise TypeError('The {} should be placed at {}, but it '
+                    'is placed at {}.'.format(
+                        label if label else 'value', str(placement),
+                        str(value.type_signature.placement)))
 
 
 def is_average_compatible(type_spec):

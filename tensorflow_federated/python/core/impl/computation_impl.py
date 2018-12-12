@@ -40,8 +40,8 @@ class ComputationImpl(func_utils.ConcreteFunction):
     """Constructs a new instance of ComputationImpl from the computation_proto.
 
     Args:
-      computation_proto: The protocol buffer that represents the computation,
-        an instance of pb.Computation.
+      computation_proto: The protocol buffer that represents the computation, an
+        instance of pb.Computation.
     """
     py_typecheck.check_type(computation_proto, pb.Computation)
     type_spec = type_serialization.deserialize_type(computation_proto.type)

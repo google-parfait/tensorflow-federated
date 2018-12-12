@@ -45,11 +45,11 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
 
   Args:
     parameter_name: The suggested (string) name of the parameter to use in
-      determining the names of the graph components to construct. The names
-      that will actually appear in the graph are not guaranteed to be based
-      on this suggested name, and may vary, e.g., due to existing naming
-      conflicts, but a best-effort attempt will be made to make them similar
-      for ease of debugging.
+      determining the names of the graph components to construct. The names that
+      will actually appear in the graph are not guaranteed to be based on this
+      suggested name, and may vary, e.g., due to existing naming conflicts, but
+      a best-effort attempt will be made to make them similar for ease of
+      debugging.
     parameter_type: The type of the parameter to stamp. Must be either an
       instance of types.Type (or convertible to it), or None.
     graph: The instance of tf.Graph to stamp in.
@@ -89,14 +89,17 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       element_name_value_pairs.append((e[0], e_val))
       element_bindings.append(e_binding)
     return (anonymous_tuple.AnonymousTuple(element_name_value_pairs),
-            pb.TensorFlow.Binding(tuple=pb.TensorFlow.NamedTupleBinding(
-                element=element_bindings)))
+            pb.TensorFlow.Binding(
+                tuple=pb.TensorFlow.NamedTupleBinding(
+                    element=element_bindings)))
   elif isinstance(parameter_type, types.SequenceType):
     with graph.as_default():
       handle = tf.placeholder(tf.string, shape=[])
     ds = make_dataset_from_string_handle(handle, parameter_type.element)
-    return (ds, pb.TensorFlow.Binding(sequence=pb.TensorFlow.SequenceBinding(
-        iterator_string_handle_name=handle.name)))
+    return (ds,
+            pb.TensorFlow.Binding(
+                sequence=pb.TensorFlow.SequenceBinding(
+                    iterator_string_handle_name=handle.name)))
   else:
     raise ValueError(
         'Parameter type component {} cannot be stamped into a TensorFlow '
@@ -150,8 +153,8 @@ def capture_result_from_graph(result):
   # into the possibility of reusing some of that code when it's available.
   if tensor_util.is_tensor(result):
     return (types.TensorType(result.dtype.base_dtype, result.shape),
-            pb.TensorFlow.Binding(tensor=pb.TensorFlow.TensorBinding(
-                tensor_name=result.name)))
+            pb.TensorFlow.Binding(
+                tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
   elif '_asdict' in type(result).__dict__:
     # Special handling needed for collections.namedtuples since they do not have
     # anything in the way of a shared base class. Note we don't want to rely on
@@ -167,16 +170,19 @@ def capture_result_from_graph(result):
     else:
       name_value_pairs = six.iteritems(result)
     element_name_type_binding_triples = [
-        ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs]
+        ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs
+    ]
     return (types.NamedTupleType([((e[0], e[1]) if e[0] else e[1])
                                   for e in element_name_type_binding_triples]),
-            pb.TensorFlow.Binding(tuple=pb.TensorFlow.NamedTupleBinding(
-                element=[e[2] for e in element_name_type_binding_triples])))
+            pb.TensorFlow.Binding(
+                tuple=pb.TensorFlow.NamedTupleBinding(
+                    element=[e[2] for e in element_name_type_binding_triples])))
   elif isinstance(result, (list, tuple)):
     element_type_binding_pairs = [capture_result_from_graph(e) for e in result]
     return (types.NamedTupleType([e[0] for e in element_type_binding_pairs]),
-            pb.TensorFlow.Binding(tuple=pb.TensorFlow.NamedTupleBinding(
-                element=[e[1] for e in element_type_binding_pairs])))
+            pb.TensorFlow.Binding(
+                tuple=pb.TensorFlow.NamedTupleBinding(
+                    element=[e[1] for e in element_type_binding_pairs])))
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         py_typecheck.type_string(type(result))))
@@ -186,11 +192,11 @@ def compute_map_from_bindings(source, target):
   """Computes a dictionary for renaming tensors from a matching bindings pair.
 
   Args:
-    source: An instance of `pb.TensorFlow.Binding` that contains names
-      of tensors that will form the keys in the dictionary.
-    target: An instance of `pb.TensorFlow.Binding` that contains names
-      of tensors that will form the values in the dictionary. The structure of
-      this binding must be identical as that of the `source`.
+    source: An instance of `pb.TensorFlow.Binding` that contains names of
+      tensors that will form the keys in the dictionary.
+    target: An instance of `pb.TensorFlow.Binding` that contains names of
+      tensors that will form the values in the dictionary. The structure of this
+      binding must be identical as that of the `source`.
 
   Returns:
     A dictionary mapping names of tensors in `source` to names of the
@@ -209,12 +215,12 @@ def compute_map_from_bindings(source, target):
         'Source and target binding variants mismatch: {} vs. {}'.format(
             source_oneof, target_oneof))
   if source_oneof == 'tensor':
-    return collections.OrderedDict([
-        (str(source.tensor.tensor_name), str(target.tensor.tensor_name))])
+    return collections.OrderedDict([(str(source.tensor.tensor_name),
+                                     str(target.tensor.tensor_name))])
   elif source_oneof == 'sequence':
-    return collections.OrderedDict([
-        (str(source.sequence.iterator_string_handle_name),
-         str(target.sequence.iterator_string_handle_name))])
+    return collections.OrderedDict(
+        [(str(source.sequence.iterator_string_handle_name),
+          str(target.sequence.iterator_string_handle_name))])
   elif source_oneof == 'tuple':
     if len(source.tuple.element) != len(target.tuple.element):
       raise ValueError(
@@ -222,8 +228,8 @@ def compute_map_from_bindings(source, target):
               len(source.tuple.element), len(target.tuple.element)))
     else:
       result = collections.OrderedDict()
-      for source_element, target_element in zip(
-          source.tuple.element, target.tuple.element):
+      for source_element, target_element in zip(source.tuple.element,
+                                                target.tuple.element):
         result.update(compute_map_from_bindings(source_element, target_element))
       return result
   else:
@@ -246,9 +252,10 @@ def extract_tensor_names_from_binding(binding):
   elif binding_oneof == 'sequence':
     return [str(binding.sequence.iterator_string_handle_name)]
   elif binding_oneof == 'tuple':
-    return [name
-            for e in binding.tuple.element
-            for name in extract_tensor_names_from_binding(e)]
+    return [
+        name for e in binding.tuple.element
+        for name in extract_tensor_names_from_binding(e)
+    ]
   else:
     raise ValueError(
         'Unsupported type of binding \'{}\'.'.format(binding_oneof))
@@ -296,9 +303,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       raise ValueError(
           'Expected a tensor binding, found {}.'.format(binding_oneof))
     elif binding.tensor.tensor_name not in output_map:
-      raise ValueError(
-          'Tensor named {} not found in the output map.'.format(
-              binding.tensor.tensor_name))
+      raise ValueError('Tensor named {} not found in the output map.'.format(
+          binding.tensor.tensor_name))
     else:
       return output_map[binding.tensor.tensor_name]
   elif isinstance(type_spec, types.NamedTupleType):
@@ -314,8 +320,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       result_elements = []
       for (element_name, element_type), element_binding in zip(
           type_elements, binding.tuple.element):
-        element_object = assemble_result_from_graph(
-            element_type, element_binding, output_map)
+        element_object = assemble_result_from_graph(element_type,
+                                                    element_binding, output_map)
         result_elements.append((element_name, element_object))
       return anonymous_tuple.AnonymousTuple(result_elements)
   elif isinstance(type_spec, types.SequenceType):

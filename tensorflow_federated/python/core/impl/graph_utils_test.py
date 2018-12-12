@@ -38,8 +38,8 @@ from tensorflow_federated.python.core.impl import type_utils
 
 class GraphUtilsTest(tf.test.TestCase):
 
-  def _assert_binding_matches_type_and_value(
-      self, binding, type_spec, val, graph):
+  def _assert_binding_matches_type_and_value(self, binding, type_spec, val,
+                                             graph):
     """Asserts that 'bindings' matches the given type, value, and graph."""
     self.assertIsInstance(binding, pb.TensorFlow.Binding)
     self.assertIsInstance(type_spec, types.Type)
@@ -68,8 +68,8 @@ class GraphUtilsTest(tf.test.TestCase):
         self.assertIsInstance(val, dict)
         val = list(val.values())
       for idx, e in enumerate(type_spec.elements):
-        self._assert_binding_matches_type_and_value(
-            binding.tuple.element[idx], e[1], val[idx], graph)
+        self._assert_binding_matches_type_and_value(binding.tuple.element[idx],
+                                                    e[1], val[idx], graph)
 
   def _assert_is_placeholder(self, x, name, dtype, shape, graph):
     """Verifies that 'x' is a tf.placeholder with the given attributes."""
@@ -84,8 +84,8 @@ class GraphUtilsTest(tf.test.TestCase):
   def _checked_capture_result(self, result):
     """Returns the captured result type after first verifying the binding."""
     type_spec, binding = graph_utils.capture_result_from_graph(result)
-    self._assert_binding_matches_type_and_value(
-        binding, type_spec, result, tf.get_default_graph())
+    self._assert_binding_matches_type_and_value(binding, type_spec, result,
+                                                tf.get_default_graph())
     return type_spec
 
   def _checked_stamp_parameter(self, name, spec, graph=None):
@@ -93,8 +93,8 @@ class GraphUtilsTest(tf.test.TestCase):
     if graph is None:
       graph = tf.get_default_graph()
     val, binding = graph_utils.stamp_parameter_in_graph(name, spec, graph)
-    self._assert_binding_matches_type_and_value(
-        binding, types.to_type(spec), val, graph)
+    self._assert_binding_matches_type_and_value(binding, types.to_type(spec),
+                                                val, graph)
     return val
 
   def test_stamp_parameter_in_graph_with_scalar_int_explicit_graph(self):
@@ -114,8 +114,8 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_stamp_parameter_in_graph_with_named_tuple(self):
     with tf.Graph().as_default() as my_graph:
-      x = self._checked_stamp_parameter(
-          'foo', (('a', tf.int32), ('b', tf.bool)))
+      x = self._checked_stamp_parameter('foo', (('a', tf.int32),
+                                                ('b', tf.bool)))
     self.assertIsInstance(x, AnonymousTuple)
     self.assertTrue(len(x), 2)
     self._assert_is_placeholder(x.a, 'foo_a:0', tf.int32, [], my_graph)
@@ -130,22 +130,27 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
-      x = self._checked_stamp_parameter(
-          'foo', types.SequenceType((tf.int32, [50])))
+      x = self._checked_stamp_parameter('foo',
+                                        types.SequenceType((tf.int32, [50])))
     self.assertIsInstance(x, tf.data.Dataset)
     test_utils.assert_nested_struct_eq(x.output_types, tf.int32)
     test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
 
   def test_stamp_parameter_in_graph_with_tensor_pair_sequence(self):
     with tf.Graph().as_default():
-      x = self._checked_stamp_parameter('foo', types.SequenceType(
-          [('A', (tf.float32, [3, 4, 5])), ('B', (tf.int32, [1]))]))
+      x = self._checked_stamp_parameter(
+          'foo',
+          types.SequenceType([('A', (tf.float32, [3, 4, 5])),
+                              ('B', (tf.int32, [1]))]))
     self.assertIsInstance(x, tf.data.Dataset)
-    test_utils.assert_nested_struct_eq(
-        x.output_types, {'A': tf.float32, 'B': tf.int32})
-    test_utils.assert_nested_struct_eq(
-        x.output_shapes,
-        {'A': tf.TensorShape([3, 4, 5]), 'B': tf.TensorShape([1])})
+    test_utils.assert_nested_struct_eq(x.output_types, {
+        'A': tf.float32,
+        'B': tf.int32
+    })
+    test_utils.assert_nested_struct_eq(x.output_shapes, {
+        'A': tf.TensorShape([3, 4, 5]),
+        'B': tf.TensorShape([1])
+    })
 
   def test_capture_result_with_int_scalar(self):
     self.assertEqual(
@@ -156,14 +161,14 @@ class GraphUtilsTest(tf.test.TestCase):
     # Verifies that the variable dtype is not being captured as `int32_ref`,
     # since TFF has no concept of passing arguments by reference.
     self.assertEqual(
-        str(self._checked_capture_result(
-            tf.get_variable('foo', dtype=tf.int32, shape=[]))),
-        'int32')
+        str(
+            self._checked_capture_result(
+                tf.get_variable('foo', dtype=tf.int32, shape=[]))), 'int32')
 
   def test_capture_result_with_scalar_list(self):
     self.assertEqual(
-        str(self._checked_capture_result([tf.constant(1), tf.constant(True)])),
-        '<int32,bool>')
+        str(self._checked_capture_result([tf.constant(1),
+                                          tf.constant(True)])), '<int32,bool>')
 
   def test_capture_result_with_scalar_tuple(self):
     self.assertEqual(
@@ -172,50 +177,54 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_capture_result_with_scalar_ordered_dict(self):
     self.assertEqual(
-        str(self._checked_capture_result(collections.OrderedDict(
-            [('a', tf.constant(1)), ('b', tf.constant(True))]))),
+        str(
+            self._checked_capture_result(
+                collections.OrderedDict([('a', tf.constant(1)),
+                                         ('b', tf.constant(True))]))),
         '<a=int32,b=bool>')
 
   def test_capture_result_with_scalar_unordered_dict(self):
     self.assertIn(
-        str(self._checked_capture_result(
-            {'a': tf.constant(1), 'b': tf.constant(True)})),
-        ['<a=int32,b=bool>', '<b=bool,a=int32>'])
+        str(
+            self._checked_capture_result({
+                'a': tf.constant(1),
+                'b': tf.constant(True)
+            })), ['<a=int32,b=bool>', '<b=bool,a=int32>'])
 
   def test_capture_result_with_scalar_namedtuple(self):
     self.assertEqual(
-        str(self._checked_capture_result(
-            collections.namedtuple('_', 'x y')(
-                tf.constant(1), tf.constant(True)))),
+        str(
+            self._checked_capture_result(
+                collections.namedtuple('_', 'x y')(tf.constant(1),
+                                                   tf.constant(True)))),
         '<x=int32,y=bool>')
 
   def test_capture_result_with_scalar_anonymous_tuple(self):
     self.assertEqual(
-        str(self._checked_capture_result(
-            AnonymousTuple([
-                ('x', tf.constant(10)),
-                (None, tf.constant(True)),
-                ('y', tf.constant(0.66))]))),
-        '<x=int32,bool,y=float32>')
+        str(
+            self._checked_capture_result(
+                AnonymousTuple(
+                    [('x', tf.constant(10)), (None, tf.constant(True)),
+                     ('y', tf.constant(0.66))]))), '<x=int32,bool,y=float32>')
 
   def test_capture_result_with_nested_mixture_of_lists_and_tuples(self):
     self.assertEqual(
-        str(self._checked_capture_result(
-            AnonymousTuple([
-                ('x', collections.namedtuple('_', 'a b')(
-                    {'p': {'q': tf.constant(True)}}, [tf.constant(False)])),
-                (None, [[tf.constant(10)]])]))),
+        str(
+            self._checked_capture_result(
+                AnonymousTuple([('x', collections.namedtuple('_', 'a b')({
+                    'p': {
+                        'q': tf.constant(True)
+                    }
+                }, [tf.constant(False)])), (None, [[tf.constant(10)]])]))),
         '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
 
   def test_compute_map_from_bindings_with_tuple_of_tensors(self):
     _, source = graph_utils.capture_result_from_graph(
-        collections.OrderedDict([
-            ('foo', tf.constant(10, name='A')),
-            ('bar', tf.constant(20, name='B'))]))
+        collections.OrderedDict([('foo', tf.constant(10, name='A')),
+                                 ('bar', tf.constant(20, name='B'))]))
     _, target = graph_utils.capture_result_from_graph(
-        collections.OrderedDict([
-            ('foo', tf.constant(30, name='C')),
-            ('bar', tf.constant(40, name='D'))]))
+        collections.OrderedDict([('foo', tf.constant(30, name='C')),
+                                 ('bar', tf.constant(40, name='D'))]))
     result = graph_utils.compute_map_from_bindings(source, target)
     self.assertEqual(
         str(result), 'OrderedDict([(\'A:0\', \'C:0\'), (\'B:0\', \'D:0\')])')
@@ -232,9 +241,8 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_extract_tensor_names_from_binding_with_tuple_of_tensors(self):
     _, binding = graph_utils.capture_result_from_graph(
-        collections.OrderedDict([
-            ('foo', tf.constant(10, name='A')),
-            ('bar', tf.constant(20, name='B'))]))
+        collections.OrderedDict([('foo', tf.constant(10, name='A')),
+                                 ('bar', tf.constant(20, name='B'))]))
     result = graph_utils.extract_tensor_names_from_binding(binding)
     self.assertEqual(str(sorted(result)), '[\'A:0\', \'B:0\']')
 
@@ -252,13 +260,13 @@ class GraphUtilsTest(tf.test.TestCase):
             pb.TensorFlow.Binding(
                 tensor=pb.TensorFlow.TensorBinding(tensor_name='P')),
             pb.TensorFlow.Binding(
-                tensor=pb.TensorFlow.TensorBinding(tensor_name='Q'))]))
+                tensor=pb.TensorFlow.TensorBinding(tensor_name='Q'))
+        ]))
     output_map = {'P': tf.constant(1, name='A'), 'Q': tf.constant(2, name='B')}
-    result = graph_utils.assemble_result_from_graph(
-        type_spec, binding, output_map)
+    result = graph_utils.assemble_result_from_graph(type_spec, binding,
+                                                    output_map)
     self.assertEqual(
-        str(result),
-        '<X=Tensor("A:0", shape=(), dtype=int32),'
+        str(result), '<X=Tensor("A:0", shape=(), dtype=int32),'
         'Y=Tensor("B:0", shape=(), dtype=int32)>')
 
   def test_assemble_result_from_graph_with_sequence(self):
@@ -266,13 +274,14 @@ class GraphUtilsTest(tf.test.TestCase):
     binding = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(
             iterator_string_handle_name='foo'))
-    data_set = tf.data.Dataset.from_tensors(
-        {'X': tf.constant(1), 'Y': tf.constant(2)})
+    data_set = tf.data.Dataset.from_tensors({
+        'X': tf.constant(1),
+        'Y': tf.constant(2)
+    })
     it = data_set.make_one_shot_iterator()
-    output_map = {
-        'foo': it.string_handle()}
-    result = graph_utils.assemble_result_from_graph(
-        type_spec, binding, output_map)
+    output_map = {'foo': it.string_handle()}
+    result = graph_utils.assemble_result_from_graph(type_spec, binding,
+                                                    output_map)
     self.assertIsInstance(result, tf.data.Dataset)
     self.assertEqual(
         str(result.output_types),
@@ -280,6 +289,7 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertEqual(
         str(result.output_shapes),
         'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
+
 
 if __name__ == '__main__':
   tf.test.main()

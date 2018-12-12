@@ -49,9 +49,10 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
   context = federated_computation_context.FederatedComputationContext()
   with context_stack.install(context):
     if parameter_type:
-      result = func(value_impl.ValueImpl(
-          computation_building_blocks.Reference(
-              parameter_name, parameter_type)))
+      result = func(
+          value_impl.ValueImpl(
+              computation_building_blocks.Reference(parameter_name,
+                                                    parameter_type)))
     else:
       result = func()
     result = value_impl.to_value(result)

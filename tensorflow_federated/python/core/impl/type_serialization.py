@@ -53,29 +53,33 @@ def serialize_type(type_spec):
   target = types.to_type(type_spec)
   py_typecheck.check_type(target, types.Type)
   if isinstance(target, types.TensorType):
-    return pb.Type(tensor=pb.TensorType(
-        dtype=target.dtype.as_datatype_enum,
-        shape=target.shape.as_proto()))
+    return pb.Type(
+        tensor=pb.TensorType(
+            dtype=target.dtype.as_datatype_enum, shape=target.shape.as_proto()))
   elif isinstance(target, types.SequenceType):
-    return pb.Type(sequence=pb.SequenceType(
-        element=serialize_type(target.element)))
+    return pb.Type(
+        sequence=pb.SequenceType(element=serialize_type(target.element)))
   elif isinstance(target, types.NamedTupleType):
-    return pb.Type(tuple=pb.NamedTupleType(element=[
-        pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
-        for e in target.elements]))
+    return pb.Type(
+        tuple=pb.NamedTupleType(element=[
+            pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
+            for e in target.elements
+        ]))
   elif isinstance(target, types.FunctionType):
-    return pb.Type(function=pb.FunctionType(
-        parameter=serialize_type(target.parameter),
-        result=serialize_type(target.result)))
+    return pb.Type(
+        function=pb.FunctionType(
+            parameter=serialize_type(target.parameter),
+            result=serialize_type(target.result)))
   elif isinstance(target, types.PlacementType):
     return pb.Type(placement=pb.PlacementType())
   elif isinstance(target, types.FederatedType):
     if isinstance(target.placement, placement_literals.PlacementLiteral):
-      return pb.Type(federated=pb.FederatedType(
-          member=serialize_type(target.member),
-          placement=pb.PlacementSpec(value=pb.Placement(
-              uri=target.placement.uri)),
-          all_equal=target.all_equal))
+      return pb.Type(
+          federated=pb.FederatedType(
+              member=serialize_type(target.member),
+              placement=pb.PlacementSpec(
+                  value=pb.Placement(uri=target.placement.uri)),
+              all_equal=target.all_equal))
     else:
       raise NotImplementedError(
           'Serialization of federated types with placements specifications '
@@ -116,9 +120,8 @@ def deserialize_type(type_proto):
   elif type_variant == 'sequence':
     return types.SequenceType(deserialize_type(type_proto.sequence.element))
   elif type_variant == 'tuple':
-    return types.NamedTupleType([
-        (lambda k, v: (k, v) if k else v)(e.name, deserialize_type(e.value))
-        for e in type_proto.tuple.element])
+    return types.NamedTupleType([(lambda k, v: (k, v) if k else v)(
+        e.name, deserialize_type(e.value)) for e in type_proto.tuple.element])
   elif type_variant == 'function':
     return types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),

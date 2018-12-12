@@ -130,8 +130,8 @@ class Reference(ComputationBuildingBlock):
       type_spec: The type spec of the referenced entity.
       context: The optional context in which the referenced entity is defined.
         This class does not prescribe what Python type the 'context' needs to be
-        and merely exposes it as a property (see below). The only requirement
-        is that the context implements str() and repr().
+        and merely exposes it as a property (see below). The only requirement is
+        that the context implements str() and repr().
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -290,12 +290,13 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
 
     Args:
       elements: The elements of the tuple, supplied as a list of (name, value)
-        pairs, where 'name' can be None in case the corresponding element is
-        not named and only accessible via an index (see also AnonymousTuple).
+        pairs, where 'name' can be None in case the corresponding element is not
+        named and only accessible via an index (see also AnonymousTuple).
 
     Raises:
       TypeError: if arguments are of the wrong types.
     """
+
     # Not using super() here and below, as the two base classes have different
     # signatures of their constructors, and the named tuple implementation
     # of selection interfaces should override that in the generic class 'Value'
@@ -304,8 +305,7 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
       """Returns a named or unnamed element."""
       if isinstance(e, ComputationBuildingBlock):
         return (None, e)
-      elif (isinstance(e, tuple) and
-            (len(e) == 2) and
+      elif (isinstance(e, tuple) and (len(e) == 2) and
             (e[0] is None or isinstance(e[0], six.string_types))):
         py_typecheck.check_type(e[1], ComputationBuildingBlock)
         # Explicitly compare to an empty string because other values that are
@@ -315,10 +315,13 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         return (e[0], e[1])
       else:
         raise TypeError('Unexpected tuple element: {}.'.format(str(e)))
+
     elements = [_map_element(e) for e in elements]
-    ComputationBuildingBlock.__init__(self, types.NamedTupleType([
-        ((e[0], e[1].type_signature) if e[0] else e[1].type_signature)
-        for e in elements]))
+    ComputationBuildingBlock.__init__(
+        self,
+        types.NamedTupleType(
+            [((e[0], e[1].type_signature) if e[0] else e[1].type_signature)
+             for e in elements]))
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
 
   @property
@@ -336,8 +339,8 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
 
   def __repr__(self):
     return 'Tuple([{}])'.format(', '.join(
-        '({}, {})'.format(
-            '\'{}\''.format(e[0]) if e[0] is not None else 'None', repr(e[1]))
+        '({}, {})'.format('\'{}\''.format(e[0]) if e[0] is not None else 'None',
+                          repr(e[1]))
         for e in anonymous_tuple.to_elements(self)))
 
   def __str__(self):
@@ -371,14 +374,14 @@ class Call(ComputationBuildingBlock):
     """
     py_typecheck.check_type(func, ComputationBuildingBlock)
     if not isinstance(func.type_signature, types.FunctionType):
-      raise TypeError(
-          'Expected func to be of a functional type, '
-          'but found that its type is {}.'.format(str(func.type_signature)))
+      raise TypeError('Expected func to be of a functional type, '
+                      'but found that its type is {}.'.format(
+                          str(func.type_signature)))
     if func.type_signature.parameter is not None:
       if arg is None:
-        raise TypeError(
-            'The invoked function expects an argument of type {}, '
-            'but got None instead.'.format(str(func.type_signature.parameter)))
+        raise TypeError('The invoked function expects an argument of type {}, '
+                        'but got None instead.'.format(
+                            str(func.type_signature.parameter)))
       if not func.type_signature.parameter.is_assignable_from(
           arg.type_signature):
         raise TypeError(
@@ -434,10 +437,11 @@ class Lambda(ComputationBuildingBlock):
   def from_proto(cls, computation_proto):
     _check_computation_oneof(computation_proto, 'lambda')
     the_lambda = getattr(computation_proto, 'lambda')
-    return cls(str(the_lambda.parameter_name),
-               type_serialization.deserialize_type(
-                   computation_proto.type.function.parameter),
-               ComputationBuildingBlock.from_proto(the_lambda.result))
+    return cls(
+        str(the_lambda.parameter_name),
+        type_serialization.deserialize_type(
+            computation_proto.type.function.parameter),
+        ComputationBuildingBlock.from_proto(the_lambda.result))
 
   def __init__(self, parameter_name, parameter_type, result):
     """Creates a lambda expression.
@@ -469,10 +473,13 @@ class Lambda(ComputationBuildingBlock):
   @property
   def proto(self):
     return pb.Computation(
-        type=type_serialization.serialize_type(self.type_signature), **{
-            'lambda': pb.Lambda(
-                parameter_name=self._parameter_name,
-                result=self._result.proto)})
+        type=type_serialization.serialize_type(self.type_signature),
+        **{
+            'lambda':
+                pb.Lambda(
+                    parameter_name=self._parameter_name,
+                    result=self._result.proto)
+        })
 
   @property
   def parameter_name(self):
@@ -487,8 +494,9 @@ class Lambda(ComputationBuildingBlock):
     return self._result
 
   def __repr__(self):
-    return ('Lambda(\'{}\', {}, {})'.format(
-        self._parameter_name, repr(self._parameter_type), repr(self._result)))
+    return ('Lambda(\'{}\', {}, {})'.format(self._parameter_name,
+                                            repr(self._parameter_type),
+                                            repr(self._result)))
 
   def __str__(self):
     return '({} -> {})'.format(self._parameter_name, str(self._result))
@@ -500,20 +508,20 @@ class Block(ComputationBuildingBlock):
   @classmethod
   def from_proto(cls, computation_proto):
     _check_computation_oneof(computation_proto, 'block')
-    return cls(
-        [(str(loc.name), ComputationBuildingBlock.from_proto(loc.value))
-         for loc in computation_proto.block.local],
-        ComputationBuildingBlock.from_proto(computation_proto.block.result))
+    return cls([(str(loc.name), ComputationBuildingBlock.from_proto(loc.value))
+                for loc in computation_proto.block.local],
+               ComputationBuildingBlock.from_proto(
+                   computation_proto.block.result))
 
   def __init__(self, local_symbols, result):
     """Creates a block of TFF code.
 
     Args:
       local_symbols: The list of one or more local declarations, each of which
-        is a 2-tuple (name, value), with 'name' being the string name of a
-        local symbol being defined, and 'value' being the instance of
-          ComputationBuildingBlock, the output of which will be locally bound
-          to that name.
+        is a 2-tuple (name, value), with 'name' being the string name of a local
+        symbol being defined, and 'value' being the instance of
+        ComputationBuildingBlock, the output of which will be locally bound to
+        that name.
       result: An instance of ComputationBuildingBlock that computes the result.
 
     Raises:
@@ -521,8 +529,7 @@ class Block(ComputationBuildingBlock):
     """
     updated_locals = []
     for index, element in enumerate(local_symbols):
-      if (not isinstance(element, tuple) or
-          (len(element) != 2) or
+      if (not isinstance(element, tuple) or (len(element) != 2) or
           not isinstance(element[0], six.string_types)):
         raise TypeError(
             'Expected the locals to be a list of 2-element tuples with string '
@@ -542,10 +549,14 @@ class Block(ComputationBuildingBlock):
   def proto(self):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
-        block=pb.Block(**{
-            'local': [
-                pb.Block.Local(name=k, value=v.proto) for k, v in self._locals],
-            'result': self._result.proto}))
+        block=pb.Block(
+            **{
+                'local': [
+                    pb.Block.Local(name=k, value=v.proto)
+                    for k, v in self._locals
+                ],
+                'result': self._result.proto
+            }))
 
   @property
   def locals(self):
@@ -635,8 +646,8 @@ class Data(ComputationBuildingBlock):
 
     Args:
       uri: The URI that characterizes the data.
-      type_spec: Either the types.Type that represents the type of this data,
-        or something convertible to it by types.to_type().
+      type_spec: Either the types.Type that represents the type of this data, or
+        something convertible to it by types.to_type().
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -675,8 +686,8 @@ class CompiledComputation(ComputationBuildingBlock):
     Args:
       proto: An instance of pb.Computation with the computation logic.
       name: An optional string name to associate with this computation, used
-        only for debugging purposes. If the name is not specified (None), it
-        is autogenerated as a hexadecimal string from the hash of the proto.
+        only for debugging purposes. If the name is not specified (None), it is
+        autogenerated as a hexadecimal string from the hash of the proto.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -698,8 +709,8 @@ class CompiledComputation(ComputationBuildingBlock):
     return self._proto
 
   def __repr__(self):
-    return 'CompiledComputation({}, {})'.format(
-        self._name, repr(self.type_signature))
+    return 'CompiledComputation({}, {})'.format(self._name,
+                                                repr(self.type_signature))
 
   def __str__(self):
     return 'comp#{}'.format(self._name)
@@ -714,8 +725,9 @@ class Placement(ComputationBuildingBlock):
     py_typecheck.check_type(
         type_serialization.deserialize_type(computation_proto.type),
         types.PlacementType)
-    return cls(placement_literals.uri_to_placement_literal(
-        str(computation_proto.placement.uri)))
+    return cls(
+        placement_literals.uri_to_placement_literal(
+            str(computation_proto.placement.uri)))
 
   def __init__(self, literal):
     """Constructs a new placement instance for the given placement literal.
@@ -758,5 +770,6 @@ ComputationBuildingBlock._deserializer_dict = {
     'intrinsic': Intrinsic.from_proto,
     'data': Data.from_proto,
     'placement': Placement.from_proto,
-    'tensorflow': CompiledComputation}
+    'tensorflow': CompiledComputation
+}
 # pylint: enable=protected-access

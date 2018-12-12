@@ -73,8 +73,8 @@ class ValueImplTest(absltest.TestCase):
     with self.assertRaises(IndexError):
       _ = x[-1]
     self.assertEqual(','.join(str(e) for e in iter(x)), 'foo[0],foo[1]')
-    self.assertEqual(
-        ','.join(str(e.type_signature) for e in iter(x)), 'int32,bool')
+    self.assertEqual(','.join(str(e.type_signature) for e in iter(x)),
+                     'int32,bool')
     with self.assertRaises(SyntaxError):
       x(10)
 
@@ -116,8 +116,9 @@ class ValueImplTest(absltest.TestCase):
     arg_type = [('f', types.FunctionType(tf.int32, tf.int32)), ('x', tf.int32)]
     result_value = (lambda arg: arg.f(arg.f(arg.x)))(
         value_impl.ValueImpl(bb.Reference(arg_name, arg_type)))
-    x = value_impl.ValueImpl(bb.Lambda(
-        arg_name, arg_type, value_impl.ValueImpl.get_comp(result_value)))
+    x = value_impl.ValueImpl(
+        bb.Lambda(arg_name, arg_type,
+                  value_impl.ValueImpl.get_comp(result_value)))
     self.assertIsInstance(x, value_base.Value)
     self.assertEqual(
         str(x.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
@@ -192,32 +193,26 @@ class ValueImplTest(absltest.TestCase):
     self.assertEqual(str(raw_int_val.type_signature), 'int32')
     raw_float_val = value_impl.to_value(10.0)
     self.assertIsInstance(raw_float_val, value_base.Value)
-    self.assertEqual(str(raw_float_val.type_signature),
-                     'float32')
+    self.assertEqual(str(raw_float_val.type_signature), 'float32')
     np_array_val = value_impl.to_value(np.array([10.0]))
     self.assertIsInstance(np_array_val, value_base.Value)
-    self.assertEqual(str(np_array_val.type_signature),
-                     'float64[1]')
-    lg_np_array_flt = value_impl.to_value(np.ones([10, 10, 10],
-                                                  dtype=np.float32))
+    self.assertEqual(str(np_array_val.type_signature), 'float64[1]')
+    lg_np_array_flt = value_impl.to_value(
+        np.ones([10, 10, 10], dtype=np.float32))
     self.assertIsInstance(lg_np_array_flt, value_base.Value)
-    self.assertEqual(str(lg_np_array_flt.type_signature),
-                     'float32[10,10,10]')
-    lg_np_array_int = value_impl.to_value(np.ones([10, 10, 10],
-                                                  dtype=np.int32))
+    self.assertEqual(str(lg_np_array_flt.type_signature), 'float32[10,10,10]')
+    lg_np_array_int = value_impl.to_value(np.ones([10, 10, 10], dtype=np.int32))
     self.assertIsInstance(lg_np_array_int, value_base.Value)
-    self.assertEqual(str(lg_np_array_int.type_signature),
-                     'int32[10,10,10]')
+    self.assertEqual(str(lg_np_array_int.type_signature), 'int32[10,10,10]')
     raw_string_val = value_impl.to_value('10')
     self.assertIsInstance(raw_string_val, value_base.Value)
-    self.assertEqual(str(raw_string_val.type_signature),
-                     'string')
+    self.assertEqual(str(raw_string_val.type_signature), 'string')
 
   def test_slicing_support_namedtuple(self):
     x = value_impl.ValueImpl(bb.Reference('foo', tf.int32))
     y = value_impl.ValueImpl(bb.Reference('bar', tf.bool))
     v = value_impl.to_value(collections.namedtuple('_', 'a b')(x, y))
-    sliced_v = v[:int(len(v)/2)]
+    sliced_v = v[:int(len(v) / 2)]
     self.assertIsInstance(sliced_v, value_base.Value)
     sliced_v = v[:4:2]
     self.assertEqual(str(sliced_v), '<foo>')
@@ -234,7 +229,7 @@ class ValueImplTest(absltest.TestCase):
       _ = v[:1]
 
   def test_slicing_support_non_tuple_underlying_comp(self):
-    test_bb = bb.Reference('test', [tf.int32]*5)
+    test_bb = bb.Reference('test', [tf.int32] * 5)
     v = value_impl.ValueImpl(test_bb)
     sliced_v = v[:4:2]
     self.assertIsInstance(sliced_v, value_base.Value)
@@ -259,6 +254,7 @@ class ValueImplTest(absltest.TestCase):
       sliced = v[::2]
       self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
       self.assertEqual(str(sliced), str(value_impl.to_value(t[::2])))
+
 
 if __name__ == '__main__':
   absltest.main()

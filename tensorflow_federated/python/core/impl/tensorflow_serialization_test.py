@@ -35,9 +35,9 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)), '( -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    results = tf.Session().run(tf.import_graph_def(
-        comp.tensorflow.graph_def, None, [
-            comp.tensorflow.result.tensor.tensor_name]))
+    results = tf.Session().run(
+        tf.import_graph_def(comp.tensorflow.graph_def, None,
+                            [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [99])
 
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
@@ -47,15 +47,18 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         str(type_serialization.deserialize_type(comp.type)), '(int32 -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     parameter = tf.constant(1000)
-    results = tf.Session().run(tf.import_graph_def(
-        comp.tensorflow.graph_def,
-        {comp.tensorflow.parameter.tensor.tensor_name: parameter},
-        [comp.tensorflow.result.tensor.tensor_name]))
+    results = tf.Session().run(
+        tf.import_graph_def(
+            comp.tensorflow.graph_def,
+            {comp.tensorflow.parameter.tensor.tensor_name: parameter},
+            [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [1003])
 
   def test_serialize_tensorflow_with_data_set_sum_lambda(self):
+
     def _legacy_dataset_reducer_example(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
+
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
         _legacy_dataset_reducer_example, types.SequenceType(tf.int64))
     self.assertEqual(
@@ -63,11 +66,12 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         '(int64* -> int64)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     parameter = tf.data.Dataset.range(5)
-    results = tf.Session().run(tf.import_graph_def(
-        comp.tensorflow.graph_def,
-        {comp.tensorflow.parameter.sequence.iterator_string_handle_name: (
-            parameter.make_one_shot_iterator().string_handle())},
-        [comp.tensorflow.result.tensor.tensor_name]))
+    results = tf.Session().run(
+        tf.import_graph_def(
+            comp.tensorflow.graph_def, {
+                comp.tensorflow.parameter.sequence.iterator_string_handle_name:
+                    (parameter.make_one_shot_iterator().string_handle())
+            }, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [10])
 
 

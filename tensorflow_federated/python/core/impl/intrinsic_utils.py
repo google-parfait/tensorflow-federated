@@ -37,8 +37,8 @@ def zero_for(type_spec):
   """
   type_spec = types.to_type(type_spec)
   return value_impl.ValueImpl(
-      computation_building_blocks.Intrinsic(
-          intrinsic_defs.GENERIC_ZERO.uri, type_spec))
+      computation_building_blocks.Intrinsic(intrinsic_defs.GENERIC_ZERO.uri,
+                                            type_spec))
 
 
 def plus_for(type_spec):
@@ -53,5 +53,5 @@ def plus_for(type_spec):
   """
   type_spec = types.to_type(type_spec)
   return value_impl.ValueImpl(
-      computation_building_blocks.Intrinsic(
-          intrinsic_defs.GENERIC_PLUS.uri, type_utils.binary_op(type_spec)))
+      computation_building_blocks.Intrinsic(intrinsic_defs.GENERIC_PLUS.uri,
+                                            type_utils.binary_op(type_spec)))

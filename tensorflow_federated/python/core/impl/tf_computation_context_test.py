@@ -34,22 +34,26 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack
 class TensorFlowComputationContextTest(absltest.TestCase):
 
   def test_invoke_federated_computation_fails(self):
+
     @computations.federated_computation(
         types.FederatedType(tf.int32, placements.SERVER, True))
     def foo(x):
       return intrinsics.federated_broadcast(x)
+
     context = tf_computation_context.TensorFlowComputationContext(
         tf.get_default_graph())
-    with self.assertRaisesRegexp(
-        ValueError, 'Expected a TensorFlow computation.'):
+    with self.assertRaisesRegexp(ValueError,
+                                 'Expected a TensorFlow computation.'):
       context.invoke(foo, None)
 
   def test_invoke_tf_computation(self):
     make_10 = computations.tf_computation(lambda: tf.constant(10))
     add_one = computations.tf_computation(lambda x: tf.add(x, 1), tf.int32)
+
     @computations.tf_computation
     def foo():
       return add_one(add_one(add_one(make_10())))
+
     self.assertEqual(str(foo.type_signature), '( -> int32)')
     with tf.Graph().as_default() as graph:
       context = tf_computation_context.TensorFlowComputationContext(

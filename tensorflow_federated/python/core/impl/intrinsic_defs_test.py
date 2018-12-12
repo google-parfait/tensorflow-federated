@@ -26,8 +26,10 @@ from tensorflow_federated.python.core.impl import type_utils
 
 
 def _get_intrinsic_names():
-  return [name for name in dir(intrinsic_defs) if isinstance(
-      getattr(intrinsic_defs, name), intrinsic_defs.IntrinsicDef)]
+  return [
+      name for name in dir(intrinsic_defs)
+      if isinstance(getattr(intrinsic_defs, name), intrinsic_defs.IntrinsicDef)
+  ]
 
 
 class IntrinsicDefsTest(parameterized.TestCase):

@@ -51,48 +51,56 @@ def _to_building_block(comp):
 class TransformationsTest(absltest.TestCase):
 
   def test_transform_postorder_with_lambda_call_selection_and_reference(self):
-    @computations.federated_computation([
-        types.FunctionType(tf.int32, tf.int32), tf.int32])
+
+    @computations.federated_computation(
+        [types.FunctionType(tf.int32, tf.int32), tf.int32])
     def foo(f, x):
       return f(x)
+
     comp = _to_building_block(foo)
     self.assertEqual(str(comp), '(arg -> arg[0](arg[1]))')
+
     def _transformation_func_generator():
       n = 0
       while True:
         n = n + 1
+
         def _func(x):
           return computation_building_blocks.Call(
               computation_building_blocks.Intrinsic(
                   'F{}'.format(n),
                   types.FunctionType(x.type_signature, x.type_signature)), x)
+
         yield _func
+
     transformation_func_sequence = _transformation_func_generator()
     # pylint: disable=unnecessary-lambda
     tx_func = lambda x: six.next(transformation_func_sequence)(x)
     # pylint: enable=unnecessary-lambda
     transfomed_comp = transformations.transform_postorder(comp, tx_func)
     self.assertEqual(
-        str(transfomed_comp),
-        'F6((arg -> F5(F2(F1(arg)[0])(F4(F3(arg)[1])))))')
+        str(transfomed_comp), 'F6((arg -> F5(F2(F1(arg)[0])(F4(F3(arg)[1])))))')
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
 
   def test_name_compiled_computations(self):
     plus = computations.tf_computation(lambda x, y: x + y, [tf.int32, tf.int32])
+
     @computations.federated_computation(tf.int32)
     def add_one(x):
       return plus(x, 1)
+
     comp = _to_building_block(add_one)
     transformed_comp = transformations.name_compiled_computations(comp)
-    self.assertEqual(
-        str(transformed_comp), '(arg -> comp#1(<arg,comp#2()>))')
+    self.assertEqual(str(transformed_comp), '(arg -> comp#1(<arg,comp#2()>))')
 
   def test_replace_intrinsic(self):
+
     @computations.federated_computation(
         types.FederatedType(tf.int32, placements.SERVER, True))
     def foo(x):
       return intrinsics.federated_sum(intrinsics.federated_broadcast(x))
+
     comp = _to_building_block(foo)
     self.assertEqual(
         str(comp), '(arg -> federated_sum(federated_broadcast(arg)))')
@@ -104,8 +112,7 @@ class TransformationsTest(absltest.TestCase):
     # simplify this test.
 
     self.assertEqual(
-        str(transformed_comp),
-        '(arg -> (arg -> '
+        str(transformed_comp), '(arg -> (arg -> '
         '(arg -> federated_reduce(<arg[0],generic_zero,generic_plus>))(<arg>)'
         ')(federated_broadcast(arg)))')
 
