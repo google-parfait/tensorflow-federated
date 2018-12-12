@@ -22,3 +22,22 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "utils",
+    srcs = ["utils.py"],
+    deps = [
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "utils_test",
+    srcs = ["utils_test.py"],
+    deps = [
+        ":utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
