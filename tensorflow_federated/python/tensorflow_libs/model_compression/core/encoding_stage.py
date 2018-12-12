@@ -37,6 +37,10 @@ import abc
 # Dependency imports
 import enum
 import six
+import tensorflow as tf
+
+# TODO(b/118783928) Fix BUILD target visibility.
+from tensorflow.python.util import nest
 
 
 class StateAggregationMode(enum.Enum):
@@ -400,3 +404,72 @@ class AdaptiveEncodingStageInterface(object):
     Returns:
       A single decoded `Tensor`.
     """
+
+
+def tf_style_encode(default_name):
+  """Decorator for the `encode` method of `(Adaptive)EncodingStageInterface`.
+
+  This decorator ensures adherence the TensorFlow style guide, and should be
+  used to decorate the `encode` method of every implementation of
+  `EncodingStageInterface` and `AdaptiveEncodingStageInterface`. In particular,
+  it captures the `encode` method in a variable scope, and calls
+  `convert_to_tensor` on appropriate inputs.
+
+  Args:
+    default_name: The default name to use for the enclosing `variable_scope`.
+
+  Returns:
+    A decorator for the `encode` method.
+  """
+  def actual_decorator(encode_fn):
+    """Actual decorator for the `encode` method."""
+    def actual_encode_fn(self, x, encode_params, name=None):
+      """Modified `encode` method."""
+      values = list(encode_params.values()) + [x]
+      with tf.variable_scope(name, default_name, values):
+        x = tf.convert_to_tensor(x)
+        encode_params = nest.map_structure(
+            tf.convert_to_tensor, encode_params)
+        return encode_fn(self, x, encode_params, name=name)
+
+    return actual_encode_fn
+
+  return actual_decorator
+
+
+def tf_style_decode(default_name):
+  """Decorator for the `decode` method of `(Adaptive)EncodingStageInterface`.
+
+  This decorator ensures adherence the TensorFlow style guide, and should be
+  used to decorate the `encode` method of every implementation of
+  `EncodingStageInterface` and `AdaptiveEncodingStageInterface`. In particular,
+  it captures the `decode` method in a variable scope, and calls
+  `convert_to_tensor` on appropriate inputs.
+
+  Args:
+    default_name: The default name to use for the enclosing `variable_scope`.
+
+  Returns:
+    A decorator for the `decode` method.
+  """
+  def actual_decorator(decode_fn):
+    """Actual decorator for the `decode` method."""
+    def actual_decode_fn(self,
+                         encoded_tensors,
+                         decode_params,
+                         shape=None,
+                         name=None):
+      """Modified `decode` method."""
+      values = list(encoded_tensors.values()) + list(decode_params.values())
+      with tf.name_scope(name, default_name, values):
+        encoded_tensors = nest.map_structure(tf.convert_to_tensor,
+                                             encoded_tensors)
+        decode_params = nest.map_structure(tf.convert_to_tensor, decode_params)
+        if shape:
+          shape = tf.convert_to_tensor(shape)
+        return decode_fn(self, encoded_tensors, decode_params,
+                         shape=shape, name=name)
+
+    return actual_decode_fn
+
+  return actual_decorator
