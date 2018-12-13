@@ -15,6 +15,7 @@ py_library(
         ":computations",
         ":intrinsics",
         ":placements",
+        ":values",
     ],
 )
 
@@ -109,4 +110,21 @@ py_library(
     name = "value_base",
     srcs = ["value_base.py"],
     deps = ["@six_archive//:six"],
+)
+
+py_library(
+    name = "values",
+    srcs = ["values.py"],
+    deps = ["//tensorflow_federated/python/core/impl:value_impl"],
+)
+
+py_test(
+    name = "values_test",
+    size = "small",
+    srcs = ["values_test.py"],
+    deps = [
+        ":value_base",
+        ":values",
+        "@absl_py//absl/testing:absltest",
+    ],
 )

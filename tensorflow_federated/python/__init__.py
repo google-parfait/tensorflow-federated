@@ -47,5 +47,6 @@ _allowed_symbols = [
     "federated_zip",
     "tf_computation",
     "to_type",
+    "to_value",
     "utils",
 ]

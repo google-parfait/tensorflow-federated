@@ -53,6 +53,8 @@ TensorFlow Federated library.
 
 [`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of `Type`.
 
+[`to_value(...)`](./tff/to_value.md): Converts the argument into an instance of the abstract base class `Value`.
+
 ## Other Members
 
 <h3 id="CLIENTS"><code>CLIENTS</code></h3>

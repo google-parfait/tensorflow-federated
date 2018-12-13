@@ -38,6 +38,8 @@ toc:
       path: /federated/api_docs/python/tff/tf_computation
     - title: to_type
       path: /federated/api_docs/python/tff/to_type
+    - title: to_value
+      path: /federated/api_docs/python/tff/to_value
     - title: Type
       path: /federated/api_docs/python/tff/Type
   - title: tff.utils

@@ -31,4 +31,4 @@ A federated value on `CLIENTS` that represents the result of mapping.
 
 #### Raises:
 
-* <b>`TypeError`</b>: if the arguments are not of the appropriates types.
+* <b>`TypeError`</b>: if the arguments are not of the appropriates computation_types.

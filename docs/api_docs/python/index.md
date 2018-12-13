@@ -19,5 +19,6 @@
 *  <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *  <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *  <a href="./tff/to_type.md"><code>tff.to_type</code></a>
+*  <a href="./tff/to_value.md"><code>tff.to_value</code></a>
 *  <a href="./tff/utils.md"><code>tff.utils</code></a>
 *  <a href="./tff/utils/get_variables.md"><code>tff.utils.get_variables</code></a>
