@@ -198,6 +198,41 @@ py_library(
 )
 
 py_library(
+    name = "executor_base",
+    srcs = ["executor_base.py"],
+    deps = ["@six_archive//:six"],
+)
+
+py_library(
+    name = "executor_context",
+    srcs = ["executor_context.py"],
+    deps = [
+        ":compiler_pipeline",
+        ":context_base",
+        ":executor_base",
+        ":federated_computation_context",
+        ":value_impl",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "executor_context_test",
+    size = "small",
+    srcs = ["executor_context_test.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":executor_base",
+        ":executor_context",
+        ":tensorflow_deserialization",
+        ":transformations",
+        "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "federated_computation_context",
     srcs = ["federated_computation_context.py"],
     deps = [
@@ -358,6 +393,29 @@ py_test(
     deps = [
         ":placement_literals",
         "@absl_py//absl/testing:absltest",
+    ],
+)
+
+py_library(
+    name = "reference_executor",
+    srcs = ["reference_executor.py"],
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "reference_executor_test",
+    size = "small",
+    srcs = ["reference_executor_test.py"],
+    deps = [
+        ":computation_impl",
+        ":reference_executor",
+        "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
