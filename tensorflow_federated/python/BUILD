@@ -6,5 +6,8 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "python",
     srcs = ["__init__.py"],
-    deps = ["//tensorflow_federated/python/core/api"],
+    deps = [
+        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/utils",
+    ],
 )

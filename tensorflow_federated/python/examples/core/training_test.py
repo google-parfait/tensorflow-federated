@@ -18,18 +18,48 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.examples.core import training as tr
+from tensorflow_federated import python as tff
+
+from tensorflow_federated.python.examples.core import training
 
 
 class TrainingTest(tf.test.TestCase):
 
-  def test_something(self):
-    self.assertEqual(
-        str(tr.forward_pass.type_signature),
-        '(<<X=int32[?],Y=int32[?]>,<weights=float32[7,3],bias=float32[3]>> '
-        '-> <loss=float32,accuracy=float32,count=int32>)')
+  def test_forward_pass(self):
+    # Just testing here for now that we can compute the loss, that all types and
+    # shapes match, etc.
+
+    # Since execution is not yet supported, using `tf_computation` temporarily
+    # to allow `forward_pass` to get stamped, and manually driving Session.run
+    # to execute it.
+    # TODO(b/113116813): Use the interfaces for executing computations as soon
+    # as they're ready rather than manually driving TensorFlow graphs in tests,
+    # which should help to shorten and simplify this code.
+    @tff.tf_computation
+    def _():
+      # When creating the batch, we have to specify a concrete shape, since by
+      # default 'BATCH_TYPE' leaves batch size undefined.
+      batch = tff.utils.get_variables(
+          'batch', [('X', (tf.int32, [5])), ('Y', (tf.int32, [5]))],
+          initializer=tf.zeros_initializer())
+
+      model = tff.utils.get_variables(
+          'model', training.MODEL_TYPE, initializer=tf.zeros_initializer())
+
+      loss = training.forward_pass(batch, model).loss
+
+      # TODO(b/113116813): Replace this temporary workaround with a proper call
+      # that gets plumbed through the execution API, once it materializes.
+      # For now, just testing here that the graph has been stitched correctly,
+      # and that something gets computed at all.
+      with tf.Session(graph=tf.get_default_graph()) as sess:
+        sess.run(tf.global_variables_initializer())
+        self.assertIsInstance(sess.run(loss), np.float32)
+
+      return loss
 
 
 if __name__ == '__main__':

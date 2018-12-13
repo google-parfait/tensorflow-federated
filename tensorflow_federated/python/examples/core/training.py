@@ -117,5 +117,6 @@ def forward_pass(features, model):
 # computed by the model.
 STATS_TYPE = forward_pass.type_signature.result
 
+
 # TODO(b/120157713): Implement the remainder of this example: gradient descent,
 # local training loop, federated averaging of model parameters, etc.

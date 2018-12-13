@@ -9,6 +9,10 @@
 
 TensorFlow Federated library.
 
+## Modules
+
+[`utils`](./tff/utils.md) module: Utility classes/functions built on top of TensorFlow Federated Core API.
+
 ## Classes
 
 [`class Computation`](./tff/Computation.md): An abstract interface for all classes that represent computations.

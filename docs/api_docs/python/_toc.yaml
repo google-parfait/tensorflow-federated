@@ -40,3 +40,9 @@ toc:
       path: /federated/api_docs/python/tff/to_type
     - title: Type
       path: /federated/api_docs/python/tff/Type
+  - title: tff.utils
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/utils
+    - title: get_variables
+      path: /federated/api_docs/python/tff/utils/get_variables
