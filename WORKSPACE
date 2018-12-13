@@ -2,14 +2,14 @@ workspace(name = "org_tensorflow_federated")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# v1.12.0
+# A recent green build also used by the tensorflow_serving project:
 http_archive(
     name = "org_tensorflow",
-    sha256 = "5aae44f967556dc524e6b184643bbd33a2d78184bc654b72c09f041f266b89a2",
-    strip_prefix = "tensorflow-a6d8ffae097d0132989ae4688d224121ec6d8f35",
+    sha256 = "6ac7d053f0bdaea88cdfc206cbcf88469431028937f6e83e081c017013988511",
+    strip_prefix = "tensorflow-92f67536b78895c47065fb9b35f775ee4326f9e1",
     urls = [
-        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/a6d8ffae097d0132989ae4688d224121ec6d8f35.tar.gz",
-        "https://github.com/tensorflow/tensorflow/archive/a6d8ffae097d0132989ae4688d224121ec6d8f35.tar.gz",
+        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/92f67536b78895c47065fb9b35f775ee4326f9e1.tar.gz",
+        "https://github.com/tensorflow/tensorflow/archive/92f67536b78895c47065fb9b35f775ee4326f9e1.tar.gz",
     ],
 )
 

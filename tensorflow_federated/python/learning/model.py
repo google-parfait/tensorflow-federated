@@ -1,0 +1,177 @@
+# Copyright 2018, The TensorFlow Federated Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Abstractions for models used in federated learning."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import abc
+import collections
+import six
+
+
+# We might replace this with a class that allows customers to
+# return arbitrary values; we might also just use AnonymousTuple.
+BatchOutput = collections.namedtuple(
+    # All fields are optional (may be None).
+    'BatchOutput', [
+        # The scalar average loss on the examples.
+        'loss',
+        # Tensor of predictions on the examples, first dimenion the same size
+        # as batch.
+        'predictions',
+    ])
+
+
+@six.add_metaclass(abc.ABCMeta)
+class Model(object):
+  """Represents a Model for use in TensorFlow Federated.
+
+  Each Model will work on a set of Variables, and each method should be
+  a computation that can be implemented as a `tf.defun`; this implies the class
+  should essentially be stateless from a Python perspective, as each method
+  will generally only be traced once (per set of arguments) to create the
+  corresponding TensorFlow graph functions. Thus, `Model` instances should
+  behave as expected in both eager and graph (TF 1.0) usage.
+
+  In general, Variables may be either:
+    - model variables, that are needed to make predictions with the model
+    - non-model local variables, e.g. to accumulate aggregated metrics across
+      calls to forward_pass.
+  Model variables can be broken down into trainable variables (variables
+  that can and should be trained using gradient-based methods), and
+  non-trainable variables (which could include fixed pre-trained layers,
+  or static model data). These variables are provided via the
+  `trainable_variables`, `non_trainable_variables`, and `local_variables`
+  properties, and must be initialized by the user of the `Model`.
+
+  In federated learning, model variables will generally be provided by the
+  server, and updates to trainable model variables will be sent back to the
+  server. Local variables are not transmitted, and are instead initialized
+  locally on the device, and then used to produce `aggregated_outputs` which
+  are sent to the server.
+
+  All `tf.Variables` should be introduced in `__init__`; this could move to a
+  build() method more inline with Keras (see
+  https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in
+  the future.
+  """
+
+  @abc.abstractproperty
+  def trainable_variables(self):
+    """An iterable of `tf.Variable` objects, see class comment for details."""
+    pass
+
+  @abc.abstractproperty
+  def non_trainable_variables(self):
+    """An iterable of `tf.Variable` objects, see class comment for details."""
+    pass
+
+  @abc.abstractproperty
+  def local_variables(self):
+    """An iterable of `tf.Variable` objects, see class comment for details."""
+    pass
+
+  @abc.abstractmethod
+  def forward_pass(self, batch, training=True):
+    """Runs the forward pass and returns results.
+
+    This method should not modify any variables that are part of the model,
+    that is, variables that influence the predictions; for that, see
+    `TrainableModel.train_on_batch`.
+
+    However, this method may update aggregated metrics computed across calls to
+    forward_pass; the final values of such metrics can be accessed via
+    `aggregated_outputs`.
+
+    Uses in TFF:
+      - To implement model evaluation.
+      - To implement federated gradient descent and other
+        non-FederatedAvgeraging algorithms, where we want the model to run the
+        forward pass and update metrics, but there is no optimizer
+        (we might only compute gradients on the returned loss).
+      - To implement FederatedAveraging, when augmented as a `TrainableModel`.
+
+    TODO(b/120493676): We expect to add another method to this class which
+    provides access to the shape/dtype/structure expected for the `batch`.
+
+    Args:
+      batch: A structure of tensors (as supported by tf.contrib.framework.nest,
+          or could be produced by a `tf.data.Dataset`) for the current batch.
+          It is the caller's responsibility to provide data of the format
+          expected by the Model being called.
+      training: If True, run the training forward pass, otherwise,
+        run in evaluation mode. The semantics are generally the same as the
+        `training` argument to `keras.Model.__call__`; this might e.g.
+        influence how dropout or batch normalization is handled.
+
+    Returns:
+      A BatchOutput namedtuple. This must define a `loss` tensor if the model
+      will be trained via a gradient-based algorithm.
+    """
+    pass
+
+  @abc.abstractmethod
+  def aggregated_outputs(self):
+    """Returns tensors representing values aggregated over forward_pass calls.
+
+    In federated learning, the values returned by this method will typically
+    be further aggregated across clients and made available on the server.
+    # TODO(b/120147094): Support specification of aggregation across clients.
+
+    This method returns results from aggregating across *all* previous calls
+    to `forward_pass`, most typically metrics like Accuracy and Loss. If needed,
+    we may add a `clear_aggregated_outputs` method, which would likely just
+    run the initializers on the `local_variables`.
+
+    In general, the tensors returned can be an arbitrary function of all
+    the Variables of this model, not just the `local_variables`; for example,
+    a this could return tensors measuring the total L2 norm of the model
+    (which might have been updated by training).
+
+    This method may return arbitrarily shaped tensors, not just scalar metrics.
+    For example, it could return the average feature vector or a count of
+    how many times each feature exceed a certain magnitude.
+
+    Returns:
+      A structure of tensors (as supported by tf.contrib.framework.nest)
+      to be aggregated across clients.
+    """
+    pass
+
+
+@six.add_metaclass(abc.ABCMeta)
+class TrainableModel(Model):
+  """A Model with an additional method for (local) training.
+
+  This class is primarily intended to be used in the implementation of
+  FederatedAveraging.
+  """
+
+  @abc.abstractmethod
+  def train_on_batch(self, batch):
+    """Like forward_pass, but updates the model variables.
+
+    Typically this will invoke forward_pass, with any corresponding
+    side-effects such as updating metrics.
+
+    Args:
+      batch: The current batch, as for forward_pass().
+
+    Returns:
+      The same `BatchOutput` as `forward_pass`.
+    """
+    pass
+

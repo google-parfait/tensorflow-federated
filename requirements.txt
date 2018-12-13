@@ -5,4 +5,5 @@ keras_preprocessing
 mock
 numpy
 six
+tensorflow_estimator
 wheel

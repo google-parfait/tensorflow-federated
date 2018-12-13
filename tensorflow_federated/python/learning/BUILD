@@ -7,41 +7,27 @@ package(default_visibility = ["//tensorflow_federated/python/learning:__subpacka
 licenses(["notice"])  # Apache 2.0
 
 py_library(
-    name = "model_fn",
-    srcs = ["model_fn.py"],
-    deps = [
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    name = "model",
+    srcs = ["model.py"],
+    deps = ["@six_archive//:six"],
 )
 
 py_library(
-    name = "model_fn_examples",
-    srcs = ["model_fn_examples.py"],
+    name = "model_examples",
+    srcs = ["model_examples.py"],
     deps = [
-        ":model_fn",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        ":model",
         "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
 py_test(
-    name = "model_fn_test",
-    srcs = ["model_fn_test.py"],
+    name = "model_examples_test",
+    srcs = ["model_examples_test.py"],
     deps = [
-        ":model_fn",
+        ":model_examples",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
-    ],
-)
-
-py_test(
-    name = "model_fn_examples_test",
-    srcs = ["model_fn_examples_test.py"],
-    deps = [
-        ":model_fn",
-        ":model_fn_examples",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

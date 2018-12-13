@@ -1,1 +1,4 @@
 build --define=grpc_no_ares=true
+
+# Maybe needed to work around b/117093556, see comment #44.
+build --define framework_shared_object=true
