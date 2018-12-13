@@ -21,12 +21,12 @@ import abc
 import collections
 import six
 
-
 # We might replace this with a class that allows customers to
 # return arbitrary values; we might also just use AnonymousTuple.
 BatchOutput = collections.namedtuple(
     # All fields are optional (may be None).
-    'BatchOutput', [
+    'BatchOutput',
+    [
         # The scalar average loss on the examples.
         'loss',
         # Tensor of predictions on the examples, first dimenion the same size
@@ -109,13 +109,13 @@ class Model(object):
 
     Args:
       batch: A structure of tensors (as supported by tf.contrib.framework.nest,
-          or could be produced by a `tf.data.Dataset`) for the current batch.
-          It is the caller's responsibility to provide data of the format
-          expected by the Model being called.
-      training: If True, run the training forward pass, otherwise,
-        run in evaluation mode. The semantics are generally the same as the
-        `training` argument to `keras.Model.__call__`; this might e.g.
-        influence how dropout or batch normalization is handled.
+        or could be produced by a `tf.data.Dataset`) for the current batch. It
+        is the caller's responsibility to provide data of the format expected by
+        the Model being called.
+      training: If True, run the training forward pass, otherwise, run in
+        evaluation mode. The semantics are generally the same as the `training`
+        argument to `keras.Model.__call__`; this might e.g. influence how
+        dropout or batch normalization is handled.
 
     Returns:
       A BatchOutput namedtuple. This must define a `loss` tensor if the model
@@ -174,4 +174,3 @@ class TrainableModel(Model):
       The same `BatchOutput` as `forward_pass`.
     """
     pass
-

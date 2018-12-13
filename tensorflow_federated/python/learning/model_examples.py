@@ -71,14 +71,13 @@ class LinearRegression(model.Model):
     tf.assign_add(self._num_batches, 1)
 
     average_loss = total_loss / tf.to_float(num_examples)
-    return model.BatchOutput(loss=average_loss,
-                             predictions=predictions)
+    return model.BatchOutput(loss=average_loss, predictions=predictions)
 
   @tf.contrib.eager.defun
   def aggregated_outputs(self):
     return collections.OrderedDict(
-        [('num_examples', self._num_examples),
-         ('num_batches', self._num_batches),
+        [('num_examples', self._num_examples), ('num_batches',
+                                                self._num_batches),
          ('loss', self._loss_sum / tf.to_float(self._num_examples))])
 
   @classmethod
@@ -97,4 +96,3 @@ class TrainableLinearRegression(LinearRegression, model.TrainableModel):
     optimizer = tf.train.GradientDescentOptimizer(0.1)
     optimizer.minimize(fp.loss, var_list=self.trainable_variables)
     return fp
-

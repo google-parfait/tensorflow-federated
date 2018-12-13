@@ -33,9 +33,7 @@ class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
     print('TF version', tf.VERSION)
     tf.enable_resource_variables()
 
-  @parameterized.named_parameters(
-      ('', 1),
-      ('_three_features', 3))
+  @parameterized.named_parameters(('', 1), ('_three_features', 3))
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
     init_op = tf.variables_initializer(model.trainable_variables +
@@ -51,8 +49,10 @@ class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
     with self.session() as sess:
       sess.run(init_op)
       output = sess.run(
-          output_op, feed_dict={
-              batch.x: [np.zeros(feature_dim), np.ones(feature_dim)],
+          output_op,
+          feed_dict={
+              batch.x: [np.zeros(feature_dim),
+                        np.ones(feature_dim)],
               batch.y: [[0.0], [1.0]]
           })
       self.assertAllEqual(output.predictions, [[0.0], [0.0]])
