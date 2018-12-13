@@ -1,4 +1,18 @@
+# TensorFlow Federated Bazel configuration.
+#
+# See https://docs.bazel.build/versions/master/user-manual.html#config for
+# details on the various configuration options.
+
+# Build with modular op registration support by default.
+build --define=framework_shared_object=true
+
+# Bazel workaround to compile gRPC with the new 'cares' package.
 build --define=grpc_no_ares=true
 
-# Maybe needed to work around b/117093556, see comment #44.
-build --define framework_shared_object=true
+# Build with optimization enabled.
+build -c opt
+
+# Processor native optimizations (depends on build host capabilities).
+build --copt=-march=native
+build --host_copt=-march=native
+build --copt=-O3
