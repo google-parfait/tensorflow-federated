@@ -21,7 +21,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
@@ -60,7 +60,8 @@ class TensorFlowSerializationTest(tf.test.TestCase):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
-        _legacy_dataset_reducer_example, types.SequenceType(tf.int64))
+        _legacy_dataset_reducer_example,
+        computation_types.SequenceType(tf.int64))
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)),
         '(int64* -> int64)')

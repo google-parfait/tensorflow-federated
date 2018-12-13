@@ -25,8 +25,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks as bb
 from tensorflow_federated.python.core.impl import tensorflow_serialization
@@ -121,7 +121,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(z)
 
   def test_basic_functionality_of_call_class(self):
-    x = bb.Reference('foo', types.FunctionType(tf.int32, tf.bool))
+    x = bb.Reference('foo', computation_types.FunctionType(tf.int32, tf.bool))
     y = bb.Reference('bar', tf.int32)
     z = bb.Call(x, y)
     self.assertEqual(str(z.type_signature), 'bool')
@@ -148,7 +148,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_lambda_class(self):
     arg_name = 'arg'
-    arg_type = [('f', types.FunctionType(tf.int32, tf.int32)), ('x', tf.int32)]
+    arg_type = [('f', computation_types.FunctionType(tf.int32, tf.int32)),
+                ('x', tf.int32)]
     arg = bb.Reference(arg_name, arg_type)
     arg_f = bb.Selection(arg, name='f')
     arg_x = bb.Selection(arg, name='x')
@@ -209,7 +210,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
       self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_intrinsic_class(self):
-    x = bb.Intrinsic('add_one', types.FunctionType(tf.int32, tf.int32))
+    x = bb.Intrinsic('add_one',
+                     computation_types.FunctionType(tf.int32, tf.int32))
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(x.uri, 'add_one')
     self.assertEqual(
@@ -225,7 +227,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_data_class(self):
-    x = bb.Data('/tmp/mydata', types.SequenceType(tf.int32))
+    x = bb.Data('/tmp/mydata', computation_types.SequenceType(tf.int32))
     self.assertEqual(str(x.type_signature), 'int32*')
     self.assertEqual(x.uri, '/tmp/mydata')
     self.assertEqual(

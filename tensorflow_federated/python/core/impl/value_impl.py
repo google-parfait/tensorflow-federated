@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+
 # Dependency imports
 import numpy as np
 import six
@@ -27,7 +28,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -69,7 +70,8 @@ class ValueImpl(value_base.Value):
     return str(self._comp)
 
   def __dir__(self):
-    if not isinstance(self._comp.type_signature, types.NamedTupleType):
+    if not isinstance(self._comp.type_signature,
+                      computation_types.NamedTupleType):
       raise TypeError(
           'Operator dir() is only suppored for named tuples, but the object '
           'on which it has been invoked is of type {}.'.format(
@@ -81,7 +83,8 @@ class ValueImpl(value_base.Value):
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, six.string_types)
-    if not isinstance(self._comp.type_signature, types.NamedTupleType):
+    if not isinstance(self._comp.type_signature,
+                      computation_types.NamedTupleType):
       raise TypeError(
           'Operator getattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
@@ -96,7 +99,8 @@ class ValueImpl(value_base.Value):
           computation_building_blocks.Selection(self._comp, name=name))
 
   def __len__(self):
-    if not isinstance(self._comp.type_signature, types.NamedTupleType):
+    if not isinstance(self._comp.type_signature,
+                      computation_types.NamedTupleType):
       raise TypeError(
           'Operator len() is only supported for named tuples, but the object '
           'on which it has been invoked is of type {}.'.format(
@@ -106,7 +110,8 @@ class ValueImpl(value_base.Value):
 
   def __getitem__(self, key):
     py_typecheck.check_type(key, (int, slice))
-    if not isinstance(self._comp.type_signature, types.NamedTupleType):
+    if not isinstance(self._comp.type_signature,
+                      computation_types.NamedTupleType):
       raise TypeError(
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
@@ -129,7 +134,8 @@ class ValueImpl(value_base.Value):
       return to_value([self[k] for k in index_range])
 
   def __iter__(self):
-    if not isinstance(self._comp.type_signature, types.NamedTupleType):
+    if not isinstance(self._comp.type_signature,
+                      computation_types.NamedTupleType):
       raise TypeError(
           'Operator iter() is only supported for named tuples, but the object '
           'on which it has been invoked is of type {}.'.format(
@@ -139,7 +145,8 @@ class ValueImpl(value_base.Value):
         yield self[index]
 
   def __call__(self, *args, **kwargs):
-    if not isinstance(self._comp.type_signature, types.FunctionType):
+    if not isinstance(self._comp.type_signature,
+                      computation_types.FunctionType):
       raise SyntaxError(
           'Function-like invocation is only supported for values of '
           'functional types, but the value being invoked is of type '
@@ -166,9 +173,9 @@ class ValueImpl(value_base.Value):
         computation_building_blocks.Call(
             computation_building_blocks.Intrinsic(
                 intrinsic_defs.GENERIC_PLUS.uri,
-                types.FunctionType([self.type_signature, self.type_signature],
-                                   self.type_signature)),
-            to_value([self, other])))
+                computation_types.FunctionType(
+                    [self.type_signature, self.type_signature],
+                    self.type_signature)), to_value([self, other])))
 
 
 def _wrap_constant_as_value(const):

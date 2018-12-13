@@ -21,9 +21,9 @@ from __future__ import print_function
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
@@ -42,7 +42,7 @@ class IntrinsicBodiesTest(absltest.TestCase):
   def test_federated_sum(self):
 
     @computations.federated_computation(
-        types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
       return intrinsic_bodies.federated_sum(x)
 

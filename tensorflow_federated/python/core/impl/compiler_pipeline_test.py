@@ -21,10 +21,10 @@ from __future__ import print_function
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -38,8 +38,8 @@ class CompilerPipelineTest(absltest.TestCase):
   def test_compile_computation(self):
 
     @computations.federated_computation([
-        types.FederatedType(tf.float32, placements.CLIENTS),
-        types.FederatedType(tf.float32, placements.SERVER, True)
+        computation_types.FederatedType(tf.float32, placements.CLIENTS),
+        computation_types.FederatedType(tf.float32, placements.SERVER, True)
     ])
     def foo(temperatures, threshold):
       return intrinsics.federated_sum(

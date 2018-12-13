@@ -18,7 +18,7 @@ from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import federated_computation_context
@@ -45,7 +45,7 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
     ValueError: if 'func' is incompatible with 'parameter_type'.
   """
   py_typecheck.check_callable(func)
-  parameter_type = types.to_type(parameter_type)
+  parameter_type = computation_types.to_type(parameter_type)
   context = federated_computation_context.FederatedComputationContext()
   with context_stack.install(context):
     if parameter_type:

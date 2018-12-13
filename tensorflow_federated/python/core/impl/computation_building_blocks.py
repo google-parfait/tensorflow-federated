@@ -28,7 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_serialization
@@ -89,7 +89,7 @@ class ComputationBuildingBlock(object):
       type_spec: An instance of types.Type, or something convertible to it via
         types.to_type().
     """
-    self._type_signature = types.to_type(type_spec)
+    self._type_signature = computation_types.to_type(type_spec)
 
   @property
   def type_signature(self):
@@ -210,7 +210,7 @@ class Selection(ComputationBuildingBlock):
     py_typecheck.check_type(source, ComputationBuildingBlock)
     self._source = source
     source_type = self._source.type_signature
-    if not isinstance(source_type, types.NamedTupleType):
+    if not isinstance(source_type, computation_types.NamedTupleType):
       raise TypeError(
           'Expected the source of selection to be a TFF named tuple, '
           'instead found it to be of type {}.'.format(str(source_type)))
@@ -319,7 +319,7 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
     elements = [_map_element(e) for e in elements]
     ComputationBuildingBlock.__init__(
         self,
-        types.NamedTupleType(
+        computation_types.NamedTupleType(
             [((e[0], e[1].type_signature) if e[0] else e[1].type_signature)
              for e in elements]))
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
@@ -373,7 +373,7 @@ class Call(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
     """
     py_typecheck.check_type(func, ComputationBuildingBlock)
-    if not isinstance(func.type_signature, types.FunctionType):
+    if not isinstance(func.type_signature, computation_types.FunctionType):
       raise TypeError('Expected func to be of a functional type, '
                       'but found that its type is {}.'.format(
                           str(func.type_signature)))
@@ -461,11 +461,11 @@ class Lambda(ComputationBuildingBlock):
     py_typecheck.check_type(parameter_name, six.string_types)
     if parameter_type is None:
       raise TypeError('A lambda expression must have a valid parameter type.')
-    parameter_type = types.to_type(parameter_type)
-    assert isinstance(parameter_type, types.Type)
+    parameter_type = computation_types.to_type(parameter_type)
+    assert isinstance(parameter_type, computation_types.Type)
     py_typecheck.check_type(result, ComputationBuildingBlock)
     super(Lambda, self).__init__(
-        types.FunctionType(parameter_type, result.type_signature))
+        computation_types.FunctionType(parameter_type, result.type_signature))
     self._parameter_name = parameter_name
     self._parameter_type = parameter_type
     self._result = result
@@ -606,7 +606,7 @@ class Intrinsic(ComputationBuildingBlock):
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
-    type_spec = types.to_type(type_spec)
+    type_spec = computation_types.to_type(type_spec)
     super(Intrinsic, self).__init__(type_spec)
     self._uri = uri
 
@@ -656,7 +656,7 @@ class Data(ComputationBuildingBlock):
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
-    type_spec = types.to_type(type_spec)
+    type_spec = computation_types.to_type(type_spec)
     super(Data, self).__init__(type_spec)
     self._uri = uri
 
@@ -724,7 +724,7 @@ class Placement(ComputationBuildingBlock):
     _check_computation_oneof(computation_proto, 'placement')
     py_typecheck.check_type(
         type_serialization.deserialize_type(computation_proto.type),
-        types.PlacementType)
+        computation_types.PlacementType)
     return cls(
         placement_literals.uri_to_placement_literal(
             str(computation_proto.placement.uri)))
@@ -739,7 +739,7 @@ class Placement(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
     """
     py_typecheck.check_type(literal, placement_literals.PlacementLiteral)
-    super(Placement, self).__init__(types.PlacementType())
+    super(Placement, self).__init__(computation_types.PlacementType())
     self._literal = literal
 
   @property

@@ -29,7 +29,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import test_utils
@@ -42,12 +42,12 @@ class GraphUtilsTest(tf.test.TestCase):
                                              graph):
     """Asserts that 'bindings' matches the given type, value, and graph."""
     self.assertIsInstance(binding, pb.TensorFlow.Binding)
-    self.assertIsInstance(type_spec, types.Type)
+    self.assertIsInstance(type_spec, computation_types.Type)
     binding_oneof = binding.WhichOneof('binding')
     if binding_oneof == 'tensor':
       self.assertTrue(tensor_util.is_tensor(val))
       self.assertEqual(binding.tensor.tensor_name, val.name)
-      self.assertIsInstance(type_spec, types.TensorType)
+      self.assertIsInstance(type_spec, computation_types.TensorType)
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
       self.assertEqual(repr(type_spec.shape), repr(val.shape))
     elif binding_oneof == 'sequence':
@@ -56,14 +56,14 @@ class GraphUtilsTest(tf.test.TestCase):
           binding.sequence.iterator_string_handle_name)
       self.assertEqual(str(handle.op.type), 'Placeholder')
       self.assertEqual(handle.dtype, tf.string)
-      self.assertIsInstance(type_spec, types.SequenceType)
+      self.assertIsInstance(type_spec, computation_types.SequenceType)
       output_dtypes, output_shapes = (
           type_utils.type_to_tf_dtypes_and_shapes(type_spec.element))
       test_utils.assert_nested_struct_eq(val.output_types, output_dtypes)
       test_utils.assert_nested_struct_eq(val.output_shapes, output_shapes)
     else:
       self.assertEqual(binding_oneof, 'tuple')
-      self.assertIsInstance(type_spec, types.NamedTupleType)
+      self.assertIsInstance(type_spec, computation_types.NamedTupleType)
       if not isinstance(val, (list, tuple, AnonymousTuple)):
         self.assertIsInstance(val, dict)
         val = list(val.values())
@@ -93,7 +93,8 @@ class GraphUtilsTest(tf.test.TestCase):
     if graph is None:
       graph = tf.get_default_graph()
     val, binding = graph_utils.stamp_parameter_in_graph(name, spec, graph)
-    self._assert_binding_matches_type_and_value(binding, types.to_type(spec),
+    self._assert_binding_matches_type_and_value(binding,
+                                                computation_types.to_type(spec),
                                                 val, graph)
     return val
 
@@ -123,15 +124,16 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_stamp_parameter_in_graph_with_bool_sequence(self):
     with tf.Graph().as_default():
-      x = self._checked_stamp_parameter('foo', types.SequenceType(tf.bool))
+      x = self._checked_stamp_parameter('foo',
+                                        computation_types.SequenceType(tf.bool))
     self.assertIsInstance(x, tf.data.Dataset)
     test_utils.assert_nested_struct_eq(x.output_types, tf.bool)
     test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
-      x = self._checked_stamp_parameter('foo',
-                                        types.SequenceType((tf.int32, [50])))
+      x = self._checked_stamp_parameter(
+          'foo', computation_types.SequenceType((tf.int32, [50])))
     self.assertIsInstance(x, tf.data.Dataset)
     test_utils.assert_nested_struct_eq(x.output_types, tf.int32)
     test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
@@ -140,8 +142,8 @@ class GraphUtilsTest(tf.test.TestCase):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo',
-          types.SequenceType([('A', (tf.float32, [3, 4, 5])),
-                              ('B', (tf.int32, [1]))]))
+          computation_types.SequenceType([('A', (tf.float32, [3, 4, 5])),
+                                          ('B', (tf.int32, [1]))]))
     self.assertIsInstance(x, tf.data.Dataset)
     test_utils.assert_nested_struct_eq(x.output_types, {
         'A': tf.float32,
@@ -270,7 +272,8 @@ class GraphUtilsTest(tf.test.TestCase):
         'Y=Tensor("B:0", shape=(), dtype=int32)>')
 
   def test_assemble_result_from_graph_with_sequence(self):
-    type_spec = types.SequenceType([('X', tf.int32), ('Y', tf.int32)])
+    type_spec = computation_types.SequenceType([('X', tf.int32), ('Y',
+                                                                  tf.int32)])
     binding = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(
             iterator_string_handle_name='foo'))

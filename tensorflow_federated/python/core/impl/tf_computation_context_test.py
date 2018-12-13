@@ -21,10 +21,10 @@ from __future__ import print_function
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import tf_computation_context
 
@@ -36,7 +36,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
   def test_invoke_federated_computation_fails(self):
 
     @computations.federated_computation(
-        types.FederatedType(tf.int32, placements.SERVER, True))
+        computation_types.FederatedType(tf.int32, placements.SERVER, True))
     def foo(x):
       return intrinsics.federated_broadcast(x)
 

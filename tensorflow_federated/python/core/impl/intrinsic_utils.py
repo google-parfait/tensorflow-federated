@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
@@ -35,7 +35,7 @@ def zero_for(type_spec):
   Returns:
     The `ZERO` intrinsic of the same TFF type as that of `val`.
   """
-  type_spec = types.to_type(type_spec)
+  type_spec = computation_types.to_type(type_spec)
   return value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(intrinsic_defs.GENERIC_ZERO.uri,
                                             type_spec))
@@ -51,7 +51,7 @@ def plus_for(type_spec):
   Returns:
     The `PLUS` intrinsic of type `<T,T> -> T`, where `T` represents `type_spec`.
   """
-  type_spec = types.to_type(type_spec)
+  type_spec = computation_types.to_type(type_spec)
   return value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.GENERIC_PLUS.uri,

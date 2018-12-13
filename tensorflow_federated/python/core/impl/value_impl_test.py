@@ -26,9 +26,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import computation_building_blocks as bb
@@ -99,7 +99,7 @@ class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_call(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', types.FunctionType(tf.int32, tf.bool)))
+        bb.Reference('foo', computation_types.FunctionType(tf.int32, tf.bool)))
     y = value_impl.ValueImpl(bb.Reference('bar', tf.int32))
     z = x(y)
     self.assertIsInstance(z, value_base.Value)
@@ -113,7 +113,8 @@ class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_lambda(self):
     arg_name = 'arg'
-    arg_type = [('f', types.FunctionType(tf.int32, tf.int32)), ('x', tf.int32)]
+    arg_type = [('f', computation_types.FunctionType(tf.int32, tf.int32)),
+                ('x', tf.int32)]
     result_value = (lambda arg: arg.f(arg.f(arg.x)))(
         value_impl.ValueImpl(bb.Reference(arg_name, arg_type)))
     x = value_impl.ValueImpl(

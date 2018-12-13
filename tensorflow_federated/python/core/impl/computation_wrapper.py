@@ -17,13 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import types as py_types
+import types
 
 # Dependency imports
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import func_utils
 
@@ -66,7 +66,7 @@ def _wrap(func, parameter_type, wrapper_fn):
       constructs something that isn't a ConcreteFunction.
   """
   argspec = func_utils.get_argspec(func)
-  parameter_type = types.to_type(parameter_type)
+  parameter_type = computation_types.to_type(parameter_type)
   if not parameter_type:
     if argspec.args or argspec.varargs or argspec.keywords:
       # There is no TFF type specification, and the function/defun declares
@@ -357,7 +357,7 @@ class ComputationWrapper(object):
       # Deliberate wrapping with a lambda to prevent the caller from being able
       # to accidentally specify parameter type as a second argument.
       return lambda fn: _wrap(fn, None, self._wrapper_fn)
-    elif (isinstance(args[0], py_types.FunctionType) or
+    elif (isinstance(args[0], types.FunctionType) or
           func_utils.is_defun(args[0])):
       # If the first argument on the list is a Python function or a defun, this
       # is the one that's being wrapped. This is the case of either a decorator
@@ -373,9 +373,10 @@ class ComputationWrapper(object):
             'argument, but found {} additional arguments of types {}.'.format(
                 str(len(args) - 1),
                 str([py_typecheck.type_string(type(a)) for a in args[1:]])))
-      return _wrap(args[0],
-                   types.to_type(args[1]) if len(args) > 1 else None,
-                   self._wrapper_fn)
+      return _wrap(
+          args[0],
+          computation_types.to_type(args[1]) if len(args) > 1 else None,
+          self._wrapper_fn)
     elif len(args) == 1:
       # If there's a single parameter that isn't a Python function or a defun,
       # the only supported usage pattern is with this parameter being a type
@@ -384,7 +385,7 @@ class ComputationWrapper(object):
       # it with this parameter type specification.
       # Deliberate lambda wrapping to isolate the caller from the internals of
       # the implementation.
-      arg_type = types.to_type(args[0])
+      arg_type = computation_types.to_type(args[0])
       return lambda fn: _wrap(fn, arg_type, self._wrapper_fn)
     else:
       raise TypeError(

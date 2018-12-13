@@ -31,12 +31,12 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 
 
 def infer_type(arg):
-  """Infers the TFF type of the argument (an instance of types.Type).
+  """Infers the TFF type of the argument (a computation_types.Type instance).
 
   WARNING: This function is only partially implemented.
 
@@ -50,7 +50,8 @@ def infer_type(arg):
     arg: The argument, the TFF type of which to infer.
 
   Returns:
-    Either an instance of types.Type, or None if the argument is None.
+    Either an instance of computation_types.Type, or None if the argument is
+    None.
   """
   # TODO(b/113112885): Implement the remaining cases here on the need basis.
   if arg is None:
@@ -58,30 +59,31 @@ def infer_type(arg):
   elif isinstance(arg, (value_base.Value, computation_base.Computation)):
     return arg.type_signature
   elif tensor_util.is_tensor(arg):
-    return types.TensorType(arg.dtype.base_dtype, arg.shape)
+    return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, (np.generic, np.ndarray)):
-    return types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
+    return computation_types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
   elif isinstance(arg, tf.data.Dataset):
-    return types.SequenceType(
+    return computation_types.SequenceType(
         tf_dtypes_and_shapes_to_type(arg.output_types, arg.output_shapes))
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    return types.NamedTupleType([(k, infer_type(v)) if k else infer_type(v)
-                                 for k, v in anonymous_tuple.to_elements(arg)])
+    return computation_types.NamedTupleType(
+        [(k, infer_type(v)) if k else infer_type(v)
+         for k, v in anonymous_tuple.to_elements(arg)])
   elif '_asdict' in type(arg).__dict__:
     # Special handling needed for collections.namedtuple.
     return infer_type(arg._asdict())
   elif isinstance(arg, dict):
     # This also handles 'OrderedDict', as it inherits from 'dict'.
-    return types.NamedTupleType(
+    return computation_types.NamedTupleType(
         [(k, infer_type(v)) for k, v in six.iteritems(arg)])
   # Quickly try special-casing a few very common built-in scalar types before
   # applying any kind of heavier-weight processing.
   elif isinstance(arg, six.string_types):
-    return types.TensorType(tf.string)
+    return computation_types.TensorType(tf.string)
   else:
     dtype = {bool: tf.bool, int: tf.int32, float: tf.float32}.get(type(arg))
     if dtype:
-      return types.TensorType(dtype)
+      return computation_types.TensorType(dtype)
     else:
       # Now fall back onto the heavier-weight processing, as all else failed.
       # Use make_tensor_proto() to make sure to handle it consistently with
@@ -90,14 +92,14 @@ def infer_type(arg):
       try:
         # TODO(b/113112885): Find something more lightweight we could use here.
         tensor_proto = tf.make_tensor_proto(arg)
-        return types.TensorType(
+        return computation_types.TensorType(
             tf.DType(tensor_proto.dtype),
             tf.TensorShape(tensor_proto.tensor_shape))
       except TypeError as err:
         # We could not convert to a tensor type. First, check if we are dealing
         # with a list or tuple, as those can be reinterpreted as named tuples.
         if isinstance(arg, (tuple, list)):
-          return types.NamedTupleType([infer_type(e) for e in arg])
+          return computation_types.NamedTupleType([infer_type(e) for e in arg])
         else:
           # If neiter a tuple nor a list, we are out of options.
           raise TypeError('Could not infer the TFF type of {}: {}.'.format(
@@ -105,7 +107,7 @@ def infer_type(arg):
 
 
 def tf_dtypes_and_shapes_to_type(dtypes, shapes):
-  """Returns types.Type for the givem TensorFlows's (dtypes, shapes) combo.
+  """Returns computation_types.Type for the given TF (dtypes, shapes) tuple.
 
   The returned dtypes and shapes match those used by tf.Datasets to indicate
   the type and shape of their elements. They can be used, e.g., as arguments in
@@ -119,25 +121,25 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
       output_shapes property.
 
   Returns:
-    The corresponding instance of types.Type.
+    The corresponding instance of computation_types.Type.
 
   Raises:
     TypeError: if the arguments are of types that weren't recognized.
   """
   nest.assert_same_structure(dtypes, shapes)
   if isinstance(dtypes, tf.DType):
-    return types.TensorType(dtypes, shapes)
+    return computation_types.TensorType(dtypes, shapes)
   elif '_asdict' in type(dtypes).__dict__:
     # Special handling needed for collections.namedtuple due to the lack of
     # a base class. Note this must precede the test for being a list.
     return tf_dtypes_and_shapes_to_type(dtypes._asdict(), shapes._asdict())
   elif isinstance(dtypes, dict):
     # This also handles 'OrderedDict', as it inherits from 'dict'.
-    return types.NamedTupleType(
+    return computation_types.NamedTupleType(
         [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
          for name, dtypes_elem in six.iteritems(dtypes)])
   elif isinstance(dtypes, (list, tuple)):
-    return types.NamedTupleType([
+    return computation_types.NamedTupleType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
         for idx, dtypes_elem in enumerate(dtypes)
     ])
@@ -154,9 +156,9 @@ def type_to_tf_dtypes_and_shapes(type_spec):
   constructing an iterator over a string handle.
 
   Args:
-    type_spec: Type specification, either an instance of types.Type, or
-      something convertible to it. Ther type specification must be composed of
-      only named tuples and tensors. In all named tuples that appear in the
+    type_spec: Type specification, either an instance of computation_types.Type,
+      or something convertible to it. Ther type specification must be composed
+      of only named tuples and tensors. In all named tuples that appear in the
       type spec, all the elements must be named.
 
   Returns:
@@ -169,10 +171,10 @@ def type_to_tf_dtypes_and_shapes(type_spec):
     ValueError: if the type_spec is composed of something other than named
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
-  type_spec = types.to_type(type_spec)
-  if isinstance(type_spec, types.TensorType):
+  type_spec = computation_types.to_type(type_spec)
+  if isinstance(type_spec, computation_types.TensorType):
     return (type_spec.dtype, type_spec.shape)
-  elif isinstance(type_spec, types.NamedTupleType):
+  elif isinstance(type_spec, computation_types.NamedTupleType):
     output_dtypes = collections.OrderedDict()
     output_shapes = collections.OrderedDict()
     for e in type_spec.elements:
@@ -199,20 +201,20 @@ def get_named_tuple_element_type(type_spec, name):
   """Returns the type of a named tuple member.
 
   Args:
-    type_spec: Type specification, either an instance of types.Type or something
-      convertible to it by types.to_type().
+    type_spec: Type specification, either an instance of computation_types.Type
+      or something convertible to it by computation_types.to_type().
     name: The string name of the named tuple member.
 
   Returns:
     The TFF type of the element.
 
   Raises:
-    TypeError: if arguments are of the wrong types.
+    TypeError: if arguments are of the wrong computation_types.
     ValueError: if the tuple does not have an element with the given name.
   """
   py_typecheck.check_type(name, six.string_types)
-  type_spec = types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, types.NamedTupleType)
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   elements = type_spec.elements
   for elem_name, elem_type in elements:
     if name == elem_name:
@@ -230,7 +232,8 @@ def check_well_formed(type_spec):
 
   Args:
     type_spec: The type specification to check, either an instance of
-      types.Type or something convertible to it by types.to_type().
+      computation_types.Type or something convertible to it by
+      computation_types.to_type().
 
   Returns:
     True iff the type is well-formed, otherwise False.
@@ -280,7 +283,8 @@ def check_all_abstract_types_are_bound(type_spec):
     (T -> U)
 
   Args:
-    type_spec: An instance of types.Type, or something convertible to it.
+    type_spec: An instance of computation_types.Type, or something convertible
+      to it.
 
   Raises:
     TypeError: if arguments are of the wrong types, or if unbound type labels
@@ -295,7 +299,7 @@ def check_all_abstract_types_are_bound(type_spec):
     be exported out of this module.
 
     Args:
-      type_spec: An instance of types.Type.
+      type_spec: An instance of computation_types.Type.
       bound_labels: A set of string labels that refer to 'bound' abstract types,
         i.e., ones that appear on the parameter side of a functional type.
       check: A bool value. If True, no new unbound type labels are permitted,
@@ -309,28 +313,28 @@ def check_all_abstract_types_are_bound(type_spec):
     Raises:
       TypeError: if unbound labels are found and check is True.
     """
-    py_typecheck.check_type(type_spec, types.Type)
-    if isinstance(type_spec, types.TensorType):
+    py_typecheck.check_type(type_spec, computation_types.Type)
+    if isinstance(type_spec, computation_types.TensorType):
       return set()
-    elif isinstance(type_spec, types.SequenceType):
+    elif isinstance(type_spec, computation_types.SequenceType):
       return _check_or_get_unbound_abstract_type_labels(type_spec.element,
                                                         bound_labels, check)
-    elif isinstance(type_spec, types.FederatedType):
+    elif isinstance(type_spec, computation_types.FederatedType):
       return _check_or_get_unbound_abstract_type_labels(type_spec.member,
                                                         bound_labels, check)
-    elif isinstance(type_spec, types.NamedTupleType):
+    elif isinstance(type_spec, computation_types.NamedTupleType):
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
           for _, v in type_spec.elements
       ])
-    elif isinstance(type_spec, types.AbstractType):
+    elif isinstance(type_spec, computation_types.AbstractType):
       if type_spec.label in bound_labels:
         return set()
       elif not check:
         return set([type_spec.label])
       else:
         raise TypeError('Unbound type label \'{}\'.'.format(type_spec.label))
-    elif isinstance(type_spec, types.FunctionType):
+    elif isinstance(type_spec, computation_types.FunctionType):
       if type_spec.parameter is None:
         parameter_labels = set()
       else:
@@ -341,7 +345,7 @@ def check_all_abstract_types_are_bound(type_spec):
       return parameter_labels.union(result_labels)
 
   _check_or_get_unbound_abstract_type_labels(
-      types.to_type(type_spec), set(), True)
+      computation_types.to_type(type_spec), set(), True)
 
 
 def is_numeric_dtype(dtype):
@@ -366,17 +370,18 @@ def is_sum_compatible(type_spec):
   and placements.
 
   Args:
-    type_spec: Either an instance of types.Type, or something convertible to it.
+    type_spec: Either an instance of computation_types.Type, or something
+      convertible to it.
 
   Returns:
     `True` iff `type_spec` is sum-compatible, `False` otherwise.
   """
-  type_spec = types.to_type(type_spec)
-  if isinstance(type_spec, types.TensorType):
+  type_spec = computation_types.to_type(type_spec)
+  if isinstance(type_spec, computation_types.TensorType):
     return is_numeric_dtype(type_spec.dtype)
-  elif isinstance(type_spec, types.NamedTupleType):
+  elif isinstance(type_spec, computation_types.NamedTupleType):
     return all(is_sum_compatible(v) for _, v in type_spec.elements)
-  elif isinstance(type_spec, types.FederatedType):
+  elif isinstance(type_spec, computation_types.FederatedType):
     return is_sum_compatible(type_spec.member)
   else:
     return False
@@ -395,7 +400,7 @@ def check_federated_value_placement(value, placement, label=None):
       the expected placement `placement`.
   """
   py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, types.FederatedType)
+  py_typecheck.check_type(value.type_signature, computation_types.FederatedType)
   if label is not None:
     py_typecheck.check_type(label, six.string_types)
   if value.type_signature.placement is not placement:
@@ -418,12 +423,12 @@ def is_average_compatible(type_spec):
   Returns:
     `True` iff `type_spec` is average-compatible, `False` otherwise.
   """
-  type_spec = types.to_type(type_spec)
-  if isinstance(type_spec, types.TensorType):
+  type_spec = computation_types.to_type(type_spec)
+  if isinstance(type_spec, computation_types.TensorType):
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
-  elif isinstance(type_spec, types.NamedTupleType):
+  elif isinstance(type_spec, computation_types.NamedTupleType):
     return all(is_average_compatible(v) for _, v in type_spec.elements)
-  elif isinstance(type_spec, types.FederatedType):
+  elif isinstance(type_spec, computation_types.FederatedType):
     return is_average_compatible(type_spec.member)
   else:
     return False

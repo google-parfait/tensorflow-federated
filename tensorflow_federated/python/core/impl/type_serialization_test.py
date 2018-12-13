@@ -20,8 +20,8 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import type_serialization
 
@@ -48,7 +48,8 @@ class TypeSerializationTest(tf.test.TestCase):
   def test_serialize_type_with_string_sequence(self):
     self.assertEqual(
         _compact_repr(
-            type_serialization.serialize_type(types.SequenceType(tf.string))),
+            type_serialization.serialize_type(
+                computation_types.SequenceType(tf.string))),
         'sequence { element { tensor { dtype: DT_STRING shape { } } } }')
 
   def test_serialize_type_with_tensor_tuple(self):
@@ -77,7 +78,7 @@ class TypeSerializationTest(tf.test.TestCase):
     self.assertEqual(
         _compact_repr(
             type_serialization.serialize_type(
-                types.FunctionType((tf.int32, tf.int32), tf.bool))),
+                computation_types.FunctionType((tf.int32, tf.int32), tf.bool))),
         'function { parameter { tuple { '
         'element { value { tensor { dtype: DT_INT32 shape { } } } } '
         'element { value { tensor { dtype: DT_INT32 shape { } } } } '
@@ -85,14 +86,16 @@ class TypeSerializationTest(tf.test.TestCase):
 
   def test_serialize_type_with_placement(self):
     self.assertEqual(
-        _compact_repr(type_serialization.serialize_type(types.PlacementType())),
-        'placement { }')
+        _compact_repr(
+            type_serialization.serialize_type(
+                computation_types.PlacementType())), 'placement { }')
 
   def test_serialize_type_with_federated_bool(self):
     self.assertEqual(
         _compact_repr(
             type_serialization.serialize_type(
-                types.FederatedType(tf.bool, placements.CLIENTS, True))),
+                computation_types.FederatedType(tf.bool, placements.CLIENTS,
+                                                True))),
         'federated { placement { value { uri: "clients" } } all_equal: true '
         'member { tensor { dtype: DT_BOOL shape { } } } }')
 
@@ -102,9 +105,10 @@ class TypeSerializationTest(tf.test.TestCase):
 
   def test_serialize_deserialize_sequence_types(self):
     self._serialize_deserialize_roundtrip_test([
-        types.SequenceType(tf.int32),
-        types.SequenceType([tf.int32, tf.bool]),
-        types.SequenceType([tf.int32, types.SequenceType(tf.bool)])
+        computation_types.SequenceType(tf.int32),
+        computation_types.SequenceType([tf.int32, tf.bool]),
+        computation_types.SequenceType(
+            [tf.int32, computation_types.SequenceType(tf.bool)])
     ])
 
   def test_serialize_deserialize_named_tuple_types(self):
@@ -114,27 +118,29 @@ class TypeSerializationTest(tf.test.TestCase):
 
   def test_serialize_deserialize_function_types(self):
     self._serialize_deserialize_roundtrip_test([
-        types.FunctionType(tf.int32, tf.bool),
-        types.FunctionType(None, tf.bool)
+        computation_types.FunctionType(tf.int32, tf.bool),
+        computation_types.FunctionType(None, tf.bool)
     ])
 
   def test_serialize_deserialize_placement_type(self):
-    self._serialize_deserialize_roundtrip_test([types.PlacementType()])
+    self._serialize_deserialize_roundtrip_test(
+        [computation_types.PlacementType()])
 
   def test_serialize_deserialize_federated_types(self):
     self._serialize_deserialize_roundtrip_test([
-        types.FederatedType(tf.int32, placements.CLIENTS, True),
-        types.FederatedType(tf.int32, placements.CLIENTS, False)
+        computation_types.FederatedType(tf.int32, placements.CLIENTS, True),
+        computation_types.FederatedType(tf.int32, placements.CLIENTS, False)
     ])
 
   def _serialize_deserialize_roundtrip_test(self, type_list):
-    """Performs roundtrip serialization/deserialization of the given types.
+    """Performs roundtrip serialization/deserialization of computation_types.
 
     Args:
-      type_list: A list of instances of types.Type or things convertible to it.
+      type_list: A list of instances of computation_types.Type or things
+        convertible to it.
     """
     for t in type_list:
-      t1 = types.to_type(t)
+      t1 = computation_types.to_type(t)
       p1 = type_serialization.serialize_type(t1)
       t2 = type_serialization.deserialize_type(p1)
       p2 = type_serialization.serialize_type(t2)

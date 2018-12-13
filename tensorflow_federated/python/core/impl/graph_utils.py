@@ -31,7 +31,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import type_utils
 
@@ -51,7 +51,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       a best-effort attempt will be made to make them similar for ease of
       debugging.
     parameter_type: The type of the parameter to stamp. Must be either an
-      instance of types.Type (or convertible to it), or None.
+      instance of computation_types.Type (or convertible to it), or None.
     graph: The instance of tf.Graph to stamp in.
 
   Returns:
@@ -63,15 +63,15 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     to the tensors and ops stamped into the graph.
 
   Raises:
-    TypeError: if the arguments are of the wrong types.
+    TypeError: if the arguments are of the wrong computation_types.
     ValueError: if the parameter type cannot be stamped in a TensorFlow graph.
   """
   py_typecheck.check_type(parameter_name, six.string_types)
   py_typecheck.check_type(graph, tf.Graph)
   if parameter_type is None:
     return (None, None)
-  parameter_type = types.to_type(parameter_type)
-  if isinstance(parameter_type, types.TensorType):
+  parameter_type = computation_types.to_type(parameter_type)
+  if isinstance(parameter_type, computation_types.TensorType):
     with graph.as_default():
       placeholder = tf.placeholder(
           dtype=parameter_type.dtype,
@@ -80,7 +80,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       binding = pb.TensorFlow.Binding(
           tensor=pb.TensorFlow.TensorBinding(tensor_name=placeholder.name))
       return (placeholder, binding)
-  elif isinstance(parameter_type, types.NamedTupleType):
+  elif isinstance(parameter_type, computation_types.NamedTupleType):
     element_name_value_pairs = []
     element_bindings = []
     for e in parameter_type.elements:
@@ -92,7 +92,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=element_bindings)))
-  elif isinstance(parameter_type, types.SequenceType):
+  elif isinstance(parameter_type, computation_types.SequenceType):
     with graph.as_default():
       handle = tf.placeholder(tf.string, shape=[])
     ds = make_dataset_from_string_handle(handle, parameter_type.element)
@@ -117,7 +117,7 @@ def make_dataset_from_string_handle(handle, type_spec):
   Returns:
     A corresponding instance of `tf.data.Dataset`.
   """
-  type_spec = types.to_type(type_spec)
+  type_spec = computation_types.to_type(type_spec)
   dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
   with handle.graph.as_default():
     it = tf.data.Iterator.from_string_handle(handle, dtypes, shapes)
@@ -140,10 +140,10 @@ def capture_result_from_graph(result):
       tuples, or named tuples.
 
   Returns:
-    A tuple (type_spec, binding), where 'type_spec' is an instance of types.Type
-    that describes the type of the result, and 'binding'is an instance of
-    TensorFlow.Binding that indicates how parts of the result type relate to the
-    tensors and ops that appear in the result.
+    A tuple (type_spec, binding), where 'type_spec' is an instance of
+    computation_types.Type that describes the type of the result, and 'binding'
+    is an instance of TensorFlow.Binding that indicates how parts of the result
+    type relate to the tensors and ops that appear in the result.
 
   Raises:
     TypeError: if the argument or any of its parts are of an uexpected type.
@@ -152,7 +152,7 @@ def capture_result_from_graph(result):
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
   if tensor_util.is_tensor(result):
-    return (types.TensorType(result.dtype.base_dtype, result.shape),
+    return (computation_types.TensorType(result.dtype.base_dtype, result.shape),
             pb.TensorFlow.Binding(
                 tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
   elif '_asdict' in type(result).__dict__:
@@ -172,14 +172,16 @@ def capture_result_from_graph(result):
     element_name_type_binding_triples = [
         ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs
     ]
-    return (types.NamedTupleType([((e[0], e[1]) if e[0] else e[1])
-                                  for e in element_name_type_binding_triples]),
+    return (computation_types.NamedTupleType(
+        [((e[0], e[1]) if e[0] else e[1])
+         for e in element_name_type_binding_triples]),
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[2] for e in element_name_type_binding_triples])))
   elif isinstance(result, (list, tuple)):
     element_type_binding_pairs = [capture_result_from_graph(e) for e in result]
-    return (types.NamedTupleType([e[0] for e in element_type_binding_pairs]),
+    return (computation_types.NamedTupleType(
+        [e[0] for e in element_type_binding_pairs]),
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
@@ -203,7 +205,7 @@ def compute_map_from_bindings(source, target):
     tensors in the corresponding parts of `target`.
 
   Raises:
-    TypeError: If the arguments are of the wrong types.
+    TypeError: If the arguments are of the wrong computation_types.
     ValueError: If the bindings have mismatching structures.
   """
   py_typecheck.check_type(source, pb.TensorFlow.Binding)
@@ -286,8 +288,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
     ValueError: If the arguments are invalid or inconsistent witch other, e.g.,
       the type and binding don't match, or the tensor is not found in the map.
   """
-  type_spec = types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, types.Type)
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   py_typecheck.check_type(binding, pb.TensorFlow.Binding)
   py_typecheck.check_type(output_map, dict)
   for k, v in six.iteritems(output_map):
@@ -298,7 +300,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
               k, py_typecheck.type_string(type(v))))
 
   binding_oneof = binding.WhichOneof('binding')
-  if isinstance(type_spec, types.TensorType):
+  if isinstance(type_spec, computation_types.TensorType):
     if binding_oneof != 'tensor':
       raise ValueError(
           'Expected a tensor binding, found {}.'.format(binding_oneof))
@@ -307,7 +309,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
           binding.tensor.tensor_name))
     else:
       return output_map[binding.tensor.tensor_name]
-  elif isinstance(type_spec, types.NamedTupleType):
+  elif isinstance(type_spec, computation_types.NamedTupleType):
     if binding_oneof != 'tuple':
       raise ValueError(
           'Expected a tuple binding, found {}.'.format(binding_oneof))
@@ -324,7 +326,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
                                                     element_binding, output_map)
         result_elements.append((element_name, element_object))
       return anonymous_tuple.AnonymousTuple(result_elements)
-  elif isinstance(type_spec, types.SequenceType):
+  elif isinstance(type_spec, computation_types.SequenceType):
     if binding_oneof != 'sequence':
       raise ValueError(
           'Expected a sequence binding, found {}.'.format(binding_oneof))

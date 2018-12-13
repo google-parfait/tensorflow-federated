@@ -23,8 +23,8 @@ import six
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
@@ -58,7 +58,7 @@ def transform_postorder(comp, func):
     The result of applying `func` to parts of `comp` in a bottom-up fashion.
 
   Raises:
-    TypeError: If the arguments are of the wrong types.
+    TypeError: If the arguments are of the wrong computation_types.
     NotImplementedError: If the argument is a kind of computation building block
       that is currently not recognized.
   """
@@ -157,12 +157,14 @@ def replace_intrinsic(comp, uri, body):
     raise TypeError('The body of the intrinsic must be a callable.')
 
   def _transformation_func(comp, uri, body):
+    """Internal function to replace occurrences of an intrinsic."""
     if not isinstance(comp, computation_building_blocks.Intrinsic):
       return comp
     elif comp.uri != uri:
       return comp
     else:
-      py_typecheck.check_type(comp.type_signature, types.FunctionType)
+      py_typecheck.check_type(comp.type_signature,
+                              computation_types.FunctionType)
       # We need 'wrapped_body' to accept exactly one argument.
       wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
       return computation_building_blocks.ComputationBuildingBlock.from_proto(

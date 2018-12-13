@@ -20,7 +20,7 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import func_utils
@@ -37,7 +37,7 @@ class WrappedForTest(func_utils.ConcreteFunction):
   def __init__(self, func, parameter_type):
     self._func = func
     super(WrappedForTest, self).__init__(
-        types.FunctionType(parameter_type, tf.string))
+        computation_types.FunctionType(parameter_type, tf.string))
 
   def _invoke(self, arg):
     result = self._func(arg) if self.type_signature.parameter else self._func()

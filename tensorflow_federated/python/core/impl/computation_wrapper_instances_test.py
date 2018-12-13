@@ -20,7 +20,7 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
@@ -79,7 +79,7 @@ class ComputationWrapperInstancesTest(tf.test.TestCase):
   def test_federated_computation_wrapper(self):
 
     @computation_wrapper_instances.federated_computation_wrapper(
-        (types.FunctionType(tf.int32, tf.int32), tf.int32))
+        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32))
     def foo(f, x):
       return f(f(x))
 

@@ -22,7 +22,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import computation_building_utils as bu
 from tensorflow_federated.python.core.impl import func_utils
@@ -33,12 +33,12 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.parameters(
       (lambda f, x: f(f(x)),
-       [('f', types.FunctionType(tf.int32, tf.int32)),
+       [('f', computation_types.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32)],
        '(foo -> foo.f(foo.f(foo.x)))'),
       (lambda f, g, x: f(g(x)),
-       [('f', types.FunctionType(tf.int32, tf.int32)),
-        ('g', types.FunctionType(tf.int32, tf.int32)),
+       [('f', computation_types.FunctionType(tf.int32, tf.int32)),
+        ('g', computation_types.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32)],
        '(foo -> foo.f(foo.g(foo.x)))'),
       (lambda x: (x[1], x[0]),
@@ -47,7 +47,7 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
   # pyformat: enable
   def test_zero_or_one_arg_func_to_lambda(self, func, parameter_type, func_str):
     parameter_name = 'foo'
-    parameter_type = types.to_type(parameter_type)
+    parameter_type = computation_types.to_type(parameter_type)
     func = func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type)
     result = bu.zero_or_one_arg_func_to_lambda(func, parameter_name,
                                                parameter_type)

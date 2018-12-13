@@ -19,6 +19,14 @@ from __future__ import print_function
 
 from tensorflow_federated.python.core.api.computation_base import Computation
 
+from tensorflow_federated.python.core.api.computation_types import FederatedType
+from tensorflow_federated.python.core.api.computation_types import FunctionType
+from tensorflow_federated.python.core.api.computation_types import NamedTupleType
+from tensorflow_federated.python.core.api.computation_types import SequenceType
+from tensorflow_federated.python.core.api.computation_types import TensorType
+from tensorflow_federated.python.core.api.computation_types import to_type
+from tensorflow_federated.python.core.api.computation_types import Type
+
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 
@@ -33,11 +41,3 @@ from tensorflow_federated.python.core.api.intrinsics import federated_zip
 
 from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
-
-from tensorflow_federated.python.core.api.types import FederatedType
-from tensorflow_federated.python.core.api.types import FunctionType
-from tensorflow_federated.python.core.api.types import NamedTupleType
-from tensorflow_federated.python.core.api.types import SequenceType
-from tensorflow_federated.python.core.api.types import TensorType
-from tensorflow_federated.python.core.api.types import to_type
-from tensorflow_federated.python.core.api.types import Type

@@ -22,10 +22,10 @@ from absl.testing import absltest
 import six
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
@@ -53,7 +53,7 @@ class TransformationsTest(absltest.TestCase):
   def test_transform_postorder_with_lambda_call_selection_and_reference(self):
 
     @computations.federated_computation(
-        [types.FunctionType(tf.int32, tf.int32), tf.int32])
+        [computation_types.FunctionType(tf.int32, tf.int32), tf.int32])
     def foo(f, x):
       return f(x)
 
@@ -69,7 +69,8 @@ class TransformationsTest(absltest.TestCase):
           return computation_building_blocks.Call(
               computation_building_blocks.Intrinsic(
                   'F{}'.format(n),
-                  types.FunctionType(x.type_signature, x.type_signature)), x)
+                  computation_types.FunctionType(x.type_signature,
+                                                 x.type_signature)), x)
 
         yield _func
 
@@ -97,7 +98,7 @@ class TransformationsTest(absltest.TestCase):
   def test_replace_intrinsic(self):
 
     @computations.federated_computation(
-        types.FederatedType(tf.int32, placements.SERVER, True))
+        computation_types.FederatedType(tf.int32, placements.SERVER, True))
     def foo(x):
       return intrinsics.federated_sum(intrinsics.federated_broadcast(x))
 

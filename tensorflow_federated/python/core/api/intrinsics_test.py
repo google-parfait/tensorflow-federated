@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for types."""
+"""Tests for computation_types."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,6 +23,8 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api.computation_types import FederatedType
+from tensorflow_federated.python.core.api.computation_types import NamedTupleType
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
@@ -35,8 +37,6 @@ from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_zip
 from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
-from tensorflow_federated.python.core.api.types import FederatedType
-from tensorflow_federated.python.core.api.types import NamedTupleType
 
 
 class IntrinsicsTest(absltest.TestCase):

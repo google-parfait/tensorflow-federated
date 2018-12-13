@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for serializing and deserializing TFF types."""
+"""Utilities for serializing and deserializing TFF computation_types."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +24,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import placement_literals
 
@@ -36,11 +36,12 @@ def serialize_type(type_spec):
   function types is implemented.
 
   Args:
-    type_spec: Either an instance of types.Type, or something convertible to it
-      by types.to_type(), or None.
+    type_spec: Either an instance of computation_types.Type, or something
+      convertible to it by computation_types.to_type(), or None.
 
   Returns:
-    The corresponding instance of pb.Type, or None if the argument was None.
+    The corresponding instance of `pb.Type`, or `None` if the argument was
+      `None`.
 
   Raises:
     TypeError: if the argument is of the wrong type.
@@ -50,29 +51,29 @@ def serialize_type(type_spec):
   # TODO(b/113112885): Implement serialization of the remaining types.
   if type_spec is None:
     return None
-  target = types.to_type(type_spec)
-  py_typecheck.check_type(target, types.Type)
-  if isinstance(target, types.TensorType):
+  target = computation_types.to_type(type_spec)
+  py_typecheck.check_type(target, computation_types.Type)
+  if isinstance(target, computation_types.TensorType):
     return pb.Type(
         tensor=pb.TensorType(
             dtype=target.dtype.as_datatype_enum, shape=target.shape.as_proto()))
-  elif isinstance(target, types.SequenceType):
+  elif isinstance(target, computation_types.SequenceType):
     return pb.Type(
         sequence=pb.SequenceType(element=serialize_type(target.element)))
-  elif isinstance(target, types.NamedTupleType):
+  elif isinstance(target, computation_types.NamedTupleType):
     return pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
             for e in target.elements
         ]))
-  elif isinstance(target, types.FunctionType):
+  elif isinstance(target, computation_types.FunctionType):
     return pb.Type(
         function=pb.FunctionType(
             parameter=serialize_type(target.parameter),
             result=serialize_type(target.result)))
-  elif isinstance(target, types.PlacementType):
+  elif isinstance(target, computation_types.PlacementType):
     return pb.Type(placement=pb.PlacementType())
-  elif isinstance(target, types.FederatedType):
+  elif isinstance(target, computation_types.FederatedType):
     if isinstance(target.placement, placement_literals.PlacementLiteral):
       return pb.Type(
           federated=pb.FederatedType(
@@ -90,7 +91,7 @@ def serialize_type(type_spec):
 
 
 def deserialize_type(type_proto):
-  """Deserializes 'type_proto' as a types.Type.
+  """Deserializes 'type_proto' as a computation_types.Type.
 
   NOTE: Currently only deserialization for tensor, named tuple, sequence, and
   function types is implemented.
@@ -99,7 +100,8 @@ def deserialize_type(type_proto):
     type_proto: An instance of pb.Type or None.
 
   Returns:
-    The corresponding instance of types.Type (or None if the argument was None).
+    The corresponding instance of computation_types.Type (or None if the
+    argument was None).
 
   Raises:
     TypeError: if the argument is of the wrong type.
@@ -114,24 +116,25 @@ def deserialize_type(type_proto):
   if type_variant is None:
     return None
   elif type_variant == 'tensor':
-    return types.TensorType(
+    return computation_types.TensorType(
         dtype=tf.DType(type_proto.tensor.dtype),
         shape=tf.TensorShape(type_proto.tensor.shape))
   elif type_variant == 'sequence':
-    return types.SequenceType(deserialize_type(type_proto.sequence.element))
+    return computation_types.SequenceType(
+        deserialize_type(type_proto.sequence.element))
   elif type_variant == 'tuple':
-    return types.NamedTupleType([(lambda k, v: (k, v) if k else v)(
+    return computation_types.NamedTupleType([(lambda k, v: (k, v) if k else v)(
         e.name, deserialize_type(e.value)) for e in type_proto.tuple.element])
   elif type_variant == 'function':
-    return types.FunctionType(
+    return computation_types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),
         result=deserialize_type(type_proto.function.result))
   elif type_variant == 'placement':
-    return types.PlacementType()
+    return computation_types.PlacementType()
   elif type_variant == 'federated':
     placement_oneof = type_proto.federated.placement.WhichOneof('placement')
     if placement_oneof == 'value':
-      return types.FederatedType(
+      return computation_types.FederatedType(
           member=deserialize_type(type_proto.federated.member),
           placement=placement_literals.uri_to_placement_literal(
               type_proto.federated.placement.value.uri),

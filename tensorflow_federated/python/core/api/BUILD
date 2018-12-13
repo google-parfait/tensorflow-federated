@@ -11,10 +11,10 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":computation_base",
+        ":computation_types",
         ":computations",
         ":intrinsics",
         ":placements",
-        ":types",
     ],
 )
 
@@ -22,6 +22,29 @@ py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
     deps = ["@six_archive//:six"],
+)
+
+py_library(
+    name = "computation_types",
+    srcs = ["computation_types.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:placement_literals",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "computation_types_test",
+    size = "small",
+    srcs = ["computation_types_test.py"],
+    deps = [
+        ":computation_types",
+        ":placements",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -37,8 +60,8 @@ py_test(
     size = "small",
     srcs = ["computations_test.py"],
     deps = [
+        ":computation_types",
         ":computations",
-        ":types",
         ":value_base",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -48,8 +71,8 @@ py_library(
     name = "intrinsics",
     srcs = ["intrinsics.py"],
     deps = [
+        ":computation_types",
         ":placements",
-        ":types",
         ":value_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:computation_building_blocks",
@@ -65,10 +88,10 @@ py_test(
     size = "small",
     srcs = ["intrinsics_test.py"],
     deps = [
+        ":computation_types",
         ":computations",
         ":intrinsics",
         ":placements",
-        ":types",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -79,29 +102,6 @@ py_library(
     srcs = ["placements.py"],
     deps = [
         "//tensorflow_federated/python/core/impl:placement_literals",
-    ],
-)
-
-py_library(
-    name = "types",
-    srcs = ["types.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl:placement_literals",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
-)
-
-py_test(
-    name = "types_test",
-    size = "small",
-    srcs = ["types_test.py"],
-    deps = [
-        ":placements",
-        ":types",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 

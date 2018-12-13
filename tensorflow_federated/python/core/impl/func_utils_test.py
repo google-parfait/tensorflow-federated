@@ -31,7 +31,7 @@ from tensorflow.python.framework import function as tf_function
 
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 
 from tensorflow_federated.python.core.impl import func_utils as fu
 
@@ -129,9 +129,10 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
                                             expected_result):
     self.assertEqual(
         fu.is_argspec_compatible_with_types(
-            argspec, *[types.to_type(a) for a in args],
-            **{k: types.to_type(v) for k, v in six.iteritems(kwargs)}),
-        expected_result)
+            argspec, *[computation_types.to_type(a) for a in args], **{
+                k: computation_types.to_type(v)
+                for k, v in six.iteritems(kwargs)
+            }), expected_result)
 
   # pyformat: disable
   @parameterized.parameters(
@@ -168,10 +169,12 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
   def test_unpack_args_from_tuple_type(self, tuple_with_args, expected_args,
                                        expected_kwargs):
     args, kwargs = fu.unpack_args_from_tuple(tuple_with_args)
-    self.assertEqual(args, [types.to_type(a) for a in expected_args])
-    self.assertEqual(
-        kwargs,
-        {k: types.to_type(v) for k, v in six.iteritems(expected_kwargs)})
+    self.assertEqual(args,
+                     [computation_types.to_type(a) for a in expected_args])
+    self.assertEqual(kwargs, {
+        k: computation_types.to_type(v)
+        for k, v in six.iteritems(expected_kwargs)
+    })
 
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(
@@ -267,7 +270,7 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       def __init__(self, name, parameter_type):
         self._name = name
         super(TestFunction, self).__init__(
-            types.FunctionType(parameter_type, tf.string))
+            computation_types.FunctionType(parameter_type, tf.string))
 
       def _invoke(self, arg):
         return 'name={},type={},arg={}'.format(
@@ -305,13 +308,14 @@ class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
       def _invoke(self, arg):
         return self._invoke_func(arg)
 
-    fn = TestFunction(types.FunctionType(tf.int32, tf.bool), lambda x: x > 10)
+    fn = TestFunction(
+        computation_types.FunctionType(tf.int32, tf.bool), lambda x: x > 10)
     self.assertEqual(fn(5), False)
     self.assertEqual(fn(15), True)
 
     fn = TestFunction(
-        types.FunctionType([('x', tf.int32), ('y', tf.int32)],
-                           tf.bool), lambda arg: arg.x > arg.y)
+        computation_types.FunctionType([('x', tf.int32), ('y', tf.int32)],
+                                       tf.bool), lambda arg: arg.x > arg.y)
     self.assertEqual(fn(5, 10), False)
     self.assertEqual(fn(10, 5), True)
     self.assertEqual(fn(y=10, x=5), False)

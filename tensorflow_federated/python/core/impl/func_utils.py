@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import abc
 import inspect
-import types as py_types
+import types
 
 # Dependency imports
 import six
@@ -31,7 +31,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import types
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import type_utils
@@ -78,7 +78,7 @@ def get_argspec(func):
   Raises:
     TypeError: if the argument is not of a supported type.
   """
-  if isinstance(func, py_types.FunctionType):
+  if isinstance(func, types.FunctionType):
     return inspect.getargspec(func)
   # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
   # currently omitted due to issues with visibility, using tf_inspect.getargspec
@@ -161,15 +161,17 @@ def is_argspec_compatible_with_types(argspec, *args, **kwargs):
   Args:
     argspec: An instance of inspect.ArgSpec to verify agains the arguments.
     *args: Zero or more positional arguments, all of which must be instances of
-      types.Type or something convertible to it by types.to_type().
+      computation_types.Type or something convertible to it by
+      computation_types.to_type().
     **kwargs: Zero or more keyword arguments, all of which must be instances of
-      types.Type or something convertible to it by types.to_type().
+      computation_types.Type or something convertible to it by
+      computation_types.to_type().
 
   Returns:
     True or false, depending on the outcome of the test.
 
   Raises:
-    TypeError: if the arguments are of the wrong types.
+    TypeError: if the arguments are of the wrong computation_types.
   """
   try:
     callargs = get_callargs_for_argspec(argspec, *args, **kwargs)
@@ -188,7 +190,7 @@ def is_argspec_compatible_with_types(argspec, *args, **kwargs):
       arg_name = argspec.args[num_specargs_without_defaults + idx]
       call_arg = callargs[arg_name]
       if call_arg is not default_value:
-        arg_type = types.to_type(call_arg)
+        arg_type = computation_types.to_type(call_arg)
         default_type = type_utils.infer_type(default_value)
         if not arg_type.is_assignable_from(default_type):
           return False
@@ -204,7 +206,7 @@ def is_argument_tuple(arg):
   Returns:
     True iff 'arg' is either an anonymous tuple in which all unnamed elements
     precede named ones, or a named tuple typle with this property, or something
-    that can be converted into the latter by types.to_type().
+    that can be converted into the latter by computation_types.to_type().
 
   Raises:
     TypeError: if the argument is neither an AnonymousTuple, nor a type spec.
@@ -214,8 +216,8 @@ def is_argument_tuple(arg):
   elif isinstance(arg, value_base.Value):
     return is_argument_tuple(arg.type_signature)
   else:
-    arg = types.to_type(arg)
-    if isinstance(arg, types.NamedTupleType):
+    arg = computation_types.to_type(arg)
+    if isinstance(arg, computation_types.NamedTupleType):
       elements = arg.elements
     else:
       return False
@@ -234,8 +236,8 @@ def unpack_args_from_tuple(tuple_with_args):
 
   Args:
     tuple_with_args: An instance of either an AnonymousTuple or
-      types.NamedTupleType (or something convertible to it by types.to_type()),
-      on which is_argument_tuple() is True.
+      computation_types.NamedTupleType (or something convertible to it by
+      computation_types.to_type()), on which is_argument_tuple() is True.
 
   Returns:
     A pair (args, kwargs) containing tuple elements from 'tuple_with_args'.
@@ -255,8 +257,8 @@ def unpack_args_from_tuple(tuple_with_args):
       else:
         elements.append((None, tuple_with_args[index]))
   else:
-    tuple_with_args = types.to_type(tuple_with_args)
-    py_typecheck.check_type(tuple_with_args, types.NamedTupleType)
+    tuple_with_args = computation_types.to_type(tuple_with_args)
+    py_typecheck.check_type(tuple_with_args, computation_types.NamedTupleType)
     elements = tuple_with_args.elements
   args = []
   kwargs = {}
@@ -272,34 +274,34 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
   """Packs positional and keyword arguments into an anonymous tuple.
 
   If 'type_spec' is not None, it must be a tuple type or something that's
-  convertible to it by types.to_type(). The assignment of arguments to fields
-  of the tuple follows the same rule as during function calls. If 'type_spec'
-  is None, the positional arguments precede any of the keyword arguments, and
-  the ordering of the keyword arguments matches the ordering in which they
-  appear in kwargs. If the latter is an OrderedDict, the ordering will be
-  preserved. On the other hand, if the latter is an ordinary unordered dict,
-  the ordering is arbitrary.
+  convertible to it by computation_types.to_type(). The assignment of arguments
+  to fields of the tuple follows the same rule as during function calls. If
+  'type_spec' is None, the positional arguments precede any of the keyword
+  arguments, and the ordering of the keyword arguments matches the ordering in
+  which they appear in kwargs. If the latter is an OrderedDict, the ordering
+  will be preserved. On the other hand, if the latter is an ordinary unordered
+  dict, the ordering is arbitrary.
 
   Args:
     args: Positional arguments.
     kwargs: Keyword arguments.
     type_spec: The optional type specification (either an instance of
-      types.NamedTupleType or something convertible to it), or None if there's
-      no type. Used to drive the arrangements of args into fields of the
-      constructed anonymous tuple, as noted in the description.
+      computation_types.NamedTupleType or something convertible to it), or None
+      if there's no type. Used to drive the arrangements of args into fields of
+      the constructed anonymous tuple, as noted in the description.
 
   Returns:
     An anoymous tuple containing all the arguments.
 
   Raises:
-    TypeError: if the arguments are of the wrong types.
+    TypeError: if the arguments are of the wrong computation_types.
   """
-  type_spec = types.to_type(type_spec)
+  type_spec = computation_types.to_type(type_spec)
   if not type_spec:
     return anonymous_tuple.AnonymousTuple([(None, arg) for arg in args] +
                                           list(six.iteritems(kwargs)))
   else:
-    py_typecheck.check_type(type_spec, types.NamedTupleType)
+    py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     if not is_argument_tuple(type_spec):
       raise TypeError(
           'Parameter type {} does not have a structure of an argument '
@@ -359,8 +361,8 @@ def pack_args(parameter_type, args, kwargs):
 
   Args:
     parameter_type: The type of the single parameter expected by a computation,
-      an instance of types.Type or something convertible to it, or None if the
-      computation is not expecting a parameter.
+      an instance of computation_types.Type or something convertible to it, or
+      None if the computation is not expecting a parameter.
     args: Positional arguments of a call.
     kwargs: Keyword arguments of a call.
 
@@ -378,14 +380,14 @@ def pack_args(parameter_type, args, kwargs):
     else:
       return None
   else:
-    parameter_type = types.to_type(parameter_type)
+    parameter_type = computation_types.to_type(parameter_type)
     if not args and not kwargs:
       raise TypeError(
           'Declared a parameter of type {}, but got no arguments.'.format(
               str(parameter_type)))
     else:
       single_positional_arg = (len(args) == 1) and not kwargs
-      if not isinstance(parameter_type, types.NamedTupleType):
+      if not isinstance(parameter_type, computation_types.NamedTupleType):
         # If not a named tuple type, a single positional argument is the only
         # supported call style.
         if not single_positional_arg:
@@ -467,7 +469,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
     raise TypeError('The unpack argument has an unexpected value {}.'.format(
         repr(unpack)))
   argspec = get_argspec(func)
-  parameter_type = types.to_type(parameter_type)
+  parameter_type = computation_types.to_type(parameter_type)
   if not parameter_type:
     if is_argspec_compatible_with_types(argspec):
       # Deliberate wrapping to isolate the caller from 'func', e.g., to prevent
@@ -524,9 +526,9 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
         Args:
           func: The function or defun to invoke.
           arg_types: The list of positional argument types (guaranteed to all be
-            instances of types.Types).
+            instances of computation_types.Types).
           kwarg_types: The dictionary of keyword argument types (guaranteed to
-            all be instances of types.Types).
+            all be instances of computation_types.Types).
           arg: The argument to unpack.
 
         Returns:
@@ -591,12 +593,12 @@ class ConcreteFunction(computation_base.Computation):
     """Constructs this concrete function with the give type signature.
 
     Args:
-      type_signature: An instance of types.FunctionType.
+      type_signature: An instance of computation_types.FunctionType.
 
     Raises:
-      TypeError: if the arguments are of the wrong types.
+      TypeError: if the arguments are of the wrong computation_types.
     """
-    py_typecheck.check_type(type_signature, types.FunctionType)
+    py_typecheck.check_type(type_signature, computation_types.FunctionType)
     self._type_signature = type_signature
 
   @property
@@ -655,7 +657,7 @@ class PolymorphicFunction(object):
 
     Raises:
       TypeError: if the concrete functions created by the factory are of the
-        wrong types.
+        wrong computation_types.
     """
     # TODO(b/113112885): We may need to normalize individuals args, such that
     # the type is more predictable and uniform (e.g., if someone supplies an

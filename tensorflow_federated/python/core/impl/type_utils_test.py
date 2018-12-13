@@ -26,9 +26,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import test_utils
@@ -290,25 +290,30 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   # pylint: disable=g-long-lambda
   @parameterized.parameters(*[
-      types.to_type(spec) for spec in ((
+      computation_types.to_type(spec) for spec in ((
           lambda t, u: [
               # In constructing test cases, occurrences of 't' in all
               # expressions below are replaced with an abstract type 'T'.
               tf.int32,
-              types.FunctionType(tf.int32, tf.int32),
-              types.FunctionType(None, tf.int32),
-              types.FunctionType(t, t),
-              [types.FunctionType(t, t), tf.bool],
-              types.FunctionType(types.FunctionType(None, t), t),
-              types.FunctionType(
-                  (types.SequenceType(t), types.FunctionType((t, t), t)), t),
-              types.FunctionType(types.SequenceType(t), tf.int32),
-              types.FunctionType(None, types.FunctionType(t, t)),
+              computation_types.FunctionType(tf.int32, tf.int32),
+              computation_types.FunctionType(None, tf.int32),
+              computation_types.FunctionType(t, t),
+              [computation_types.FunctionType(t, t), tf.bool],
+              computation_types.FunctionType(
+                  computation_types.FunctionType(None, t), t),
+              computation_types.FunctionType((computation_types.SequenceType(
+                  t), computation_types.FunctionType((t, t), t)), t),
+              computation_types.FunctionType(
+                  computation_types.SequenceType(t), tf.int32),
+              computation_types.FunctionType(
+                  None, computation_types.FunctionType(t, t)),
               # In the test cases below, in addition to the 't' replacement
               # above, all occurrences of 'u' are replaced with an abstract type
               # 'U'.
-              types.FunctionType([t, types.FunctionType(u, u), u], [t, u])
-          ])(types.AbstractType('T'), types.AbstractType('U')))
+              computation_types.FunctionType(
+                  [t, computation_types.FunctionType(u, u), u], [t, u])
+          ])(computation_types.AbstractType('T'),
+             computation_types.AbstractType('U')))
   ])
   # pylint: enable=g-long-lambda
   def test_check_abstract_types_are_bound_valid_cases(self, type_spec):
@@ -317,16 +322,17 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   # pylint: disable=g-long-lambda
   @parameterized.parameters(*[
-      types.to_type(spec) for spec in ((
+      computation_types.to_type(spec) for spec in ((
           lambda t, u: [
               # In constructing test cases, similarly to the above, occurrences
               # of 't' and 'u' in all expressions below are replaced with
               # abstract types 'T' and 'U'.
               t,
-              types.FunctionType(tf.int32, t),
-              types.FunctionType(None, t),
-              types.FunctionType(t, u)
-          ])(types.AbstractType('T'), types.AbstractType('U')))
+              computation_types.FunctionType(tf.int32, t),
+              computation_types.FunctionType(None, t),
+              computation_types.FunctionType(t, u)
+          ])(computation_types.AbstractType('T'),
+             computation_types.AbstractType('U')))
   ])
   # pylint: enable=g-long-lambda
   def test_check_abstract_types_are_bound_invalid_cases(self, type_spec):
@@ -334,22 +340,24 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
                       type_spec)
 
   @parameterized.parameters(tf.int32, ([tf.int32, tf.int32],),
-                            types.FederatedType(tf.int32, placements.CLIENTS),
+                            computation_types.FederatedType(
+                                tf.int32, placements.CLIENTS),
                             ([tf.complex128, tf.float32, tf.float64],))
   def test_is_sum_compatible_positive_examples(self, type_spec):
     self.assertTrue(type_utils.is_sum_compatible(type_spec))
 
   @parameterized.parameters(tf.bool, tf.string, ([tf.int32, tf.bool],),
-                            types.SequenceType(tf.int32), types.PlacementType(),
-                            types.FunctionType(tf.int32, tf.int32),
-                            types.AbstractType('T'))
+                            computation_types.SequenceType(tf.int32),
+                            computation_types.PlacementType(),
+                            computation_types.FunctionType(tf.int32, tf.int32),
+                            computation_types.AbstractType('T'))
   def test_is_sum_compatible_negative_examples(self, type_spec):
     self.assertFalse(type_utils.is_sum_compatible(type_spec))
 
   def test_check_federated_value_placement(self):
 
     @computations.federated_computation(
-        types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def _(x):
       type_utils.check_federated_value_placement(x, placements.CLIENTS)
       with self.assertRaises(TypeError):
@@ -358,11 +366,13 @@ class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(tf.float32, tf.float64, ([('x', tf.float32),
                                                       ('y', tf.float64)],),
-                            types.FederatedType(tf.float32, placements.CLIENTS))
+                            computation_types.FederatedType(
+                                tf.float32, placements.CLIENTS))
   def test_is_average_compatible_true(self, type_spec):
     self.assertTrue(type_utils.is_average_compatible(type_spec))
 
-  @parameterized.parameters(tf.int32, tf.int64, types.SequenceType(tf.float32))
+  @parameterized.parameters(tf.int32, tf.int64,
+                            computation_types.SequenceType(tf.float32))
   def test_is_average_compatible_false(self, type_spec):
     self.assertFalse(type_utils.is_average_compatible(type_spec))
 

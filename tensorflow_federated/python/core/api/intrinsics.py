@@ -19,8 +19,8 @@ from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import types
 from tensorflow_federated.python.core.api import value_base
 
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -97,14 +97,14 @@ def federated_aggregate(value, zero, accumulate, merge, report):
   report = value_impl.to_value(report)
   for op in [accumulate, merge, report]:
     py_typecheck.check_type(op, value_base.Value)
-    py_typecheck.check_type(op.type_signature, types.FunctionType)
+    py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
 
   accumulate_type_expected = type_constructors.reduction_op(
       zero.type_signature, value.type_signature.member)
   merge_type_expected = type_constructors.reduction_op(zero.type_signature,
                                                        zero.type_signature)
-  report_type_expected = types.FunctionType(zero.type_signature,
-                                            report.type_signature.result)
+  report_type_expected = computation_types.FunctionType(
+      zero.type_signature, report.type_signature.result)
   for op_name, op, type_expected in [('accumulate', accumulate,
                                       accumulate_type_expected),
                                      ('merge', merge, merge_type_expected),
@@ -115,12 +115,12 @@ def federated_aggregate(value, zero, accumulate, merge, report):
                                                         str(type_expected),
                                                         str(op.type_signature)))
 
-  result_type = types.FederatedType(report.type_signature.result,
-                                    placements.SERVER, True)
+  result_type = computation_types.FederatedType(report.type_signature.result,
+                                                placements.SERVER, True)
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_AGGREGATE.uri,
-          types.FunctionType([
+          computation_types.FunctionType([
               value.type_signature, zero.type_signature,
               accumulate_type_expected, merge_type_expected,
               report_type_expected
@@ -173,7 +173,8 @@ def federated_average(value, weight=None):
     weight = value_impl.to_value(weight)
     type_utils.check_federated_value_placement(weight, placements.CLIENTS,
                                                'weight to use in averaging')
-    py_typecheck.check_type(weight.type_signature.member, types.TensorType)
+    py_typecheck.check_type(weight.type_signature.member,
+                            computation_types.TensorType)
     if weight.type_signature.member.shape.ndims != 0:
       raise TypeError('The weight type {} is not a federated scalar.'.format(
           str(weight.type_signature)))
@@ -183,21 +184,21 @@ def federated_average(value, weight=None):
                       'floating-point tensor.'.format(
                           str(weight.type_signature)))
 
-  result_type = types.FederatedType(value.type_signature.member,
-                                    placements.SERVER, True)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placements.SERVER, True)
 
   if weight is not None:
     intrinsic = value_impl.ValueImpl(
         computation_building_blocks.Intrinsic(
             intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE.uri,
-            types.FunctionType([value.type_signature, weight.type_signature],
-                               result_type)))
+            computation_types.FunctionType(
+                [value.type_signature, weight.type_signature], result_type)))
     return intrinsic(value, weight)
   else:
     intrinsic = value_impl.ValueImpl(
         computation_building_blocks.Intrinsic(
             intrinsic_defs.FEDERATED_AVERAGE.uri,
-            types.FunctionType(value.type_signature, result_type)))
+            computation_types.FunctionType(value.type_signature, result_type)))
     return intrinsic(value)
 
 
@@ -228,12 +229,12 @@ def federated_broadcast(value):
   # a call to a helper function that handles it in a uniform manner after
   # implementing support for correctly typechecking federated template types
   # and instantiating template types on concrete arguments.
-  result_type = types.FederatedType(value.type_signature.member,
-                                    placements.CLIENTS, True)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placements.CLIENTS, True)
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_BROADCAST.uri,
-          types.FunctionType(value.type_signature, result_type)))
+          computation_types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
 
 
@@ -254,12 +255,13 @@ def federated_collect(value):
   type_utils.check_federated_value_placement(value, placements.CLIENTS,
                                              'value to be collected')
 
-  result_type = types.FederatedType(
-      types.SequenceType(value.type_signature.member), placements.SERVER, True)
+  result_type = computation_types.FederatedType(
+      computation_types.SequenceType(value.type_signature.member),
+      placements.SERVER, True)
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_COLLECT.uri,
-          types.FunctionType(value.type_signature, result_type)))
+          computation_types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
 
 
@@ -278,7 +280,7 @@ def federated_map(value, mapping_fn):
     A federated value on `CLIENTS` that represents the result of mapping.
 
   Raises:
-    TypeError: if the arguments are not of the appropriates types.
+    TypeError: if the arguments are not of the appropriates computation_types.
   """
 
   # TODO(b/113112108): Possibly lift the restriction that the mapped value must
@@ -287,7 +289,7 @@ def federated_map(value, mapping_fn):
   # is based on to work with federated values of arbitrary placement.
 
   value = value_impl.to_value(value)
-  if isinstance(value.type_signature, types.NamedTupleType):
+  if isinstance(value.type_signature, computation_types.NamedTupleType):
     # TODO(b/120569877): Extend federated_zip to n-tuples
     if len(value.type_signature.elements) == 2:
       # We've been passed a value which the user expects to be zipped.
@@ -300,7 +302,8 @@ def federated_map(value, mapping_fn):
   mapping_fn = value_impl.to_value(mapping_fn)
 
   py_typecheck.check_type(mapping_fn, value_base.Value)
-  py_typecheck.check_type(mapping_fn.type_signature, types.FunctionType)
+  py_typecheck.check_type(mapping_fn.type_signature,
+                          computation_types.FunctionType)
   if not mapping_fn.type_signature.parameter.is_assignable_from(
       value.type_signature.member):
     raise TypeError(
@@ -310,13 +313,13 @@ def federated_map(value, mapping_fn):
             str(value.type_signature.member)))
 
   # TODO(b/113112108): Replace this as noted above.
-  result_type = types.FederatedType(mapping_fn.type_signature.result,
-                                    placements.CLIENTS,
-                                    value.type_signature.all_equal)
+  result_type = computation_types.FederatedType(
+      mapping_fn.type_signature.result, placements.CLIENTS,
+      value.type_signature.all_equal)
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_MAP.uri,
-          types.FunctionType(value.type_signature, result_type)))
+          computation_types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
 
 
@@ -365,7 +368,7 @@ def federated_reduce(value, zero, op):
 
   op = value_impl.to_value(op)
   py_typecheck.check_type(op, value_base.Value)
-  py_typecheck.check_type(op.type_signature, types.FunctionType)
+  py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
   op_type_expected = type_constructors.reduction_op(zero.type_signature,
                                                     value.type_signature.member)
   if not op_type_expected.is_assignable_from(op.type_signature):
@@ -373,12 +376,12 @@ def federated_reduce(value, zero, op):
         str(op_type_expected), str(op.type_signature)))
 
   # TODO(b/113112108): Replace this as noted above.
-  result_type = types.FederatedType(zero.type_signature, placements.SERVER,
-                                    True)
+  result_type = computation_types.FederatedType(zero.type_signature,
+                                                placements.SERVER, True)
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_REDUCE.uri,
-          types.FunctionType(
+          computation_types.FunctionType(
               [value.type_signature, zero.type_signature, op_type_expected],
               result_type)))
   return intrinsic(value, zero, op)
@@ -407,12 +410,12 @@ def federated_sum(value):
             str(value.type_signature)))
 
   # TODO(b/113112108): Replace this as noted above.
-  result_type = types.FederatedType(value.type_signature.member,
-                                    placements.SERVER, True)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placements.SERVER, True)
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_SUM.uri,
-          types.FunctionType(value.type_signature, result_type)))
+          computation_types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
 
 
@@ -439,7 +442,8 @@ def federated_zip(value):
 
   value = value_impl.to_value(value)
   py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, types.NamedTupleType)
+  py_typecheck.check_type(value.type_signature,
+                          computation_types.NamedTupleType)
   num_elements = len(value.type_signature.elements)
   if num_elements != 2:
     raise TypeError(
@@ -447,17 +451,17 @@ def federated_zip(value):
         'two-element tuples, but the tuple given as argument has {} '
         'elements.'.format(num_elements))
   for _, elem in value.type_signature.elements:
-    py_typecheck.check_type(elem, types.FederatedType)
+    py_typecheck.check_type(elem, computation_types.FederatedType)
     if elem.placement is not placements.CLIENTS:
       raise TypeError(
           'The elements of the named tuple to zip must be placed at CLIENTS.')
 
   # TODO(b/113112108): Replace this as noted above.
-  result_type = types.FederatedType(
+  result_type = computation_types.FederatedType(
       [e.member for _, e in value.type_signature.elements], placements.CLIENTS,
       all(e.all_equal for _, e in value.type_signature.elements))
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_ZIP.uri,
-          types.FunctionType(value.type_signature, result_type)))
+          computation_types.FunctionType(value.type_signature, result_type)))
   return intrinsic(value)
