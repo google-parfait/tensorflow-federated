@@ -64,7 +64,7 @@ class ComputationsTest(tf.test.TestCase):
 
   def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(self):
     # Wrapping a lambda.
-    foo = computations.tf_computation(lambda x: x > 0)  # pylint: disable=unused-variable
+    _ = computations.tf_computation(lambda x: x > 0)
 
     # Decorating a Python function.
     @computations.tf_computation
