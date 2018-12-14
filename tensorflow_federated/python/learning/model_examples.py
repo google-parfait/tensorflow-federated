@@ -53,11 +53,11 @@ class LinearRegression(model.Model):
   def local_variables(self):
     return [self._num_examples, self._num_batches, self._loss_sum]
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def _predict(self, x):
     return tf.matmul(x, self._a) + self._b
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def forward_pass(self, batch, training=True):
     del training  # Unused
 
@@ -73,7 +73,7 @@ class LinearRegression(model.Model):
     average_loss = total_loss / tf.to_float(num_examples)
     return model.BatchOutput(loss=average_loss, predictions=predictions)
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def aggregated_outputs(self):
     return collections.OrderedDict(
         [('num_examples', self._num_examples), ('num_batches',
@@ -89,7 +89,7 @@ class LinearRegression(model.Model):
 class TrainableLinearRegression(LinearRegression, model.TrainableModel):
   """A LinearRegression with trivial SGD training."""
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def train_on_batch(self, batch):
     # Most users won't implement this, and let us provide the optimizer.
     fp = self.forward_pass(batch)
