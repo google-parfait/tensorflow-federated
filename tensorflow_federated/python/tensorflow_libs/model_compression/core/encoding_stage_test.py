@@ -141,7 +141,9 @@ class NoneStateAdaptiveEncodingStageTest(tf.test.TestCase,
     self.evaluate(tf.global_variables_initializer())
     test_data = test_utils.TestData(*self.evaluate([x, encoded_x, decoded_x]))
     self.assertEqual(2.0, test_data.x)
-    self.assertEqual(7.0, test_data.encoded_x['values'])
+    self.assertEqual(
+        7.0, test_data.encoded_x[
+            test_utils.SimpleLinearEncodingStage.ENCODED_VALUES_KEY])
     self.assertEqual(2.0, test_data.decoded_x)
 
   def test_as_adaptive_encoding_stage_identity(self):

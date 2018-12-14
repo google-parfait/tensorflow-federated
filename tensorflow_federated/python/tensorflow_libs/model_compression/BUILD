@@ -9,6 +9,8 @@ py_library(
     srcs = ["encoders.py"],
     deps = [
         "//tensorflow_federated/python/tensorflow_libs/model_compression/core:encoding_stage",
+        "//tensorflow_federated/python/tensorflow_libs/model_compression/core:utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
 )
