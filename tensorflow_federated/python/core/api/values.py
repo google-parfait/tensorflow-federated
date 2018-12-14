@@ -61,16 +61,10 @@ def to_value(val, type_spec=None):
     type_spec: An optional type specifier that allows for disambiguating the
       target type (e.g., when two TFF types can be mapped to the same Python
       representations). If not specified, TFF tried to determine the type of
-      the TFF value automatically. NOTE: This is currently unimplemented.
+      the TFF value automatically.
 
   Returns:
     An instance of `Value` of a TFF type as described above.
-
-  Raises:
-    NotImplementedError: Currently when `type_spec` is not `None`.
   """
   # pyformat: enable
-  if type_spec is not None:
-    raise NotImplementedError(
-        'Explicitly specifying the type is not implemented yet.')
-  return value_impl.to_value(val)
+  return value_impl.to_value(val, type_spec)

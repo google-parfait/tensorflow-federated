@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+import numpy as np
 import tensorflow as tf
 
 # TODO(b/118783928) Fix BUILD target visibility.
@@ -54,7 +55,8 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertIsInstance(val, tf.data.Dataset)
       handle = graph.get_tensor_by_name(
           binding.sequence.iterator_string_handle_name)
-      self.assertEqual(str(handle.op.type), 'Placeholder')
+      self.assertIn(
+          str(handle.op.type), ['Placeholder', 'IteratorToStringHandle'])
       self.assertEqual(handle.dtype, tf.string)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       output_dtypes, output_shapes = (
@@ -220,6 +222,18 @@ class GraphUtilsTest(tf.test.TestCase):
                 }, [tf.constant(False)])), (None, [[tf.constant(10)]])]))),
         '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
 
+  def test_capture_result_with_int_sequence_from_tensor(self):
+    ds = tf.data.Dataset.from_tensors(tf.constant(10))
+    self.assertEqual(
+        str(self._checked_capture_result(ds)),
+        'int32*')
+
+  def test_capture_result_with_int_sequence_from_range(self):
+    ds = tf.data.Dataset.range(10)
+    self.assertEqual(
+        str(self._checked_capture_result(ds)),
+        'int64*')
+
   def test_compute_map_from_bindings_with_tuple_of_tensors(self):
     _, source = graph_utils.capture_result_from_graph(
         collections.OrderedDict([('foo', tf.constant(10, name='A')),
@@ -292,6 +306,30 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertEqual(
         str(result.output_shapes),
         'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
+
+  def test_nested_structures_equal(self):
+    self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
+    self.assertFalse(graph_utils.nested_structures_equal([10, 20], ['x']))
+
+  def test_make_data_set_from_elements_for_int_list(self):
+    ds = graph_utils.make_data_set_from_elements(
+        tf.get_default_graph(), [5, 7, 13, 9, 2, 50, 20], tf.int32)
+    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertEqual(
+        tf.Session().run(ds.reduce(np.int32(0), lambda x, y: x + y)), 106)
+
+  def test_make_data_set_from_elements_for_int_pair_list(self):
+    ds = graph_utils.make_data_set_from_elements(
+        tf.get_default_graph(),
+        [{'A': 2, 'B': 3}, {'A': 4, 'B': 5}, {'A': 6, 'B': 7}],
+        [('A', tf.int32), ('B', tf.int32)])
+    self.assertIsInstance(ds, tf.data.Dataset)
+    result = tf.Session().run(ds.reduce(
+        {'A': np.int32(0), 'B': np.int32(1)},
+        lambda x, y: (x['A'] + y['A'], x['B'] * y['B'])))
+    self.assertEqual(set(result.keys()), set(['A', 'B']))
+    self.assertEqual(result['A'], 12)
+    self.assertEqual(result['B'], 105)
 
 
 if __name__ == '__main__':

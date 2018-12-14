@@ -26,6 +26,9 @@ import tensorflow as tf
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
 
+# TODO(b/118783928) Fix BUILD target visibility.
+from tensorflow.python.util import nest
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -185,6 +188,13 @@ def capture_result_from_graph(result):
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
+  elif isinstance(result, tf.data.Dataset):
+    element_type = type_utils.tf_dtypes_and_shapes_to_type(
+        result.output_types, result.output_shapes)
+    handle_name = result.make_one_shot_iterator().string_handle().name
+    return (computation_types.SequenceType(element_type), pb.TensorFlow.Binding(
+        sequence=pb.TensorFlow.SequenceBinding(
+            iterator_string_handle_name=handle_name)))
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         py_typecheck.type_string(type(result))))
@@ -335,3 +345,64 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       return make_dataset_from_string_handle(handle, type_spec.element)
   else:
     raise ValueError('Unsupported type \'{}\'.'.format(str(type_spec)))
+
+
+def nested_structures_equal(x, y):
+  """Determines if nested structures `x` and `y` are equal.
+
+  Args:
+    x: A nested structure.
+    y: Another nested structure.
+
+  Returns:
+    `True` iff `x` and `y` are equal, `False` otherwise.
+  """
+  try:
+    nest.assert_same_structure(x, y)
+  except ValueError:
+    return False
+  return nest.flatten(x) == nest.flatten(y)
+
+
+def make_data_set_from_elements(graph, elements, element_type):
+  """Creates a `tf.data.Dataset` in `graph` from explicitly listed `elements`.
+
+  Args:
+    graph: The graph in which to construct the `tf.data.Dataset`.
+    elements: A list of elements.
+    element_type: The type of elements.
+
+  Returns:
+    The constructed `tf.data.Dataset` instance.
+
+  Raises:
+    TypeError: If element types do not match `element_type`.
+  """
+  # TODO(b/121032194): It would be great not to have to stitch the input by
+  # concatenation, as done below. Upgrade this to something better after we
+  # identify a better solution.
+
+  py_typecheck.check_type(graph, tf.Graph)
+  py_typecheck.check_type(elements, list)
+  element_type = computation_types.to_type(element_type)
+  py_typecheck.check_type(element_type, computation_types.Type)
+  output_types, output_shapes = (
+      type_utils.type_to_tf_dtypes_and_shapes(element_type))
+  with graph.as_default():
+    if not elements:
+      # Just return an empty data set.
+      return tf.data.Dataset.from_generator(
+          (lambda: ()), output_types=output_types, output_shapes=output_shapes)
+    elif len(elements) > 1:
+      return make_data_set_from_elements(
+          graph, elements[:-1], element_type).concatenate(
+              make_data_set_from_elements(graph, elements[-1:], element_type))
+    else:
+      ds = tf.data.Dataset.from_tensors(elements[0])
+      if not nested_structures_equal(ds.output_types, output_types):
+        raise TypeError('Expected dtypes {}, found {}.'.format(
+            str(output_types), str(ds.output_types)))
+      if not nested_structures_equal(ds.output_shapes, output_shapes):
+        raise TypeError('Expected shapes {}, found {}.'.format(
+            str(output_shapes), str(ds.output_shapes)))
+      return ds

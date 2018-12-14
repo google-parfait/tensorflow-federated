@@ -188,6 +188,21 @@ class ValueImplTest(absltest.TestCase):
     self.assertIsInstance(val, value_base.Value)
     self.assertEqual(str(val.type_signature), '( -> int32)')
 
+  def test_to_value_with_int_and_int_type_spec(self):
+    val = value_impl.to_value(10, tf.int32)
+    self.assertIsInstance(val, value_base.Value)
+    self.assertEqual(str(val.type_signature), 'int32')
+
+  def test_to_value_with_int_and_bool_type_spec(self):
+    with self.assertRaises(TypeError):
+      value_impl.to_value(10, tf.bool)
+
+  def test_to_value_with_int_list_and_int_sequence_type_spec(self):
+    val = value_impl.to_value(
+        [1, 2, 3], computation_types.SequenceType(tf.int32))
+    self.assertIsInstance(val, value_base.Value)
+    self.assertEqual(str(val.type_signature), 'int32*')
+
   def test_constant_mapping(self):
     raw_int_val = value_impl.to_value(10)
     self.assertIsInstance(raw_int_val, value_base.Value)
