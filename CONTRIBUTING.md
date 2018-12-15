@@ -36,6 +36,9 @@ This project follows
 
 *   Python code must support Python2 and Python3 usage.
 
+*   Generally, function names should be verbs, e.g. `to_var_dict` rather than
+    `var_dict`.
+
 ### TensorFlow-specific Guidelines.
 
 *   TensorFlow code should follow the

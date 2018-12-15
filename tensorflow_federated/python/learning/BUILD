@@ -7,6 +7,16 @@ package(default_visibility = ["//tensorflow_federated/python/learning:__subpacka
 licenses(["notice"])  # Apache 2.0
 
 py_library(
+    name = "federated_averaging",
+    srcs = ["federated_averaging.py"],
+    deps = [
+        ":model",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "model",
     srcs = ["model.py"],
     deps = ["@six_archive//:six"],
@@ -17,6 +27,17 @@ py_library(
     srcs = ["model_examples.py"],
     deps = [
         ":model",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "federated_averaging_test",
+    srcs = ["federated_averaging_test.py"],
+    deps = [
+        ":federated_averaging",
+        ":model_examples",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
