@@ -19,7 +19,6 @@ py_test(
     srcs = ["tensor_utils_test.py"],
     deps = [
         ":tensor_utils",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
