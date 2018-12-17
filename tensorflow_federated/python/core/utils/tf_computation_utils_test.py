@@ -21,11 +21,12 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import test_utils
 
 from tensorflow_federated.python.core.utils import tf_computation_utils
 
 
-class TfComputationUtilsTest(tf.test.TestCase):
+class TfComputationUtilsTest(test_utils.TffTestCase):
 
   def test_get_variables_with_tensor_type(self):
     x = tf_computation_utils.get_variables('foo', tf.int32)
@@ -39,9 +40,9 @@ class TfComputationUtilsTest(tf.test.TestCase):
                                                    ('y', tf.string), tf.bool])
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertEqual(
-        str(x), '<x=<tf.Variable \'foo/x:0\' shape=() dtype=int32_ref>,'
-        'y=<tf.Variable \'foo/y:0\' shape=() dtype=string_ref>,'
-        '<tf.Variable \'foo/2:0\' shape=() dtype=bool_ref>>')
+        str(x), '<x=<tf.Variable \'foo/x:0\' shape=() dtype=int32>,'
+        'y=<tf.Variable \'foo/y:0\' shape=() dtype=string>,'
+        '<tf.Variable \'foo/2:0\' shape=() dtype=bool>>')
 
 
 if __name__ == '__main__':

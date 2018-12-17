@@ -18,15 +18,16 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
-from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
+
+from tensorflow_federated.python.common_libs import test_utils
 
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
 
 
-class FederatedAveragingTest(tf.test.TestCase, absltest.TestCase):
+class FederatedAveragingTest(test_utils.TffTestCase):
 
   def setUp(self):
     super(FederatedAveragingTest, self).setUp()

@@ -146,6 +146,7 @@ py_test(
     srcs = ["computation_wrapper_instances_test.py"],
     deps = [
         ":computation_wrapper_instances",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -158,6 +159,7 @@ py_test(
     deps = [
         ":computation_wrapper",
         ":type_utils",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -274,6 +276,7 @@ py_test(
     deps = [
         ":func_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -304,6 +307,7 @@ py_test(
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -439,6 +443,7 @@ py_test(
     deps = [
         ":tensorflow_deserialization",
         ":tensorflow_serialization",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -465,6 +470,7 @@ py_test(
     deps = [
         ":tensorflow_serialization",
         ":type_serialization",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -481,6 +487,7 @@ py_test(
     srcs = ["test_utils_test.py"],
     deps = [
         ":test_utils",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -586,6 +593,7 @@ py_test(
     srcs = ["type_serialization_test.py"],
     deps = [
         ":type_serialization",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -616,6 +624,7 @@ py_test(
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",

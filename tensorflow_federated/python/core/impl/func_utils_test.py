@@ -29,14 +29,14 @@ import tensorflow as tf
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
 
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import func_utils as fu
 
 
-class FuncUtilsTest(tf.test.TestCase, parameterized.TestCase):
+class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
 
   def test_is_defun(self):
     self.assertTrue(fu.is_defun(tf_function.Defun()(lambda x: None)))

@@ -23,11 +23,13 @@ import tensorflow as tf
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
 
+from tensorflow_federated.python.common_libs import test_utils
+
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
 
-class TensorFlowDeserializationTest(tf.test.TestCase):
+class TensorFlowDeserializationTest(test_utils.TffTestCase):
 
   def test_deserialize_and_call_tf_computation_with_add_one(self):
     add_one = tensorflow_serialization.serialize_py_func_as_tf_computation(

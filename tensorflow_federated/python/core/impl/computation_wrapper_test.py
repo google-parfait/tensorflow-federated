@@ -20,8 +20,9 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.common_libs import test_utils
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import func_utils
 
@@ -48,7 +49,7 @@ class WrappedForTest(func_utils.ConcreteFunction):
 test_wrap = computation_wrapper.ComputationWrapper(WrappedForTest)
 
 
-class ComputationWrapperTest(tf.test.TestCase):
+class ComputationWrapperTest(test_utils.TffTestCase):
 
   # NOTE: Many tests below silence certain linter warnings. These warnings are
   # not applicable, since it's the wrapper code, not not the dummy functions

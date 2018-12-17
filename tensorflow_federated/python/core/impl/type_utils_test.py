@@ -24,6 +24,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test_utils as common_test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 
 from tensorflow_federated.python.core.api import computation_types
@@ -36,7 +37,7 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
 
-class TypeUtilsTest(tf.test.TestCase, parameterized.TestCase):
+class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
 
   def test_infer_type_with_none(self):
     self.assertEqual(type_utils.infer_type(None), None)

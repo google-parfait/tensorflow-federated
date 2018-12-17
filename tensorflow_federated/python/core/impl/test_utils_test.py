@@ -20,10 +20,12 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test_utils as common_test_utils
+
 from tensorflow_federated.python.core.impl import test_utils
 
 
-class TestUtilsTest(tf.test.TestCase):
+class TestUtilsTest(common_test_utils.TffTestCase):
 
   def test_nested_structures_are_same_where_they_are_same(self):
     test_utils.assert_nested_struct_eq({'a': 10}, {'a': 10})

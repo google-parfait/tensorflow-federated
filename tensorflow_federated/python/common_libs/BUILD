@@ -43,3 +43,13 @@ py_test(
         "@six_archive//:six",
     ],
 )
+
+py_library(
+    name = "test_utils",
+    testonly = 1,
+    srcs = ["test_utils.py"],
+    deps = [
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)

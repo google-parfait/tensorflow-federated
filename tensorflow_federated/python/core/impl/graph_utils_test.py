@@ -25,19 +25,18 @@ import tensorflow as tf
 
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
-
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 
+from tensorflow_federated.python.common_libs import test_utils as common_test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
 
 
-class GraphUtilsTest(tf.test.TestCase):
+class GraphUtilsTest(common_test_utils.TffTestCase):
 
   def _assert_binding_matches_type_and_value(self, binding, type_spec, val,
                                              graph):

@@ -22,10 +22,11 @@ from absl.testing import parameterized
 import numpy as np
 import six
 import tensorflow as tf
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.learning import model_examples
 
 
-class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
+class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
 
   def setUp(self):
     super(ModelExamplesTest, self).setUp()

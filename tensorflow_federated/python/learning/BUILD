@@ -47,7 +47,7 @@ py_test(
     deps = [
         ":federated_averaging",
         ":model_examples",
-        "@absl_py//absl/testing:absltest",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -57,6 +57,7 @@ py_test(
     srcs = ["model_examples_test.py"],
     deps = [
         ":model_examples",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",

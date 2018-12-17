@@ -34,6 +34,7 @@ py_test(
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

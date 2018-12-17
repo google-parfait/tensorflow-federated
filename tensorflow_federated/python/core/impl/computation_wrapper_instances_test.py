@@ -20,14 +20,14 @@ from __future__ import print_function
 # Dependency imports
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 
 
-class ComputationWrapperInstancesTest(tf.test.TestCase):
+class ComputationWrapperInstancesTest(test_utils.TffTestCase):
 
   def test_tf_wrapper_with_one_op_py_func(self):
 

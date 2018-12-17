@@ -64,6 +64,7 @@ py_test(
         ":computation_types",
         ":computations",
         ":value_base",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
