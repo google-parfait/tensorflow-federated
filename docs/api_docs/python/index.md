@@ -20,6 +20,8 @@
 *  <a href="./tff/learning.md"><code>tff.learning</code></a>
 *  <a href="./tff/learning/BatchOutput.md"><code>tff.learning.BatchOutput</code></a>
 *  <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>
+*  <a href="./tff/learning/framework.md"><code>tff.learning.framework</code></a>
+*  <a href="./tff/learning/framework/ClientOutput.md"><code>tff.learning.framework.ClientOutput</code></a>
 *  <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *  <a href="./tff/to_type.md"><code>tff.to_type</code></a>
 *  <a href="./tff/to_value.md"><code>tff.to_value</code></a>

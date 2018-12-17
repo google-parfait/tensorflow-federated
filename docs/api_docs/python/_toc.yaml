@@ -50,6 +50,12 @@ toc:
       path: /federated/api_docs/python/tff/learning/BatchOutput
     - title: Model
       path: /federated/api_docs/python/tff/learning/Model
+    - title: framework
+      section:
+      - title: Overview
+        path: /federated/api_docs/python/tff/learning/framework
+      - title: ClientOutput
+        path: /federated/api_docs/python/tff/learning/framework/ClientOutput
   - title: tff.utils
     section:
     - title: Overview

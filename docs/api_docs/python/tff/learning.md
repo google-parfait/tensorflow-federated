@@ -5,7 +5,11 @@
 
 # Module: tff.learning
 
-Code to implement federated learning in TFF.
+The public API for model developers using federated learning algorithms.
+
+## Modules
+
+[`framework`](../tff/learning/framework.md) module: The public API for contributors who develop federated learning algorithms.
 
 ## Classes
 

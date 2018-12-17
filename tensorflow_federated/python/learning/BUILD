@@ -13,6 +13,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":model",
+        "//tensorflow_federated/python/learning/framework",
     ],
 )
 

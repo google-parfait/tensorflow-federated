@@ -27,9 +27,11 @@ classes of users:
   part of TFF proper, or maintain them either externally, or in a `research`
   directory during the development phase.
 
-  TODO(b/117177413): Either create a second interface surface with curated
-  symbols, or change build visibility rules to make everything public if this
-  turns out to be impractical (TBD).
+  The public API surface that supports this class of users is currently under
+  development. The curated list of symbols that make up this API is emerging
+  in `framework/__init__.py`, and some of the components may eventually migrate
+  there, but most are nested directly in `learning`. The symbols in this API
+  are included in the documentation generated for `tff.learning.framework`.
 
   TODO(b/117177413): Create the `research` directory and update the pointer to
   a more specific location.
