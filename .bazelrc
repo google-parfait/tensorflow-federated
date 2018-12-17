@@ -16,3 +16,11 @@ build -c opt
 build --copt=-march=native
 build --host_copt=-march=native
 build --copt=-O3
+
+# Disable Tensorflow extensions that are not needed for Tensorflow Federated.
+build --define=no_aws_support=true
+build --define=no_hdfs_support=true
+build --define=no_kafka_support=true
+build --define=no_ignite_support=true
+build --define=no_nccl_support=true
+# TODO(b/121151810): uncomment: build --define=no_gcp_support=true
