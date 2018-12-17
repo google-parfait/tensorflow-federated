@@ -11,6 +11,8 @@ TensorFlow Federated library.
 
 ## Modules
 
+[`learning`](./tff/learning.md) module: Code to implement federated learning in TFF.
+
 [`utils`](./tff/utils.md) module: Utility classes/functions built on top of TensorFlow Federated Core API.
 
 ## Classes

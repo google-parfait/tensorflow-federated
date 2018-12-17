@@ -6,6 +6,16 @@ package(default_visibility = ["//tensorflow_federated/python/learning:__subpacka
 
 licenses(["notice"])  # Apache 2.0
 
+# This is the import for clients that use federated learning (see `README.md`).
+py_library(
+    name = "learning",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":model",
+    ],
+)
+
 py_library(
     name = "model",
     srcs = ["model.py"],

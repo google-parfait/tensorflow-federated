@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.python import learning
+
 from tensorflow_federated.python.core import utils
 
 # We are doing a wildcard import here, since symbols to export have already been
@@ -24,6 +26,7 @@ from tensorflow_federated.python.core import utils
 # pylint: disable=wildcard-import
 from tensorflow_federated.python.core.api import *
 # pylint: enable=wildcard-import
+
 
 # Used by doc generation script.
 _allowed_symbols = [
@@ -45,6 +48,7 @@ _allowed_symbols = [
     "federated_reduce",
     "federated_sum",
     "federated_zip",
+    "learning",
     "tf_computation",
     "to_type",
     "to_value",

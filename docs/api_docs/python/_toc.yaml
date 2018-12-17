@@ -42,6 +42,14 @@ toc:
       path: /federated/api_docs/python/tff/to_value
     - title: Type
       path: /federated/api_docs/python/tff/Type
+  - title: tff.learning
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/learning
+    - title: BatchOutput
+      path: /federated/api_docs/python/tff/learning/BatchOutput
+    - title: Model
+      path: /federated/api_docs/python/tff/learning/Model
   - title: tff.utils
     section:
     - title: Overview

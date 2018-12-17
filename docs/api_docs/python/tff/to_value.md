@@ -48,14 +48,9 @@ computations thus matches the types listed here.
 * <b>`type_spec`</b>: An optional type specifier that allows for disambiguating the
     target type (e.g., when two TFF types can be mapped to the same Python
     representations). If not specified, TFF tried to determine the type of
-    the TFF value automatically. NOTE: This is currently unimplemented.
+    the TFF value automatically.
 
 
 #### Returns:
 
 An instance of `Value` of a TFF type as described above.
-
-
-#### Raises:
-
-* <b>`NotImplementedError`</b>: Currently when `type_spec` is not `None`.

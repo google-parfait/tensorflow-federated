@@ -9,5 +9,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/api",
         "//tensorflow_federated/python/core/utils",
+        "//tensorflow_federated/python/learning",
     ],
 )

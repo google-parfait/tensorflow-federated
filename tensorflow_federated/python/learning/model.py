@@ -64,7 +64,7 @@ class Model(object):
   are sent to the server.
 
   All `tf.Variables` should be introduced in `__init__`; this could move to a
-  build() method more inline with Keras (see
+  `build()` method more inline with Keras (see
   https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in
   the future.
   """
@@ -129,7 +129,8 @@ class Model(object):
 
     In federated learning, the values returned by this method will typically
     be further aggregated across clients and made available on the server.
-    # TODO(b/120147094): Support specification of aggregation across clients.
+
+    TODO(b/120147094): Support specification of aggregation across clients.
 
     This method returns results from aggregating across *all* previous calls
     to `forward_pass`, most typically metrics like Accuracy and Loss. If needed,
