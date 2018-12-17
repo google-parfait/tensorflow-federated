@@ -17,13 +17,38 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
+
 # Dependency imports
+import six
 import tensorflow as tf
 
 # TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
 
 from tensorflow_federated.python.common_libs import py_typecheck
+
+
+def to_var_dict(variables):
+  """Returns an `OrderedDict` of `vars`, keyed by names in lexical order."""
+  tuples = []
+  for v in variables:
+    py_typecheck.check_type(v, tf.Variable, 'v')
+    tuples.append((v.op.name, v))
+  return collections.OrderedDict(sorted(tuples))
+
+
+def to_odict(d):
+  """Converts d to an OrderedDict with lexically sorted string keys."""
+  if isinstance(d, collections.OrderedDict):
+    return d
+  py_typecheck.check_type(d, dict)
+  items = []
+  for k, v in six.iteritems(d):
+    py_typecheck.check_type(k, six.string_types)
+    items.append((k, v))
+  return collections.OrderedDict(sorted(items))
 
 
 def is_scalar(tensor):

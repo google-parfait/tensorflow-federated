@@ -40,6 +40,9 @@ class LinearRegression(model.Model):
     self._a = tf.Variable(
         tf.zeros(shape=(feature_dim, 1)), name='a', trainable=True)
     self._b = tf.Variable(0.0, name='b', trainable=True)
+    # Define a non-trainable model variable (another bias term)
+    # for code coverage in testing.
+    self._c = tf.Variable(0.0, name='c', trainable=False)
 
   @property
   def trainable_variables(self):
@@ -47,7 +50,7 @@ class LinearRegression(model.Model):
 
   @property
   def non_trainable_variables(self):
-    return []
+    return [self._c]
 
   @property
   def local_variables(self):
@@ -55,7 +58,7 @@ class LinearRegression(model.Model):
 
   @tf.contrib.eager.defun(autograph=False)
   def _predict(self, x):
-    return tf.matmul(x, self._a) + self._b
+    return tf.matmul(x, self._a) + self._b + self._c
 
   @tf.contrib.eager.defun(autograph=False)
   def forward_pass(self, batch, training=True):
@@ -70,7 +73,7 @@ class LinearRegression(model.Model):
     tf.assign_add(self._num_examples, num_examples)
     tf.assign_add(self._num_batches, 1)
 
-    average_loss = total_loss / tf.to_float(num_examples)
+    average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model.BatchOutput(loss=average_loss, predictions=predictions)
 
   @tf.contrib.eager.defun(autograph=False)
