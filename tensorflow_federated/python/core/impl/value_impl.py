@@ -177,7 +177,8 @@ class ValueImpl(value_base.Value):
                 intrinsic_defs.GENERIC_PLUS.uri,
                 computation_types.FunctionType(
                     [self.type_signature, self.type_signature],
-                    self.type_signature)), to_value([self, other])))
+                    self.type_signature)),
+            ValueImpl.get_comp(to_value([self, other]))))
 
 
 def _wrap_constant_as_value(const):

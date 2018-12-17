@@ -373,6 +373,8 @@ class Call(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
     """
     py_typecheck.check_type(func, ComputationBuildingBlock)
+    if arg is not None:
+      py_typecheck.check_type(arg, ComputationBuildingBlock)
     if not isinstance(func.type_signature, computation_types.FunctionType):
       raise TypeError('Expected func to be of a functional type, '
                       'but found that its type is {}.'.format(
