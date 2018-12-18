@@ -16,7 +16,8 @@ source.
 See the [get started](docs/get_started.md) documentation for instructions on
 how to use TensorFlow Federated.
 
-The [Code Style, Guidelines, and Best Practice](CONTRIBUTING.md#guidelines)
+The
+[Code Style, Guidelines, and Best Practice](CONTRIBUTING.md#code-style-guidelines-and-best-practices)
 for developers may also be useful to review.
 
 ## Contributing
