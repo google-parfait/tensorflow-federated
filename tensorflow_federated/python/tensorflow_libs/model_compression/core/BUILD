@@ -16,6 +16,7 @@ py_library(
 py_test(
     name = "encoding_stage_test",
     srcs = ["encoding_stage_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":encoding_stage",
         "@absl_py//absl/testing:parameterized",
@@ -35,6 +36,7 @@ py_library(
 py_test(
     name = "utils_test",
     srcs = ["utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":utils",
         "@absl_py//absl/testing:parameterized",

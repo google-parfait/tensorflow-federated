@@ -21,18 +21,15 @@ import inspect
 import types
 
 # Dependency imports
+
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl import type_serialization
-
 from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 

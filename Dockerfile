@@ -14,7 +14,7 @@
 FROM ubuntu:16.04
 
 # Install the python developement environment
-ARG USE_PYTHON_3
+ARG USE_PYTHON_3=True
 ARG _PY_SUFFIX=${USE_PYTHON_3:+3}
 ARG PYTHON=python${_PY_SUFFIX}
 ARG PIP=pip${_PY_SUFFIX}

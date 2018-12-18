@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -148,9 +149,7 @@ class SplitMergeDictTest(parameterized.TestCase):
       ({'a': 1.0}, {'a': 2.0}, ValueError),  # Both values are set.
       ({1: None}, {1.0: 'value'}, ValueError))  # 1 and 1.0 are not the same.
   # pyformat: enable
-  def test_merge_same_structure_dicts_raises(self,
-                                             bad_dict1,
-                                             bad_dict2,
+  def test_merge_same_structure_dicts_raises(self, bad_dict1, bad_dict2,
                                              error_type):
     """Tests that `merge_same_structure_dicts` raises appropriate error."""
     with self.assertRaises(error_type):

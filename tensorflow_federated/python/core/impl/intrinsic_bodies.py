@@ -19,7 +19,6 @@ from __future__ import print_function
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-
 from tensorflow_federated.python.core.impl import intrinsic_utils
 
 

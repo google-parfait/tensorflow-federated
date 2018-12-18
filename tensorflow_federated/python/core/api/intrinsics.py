@@ -18,11 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_constructors

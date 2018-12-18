@@ -21,6 +21,7 @@ py_test(
     name = "compiler_pipeline_test",
     size = "small",
     srcs = ["compiler_pipeline_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":compiler_pipeline",
         ":computation_building_blocks",
@@ -55,6 +56,7 @@ py_test(
     name = "computation_building_blocks_test",
     size = "small",
     srcs = ["computation_building_blocks_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":tensorflow_serialization",
@@ -83,6 +85,7 @@ py_library(
 py_test(
     name = "computation_building_utils_test",
     srcs = ["computation_building_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":computation_building_utils",
@@ -111,6 +114,7 @@ py_test(
     name = "computation_impl_test",
     size = "small",
     srcs = ["computation_impl_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_impl",
         ":type_serialization",
@@ -144,6 +148,7 @@ py_test(
     name = "computation_wrapper_instances_test",
     size = "small",
     srcs = ["computation_wrapper_instances_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/common_libs:test_utils",
@@ -156,6 +161,7 @@ py_test(
     name = "computation_wrapper_test",
     size = "small",
     srcs = ["computation_wrapper_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_wrapper",
         ":type_utils",
@@ -185,6 +191,7 @@ py_test(
     name = "context_stack_test",
     size = "small",
     srcs = ["context_stack_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":context_base",
         ":context_stack",
@@ -222,6 +229,7 @@ py_test(
     name = "executor_context_test",
     size = "small",
     srcs = ["executor_context_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":executor_base",
@@ -247,6 +255,7 @@ py_test(
     name = "federated_computation_context_test",
     size = "small",
     srcs = ["federated_computation_context_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":federated_computation_context",
         "//tensorflow_federated/python/core/api:computations",
@@ -273,6 +282,7 @@ py_test(
     name = "func_utils_test",
     size = "small",
     srcs = ["func_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":func_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -280,6 +290,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 
@@ -301,6 +312,7 @@ py_test(
     name = "graph_utils_test",
     size = "small",
     srcs = ["graph_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":graph_utils",
         ":test_utils",
@@ -327,6 +339,7 @@ py_test(
     name = "intrinsic_bodies_test",
     size = "small",
     srcs = ["intrinsic_bodies_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -354,6 +367,7 @@ py_test(
     name = "intrinsic_defs_test",
     size = "small",
     srcs = ["intrinsic_defs_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":intrinsic_defs",
         ":type_utils",
@@ -378,6 +392,7 @@ py_test(
     name = "intrinsic_utils_test",
     size = "small",
     srcs = ["intrinsic_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":intrinsic_utils",
         "@absl_py//absl/testing:absltest",
@@ -394,6 +409,7 @@ py_test(
     name = "placement_literals_test",
     size = "small",
     srcs = ["placement_literals_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":placement_literals",
         "@absl_py//absl/testing:absltest",
@@ -414,6 +430,7 @@ py_test(
     name = "reference_executor_test",
     size = "small",
     srcs = ["reference_executor_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_impl",
         ":reference_executor",
@@ -440,6 +457,7 @@ py_test(
     name = "tensorflow_deserialization_test",
     size = "small",
     srcs = ["tensorflow_deserialization_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":tensorflow_deserialization",
         ":tensorflow_serialization",
@@ -467,6 +485,7 @@ py_test(
     name = "tensorflow_serialization_test",
     size = "small",
     srcs = ["tensorflow_serialization_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":tensorflow_serialization",
         ":type_serialization",
@@ -479,12 +498,14 @@ py_test(
 py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
+    deps = ["@six_archive//:six"],
 )
 
 py_test(
     name = "test_utils_test",
     size = "small",
     srcs = ["test_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":test_utils",
         "//tensorflow_federated/python/common_libs:test_utils",
@@ -509,6 +530,7 @@ py_test(
     name = "tf_computation_context_test",
     size = "small",
     srcs = ["tf_computation_context_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":context_stack",
         ":tf_computation_context",
@@ -539,6 +561,7 @@ py_test(
     name = "transformations_test",
     size = "small",
     srcs = ["transformations_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -568,6 +591,7 @@ py_test(
     name = "type_constructors_test",
     size = "small",
     srcs = ["type_constructors_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":type_constructors",
         "@absl_py//absl/testing:absltest",
@@ -591,6 +615,7 @@ py_test(
     name = "type_serialization_test",
     size = "small",
     srcs = ["type_serialization_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":type_serialization",
         "//tensorflow_federated/python/common_libs:test_utils",
@@ -618,6 +643,7 @@ py_test(
     name = "type_utils_test",
     size = "small",
     srcs = ["type_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":test_utils",
@@ -659,6 +685,7 @@ py_test(
     name = "value_impl_test",
     size = "small",
     srcs = ["value_impl_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
         ":value_impl",
@@ -669,5 +696,6 @@ py_test(
         "//tensorflow_federated/python/core/api:value_base",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )

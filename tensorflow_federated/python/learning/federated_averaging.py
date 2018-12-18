@@ -29,7 +29,9 @@ import collections
 import itertools
 
 # Dependency imports
+
 import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -160,8 +162,7 @@ def client_tf(model, dataset, initial_model):
       initial_state=tf.constant(0.0), reduce_func=reduce_fn)
 
   # Compute the deltas of *only* the trainable variables.
-  model_delta = nest.map_structure(tf.subtract,
-                                   model_vars.trainable_variables,
+  model_delta = nest.map_structure(tf.subtract, model_vars.trainable_variables,
                                    initial_model.trainable_variables)
 
   # TODO(b/117226648): Add a check that all of the model deltas are finite;

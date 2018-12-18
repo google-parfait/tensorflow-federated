@@ -22,16 +22,14 @@ import inspect
 import itertools
 
 # Dependency imports
+
 from absl.testing import parameterized
 import six
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
-
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import func_utils as fu
 

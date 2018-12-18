@@ -17,6 +17,7 @@ py_test(
     name = "training_test",
     size = "small",
     srcs = ["training_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":training",
         "@org_tensorflow//tensorflow:tensorflow_py",

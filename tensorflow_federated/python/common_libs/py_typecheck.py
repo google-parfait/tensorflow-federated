@@ -17,7 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import six
+# Dependency imports
+
+from six.moves import builtins
 
 
 def check_type(target, type_spec, label=None):
@@ -62,7 +64,7 @@ def type_string(type_spec):
   """
   _check_is_type_spec(type_spec)
   if isinstance(type_spec, type):
-    if type_spec.__module__ == six.moves.builtins.__name__:
+    if type_spec.__module__ == builtins.__name__:
       return type_spec.__name__
     else:
       return '{}.{}'.format(type_spec.__module__, type_spec.__name__)

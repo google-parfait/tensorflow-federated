@@ -18,12 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core import api as fc
 
 

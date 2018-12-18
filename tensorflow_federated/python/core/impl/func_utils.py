@@ -22,18 +22,16 @@ import inspect
 import types
 
 # Dependency imports
+
 import six
+from six.moves import range
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import function as tf_function
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -341,8 +339,7 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
           raise TypeError('Argument named {} is missing.'.format(name))
         else:
           raise TypeError('Argument at position {} is missing.'.format(index))
-      positions_missing = set(six.moves.range(
-          len(args))).difference(positions_used)
+      positions_missing = set(range(len(args))).difference(positions_used)
       if positions_missing:
         raise TypeError(
             'Positional arguments at {} not used.'.format(positions_missing))

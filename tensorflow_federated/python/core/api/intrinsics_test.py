@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+
 from absl.testing import absltest
 import tensorflow as tf
 

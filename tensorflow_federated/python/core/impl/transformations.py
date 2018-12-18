@@ -18,14 +18,13 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 import six
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 

@@ -18,11 +18,11 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_context

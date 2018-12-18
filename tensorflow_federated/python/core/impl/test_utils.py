@@ -17,7 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# TODO(b/118783928) Fix BUILD target visibility.
+# Dependency imports
+
+from six.moves import zip
+
 from tensorflow.python.util import nest
 
 

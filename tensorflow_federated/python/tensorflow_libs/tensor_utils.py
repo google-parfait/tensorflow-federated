@@ -19,14 +19,12 @@ from __future__ import print_function
 
 import collections
 
-
 # Dependency imports
+
 import six
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
-
 from tensorflow_federated.python.common_libs import py_typecheck
 
 

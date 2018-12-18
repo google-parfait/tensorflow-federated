@@ -18,10 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from absl.testing import parameterized
 import numpy as np
-import six
+from six.moves import range
 import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.learning import model_examples
 
@@ -81,7 +83,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
     with self.session() as sess:
       sess.run(init_op)
       num_iters = 10
-      for _ in six.moves.range(num_iters):
+      for _ in range(num_iters):
         r = sess.run(train_op, feed_dict=train_feed_dict)
         # Loss should be decreasing.
         self.assertLess(r.loss, prior_loss)

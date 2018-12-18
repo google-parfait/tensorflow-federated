@@ -35,11 +35,11 @@ from __future__ import print_function
 import abc
 
 # Dependency imports
+
 import enum
 import six
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.util import nest
 
 

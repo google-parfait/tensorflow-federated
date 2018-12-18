@@ -21,11 +21,12 @@ import abc
 import collections
 
 # Dependency imports
+
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.impl import placement_literals
 
 
@@ -124,7 +125,7 @@ class TensorType(Type):
       # assignable from the corresponding dimensions in the second.
       return ((x.ndims == y.ndims) and ((x.dims is None) or all(
           _dimension_is_assignable_from(x.dims[k], y.dims[k])
-          for k in six.moves.range(x.ndims))))
+          for k in range(x.ndims))))
 
     return (isinstance(other, TensorType) and (self.dtype == other.dtype) and
             _shape_is_assignable_from(self.shape, other.shape))
@@ -203,7 +204,7 @@ class NamedTupleType(Type):
     return ((len(self._elements) == len(other_elements)) and all(
         ((self._elements[k][0] in [other_elements[k][0], None]) and
          (self._elements[k][1].is_assignable_from(other_elements[k][1])))
-        for k in six.moves.range(len(self._elements))))
+        for k in range(len(self._elements))))
 
   def __repr__(self):
 

@@ -31,6 +31,7 @@ py_test(
     name = "tf_computation_utils_test",
     size = "small",
     srcs = ["tf_computation_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

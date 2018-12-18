@@ -20,17 +20,17 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+
 from absl.testing import absltest
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-
 from tensorflow_federated.python.core.impl import computation_building_blocks as bb
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -198,8 +198,8 @@ class ValueImplTest(absltest.TestCase):
       value_impl.to_value(10, tf.bool)
 
   def test_to_value_with_int_list_and_int_sequence_type_spec(self):
-    val = value_impl.to_value(
-        [1, 2, 3], computation_types.SequenceType(tf.int32))
+    val = value_impl.to_value([1, 2, 3],
+                              computation_types.SequenceType(tf.int32))
     self.assertIsInstance(val, value_base.Value)
     self.assertEqual(str(val.type_signature), 'int32*')
 

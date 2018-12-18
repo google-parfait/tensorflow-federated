@@ -18,9 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.impl import executor_base
 
 

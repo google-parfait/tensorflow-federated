@@ -10,6 +10,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 
@@ -17,6 +18,7 @@ py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":tensor_utils",
         "@absl_py//absl/testing:absltest",

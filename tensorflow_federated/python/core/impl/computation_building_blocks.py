@@ -21,15 +21,13 @@ import abc
 import zlib
 
 # Dependency imports
+
 import six
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils

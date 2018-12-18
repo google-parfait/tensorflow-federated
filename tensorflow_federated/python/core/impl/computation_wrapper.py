@@ -22,9 +22,7 @@ import types
 # Dependency imports
 
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import func_utils
 
 

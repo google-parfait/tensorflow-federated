@@ -18,11 +18,11 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
-
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
 
@@ -49,8 +49,10 @@ class FederatedAveragingTest(test_utils.TffTestCase):
     dataset = dataset.repeat(5).batch(3)
 
     initial_model = federated_averaging.ModelVars(
-        trainable_variables={'a': tf.constant([[0.0], [0.0]]),
-                             'b': tf.constant(0.0)},
+        trainable_variables={
+            'a': tf.constant([[0.0], [0.0]]),
+            'b': tf.constant(0.0)
+        },
         non_trainable_variables={'c': 0.0})
 
     init_op = federated_averaging.model_initializer(model)

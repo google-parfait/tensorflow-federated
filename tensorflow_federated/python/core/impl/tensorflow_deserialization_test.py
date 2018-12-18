@@ -18,13 +18,11 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
-
 from tensorflow_federated.python.common_libs import test_utils
-
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 

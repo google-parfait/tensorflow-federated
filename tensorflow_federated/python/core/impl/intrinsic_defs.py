@@ -18,13 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from six import string_types
 
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-
 from tensorflow_federated.python.core.impl import type_constructors
 
 
@@ -42,9 +41,9 @@ class IntrinsicDef(object):
     Args:
       name: The short human-friendly name of this intrinsic.
       uri: The URI of this intrinsic.
-      type_spec: The type of the intrinsic, which must be functional, either
-        an instance of `computation_types.FunctionType` or something convertible
-        to it.
+      type_spec: The type of the intrinsic, which must be functional, either an
+        instance of `computation_types.FunctionType` or something convertible to
+        it.
     """
     py_typecheck.check_type(name, string_types)
     py_typecheck.check_type(uri, string_types)
@@ -81,7 +80,6 @@ class IntrinsicDef(object):
 # TODO(b/113112885): Perhaps add a way for these to get auto-registered to
 # enable things like lookup by URI, etc., similarly to how it's handled in the
 # placement_literals.py.
-
 
 # TODO(b/113112885): Define the generic equivalents of all operators below,
 # i.e., intrinsics that support arbitrary placements, to allow the federated
@@ -149,7 +147,6 @@ class IntrinsicDef(object):
 #
 #     generic_zip: <{T}@p,{U}@p> -> {<T,U>}@p
 
-
 # Computes an aggregate of client items (the first, {T}@CLIENTS-typed parameter)
 # using a multi-stage process in which client items are first partially
 # aggregated at an intermediate layer, then the partial aggregates are further
@@ -196,7 +193,6 @@ FEDERATED_AGGREGATE = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('R'))))
 
-
 # Computes a simple (equally weighted) average of client items. Only supported
 # for numeric tensor types, or composite structures made up of numeric types.
 #
@@ -209,7 +205,6 @@ FEDERATED_AVERAGE = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('T'))))
 
-
 # Broadcasts a server item to all clients.
 #
 # Type signature: T@SERVER -> T@CLIENTS
@@ -220,7 +215,6 @@ FEDERATED_BROADCAST = IntrinsicDef(
             computation_types.AbstractType('T')),
         result=computation_types.FederatedType(
             computation_types.AbstractType('T'), placements.CLIENTS, True)))
-
 
 # Materializes client items as a sequence on the server.
 #
@@ -233,7 +227,6 @@ FEDERATED_COLLECT = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.SequenceType(
                 computation_types.AbstractType('T')))))
-
 
 # Maps member constituents of a client value pointwise uising a given mapping
 # function that operates independently on each client.
@@ -250,7 +243,6 @@ FEDERATED_MAP = IntrinsicDef(
         ],
         result=type_constructors.at_clients(
             computation_types.AbstractType('U'))))
-
 
 # Reduces a set of member constituents of a client value using a given 'zero' in
 # the algebra (i.e., the result of reducing an empty set) and a given reduction
@@ -275,7 +267,6 @@ FEDERATED_REDUCE = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('U'))))
 
-
 # Computes the sum of client values on the server. Only supported for numeric
 # types, or nested structures made up of numeric computation_types.
 #
@@ -287,7 +278,6 @@ FEDERATED_SUM = IntrinsicDef(
             computation_types.AbstractType('T')),
         result=type_constructors.at_server(
             computation_types.AbstractType('T'))))
-
 
 # Computes a weighted average of client items. Only supported for numeric tensor
 # types, or composite structures made up of numeric types. Weights must be
@@ -310,7 +300,6 @@ FEDERATED_WEIGHTED_AVERAGE = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('T'))))
 
-
 # Zips a tuple of two federated types into a federated tuple.
 #
 # Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS
@@ -326,7 +315,6 @@ FEDERATED_ZIP = IntrinsicDef(
             computation_types.AbstractType('U')
         ])))
 
-
 # Generic plus operator that accepts a variety of types in federated computation
 # context. The range of types 'T' supported to be defined. It should work in a
 # natural manner for tensors, tuples, federated types, possibly sequences, and
@@ -338,7 +326,6 @@ FEDERATED_ZIP = IntrinsicDef(
 GENERIC_PLUS = IntrinsicDef(
     'GENERIC_PLUS', 'generic_plus',
     type_constructors.binary_op(computation_types.AbstractType('T')))
-
 
 # Generic zero operator that represents zero-filled values of diverse types (to
 # be defined, but generally similar to that supported by GENERIC_ADD).

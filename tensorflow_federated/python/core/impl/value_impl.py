@@ -20,17 +20,17 @@ from __future__ import print_function
 import abc
 
 # Dependency imports
+
 import numpy as np
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import func_utils
@@ -206,8 +206,8 @@ def _wrap_sequence_as_value(elements, element_type):
 
   Args:
     elements: Python object to the wrapped as a TFF sequence value.
-    element_type: An instance of `Type` that determines the type of elements
-      of the sequence.
+    element_type: An instance of `Type` that determines the type of elements of
+      the sequence.
 
   Returns:
     An instance of `Value`.
@@ -229,8 +229,8 @@ def _wrap_sequence_as_value(elements, element_type):
 
   # Defines a no-arg function that builds a `tf.data.Dataset` from the elements.
   def _create_dataset_from_elements():
-    return graph_utils.make_data_set_from_elements(
-        tf.get_default_graph(), elements, element_type)
+    return graph_utils.make_data_set_from_elements(tf.get_default_graph(),
+                                                   elements, element_type)
 
   # Wraps the dataset as a value backed by a no-argument TensorFlow computation.
   return ValueImpl(
@@ -282,8 +282,8 @@ def to_value(arg, type_spec=None):
             computation_impl.ComputationImpl.get_proto(arg)))
   elif isinstance(arg, (str, int, float, bool, np.ndarray)):
     result = _wrap_constant_as_value(arg)
-  elif type_spec is not None and isinstance(
-      type_spec, computation_types.SequenceType):
+  elif type_spec is not None and isinstance(type_spec,
+                                            computation_types.SequenceType):
     result = _wrap_sequence_as_value(arg, type_spec.element)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(

@@ -20,22 +20,17 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+
 import six
+from six.moves import zip
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
-
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.util import nest
-
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -192,9 +187,10 @@ def capture_result_from_graph(result):
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
         result.output_types, result.output_shapes)
     handle_name = result.make_one_shot_iterator().string_handle().name
-    return (computation_types.SequenceType(element_type), pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(
-            iterator_string_handle_name=handle_name)))
+    return (computation_types.SequenceType(element_type),
+            pb.TensorFlow.Binding(
+                sequence=pb.TensorFlow.SequenceBinding(
+                    iterator_string_handle_name=handle_name)))
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         py_typecheck.type_string(type(result))))
@@ -391,8 +387,9 @@ def make_data_set_from_elements(graph, elements, element_type):
   with graph.as_default():
     if not elements:
       # Just return an empty data set.
-      return tf.data.Dataset.from_generator(
-          (lambda: ()), output_types=output_types, output_shapes=output_shapes)
+      return tf.data.Dataset.from_generator((lambda: ()),
+                                            output_types=output_types,
+                                            output_shapes=output_shapes)
     elif len(elements) > 1:
       return make_data_set_from_elements(
           graph, elements[:-1], element_type).concatenate(

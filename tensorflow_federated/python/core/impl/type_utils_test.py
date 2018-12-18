@@ -20,17 +20,16 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils as common_test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils

@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from absl.testing import absltest
 import tensorflow as tf
 
@@ -36,8 +37,7 @@ class TypeConstructorsTest(absltest.TestCase):
         str(type_constructors.binary_op(tf.bool)), '(<bool,bool> -> bool)')
 
   def test_at_server(self):
-    self.assertEqual(
-        str(type_constructors.at_server(tf.bool)), 'bool@SERVER')
+    self.assertEqual(str(type_constructors.at_server(tf.bool)), 'bool@SERVER')
 
   def test_at_clients(self):
     self.assertEqual(

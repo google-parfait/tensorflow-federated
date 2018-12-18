@@ -18,10 +18,10 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 import six
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
 
 

@@ -45,6 +45,7 @@ py_library(
 py_test(
     name = "federated_averaging_test",
     srcs = ["federated_averaging_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":federated_averaging",
         ":model_examples",
@@ -56,6 +57,7 @@ py_test(
 py_test(
     name = "model_examples_test",
     srcs = ["model_examples_test.py"],
+    default_python_version = "PY3",
     deps = [
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test_utils",

@@ -27,6 +27,7 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+
 import tensorflow as tf
 
 from tensorflow_federated import python as tff
@@ -116,7 +117,6 @@ def forward_pass(features, model):
 # Capturing type signature of the named tuple of statistics (metrics, counters)
 # computed by the model.
 STATS_TYPE = forward_pass.type_signature.result
-
 
 # TODO(b/120157713): Implement the remainder of this example: gradient descent,
 # local training loop, federated averaging of model parameters, etc.

@@ -18,7 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from absl.testing import absltest
+from six.moves import range
 
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 from tensorflow_federated.python.common_libs.anonymous_tuple import to_elements

@@ -20,16 +20,14 @@ from __future__ import print_function
 import collections
 
 # Dependency imports
+
 import numpy as np
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
 from tensorflow.python.framework import tensor_util
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-
 from tensorflow_federated.python.common_libs import test_utils as common_test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
-
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import test_utils
@@ -223,15 +221,11 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
 
   def test_capture_result_with_int_sequence_from_tensor(self):
     ds = tf.data.Dataset.from_tensors(tf.constant(10))
-    self.assertEqual(
-        str(self._checked_capture_result(ds)),
-        'int32*')
+    self.assertEqual(str(self._checked_capture_result(ds)), 'int32*')
 
   def test_capture_result_with_int_sequence_from_range(self):
     ds = tf.data.Dataset.range(10)
-    self.assertEqual(
-        str(self._checked_capture_result(ds)),
-        'int64*')
+    self.assertEqual(str(self._checked_capture_result(ds)), 'int64*')
 
   def test_compute_map_from_bindings_with_tuple_of_tensors(self):
     _, source = graph_utils.capture_result_from_graph(
@@ -318,14 +312,22 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
         tf.Session().run(ds.reduce(np.int32(0), lambda x, y: x + y)), 106)
 
   def test_make_data_set_from_elements_for_int_pair_list(self):
-    ds = graph_utils.make_data_set_from_elements(
-        tf.get_default_graph(),
-        [{'A': 2, 'B': 3}, {'A': 4, 'B': 5}, {'A': 6, 'B': 7}],
-        [('A', tf.int32), ('B', tf.int32)])
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'A': 2,
+        'B': 3
+    }, {
+        'A': 4,
+        'B': 5
+    }, {
+        'A': 6,
+        'B': 7
+    }], [('A', tf.int32), ('B', tf.int32)])
     self.assertIsInstance(ds, tf.data.Dataset)
-    result = tf.Session().run(ds.reduce(
-        {'A': np.int32(0), 'B': np.int32(1)},
-        lambda x, y: (x['A'] + y['A'], x['B'] * y['B'])))
+    result = tf.Session().run(
+        ds.reduce({
+            'A': np.int32(0),
+            'B': np.int32(1)
+        }, lambda x, y: (x['A'] + y['A'], x['B'] * y['B'])))
     self.assertEqual(set(result.keys()), set(['A', 'B']))
     self.assertEqual(result['A'], 12)
     self.assertEqual(result['B'], 105)
