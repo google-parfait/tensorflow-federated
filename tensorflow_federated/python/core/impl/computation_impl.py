@@ -19,10 +19,10 @@ from __future__ import print_function
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 
 class ComputationImpl(func_utils.ConcreteFunction):
@@ -33,18 +33,21 @@ class ComputationImpl(func_utils.ConcreteFunction):
     py_typecheck.check_type(value, cls)
     return value._computation_proto  # pylint: disable=protected-access
 
-  def __init__(self, computation_proto):
+  def __init__(self, computation_proto, context_stack):
     """Constructs a new instance of ComputationImpl from the computation_proto.
 
     Args:
-      computation_proto: The protocol buffer that represents the computation, an
-        instance of pb.Computation.
+      computation_proto: The protocol buffer that represents the computation,
+        an instance of pb.Computation.
+      context_stack: The context stack to use.
     """
     py_typecheck.check_type(computation_proto, pb.Computation)
+    py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     type_spec = type_serialization.deserialize_type(computation_proto.type)
     type_utils.check_well_formed(type_spec)
     super(ComputationImpl, self).__init__(type_spec)
     self._computation_proto = computation_proto
+    self._context_stack = context_stack
 
   def _invoke(self, arg):
-    return context_stack.current.invoke(self, arg)
+    return self._context_stack.current.invoke(self, arg)

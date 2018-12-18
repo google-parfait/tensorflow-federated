@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
 
@@ -32,7 +33,7 @@ class TensorFlowSerializationTest(test_utils.TffTestCase):
 
   def test_serialize_tensorflow_with_no_parameter(self):
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
-        lambda: tf.constant(99))
+        lambda: tf.constant(99), None, context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)), '( -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -43,7 +44,7 @@ class TensorFlowSerializationTest(test_utils.TffTestCase):
 
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
-        lambda x: x + 3, tf.int32)
+        lambda x: x + 3, tf.int32, context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)), '(int32 -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -61,8 +62,8 @@ class TensorFlowSerializationTest(test_utils.TffTestCase):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
-        _legacy_dataset_reducer_example,
-        computation_types.SequenceType(tf.int64))
+        _legacy_dataset_reducer_example, computation_types.SequenceType(
+            tf.int64), context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)),
         '(int64* -> int64)')

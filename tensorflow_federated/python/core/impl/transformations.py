@@ -24,9 +24,9 @@ import six
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_building_utils
+from tensorflow_federated.python.core.impl import context_stack_base
 
 
 def transform_postorder(comp, func):
@@ -130,7 +130,7 @@ def name_compiled_computations(comp):
       comp, lambda x: _transformation_func(x, name_sequence))
 
 
-def replace_intrinsic(comp, uri, body):
+def replace_intrinsic(comp, uri, body, context_stack):
   """Replaces all occurrences of an intrinsic.
 
   Args:
@@ -141,6 +141,7 @@ def replace_intrinsic(comp, uri, body):
       constructs the intended result. This will typically be a Python function
       decorated with `@federated_computation` to make it into a polymorphic
       callable.
+    context_stack: The context stack to use.
 
   Returns:
     A modified variant of `comp` with all occurrences of the intrinsic with
@@ -152,6 +153,7 @@ def replace_intrinsic(comp, uri, body):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if not callable(body):
     raise TypeError('The body of the intrinsic must be a callable.')
 
@@ -166,9 +168,7 @@ def replace_intrinsic(comp, uri, body):
                               computation_types.FunctionType)
       # We need 'wrapped_body' to accept exactly one argument.
       wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
-      return computation_building_blocks.ComputationBuildingBlock.from_proto(
-          computation_impl.ComputationImpl.get_proto(
-              computations.federated_computation(
-                  wrapped_body, comp.type_signature.parameter)))
+      return computation_building_utils.zero_or_one_arg_func_to_lambda(
+          wrapped_body, 'arg', comp.type_signature.parameter, context_stack)
 
   return transform_postorder(comp, lambda x: _transformation_func(x, uri, body))

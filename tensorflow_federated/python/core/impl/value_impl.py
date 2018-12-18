@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
@@ -45,16 +46,19 @@ from tensorflow_federated.python.core.impl import type_utils
 class ValueImpl(value_base.Value):
   """A generic base class for values that appear in TFF computations."""
 
-  def __init__(self, comp):
+  def __init__(self, comp, context_stack):
     """Constructs a value of the given type.
 
     Args:
       comp: An instance of computation_building_blocks.ComputationBuildingBlock
         that contains the logic that computes this value.
+      context_stack: The context stack to use.
     """
     py_typecheck.check_type(
         comp, computation_building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     self._comp = comp
+    self._context_stack = context_stack
 
   @property
   def type_signature(self):
@@ -95,10 +99,11 @@ class ValueImpl(value_base.Value):
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
     if isinstance(self._comp, computation_building_blocks.Tuple):
-      return ValueImpl(getattr(self._comp, name))
+      return ValueImpl(getattr(self._comp, name), self._context_stack)
     else:
       return ValueImpl(
-          computation_building_blocks.Selection(self._comp, name=name))
+          computation_building_blocks.Selection(self._comp, name=name),
+          self._context_stack)
 
   def __len__(self):
     if not isinstance(self._comp.type_signature,
@@ -124,16 +129,17 @@ class ValueImpl(value_base.Value):
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key))
       if isinstance(self._comp, computation_building_blocks.Tuple):
-        return ValueImpl(self._comp[key])
+        return ValueImpl(self._comp[key], self._context_stack)
       else:
         return ValueImpl(
-            computation_building_blocks.Selection(self._comp, index=key))
+            computation_building_blocks.Selection(self._comp, index=key),
+            self._context_stack)
     elif isinstance(key, slice):
       index_range = range(*key.indices(elem_length))
       if not index_range:
         raise IndexError('Attempted to slice 0 elements, which is not '
                          'currently supported.')
-      return to_value([self[k] for k in index_range])
+      return to_value([self[k] for k in index_range], None, self._context_stack)
 
   def __iter__(self):
     if not isinstance(self._comp.type_signature,
@@ -156,17 +162,22 @@ class ValueImpl(value_base.Value):
               str(self._comp.type_signature)))
     else:
       if args or kwargs:
-        args = [to_value(x) for x in args]
-        kwargs = {k: to_value(v) for k, v in six.iteritems(kwargs)}
+        args = [to_value(x, None, self._context_stack) for x in args]
+        kwargs = {
+            k: to_value(v, None, self._context_stack)
+            for k, v in six.iteritems(kwargs)
+        }
         arg = func_utils.pack_args(self._comp.type_signature.parameter, args,
                                    kwargs)
-        arg = ValueImpl.get_comp(to_value(arg))
+        arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
       else:
         arg = None
-      return ValueImpl(computation_building_blocks.Call(self._comp, arg))
+      return ValueImpl(
+          computation_building_blocks.Call(self._comp, arg),
+          self._context_stack)
 
   def __add__(self, other):
-    other = to_value(other)
+    other = to_value(other, None, self._context_stack)
     if (not self.type_signature.is_assignable_from(other.type_signature) or
         not other.type_signature.is_assignable_from(self.type_signature)):
       raise TypeError('Cannot add {} and {}.'.format(
@@ -178,15 +189,18 @@ class ValueImpl(value_base.Value):
                 computation_types.FunctionType(
                     [self.type_signature, self.type_signature],
                     self.type_signature)),
-            ValueImpl.get_comp(to_value([self, other]))))
+            ValueImpl.get_comp(
+                to_value([self, other], None, self._context_stack))),
+        self._context_stack)
 
 
-def _wrap_constant_as_value(const):
+def _wrap_constant_as_value(const, context_stack):
   """Wraps the given Python constant as a TFF `Value`.
 
   Args:
     const: Python constant to be converted to TFF value. Allowable types are
       `str`, `int`, `float`, `boolean`, or `numpy.ndarray`.
+    context_stack: The context stack to use.
 
   Returns:
     An instance of `value_base.Value`.
@@ -194,20 +208,22 @@ def _wrap_constant_as_value(const):
   if not isinstance(const, (str, int, float, bool, np.ndarray)):
     raise TypeError('Please pass one of str, int, float, bool, or '
                     'numpy ndarray to value_impl._wrap_constant_as_value')
-  lam = lambda: tf.constant(const)
-  tf_comp = tensorflow_serialization.serialize_py_func_as_tf_computation(lam)
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+  tf_comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
+      lambda: tf.constant(const), None, context_stack)
   compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
   called_comp = computation_building_blocks.Call(compiled_comp)
-  return ValueImpl(called_comp)
+  return ValueImpl(called_comp, context_stack)
 
 
-def _wrap_sequence_as_value(elements, element_type):
+def _wrap_sequence_as_value(elements, element_type, context_stack):
   """Wraps `elements` as a TFF sequence with elements of type `element_type`.
 
   Args:
     elements: Python object to the wrapped as a TFF sequence value.
     element_type: An instance of `Type` that determines the type of elements of
       the sequence.
+    context_stack: The context stack to use.
 
   Returns:
     An instance of `Value`.
@@ -217,6 +233,7 @@ def _wrap_sequence_as_value(elements, element_type):
   """
   # TODO(b/113116813): Add support for other representations of sequences.
   py_typecheck.check_type(elements, list)
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
 
   # Checks that the types of all the individual elements are compatible with the
   # requested type of the sequence as a while.
@@ -237,10 +254,11 @@ def _wrap_sequence_as_value(elements, element_type):
       computation_building_blocks.Call(
           computation_building_blocks.CompiledComputation(
               tensorflow_serialization.serialize_py_func_as_tf_computation(
-                  _create_dataset_from_elements))))
+                  _create_dataset_from_elements, None, context_stack))),
+      context_stack)
 
 
-def to_value(arg, type_spec=None):
+def to_value(arg, type_spec, context_stack):
   # pyformat: disable
   """Converts the argument into an instance of Value.
 
@@ -254,52 +272,57 @@ def to_value(arg, type_spec=None):
       * Computations.
       * Python constants of type `str`, `int`, `float`, `bool`, or numpy
         `ndarray`.
-    type_spec: An optional type specifier that allows for disambiguating the
-      target type (e.g., when two TFF types can be mapped to the same Python
-      representations). If not specified, TFF tried to determine the type of
-      the TFF value automatically.
+    type_spec: A type specifier that allows for disambiguating the target type
+      (e.g., when two TFF types can be mapped to the same Python
+      representations), or `None` if none available, in which case TFF tries to
+      determine the type of the TFF value automatically.
+    context_stack: The context stack to use.
 
   Returns:
-    An instance of Value corresponding to the given `arg`, and of TFF type
-    matching the `type_spec` if specified.
+    An instance of `Value` corresponding to the given `arg`, and of TFF type
+    matching the `type_spec` if specified (not `None`).
 
   Raises:
     TypeError: if `arg` is of an unsupported type, or of a type that does not
       match `type_spec`.
   """
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   # pyformat: enable
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
   if isinstance(arg, ValueImpl):
     result = arg
   elif isinstance(arg, computation_building_blocks.ComputationBuildingBlock):
-    result = ValueImpl(arg)
+    result = ValueImpl(arg, context_stack)
   elif isinstance(arg, placement_literals.PlacementLiteral):
-    result = ValueImpl(computation_building_blocks.Placement(arg))
+    result = ValueImpl(
+        computation_building_blocks.Placement(arg), context_stack)
   elif isinstance(arg, computation_base.Computation):
     result = ValueImpl(
         computation_building_blocks.CompiledComputation(
-            computation_impl.ComputationImpl.get_proto(arg)))
+            computation_impl.ComputationImpl.get_proto(arg)), context_stack)
   elif isinstance(arg, (str, int, float, bool, np.ndarray)):
-    result = _wrap_constant_as_value(arg)
+    result = _wrap_constant_as_value(arg, context_stack)
   elif type_spec is not None and isinstance(type_spec,
                                             computation_types.SequenceType):
-    result = _wrap_sequence_as_value(arg, type_spec.element)
+    result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(
-        computation_building_blocks.Tuple([(k, ValueImpl.get_comp(
-            to_value(v))) for k, v in anonymous_tuple.to_elements(arg)]))
+        computation_building_blocks.Tuple(
+            [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
+             for k, v in anonymous_tuple.to_elements(arg)]), context_stack)
   elif '_asdict' in vars(type(arg)):
-    result = to_value(arg._asdict())
+    result = to_value(arg._asdict(), None, context_stack)
   elif isinstance(arg, dict):
     result = ValueImpl(
-        computation_building_blocks.Tuple([
-            (k, ValueImpl.get_comp(to_value(v))) for k, v in six.iteritems(arg)
-        ]))
+        computation_building_blocks.Tuple(
+            [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
+             for k, v in six.iteritems(arg)]), context_stack)
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(
-        computation_building_blocks.Tuple(
-            [ValueImpl.get_comp(to_value(x)) for x in arg]))
+        computation_building_blocks.Tuple([
+            ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg
+        ]), context_stack)
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(

@@ -28,6 +28,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks as bb
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
 
@@ -242,7 +243,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_compiled_computation_class(self):
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
-        lambda x: x + 3, tf.int32)
+        lambda x: x + 3, tf.int32, context_stack_impl.context_stack)
     x = bb.CompiledComputation(comp)
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(str(x.proto), str(comp))

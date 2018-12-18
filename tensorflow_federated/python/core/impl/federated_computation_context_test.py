@@ -24,13 +24,15 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_context
 
 
 class FederatedComputationContextTest(absltest.TestCase):
 
   def test_something(self):
-    context = federated_computation_context.FederatedComputationContext()
+    context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
     comp = computations.tf_computation(lambda: tf.constant(10))
     result = context.invoke(comp, None)
     self.assertIsInstance(result, value_base.Value)

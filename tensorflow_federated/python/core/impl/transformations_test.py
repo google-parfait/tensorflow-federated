@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import transformations
@@ -106,16 +107,19 @@ class TransformationsTest(absltest.TestCase):
     self.assertEqual(
         str(comp), '(arg -> federated_sum(federated_broadcast(arg)))')
 
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
     transformed_comp = transformations.replace_intrinsic(
-        comp, intrinsic_defs.FEDERATED_SUM.uri, intrinsic_bodies.federated_sum)
+        comp, intrinsic_defs.FEDERATED_SUM.uri, bodies['federated_sum'],
+        context_stack_impl.context_stack)
 
     # TODO(b/120793862): Add a transform to eliminate unnecessary lambdas, then
     # simplify this test.
 
     self.assertEqual(
-        str(transformed_comp), '(arg -> (arg -> '
-        '(arg -> federated_reduce(<arg[0],generic_zero,generic_plus>))(<arg>)'
-        ')(federated_broadcast(arg)))')
+        str(transformed_comp), '(arg -> (arg -> federated_reduce('
+        '<arg,generic_zero,generic_plus>))(federated_broadcast(arg)))')
 
 
 if __name__ == '__main__':

@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tensorflow.python.framework import tensor_util
 from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
@@ -30,8 +31,9 @@ from tensorflow_federated.python.core.impl import tensorflow_serialization
 class TensorFlowDeserializationTest(test_utils.TffTestCase):
 
   def test_deserialize_and_call_tf_computation_with_add_one(self):
+    ctx_stack = context_stack_impl.context_stack
     add_one = tensorflow_serialization.serialize_py_func_as_tf_computation(
-        lambda x: tf.add(x, 1, name='the_add'), tf.int32)
+        lambda x: tf.add(x, 1, name='the_add'), tf.int32, ctx_stack)
     result = tensorflow_deserialization.deserialize_and_call_tf_computation(
         add_one, tf.constant(10, name='the_ten'), tf.get_default_graph())
     self.assertTrue(tensor_util.is_tensor(result))

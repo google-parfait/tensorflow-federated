@@ -11,36 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines classes/functions to manipulate the API context stack."""
+"""Defines the interface for the context stack."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import abc
 import contextlib
-import threading
 
-from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import default_context
+# Dependency imports
+
+import six
 
 
-class ContextStack(threading.local):
-  """A thread-local stack of contexts for the API to execute against."""
+@six.add_metaclass(abc.ABCMeta)
+class ContextStack(object):
+  """An interface to a context stack for the API to run against."""
 
-  def __init__(self):
-    super(ContextStack, self).__init__()
-    self._stack = [default_context.DefaultContext()]
-
-  @property
+  @abc.abstractproperty
   def current(self):
     """Returns the current context (one at the top of the context stack)."""
-    assert self._stack
-    ctx = self._stack[-1]
-    assert isinstance(ctx, context_base.Context)
-    return ctx
+    raise NotImplementedError
 
   @contextlib.contextmanager
+  @abc.abstractmethod
   def install(self, ctx):
     """A context manager that temporarily installs a new context on the stack.
 
@@ -50,20 +45,13 @@ class ContextStack(threading.local):
     for dependency injection.
 
     Args:
-      ctx: The context to temporarily install at the top of the context stack.
+      ctx: The context to temporarily install at the top of the context stack,
+        an instance of `Context` defined in `context_base.py`.
 
     Yields:
       The installed context.
 
     Raises:
-      TypeError: if 'ctx' is not a valid inastance of context_base.Context.
+      TypeError: If `ctx` is not a valid instance of `context_base.Context`.
     """
-    py_typecheck.check_type(ctx, context_base.Context)
-    self._stack.append(ctx)
-    try:
-      yield ctx
-    finally:
-      self._stack.pop()
-
-
-context_stack = ContextStack()
+    raise NotImplementedError

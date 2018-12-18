@@ -22,6 +22,7 @@ from __future__ import print_function
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_utils
 
 
@@ -29,11 +30,16 @@ class IntrinsicUtilsTest(absltest.TestCase):
 
   def test_zero_for(self):
     self.assertEqual(
-        str(intrinsic_utils.zero_for(tf.int32).type_signature), 'int32')
+        str(
+            intrinsic_utils.zero_for(
+                tf.int32, context_stack_impl.context_stack).type_signature),
+        'int32')
 
   def test_plus_for(self):
     self.assertEqual(
-        str(intrinsic_utils.plus_for(tf.int32).type_signature),
+        str(
+            intrinsic_utils.plus_for(
+                tf.int32, context_stack_impl.context_stack).type_signature),
         '(<int32,int32> -> int32)')
 
 

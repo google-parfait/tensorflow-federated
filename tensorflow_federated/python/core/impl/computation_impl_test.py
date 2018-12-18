@@ -25,6 +25,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import type_serialization
 
 
@@ -44,14 +45,15 @@ class ComputationImplTest(absltest.TestCase):
                         computation_types.FunctionType(tf.int32, tf.int32)),
                 'intrinsic':
                     pb.Intrinsic(uri='whatever')
-            }))
+            }), context_stack_impl.context_stack)
 
     # This should fail, as the proto is not well-formed.
     self.assertRaises(TypeError, computation_impl.ComputationImpl,
-                      pb.Computation())
+                      pb.Computation(), context_stack_impl.context_stack)
 
     # This should fail, as "10" is not an instance of pb.Computation.
-    self.assertRaises(TypeError, computation_impl.ComputationImpl, 10)
+    self.assertRaises(TypeError, computation_impl.ComputationImpl, 10,
+                      context_stack_impl.context_stack)
 
 
 if __name__ == '__main__':

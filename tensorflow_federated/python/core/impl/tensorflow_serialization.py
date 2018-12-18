@@ -27,13 +27,13 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl import type_serialization
-from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 
-def serialize_py_func_as_tf_computation(target, parameter_type=None):
+def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
   """Serializes the 'target' as a TF computation with a given parameter type.
 
   Args:
@@ -50,6 +50,7 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
       parameter, or `None` if the target doesn't declare any parameters. Either
       an instance of `types.Type`, or something that's convertible to it by
       `types.to_type()`.
+    context_stack: The context stack to use.
 
   Returns:
     The constructed `pb.Computation` instance with the `pb.TensorFlow` variant
@@ -66,6 +67,7 @@ def serialize_py_func_as_tf_computation(target, parameter_type=None):
   # from here.
 
   py_typecheck.check_type(target, types.FunctionType)
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   parameter_type = computation_types.to_type(parameter_type)
   argspec = inspect.getargspec(target)
 

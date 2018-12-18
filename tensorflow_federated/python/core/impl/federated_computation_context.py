@@ -17,13 +17,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import value_impl
 
 
 class FederatedComputationContext(context_base.Context):
   """The context for building federated computations."""
 
+  def __init__(self, context_stack):
+    """Creates this context.
+
+    Args:
+      context_stack: The context stack to use.
+    """
+    py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+    self._context_stack = context_stack
+
   def invoke(self, comp, arg):
-    func = value_impl.to_value(comp)
+    func = value_impl.to_value(comp, None, self._context_stack)
     return func(arg) if arg is not None else func()

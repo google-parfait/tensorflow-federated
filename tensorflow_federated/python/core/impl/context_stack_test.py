@@ -21,12 +21,12 @@ from __future__ import print_function
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl.context_base import Context
-from tensorflow_federated.python.core.impl.context_stack import context_stack
-from tensorflow_federated.python.core.impl.default_context import DefaultContext
+from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import executor_context
 
 
-class TestContext(Context):
+class TestContext(context_base.Context):
 
   def __init__(self, name):
     self._name = name
@@ -42,20 +42,21 @@ class TestContext(Context):
 class ContextStackTest(absltest.TestCase):
 
   def test_basic_functionality(self):
+    ctx_stack = context_stack_impl.context_stack
+    self.assertIsInstance(ctx_stack, context_stack_impl.ContextStackImpl)
+    self.assertIsInstance(ctx_stack.current, executor_context.ExecutorContext)
 
-    self.assertIsInstance(context_stack.current, DefaultContext)
+    with ctx_stack.install(TestContext('foo')):
+      self.assertIsInstance(ctx_stack.current, TestContext)
+      self.assertEqual(ctx_stack.current.name, 'foo')
 
-    with context_stack.install(TestContext('foo')):
-      self.assertIsInstance(context_stack.current, TestContext)
-      self.assertEqual(context_stack.current.name, 'foo')
+      with ctx_stack.install(TestContext('bar')):
+        self.assertIsInstance(ctx_stack.current, TestContext)
+        self.assertEqual(ctx_stack.current.name, 'bar')
 
-      with context_stack.install(TestContext('bar')):
-        self.assertIsInstance(context_stack.current, TestContext)
-        self.assertEqual(context_stack.current.name, 'bar')
+      self.assertEqual(ctx_stack.current.name, 'foo')
 
-      self.assertEqual(context_stack.current.name, 'foo')
-
-    self.assertIsInstance(context_stack.current, DefaultContext)
+    self.assertIsInstance(ctx_stack.current, executor_context.ExecutorContext)
 
 
 if __name__ == '__main__':

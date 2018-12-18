@@ -26,8 +26,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tf_computation_context
-from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 
 class TensorFlowComputationContextTest(absltest.TestCase):
@@ -57,7 +57,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     with tf.Graph().as_default() as graph:
       context = tf_computation_context.TensorFlowComputationContext(
           tf.get_default_graph())
-      with context_stack.install(context):
+      with context_stack_impl.context_stack.install(context):
         with tf.Session(graph=graph) as sess:
           self.assertEqual(sess.run(foo()), 13)
 

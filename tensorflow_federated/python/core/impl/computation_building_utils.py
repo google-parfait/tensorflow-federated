@@ -19,12 +19,13 @@ from __future__ import print_function
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import value_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack
 
 
-def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
+def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type,
+                                   context_stack):
   """Converts a zero- or one-argument 'func' into a lambda building block.
 
   Args:
@@ -33,6 +34,7 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
       conveetible to the same.
     parameter_name: The name of the parameter, or None if there is't any.
     parameter_type: The TFF type of the parameter, or None if there's none.
+    context_stack: The context stack to use.
 
   Returns:
     An instance of computation_building_blocks.Lambda that contains the logic
@@ -42,16 +44,18 @@ def zero_or_one_arg_func_to_lambda(func, parameter_name, parameter_type):
     ValueError: if 'func' is incompatible with 'parameter_type'.
   """
   py_typecheck.check_callable(func)
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   parameter_type = computation_types.to_type(parameter_type)
-  context = federated_computation_context.FederatedComputationContext()
+  context = federated_computation_context.FederatedComputationContext(
+      context_stack)
   with context_stack.install(context):
     if parameter_type:
       result = func(
           value_impl.ValueImpl(
-              computation_building_blocks.Reference(parameter_name,
-                                                    parameter_type)))
+              computation_building_blocks.Reference(
+                  parameter_name, parameter_type), context_stack))
     else:
       result = func()
-    result = value_impl.to_value(result)
+    result = value_impl.to_value(result, None, context_stack)
     return computation_building_blocks.Lambda(
         parameter_name, parameter_type, value_impl.ValueImpl.get_comp(result))

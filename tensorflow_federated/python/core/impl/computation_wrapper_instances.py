@@ -18,25 +18,28 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.core.impl import computation_building_utils
-from tensorflow_federated.python.core.impl.computation_impl import ComputationImpl
-from tensorflow_federated.python.core.impl.computation_wrapper import ComputationWrapper
-from tensorflow_federated.python.core.impl.tensorflow_serialization import serialize_py_func_as_tf_computation
+from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_wrapper
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import tensorflow_serialization
 
 
 def _tf_wrapper_fn(target_fn, parameter_type):
-  comp_pb = serialize_py_func_as_tf_computation(target_fn, parameter_type)
-  return ComputationImpl(comp_pb)
+  ctx_stack = context_stack_impl.context_stack
+  comp_pb = tensorflow_serialization.serialize_py_func_as_tf_computation(
+      target_fn, parameter_type, ctx_stack)
+  return computation_impl.ComputationImpl(comp_pb, ctx_stack)
 
 
-tensorflow_wrapper = ComputationWrapper(_tf_wrapper_fn)
+tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
 def _federated_computation_wrapper_fn(target_fn, parameter_type):
+  ctx_stack = context_stack_impl.context_stack
   target_lambda = computation_building_utils.zero_or_one_arg_func_to_lambda(
-      target_fn, 'arg' if parameter_type else None, parameter_type)
-  comp_pb = target_lambda.proto
-  return ComputationImpl(comp_pb)
+      target_fn, 'arg' if parameter_type else None, parameter_type, ctx_stack)
+  return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack)
 
 
-federated_computation_wrapper = ComputationWrapper(
+federated_computation_wrapper = computation_wrapper.ComputationWrapper(
     _federated_computation_wrapper_fn)

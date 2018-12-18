@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 
 
@@ -40,17 +41,19 @@ def _body_str(comp):
 class IntrinsicBodiesTest(absltest.TestCase):
 
   def test_federated_sum(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
-      return intrinsic_bodies.federated_sum(x)
+      return bodies['federated_sum'](x)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(
-        _body_str(foo), '(arg -> '
-        '(arg -> federated_reduce(<arg[0],generic_zero,generic_plus>))(<arg>))')
+        _body_str(foo),
+        '(arg -> federated_reduce(<arg,generic_zero,generic_plus>))')
 
 
 if __name__ == '__main__':
