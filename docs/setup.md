@@ -1,5 +1,41 @@
 # Installation
 
+## Install from package
+
+#### 1. Install the python developement environment
+
+##### Ubuntu
+
+```bash
+sudo apt update
+sudo apt install python3-dev python3-pip  # Python 3
+sudo pip3 install --upgrade virtualenv  # system-wide install
+```
+
+##### macOS
+
+```bash
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+brew update
+brew install python  # Python 3
+sudo pip3 install --upgrade virtualenv  # system-wide install
+```
+
+#### 2. Create a virtual environment
+
+```bash
+virtualenv --python python3 "venv"
+source "venv/bin/activate"
+pip install --upgrade pip
+```
+
+#### 3. Install the TensorFlow Federated pip package
+
+```bash
+pip install --upgrade tensorflow_federated
+```
+
 ## Build from source
 
 ### Using *pip* on Ubuntu and macOS
@@ -64,7 +100,7 @@ bazel test \
 deactivate
 ```
 
-### Using Docker on Ubuntu
+### Using Docker
 
 #### 1. Install Docker
 
