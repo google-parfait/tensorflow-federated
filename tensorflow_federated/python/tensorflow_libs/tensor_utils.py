@@ -33,7 +33,10 @@ def to_var_dict(variables):
   tuples = []
   for v in variables:
     py_typecheck.check_type(v, tf.Variable, 'v')
-    tuples.append((v.op.name, v))
+    if v.name[-2:] != ':0':
+      raise ValueError('Variable has unexpected name {}'.format(v.name))
+    name = v.name[:-2]
+    tuples.append((name, v))
   return collections.OrderedDict(sorted(tuples))
 
 

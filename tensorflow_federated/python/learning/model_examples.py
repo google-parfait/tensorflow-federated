@@ -39,7 +39,9 @@ class LinearRegression(model.Model):
     self._num_batches = tf.Variable(0, name='num_batches', trainable=False)
     self._loss_sum = tf.Variable(0.0, name='loss_sum', trainable=False)
     self._a = tf.Variable(
-        tf.zeros(shape=(feature_dim, 1)), name='a', trainable=True)
+        # N.B. The lambda is needed for use in defuns, see ValueError
+        # raised from resource_variable_ops.py.
+        lambda: tf.zeros(shape=(feature_dim, 1)), name='a', trainable=True)
     self._b = tf.Variable(0.0, name='b', trainable=True)
     # Define a non-trainable model variable (another bias term)
     # for code coverage in testing.
@@ -57,11 +59,11 @@ class LinearRegression(model.Model):
   def local_variables(self):
     return [self._num_examples, self._num_batches, self._loss_sum]
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def _predict(self, x):
     return tf.matmul(x, self._a) + self._b + self._c
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def forward_pass(self, batch, training=True):
     del training  # Unused
 
@@ -77,12 +79,12 @@ class LinearRegression(model.Model):
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model.BatchOutput(loss=average_loss, predictions=predictions)
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def aggregated_outputs(self):
     return collections.OrderedDict(
         [('num_examples', self._num_examples), ('num_batches',
                                                 self._num_batches),
-         ('loss', self._loss_sum / tf.to_float(self._num_examples))])
+         ('loss', self._loss_sum / tf.cast(self._num_examples, tf.float32))])
 
   @classmethod
   def make_batch(cls, x, y):
@@ -93,7 +95,7 @@ class LinearRegression(model.Model):
 class TrainableLinearRegression(LinearRegression, model.TrainableModel):
   """A LinearRegression with trivial SGD training."""
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.defun(autograph=False)
   def train_on_batch(self, batch):
     # Most users won't implement this, and let us provide the optimizer.
     fp = self.forward_pass(batch)

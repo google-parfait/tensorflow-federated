@@ -26,7 +26,6 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import itertools
 
 # Dependency imports
 
@@ -37,24 +36,6 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 nest = tf.contrib.framework.nest
-
-
-def get_model_vars_dict(model):
-  """Returns a dict of all non-local model variables, keyed by name.
-
-  These are the variables communicated from the server to the client in
-  FederatedAveraging.
-
-  Args:
-    model: A `learning.Model`.
-
-  Returns:
-    A dict of all trainable and non-trainable model variables, keyed by the
-    variable name.
-  """
-  py_typecheck.check_type(model, model_lib.Model)
-  return tensor_utils.to_var_dict(
-      itertools.chain(model.trainable_variables, model.non_trainable_variables))
 
 
 def model_initializer(model, name=None):
@@ -111,7 +92,7 @@ class ModelVars(
         tensor_utils.to_var_dict(model.non_trainable_variables))
 
 
-@tf.contrib.eager.defun
+@tf.contrib.eager.function
 def client_tf(model, dataset, initial_model):
   """Define a complete client computation as a single defun.
 
@@ -142,7 +123,7 @@ def client_tf(model, dataset, initial_model):
   # Assign the model variables the init_model:
   nest.map_structure(tf.assign, model_vars, initial_model)
 
-  @tf.contrib.eager.defun
+  @tf.contrib.eager.function
   def reduce_fn(dummy_state, batch):
     """Runs train_on_batch on batch."""
     # Question: Do we want to compute num_examples and num_batches as
@@ -173,3 +154,114 @@ def client_tf(model, dataset, initial_model):
       model.aggregated_outputs(),
       # More b/119590730 work-around.
       tensor_utils.to_odict({'workaround_to_keep_side_effects': loss_sum}))
+
+#
+# Server TF computations
+#
+
+
+def _create_optimizer_and_server_state(model, optimizer):
+  """A helper that constructs the model and optimizer.
+
+  This code is needed both in server_init (to introduce variables so
+  we can read off there initial values) and in server_update_model.
+
+  Args:
+    model: A `tff.learning.Model`.
+    optimizer: A `tf.train.Optimizer`.
+
+  Returns:
+    A tuple of (apply_delta_fn, server_state), where:
+      *  apply_delta_fn is a tensorflow function that takes a model delta and
+         updates the model variables as well as possibly optimizer_state
+         variables introduced by the optimizer.
+      *  server_state is a `ServerState` tuple holding those variables.
+  """
+  model_vars = ModelVars.from_model(model)
+
+  @tf.contrib.eager.defun
+  def apply_delta(delta):
+    """Applies delta to model_vars."""
+    nest.assert_same_structure(delta, model_vars.trainable_variables)
+    grads_and_vars = nest.map_structure(
+        lambda x, v: (-1.0 * x, v), nest.flatten(delta),
+        nest.flatten(model_vars.trainable_variables))
+    # N.B. This may create variables.
+    # TODO(b/109733734): In TF 2, you shouldn't create variables
+    # inside a defun. Perhaps use Keras optimizers or OptimizerV2?
+    optimizer.apply_gradients(grads_and_vars, name='server_update')
+    return tf.constant(1)  # We have to return something.
+
+  # Create a dummy input and trace apply_delta so that
+  # we can determine the optimizers variables.
+  model_delta = nest.map_structure(tf.zeros_like,
+                                   model_vars.trainable_variables)
+
+  # TODO(b/109733734): We would like to call get_concrete_function,
+  # but that does not currently work with structured inputs.
+  # For now, we just call the function on dummy input, which
+  # still ensures the function is traced (so variables are created).
+  apply_delta(delta=model_delta)
+
+  # N.B. Using to_var_dict doesn't work here, because we
+  # may get different names.
+  optimizer_vars = optimizer.variables()
+
+  return apply_delta, ServerState(model=model_vars,
+                                  optimizer_state=optimizer_vars)
+
+# Represents the state of the server carried between rounds.
+ServerState = collections.namedtuple(
+    'ServerState', [
+        # A ModelVars structure, containing Tensors or Variables.
+        'model',
+        # A list of Tensors or Variables, in the order
+        # returned by optimizer.variables()
+        'optimizer_state'
+    ])
+
+
+def server_init(model_fn, optimizer_fn):
+  """Returns initial `ServerState`.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`.
+
+  Returns
+    A `ServerState` namedtuple.
+  """
+  model = model_fn()  # Constructs variables
+  optimizer = optimizer_fn()  # Might create variables?
+  _, server_state = _create_optimizer_and_server_state(model, optimizer)
+  return server_state
+
+
+def server_update_model(server_state, model_delta, model_fn, optimizer_fn):
+  """Updates `server_state` based on `model_delta`.
+
+  Args:
+    server_state: A `ServerState` namedtuple.
+    model_delta: An update to the trainable variables of the model.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. Passing
+      in a function ensures any variables are created when server_update_model
+      is called, so they can be captured in a specific graph or other context.
+    optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`. As
+      with model_fn, we pass in a function to control when variables are
+      created.
+
+  Returns:
+    An updated `ServerState` namedtuple.
+  """
+  model = model_fn()  # Constructs variables
+  optimizer = optimizer_fn()  # Might create variables?
+  apply_delta_fn, server_vars = _create_optimizer_and_server_state(
+      model, optimizer)
+
+  @tf.contrib.eager.function
+  def update_model_inner():
+    nest.map_structure(tf.assign, server_vars, server_state)
+    apply_delta_fn(model_delta)
+    return server_vars
+
+  return update_model_inner()

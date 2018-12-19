@@ -50,9 +50,14 @@ This project follows
 
     *   Avoid saving references to tensors where the value may change.
     *   All TensorFlow functions should work correctly when annotated with
-        `tf.function` or `tf.contrib.eager.defun`. Such functions should only
+        `tf.contrib.eager.defun`. Such functions should only
         return multiple outputs (e.g., as a tuple) if it always makes sense to
-        compute all of these values at the same time.
+        compute all of these values at the same time. The exception is Variable
+        creation, which should always happen outside of defuns. Currently, we
+        use `tf.contrib.eager.defun` in most places, because it also works with
+        TF 1.X; we use `tf.contrib.eager.function` in `federated_averaging.py`
+        as a canary to detect any possible issues with `tf.function`, but we
+        should not use it more widely unless we fully commit to eager mode.
     *   Collections should not be used, unless it is unavoidable to support TF
         1.0.
     *   State such as `tf.Variable`s should be tracked (only) by keeping a

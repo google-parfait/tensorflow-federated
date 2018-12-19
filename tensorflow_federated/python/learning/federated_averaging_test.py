@@ -19,22 +19,40 @@ from __future__ import print_function
 
 # Dependency imports
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
+from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class FederatedAveragingTest(test_utils.TffTestCase):
+# Tests in this file default to eager-mode, but can use this decorator
+# to use graph-mode.
+def graph_mode_test(test_func):
+  """Decorator for a test to be executed in graph mode.
 
-  def setUp(self):
-    super(FederatedAveragingTest, self).setUp()
-    # Required since we use defuns.
-    tf.enable_resource_variables()
+  This introduces a default Graph, which tests annotated with
+  @graph_mode_test may use or ignore by creating their own Graphs.
 
-  def test_smoke(self):
+  Args:
+    test_func: A test function to be decorated.
+
+  Returns:
+    The decorated test_func.
+  """
+  def wrapped_test_func(*args, **kwargs):
+    with tf.Graph().as_default():
+      test_func(*args, **kwargs)
+  return wrapped_test_func
+
+
+class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
+
+  @graph_mode_test
+  def test_client_tf(self):
     model = model_examples.TrainableLinearRegression(feature_dim=2)
 
     # Create a dataset with 4 examples:
@@ -75,6 +93,81 @@ class FederatedAveragingTest(test_utils.TffTestCase):
       self.assertBetween(out.model_output['loss'],
                          np.finfo(np.float32).eps, 10.0)
 
+  @parameterized.named_parameters(
+      ('_sgd', lambda: tf.train.GradientDescentOptimizer(learning_rate=0.1),
+       0.1, 0),
+      # It looks like Adam introduces 2 + 2*num_model_variables additional vars.
+      ('_adam', lambda: tf.train.AdamOptimizer(  # pylint: disable=g-long-lambda
+          learning_rate=0.1, beta1=0.0, beta2=0.0, epsilon=1.0), 0.05, 6))
+  def test_server_eager_mode(self, optimizer_fn, updated_val,
+                             num_optimizer_vars):
+    model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
+
+    server_state = federated_averaging.server_init(model_fn, optimizer_fn)
+    train_vars = server_state.model.trainable_variables
+    self.assertAllClose(train_vars['a'].numpy(), np.array([[0.0], [0.0]]))
+    self.assertEqual(train_vars['b'].numpy(), 0.0)
+    self.assertEqual(server_state.model.non_trainable_variables['c'].numpy(),
+                     0.0)
+    self.assertLen(server_state.optimizer_state, num_optimizer_vars)
+    model_delta = tensor_utils.to_odict({
+        'a': tf.constant([[1.0], [0.0]]),
+        'b': tf.constant(1.0)
+    })
+    server_state = federated_averaging.server_update_model(
+        server_state, model_delta, model_fn, optimizer_fn)
+
+    train_vars = server_state.model.trainable_variables
+    # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
+    # so updated_val=0.1
+    self.assertAllClose(train_vars['a'].numpy(), [[updated_val], [0.0]])
+    self.assertAllClose(train_vars['b'].numpy(), updated_val)
+    self.assertEqual(server_state.model.non_trainable_variables['c'].numpy(),
+                     0.0)
+
+  @graph_mode_test
+  def test_server_graph_mode(self):
+    optimizer_fn = lambda: tf.train.GradientDescentOptimizer(learning_rate=0.1)
+    model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
+
+    # Explicitly entering a graph as a default enables graph-mode.
+    with tf.Graph().as_default() as g:
+      server_state_op = federated_averaging.server_init(model_fn, optimizer_fn)
+      init_op = tf.group(tf.global_variables_initializer(),
+                         tf.local_variables_initializer())
+      g.finalize()
+      with self.session() as sess:
+        sess.run(init_op)
+        server_state = sess.run(server_state_op)
+    train_vars = server_state.model.trainable_variables
+    self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
+    self.assertEqual(train_vars['b'], 0.0)
+    self.assertEqual(server_state.model.non_trainable_variables['c'], 0.0)
+    self.assertEmpty(server_state.optimizer_state)
+
+    with tf.Graph().as_default() as g:
+      # N.B. Must use a fresh graph so variable names are the same.
+      model_delta = tensor_utils.to_odict({
+          'a': tf.constant([[1.0], [0.0]]),
+          'b': tf.constant(2.0)
+      })
+      update_op = federated_averaging.server_update_model(
+          server_state, model_delta, model_fn, optimizer_fn)
+      init_op = tf.group(tf.global_variables_initializer(),
+                         tf.local_variables_initializer())
+      g.finalize()
+      with self.session() as sess:
+        sess.run(init_op)
+        server_state = sess.run(update_op)
+    train_vars = server_state.model.trainable_variables
+    # learning_Rate=0.1, update is [1.0, 0.0], initial model is [0.0, 0.0].
+    self.assertAllClose(train_vars['a'], [[0.1], [0.0]])
+    self.assertAllClose(train_vars['b'], 0.2)
+    self.assertEqual(server_state.model.non_trainable_variables['c'], 0.0)
+
 
 if __name__ == '__main__':
+  # We default to eager execution, use the @graph_mode_test annotation
+  # below for a graph-mode (sess.run) test.
+  tf.enable_eager_execution()
   tf.test.main()

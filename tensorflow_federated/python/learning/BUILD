@@ -50,6 +50,8 @@ py_test(
         ":federated_averaging",
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
