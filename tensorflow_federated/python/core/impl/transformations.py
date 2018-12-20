@@ -172,3 +172,38 @@ def replace_intrinsic(comp, uri, body, context_stack):
           wrapped_body, 'arg', comp.type_signature.parameter, context_stack)
 
   return transform_postorder(comp, lambda x: _transformation_func(x, uri, body))
+
+
+def replace_called_lambdas_with_block(comp):
+  """Replaces occurrences of Call(Lambda(...), ...)) with Block(...).
+
+  This transformation is used to facilitate the merging of TFF orchestration
+  logic, in particular to remove unnecessary lambda expressions and as a
+  stepping stone for merging Blocks together to maximal effect.
+
+  Args:
+    comp: The computation building block in which to perform the replacements.
+
+  Returns:
+    A modified version of `comp` with all occurrences of the pattern Call(
+    Lambda(...), args) replaced with an equivalent Block(...), or the original
+    `comp` if it does not follow the `Call(Lambda(...), args)` pattern.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def _transform(comp):
+    """Internal function to break down Call-Lambda and build Block."""
+    if not isinstance(comp, computation_building_blocks.Call):
+      return comp
+    elif not isinstance(comp.function, computation_building_blocks.Lambda):
+      return comp
+    py_typecheck.check_type(
+        comp.argument, computation_building_blocks.ComputationBuildingBlock)
+    arg = comp.argument
+    lam = comp.function
+    param_name = lam.parameter_name
+    result = lam.result
+    return computation_building_blocks.Block([(param_name, arg)], result)
+
+  return transform_postorder(comp, _transform)

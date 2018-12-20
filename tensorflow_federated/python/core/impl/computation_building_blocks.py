@@ -651,8 +651,11 @@ class Data(ComputationBuildingBlock):
 
     Raises:
       TypeError: if the arguments are of the wrong types.
+      ValueError: if the user tries to specify an empty URI.
     """
     py_typecheck.check_type(uri, six.string_types)
+    if not uri:
+      raise ValueError('Empty string cannot be passed as URI to Data.')
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
