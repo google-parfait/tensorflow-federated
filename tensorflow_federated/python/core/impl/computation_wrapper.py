@@ -311,9 +311,9 @@ class ComputationWrapper(object):
 
   For more examples of usage, see computation_wrapper_test.py.
 
-  In the future, we may add support for using decorator with multiple positional
-  arguments or with keyword arguments. If added, it will apply universally to
-  all types of decorators.
+  If the user specifies a tuple type in an unbundled form (simply by listing the
+  types of its constituents as separate arguments), the tuple type is formed on
+  the user's behalf for convenience.
   """
 
   def __init__(self, wrapper_fn):
@@ -362,31 +362,15 @@ class ComputationWrapper(object):
       # invocation without arguments as "@xyz" applied to a function definition,
       # of an inline invocation as "... = xyz(lambda....). Any of the following
       # arguments, if present, are the arguments to the wrapper that are to be
-      # interpreted as the type specification (and there should only be one of
-      # these at this point, since currently, the type of the entire parameter
-      # tuple is required to be specified as a single object).
+      # interpreted as the type specification.
       if len(args) > 2:
-        raise TypeError(
-            'The function/defun should be followed by at most one type spec '
-            'argument, but found {} additional arguments of types {}.'.format(
-                str(len(args) - 1),
-                str([py_typecheck.type_string(type(a)) for a in args[1:]])))
+        args = (args[0], args[1:])
       return _wrap(
           args[0],
           computation_types.to_type(args[1]) if len(args) > 1 else None,
           self._wrapper_fn)
-    elif len(args) == 1:
-      # If there's a single parameter that isn't a Python function or a defun,
-      # the only supported usage pattern is with this parameter being a type
-      # spec passed in the decorator as in "@xyz(type)". Expect to get Python
-      # function or a defun in the subsequent call, and then proceed to wrapping
-      # it with this parameter type specification.
-      # Deliberate lambda wrapping to isolate the caller from the internals of
-      # the implementation.
+    else:
+      if len(args) > 1:
+        args = (args,)
       arg_type = computation_types.to_type(args[0])
       return lambda fn: _wrap(fn, arg_type, self._wrapper_fn)
-    else:
-      raise TypeError(
-          'The types of arguments {} do not correspond to any of the '
-          'supported modes of usage.'.format(
-              str([py_typecheck.type_string(type(a)) for a in args])))
