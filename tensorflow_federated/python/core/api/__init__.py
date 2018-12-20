@@ -42,4 +42,6 @@ from tensorflow_federated.python.core.api.intrinsics import federated_zip
 from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
 
+from tensorflow_federated.python.core.api.value_base import Value
+
 from tensorflow_federated.python.core.api.values import to_value

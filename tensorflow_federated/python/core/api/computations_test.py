@@ -19,9 +19,11 @@ from __future__ import print_function
 
 # Dependency imports
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
+
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
@@ -80,8 +82,8 @@ class ComputationsTest(test_utils.TffTestCase):
 
   def test_fed_comp_typical_usage_as_decorator_with_unlabeled_type(self):
 
-    @computations.federated_computation((computation_types.FunctionType(
-        tf.int32, tf.int32), tf.int32))
+    @computations.federated_computation(
+        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32))
     def foo(f, x):
       assert isinstance(f, value_base.Value)
       assert isinstance(x, value_base.Value)
@@ -99,10 +101,10 @@ class ComputationsTest(test_utils.TffTestCase):
 
   def test_fed_comp_typical_usage_as_decorator_with_labeled_type(self):
 
-    @computations.federated_computation((('f',
-                                          computation_types.FunctionType(
-                                              tf.int32, tf.int32)), ('x',
-                                                                     tf.int32)))
+    @computations.federated_computation((
+        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
+        ('x', tf.int32),
+    ))
     def foo(f, x):
       return f(f(x))
 
@@ -110,6 +112,20 @@ class ComputationsTest(test_utils.TffTestCase):
 
     self.assertEqual(
         str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
+
+  def test_with_tf_datasets(self):
+
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
+    def foo(ds):
+      return ds.reduce(np.int64(0), lambda x, y: x + y)
+
+    self.assertEqual(str(foo.type_signature), '(int64* -> int64)')
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.range(10)
+
+    self.assertEqual(str(bar.type_signature), '( -> int64*)')
 
 
 if __name__ == '__main__':

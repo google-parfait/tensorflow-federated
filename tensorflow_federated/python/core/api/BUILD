@@ -15,6 +15,7 @@ py_library(
         ":computations",
         ":intrinsics",
         ":placements",
+        ":value_base",
         ":values",
     ],
 )
