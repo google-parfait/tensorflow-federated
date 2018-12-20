@@ -34,6 +34,28 @@ py_library(
 )
 
 py_library(
+    name = "model_utils",
+    srcs = ["model_utils.py"],
+    deps = [
+        ":model",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "model_utils_test",
+    srcs = ["model_utils_test.py"],
+    default_python_version = "PY3",
+    deps = [
+        ":model_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_library(
     name = "model_examples",
     srcs = ["model_examples.py"],
     deps = [
