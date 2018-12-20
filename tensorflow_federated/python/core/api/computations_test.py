@@ -127,6 +127,14 @@ class ComputationsTest(test_utils.TffTestCase):
 
     self.assertEqual(str(bar.type_signature), '( -> int64*)')
 
+  def test_no_argument_fed_comp(self):
+
+    @computations.federated_computation
+    def foo():
+      return 10
+
+    self.assertEqual(str(foo.type_signature), '( -> int32)')
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -116,6 +116,7 @@ py_library(
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 
@@ -267,6 +268,7 @@ py_library(
         ":context_stack_base",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 

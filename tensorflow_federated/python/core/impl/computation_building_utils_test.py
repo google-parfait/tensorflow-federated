@@ -45,13 +45,15 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
        '(foo -> foo.f(foo.g(foo.x)))'),
       (lambda x: (x[1], x[0]),
        (tf.int32, tf.int32),
-       '(foo -> <foo[1],foo[0]>)'))
+       '(foo -> <foo[1],foo[0]>)'),
+      (lambda: 'stuff', None, 'stuff'))
   # pyformat: enable
-  def test_zero_or_one_arg_func_to_lambda(self, func, parameter_type, func_str):
+  def zero_or_one_arg_func_to_building_block(
+      self, func, parameter_type, func_str):
     parameter_name = 'foo'
     parameter_type = computation_types.to_type(parameter_type)
     func = func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type)
-    result = computation_building_utils.zero_or_one_arg_func_to_lambda(
+    result = computation_building_utils.zero_or_one_arg_func_to_building_block(
         func, parameter_name, parameter_type, context_stack_impl.context_stack)
     self.assertEqual(str(result), func_str)
 

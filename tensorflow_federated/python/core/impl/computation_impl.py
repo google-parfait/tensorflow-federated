@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_serialization
@@ -44,7 +45,16 @@ class ComputationImpl(func_utils.ConcreteFunction):
     py_typecheck.check_type(computation_proto, pb.Computation)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     type_spec = type_serialization.deserialize_type(computation_proto.type)
+    py_typecheck.check_type(type_spec, computation_types.Type)
+
     type_utils.check_well_formed(type_spec)
+
+    # We may need to modify the type signature to reflect the fact that in the
+    # underlying framework for composing computations, there is no concept of
+    # no-argument lambdas, but in Python, every computation needs to look like
+    # a function that needs to be invoked.
+    if not isinstance(type_spec, computation_types.FunctionType):
+      type_spec = computation_types.FunctionType(None, type_spec)
     super(ComputationImpl, self).__init__(type_spec)
     self._computation_proto = computation_proto
     self._context_stack = context_stack

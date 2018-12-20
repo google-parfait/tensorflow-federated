@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import value_impl
@@ -37,4 +38,11 @@ class FederatedComputationContext(context_base.Context):
 
   def invoke(self, comp, arg):
     func = value_impl.to_value(comp, None, self._context_stack)
-    return func(arg) if arg is not None else func()
+    if isinstance(func.type_signature, computation_types.FunctionType):
+      return func(arg) if arg is not None else func()
+    elif arg is not None:
+      raise ValueError(
+          'A computation of type {} does not expect any arguments, '
+          'but got an argument {}.'.format(str(func.type_signature), str(arg)))
+    else:
+      return func
