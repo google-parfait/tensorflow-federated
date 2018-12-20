@@ -465,9 +465,17 @@ py_library(
     name = "reference_executor",
     srcs = ["reference_executor.py"],
     deps = [
+        ":computation_building_blocks",
         ":executor_base",
+        ":graph_utils",
+        ":tensorflow_deserialization",
+        ":transformations",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 
@@ -477,8 +485,12 @@ py_test(
     srcs = ["reference_executor_test.py"],
     default_python_version = "PY3",
     deps = [
-        ":computation_impl",
+        ":context_stack_impl",
+        ":executor_context",
+        ":graph_utils",
         ":reference_executor",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",

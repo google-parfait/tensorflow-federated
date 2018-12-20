@@ -332,6 +332,12 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
     self.assertEqual(result['A'], 12)
     self.assertEqual(result['B'], 105)
 
+  def test_fetch_value_in_session_without_data_sets(self):
+    x = AnonymousTuple([('A', AnonymousTuple([('B', tf.constant(10))]))])
+    with self.session() as sess:
+      y = graph_utils.fetch_value_in_session(x, sess)
+    self.assertEqual(str(y), '<A=<B=10>>')
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -403,3 +403,29 @@ def make_data_set_from_elements(graph, elements, element_type):
         raise TypeError('Expected shapes {}, found {}.'.format(
             str(output_shapes), str(ds.output_shapes)))
       return ds
+
+
+def fetch_value_in_session(value, session):
+  """Fetches `value` in `session`.
+
+  Args:
+    value: A Python object of a form analogous to that constructed by the
+      function `assemble_result_from_graph`, made of tensors, data sets, and
+      anononymous tuples.
+    session: The session in which to perform the fetch (as a single run).
+
+  Returns:
+    A Python object with structure similar to `value`, but with tensors
+    replaced with their values, and data sets replaced with lists of their
+    elements, all fetched with a single call `session.run()`.
+  """
+  py_typecheck.check_type(session, tf.Session)
+  flattened_value = anonymous_tuple.flatten(value)
+
+  # TODO(b/113123634): Add support for tf.data.Datasets.
+  for v in flattened_value:
+    if not tensor_util.is_tensor(v):
+      raise ValueError('Unsupported value type {}.'.format(str(v)))
+
+  flattened_results = session.run(flattened_value)
+  return anonymous_tuple.pack_sequence_as(value, flattened_results)

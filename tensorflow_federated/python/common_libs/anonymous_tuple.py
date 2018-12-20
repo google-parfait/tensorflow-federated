@@ -155,3 +155,51 @@ def to_elements(an_anonymous_tuple):
   return [(index_to_name.get(idx), val)
           for idx, val in enumerate(an_anonymous_tuple._element_array)]
   # pylint: enable=protected-access
+
+
+def flatten(structure):
+  """Returns a list of values in a possibly recursively nested tuple.
+
+  Args:
+    structure: An anonymous tuple, possibly recursively nested, or a non-tuple
+      element that is packed as a singleton list.
+
+  Returns:
+    The list of values in the tuple (or the singleton argument if not a tuple).
+  """
+  if not isinstance(structure, AnonymousTuple):
+    return [structure]
+  else:
+    result = []
+    for _, v in to_elements(structure):
+      result.extend(flatten(v))
+    return result
+
+
+def pack_sequence_as(structure, flat_sequence):
+  """Returns a list of values in a possibly recursively nested tuple.
+
+  Args:
+    structure: An anonymous tuple, possibly recursively nested, or a non-tuple
+      argument to match a singleton sequence.
+    flat_sequence: A flat Python list of values.
+
+  Returns:
+    An anonymous tuple nested the same way as `structure`, but with leaves
+    replaced with `flat_sequence` such that when flatten, it yields a list
+    with the same contents as `flat_sequence`.
+  """
+  py_typecheck.check_type(flat_sequence, list)
+
+  def _pack(structure, flat_sequence, position):
+    if not isinstance(structure, AnonymousTuple):
+      return flat_sequence[position], position + 1
+    else:
+      elements = []
+      for k, v in to_elements(structure):
+        packed_v, position = _pack(v, flat_sequence, position)
+        elements.append((k, packed_v))
+      return AnonymousTuple(elements), position
+
+  result, _ = _pack(structure, flat_sequence, 0)
+  return result
