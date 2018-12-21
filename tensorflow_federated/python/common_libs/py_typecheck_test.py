@@ -29,7 +29,7 @@ class PyTypeCheckTest(absltest.TestCase):
 
   def test_check_type(self):
     try:
-      py_typecheck.check_type('foo', str)
+      self.assertEqual('foo', py_typecheck.check_type('foo', str))
       py_typecheck.check_type('foo', string_types)
       py_typecheck.check_type(10, int)
       py_typecheck.check_type(10, (str, int))
@@ -54,7 +54,8 @@ class PyTypeCheckTest(absltest.TestCase):
 
   def test_check_callable(self):
     try:
-      py_typecheck.check_callable(lambda x: x + 10)
+      f = lambda x: x + 10
+      self.assertEqual(py_typecheck.check_callable(f), f)
     except TypeError:
       self.fail('Function {} raised TypeError unexpectedly.'.format(
           py_typecheck.check_callable.__name__))

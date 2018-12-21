@@ -32,6 +32,9 @@ def check_type(target, type_spec, label=None):
     label: An optional label associated with the target, used to create a more
       human-readable error message.
 
+  Returns:
+    The target.
+
   Raises:
     TypeError: when the target is not of one of the types in 'type_spec'.
   """
@@ -40,13 +43,16 @@ def check_type(target, type_spec, label=None):
     raise TypeError('Expected {}{}, found {}.'.format(
         '{} to be of type '.format(label) if label is not None else '',
         type_string(type_spec), type_string(type(target))))
+  return target
 
 
 def check_callable(target, label=None):
+  """Checks target is callable and then returns it."""
   if not callable(target):
     raise TypeError('Expected {} callable, found non-callable {}.'.format(
         '{} to be'.format(label) if label is not None else 'a',
         type_string(type(target))))
+  return target
 
 
 def type_string(type_spec):
