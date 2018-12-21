@@ -27,7 +27,6 @@ from tensorflow_federated.python.core import utils
 from tensorflow_federated.python.core.api import *
 # pylint: enable=wildcard-import
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "CLIENTS",

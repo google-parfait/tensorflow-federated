@@ -22,7 +22,6 @@ from tensorflow_federated.python.learning import framework
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "BatchOutput",

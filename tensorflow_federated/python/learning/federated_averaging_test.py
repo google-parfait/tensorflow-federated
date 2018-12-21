@@ -43,9 +43,11 @@ def graph_mode_test(test_func):
   Returns:
     The decorated test_func.
   """
+
   def wrapped_test_func(*args, **kwargs):
     with tf.Graph().as_default():
       test_func(*args, **kwargs)
+
   return wrapped_test_func
 
 
@@ -93,12 +95,14 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
       self.assertBetween(out.model_output['loss'],
                          np.finfo(np.float32).eps, 10.0)
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('_sgd', lambda: tf.train.GradientDescentOptimizer(learning_rate=0.1),
        0.1, 0),
       # It looks like Adam introduces 2 + 2*num_model_variables additional vars.
       ('_adam', lambda: tf.train.AdamOptimizer(  # pylint: disable=g-long-lambda
           learning_rate=0.1, beta1=0.0, beta2=0.0, epsilon=1.0), 0.05, 6))
+  # pyformat: enable
   def test_server_eager_mode(self, optimizer_fn, updated_val,
                              num_optimizer_vars):
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)

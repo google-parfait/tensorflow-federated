@@ -479,7 +479,8 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
   else:
     unpack_required = not is_argspec_compatible_with_types(
         argspec, parameter_type)
-    if unpack_required and unpack is False:
+    # Boolean identity comparison becaue unpack can have a non-boolean value.
+    if unpack_required and unpack is False:  # pylint: disable=g-bool-id-comparison
       raise TypeError(
           'The supplied function with argspec {} cannot accept a value of '
           'type {} as a single arghument.'.format(
@@ -490,7 +491,8 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
           argspec, *arg_types, **kwarg_types)
     else:
       unpack_possible = False
-    if not unpack_possible and unpack is True:
+    # Boolean identity comparison becaue unpack can have a non-boolean value.
+    if not unpack_possible and unpack is True:  # pylint: disable=g-bool-id-comparison
       raise TypeError(
           'The supplied function with argspec {} cannot accept a value of '
           'type {} as multiple positional and/or keyword arguments.'.format(

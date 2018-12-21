@@ -19,7 +19,6 @@ from __future__ import print_function
 
 from tensorflow_federated.python.learning.federated_averaging import ClientOutput
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "ClientOutput",

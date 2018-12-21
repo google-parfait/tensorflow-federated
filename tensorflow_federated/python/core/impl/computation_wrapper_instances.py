@@ -38,9 +38,7 @@ def _federated_computation_wrapper_fn(target_fn, parameter_type):
   ctx_stack = context_stack_impl.context_stack
   target_lambda = (
       computation_building_utils.zero_or_one_arg_func_to_building_block(
-          target_fn,
-          'arg' if parameter_type else None,
-          parameter_type,
+          target_fn, 'arg' if parameter_type else None, parameter_type,
           ctx_stack))
   return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack)
 

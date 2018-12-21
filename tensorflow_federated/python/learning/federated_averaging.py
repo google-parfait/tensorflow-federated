@@ -31,11 +31,10 @@ import collections
 
 import tensorflow as tf
 
+from tensorflow.python.util import nest
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
-
-nest = tf.contrib.framework.nest
 
 
 def model_initializer(model, name=None):
@@ -155,6 +154,7 @@ def client_tf(model, dataset, initial_model):
       # More b/119590730 work-around.
       tensor_utils.to_odict({'workaround_to_keep_side_effects': loss_sum}))
 
+
 #
 # Server TF computations
 #
@@ -207,12 +207,14 @@ def _create_optimizer_and_server_state(model, optimizer):
   # may get different names.
   optimizer_vars = optimizer.variables()
 
-  return apply_delta, ServerState(model=model_vars,
-                                  optimizer_state=optimizer_vars)
+  return apply_delta, ServerState(
+      model=model_vars, optimizer_state=optimizer_vars)
+
 
 # Represents the state of the server carried between rounds.
 ServerState = collections.namedtuple(
-    'ServerState', [
+    'ServerState',
+    [
         # A ModelVars structure, containing Tensors or Variables.
         'model',
         # A list of Tensors or Variables, in the order
@@ -227,9 +229,7 @@ def server_init(model_fn, optimizer_fn):
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`.
-
-  Returns
-    A `ServerState` namedtuple.
+      Returns A `ServerState` namedtuple.
   """
   model = model_fn()  # Constructs variables
   optimizer = optimizer_fn()  # Might create variables?
@@ -243,12 +243,11 @@ def server_update_model(server_state, model_delta, model_fn, optimizer_fn):
   Args:
     server_state: A `ServerState` namedtuple.
     model_delta: An update to the trainable variables of the model.
-    model_fn: A no-arg function that returns a `tff.learning.Model`. Passing
-      in a function ensures any variables are created when server_update_model
-      is called, so they can be captured in a specific graph or other context.
-    optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`. As
-      with model_fn, we pass in a function to control when variables are
-      created.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. Passing in
+      a function ensures any variables are created when server_update_model is
+      called, so they can be captured in a specific graph or other context.
+    optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`. As with
+      model_fn, we pass in a function to control when variables are created.
 
   Returns:
     An updated `ServerState` namedtuple.

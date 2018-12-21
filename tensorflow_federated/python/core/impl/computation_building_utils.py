@@ -24,8 +24,8 @@ from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import value_impl
 
 
-def zero_or_one_arg_func_to_building_block(
-    func, parameter_name, parameter_type, context_stack):
+def zero_or_one_arg_func_to_building_block(func, parameter_name, parameter_type,
+                                           context_stack):
   """Converts a zero- or one-argument `func` into a computation building block.
 
   Args:
@@ -61,5 +61,5 @@ def zero_or_one_arg_func_to_building_block(
     if parameter_type is None:
       return result_comp
     else:
-      return computation_building_blocks.Lambda(
-          parameter_name, parameter_type, result_comp)
+      return computation_building_blocks.Lambda(parameter_name, parameter_type,
+                                                result_comp)

@@ -24,7 +24,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
-
 from tensorflow_federated.python.core.impl import computation_building_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import func_utils
@@ -48,8 +47,8 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
        '(foo -> <foo[1],foo[0]>)'),
       (lambda: 'stuff', None, 'stuff'))
   # pyformat: enable
-  def zero_or_one_arg_func_to_building_block(
-      self, func, parameter_type, func_str):
+  def zero_or_one_arg_func_to_building_block(self, func, parameter_type,
+                                             func_str):
     parameter_name = 'foo'
     parameter_type = computation_types.to_type(parameter_type)
     func = func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type)

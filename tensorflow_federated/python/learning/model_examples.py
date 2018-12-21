@@ -41,7 +41,9 @@ class LinearRegression(model.Model):
     self._a = tf.Variable(
         # N.B. The lambda is needed for use in defuns, see ValueError
         # raised from resource_variable_ops.py.
-        lambda: tf.zeros(shape=(feature_dim, 1)), name='a', trainable=True)
+        lambda: tf.zeros(shape=(feature_dim, 1)),
+        name='a',
+        trainable=True)
     self._b = tf.Variable(0.0, name='b', trainable=True)
     # Define a non-trainable model variable (another bias term)
     # for code coverage in testing.

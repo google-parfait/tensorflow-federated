@@ -328,9 +328,11 @@ class ComputationWrapperTest(test_utils.TffTestCase):
     self.assertEqual(my_func.__doc__, 'This is my func.')
 
   def test_as_decorator_with_unbundled_arguments(self):
+
     @test_wrap(tf.int32, tf.int32)
     def foo(unused_x, unused_y):
       return 99
+
     self.assertEqual(foo(10, 20), '<10,20> : <int32,int32> -> 99')
 
   def test_as_wrapper_with_unbundled_arguments(self):

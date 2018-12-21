@@ -25,7 +25,6 @@ from __future__ import print_function
 
 from tensorflow_federated.python.core.utils.tf_computation_utils import get_variables
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "get_variables",

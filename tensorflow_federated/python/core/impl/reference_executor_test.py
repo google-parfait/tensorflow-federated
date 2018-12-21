@@ -36,8 +36,9 @@ class ReferenceExecutorTest(absltest.TestCase):
   def test_installed_by_default(self):
     context = context_stack_impl.context_stack.current
     self.assertIsInstance(context, executor_context.ExecutorContext)
-    self.assertIsInstance(context._executor,  # pylint: disable=protected-access
-                          reference_executor.ReferenceExecutor)
+    self.assertIsInstance(
+        context._executor,  # pylint: disable=protected-access
+        reference_executor.ReferenceExecutor)
 
   def test_tensor_value(self):
     v = reference_executor.TensorValue(10, tf.int32)
