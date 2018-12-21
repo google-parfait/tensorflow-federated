@@ -26,6 +26,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
+from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
@@ -68,14 +69,14 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     # as it adds the batch dimension which is expected by the model.
     dataset = dataset.repeat(5).batch(3)
 
-    initial_model = federated_averaging.ModelVars(
-        trainable_variables={
+    initial_model = model_utils.ModelVars(
+        trainable={
             'a': tf.constant([[0.0], [0.0]]),
             'b': tf.constant(0.0)
         },
-        non_trainable_variables={'c': 0.0})
+        non_trainable={'c': 0.0})
 
-    init_op = federated_averaging.model_initializer(model)
+    init_op = model_utils.model_initializer(model)
     client_outputs = federated_averaging.client_tf(model, dataset,
                                                    initial_model)
 
@@ -108,10 +109,10 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
 
     server_state = federated_averaging.server_init(model_fn, optimizer_fn)
-    train_vars = server_state.model.trainable_variables
+    train_vars = server_state.model.trainable
     self.assertAllClose(train_vars['a'].numpy(), np.array([[0.0], [0.0]]))
     self.assertEqual(train_vars['b'].numpy(), 0.0)
-    self.assertEqual(server_state.model.non_trainable_variables['c'].numpy(),
+    self.assertEqual(server_state.model.non_trainable['c'].numpy(),
                      0.0)
     self.assertLen(server_state.optimizer_state, num_optimizer_vars)
     model_delta = tensor_utils.to_odict({
@@ -121,13 +122,12 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     server_state = federated_averaging.server_update_model(
         server_state, model_delta, model_fn, optimizer_fn)
 
-    train_vars = server_state.model.trainable_variables
+    train_vars = server_state.model.trainable
     # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
     # so updated_val=0.1
     self.assertAllClose(train_vars['a'].numpy(), [[updated_val], [0.0]])
     self.assertAllClose(train_vars['b'].numpy(), updated_val)
-    self.assertEqual(server_state.model.non_trainable_variables['c'].numpy(),
-                     0.0)
+    self.assertEqual(server_state.model.non_trainable['c'].numpy(), 0.0)
 
   @graph_mode_test
   def test_server_graph_mode(self):
@@ -143,10 +143,10 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
       with self.session() as sess:
         sess.run(init_op)
         server_state = sess.run(server_state_op)
-    train_vars = server_state.model.trainable_variables
+    train_vars = server_state.model.trainable
     self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
     self.assertEqual(train_vars['b'], 0.0)
-    self.assertEqual(server_state.model.non_trainable_variables['c'], 0.0)
+    self.assertEqual(server_state.model.non_trainable['c'], 0.0)
     self.assertEmpty(server_state.optimizer_state)
 
     with tf.Graph().as_default() as g:
@@ -163,15 +163,15 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
       with self.session() as sess:
         sess.run(init_op)
         server_state = sess.run(update_op)
-    train_vars = server_state.model.trainable_variables
+    train_vars = server_state.model.trainable
     # learning_Rate=0.1, update is [1.0, 0.0], initial model is [0.0, 0.0].
     self.assertAllClose(train_vars['a'], [[0.1], [0.0]])
     self.assertAllClose(train_vars['b'], 0.2)
-    self.assertEqual(server_state.model.non_trainable_variables['c'], 0.0)
+    self.assertEqual(server_state.model.non_trainable['c'], 0.0)
 
 
 if __name__ == '__main__':
-  # We default to eager execution, use the @graph_mode_test annotation
-  # below for a graph-mode (sess.run) test.
+  # We default to eager execution, and use the @graph_mode_test
+  # annotation for graph-mode (sess.run) tests.
   tf.enable_eager_execution()
   tf.test.main()

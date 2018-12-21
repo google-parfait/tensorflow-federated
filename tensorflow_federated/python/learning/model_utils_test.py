@@ -29,6 +29,8 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
 
@@ -124,11 +126,20 @@ def build_linear_regresion_keras_subclass_model(feature_dims):
   return KerasLinearRegression(feature_dims)
 
 
-class ModelUtilsTest(tf.test.TestCase, parameterized.TestCase):
+class ModelUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
 
-  def setUp(self):
-    super(ModelUtilsTest, self).setUp()
-    tf.enable_resource_variables()  # Needed for defuns
+  def test_model_initializer(self):
+    model = model_utils.enhance(model_examples.LinearRegression(2))
+    init = model_utils.model_initializer(model)
+    with self.session() as sess:
+      sess.run(init)
+      # Make sure we can read all the variables
+      try:
+        sess.run(model.local_variables)
+        sess.run(model.vars)
+      except tf.errors.FailedPreconditionError:
+        self.fail('Excpected variables to be initialized, but got '
+                  'tf.errors.FailedPreconditionError')
 
   def test_non_keras_model(self):
     with self.assertRaisesRegexp(TypeError, r'keras\..*\.Model'):
@@ -152,11 +163,11 @@ class ModelUtilsTest(tf.test.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[num_examples_metric(), num_batches_metric()])
-
+    self.assertIsInstance(tff_model, model_utils.EnhancedModel)
     x_placeholder = tf.placeholder(
         tf.float32, shape=(None, feature_dims), name='x')
     y_placeholder = tf.placeholder(tf.float32, shape=(None, 1), name='y')
-    batch = tff_model.make_batch(x=x_placeholder, y=y_placeholder)
+    batch = model_utils._KerasModel.make_batch(x=x_placeholder, y=y_placeholder)
 
     output_op = tff_model.forward_pass(batch)
     metrics = tff_model.aggregated_outputs()
@@ -222,7 +233,7 @@ class ModelUtilsTest(tf.test.TestCase, parameterized.TestCase):
     x_placeholder = tf.placeholder(
         shape=(None, feature_dims), dtype=tf.float32, name='x')
     y_placeholder = tf.placeholder(shape=(None, 1), dtype=tf.float32, name='y')
-    batch = tff_model.make_batch(x=x_placeholder, y=y_placeholder)
+    batch = model_utils._KerasModel.make_batch(x=x_placeholder, y=y_placeholder)
 
     train_op = tff_model.train_on_batch(batch)
 
@@ -257,9 +268,45 @@ class ModelUtilsTest(tf.test.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
         optimizer=tf.keras.optimizers.SGD(lr=0.01))
+    self.assertIsInstance(tff_model, model_utils.EnhancedTrainableModel)
     # pylint: disable=internal-access
-    self.assertTrue(hasattr(tff_model._keras_model, 'optimizer'))
+    self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
     # pylint: enable=internal-access
+
+  def test_enhance(self):
+    model = model_utils.enhance(model_examples.LinearRegression(3))
+    self.assertIsInstance(model, model_utils.EnhancedModel)
+
+    with self.assertRaisesRegexp(ValueError, 'another EnhancedModel'):
+      model_utils.EnhancedModel(model)
+
+  def test_enhanced_var_lists(self):
+
+    class BadModel(model_examples.TrainableLinearRegression):
+
+      @property
+      def trainable_variables(self):
+        return ['not_a_variable']
+
+      @property
+      def local_variables(self):
+        return 1
+
+      def forward_pass(self, batch, training=True):
+        return 'Not BatchOutput'
+
+      def train_on_batch(self, batch):
+        return 'Not BatchOutput'
+
+    bad_model = model_utils.enhance(BadModel())
+    self.assertRaisesRegexp(TypeError,
+                            'Variable', lambda: bad_model.trainable_variables)
+    self.assertRaisesRegexp(TypeError,
+                            'Iterable', lambda: bad_model.local_variables)
+    self.assertRaisesRegexp(TypeError,
+                            'BatchOutput', lambda: bad_model.forward_pass(1))
+    self.assertRaisesRegexp(TypeError,
+                            'BatchOutput', lambda: bad_model.train_on_batch(1))
 
 
 if __name__ == '__main__':

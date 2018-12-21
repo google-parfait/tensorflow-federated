@@ -1,7 +1,5 @@
 # Placeholder for internal Python version compatibility macro.
 
-# Eventually we will expose symbols from learning/ that can be used externally
-# via a public __init__.py file.
 package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -22,7 +20,23 @@ py_library(
     srcs = ["federated_averaging.py"],
     deps = [
         ":model",
+        ":model_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "federated_averaging_test",
+    srcs = ["federated_averaging_test.py"],
+    default_python_version = "PY3",
+    deps = [
+        ":federated_averaging",
+        ":model_examples",
+        ":model_utils",
+        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -39,6 +53,7 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -48,7 +63,9 @@ py_test(
     srcs = ["model_utils_test.py"],
     default_python_version = "PY3",
     deps = [
+        ":model_examples",
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
@@ -60,20 +77,6 @@ py_library(
     srcs = ["model_examples.py"],
     deps = [
         ":model",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "federated_averaging_test",
-    srcs = ["federated_averaging_test.py"],
-    default_python_version = "PY3",
-    deps = [
-        ":federated_averaging",
-        ":model_examples",
-        "//tensorflow_federated/python/common_libs:test_utils",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

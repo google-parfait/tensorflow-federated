@@ -23,7 +23,47 @@ import collections
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.tensorflow_libs import tensor_utils
+
+
+def model_initializer(model, name=None):
+  """Creates an initializer op for all of the model's variables."""
+  py_typecheck.check_type(model, model_lib.Model)
+  return tf.variables_initializer(
+      model.trainable_variables + model.non_trainable_variables +
+      model.local_variables,
+      name=(name or 'model_initializer'))
+
+
+class ModelVars(
+    collections.namedtuple(
+        'ModelVarsBase',
+        [
+            # An OrderedDict of `Model.trainable_variables` keyed by name.
+            'trainable',
+            # An OrderedDict of `Model.non_trainable_variables` keyed by name.
+            'non_trainable'
+        ])):
+  """A container for the trainable and non-trainable variables of a `Model`.
+
+  Note this does not include the model's local variables.
+
+  It may also be used to hold other values that are parallel to these variables,
+  e.g., tensors corresponding to variable values, or updates to model variables.
+  """
+
+  def __new__(cls, trainable, non_trainable):
+    return super(ModelVars, cls).__new__(
+        cls, tensor_utils.to_odict(trainable),
+        tensor_utils.to_odict(non_trainable))
+
+  @classmethod
+  def from_model(cls, model):
+    py_typecheck.check_type(model, model_lib.Model)
+    return cls(
+        tensor_utils.to_var_dict(model.trainable_variables),
+        tensor_utils.to_var_dict(model.non_trainable_variables))
 
 
 def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
@@ -51,9 +91,9 @@ def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
     raise ValueError('`keras_model` must not be compiled. Use '
                      'from_compiled_keras_model() instead.')
   if optimizer is None:
-    return _KerasModel(keras_model, loss, metrics)
+    return enhance(_KerasModel(keras_model, loss, metrics))
   keras_model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-  return _TrainableKerasModel(keras_model)
+  return enhance(_TrainableKerasModel(keras_model))
 
 
 def from_compiled_keras_model(keras_model):
@@ -74,10 +114,10 @@ def from_compiled_keras_model(keras_model):
   if not hasattr(keras_model, 'optimizer'):
     raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
                      'instead.')
-  return _TrainableKerasModel(keras_model)
+  return enhance(_TrainableKerasModel(keras_model))
 
 
-class _KerasModel(model.Model):
+class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
   Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
@@ -110,7 +150,7 @@ class _KerasModel(model.Model):
     for metric in self._metrics:
       metric.update_state(y_true=batch_input.y, y_pred=predictions)
 
-    return model.BatchOutput(loss=batch_loss, predictions=predictions)
+    return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
 
   @tf.contrib.eager.function(autograph=False)
   def aggregated_outputs(self):
@@ -122,11 +162,12 @@ class _KerasModel(model.Model):
       return collections.OrderedDict(
           [(metric.name, metric.result()) for metric in self._metrics])
 
-  def make_batch(self, x, y):
-    return self.Batch(x=x, y=y)
+  @classmethod
+  def make_batch(cls, x, y):
+    return cls.Batch(x=x, y=y)
 
 
-class _TrainableKerasModel(_KerasModel, model.TrainableModel):
+class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
   """Wrapper class for tf.keras.Models that can be trained."""
 
   def __init__(self, inner_model):
@@ -142,3 +183,85 @@ class _TrainableKerasModel(_KerasModel, model.TrainableModel):
     _ = self._keras_model.optimizer.get_updates(
         loss=batch_output.loss, params=self.trainable_variables)
     return batch_output
+
+
+def enhance(model):
+  """Wraps a `tff.learning.Model` as an `EnhancedModel`.
+
+  Args:
+    model: A `tff.learning.Model` or `tff.learning.TrainableModel`.
+
+  Returns:
+    An EnhancedModel or TrainableEnhancedModel, depending on the type of the
+    input model. If model has already been wrapped as such, this is a no-op.
+  """
+  py_typecheck.check_type(model, model_lib.Model)
+  if isinstance(model, EnhancedModel):
+    return model
+
+  if isinstance(model, model_lib.TrainableModel):
+    return EnhancedTrainableModel(model)
+  else:
+    return EnhancedModel(model)
+
+
+def _check_iterable_of_variables(variables):
+  py_typecheck.check_type(variables, collections.Iterable)
+  for v in variables:
+    py_typecheck.check_type(v, tf.Variable)
+  return variables
+
+
+class EnhancedModel(model_lib.Model):
+  """A wrapper around a Model that adds sanity checking and metadata helpers."""
+
+  def __init__(self, model):
+    super(EnhancedModel, self).__init__()
+    py_typecheck.check_type(model, model_lib.Model)
+    if isinstance(model, EnhancedModel):
+      raise ValueError(
+          'Attempting to wrap an EnhancedModel in another EnhancedModel')
+    self._model = model
+
+  #
+  # Methods offering additional functionality and metadata:
+  #
+
+  @property
+  def vars(self):
+    """Returns a `tff.learning.ModelVars`."""
+    return ModelVars.from_model(self)
+
+  #
+  # The following delegate to the Model interface:
+  #
+
+  @property
+  def trainable_variables(self):
+    return _check_iterable_of_variables(self._model.trainable_variables)
+
+  @property
+  def non_trainable_variables(self):
+    return _check_iterable_of_variables(self._model.non_trainable_variables)
+
+  @property
+  def local_variables(self):
+    return _check_iterable_of_variables(self._model.local_variables)
+
+  def forward_pass(self, batch, training=True):
+    return py_typecheck.check_type(
+        self._model.forward_pass(batch, training), model_lib.BatchOutput)
+
+  def aggregated_outputs(self):
+    return self._model.aggregated_outputs()
+
+
+class EnhancedTrainableModel(EnhancedModel):
+
+  def __init__(self, model):
+    py_typecheck.check_type(model, model_lib.TrainableModel)
+    super(EnhancedTrainableModel, self).__init__(model)
+
+  def train_on_batch(self, batch):
+    return py_typecheck.check_type(
+        self._model.train_on_batch(batch), model_lib.BatchOutput)
