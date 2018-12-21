@@ -45,7 +45,7 @@ class StaticOrDynamicShapeTest(tf.test.TestCase):
 
 
 class SplitMergeDictTest(parameterized.TestCase):
-  """Tests for `split_dict_py_tf` and `merge_same_structure_dicts` methods."""
+  """Tests for `split_dict_py_tf` and `merge_dicts` methods."""
 
   def test_split_dict_py_tf_empty(self):
     """Tests that `split_dict_py_tf` works with empty dictionary."""
@@ -57,8 +57,8 @@ class SplitMergeDictTest(parameterized.TestCase):
     """Tests that `split_dict_py_tf` works with flat dictionary."""
     const = tf.constant(2.0)
     test_dict = {'py': 1.0, 'tf': const}
-    expected_d_py = {'py': 1.0, 'tf': None}
-    expected_d_tf = {'py': None, 'tf': const}
+    expected_d_py = {'py': 1.0}
+    expected_d_tf = {'tf': const}
     d_py, d_tf = utils.split_dict_py_tf(test_dict)
     self.assertDictEqual(expected_d_py, d_py)
     self.assertDictEqual(expected_d_tf, d_tf)
@@ -77,17 +77,13 @@ class SplitMergeDictTest(parameterized.TestCase):
     expected_d_py = {
         'nested': {
             'a': 1.0,
-            'b': None
         },
         'py': 'string',
-        'tf': None
     }
     expected_d_tf = {
         'nested': {
-            'a': None,
             'b': const_1
         },
-        'py': None,
         'tf': const_2
     }
     d_py, d_tf = utils.split_dict_py_tf(test_dict)
@@ -103,22 +99,18 @@ class SplitMergeDictTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.parameters(
       ({}, {}, {}),
-      ({'a': {}}, {'a': {}}, {'a': {}}),
-      ({'a': {'b': {}}}, {'a': {'b': {}}}, {'a': {'b': {}}}),
-      ({'a': 1}, {'a': None}, {'a': 1}),
-      ({'a': None}, {'a': None}, {'a': None}),
-      ({'a': None, 'b': 2}, {'a': 1, 'b': None}, {'a': 1, 'b': 2}),
-      ({'a': {'aa': 11, 'ab': None}, 'b': 2},
-       {'a': {'aa': None, 'ab': 12}, 'b': None},
+      ({'a': {'b': None}}, {'a': {'c': None}}, {'a': {'b': None, 'c': None}}),
+      ({'a': 1}, {'b': None}, {'a': 1, 'b': None}),
+      ({'a': 1}, {'b': 2}, {'a': 1, 'b': 2}),
+      ({'a': {'aa': 11}, 'b': 2},
+       {'a': {'ab': 12}},
        {'a': {'aa': 11, 'ab': 12}, 'b': 2})
       )
   # pyformat: enable
-  def test_merge_same_structure_dicts(self, dict1, dict2, expected_dict):
-    """Tests that `merge_same_structure_dicts` works as expected."""
-    self.assertDictEqual(expected_dict,
-                         utils.merge_same_structure_dicts(dict1, dict2))
-    self.assertDictEqual(expected_dict,
-                         utils.merge_same_structure_dicts(dict2, dict1))
+  def test_merge_dicts(self, dict1, dict2, expected_dict):
+    """Tests that `merge_dicts` works as expected."""
+    self.assertDictEqual(expected_dict, utils.merge_dicts(dict1, dict2))
+    self.assertDictEqual(expected_dict, utils.merge_dicts(dict2, dict1))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -130,32 +122,29 @@ class SplitMergeDictTest(parameterized.TestCase):
   def test_split_merge_identity(self, **test_dict):
     """Tests that spliting and merging amounts to identity.
 
-    This test method tests that using the `split_dict_py_tf` and
-    `merge_same_structure_dicts` methods together amounts to an identity.
+    This test method tests that using the `split_dict_py_tf` and `merge_dicts`
+    methods together amounts to an identity.
 
     Args:
       **test_dict: A dictionary to be used for the test.
     """
-    new_dict = utils.merge_same_structure_dicts(
-        *utils.split_dict_py_tf(test_dict))
+    new_dict = utils.merge_dicts(*utils.split_dict_py_tf(test_dict))
     self.assertDictEqual(new_dict, test_dict)
 
   # pyformat: disable
   @parameterized.parameters(
       ('not_a_dict', {'a': None}, TypeError),  # Not a dictionary.
-      ({}, {'a': None}, ValueError),  # Not equal length.
-      ({'a': None}, {'b': None}, ValueError),  # Bad structure.
-      ({'a': {'b': 0}}, {'a': None, 'b': None}, ValueError),  # Bad structure.
+      ({'a': {'b': 0}}, {'a': None}, ValueError),  # Bad structure.
+      ({'a': {}}, {'b': {}}, ValueError),  # Bad structure.
       ({'a': 1.0}, {'a': 2.0}, ValueError),  # Both values are set.
       ({1: None}, {1.0: 'value'}, ValueError))  # 1 and 1.0 are not the same.
   # pyformat: enable
-  def test_merge_same_structure_dicts_raises(self, bad_dict1, bad_dict2,
-                                             error_type):
-    """Tests that `merge_same_structure_dicts` raises appropriate error."""
+  def test_merge_dicts_raises(self, bad_dict1, bad_dict2, error_type):
+    """Tests that `merge_dicts` raises appropriate error."""
     with self.assertRaises(error_type):
-      utils.merge_same_structure_dicts(bad_dict1, bad_dict2)
+      utils.merge_dicts(bad_dict1, bad_dict2)
     with self.assertRaises(error_type):
-      utils.merge_same_structure_dicts(bad_dict2, bad_dict1)
+      utils.merge_dicts(bad_dict2, bad_dict1)
 
 
 if __name__ == '__main__':

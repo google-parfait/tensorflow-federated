@@ -56,9 +56,9 @@ def split_dict_py_tf(dictionary):
   Returns:
     A tuple `(d_py, d_tf)`, where
     d_py: A `dict` of the same structure as `dictionary`, with TensorFlow values
-      replaced by `None`, recursively.
+      removed, recursively.
     d_tf: A `dict` of the same structure as `dictionary`, with non-TensorFlow
-      values replaced by `None`, recursively.
+      values removed, recursively.
 
   Raises:
     TypeError:
@@ -72,55 +72,56 @@ def split_dict_py_tf(dictionary):
       d_py[k], d_tf[k] = split_dict_py_tf(v)
     else:
       if tensor_util.is_tensor(v):
-        d_py[k], d_tf[k] = None, v
+        d_tf[k] = v
       else:
-        d_py[k], d_tf[k] = v, None
+        d_py[k] = v
   return d_py, d_tf
 
 
-def merge_same_structure_dicts(dict1, dict2):
-  """Merges dictionaries of the same structure.
+def merge_dicts(dict1, dict2):
+  """Merges dictionaries of corresponding structure.
 
-  This method merges two dictionaries of the same structure, of which each
-  element is `None` in exactly one the dictionaries.
+  The inputs must be dictionaries, which have the same key only if the
+  corresponding values are also dictionaries, which will be processed
+  recursively.
 
   This method is mainly to be used together with the `split_dict_py_tf` method.
 
   Args:
-    dict1: An arbitrary `dict`. Any `dict` objects in values will be processed
-      recursively.
-    dict2: A `dict`, with the same structure as `dict1`.
+    dict1: An arbitrary `dict`.
+    dict2: A `dict`. A key is in both `dict1` and `dict2` iff both of the
+      corresponding values are also `dict` objects.
 
   Returns:
-    A `dict` of the same structure as the inputs, with merged values.
+    A `dict` with values merged from the input dictionaries.
 
   Raises:
     TypeError:
       If either of the input arguments is not a dictionary.
     ValueError:
-      If the input dictionaries do not have the same structure, or if a certain
-      value is set (not equal to `None`) in both of the dictionaries.
+      If the input dictionaries do not have corresponding structure.
   """
   merged_dict = {}
   if not (isinstance(dict1, dict) and isinstance(dict2, dict)):
     raise TypeError
-  if len(dict1) != len(dict2):
-    raise ValueError('Dictionaries must have the same structure.')
 
-  if {(type(k), k) for k in dict1} != {(type(k), k) for k in dict2}:
-    raise ValueError('Dictionaries must have the same structure.')
-  for k in dict1:
-    v1, v2 = dict1[k], dict2[k]
-    if isinstance(v1, dict) != isinstance(v2, dict):
-      raise ValueError('Dictionaries must have the same structure.')
-
-    if isinstance(v1, dict):
-      merged_dict[k] = merge_same_structure_dicts(v1, v2)
-    elif v1 is None:
-      merged_dict[k] = v2  # The value v2 could also be None.
-    elif v2 is None:
-      merged_dict[k] = v1
+  for k, v in six.iteritems(dict1):
+    if isinstance(v, dict):
+      if not (k in dict2 and isinstance(dict2[k], dict)):
+        raise ValueError('Dictionaries must have the same structure.')
+      merged_dict[k] = merge_dicts(v, dict2[k])
     else:
-      raise ValueError('At least one value must be None.')
+      merged_dict[k] = v
+
+  for k, v in six.iteritems(dict2):
+    if isinstance(v, dict):
+      if not (k in dict1 and isinstance(dict1[k], dict)):
+        # This should have been merged in previous loop.
+        raise ValueError('Dictionaries must have the same structure.')
+    else:
+      if k in merged_dict:
+        raise ValueError('Dictionaries cannot contain the same key, unless the '
+                         'corresponding values are dictionaries.')
+      merged_dict[k] = v
 
   return merged_dict

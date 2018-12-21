@@ -25,6 +25,29 @@ py_test(
 )
 
 py_library(
+    name = "test_utils",
+    testonly = True,
+    srcs = ["test_utils.py"],
+    deps = [
+        ":encoding_stage",
+        ":utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "test_utils_test",
+    srcs = ["test_utils_test.py"],
+    default_python_version = "PY3",
+    deps = [
+        ":test_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
