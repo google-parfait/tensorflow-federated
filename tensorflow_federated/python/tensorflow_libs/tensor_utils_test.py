@@ -22,9 +22,12 @@ import collections
 # Dependency imports
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs import tensor_utils as tu
+
+nest = tf.contrib.framework.nest
 
 
 class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
@@ -65,6 +68,44 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
 
     with self.assertRaises(TypeError):
       tu.to_odict({1: 'a', 2: 'b'})
+
+  def test_zero_all_if_any_non_finite(self):
+
+    def expect_ok(structure):
+      tf.reset_default_graph()
+      result, error = tu.zero_all_if_any_non_finite(structure)
+      with self.session() as sess:
+        result, error = sess.run((result, error))
+      try:
+        nest.map_structure(
+            np.testing.assert_allclose, result, structure)
+      except AssertionError:
+        self.fail('Expected to get input {} back, but instead got {}'.format(
+            structure, result))
+      self.assertEqual(error, 0)
+
+    expect_ok([])
+    expect_ok([(), {}])
+    expect_ok(1.1)
+    expect_ok([1.0, 0.0])
+    expect_ok([1.0, 2.0, {'a': 0.0, 'b': -3.0}])
+
+    def expect_zeros(structure, expected):
+      tf.reset_default_graph()
+      result, error = tu.zero_all_if_any_non_finite(structure)
+      with self.session() as sess:
+        result, error = sess.run((result, error))
+      try:
+        nest.map_structure(
+            np.testing.assert_allclose, result, expected)
+      except AssertionError:
+        self.fail('Expected to get zeros, but instead got {}'.format(result))
+      self.assertEqual(error, 1)
+
+    expect_zeros(np.inf, 0.0)
+    expect_zeros((1.0, (2.0, np.nan)), (0.0, (0.0, 0.0)))
+    expect_zeros((1.0, (2.0, {'a': 3.0, 'b': [[np.inf], [np.nan]]})),
+                 (0.0, (0.0, {'a': 0.0, 'b': [[0.0], [0.0]]})))
 
   def test_is_scalar_with_list(self):
     self.assertRaises(TypeError, tu.is_scalar, [10])

@@ -18,14 +18,17 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import functools
 
 # Dependency imports
 
 import six
 import tensorflow as tf
 
-from tensorflow.python.framework import tensor_util
 from tensorflow_federated.python.common_libs import py_typecheck
+
+
+nest = tf.contrib.framework.nest
 
 
 def to_var_dict(variables):
@@ -52,6 +55,28 @@ def to_odict(d):
   return collections.OrderedDict(sorted(items))
 
 
+@tf.contrib.eager.function(autograph=True)
+def zero_all_if_any_non_finite(structure):
+  """Zeroes out all entries in input if any are not finite.
+
+  Args:
+    structure: A structure supported by tf.contrib.framework.nest.
+
+  Returns:
+     A tuple (input, 0) if all entries are finite or the structure is empty, or
+     a tuple (zeros, 1) if any non-finite entries were found.
+  """
+  flat = nest.flatten(structure)
+  if not flat:
+    return (structure, tf.constant(0))
+  flat_bools = [tf.reduce_all(tf.is_finite(t)) for t in flat]
+  all_finite = functools.reduce(tf.logical_and, flat_bools)
+  if all_finite:
+    return (structure, tf.constant(0))
+  else:
+    return (nest.map_structure(tf.zeros_like, structure), tf.constant(1))
+
+
 def is_scalar(tensor):
   """Returns True iff the given tensor is a scalar.
 
@@ -64,7 +89,7 @@ def is_scalar(tensor):
   Raises:
     TypeError: when the argument is not a tensor.
   """
-  if not tensor_util.is_tensor(tensor):
+  if not tf.contrib.framework.is_tensor(tensor):
     raise TypeError('Expected a tensor, found "{}".'.format(
         py_typecheck.type_string(type(tensor))))
   return (hasattr(tensor, 'get_shape') and
