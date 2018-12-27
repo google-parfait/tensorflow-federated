@@ -62,7 +62,7 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     dataset = tf.data.Dataset.from_tensor_slices(
         model_examples.TrainableLinearRegression.make_batch(
             x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
-            y=[0.0, 0.0, 1.0, 1.0]))
+            y=[[0.0], [0.0], [1.0], [1.0]]))
     # Repeat the dataset 5 times with batches of 3 examples,
     # producing 7 minibatches (the last one with only 2 examples).
     # Note thta `batch` is required for this dataset to be useable,
@@ -77,8 +77,8 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
         non_trainable={'c': 0.0})
 
     init_op = model_utils.model_initializer(model)
-    client_outputs = federated_averaging.client_tf(model, dataset,
-                                                   initial_model)
+    client_tf = federated_averaging.ClientFedAvg(model)
+    client_outputs = client_tf(dataset, initial_model)
 
     tf.get_default_graph().finalize()
     with self.session() as sess:
@@ -171,7 +171,7 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  # We default to eager execution, and use the @graph_mode_test
-  # annotation for graph-mode (sess.run) tests.
-  tf.enable_eager_execution()
+  # We default to TF 2.0 behavior, including eager execution, and use the
+  # @graph_mode_test annotation for graph-mode (sess.run) tests.
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

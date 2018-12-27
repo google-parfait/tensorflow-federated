@@ -256,7 +256,7 @@ class EnhancedModel(model_lib.Model):
     return self._model.aggregated_outputs()
 
 
-class EnhancedTrainableModel(EnhancedModel):
+class EnhancedTrainableModel(EnhancedModel, model_lib.TrainableModel):
 
   def __init__(self, model):
     py_typecheck.check_type(model, model_lib.TrainableModel)

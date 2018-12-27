@@ -17,9 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.learning.federated_averaging import ClientOutput
+from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
+from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
+
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "ClientDeltaFn",
     "ClientOutput",
 ]

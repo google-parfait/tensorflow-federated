@@ -35,6 +35,7 @@ class LinearRegression(model.Model):
   def __init__(self, feature_dim=1):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
+    self._feature_dim = feature_dim
     self._num_examples = tf.Variable(0, name='num_examples', trainable=False)
     self._num_batches = tf.Variable(0, name='num_batches', trainable=False)
     self._loss_sum = tf.Variable(0.0, name='loss_sum', trainable=False)
@@ -68,7 +69,13 @@ class LinearRegression(model.Model):
   @tf.contrib.eager.defun(autograph=False)
   def forward_pass(self, batch, training=True):
     del training  # Unused
-
+    if not batch.y.shape.is_compatible_with([None, 1]):
+      raise ValueError('Expected batch.y to be compatible with shape '
+                       '[None, 1] but found {}'.format(batch.y.shape))
+    if not batch.x.shape.is_compatible_with([None, self._feature_dim]):
+      raise ValueError('Expected batch.x to be compatible with shape '
+                       '[None, {}] but found {}'.format(
+                           self._feature_dim, batch.x.shape))
     predictions = self._predict(batch.x)
     residuals = predictions - batch.y
     num_examples = tf.gather(tf.shape(predictions), 0)

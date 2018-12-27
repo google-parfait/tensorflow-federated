@@ -8,6 +8,13 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        ":optimizer_utils",
         "//tensorflow_federated/python/learning:federated_averaging",
     ],
+)
+
+py_library(
+    name = "optimizer_utils",
+    srcs = ["optimizer_utils.py"],
+    deps = [],
 )
