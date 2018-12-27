@@ -41,13 +41,29 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
 
-  def __init__(self, model):
+  def __init__(self, model, client_weight_fn=None):
+    """Creates the client computation for Federated Averaging.
+
+    Args:
+      model: A `learning.TrainableModel`.
+      client_weight_fn: Optional function that takes the output
+        of model.aggregated_outputs() and returns a tensor that provides
+        the weight in the federated average of model deltas. If not provided,
+        the default is the total number of examples processed on device.
+    """
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedTrainableModel)
 
+    self._num_examples = tf.Variable(0, name='num_examples')
+    if client_weight_fn is not None:
+      py_typecheck.check_callable(client_weight_fn)
+      self._client_weight_fn = client_weight_fn
+    else:
+      self._client_weight_fn = lambda _: tf.cast(self._num_examples, tf.float32)
+
   @property
   def variables(self):
-    return []
+    return [self._num_examples]
 
   @tf.contrib.eager.function(autograph=False)
   def __call__(self, dataset, initial_weights):
@@ -66,12 +82,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     @tf.contrib.eager.function(autograph=False)
     def reduce_fn(dummy_state, batch):
       """Runs train_on_batch on batch."""
-      # Question: Do we want to compute num_examples and num_batches as
-      # counters here, so clients don't have to do this in their Models
-      # themselves? But then is there potentially more "surprise"
-      # when those are available? If we do compute them here, do we add
-      # them into the user's `aggregated_outputs` or return them separately?
-      model.train_on_batch(batch)
+      output = model.train_on_batch(batch)
+      tf.assign_add(self._num_examples, tf.shape(output.predictions)[0])
       return dummy_state
 
     # TODO(b/121400757): Remove dummy_output when bug fixed.
@@ -81,13 +93,24 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
                                        initial_weights.trainable)
 
-    # TODO(b/109733734): Add a check that all of the model deltas are finite;
-    # if not, then send an all-zero update, and increment an error counter.
+    aggregated_outputs = model.aggregated_outputs()
+    weights_delta_weight = self._client_weight_fn(aggregated_outputs)  # pylint:disable=not-callable
+
+    # TODO(b/122071074): Consider moving this functionality into
+    # federated_averaging?
+    weights_delta, has_non_finite_delta = (
+        tensor_utils.zero_all_if_any_non_finite(weights_delta))
+    weights_delta_weight = tf.cond(
+        tf.equal(has_non_finite_delta,
+                 0), lambda: weights_delta_weight, lambda: tf.constant(0.0))
 
     return optimizer_utils.ClientOutput(
-        weights_delta,
-        model.aggregated_outputs(),
-        tensor_utils.to_odict({'workaround for b/121400757': dummy_output}))
+        weights_delta, weights_delta_weight, aggregated_outputs,
+        tensor_utils.to_odict({
+            'num_examples': self._num_examples.value(),
+            'has_non_finite_delta': has_non_finite_delta,
+            'workaround for b/121400757': dummy_output,
+        }))
 
 
 #

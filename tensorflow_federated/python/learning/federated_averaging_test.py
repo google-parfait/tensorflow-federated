@@ -52,12 +52,11 @@ def graph_mode_test(test_func):
   return wrapped_test_func
 
 
-class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
+class FederatedAveragingClientTest(test_utils.TffTestCase,
+                                   parameterized.TestCase):
+  """Tests of ClientFedAvg that use a common model and data."""
 
-  @graph_mode_test
-  def test_client_tf(self):
-    model = model_examples.TrainableLinearRegression(feature_dim=2)
-
+  def dataset(self):
     # Create a dataset with 4 examples:
     dataset = tf.data.Dataset.from_tensor_slices(
         model_examples.TrainableLinearRegression.make_batch(
@@ -67,18 +66,29 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     # producing 7 minibatches (the last one with only 2 examples).
     # Note thta `batch` is required for this dataset to be useable,
     # as it adds the batch dimension which is expected by the model.
-    dataset = dataset.repeat(5).batch(3)
+    return dataset.repeat(5).batch(3)
 
-    initial_weights = model_utils.ModelWeights(
+  def model(self):
+    return model_examples.TrainableLinearRegression(feature_dim=2)
+
+  def initial_weights(self):
+    return model_utils.ModelWeights(
         trainable={
             'a': tf.constant([[0.0], [0.0]]),
             'b': tf.constant(0.0)
         },
         non_trainable={'c': 0.0})
 
-    init_op = model_utils.model_initializer(model)
+  @graph_mode_test
+  def test_client_tf(self):
+    model = self.model()
+    dataset = self.dataset()
     client_tf = federated_averaging.ClientFedAvg(model)
-    client_outputs = client_tf(dataset, initial_weights)
+    init_op = tf.group(
+        model_utils.model_initializer(model),
+        tf.variables_initializer(client_tf.variables),
+        name='fedavg_initializer')
+    client_outputs = client_tf(dataset, self.initial_weights())
 
     tf.get_default_graph().finalize()
     with self.session() as sess:
@@ -90,11 +100,40 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
       self.assertCountEqual(['a', 'b'], out.weights_delta.keys())
       self.assertGreater(np.linalg.norm(out.weights_delta['a']), 0.1)
       self.assertGreater(np.linalg.norm(out.weights_delta['b']), 0.1)
+      self.assertEqual(out.weights_delta_weight, 20.0)
+      self.assertEqual(out.optimizer_output['num_examples'], 20)
+      self.assertEqual(out.optimizer_output['has_non_finite_delta'], 0)
 
       self.assertEqual(out.model_output['num_examples'], 20)
       self.assertEqual(out.model_output['num_batches'], 7)
       self.assertBetween(out.model_output['loss'],
                          np.finfo(np.float32).eps, 10.0)
+
+  def test_client_tf_custom_delta_weight(self):
+    model = self.model()
+    dataset = self.dataset()
+    client_tf = federated_averaging.ClientFedAvg(
+        model, client_weight_fn=lambda _: tf.constant(1.5))
+    out = client_tf(dataset, self.initial_weights())
+    self.assertEqual(out.weights_delta_weight.numpy(), 1.5)
+
+  @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
+  def test_non_finite_aggregation(self, bad_value):
+    model = self.model()
+    dataset = self.dataset()
+    client_tf = federated_averaging.ClientFedAvg(model)
+    init_weights = self.initial_weights()
+    init_weights.trainable['b'] = bad_value
+    out = client_tf(dataset, init_weights)
+    self.assertEqual(out.weights_delta_weight.numpy(), 0.0)
+    self.assertAllClose(out.weights_delta['a'].numpy(),
+                        np.array([[0.0], [0.0]]))
+    self.assertAllClose(out.weights_delta['b'].numpy(), 0.0)
+    self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
+
+
+class FederatedAveragingServerTest(test_utils.TffTestCase,
+                                   parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(

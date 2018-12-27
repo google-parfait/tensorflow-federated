@@ -118,14 +118,18 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     # TODO(b/109733734): Might be better to send the weighted grad sums
     # and the denominator separately?
     weights_delta = nest.map_structure(
-        lambda g: -1.0 * g / self._batch_weight_sum,
-        self._grad_sum_vars)
-
-    # TODO(b/109733734): Add a check that all of the model deltas are finite;
-    # if not, then send an all-zero update, and increment an error counter.
+        lambda g: -1.0 * g / self._batch_weight_sum, self._grad_sum_vars)
+    weights_delta, has_non_finite_delta = (
+        tensor_utils.zero_all_if_any_non_finite(weights_delta))
+    weights_delta_weight = tf.cond(
+        tf.equal(has_non_finite_delta,
+                 0), lambda: self._batch_weight_sum, lambda: tf.constant(0.0))
 
     return optimizer_utils.ClientOutput(
         weights_delta,
+        weights_delta_weight,
         model.aggregated_outputs(),
-        tensor_utils.to_odict({'workaround for b/121400757': dummy_output,
-                               'client_weight': self._batch_weight_sum}))
+        tensor_utils.to_odict({
+            'client_weight': weights_delta_weight,
+            'has_non_finite_delta': has_non_finite_delta,
+            'workaround for b/121400757': dummy_output}))

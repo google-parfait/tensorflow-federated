@@ -77,6 +77,8 @@ def federated_aggregate(value, zero, accumulate, merge, report):
   return factory.federated_aggregate(value, zero, accumulate, merge, report)
 
 
+# TODO(b/122071074): Consider renaming federated_mean to better match names
+# in TensorFlow, Numpy, and Pandas.
 def federated_average(value, weight=None):
   """Computes a `SERVER` average of `value` placed on `CLIENTS`.
 

@@ -31,6 +31,8 @@ ClientOutput = collections.namedtuple(
     [
         # A dictionary of updates to the model's trainable variables.
         'weights_delta',
+        # Weight to use in a weighted mean when aggregating weights_delta.
+        'weights_delta_weight',
         # A structure matching model.aggregated_outputs,
         # reflecting the results of training on the input dataset.
         'model_output',
