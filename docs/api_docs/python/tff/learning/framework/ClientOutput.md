@@ -1,7 +1,7 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
 <meta itemprop="name" content="tff.learning.framework.ClientOutput" />
 <meta itemprop="path" content="Stable" />
-<meta itemprop="property" content="model_delta"/>
+<meta itemprop="property" content="weights_delta"/>
 <meta itemprop="property" content="model_output"/>
 <meta itemprop="property" content="optimizer_output"/>
 <meta itemprop="property" content="__new__"/>
@@ -13,7 +13,7 @@
 
 
 
-ClientOutput(model_delta, model_output, optimizer_output)
+ClientOutput(weights_delta, model_output, optimizer_output)
 
 <h2 id="__new__"><code>__new__</code></h2>
 
@@ -21,19 +21,19 @@ ClientOutput(model_delta, model_output, optimizer_output)
 @staticmethod
 __new__(
     _cls,
-    model_delta,
+    weights_delta,
     model_output,
     optimizer_output
 )
 ```
 
-Create new instance of ClientOutput(model_delta, model_output, optimizer_output)
+Create new instance of ClientOutput(weights_delta, model_output, optimizer_output)
 
 
 
 ## Properties
 
-<h3 id="model_delta"><code>model_delta</code></h3>
+<h3 id="weights_delta"><code>weights_delta</code></h3>
 
 
 

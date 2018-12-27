@@ -71,7 +71,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
           lambda: tf.zeros_like(tensor), name='{}_grad'.format(name))
 
     self._grad_sum_vars = nest.map_structure_with_paths(
-        _get_grad_var, self._model.vars.trainable)
+        _get_grad_var, self._model.weights.trainable)
     self._batch_weight_sum = tf.Variable(0.0, name='batch_weight_sum')
 
   @property
@@ -79,14 +79,14 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     return [self._batch_weight_sum] + nest.flatten(self._grad_sum_vars)
 
   @tf.contrib.eager.function(autograph=False)
-  def __call__(self, dataset, initial_model):
+  def __call__(self, dataset, initial_weights):
     # N.B. When not in eager mode, this code must be wrapped as a defun
     # as it uses program-order semantics to avoid adding many explicit
     # control dependencies.
     model = self._model
     py_typecheck.check_type(dataset, tf.data.Dataset)
 
-    nest.map_structure(tf.assign, model.vars, initial_model)
+    nest.map_structure(tf.assign, model.weights, initial_weights)
 
     @tf.contrib.eager.function(autograph=False)
     def reduce_fn(dummy_state, batch):
@@ -94,7 +94,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       with tf.contrib.eager.GradientTape() as tape:
         output = model.forward_pass(batch)
 
-      flat_vars = nest.flatten(model.vars.trainable)
+      flat_vars = nest.flatten(model.weights.trainable)
       grads = nest.pack_sequence_as(
           self._grad_sum_vars, tape.gradient(output.loss, flat_vars))
 
@@ -117,7 +117,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     # For SGD, the delta is just the negative of the average gradient:
     # TODO(b/109733734): Might be better to send the weighted grad sums
     # and the denominator separately?
-    model_delta = nest.map_structure(
+    weights_delta = nest.map_structure(
         lambda g: -1.0 * g / self._batch_weight_sum,
         self._grad_sum_vars)
 
@@ -125,7 +125,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     # if not, then send an all-zero update, and increment an error counter.
 
     return optimizer_utils.ClientOutput(
-        model_delta,
+        weights_delta,
         model.aggregated_outputs(),
         tensor_utils.to_odict({'workaround for b/121400757': dummy_output,
                                'client_weight': self._batch_weight_sum}))

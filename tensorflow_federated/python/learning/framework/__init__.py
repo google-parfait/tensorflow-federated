@@ -19,10 +19,16 @@ from __future__ import print_function
 
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
+from tensorflow_federated.python.learning.model_utils import EnhancedModel
+from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
+from tensorflow_federated.python.learning.model_utils import ModelWeights
 
 
 # Used by doc generation script.
 _allowed_symbols = [
     "ClientDeltaFn",
     "ClientOutput",
+    "ModelWeights",
+    "EnhancedModel",
+    "EnhancedTrainableModel"
 ]

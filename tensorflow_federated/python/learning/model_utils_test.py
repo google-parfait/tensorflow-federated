@@ -136,7 +136,7 @@ class ModelUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
       # Make sure we can read all the variables
       try:
         sess.run(model.local_variables)
-        sess.run(model.vars)
+        sess.run(model.weights)
       except tf.errors.FailedPreconditionError:
         self.fail('Excpected variables to be initialized, but got '
                   'tf.errors.FailedPreconditionError')

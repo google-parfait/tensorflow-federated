@@ -73,7 +73,7 @@ Constructs a new federated type instance.
 __eq__(other)
 ```
 
-
+Return self==value.
 
 <h3 id="__ge__"><code>__ge__</code></h3>
 
@@ -81,7 +81,7 @@ __eq__(other)
 __ge__(other)
 ```
 
-
+Return self>=value.
 
 <h3 id="__gt__"><code>__gt__</code></h3>
 
@@ -89,7 +89,7 @@ __ge__(other)
 __gt__(other)
 ```
 
-
+Return self>value.
 
 <h3 id="__le__"><code>__le__</code></h3>
 
@@ -97,7 +97,7 @@ __gt__(other)
 __le__(other)
 ```
 
-
+Return self<=value.
 
 <h3 id="__lt__"><code>__lt__</code></h3>
 
@@ -105,7 +105,7 @@ __le__(other)
 __lt__(other)
 ```
 
-
+Return self<value.
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
@@ -113,7 +113,7 @@ __lt__(other)
 __ne__(other)
 ```
 
-
+Return self!=value.
 
 <h3 id="is_assignable_from"><code>is_assignable_from</code></h3>
 
@@ -121,7 +121,16 @@ __ne__(other)
 is_assignable_from(other)
 ```
 
+Determines whether this TFF type is assignable from another TFF type.
 
+#### Args:
+
+* <b>`other`</b>: Another type, an instance of `Type`.
+
+
+#### Returns:
+
+`True` if self is assignable from other, `False` otherwise.
 
 
 

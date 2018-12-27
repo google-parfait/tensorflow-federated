@@ -13,7 +13,5 @@ The public API for model developers using federated learning algorithms.
 
 ## Classes
 
-[`class BatchOutput`](../tff/learning/BatchOutput.md): BatchOutput(loss, predictions)
-
 [`class Model`](../tff/learning/Model.md): Represents a Model for use in TensorFlow Federated.
 

@@ -31,6 +31,8 @@ TensorFlow Federated library.
 
 [`class Type`](./tff/Type.md): An abstract interface for all classes that represent TFF types.
 
+[`class Value`](./tff/Value.md): An abstract base class for all values in the bodies of TFF computations.
+
 ## Functions
 
 [`federated_aggregate(...)`](./tff/federated_aggregate.md): Aggregates `value` from `CLIENTS` to `SERVER` using a multi-stage process.

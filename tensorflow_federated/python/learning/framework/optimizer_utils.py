@@ -29,9 +29,8 @@ import six
 ClientOutput = collections.namedtuple(
     'ClientOutput',
     [
-        # A dictionary matching initial_model containing the update
-        # to the model variables produced by local training.
-        'model_delta',
+        # A dictionary of updates to the model's trainable variables.
+        'weights_delta',
         # A structure matching model.aggregated_outputs,
         # reflecting the results of training on the input dataset.
         'model_output',
@@ -57,7 +56,7 @@ class ClientDeltaFn(object):
     pass
 
   @abc.abstractproperty
-  def __call__(self, dataset, initial_model):
+  def __call__(self, dataset, initial_weights):
     """Defines the complete client computation.
 
     Typically implementations should be decorated with `tf.function`.
@@ -65,7 +64,7 @@ class ClientDeltaFn(object):
     Args:
       dataset: A `tf.data.Dataset` producing batches than can be fed to
         `model.forward_pass`.
-      initial_model: A dictionary of initial values for all trainable and
+      initial_weights: A dictionary of initial values for all trainable and
         non-trainable model variables, keyed by name. This will be supplied
         by the server in Federated Averaging.
 

@@ -23,6 +23,7 @@ from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model_utils import from_compiled_keras_model
 from tensorflow_federated.python.learning.model_utils import from_keras_model
 
+
 # Used by doc generation script.
 _allowed_symbols = [
     "framework",

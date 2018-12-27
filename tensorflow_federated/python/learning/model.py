@@ -50,17 +50,19 @@ class Model(object):
   behave as expected in both eager and graph (TF 1.0) usage.
 
   In general, Variables may be either:
-    - model variables, that are needed to make predictions with the model
-    - non-model local variables, e.g. to accumulate aggregated metrics across
+
+    * Weights, the variables needed to make predictions with the model.
+    * Local variables, e.g. to accumulate aggregated metrics across
       calls to forward_pass.
-  Model variables can be broken down into trainable variables (variables
+
+  The weights can be broken down into trainable variables (variables
   that can and should be trained using gradient-based methods), and
   non-trainable variables (which could include fixed pre-trained layers,
   or static model data). These variables are provided via the
   `trainable_variables`, `non_trainable_variables`, and `local_variables`
   properties, and must be initialized by the user of the `Model`.
 
-  In federated learning, model variables will generally be provided by the
+  In federated learning, model weights will generally be provided by the
   server, and updates to trainable model variables will be sent back to the
   server. Local variables are not transmitted, and are instead initialized
   locally on the device, and then used to produce `aggregated_outputs` which
@@ -100,12 +102,13 @@ class Model(object):
     `aggregated_outputs`.
 
     Uses in TFF:
-      - To implement model evaluation.
-      - To implement federated gradient descent and other
+
+      * To implement model evaluation.
+      * To implement federated gradient descent and other
         non-FederatedAvgeraging algorithms, where we want the model to run the
         forward pass and update metrics, but there is no optimizer
         (we might only compute gradients on the returned loss).
-      - To implement FederatedAveraging, when augmented as a `TrainableModel`.
+      * To implement FederatedAveraging, when augmented as a `TrainableModel`.
 
     TODO(b/120493676): We expect to add another method to this class which
     provides access to the shape/dtype/structure expected for the `batch`.

@@ -69,7 +69,7 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     # as it adds the batch dimension which is expected by the model.
     dataset = dataset.repeat(5).batch(3)
 
-    initial_model = model_utils.ModelVars(
+    initial_weights = model_utils.ModelWeights(
         trainable={
             'a': tf.constant([[0.0], [0.0]]),
             'b': tf.constant(0.0)
@@ -78,7 +78,7 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
 
     init_op = model_utils.model_initializer(model)
     client_tf = federated_averaging.ClientFedAvg(model)
-    client_outputs = client_tf(dataset, initial_model)
+    client_outputs = client_tf(dataset, initial_weights)
 
     tf.get_default_graph().finalize()
     with self.session() as sess:
@@ -87,9 +87,9 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
 
       # Both trainable parameters should have been updated,
       # and we don't return the non-trainable 'c'.
-      self.assertCountEqual(['a', 'b'], out.model_delta.keys())
-      self.assertGreater(np.linalg.norm(out.model_delta['a']), 0.1)
-      self.assertGreater(np.linalg.norm(out.model_delta['b']), 0.1)
+      self.assertCountEqual(['a', 'b'], out.weights_delta.keys())
+      self.assertGreater(np.linalg.norm(out.weights_delta['a']), 0.1)
+      self.assertGreater(np.linalg.norm(out.weights_delta['b']), 0.1)
 
       self.assertEqual(out.model_output['num_examples'], 20)
       self.assertEqual(out.model_output['num_batches'], 7)
@@ -115,12 +115,12 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
     self.assertEqual(server_state.model.non_trainable['c'].numpy(),
                      0.0)
     self.assertLen(server_state.optimizer_state, num_optimizer_vars)
-    model_delta = tensor_utils.to_odict({
+    weights_delta = tensor_utils.to_odict({
         'a': tf.constant([[1.0], [0.0]]),
         'b': tf.constant(1.0)
     })
     server_state = federated_averaging.server_update_model(
-        server_state, model_delta, model_fn, optimizer_fn)
+        server_state, weights_delta, model_fn, optimizer_fn)
 
     train_vars = server_state.model.trainable
     # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
@@ -151,12 +151,12 @@ class FederatedAveragingTest(test_utils.TffTestCase, parameterized.TestCase):
 
     with tf.Graph().as_default() as g:
       # N.B. Must use a fresh graph so variable names are the same.
-      model_delta = tensor_utils.to_odict({
+      weights_delta = tensor_utils.to_odict({
           'a': tf.constant([[1.0], [0.0]]),
           'b': tf.constant(2.0)
       })
       update_op = federated_averaging.server_update_model(
-          server_state, model_delta, model_fn, optimizer_fn)
+          server_state, weights_delta, model_fn, optimizer_fn)
       init_op = tf.group(tf.global_variables_initializer(),
                          tf.local_variables_initializer())
       g.finalize()

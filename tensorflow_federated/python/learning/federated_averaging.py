@@ -50,7 +50,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     return []
 
   @tf.contrib.eager.function(autograph=False)
-  def __call__(self, dataset, initial_model):
+  def __call__(self, dataset, initial_weights):
     # N.B. When not in eager mode, this code must be wrapped as a defun
     # as it uses program-order semantics to avoid adding many explicit
     # control dependencies.
@@ -61,8 +61,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     # Or, we may just need a convention that TFF initializes all variables
     # before invoking the TF function.
 
-    # Assign the model variables the init_model:
-    nest.map_structure(tf.assign, model.vars, initial_model)
+    nest.map_structure(tf.assign, model.weights, initial_weights)
 
     @tf.contrib.eager.function(autograph=False)
     def reduce_fn(dummy_state, batch):
@@ -79,14 +78,14 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     dummy_output = dataset.reduce(
         initial_state=tf.constant(0.0), reduce_func=reduce_fn)
 
-    model_delta = nest.map_structure(tf.subtract, model.vars.trainable,
-                                     initial_model.trainable)
+    weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
+                                       initial_weights.trainable)
 
     # TODO(b/109733734): Add a check that all of the model deltas are finite;
     # if not, then send an all-zero update, and increment an error counter.
 
     return optimizer_utils.ClientOutput(
-        model_delta,
+        weights_delta,
         model.aggregated_outputs(),
         tensor_utils.to_odict({'workaround for b/121400757': dummy_output}))
 
@@ -116,11 +115,11 @@ def _create_optimizer_and_server_state(model, optimizer):
 
   @tf.contrib.eager.defun(autograph=False)
   def apply_delta(delta):
-    """Applies delta to model.vars."""
-    nest.assert_same_structure(delta, model.vars.trainable)
+    """Applies delta to model.weights."""
+    nest.assert_same_structure(delta, model.weights.trainable)
     grads_and_vars = nest.map_structure(
         lambda x, v: (-1.0 * x, v), nest.flatten(delta),
-        nest.flatten(model.vars.trainable))
+        nest.flatten(model.weights.trainable))
     # N.B. This may create variables.
     # TODO(b/109733734): In TF 2, you shouldn't create variables
     # inside a defun. Perhaps use Keras optimizers or OptimizerV2?
@@ -129,19 +128,19 @@ def _create_optimizer_and_server_state(model, optimizer):
 
   # Create a dummy input and trace apply_delta so that
   # we can determine the optimizers variables.
-  model_delta = nest.map_structure(tf.zeros_like, model.vars.trainable)
+  weights_delta = nest.map_structure(tf.zeros_like, model.weights.trainable)
 
   # TODO(b/109733734): We would like to call get_concrete_function,
   # but that does not currently work with structured inputs.
   # For now, we just call the function on dummy input, which
   # still ensures the function is traced (so variables are created).
-  apply_delta(delta=model_delta)
+  apply_delta(delta=weights_delta)
 
   # N.B. Using to_var_dict doesn't work here, because we
   # may get different names.
   optimizer_vars = optimizer.variables()
 
-  return apply_delta, ServerState(model=model.vars,
+  return apply_delta, ServerState(model=model.weights,
                                   optimizer_state=optimizer_vars)
 
 
@@ -149,7 +148,7 @@ def _create_optimizer_and_server_state(model, optimizer):
 ServerState = collections.namedtuple(
     'ServerState',
     [
-        # A ModelVars structure, containing Tensors or Variables.
+        # A ModelWeights structure, containing Tensors or Variables.
         'model',
         # A list of Tensors or Variables, in the order
         # returned by optimizer.variables()
@@ -171,12 +170,12 @@ def server_init(model_fn, optimizer_fn):
   return server_state
 
 
-def server_update_model(server_state, model_delta, model_fn, optimizer_fn):
-  """Updates `server_state` based on `model_delta`.
+def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
+  """Updates `server_state` based on `weights_delta`.
 
   Args:
     server_state: A `ServerState` namedtuple.
-    model_delta: An update to the trainable variables of the model.
+    weights_delta: An update to the trainable variables of the model.
     model_fn: A no-arg function that returns a `tff.learning.Model`. Passing in
       a function ensures any variables are created when server_update_model is
       called, so they can be captured in a specific graph or other context.
@@ -194,7 +193,7 @@ def server_update_model(server_state, model_delta, model_fn, optimizer_fn):
   @tf.contrib.eager.function(autograph=False)
   def update_model_inner():
     nest.map_structure(tf.assign, server_vars, server_state)
-    apply_delta_fn(model_delta)
+    apply_delta_fn(weights_delta)
     return server_vars
 
   return update_model_inner()

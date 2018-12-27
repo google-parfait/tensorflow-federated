@@ -8,6 +8,7 @@
 *  <a href="./tff/SequenceType.md"><code>tff.SequenceType</code></a>
 *  <a href="./tff/TensorType.md"><code>tff.TensorType</code></a>
 *  <a href="./tff/Type.md"><code>tff.Type</code></a>
+*  <a href="./tff/Value.md"><code>tff.Value</code></a>
 *  <a href="./tff/federated_aggregate.md"><code>tff.federated_aggregate</code></a>
 *  <a href="./tff/federated_average.md"><code>tff.federated_average</code></a>
 *  <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>
@@ -18,10 +19,13 @@
 *  <a href="./tff/federated_sum.md"><code>tff.federated_sum</code></a>
 *  <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *  <a href="./tff/learning.md"><code>tff.learning</code></a>
-*  <a href="./tff/learning/BatchOutput.md"><code>tff.learning.BatchOutput</code></a>
 *  <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>
 *  <a href="./tff/learning/framework.md"><code>tff.learning.framework</code></a>
+*  <a href="./tff/learning/framework/ClientDeltaFn.md"><code>tff.learning.framework.ClientDeltaFn</code></a>
 *  <a href="./tff/learning/framework/ClientOutput.md"><code>tff.learning.framework.ClientOutput</code></a>
+*  <a href="./tff/learning/framework/EnhancedModel.md"><code>tff.learning.framework.EnhancedModel</code></a>
+*  <a href="./tff/learning/framework/EnhancedTrainableModel.md"><code>tff.learning.framework.EnhancedTrainableModel</code></a>
+*  <a href="./tff/learning/framework/ModelWeights.md"><code>tff.learning.framework.ModelWeights</code></a>
 *  <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *  <a href="./tff/to_type.md"><code>tff.to_type</code></a>
 *  <a href="./tff/to_value.md"><code>tff.to_value</code></a>

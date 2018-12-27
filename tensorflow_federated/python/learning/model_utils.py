@@ -36,9 +36,9 @@ def model_initializer(model, name=None):
       name=(name or 'model_initializer'))
 
 
-class ModelVars(
+class ModelWeights(
     collections.namedtuple(
-        'ModelVarsBase',
+        'ModelWeightsBase',
         [
             # An OrderedDict of `Model.trainable_variables` keyed by name.
             'trainable',
@@ -54,7 +54,7 @@ class ModelVars(
   """
 
   def __new__(cls, trainable, non_trainable):
-    return super(ModelVars, cls).__new__(
+    return super(ModelWeights, cls).__new__(
         cls, tensor_utils.to_odict(trainable),
         tensor_utils.to_odict(non_trainable))
 
@@ -228,9 +228,9 @@ class EnhancedModel(model_lib.Model):
   #
 
   @property
-  def vars(self):
-    """Returns a `tff.learning.ModelVars`."""
-    return ModelVars.from_model(self)
+  def weights(self):
+    """Returns a `tff.learning.ModelWeights`."""
+    return ModelWeights.from_model(self)
 
   #
   # The following delegate to the Model interface:

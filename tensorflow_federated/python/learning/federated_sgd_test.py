@@ -47,7 +47,7 @@ class FederatedSgdTest(test_utils.TffTestCase, parameterized.TestCase):
     # as it adds the batch dimension which is expected by the model.
     dataset = dataset.repeat(2).batch(3)
 
-    initial_model = model_utils.ModelVars(
+    initial_weights = model_utils.ModelWeights(
         trainable={
             'a': tf.constant([[0.0], [0.0]]),
             'b': tf.constant(0.0)
@@ -55,15 +55,15 @@ class FederatedSgdTest(test_utils.TffTestCase, parameterized.TestCase):
         non_trainable={'c': 0.0})
 
     client_tf = federated_sgd.ClientSgd(model)
-    out = client_tf(dataset, initial_model)
+    out = client_tf(dataset, initial_weights)
     out = nest.map_structure(lambda t: t.numpy(), out)
 
     # Both trainable parameters should have gradients,
     # and we don't return the non-trainable 'c'.
-    self.assertCountEqual(['a', 'b'], out.model_delta.keys())
+    self.assertCountEqual(['a', 'b'], out.weights_delta.keys())
     # Model deltas for squared error.
-    self.assertAllClose(out.model_delta['a'], [[1.0], [0.0]])
-    self.assertAllClose(out.model_delta['b'], 1.0)
+    self.assertAllClose(out.weights_delta['a'], [[1.0], [0.0]])
+    self.assertAllClose(out.weights_delta['b'], 1.0)
 
     self.assertEqual(out.model_output['num_examples'], 8)
     self.assertEqual(out.optimizer_output['client_weight'], 8)
