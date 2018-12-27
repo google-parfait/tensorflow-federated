@@ -303,6 +303,7 @@ def to_value(arg, type_spec, context_stack):
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
+    type_utils.check_well_formed(type_spec)
   if isinstance(arg, ValueImpl):
     result = arg
   elif isinstance(arg, computation_building_blocks.ComputationBuildingBlock):

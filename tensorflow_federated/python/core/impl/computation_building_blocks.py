@@ -89,7 +89,9 @@ class ComputationBuildingBlock(typed_object.TypedObject):
       type_spec: An instance of types.Type, or something convertible to it via
         types.to_type().
     """
-    self._type_signature = computation_types.to_type(type_spec)
+    type_signature = computation_types.to_type(type_spec)
+    type_utils.check_well_formed(type_signature)
+    self._type_signature = type_signature
 
   @property
   def type_signature(self):
