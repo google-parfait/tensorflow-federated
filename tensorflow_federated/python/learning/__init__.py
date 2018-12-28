@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from tensorflow_federated.python.learning import framework
 
-# TODO(b/122089759): Add federated_averaging to tff.learning.
+from tensorflow_federated.python.learning.federated_averaging import federated_averaging
 from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model_utils import from_compiled_keras_model
 from tensorflow_federated.python.learning.model_utils import from_keras_model
@@ -29,6 +29,7 @@ from tensorflow_federated.python.learning.model_utils import from_keras_model
 _allowed_symbols = [
     "framework",
     "Model",
+    "federated_averaging",
     "from_compiled_keras_model",
     "from_keras_model",
 ]

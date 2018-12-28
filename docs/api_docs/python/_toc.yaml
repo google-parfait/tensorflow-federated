@@ -58,12 +58,20 @@ toc:
       section:
       - title: Overview
         path: /federated/api_docs/python/tff/learning/framework
+      - title: build_model_delta_optimizer_tff
+        path: /federated/api_docs/python/tff/learning/framework/build_model_delta_optimizer_tff
+      - title: ClientDeltaFn
+        path: /federated/api_docs/python/tff/learning/framework/ClientDeltaFn
+      - title: ClientOutput
+        path: /federated/api_docs/python/tff/learning/framework/ClientOutput
       - title: EnhancedModel
         path: /federated/api_docs/python/tff/learning/framework/EnhancedModel
       - title: EnhancedTrainableModel
         path: /federated/api_docs/python/tff/learning/framework/EnhancedTrainableModel
       - title: ModelWeights
         path: /federated/api_docs/python/tff/learning/framework/ModelWeights
+      - title: SequentialTffComputation
+        path: /federated/api_docs/python/tff/learning/framework/SequentialTffComputation
   - title: tff.utils
     section:
     - title: Overview

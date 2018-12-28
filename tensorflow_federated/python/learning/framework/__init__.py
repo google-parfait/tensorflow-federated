@@ -17,13 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# TODO(b/122089759): Add build_model_delta_optimizer_tff and
-# re-add these other symbols to tff.learning.framework.
-# pylint: disable=line-too-long
-# from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_tff
-# from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
-# from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
-# pylint: enable=line-too-long
+from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_tff
+from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
+from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
+from tensorflow_federated.python.learning.framework.optimizer_utils import SequentialTffComputation
 
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
@@ -32,9 +29,11 @@ from tensorflow_federated.python.learning.model_utils import ModelWeights
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "build_model_delta_optimizer_tff",
     "ClientDeltaFn",
     "ClientOutput",
     "EnhancedModel",
     "EnhancedTrainableModel",
     "ModelWeights",
+    "SequentialTffComputation"
 ]
