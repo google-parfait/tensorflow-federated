@@ -32,7 +32,7 @@ class LinearRegression(model.Model):
   # A tuple (x, y), where 'x' represent features, and 'y' represent labels.
   Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
-  def __init__(self, feature_dim=1):
+  def __init__(self, feature_dim=2):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
     self._feature_dim = feature_dim

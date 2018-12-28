@@ -21,11 +21,11 @@
 *  <a href="./tff/learning.md"><code>tff.learning</code></a>
 *  <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>
 *  <a href="./tff/learning/framework.md"><code>tff.learning.framework</code></a>
-*  <a href="./tff/learning/framework/ClientDeltaFn.md"><code>tff.learning.framework.ClientDeltaFn</code></a>
-*  <a href="./tff/learning/framework/ClientOutput.md"><code>tff.learning.framework.ClientOutput</code></a>
 *  <a href="./tff/learning/framework/EnhancedModel.md"><code>tff.learning.framework.EnhancedModel</code></a>
 *  <a href="./tff/learning/framework/EnhancedTrainableModel.md"><code>tff.learning.framework.EnhancedTrainableModel</code></a>
 *  <a href="./tff/learning/framework/ModelWeights.md"><code>tff.learning.framework.ModelWeights</code></a>
+*  <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
+*  <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
 *  <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *  <a href="./tff/to_type.md"><code>tff.to_type</code></a>
 *  <a href="./tff/to_value.md"><code>tff.to_value</code></a>

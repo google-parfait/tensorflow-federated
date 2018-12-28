@@ -48,16 +48,16 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff/learning
+    - title: from_compiled_keras_model
+      path: /federated/api_docs/python/tff/learning/from_compiled_keras_model
+    - title: from_keras_model
+      path: /federated/api_docs/python/tff/learning/from_keras_model
     - title: Model
       path: /federated/api_docs/python/tff/learning/Model
     - title: framework
       section:
       - title: Overview
         path: /federated/api_docs/python/tff/learning/framework
-      - title: ClientDeltaFn
-        path: /federated/api_docs/python/tff/learning/framework/ClientDeltaFn
-      - title: ClientOutput
-        path: /federated/api_docs/python/tff/learning/framework/ClientOutput
       - title: EnhancedModel
         path: /federated/api_docs/python/tff/learning/framework/EnhancedModel
       - title: EnhancedTrainableModel

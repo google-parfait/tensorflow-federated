@@ -25,6 +25,29 @@ import tensorflow as tf
 from tensorflow.python import tf2
 
 
+def graph_mode_test(test_func):
+  """Decorator for a test to be executed in graph mode.
+
+  This decorator is used to write graph-mode tests when eager execution is
+  enabled.
+
+  This introduces a default `tf.Graph`, which tests annotated with
+  `@graph_mode_test` may use or ignore by creating their own Graphs.
+
+  Args:
+    test_func: A test function to be decorated.
+
+  Returns:
+    The decorated test_func.
+  """
+
+  def wrapped_test_func(*args, **kwargs):
+    with tf.Graph().as_default():
+      test_func(*args, **kwargs)
+
+  return wrapped_test_func
+
+
 class TffTestCase(tf.test.TestCase, absltest.TestCase):
   """A subclass of tf.test.TestCase that enables select TF 2.0 features.
 

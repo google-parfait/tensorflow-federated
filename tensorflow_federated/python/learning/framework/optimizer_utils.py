@@ -24,6 +24,11 @@ import collections
 # Dependency imports
 
 import six
+import tensorflow as tf
+from tensorflow.python.util import nest
+from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.learning import model_utils
 
 # TODO(b/117226648): Make this a proper class for better documentation.
 ClientOutput = collections.namedtuple(
@@ -57,7 +62,7 @@ class ClientDeltaFn(object):
     """
     pass
 
-  @abc.abstractproperty
+  @abc.abstractmethod
   def __call__(self, dataset, initial_weights):
     """Defines the complete client computation.
 
@@ -74,3 +79,252 @@ class ClientDeltaFn(object):
       An `optimizer_utils.ClientOutput` namedtuple.
     """
     pass
+
+
+# TODO(b/121283080): Remove this helper once direct access is supported.
+def get_type_from_named_tuple_type(tuple_type, name):
+  for e in tuple_type.elements:
+    if len(e) != 2:
+      continue
+    e_name, e_type = e
+    if name == e_name:
+      return e_type
+  raise ValueError('Type {} does not contain field {}'.format(
+      tuple_type, name))
+
+
+class SequentialTffComputation(object):
+  """Container for a pair of TFF computations defining sequential processing.
+
+  A sequential computation will usually be driven by a control loop like:
+
+        seq_comp = ...
+        state = seq_comp.initialize()
+        for round in range(num_rounds):
+          state = seq_comp.run_one_round(state, ...)
+  """
+
+  def __init__(self, initialize, run_one_round):
+    """Creates a SequentialTffComputation."""
+    py_typecheck.check_type(initialize, tff.Computation)
+    if initialize.type_signature.parameter is not None:
+      raise ValueError('initialize must be a no-arg computation')
+    py_typecheck.check_type(run_one_round, tff.Computation)
+    # Read the type from the first parameter, which we assume
+    # is a NamedTupleType.
+    # TODO(b/121283080): Just use [0] rather than accessing elements.
+    first_param = run_one_round.type_signature.parameter.elements[0]
+    if not isinstance(first_param, tff.Type):
+      assert len(first_param) == 2
+      first_param = first_param[1]
+    py_typecheck.check_type(first_param, tff.FederatedType)
+    first_param = first_param.member
+    if initialize.type_signature.result != first_param:
+      raise ValueError('The return type of initialize should match the '
+                       'first parameter of run_one_round, but found\n'
+                       'initialize.type_signature.result={}\n'
+                       'run_one_round.type_signature.parameter[0]={}'.format(
+                           initialize.type_signature.result, first_param))
+    self._initialize = initialize
+    self._run_one_round = run_one_round
+
+  @property
+  def initialize(self):
+    """A no-arg `tff.Computation` that returns the initial server state."""
+    return self._initialize
+
+  @property
+  def run_one_round(self):
+    """A `tff.Computation` that updates the server state.
+
+    The first argument of this computation should always be the current
+    server state as produced by `initialize`, and the return value is the
+    updated server state.
+
+    Returns:
+      A `tff.Computation`.
+    """
+    return self._run_one_round
+
+
+def _create_optimizer_and_server_state(model, optimizer):
+  """A helper for server computations that constructs the model and optimizer.
+
+  This code is needed both in server_init (to introduce variables so
+  we can read their initial values) and in server_update_model.
+
+  Args:
+    model: A `tff.learning.Model`.
+    optimizer: A `tf.train.Optimizer`.
+
+  Returns:
+    A tuple of (apply_delta_fn, server_state), where:
+      *  apply_delta_fn is a TensorFlow function that takes a model delta and
+         updates the trainable model weights as well as possibly optimizer_state
+         variables introduced by the optimizer.
+      *  server_state is a `ServerState` tuple holding those variables.
+  """
+
+  @tf.contrib.eager.defun(autograph=False)
+  def apply_delta(delta):
+    """Applies delta to model.weights."""
+    nest.assert_same_structure(delta, model.weights.trainable)
+    grads_and_vars = nest.map_structure(
+        lambda x, v: (-1.0 * x, v), nest.flatten(delta),
+        nest.flatten(model.weights.trainable))
+    # N.B. This may create variables.
+    # TODO(b/109733734): Perhaps use Keras optimizers or OptimizerV2?
+    optimizer.apply_gradients(grads_and_vars, name='server_update')
+    return tf.constant(1)  # We have to return something.
+
+  # Create a dummy input and trace apply_delta so that
+  # we can determine the optimizer's variables.
+  weights_delta = nest.map_structure(tf.zeros_like, model.weights.trainable)
+
+  # TODO(b/109733734): We would like to call get_concrete_function,
+  # but that does not currently work with structured inputs.
+  # For now, we just call the function on dummy input, which
+  # still ensures the function is traced (so variables are created).
+  apply_delta(delta=weights_delta)
+
+  # N.B. Using to_var_dict doesn't work here, because we
+  # may get non-unique names, so we just use a flat list.
+  optimizer_vars = optimizer.variables()
+
+  return apply_delta, ServerState(model=model.weights,
+                                  optimizer_state=optimizer_vars)
+
+
+# Represents the state of the server carried between rounds.
+ServerState = collections.namedtuple(
+    'ServerState',
+    [
+        # A ModelWeights structure, containing Tensors or Variables.
+        'model',
+        # A list of Tensors or Variables, in the order
+        # returned by optimizer.variables()
+        'optimizer_state'
+    ])
+
+
+def server_init(model_fn, optimizer_fn):
+  """Returns initial `ServerState`.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`.
+
+  Returns:
+    A `ServerState` namedtuple.
+  """
+  model = model_utils.enhance(model_fn())  # Constructs variables
+  optimizer = optimizer_fn()  # Might create variables?
+  _, server_state = _create_optimizer_and_server_state(model, optimizer)
+  return server_state
+
+
+def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
+  """Updates `server_state` based on `weights_delta`.
+
+  Args:
+    server_state: A `ServerState` namedtuple.
+    weights_delta: An update to the trainable variables of the model.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. Passing in
+      a function ensures any variables are created when server_update_model is
+      called, so they can be captured in a specific graph or other context.
+    optimizer_fn: A no-arg function that returns a `tf.train.Optimizer`. As with
+      model_fn, we pass in a function to control when variables are created.
+
+  Returns:
+    An updated `ServerState` namedtuple.
+  """
+  model = model_utils.enhance(model_fn())  # Constructs variables
+  optimizer = optimizer_fn()  # Might create variables?
+  apply_delta_fn, server_vars = _create_optimizer_and_server_state(
+      model, optimizer)
+
+  @tf.contrib.eager.function(autograph=False)
+  def update_model_inner():
+    nest.map_structure(tf.assign, server_vars, server_state)
+    apply_delta_fn(weights_delta)
+    return server_vars
+
+  return update_model_inner()
+
+
+def build_model_delta_optimizer_tff(model_fn,
+                                    model_to_client_delta_fn,
+                                    server_optimizer_fn=None):
+  """Constructs complete TFF computations for Federated Averaging or SGD.
+
+  This provides the TFF orchestration logic connecting the common server logic
+  which applies aggregated model deltas to the server model with a ClientDeltaFn
+  that specifies how weight_deltas are computed on device.
+
+  Note: We pass in functions rather than constructed objects so we can
+  ensure any variables or ops created in construtors are placed in the
+  correct graph.
+  TODO(b/122081673): This can be simplified once we move fully to TF 2.0.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_to_client_delta_fn: A function from a model_fn to a `ClientDeltaFn`.
+    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`.
+      The apply_gradients method of this optimizer is used to apply
+      client updates to the server model. The default returns a
+      `tf.train.GradientDescent` with a learning_rate of 1.0, which simply
+      adds the average client delta to the server's model.
+
+  Returns:
+    A `SequentialTffComputation`.
+  """
+  if server_optimizer_fn is None:
+    # TODO(b/121287923): Using an optimizer without variables is blocked
+    # on supporing NamedTuples with no elements. This should be vanilla
+    # tf.train.GradientDescent.
+    server_optimizer_fn = lambda: tf.train.MomentumOptimizer(  # pylint: disable=g-long-lambda
+        learning_rate=1.0, momentum=0.0)
+
+  @tff.tf_computation
+  def server_init_tff():
+    return server_init(model_fn, server_optimizer_fn)
+
+  server_state_type = server_init_tff.type_signature.result
+  model_delta_type = get_type_from_named_tuple_type(
+      server_init_tff.type_signature.result, 'model')
+
+  server_state_type = tff.FederatedType(
+      server_state_type, tff.SERVER, True)
+  model_delta_type = tff.FederatedType(
+      model_delta_type, tff.SERVER, True)
+
+  @tff.federated_computation((server_state_type, model_delta_type))
+  def run_one_round(server_state, federated_dataset):
+    """Orchestration logic for one round of optimization."""
+    del federated_dataset  # Currently unused.
+
+    @tff.tf_computation
+    def client_tf_tff(dataset, initial_weights):  # pylint:disable=unused-variable
+      client_delta_fn = model_to_client_delta_fn(model_fn)
+      return client_delta_fn(dataset, initial_weights)
+
+    @tff.tf_computation
+    def server_update_model_tff(server_state, model_delta):  # pylint:disable=unused-variable
+      server_update_model(server_state, model_delta,
+                          model_fn=model_fn,
+                          optimizer_fn=server_optimizer_fn)
+
+    # TODO(b/109733734): Complete FedAvg orchestration. Currently blocked
+    # by errors on calling:
+    # client_output = tff.federated_map(
+    #    (federated_dataset, tff.federated_broadcast(server_state.model)),
+    #    client_tf_tff)
+
+    # TODO(b/109733734): Finish implementing this function:
+    # * Pass Compute federated_averages and other aggregates of client_output
+    # * Pass the model_delta into server_update_model
+    # * Return the updated state.
+
+    return server_state
+
+  return SequentialTffComputation(server_init_tff, run_one_round)

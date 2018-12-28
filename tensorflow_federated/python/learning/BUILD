@@ -10,6 +10,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        ":federated_averaging",
         ":model",
         "//tensorflow_federated/python/learning/framework",
     ],

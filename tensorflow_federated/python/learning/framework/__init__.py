@@ -17,8 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
-from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
+# TODO(b/122089759): Add build_model_delta_optimizer_tff and
+# re-add these other symbols to tff.learning.framework.
+# pylint: disable=line-too-long
+# from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_tff
+# from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
+# from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
+# pylint: enable=line-too-long
+
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
 from tensorflow_federated.python.learning.model_utils import ModelWeights
@@ -28,7 +34,7 @@ from tensorflow_federated.python.learning.model_utils import ModelWeights
 _allowed_symbols = [
     "ClientDeltaFn",
     "ClientOutput",
-    "ModelWeights",
     "EnhancedModel",
-    "EnhancedTrainableModel"
+    "EnhancedTrainableModel",
+    "ModelWeights",
 ]
