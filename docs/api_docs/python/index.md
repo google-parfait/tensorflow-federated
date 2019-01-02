@@ -20,6 +20,7 @@
 *  <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *  <a href="./tff/learning.md"><code>tff.learning</code></a>
 *  <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>
+*  <a href="./tff/learning/federated_averaging.md"><code>tff.learning.federated_averaging</code></a>
 *  <a href="./tff/learning/framework.md"><code>tff.learning.framework</code></a>
 *  <a href="./tff/learning/framework/ClientDeltaFn.md"><code>tff.learning.framework.ClientDeltaFn</code></a>
 *  <a href="./tff/learning/framework/ClientOutput.md"><code>tff.learning.framework.ClientOutput</code></a>

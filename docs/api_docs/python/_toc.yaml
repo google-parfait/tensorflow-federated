@@ -48,6 +48,8 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff/learning
+    - title: federated_averaging
+      path: /federated/api_docs/python/tff/learning/federated_averaging
     - title: from_compiled_keras_model
       path: /federated/api_docs/python/tff/learning/from_compiled_keras_model
     - title: from_keras_model
