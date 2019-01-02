@@ -335,6 +335,26 @@ class TypesTest(absltest.TestCase):
     self.assertIsInstance(t, computation_types.NamedTupleType)
     self.assertEqual(str(t), '<int32[1],<x=float32[2],bool[3]>>')
 
+  def test_namedtuple_elements_two_tuples(self):
+    elems = [tf.int32 for k in range(10)]
+    t = computation_types.to_type(elems)
+    self.assertIsInstance(t, computation_types.NamedTupleType)
+    for k in t.elements:
+      self.assertLen(k, 2)
+
+  def test_namedtuples_addressable_by_name(self):
+    elems = [('item'+str(k), tf.int32) for k in range(5)]
+    t = computation_types.to_type(elems)
+    self.assertIsInstance(t, computation_types.NamedTupleType)
+    self.assertIsInstance(t.item0, computation_types.TensorType)
+    self.assertEqual(t.item0, t[0])
+
+  def test_namedtuple_unpackable(self):
+    elems = [('item'+str(k), tf.int32) for k in range(2)]
+    t = computation_types.to_type(elems)
+    a, b = t
+    self.assertIsInstance(a, computation_types.TensorType)
+    self.assertIsInstance(b, computation_types.TensorType)
 
 if __name__ == '__main__':
   absltest.main()

@@ -299,7 +299,7 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
               computation_types.FunctionType(tf.int32, tf.int32),
               computation_types.FunctionType(None, tf.int32),
               computation_types.FunctionType(t, t),
-              [computation_types.FunctionType(t, t), tf.bool],
+              [[computation_types.FunctionType(t, t), tf.bool]],
               computation_types.FunctionType(
                   computation_types.FunctionType(None, t), t),
               computation_types.FunctionType((computation_types.SequenceType(

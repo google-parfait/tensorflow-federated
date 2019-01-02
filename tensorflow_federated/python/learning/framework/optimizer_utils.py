@@ -81,18 +81,6 @@ class ClientDeltaFn(object):
     pass
 
 
-# TODO(b/121283080): Remove this helper once direct access is supported.
-def get_type_from_named_tuple_type(tuple_type, name):
-  for e in tuple_type.elements:
-    if len(e) != 2:
-      continue
-    e_name, e_type = e
-    if name == e_name:
-      return e_type
-  raise ValueError('Type {} does not contain field {}'.format(
-      tuple_type, name))
-
-
 class SequentialTffComputation(object):
   """Container for a pair of TFF computations defining sequential processing.
 
@@ -112,11 +100,7 @@ class SequentialTffComputation(object):
     py_typecheck.check_type(run_one_round, tff.Computation)
     # Read the type from the first parameter, which we assume
     # is a NamedTupleType.
-    # TODO(b/121283080): Just use [0] rather than accessing elements.
-    first_param = run_one_round.type_signature.parameter.elements[0]
-    if not isinstance(first_param, tff.Type):
-      assert len(first_param) == 2
-      first_param = first_param[1]
+    first_param = run_one_round.type_signature.parameter[0]
     py_typecheck.check_type(first_param, tff.FederatedType)
     first_param = first_param.member
     if initialize.type_signature.result != first_param:
@@ -290,8 +274,7 @@ def build_model_delta_optimizer_tff(model_fn,
     return server_init(model_fn, server_optimizer_fn)
 
   server_state_type = server_init_tff.type_signature.result
-  model_delta_type = get_type_from_named_tuple_type(
-      server_init_tff.type_signature.result, 'model')
+  model_delta_type = server_init_tff.type_signature.result.model
 
   server_state_type = tff.FederatedType(
       server_state_type, tff.SERVER, True)

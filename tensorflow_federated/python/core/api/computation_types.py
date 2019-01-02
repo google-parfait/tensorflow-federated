@@ -26,6 +26,7 @@ import six
 from six.moves import range
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import placement_literals
 
@@ -148,19 +149,20 @@ class TensorType(Type):
       return self._dtype.name
 
 
-class NamedTupleType(Type):
+class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
   """An implementation of `Type` for representing named tuple types in TFF."""
 
   def __init__(self, elements):
     """Constructs a new instance from the given element types.
 
     Args:
-      elements: A list of element specifications. Each element specification is
-        either a type spec (an instance of `Type` or something convertible to it
-        via `to_type()`) for the element, or a pair (name, spec) for elements
-        that have defined names. Alternatively, one can supply here an instance
-        of `collections.OrderedDict` mapping element names to their types (or
-        things that are convertible to types).
+      elements: Element specifications, in the format of a list, OrderedDict,
+        or tuple. Each element specification is either a type spec
+        (an instance of `Type` or something convertible to it via
+        `to_type()`) for the element, or a (name, spec) for elements
+        that have defined names. Alternatively one can supply here an
+        instance of `collections.OrderedDict` mapping
+        element names to their types (or things that are convertible to types).
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -191,10 +193,12 @@ class NamedTupleType(Type):
     else:
       self._elements = [_map_element(e) for e in elements]
 
+    anonymous_tuple.AnonymousTuple.__init__(self, self._elements)
+
   @property
   def elements(self):
     # Shallow copy to prevent accidental modification by the caller.
-    return list(self._elements)
+    return list(anonymous_tuple.to_elements(self))
 
   def is_assignable_from(self, other):
     py_typecheck.check_type(other, Type)

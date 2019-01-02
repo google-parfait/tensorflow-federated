@@ -30,6 +30,7 @@ py_library(
     name = "computation_types",
     srcs = ["computation_types.py"],
     deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:placement_literals",
         "@org_tensorflow//tensorflow:tensorflow_py",
