@@ -74,6 +74,14 @@ toc:
         path: /federated/api_docs/python/tff/learning/framework/ModelWeights
       - title: SequentialTffComputation
         path: /federated/api_docs/python/tff/learning/framework/SequentialTffComputation
+  - title: tff.simulation
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/simulation
+    - title: ClientData
+      path: /federated/api_docs/python/tff/simulation/ClientData
+    - title: FilePerUserClientData
+      path: /federated/api_docs/python/tff/simulation/FilePerUserClientData
   - title: tff.utils
     section:
     - title: Overview

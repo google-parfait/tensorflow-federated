@@ -31,6 +31,9 @@
 *  <a href="./tff/learning/framework/build_model_delta_optimizer_tff.md"><code>tff.learning.framework.build_model_delta_optimizer_tff</code></a>
 *  <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
 *  <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
+*  <a href="./tff/simulation.md"><code>tff.simulation</code></a>
+*  <a href="./tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
+*  <a href="./tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>
 *  <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *  <a href="./tff/to_type.md"><code>tff.to_type</code></a>
 *  <a href="./tff/to_value.md"><code>tff.to_value</code></a>

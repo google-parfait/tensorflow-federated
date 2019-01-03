@@ -1,10 +1,18 @@
 # Placeholder for internal Python version compatibility macro.
 
-# Eventually we will expose symbols from simulation/ that can be used externally
-# via a public __init__.py file.
 package(default_visibility = ["//tensorflow_federated/python/simulation:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
+
+py_library(
+    name = "simulation",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":client_data",
+        ":file_per_user_client_data",
+    ],
+)
 
 py_library(
     name = "client_data",

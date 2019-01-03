@@ -33,14 +33,15 @@ import six
 
 @six.add_metaclass(abc.ABCMeta)
 class ClientData(object):
-  """ClientData encapsulates a dataset with a mapping of clients to examples."""
+  """Object to hold a dataset and a mapping of clients to examples."""
 
   @abc.abstractproperty
   def client_ids(self):
     """The list of identifiers for clients in this dataset.
 
-    A client identifier can be any type understood by
-    `create_tf_dataset_for_client`, determined by the implementation.
+    A client identifier can be any type understood by the
+    `tff.simulation.ClientData.create_tf_dataset_for_client` method, determined
+    by the implementation.
     """
     pass
 
@@ -64,8 +65,8 @@ class ClientData(object):
     `output_types` properties.
 
     Returns:
-      A nested structure of tf.DType objects corresponding to each component of
-    an element of the client datasets.
+      A nested structure of `tf.DType` objects corresponding to each component
+    of an element of the client datasets.
     """
     pass
 
@@ -77,7 +78,7 @@ class ClientData(object):
     `output_shapes` properties.
 
     Returns:
-      A nested structure of tf.TensorShape objects corresponding to each
+      A nested structure of `tf.TensorShape` objects corresponding to each
     component of an element of the client datasets.
     """
     pass

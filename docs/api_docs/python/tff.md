@@ -13,6 +13,8 @@ TensorFlow Federated library.
 
 [`learning`](./tff/learning.md) module: The public API for model developers using federated learning algorithms.
 
+[`simulation`](./tff/simulation.md) module: The public API for experimenters running federated learning simulations.
+
 [`utils`](./tff/utils.md) module: Utility classes/functions built on top of TensorFlow Federated Core API.
 
 ## Classes

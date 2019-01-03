@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import *  # pylint: disable=g-bad-impo
 # N.B. This import must happen after core.api, since we import core.api
 # inside of learning.
 from tensorflow_federated.python import learning  # pylint: disable=g-bad-import-order
+from tensorflow_federated.python import simulation  # pylint: disable=g-bad-import-order
 
 from tensorflow_federated.python.core import utils
 
@@ -49,6 +50,7 @@ _allowed_symbols = [
     "federated_sum",
     "federated_zip",
     "learning",
+    "simulation",
     "tf_computation",
     "to_type",
     "to_value",

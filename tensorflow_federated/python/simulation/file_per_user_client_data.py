@@ -82,7 +82,7 @@ class FilePerUserClientData(client_data.ClientData):
 
   @classmethod
   def create_from_dir(cls, path, create_tf_dataset_fn=tf.data.TFRecordDataset):
-    """Builds a FilePerUserClientData from all files in a directory.
+    """Builds a `tff.simulation.FilePerUserClientData`.
 
     Iterates over all files in `path`, using the filename as the client ID. Does
     not recursively search `path`.
