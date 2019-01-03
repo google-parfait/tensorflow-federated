@@ -35,5 +35,5 @@ _allowed_symbols = [
     "EnhancedModel",
     "EnhancedTrainableModel",
     "ModelWeights",
-    "SequentialTffComputation"
+    "SequentialTffComputation",
 ]

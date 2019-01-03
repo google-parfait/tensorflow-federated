@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Common building blocks for federated optimization algorithms.
-"""
+"""Common building blocks for federated optimization algorithms."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -73,8 +72,8 @@ class ClientDeltaFn(object):
       dataset: A `tf.data.Dataset` producing batches than can be fed to
         `model.forward_pass`.
       initial_weights: A dictionary of initial values for all trainable and
-        non-trainable model variables, keyed by name. This will be supplied
-        by the server in Federated Averaging.
+        non-trainable model variables, keyed by name. This will be supplied by
+        the server in Federated Averaging.
 
     Returns:
       An `optimizer_utils.ClientOutput` namedtuple.
@@ -178,8 +177,8 @@ def _create_optimizer_and_server_state(model, optimizer):
   # may get non-unique names, so we just use a flat list.
   optimizer_vars = optimizer.variables()
 
-  return apply_delta, ServerState(model=model.weights,
-                                  optimizer_state=optimizer_vars)
+  return apply_delta, ServerState(
+      model=model.weights, optimizer_state=optimizer_vars)
 
 
 # Represents the state of the server carried between rounds.
@@ -257,11 +256,11 @@ def build_model_delta_optimizer_tff(model_fn,
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     model_to_client_delta_fn: A function from a model_fn to a `ClientDeltaFn`.
-    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`.
-      The apply_gradients method of this optimizer is used to apply
-      client updates to the server model. The default returns a
-      `tf.train.GradientDescent` with a learning_rate of 1.0, which simply
-      adds the average client delta to the server's model.
+    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
+      apply_gradients method of this optimizer is used to apply client updates
+      to the server model. The default returns a `tf.train.GradientDescent` with
+      a learning_rate of 1.0, which simply adds the average client delta to the
+      server's model.
 
   Returns:
     A `SequentialTffComputation`.
@@ -280,10 +279,8 @@ def build_model_delta_optimizer_tff(model_fn,
   server_state_type = server_init_tff.type_signature.result
   model_delta_type = server_init_tff.type_signature.result.model
 
-  server_state_type = tff.FederatedType(
-      server_state_type, tff.SERVER, True)
-  model_delta_type = tff.FederatedType(
-      model_delta_type, tff.SERVER, True)
+  server_state_type = tff.FederatedType(server_state_type, tff.SERVER, True)
+  model_delta_type = tff.FederatedType(model_delta_type, tff.SERVER, True)
 
   @tff.federated_computation((server_state_type, model_delta_type))
   def run_one_round(server_state, federated_dataset):
@@ -297,9 +294,11 @@ def build_model_delta_optimizer_tff(model_fn,
 
     @tff.tf_computation
     def server_update_model_tff(server_state, model_delta):  # pylint:disable=unused-variable
-      server_update_model(server_state, model_delta,
-                          model_fn=model_fn,
-                          optimizer_fn=server_optimizer_fn)
+      server_update_model(
+          server_state,
+          model_delta,
+          model_fn=model_fn,
+          optimizer_fn=server_optimizer_fn)
 
     # TODO(b/109733734): Complete FedAvg orchestration. Currently blocked
     # by errors on calling:

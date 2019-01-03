@@ -32,6 +32,7 @@ import collections
 from absl.testing import parameterized
 import numpy as np
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import encoding_stage
@@ -450,8 +451,8 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     expected_sum = np.sum([d.decoded_x for d in server_test_data], axis=0)
     sum_encoded_x = {}
     for k in server_test_data[0].encoded_x:
-      sum_encoded_x[k] = np.sum(
-          [d.encoded_x[k] for d in server_test_data], axis=0)
+      sum_encoded_x[k] = np.sum([d.encoded_x[k] for d in server_test_data],
+                                axis=0)
     with tf.Graph().as_default():
       with self.session() as sess:
         decode_sum_encoded_x = sess.run(

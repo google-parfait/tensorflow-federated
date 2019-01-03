@@ -22,6 +22,7 @@ import collections
 # Dependency imports
 
 from absl.testing import absltest
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
@@ -343,18 +344,19 @@ class TypesTest(absltest.TestCase):
       self.assertLen(k, 2)
 
   def test_namedtuples_addressable_by_name(self):
-    elems = [('item'+str(k), tf.int32) for k in range(5)]
+    elems = [('item' + str(k), tf.int32) for k in range(5)]
     t = computation_types.to_type(elems)
     self.assertIsInstance(t, computation_types.NamedTupleType)
     self.assertIsInstance(t.item0, computation_types.TensorType)
     self.assertEqual(t.item0, t[0])
 
   def test_namedtuple_unpackable(self):
-    elems = [('item'+str(k), tf.int32) for k in range(2)]
+    elems = [('item' + str(k), tf.int32) for k in range(2)]
     t = computation_types.to_type(elems)
     a, b = t
     self.assertIsInstance(a, computation_types.TensorType)
     self.assertIsInstance(b, computation_types.TensorType)
+
 
 if __name__ == '__main__':
   absltest.main()

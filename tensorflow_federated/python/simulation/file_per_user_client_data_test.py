@@ -119,9 +119,11 @@ class FakeUserData(object):
         '1': tf.FixedLenFeature(shape=[], dtype=tf.float32),
         '2': tf.FixedLenFeature(shape=[2], dtype=tf.float32),
     }
+
     def parse_example(e):
       feature_dict = tf.parse_single_example(serialized=e, features=features)
       return tuple(feature_dict[k] for k in sorted(six.iterkeys(feature_dict)))
+
     return tf.data.TFRecordDataset(client_path).map(parse_example)
 
   @property
@@ -194,9 +196,9 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       self.assertEqual(actual_num_examples.numpy(), expected_num_examples)
 
       # Assert the actual examples provided are the same.
-      expected_examples = [example[1:]
-                           for example in FAKE_TEST_DATA
-                           if example[0] == client_id]
+      expected_examples = [
+          example[1:] for example in FAKE_TEST_DATA if example[0] == client_id
+      ]
       for actual in tf_dataset:
         expected = expected_examples.pop(0)
         self.assertLen(actual, len(expected))

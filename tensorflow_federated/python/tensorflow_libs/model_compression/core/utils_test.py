@@ -80,12 +80,7 @@ class SplitMergeDictTest(parameterized.TestCase):
         },
         'py': 'string',
     }
-    expected_d_tf = {
-        'nested': {
-            'b': const_1
-        },
-        'tf': const_2
-    }
+    expected_d_tf = {'nested': {'b': const_1}, 'tf': const_2}
     d_py, d_tf = utils.split_dict_py_tf(test_dict)
     self.assertDictEqual(expected_d_py, d_py)
     self.assertDictEqual(expected_d_tf, d_tf)

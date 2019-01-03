@@ -48,9 +48,9 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     Args:
       model: A `learning.Model` for which gradients are computed.
       batch_weight_fn: A function that takes a batch (as passed to forward_pass)
-        and returns a float32 weight. If not provided, the default uses
-        the size of the batch (as measured by the batch dimension of
-        the predictions returned by forward_pass).
+        and returns a float32 weight. If not provided, the default uses the size
+        of the batch (as measured by the batch dimension of the predictions
+        returned by forward_pass).
     """
     if batch_weight_fn is not None:
       py_typecheck.check_callable(batch_weight_fn)
@@ -94,8 +94,8 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         output = model.forward_pass(batch)
 
       flat_vars = nest.flatten(model.weights.trainable)
-      grads = nest.pack_sequence_as(
-          self._grad_sum_vars, tape.gradient(output.loss, flat_vars))
+      grads = nest.pack_sequence_as(self._grad_sum_vars,
+                                    tape.gradient(output.loss, flat_vars))
 
       if self._batch_weight_fn is not None:
         batch_weight = self._batch_weight_fn(batch)
@@ -103,9 +103,11 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
 
       tf.assign_add(self._batch_weight_sum, batch_weight)
-      nest.map_structure(lambda v, g:  # pylint:disable=g-long-lambda
-                         tf.assign_add(v, batch_weight * g),
-                         self._grad_sum_vars, grads)
+      nest.map_structure(
+          lambda v, g:  # pylint:disable=g-long-lambda
+          tf.assign_add(v, batch_weight * g),
+          self._grad_sum_vars,
+          grads)
 
       return dummy_state
 
@@ -125,10 +127,9 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
                  0), lambda: self._batch_weight_sum, lambda: tf.constant(0.0))
 
     return optimizer_utils.ClientOutput(
-        weights_delta,
-        weights_delta_weight,
-        model.aggregated_outputs(),
+        weights_delta, weights_delta_weight, model.aggregated_outputs(),
         tensor_utils.to_odict({
             'client_weight': weights_delta_weight,
             'has_non_finite_delta': has_non_finite_delta,
-            'workaround for b/121400757': dummy_output}))
+            'workaround for b/121400757': dummy_output,
+        }))

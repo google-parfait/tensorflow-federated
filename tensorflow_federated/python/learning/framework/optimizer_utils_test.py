@@ -64,8 +64,7 @@ class ServerTest(test_utils.TffTestCase, parameterized.TestCase):
     train_vars = server_state.model.trainable
     self.assertAllClose(train_vars['a'].numpy(), np.array([[0.0], [0.0]]))
     self.assertEqual(train_vars['b'].numpy(), 0.0)
-    self.assertEqual(server_state.model.non_trainable['c'].numpy(),
-                     0.0)
+    self.assertEqual(server_state.model.non_trainable['c'].numpy(), 0.0)
     self.assertLen(server_state.optimizer_state, num_optimizer_vars)
     weights_delta = tensor_utils.to_odict({
         'a': tf.constant([[1.0], [0.0]]),
@@ -125,9 +124,10 @@ class ServerTest(test_utils.TffTestCase, parameterized.TestCase):
     seq_comp = optimizer_utils.build_model_delta_optimizer_tff(
         model_fn=model_examples.TrainableLinearRegression,
         model_to_client_delta_fn=lambda _: DummyClientDeltaFn())
-    self.assertEqual(str(seq_comp.initialize.type_signature),
-                     '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
-                     'optimizer_state=<float32[2,1],float32>>)')
+    self.assertEqual(
+        str(seq_comp.initialize.type_signature),
+        '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
+        'optimizer_state=<float32[2,1],float32>>)')
     self.assertEqual(
         str(seq_comp.run_one_round.type_signature),
         '(<<model=<<a=float32[2,1],b=float32>,<c=float32>>,'

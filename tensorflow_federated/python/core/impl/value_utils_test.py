@@ -21,6 +21,7 @@ from __future__ import print_function
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
@@ -29,6 +30,7 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
+
 
 _context_stack = context_stack_impl.context_stack
 

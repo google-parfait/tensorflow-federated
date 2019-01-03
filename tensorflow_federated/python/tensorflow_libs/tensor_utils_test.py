@@ -78,8 +78,7 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
       with self.session() as sess:
         result, error = sess.run((result, error))
       try:
-        nest.map_structure(
-            np.testing.assert_allclose, result, structure)
+        nest.map_structure(np.testing.assert_allclose, result, structure)
       except AssertionError:
         self.fail('Expected to get input {} back, but instead got {}'.format(
             structure, result))
@@ -97,16 +96,20 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
       with self.session() as sess:
         result, error = sess.run((result, error))
       try:
-        nest.map_structure(
-            np.testing.assert_allclose, result, expected)
+        nest.map_structure(np.testing.assert_allclose, result, expected)
       except AssertionError:
         self.fail('Expected to get zeros, but instead got {}'.format(result))
       self.assertEqual(error, 1)
 
     expect_zeros(np.inf, 0.0)
     expect_zeros((1.0, (2.0, np.nan)), (0.0, (0.0, 0.0)))
-    expect_zeros((1.0, (2.0, {'a': 3.0, 'b': [[np.inf], [np.nan]]})),
-                 (0.0, (0.0, {'a': 0.0, 'b': [[0.0], [0.0]]})))
+    expect_zeros((1.0, (2.0, {
+        'a': 3.0,
+        'b': [[np.inf], [np.nan]]
+    })), (0.0, (0.0, {
+        'a': 0.0,
+        'b': [[0.0], [0.0]]
+    })))
 
   def test_is_scalar_with_list(self):
     self.assertRaises(TypeError, tensor_utils.is_scalar, [10])

@@ -43,10 +43,10 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 
     Args:
       model: A `learning.TrainableModel`.
-      client_weight_fn: Optional function that takes the output
-        of model.aggregated_outputs() and returns a tensor that provides
-        the weight in the federated average of model deltas. If not provided,
-        the default is the total number of examples processed on device.
+      client_weight_fn: Optional function that takes the output of
+        model.aggregated_outputs() and returns a tensor that provides the weight
+        in the federated average of model deltas. If not provided, the default
+        is the total number of examples processed on device.
     """
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedTrainableModel)
@@ -118,19 +118,20 @@ def federated_averaging(model_fn,
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
-    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`.
-      The apply_gradients method of this optimizer is used to apply
-      client updates to the server model. The default returns a
-      `tf.train.GradientDescent` with a learning_rate of 1.0, which simply
-      adds the average client delta to the server's model.
-    client_weight_fn: Optional function that takes the output
-        of model.aggregated_outputs() and returns a tensor that provides
-        the weight in the federated average of model deltas. If not provided,
-        the default is the total number of examples processed on the client.
+    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
+      apply_gradients method of this optimizer is used to apply client updates
+      to the server model. The default returns a `tf.train.GradientDescent` with
+      a learning_rate of 1.0, which simply adds the average client delta to the
+      server's model.
+    client_weight_fn: Optional function that takes the output of
+      model.aggregated_outputs() and returns a tensor that provides the weight
+      in the federated average of model deltas. If not provided, the default is
+      the total number of examples processed on the client.
 
   Returns:
     A `SequentialTffComputation`.
   """
+
   def client_fed_avg(model_fn):
     return ClientFedAvg(model_fn(), client_weight_fn)
 

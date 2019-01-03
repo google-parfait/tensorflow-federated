@@ -22,6 +22,7 @@ import os.path
 
 # Dependency imports
 
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python.util import nest
@@ -37,8 +38,8 @@ class FilePerUserClientData(client_data.ClientData):
 
     Args:
       client_ids: A list of client_id(s).
-      create_tf_dataset_fn: A callable that takes a client_id and returns
-        a `tf.data.Dataset` object.
+      create_tf_dataset_fn: A callable that takes a client_id and returns a
+        `tf.data.Dataset` object.
     """
     py_typecheck.check_type(client_ids, list)
     if not client_ids:
@@ -99,6 +100,9 @@ class FilePerUserClientData(client_data.ClientData):
     client_ids_to_paths_dict = {
         filename: os.path.join(path, filename) for filename in os.listdir(path)
     }
+
+    def create_dataset_for_filename_fn(client_id):
+      return create_tf_dataset_fn(client_ids_to_paths_dict[client_id])
+
     return FilePerUserClientData(
-        list(client_ids_to_paths_dict.keys()),
-        lambda id: create_tf_dataset_fn(client_ids_to_paths_dict[id]))
+        list(client_ids_to_paths_dict.keys()), create_dataset_for_filename_fn)

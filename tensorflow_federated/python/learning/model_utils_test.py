@@ -163,7 +163,8 @@ class ModelUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
     tff_model = model_utils.from_keras_model(
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[num_examples_metric(), num_batches_metric()])
+        metrics=[num_examples_metric(),
+                 num_batches_metric()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
     x_placeholder = tf.placeholder(
         tf.float32, shape=(None, feature_dims), name='x')

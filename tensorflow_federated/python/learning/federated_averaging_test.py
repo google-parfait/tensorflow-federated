@@ -103,8 +103,8 @@ class FederatedAveragingClientTest(test_utils.TffTestCase,
     init_weights.trainable['b'] = bad_value
     out = client_tf(dataset, init_weights)
     self.assertEqual(out.weights_delta_weight.numpy(), 0.0)
-    self.assertAllClose(out.weights_delta['a'].numpy(),
-                        np.array([[0.0], [0.0]]))
+    self.assertAllClose(out.weights_delta['a'].numpy(), np.array([[0.0],
+                                                                  [0.0]]))
     self.assertAllClose(out.weights_delta['b'].numpy(), 0.0)
     self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
 
@@ -114,9 +114,10 @@ class FederatedAveragingTffTest(test_utils.TffTestCase):
   def test_orchestration(self):
     seq_comp = federated_averaging.federated_averaging(
         model_fn=model_examples.TrainableLinearRegression)
-    self.assertEqual(str(seq_comp.initialize.type_signature),
-                     '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
-                     'optimizer_state=<float32[2,1],float32>>)')
+    self.assertEqual(
+        str(seq_comp.initialize.type_signature),
+        '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
+        'optimizer_state=<float32[2,1],float32>>)')
     self.assertEqual(
         str(seq_comp.run_one_round.type_signature),
         '(<<model=<<a=float32[2,1],b=float32>,<c=float32>>,'

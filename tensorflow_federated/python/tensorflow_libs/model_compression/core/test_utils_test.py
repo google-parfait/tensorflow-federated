@@ -17,8 +17,11 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 from absl.testing import parameterized
 import numpy as np
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import test_utils

@@ -74,8 +74,8 @@ class LinearRegression(model.Model):
                        '[None, 1] but found {}'.format(batch.y.shape))
     if not batch.x.shape.is_compatible_with([None, self._feature_dim]):
       raise ValueError('Expected batch.x to be compatible with shape '
-                       '[None, {}] but found {}'.format(
-                           self._feature_dim, batch.x.shape))
+                       '[None, {}] but found {}'.format(self._feature_dim,
+                                                        batch.x.shape))
     predictions = self._predict(batch.x)
     residuals = predictions - batch.y
     num_examples = tf.gather(tf.shape(predictions), 0)

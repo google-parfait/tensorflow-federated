@@ -96,8 +96,8 @@ class FederatedSgdTest(test_utils.TffTestCase, parameterized.TestCase):
     init_weights.trainable['b'] = bad_value
     out = client_tf(dataset, init_weights)
     self.assertEqual(out.weights_delta_weight.numpy(), 0.0)
-    self.assertAllClose(out.weights_delta['a'].numpy(),
-                        np.array([[0.0], [0.0]]))
+    self.assertAllClose(out.weights_delta['a'].numpy(), np.array([[0.0],
+                                                                  [0.0]]))
     self.assertAllClose(out.weights_delta['b'].numpy(), 0.0)
     self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
 
