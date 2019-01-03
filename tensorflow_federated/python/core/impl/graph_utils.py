@@ -25,8 +25,6 @@ import six
 from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python.framework import tensor_util
-from tensorflow.python.util import nest
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -149,7 +147,7 @@ def capture_result_from_graph(result):
   # TODO(b/113112885): The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
-  if tensor_util.is_tensor(result):
+  if tf.contrib.framework.is_tensor(result):
     return (computation_types.TensorType(result.dtype.base_dtype, result.shape),
             pb.TensorFlow.Binding(
                 tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
@@ -300,7 +298,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
   py_typecheck.check_type(output_map, dict)
   for k, v in six.iteritems(output_map):
     py_typecheck.check_type(k, six.string_types)
-    if not tensor_util.is_tensor(v):
+    if not tf.contrib.framework.is_tensor(v):
       raise TypeError(
           'Element with key {} in the output map is {}, not a tensor.'.format(
               k, py_typecheck.type_string(type(v))))
@@ -354,10 +352,11 @@ def nested_structures_equal(x, y):
     `True` iff `x` and `y` are equal, `False` otherwise.
   """
   try:
-    nest.assert_same_structure(x, y)
+    tf.contrib.framework.nest.assert_same_structure(x, y)
   except ValueError:
     return False
-  return nest.flatten(x) == nest.flatten(y)
+  return tf.contrib.framework.nest.flatten(
+      x) == tf.contrib.framework.nest.flatten(y)
 
 
 def make_data_set_from_elements(graph, elements, element_type):
@@ -424,7 +423,7 @@ def fetch_value_in_session(value, session):
 
   # TODO(b/113123634): Add support for tf.data.Datasets.
   for v in flattened_value:
-    if not tensor_util.is_tensor(v):
+    if not tf.contrib.framework.is_tensor(v):
       raise ValueError('Unsupported value type {}.'.format(str(v)))
 
   flattened_results = session.run(flattened_value)

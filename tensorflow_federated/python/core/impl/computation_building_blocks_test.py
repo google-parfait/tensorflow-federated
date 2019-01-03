@@ -27,7 +27,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks as bb
+from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
@@ -36,7 +36,7 @@ from tensorflow_federated.python.core.impl import type_serialization
 class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_reference_class(self):
-    x = bb.Reference('foo', tf.int32)
+    x = computation_building_blocks.Reference('foo', tf.int32)
     self.assertEqual(x.name, 'foo')
     self.assertEqual(str(x.type_signature), 'int32')
     self.assertEqual(repr(x), 'Reference(\'foo\', TensorType(tf.int32))')
@@ -50,8 +50,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_selection_class(self):
-    x = bb.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)])
-    y = bb.Selection(x, name='bar')
+    x = computation_building_blocks.Reference('foo', [('bar', tf.int32),
+                                                      ('baz', tf.bool)])
+    y = computation_building_blocks.Selection(x, name='bar')
     self.assertEqual(y.name, 'bar')
     self.assertEqual(y.index, None)
     self.assertEqual(str(y.type_signature), 'int32')
@@ -60,12 +61,12 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', name=\'bar\')')
     self.assertEqual(str(y), 'foo.bar')
-    z = bb.Selection(x, name='baz')
+    z = computation_building_blocks.Selection(x, name='baz')
     self.assertEqual(str(z.type_signature), 'bool')
     self.assertEqual(str(z), 'foo.baz')
     with self.assertRaises(ValueError):
-      _ = bb.Selection(x, name='bak')
-    x0 = bb.Selection(x, index=0)
+      _ = computation_building_blocks.Selection(x, name='bak')
+    x0 = computation_building_blocks.Selection(x, index=0)
     self.assertEqual(x0.name, None)
     self.assertEqual(x0.index, 0)
     self.assertEqual(str(x0.type_signature), 'int32')
@@ -74,13 +75,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', index=0)')
     self.assertEqual(str(x0), 'foo[0]')
-    x1 = bb.Selection(x, index=1)
+    x1 = computation_building_blocks.Selection(x, index=1)
     self.assertEqual(str(x1.type_signature), 'bool')
     self.assertEqual(str(x1), 'foo[1]')
     with self.assertRaises(ValueError):
-      _ = bb.Selection(x, index=2)
+      _ = computation_building_blocks.Selection(x, index=2)
     with self.assertRaises(ValueError):
-      _ = bb.Selection(x, index=-1)
+      _ = computation_building_blocks.Selection(x, index=-1)
     y_proto = y.proto
     self.assertEqual(
         str(type_serialization.deserialize_type(y_proto.type)),
@@ -94,11 +95,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x1)
 
   def test_basic_functionality_of_tuple_class(self):
-    x = bb.Reference('foo', tf.int32)
-    y = bb.Reference('bar', tf.bool)
-    z = bb.Tuple([x, ('y', y)])
+    x = computation_building_blocks.Reference('foo', tf.int32)
+    y = computation_building_blocks.Reference('bar', tf.bool)
+    z = computation_building_blocks.Tuple([x, ('y', y)])
     with self.assertRaises(ValueError):
-      _ = bb.Tuple([('', y)])
+      _ = computation_building_blocks.Tuple([('', y)])
     self.assertIsInstance(z, anonymous_tuple.AnonymousTuple)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')
     self.assertEqual(
@@ -121,9 +122,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(z)
 
   def test_basic_functionality_of_call_class(self):
-    x = bb.Reference('foo', computation_types.FunctionType(tf.int32, tf.bool))
-    y = bb.Reference('bar', tf.int32)
-    z = bb.Call(x, y)
+    x = computation_building_blocks.Reference(
+        'foo', computation_types.FunctionType(tf.int32, tf.bool))
+    y = computation_building_blocks.Reference('bar', tf.int32)
+    z = computation_building_blocks.Call(x, y)
     self.assertEqual(str(z.type_signature), 'bool')
     self.assertIs(z.function, x)
     self.assertIs(z.argument, y)
@@ -133,10 +135,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         'Reference(\'bar\', TensorType(tf.int32)))')
     self.assertEqual(str(z), 'foo(bar)')
     with self.assertRaises(TypeError):
-      bb.Call(x)
-    w = bb.Reference('bak', tf.float32)
+      computation_building_blocks.Call(x)
+    w = computation_building_blocks.Reference('bak', tf.float32)
     with self.assertRaises(TypeError):
-      bb.Call(x, w)
+      computation_building_blocks.Call(x, w)
     z_proto = z.proto
     self.assertEqual(
         str(type_serialization.deserialize_type(z_proto.type)),
@@ -150,10 +152,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     arg_name = 'arg'
     arg_type = [('f', computation_types.FunctionType(tf.int32, tf.int32)),
                 ('x', tf.int32)]
-    arg = bb.Reference(arg_name, arg_type)
-    arg_f = bb.Selection(arg, name='f')
-    arg_x = bb.Selection(arg, name='x')
-    x = bb.Lambda(arg_name, arg_type, bb.Call(arg_f, bb.Call(arg_f, arg_x)))
+    arg = computation_building_blocks.Reference(arg_name, arg_type)
+    arg_f = computation_building_blocks.Selection(arg, name='f')
+    arg_x = computation_building_blocks.Selection(arg, name='x')
+    x = computation_building_blocks.Lambda(
+        arg_name, arg_type,
+        computation_building_blocks.Call(
+            arg_f, computation_building_blocks.Call(arg_f, arg_x)))
     self.assertEqual(
         str(x.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
     self.assertEqual(x.parameter_name, arg_name)
@@ -181,10 +186,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_block_class(self):
-    x = bb.Block(
-        [('x', bb.Reference('arg', (tf.int32, tf.int32))),
-         ('y', bb.Selection(bb.Reference('x', (tf.int32, tf.int32)), index=0))],
-        bb.Reference('y', tf.int32))
+    x = computation_building_blocks.Block(
+        [('x', computation_building_blocks.Reference('arg',
+                                                     (tf.int32, tf.int32))),
+         ('y',
+          computation_building_blocks.Selection(
+              computation_building_blocks.Reference('x', (tf.int32, tf.int32)),
+              index=0))], computation_building_blocks.Reference('y', tf.int32))
     self.assertEqual(str(x.type_signature), 'int32')
     self.assertEqual([(k, str(v)) for k, v in x.locals], [('x', 'arg'),
                                                           ('y', 'x[0]')])
@@ -210,8 +218,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
       self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_intrinsic_class(self):
-    x = bb.Intrinsic('add_one',
-                     computation_types.FunctionType(tf.int32, tf.int32))
+    x = computation_building_blocks.Intrinsic(
+        'add_one', computation_types.FunctionType(tf.int32, tf.int32))
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(x.uri, 'add_one')
     self.assertEqual(
@@ -227,7 +235,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_data_class(self):
-    x = bb.Data('/tmp/mydata', computation_types.SequenceType(tf.int32))
+    x = computation_building_blocks.Data(
+        '/tmp/mydata', computation_types.SequenceType(tf.int32))
     self.assertEqual(str(x.type_signature), 'int32*')
     self.assertEqual(x.uri, '/tmp/mydata')
     self.assertEqual(
@@ -244,7 +253,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
   def test_basic_functionality_of_compiled_computation_class(self):
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
         lambda x: x + 3, tf.int32, context_stack_impl.context_stack)
-    x = bb.CompiledComputation(comp)
+    x = computation_building_blocks.CompiledComputation(comp)
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(str(x.proto), str(comp))
     self.assertTrue(
@@ -253,12 +262,12 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
             r'FunctionType\(TensorType\(tf\.int32\), '
             r'TensorType\(tf\.int32\)\)\)', repr(x)))
     self.assertTrue(re.match(r'comp#[0-9a-f]+', str(x)))
-    y = bb.CompiledComputation(comp, name='foo')
+    y = computation_building_blocks.CompiledComputation(comp, name='foo')
     self.assertEqual(str(y), 'comp#foo')
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_placement_class(self):
-    x = bb.Placement(placements.CLIENTS)
+    x = computation_building_blocks.Placement(placements.CLIENTS)
     self.assertEqual(str(x.type_signature), 'placement')
     self.assertEqual(x.uri, 'clients')
     self.assertEqual(repr(x), 'Placement(\'clients\')')
@@ -277,9 +286,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     Args:
       target: An instane of ComputationBuildingBlock to serialize-deserialize.
     """
-    assert isinstance(target, bb.ComputationBuildingBlock)
+    assert isinstance(target,
+                      computation_building_blocks.ComputationBuildingBlock)
     proto = target.proto
-    target2 = bb.ComputationBuildingBlock.from_proto(proto)
+    target2 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        proto)
     proto2 = target2.proto
     self.assertEqual(str(target), str(target2))
     self.assertEqual(str(proto), str(proto2))

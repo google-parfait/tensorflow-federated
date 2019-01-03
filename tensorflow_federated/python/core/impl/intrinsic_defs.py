@@ -19,7 +19,7 @@ from __future__ import print_function
 
 # Dependency imports
 
-from six import string_types
+import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -45,8 +45,8 @@ class IntrinsicDef(object):
         instance of `computation_types.FunctionType` or something convertible to
         it.
     """
-    py_typecheck.check_type(name, string_types)
-    py_typecheck.check_type(uri, string_types)
+    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(uri, six.string_types)
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.Type)
     self._name = str(name)

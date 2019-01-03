@@ -24,7 +24,6 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.framework import tensor_util
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import test_utils as common_test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
@@ -43,7 +42,7 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
     self.assertIsInstance(type_spec, computation_types.Type)
     binding_oneof = binding.WhichOneof('binding')
     if binding_oneof == 'tensor':
-      self.assertTrue(tensor_util.is_tensor(val))
+      self.assertTrue(tf.contrib.framework.is_tensor(val))
       self.assertEqual(binding.tensor.tensor_name, val.name)
       self.assertIsInstance(type_spec, computation_types.TensorType)
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)

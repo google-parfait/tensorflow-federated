@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_building_blocks as bb
+from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -39,7 +39,7 @@ from tensorflow_federated.python.core.impl import value_impl
 class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_reference(self):
-    x_comp = bb.Reference('foo', tf.int32)
+    x_comp = computation_building_blocks.Reference('foo', tf.int32)
     x = value_impl.ValueImpl(x_comp, context_stack_impl.context_stack)
     self.assertIs(value_impl.ValueImpl.get_comp(x), x_comp)
     self.assertEqual(str(x.type_signature), 'int32')
@@ -50,7 +50,8 @@ class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_selection(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)]),
+        computation_building_blocks.Reference('foo', [('bar', tf.int32),
+                                                      ('baz', tf.bool)]),
         context_stack_impl.context_stack)
     self.assertEqual(dir(x), ['bar', 'baz'])
     self.assertLen(x, 2)
@@ -81,10 +82,11 @@ class ValueImplTest(absltest.TestCase):
       x(10)
 
   def test_value_impl_with_tuple(self):
-    x_comp = bb.Reference('foo', tf.int32)
-    y_comp = bb.Reference('bar', tf.bool)
+    x_comp = computation_building_blocks.Reference('foo', tf.int32)
+    y_comp = computation_building_blocks.Reference('bar', tf.bool)
     z = value_impl.ValueImpl(
-        bb.Tuple([x_comp, ('y', y_comp)]), context_stack_impl.context_stack)
+        computation_building_blocks.Tuple([x_comp, ('y', y_comp)]),
+        context_stack_impl.context_stack)
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')
     self.assertEqual(str(z), '<foo,y=bar>')
@@ -102,10 +104,12 @@ class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_call(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', computation_types.FunctionType(tf.int32, tf.bool)),
+        computation_building_blocks.Reference(
+            'foo', computation_types.FunctionType(tf.int32, tf.bool)),
         context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.int32),
+        context_stack_impl.context_stack)
     z = x(y)
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), 'bool')
@@ -113,7 +117,8 @@ class ValueImplTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       x()
     w = value_impl.ValueImpl(
-        bb.Reference('bak', tf.float32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bak', tf.float32),
+        context_stack_impl.context_stack)
     with self.assertRaises(TypeError):
       x(w)
 
@@ -123,10 +128,11 @@ class ValueImplTest(absltest.TestCase):
                 ('x', tf.int32)]
     result_value = (lambda arg: arg.f(arg.f(arg.x)))(
         value_impl.ValueImpl(
-            bb.Reference(arg_name, arg_type), context_stack_impl.context_stack))
+            computation_building_blocks.Reference(arg_name, arg_type),
+            context_stack_impl.context_stack))
     x = value_impl.ValueImpl(
-        bb.Lambda(arg_name, arg_type,
-                  value_impl.ValueImpl.get_comp(result_value)),
+        computation_building_blocks.Lambda(
+            arg_name, arg_type, value_impl.ValueImpl.get_comp(result_value)),
         context_stack_impl.context_stack)
     self.assertIsInstance(x, value_base.Value)
     self.assertEqual(
@@ -135,9 +141,11 @@ class ValueImplTest(absltest.TestCase):
 
   def test_value_impl_with_plus(self):
     x = value_impl.ValueImpl(
-        bb.Reference('x', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('x', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('y', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('y', tf.int32),
+        context_stack_impl.context_stack)
     z = x + y
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), 'int32')
@@ -145,27 +153,33 @@ class ValueImplTest(absltest.TestCase):
 
   def test_to_value_for_tuple(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value((x, y), None, context_stack_impl.context_stack)
     self.assertIsInstance(v, value_base.Value)
     self.assertEqual(str(v), '<foo,bar>')
 
   def test_to_value_for_list(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value([x, y], None, context_stack_impl.context_stack)
     self.assertIsInstance(v, value_base.Value)
     self.assertEqual(str(v), '<foo,bar>')
 
   def test_to_value_for_dict(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value({
         'a': x,
         'b': y
@@ -175,9 +189,11 @@ class ValueImplTest(absltest.TestCase):
 
   def test_to_value_for_ordered_dict(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value(
         collections.OrderedDict([('a', x), ('b', y)]), None,
         context_stack_impl.context_stack)
@@ -186,9 +202,11 @@ class ValueImplTest(absltest.TestCase):
 
   def test_to_value_for_named_tuple(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value(
         collections.namedtuple('_', 'a b')(x, y), None,
         context_stack_impl.context_stack)
@@ -197,9 +215,11 @@ class ValueImplTest(absltest.TestCase):
 
   def test_to_value_for_anonymous_tuple(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value(
         anonymous_tuple.AnonymousTuple([('a', x), ('b', y)]), None,
         context_stack_impl.context_stack)
@@ -265,9 +285,11 @@ class ValueImplTest(absltest.TestCase):
 
   def test_slicing_support_namedtuple(self):
     x = value_impl.ValueImpl(
-        bb.Reference('foo', tf.int32), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('foo', tf.int32),
+        context_stack_impl.context_stack)
     y = value_impl.ValueImpl(
-        bb.Reference('bar', tf.bool), context_stack_impl.context_stack)
+        computation_building_blocks.Reference('bar', tf.bool),
+        context_stack_impl.context_stack)
     v = value_impl.to_value(
         collections.namedtuple('_', 'a b')(x, y), None,
         context_stack_impl.context_stack)
@@ -290,8 +312,10 @@ class ValueImplTest(absltest.TestCase):
       _ = v[:1]
 
   def test_slicing_support_non_tuple_underlying_comp(self):
-    test_bb = bb.Reference('test', [tf.int32] * 5)
-    v = value_impl.ValueImpl(test_bb, context_stack_impl.context_stack)
+    test_computation_building_blocks = computation_building_blocks.Reference(
+        'test', [tf.int32] * 5)
+    v = value_impl.ValueImpl(test_computation_building_blocks,
+                             context_stack_impl.context_stack)
     sliced_v = v[:4:2]
     self.assertIsInstance(sliced_v, value_base.Value)
     sliced_v = v[4:2:-1]

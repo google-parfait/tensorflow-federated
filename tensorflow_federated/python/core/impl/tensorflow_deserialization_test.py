@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.framework import tensor_util
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
@@ -36,7 +35,7 @@ class TensorFlowDeserializationTest(test_utils.TffTestCase):
         lambda x: tf.add(x, 1, name='the_add'), tf.int32, ctx_stack)
     result = tensorflow_deserialization.deserialize_and_call_tf_computation(
         add_one, tf.constant(10, name='the_ten'), tf.get_default_graph())
-    self.assertTrue(tensor_util.is_tensor(result))
+    self.assertTrue(tf.contrib.framework.is_tensor(result))
     with tf.Session() as sess:
       result_val = sess.run(result)
     self.assertEqual(result_val, 11)

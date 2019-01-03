@@ -25,10 +25,11 @@ import collections
 
 import six
 import tensorflow as tf
-from tensorflow.python.util import nest
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.learning import model_utils
+
 
 # TODO(b/117226648): Make this a proper class for better documentation.
 ClientOutput = collections.namedtuple(
@@ -152,10 +153,11 @@ def _create_optimizer_and_server_state(model, optimizer):
   @tf.contrib.eager.defun(autograph=False)
   def apply_delta(delta):
     """Applies delta to model.weights."""
-    nest.assert_same_structure(delta, model.weights.trainable)
-    grads_and_vars = nest.map_structure(
-        lambda x, v: (-1.0 * x, v), nest.flatten(delta),
-        nest.flatten(model.weights.trainable))
+    tf.contrib.framework.nest.assert_same_structure(delta,
+                                                    model.weights.trainable)
+    grads_and_vars = tf.contrib.framework.nest.map_structure(
+        lambda x, v: (-1.0 * x, v), tf.contrib.framework.nest.flatten(delta),
+        tf.contrib.framework.nest.flatten(model.weights.trainable))
     # N.B. This may create variables.
     # TODO(b/109733734): Perhaps use Keras optimizers or OptimizerV2?
     optimizer.apply_gradients(grads_and_vars, name='server_update')
@@ -163,7 +165,8 @@ def _create_optimizer_and_server_state(model, optimizer):
 
   # Create a dummy input and trace apply_delta so that
   # we can determine the optimizer's variables.
-  weights_delta = nest.map_structure(tf.zeros_like, model.weights.trainable)
+  weights_delta = tf.contrib.framework.nest.map_structure(
+      tf.zeros_like, model.weights.trainable)
 
   # TODO(b/109733734): We would like to call get_concrete_function,
   # but that does not currently work with structured inputs.
@@ -229,7 +232,8 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
 
   @tf.contrib.eager.function(autograph=False)
   def update_model_inner():
-    nest.map_structure(tf.assign, server_vars, server_state)
+    tf.contrib.framework.nest.map_structure(tf.assign, server_vars,
+                                            server_state)
     apply_delta_fn(weights_delta)
     return server_vars
 

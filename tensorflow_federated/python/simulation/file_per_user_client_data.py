@@ -21,6 +21,7 @@ import os
 import os.path
 
 # Dependency imports
+
 import tensorflow as tf
 
 from tensorflow.python.util import nest

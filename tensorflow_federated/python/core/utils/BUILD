@@ -21,7 +21,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],

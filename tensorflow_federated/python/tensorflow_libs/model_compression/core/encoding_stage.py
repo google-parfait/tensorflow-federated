@@ -40,8 +40,6 @@ import enum
 import six
 import tensorflow as tf
 
-from tensorflow.python.util import nest
-
 
 class StateAggregationMode(enum.Enum):
   """Enum of available modes of aggregation for state.
@@ -430,7 +428,8 @@ def tf_style_encode(default_name):
       values = list(encode_params.values()) + [x]
       with tf.variable_scope(name, default_name, values):
         x = tf.convert_to_tensor(x)
-        encode_params = nest.map_structure(tf.convert_to_tensor, encode_params)
+        encode_params = tf.contrib.framework.nest.map_structure(
+            tf.convert_to_tensor, encode_params)
         return encode_fn(self, x, encode_params, name=name)
 
     return actual_encode_fn
@@ -465,9 +464,10 @@ def tf_style_decode(default_name):
       """Modified `decode` method."""
       values = list(encoded_tensors.values()) + list(decode_params.values())
       with tf.name_scope(name, default_name, values):
-        encoded_tensors = nest.map_structure(tf.convert_to_tensor,
-                                             encoded_tensors)
-        decode_params = nest.map_structure(tf.convert_to_tensor, decode_params)
+        encoded_tensors = tf.contrib.framework.nest.map_structure(
+            tf.convert_to_tensor, encoded_tensors)
+        decode_params = tf.contrib.framework.nest.map_structure(
+            tf.convert_to_tensor, decode_params)
         if shape:
           shape = tf.convert_to_tensor(shape)
         return decode_fn(

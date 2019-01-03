@@ -28,17 +28,15 @@ import abc
 import collections
 
 # Dependency imports
+
 from absl.testing import parameterized
 import numpy as np
 import six
 import tensorflow as tf
 
-# TODO(b/118783928) Fix BUILD target visibility.
-from tensorflow.python.framework import tensor_util
-from tensorflow.python.util import nest
-
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import encoding_stage
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import utils
+
 
 # Named tuple containing the values summarizing the results for a single
 # evaluation of an encoding stage.
@@ -362,7 +360,7 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
         d_py, d_tf = utils.split_dict_py_tf(fetch)
         py_fetches.append(d_py)
         tf_fetches.append(d_tf)
-      elif tensor_util.is_tensor(fetch):
+      elif tf.contrib.framework.is_tensor(fetch):
         py_fetches.append(None)
         tf_fetches.append(fetch)
       else:
@@ -374,7 +372,8 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
         tf_fetches.append(placeholder_empty_tuple)
 
     # Evaluate the structure containing the TensorFlow objects.
-    if any((tensor_util.is_tensor(t) for t in nest.flatten(tf_fetches))):
+    if any((tf.contrib.framework.is_tensor(t)
+            for t in tf.contrib.framework.nest.flatten(tf_fetches))):
       # Only evaluate something if there is a Tensor to be evaluated.
       if session:
         eval_fetches = session.run(tf_fetches)

@@ -29,7 +29,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.util import nest
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -75,7 +74,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     # Or, we may just need a convention that TFF initializes all variables
     # before invoking the TF function.
 
-    nest.map_structure(tf.assign, model.weights, initial_weights)
+    tf.contrib.framework.nest.map_structure(tf.assign, model.weights,
+                                            initial_weights)
 
     @tf.contrib.eager.function(autograph=False)
     def reduce_fn(dummy_state, batch):
@@ -88,8 +88,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     dummy_output = dataset.reduce(
         initial_state=tf.constant(0.0), reduce_func=reduce_fn)
 
-    weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
-                                       initial_weights.trainable)
+    weights_delta = tf.contrib.framework.nest.map_structure(
+        tf.subtract, model.weights.trainable, initial_weights.trainable)
 
     aggregated_outputs = model.aggregated_outputs()
     weights_delta_weight = self._client_weight_fn(aggregated_outputs)  # pylint:disable=not-callable
@@ -136,5 +136,3 @@ def federated_averaging(model_fn,
 
   return optimizer_utils.build_model_delta_optimizer_tff(
       model_fn, client_fed_avg, server_optimizer_fn)
-
-

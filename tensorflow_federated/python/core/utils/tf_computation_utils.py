@@ -24,7 +24,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as fc
+from tensorflow_federated.python.core.api import computation_types
 
 
 def get_variables(name, type_spec, **kwargs):
@@ -33,9 +33,9 @@ def get_variables(name, type_spec, **kwargs):
   Args:
     name: The common name to use for the scope in which all of the variables are
       to be created.
-    type_spec: An instance of `fc.Type` or something convertible to it. The type
-      signature may only be composed of tensor types and named tuples, possibly
-      nested.
+    type_spec: An instance of `tff.Type` or something convertible to it. The
+      type signature may only be composed of tensor types and named tuples,
+      possibly nested.
     **kwargs: Additional keyword args to pass to `tf.get_variable` calls.
 
   Returns:
@@ -48,12 +48,12 @@ def get_variables(name, type_spec, **kwargs):
       named tuple TFF types.
   """
   py_typecheck.check_type(name, six.string_types)
-  type_spec = fc.to_type(type_spec)
-  py_typecheck.check_type(type_spec, fc.Type)
-  if isinstance(type_spec, fc.TensorType):
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if isinstance(type_spec, computation_types.TensorType):
     return tf.get_variable(
         name, dtype=type_spec.dtype, shape=type_spec.shape, **kwargs)
-  elif isinstance(type_spec, fc.NamedTupleType):
+  elif isinstance(type_spec, computation_types.NamedTupleType):
     with tf.variable_scope(name):
       return anonymous_tuple.AnonymousTuple(
           [(k, get_variables(k if k is not None else str(i), v, **kwargs))

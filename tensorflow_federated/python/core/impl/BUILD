@@ -558,7 +558,10 @@ py_test(
 py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
-    deps = ["@six_archive//:six"],
+    deps = [
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
 )
 
 py_test(

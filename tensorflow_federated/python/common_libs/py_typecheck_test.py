@@ -20,7 +20,7 @@ from __future__ import print_function
 # Dependency imports
 
 from absl.testing import absltest
-from six import string_types
+import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -30,7 +30,7 @@ class PyTypeCheckTest(absltest.TestCase):
   def test_check_type(self):
     try:
       self.assertEqual('foo', py_typecheck.check_type('foo', str))
-      py_typecheck.check_type('foo', string_types)
+      py_typecheck.check_type('foo', six.string_types)
       py_typecheck.check_type(10, int)
       py_typecheck.check_type(10, (str, int))
       py_typecheck.check_type(10, (str, int, bool, float))

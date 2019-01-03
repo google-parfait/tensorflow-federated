@@ -23,7 +23,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.util import nest
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -37,7 +36,8 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
     return []
 
   def __call__(self, dataset, initial_weights):
-    weights_delta = nest.map_structure(lambda x: -1.0 * x, initial_weights)
+    weights_delta = tf.contrib.framework.nest.map_structure(
+        lambda x: -1.0 * x, initial_weights)
     client_weight = tf.constant(3.0)
     return optimizer_utils.ClientOutput(
         weights_delta,

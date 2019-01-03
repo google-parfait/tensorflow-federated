@@ -22,8 +22,6 @@ from __future__ import print_function
 import six
 import tensorflow as tf
 
-from tensorflow.python.framework import tensor_util
-
 
 def static_or_dynamic_shape(tensor):
   """Returns shape of the input `Tensor`.
@@ -41,7 +39,7 @@ def static_or_dynamic_shape(tensor):
     TypeError:
       If the input is not a `Tensor`.
   """
-  if not tensor_util.is_tensor(tensor):
+  if not tf.contrib.framework.is_tensor(tensor):
     raise TypeError('The provided input is not a Tensor.')
   return tensor.shape if tensor.shape.is_fully_defined() else tf.shape(tensor)
 
@@ -71,7 +69,7 @@ def split_dict_py_tf(dictionary):
     if isinstance(v, dict):
       d_py[k], d_tf[k] = split_dict_py_tf(v)
     else:
-      if tensor_util.is_tensor(v):
+      if tf.contrib.framework.is_tensor(v):
         d_tf[k] = v
       else:
         d_py[k] = v

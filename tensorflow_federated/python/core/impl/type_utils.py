@@ -24,8 +24,6 @@ import numpy as np
 import six
 import tensorflow as tf
 
-from tensorflow.python.framework import tensor_util
-from tensorflow.python.util import nest
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -56,7 +54,7 @@ def infer_type(arg):
     return None
   elif isinstance(arg, (value_base.Value, computation_base.Computation)):
     return arg.type_signature
-  elif tensor_util.is_tensor(arg):
+  elif tf.contrib.framework.is_tensor(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, (np.generic, np.ndarray)):
     return computation_types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
@@ -124,7 +122,7 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   Raises:
     TypeError: if the arguments are of types that weren't recognized.
   """
-  nest.assert_same_structure(dtypes, shapes)
+  tf.contrib.framework.nest.assert_same_structure(dtypes, shapes)
   if isinstance(dtypes, tf.DType):
     return computation_types.TensorType(dtypes, shapes)
   elif '_asdict' in type(dtypes).__dict__:
