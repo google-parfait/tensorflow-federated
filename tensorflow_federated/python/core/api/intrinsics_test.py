@@ -18,13 +18,16 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import itertools
 
 # Dependency imports
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api.computation_types import FederatedType
+from tensorflow_federated.python.core.api.computation_types import FunctionType
 from tensorflow_federated.python.core.api.computation_types import NamedTupleType
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
@@ -40,7 +43,7 @@ from tensorflow_federated.python.core.api.placements import CLIENTS
 from tensorflow_federated.python.core.api.placements import SERVER
 
 
-class IntrinsicsTest(absltest.TestCase):
+class IntrinsicsTest(parameterized.TestCase):
 
   def test_federated_broadcast_with_server_all_equal_int(self):
 
@@ -268,6 +271,58 @@ class IntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         str(foo.type_signature),
         '(<{float32}@CLIENTS,float32@SERVER> -> int32@SERVER)')
+
+  @parameterized.named_parameters(('test_n_2', 2), ('test_n_3', 3),
+                                  ('test_n_5', 5), ('test_n_10', 10))
+  def test_n_tuple_federated_zip_tensor_args(self, n):
+    fed_type = FederatedType(tf.int32, CLIENTS)
+    initial_tuple_type = NamedTupleType([fed_type] * n)
+    final_fed_type = FederatedType([tf.int32] * n, CLIENTS)
+    function_type = FunctionType(initial_tuple_type, final_fed_type)
+    type_string = str(function_type)
+
+    @federated_computation([FederatedType(tf.int32, CLIENTS)] * n)
+    def foo(x):
+      return federated_zip(x)
+
+    self.assertEqual(str(foo.type_signature), type_string)
+
+  @parameterized.named_parameters(('test_n_2', 2), ('test_n_3', 3),
+                                  ('test_n_5', 5), ('test_n_10', 10))
+  def test_n_tuple_federated_zip_namedtuple_args(self, n):
+    fed_type = FederatedType([tf.int32, tf.int32], CLIENTS)
+    initial_tuple_type = NamedTupleType([fed_type] * n)
+    final_fed_type = FederatedType([[tf.int32, tf.int32]] * n, CLIENTS)
+    function_type = FunctionType(initial_tuple_type, final_fed_type)
+    type_string = str(function_type)
+
+    @federated_computation(
+        [FederatedType(NamedTupleType([tf.int32, tf.int32]), CLIENTS)] * n)
+    def bar(x):
+      return federated_zip(x)
+
+    self.assertEqual(str(bar.type_signature), type_string)
+
+  @parameterized.named_parameters(
+      [('test_n_' + str(n) + '_m_' + str(m), n, m)
+       for n, m in itertools.product([1, 2, 3, 5, 10], [1, 2, 3, 5, 10])])
+  def test_n_tuple_federated_zip_mixed_args(self, n, m):
+    tuple_fed_type = FederatedType([tf.int32, tf.int32], CLIENTS)
+    single_fed_type = FederatedType(tf.int32, CLIENTS)
+    initial_tuple_type = NamedTupleType([tuple_fed_type] * n +
+                                        [single_fed_type] * m)
+    final_fed_type = FederatedType([[tf.int32, tf.int32]] * n + [tf.int32] * m,
+                                   CLIENTS)
+    function_type = FunctionType(initial_tuple_type, final_fed_type)
+    type_string = str(function_type)
+
+    @federated_computation(
+        [FederatedType(NamedTupleType([tf.int32, tf.int32]), CLIENTS)] * n +
+        [FederatedType(tf.int32, CLIENTS)] * m)
+    def baz(x):
+      return federated_zip(x)
+
+    self.assertEqual(str(baz.type_signature), type_string)
 
 
 if __name__ == '__main__':

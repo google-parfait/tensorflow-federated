@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl import value_utils
 
 
 class IntrinsicFactory(object):
@@ -252,8 +253,7 @@ class IntrinsicFactory(object):
 
     value = value_impl.to_value(value, None, self._context_stack)
     if isinstance(value.type_signature, computation_types.NamedTupleType):
-      # TODO(b/120569877): Extend federated_zip to n-tuples
-      if len(value.type_signature.elements) == 2:
+      if len(value.type_signature.elements) >= 2:
         # We've been passed a value which the user expects to be zipped.
         value = self.federated_zip(value)
     type_utils.check_federated_value_placement(value, placements.CLIENTS,
@@ -377,34 +377,51 @@ class IntrinsicFactory(object):
     Raises:
       TypeError: As in `api/intrinsics.py`.
     """
-    # TODO(b/113112108): Extend this to accept named tuples of arbitrary length.
-
     # TODO(b/113112108): Extend this to accept *args.
+
+    # TODO(b/113112108): Allow for auto-extraction of NamedTuples of length 1.
+
+    # TODO(b/113112108): We use the iterate/unwrap approach below because
+    # our type system is not powerful enough to express the concept of
+    # "an operation that takes tuples of T of arbitrary length", and therefore
+    # the intrinsic federated_zip must only take a fixed number of arguments,
+    # here fixed at 2. There are other potential approaches to getting around
+    # this problem (e.g. having the operator act on sequences and thereby
+    # sidestepping the issue) which we may want to explore.
 
     value = value_impl.to_value(value, None, self._context_stack)
     py_typecheck.check_type(value, value_base.Value)
     py_typecheck.check_type(value.type_signature,
                             computation_types.NamedTupleType)
     num_elements = len(value.type_signature.elements)
-    if num_elements != 2:
+    if num_elements < 2:
       raise TypeError(
-          'The federated zip operator currently only supports zipping '
-          'two-element tuples, but the tuple given as argument has {} '
+          'The federated zip operator zips tuples of at least two elements, '
+          'but the tuple given as argument has {} '
           'elements.'.format(num_elements))
     for _, elem in value.type_signature.elements:
       py_typecheck.check_type(elem, computation_types.FederatedType)
       if elem.placement is not placements.CLIENTS:
         raise TypeError(
             'The elements of the named tuple to zip must be placed at CLIENTS.')
-
-    # TODO(b/113112108): Replace this as noted above.
-    result_type = computation_types.FederatedType(
-        [e.member for _, e in value.type_signature.elements],
-        placements.CLIENTS,
-        all(e.all_equal for _, e in value.type_signature.elements))
-    intrinsic = value_impl.ValueImpl(
-        computation_building_blocks.Intrinsic(
-            intrinsic_defs.FEDERATED_ZIP.uri,
-            computation_types.FunctionType(value.type_signature, result_type)),
+    zipped = value_utils.zip_two_tuple(
+        value_impl.to_value([value[0], value[1]], None, self._context_stack),
         self._context_stack)
-    return intrinsic(value)
+    inputs = value_impl.to_value(
+        computation_building_blocks.Reference(
+            'inputs', zipped.type_signature.member), None, self._context_stack)
+    flatten_func = value_impl.to_value(
+        computation_building_blocks.Lambda(
+            'inputs', zipped.type_signature.member,
+            value_impl.ValueImpl.get_comp(inputs)), None, self._context_stack)
+    for k in range(2, num_elements):
+      zipped = value_utils.zip_two_tuple(
+          value_impl.to_value([zipped, value[k]], None, self._context_stack),
+          self._context_stack)
+      # elements returns list of 2-tuples of the form (name, type)--the [-1][1]
+      # grabs the type from the last element
+      new_type = computation_types.to_type(
+          zipped.type_signature.member.elements[-1][1])
+      flatten_func = value_utils.flatten_first_index(flatten_func, new_type,
+                                                     self._context_stack)
+    return self.federated_map(zipped, flatten_func)

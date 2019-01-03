@@ -386,6 +386,7 @@ py_library(
         ":type_constructors",
         ":type_utils",
         ":value_impl",
+        ":value_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
@@ -762,5 +763,38 @@ py_test(
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
+    ],
+)
+
+py_library(
+    name = "value_utils",
+    srcs = ["value_utils.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":intrinsic_defs",
+        ":type_utils",
+        ":value_impl",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:value_base",
+    ],
+)
+
+py_test(
+    name = "value_utils_test",
+    size = "small",
+    srcs = ["value_utils_test.py"],
+    default_python_version = "PY3",
+    deps = [
+        ":computation_building_blocks",
+        ":context_stack_impl",
+        ":value_impl",
+        ":value_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
