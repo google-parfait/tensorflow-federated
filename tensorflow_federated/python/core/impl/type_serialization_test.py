@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl import type_utils
 
 
 class TypeSerializationTest(test_utils.TffTestCase):
@@ -147,8 +148,7 @@ class TypeSerializationTest(test_utils.TffTestCase):
       p2 = type_serialization.serialize_type(t2)
       self.assertEqual(repr(t1), repr(t2))
       self.assertEqual(repr(p1), repr(p2))
-      self.assertTrue(t1.is_assignable_from(t2))
-      self.assertTrue(t2.is_assignable_from(t1))
+      self.assertTrue(type_utils.are_equivalent_types(t1, t2))
 
 
 def _compact_repr(m):

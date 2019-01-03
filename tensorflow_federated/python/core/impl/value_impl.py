@@ -178,8 +178,8 @@ class ValueImpl(value_base.Value):
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
-    if (not self.type_signature.is_assignable_from(other.type_signature) or
-        not other.type_signature.is_assignable_from(self.type_signature)):
+    if not type_utils.are_equivalent_types(
+        self.type_signature, other.type_signature):
       raise TypeError('Cannot add {} and {}.'.format(
           str(self.type_signature), str(other.type_signature)))
     return ValueImpl(
@@ -239,7 +239,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   # requested type of the sequence as a while.
   for elem in elements:
     elem_type = type_utils.infer_type(elem)
-    if not element_type.is_assignable_from(elem_type):
+    if not type_utils.is_assignable_from(element_type, elem_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(
               str(element_type), str(elem_type)))
@@ -329,7 +329,7 @@ def to_value(arg, type_spec, context_stack):
             py_typecheck.type_string(type(arg))))
   assert isinstance(result, ValueImpl)
   if (type_spec is not None and
-      not type_spec.is_assignable_from(result.type_signature)):
+      not type_utils.is_assignable_from(type_spec, result.type_signature)):
     raise TypeError(
         'The supplied argument maps to TFF type {}, which is incompatible '
         'with the requested type {}.'.format(

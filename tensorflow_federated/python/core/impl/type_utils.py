@@ -29,6 +29,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl import placement_literals
 
 
 def infer_type(arg):
@@ -428,3 +429,91 @@ def is_average_compatible(type_spec):
     return is_average_compatible(type_spec.member)
   else:
     return False
+
+
+def is_assignable_from(target_type, source_type):
+  """Determines whether `target_type` is assignable from `source_type`.
+
+  Args:
+    target_type: The expected type (that of the target of the assignment).
+    source_type: The actual type (that of the source of the assignment),
+      tested for being a specialization of the `target_type`.
+
+  Returns:
+    `True` iff `target_type` is assignable from `source_type`, or else `False`.
+
+  Raises:
+    TypeError: If the arguments are not TFF types.
+  """
+  target_type = computation_types.to_type(target_type)
+  source_type = computation_types.to_type(source_type)
+  py_typecheck.check_type(target_type, computation_types.Type)
+  py_typecheck.check_type(source_type, computation_types.Type)
+  if isinstance(target_type, computation_types.TensorType):
+    def _shape_is_assignable_from(x, y):
+      def _dimension_is_assignable_from(x, y):
+        return (x.value is None) or (x.value == y.value)
+      return ((x.ndims == y.ndims) and ((x.dims is None) or all(
+          _dimension_is_assignable_from(x.dims[k], y.dims[k])
+          for k in range(x.ndims))))
+    return (isinstance(source_type, computation_types.TensorType) and
+            (target_type.dtype == source_type.dtype) and
+            _shape_is_assignable_from(target_type.shape, source_type.shape))
+  elif isinstance(target_type, computation_types.NamedTupleType):
+    if not isinstance(source_type, computation_types.NamedTupleType):
+      return False
+    target_elements = target_type.elements
+    source_elements = source_type.elements
+    return ((len(target_elements) == len(source_elements)) and all(
+        ((target_elements[k][0] in [source_elements[k][0], None]) and
+         is_assignable_from(target_elements[k][1], source_elements[k][1]))
+        for k in range(len(target_elements))))
+  elif isinstance(target_type, computation_types.SequenceType):
+    return (isinstance(source_type, computation_types.SequenceType) and
+            is_assignable_from(target_type.element, source_type.element))
+  elif isinstance(target_type, computation_types.FunctionType):
+    return (isinstance(source_type, computation_types.FunctionType) and
+            (((source_type.parameter is None) and
+              (target_type.parameter is None)) or
+             ((source_type.parameter is not None) and
+              (target_type.parameter is not None) and
+              is_assignable_from(
+                  source_type.parameter, target_type.parameter)) and
+             is_assignable_from(target_type.result, source_type.result)))
+  elif isinstance(target_type, computation_types.AbstractType):
+    # TODO(b/113112108): Revise this to extend the relation of assignability to
+    # abstract types.
+    raise TypeError('Abstract types are not comparable.')
+  elif isinstance(target_type, computation_types.PlacementType):
+    return isinstance(source_type, computation_types.PlacementType)
+  elif isinstance(target_type, computation_types.FederatedType):
+    if (not isinstance(source_type, computation_types.FederatedType) or
+        not is_assignable_from(target_type.member, source_type.member) or
+        target_type.all_equal and not source_type.all_equal):
+      return False
+    for val in [target_type, source_type]:
+      py_typecheck.check_type(val.placement,
+                              placement_literals.PlacementLiteral)
+    return target_type.placement is source_type.placement
+  else:
+    raise TypeError('Unexpected target type {}.'.format(str(target_type)))
+
+
+def are_equivalent_types(type1, type2):
+  """Determines whether `type1` and `type2` are equivalent.
+
+  We define equivaence in this context as both types being assignable from
+  one-another.
+
+  Args:
+    type1: One type.
+    type2: Another type.
+
+  Returns:
+    `True` iff `type1` anf `type2` are equivalent, or else `False`.
+  """
+  if type1 is None:
+    return type2 is None
+  else:
+    return type2 is not None and (
+        is_assignable_from(type1, type2) and is_assignable_from(type2, type1))

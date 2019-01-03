@@ -190,7 +190,7 @@ def is_argspec_compatible_with_types(argspec, *args, **kwargs):
       if call_arg is not default_value:
         arg_type = computation_types.to_type(call_arg)
         default_type = type_utils.infer_type(default_value)
-        if not arg_type.is_assignable_from(default_type):
+        if not type_utils.is_assignable_from(arg_type, default_type):
           return False
   return True
 
@@ -316,7 +316,7 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
           else:
             arg_value = args[index]
             arg_type = type_utils.infer_type(arg_value)
-            if not elem_type.is_assignable_from(arg_type):
+            if not type_utils.is_assignable_from(elem_type, arg_type):
               raise TypeError(
                   'Positional argument at {} has type {}, which is '
                   'incompatible with the expected type {} at the matching '
@@ -327,7 +327,7 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
         elif name is not None and name in kwargs:
           arg_value = kwargs[name]
           arg_type = type_utils.infer_type(arg_value)
-          if not elem_type.is_assignable_from(arg_type):
+          if not type_utils.is_assignable_from(elem_type, arg_type):
             raise TypeError(
                 'Keyword argument named {} has type {}, which is incompatible '
                 'with the expected type {} at position {} of the parameter '
@@ -405,7 +405,7 @@ def pack_args(parameter_type, args, kwargs):
       else:
         arg = pack_args_into_anonymous_tuple(args, kwargs, parameter_type)
       actual_type = type_utils.infer_type(arg)
-      if parameter_type.is_assignable_from(actual_type):
+      if type_utils.is_assignable_from(parameter_type, actual_type):
         return arg
       else:
         raise TypeError(
@@ -542,7 +542,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
         for idx, expected_type in enumerate(arg_types):
           element_value = arg[idx]
           actual_type = type_utils.infer_type(element_value)
-          if not expected_type.is_assignable_from(actual_type):
+          if not type_utils.is_assignable_from(expected_type, actual_type):
             raise TypeError('Expected element at position {} to be '
                             'of type {}, found {}.'.format(
                                 idx, str(expected_type), str(actual_type)))
@@ -551,7 +551,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
         for name, expected_type in six.iteritems(kwarg_types):
           element_value = getattr(arg, name)
           actual_type = type_utils.infer_type(element_value)
-          if not expected_type.is_assignable_from(actual_type):
+          if not type_utils.is_assignable_from(expected_type, actual_type):
             raise TypeError('Expected element named {} to be '
                             'of type {}, found {}.'.format(
                                 name, str(expected_type), str(actual_type)))
@@ -570,7 +570,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       # forwards the call as a last-minute check.
       def _call(func, parameter_type, arg):
         arg_type = type_utils.infer_type(arg)
-        if not parameter_type.is_assignable_from(arg_type):
+        if not type_utils.is_assignable_from(parameter_type, arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               str(parameter_type), str(arg_type)))
         return func(arg)
@@ -608,7 +608,8 @@ class ConcreteFunction(computation_base.Computation):
     arg = pack_args(self._type_signature.parameter, args, kwargs)
     result = self._invoke(arg)
     result_type = type_utils.infer_type(result)
-    if not self._type_signature.result.is_assignable_from(result_type):
+    if not type_utils.is_assignable_from(
+        self._type_signature.result, result_type):
       raise TypeError('Expected result to be of type {}, found {}.'.format(
           str(self._type_signature.result), str(result_type)))
     return result

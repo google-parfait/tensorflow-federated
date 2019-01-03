@@ -377,6 +377,114 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
   def test_is_average_compatible_false(self, type_spec):
     self.assertFalse(type_utils.is_average_compatible(type_spec))
 
+  def test_is_assignable_from_with_tensor_type_and_invalid_type(self):
+    t = computation_types.TensorType(tf.int32, [10])
+    self.assertRaises(TypeError, type_utils.is_assignable_from, t, True)
+    self.assertRaises(TypeError, type_utils.is_assignable_from, t, 10)
+
+  def test_is_assignable_from_with_tensor_type_and_tensor_type(self):
+    t = computation_types.TensorType(tf.int32, [10])
+    self.assertFalse(
+        type_utils.is_assignable_from(
+            t, computation_types.TensorType(tf.int32)))
+    self.assertFalse(
+        type_utils.is_assignable_from(
+            t, computation_types.TensorType(tf.int32, [5])))
+    self.assertFalse(
+        type_utils.is_assignable_from(
+            t, computation_types.TensorType(tf.int32, [10, 10])))
+    self.assertTrue(
+        type_utils.is_assignable_from(
+            t, computation_types.TensorType(tf.int32, 10)))
+
+  def test_is_assignable_from_with_tensor_type_with_undefined_dims(self):
+    t1 = computation_types.TensorType(tf.int32, [None])
+    t2 = computation_types.TensorType(tf.int32, [10])
+    self.assertTrue(type_utils.is_assignable_from(t1, t2))
+    self.assertFalse(type_utils.is_assignable_from(t2, t1))
+
+  def test_is_assignable_from_with_named_tuple_type(self):
+    t1 = computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])
+    t2 = computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])
+    t3 = computation_types.NamedTupleType([tf.int32, ('b', tf.bool)])
+    t4 = computation_types.NamedTupleType([tf.int32, ('a', tf.string)])
+    t5 = computation_types.NamedTupleType([tf.int32])
+    t6 = computation_types.NamedTupleType([tf.int32, tf.bool])
+    self.assertTrue(type_utils.is_assignable_from(t1, t2))
+    self.assertFalse(type_utils.is_assignable_from(t1, t3))
+    self.assertFalse(type_utils.is_assignable_from(t1, t4))
+    self.assertFalse(type_utils.is_assignable_from(t1, t5))
+    self.assertTrue(type_utils.is_assignable_from(t6, t1))
+    self.assertFalse(type_utils.is_assignable_from(t1, t6))
+
+  def test_is_assignable_from_with_sequence_type(self):
+    self.assertTrue(
+        type_utils.is_assignable_from(
+            computation_types.SequenceType(tf.int32),
+            computation_types.SequenceType(tf.int32)))
+    self.assertFalse(
+        type_utils.is_assignable_from(
+            computation_types.SequenceType(tf.int32),
+            computation_types.SequenceType(tf.bool)))
+
+  def test_is_assignable_from_with_function_type(self):
+    t1 = computation_types.FunctionType(tf.int32, tf.bool)
+    t2 = computation_types.FunctionType(tf.int32, tf.bool)
+    t3 = computation_types.FunctionType(tf.int32, tf.int32)
+    t4 = computation_types.TensorType(tf.int32)
+    self.assertTrue(type_utils.is_assignable_from(t1, t1))
+    self.assertTrue(type_utils.is_assignable_from(t1, t2))
+    self.assertFalse(type_utils.is_assignable_from(t1, t3))
+    self.assertFalse(type_utils.is_assignable_from(t1, t4))
+
+  def test_is_assignable_from_with_abstract_type(self):
+    t1 = computation_types.AbstractType('T1')
+    t2 = computation_types.AbstractType('T2')
+    self.assertRaises(TypeError, type_utils.is_assignable_from, t1, t2)
+
+  def test_is_assignable_from_with_placement_type(self):
+    t1 = computation_types.PlacementType()
+    t2 = computation_types.PlacementType()
+    self.assertTrue(type_utils.is_assignable_from(t1, t1))
+    self.assertTrue(type_utils.is_assignable_from(t1, t2))
+
+  def test_is_assignable_from_with_federated_type(self):
+    t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    self.assertTrue(type_utils.is_assignable_from(t1, t1))
+    t2 = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    self.assertTrue(type_utils.is_assignable_from(t1, t2))
+    self.assertTrue(type_utils.is_assignable_from(t2, t2))
+    self.assertFalse(type_utils.is_assignable_from(t2, t1))
+    t3 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [10]), placements.CLIENTS)
+    t4 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [None]), placements.CLIENTS)
+    self.assertTrue(type_utils.is_assignable_from(t4, t3))
+    self.assertFalse(type_utils.is_assignable_from(t3, t4))
+    t5 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [10]), placements.SERVER)
+    self.assertFalse(type_utils.is_assignable_from(t3, t5))
+    self.assertFalse(type_utils.is_assignable_from(t5, t3))
+    t6 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [10]),
+        placements.CLIENTS,
+        all_equal=True)
+    self.assertTrue(type_utils.is_assignable_from(t3, t6))
+    self.assertTrue(type_utils.is_assignable_from(t4, t6))
+    self.assertFalse(type_utils.is_assignable_from(t6, t3))
+    self.assertFalse(type_utils.is_assignable_from(t6, t4))
+
+  def test_are_equivalent_types(self):
+    t1 = computation_types.TensorType(tf.int32, [None])
+    t2 = computation_types.TensorType(tf.int32, [10])
+    t3 = computation_types.TensorType(tf.int32, [10])
+    self.assertTrue(type_utils.are_equivalent_types(t1, t1))
+    self.assertTrue(type_utils.are_equivalent_types(t2, t3))
+    self.assertTrue(type_utils.are_equivalent_types(t3, t2))
+    self.assertFalse(type_utils.are_equivalent_types(t1, t2))
+    self.assertFalse(type_utils.are_equivalent_types(t2, t1))
+
 
 if __name__ == '__main__':
   tf.test.main()

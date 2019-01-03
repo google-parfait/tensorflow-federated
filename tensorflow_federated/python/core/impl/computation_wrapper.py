@@ -24,6 +24,7 @@ import types
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import type_utils
 
 
 def _wrap(func, parameter_type, wrapper_fn):
@@ -88,7 +89,8 @@ def _wrap(func, parameter_type, wrapper_fn):
       parameter_type)
   py_typecheck.check_type(concrete_fn, func_utils.ConcreteFunction,
                           'value returned by the wrapper')
-  if concrete_fn.type_signature.parameter != parameter_type:
+  if not type_utils.are_equivalent_types(
+      concrete_fn.type_signature.parameter, parameter_type):
     raise TypeError(
         'Expected a concrete function that takes parameter {}, got one '
         'that takes {}.'.format(

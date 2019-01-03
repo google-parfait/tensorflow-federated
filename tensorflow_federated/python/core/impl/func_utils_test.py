@@ -32,6 +32,7 @@ from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import type_utils
 
 
 class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
@@ -169,12 +170,15 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
   def test_unpack_args_from_tuple_type(self, tuple_with_args, expected_args,
                                        expected_kwargs):
     args, kwargs = func_utils.unpack_args_from_tuple(tuple_with_args)
-    self.assertEqual(args,
-                     [computation_types.to_type(a) for a in expected_args])
-    self.assertEqual(kwargs, {
-        k: computation_types.to_type(v)
-        for k, v in six.iteritems(expected_kwargs)
-    })
+    self.assertEqual(len(args), len(expected_args))
+    for idx, arg in enumerate(args):
+      self.assertTrue(type_utils.are_equivalent_types(
+          arg, computation_types.to_type(expected_args[idx])))
+    self.assertEqual(set(kwargs.keys()), set(expected_kwargs.keys()))
+    for k, v in six.iteritems(kwargs):
+      self.assertTrue(type_utils.are_equivalent_types(
+          computation_types.to_type(v),
+          expected_kwargs[k]))
 
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(

@@ -90,7 +90,7 @@ class IntrinsicFactory(object):
                                        ('merge', merge, merge_type_expected),
                                        ('report', report,
                                         report_type_expected)]:
-      if not type_expected.is_assignable_from(op.type_signature):
+      if not type_utils.is_assignable_from(type_expected, op.type_signature):
         raise TypeError('Expected parameter `{}` to be of type {}, '
                         'but received {} instead.'.format(
                             op_name, str(type_expected),
@@ -268,8 +268,8 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(mapping_fn, value_base.Value)
     py_typecheck.check_type(mapping_fn.type_signature,
                             computation_types.FunctionType)
-    if not mapping_fn.type_signature.parameter.is_assignable_from(
-        value.type_signature.member):
+    if not type_utils.is_assignable_from(
+        mapping_fn.type_signature.parameter, value.type_signature.member):
       raise TypeError(
           'The mapping function expects a parameter of type {}, but member '
           'constituents of the mapped value are of incompatible type {}.'
@@ -321,7 +321,7 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
     op_type_expected = type_constructors.reduction_op(
         zero.type_signature, value.type_signature.member)
-    if not op_type_expected.is_assignable_from(op.type_signature):
+    if not type_utils.is_assignable_from(op_type_expected, op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           str(op_type_expected), str(op.type_signature)))
 

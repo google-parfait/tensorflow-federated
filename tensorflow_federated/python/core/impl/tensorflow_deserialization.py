@@ -33,6 +33,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl import type_utils
 
 
 def deserialize_and_call_tf_computation(computation_proto, arg, graph):
@@ -84,7 +85,7 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
           'was not supplied.'.format(str(type_spec.parameter)))
     else:
       arg_type, arg_binding = graph_utils.capture_result_from_graph(arg)
-      if not type_spec.parameter.is_assignable_from(arg_type):
+      if not type_utils.is_assignable_from(type_spec.parameter, arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
             'is of a mismatching type {}.'.format(

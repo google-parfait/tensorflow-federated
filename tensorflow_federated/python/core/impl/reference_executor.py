@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl import type_utils
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -118,7 +119,7 @@ class NamedTupleValue(ComputedValue):
         raise ValueError(
             'Found value name {}, where {} was expected at position {} '
             'in the value tuple.'.format(value_name, elem_name, index))
-      if not elem_type.is_assignable_from(value.type_signature):
+      if not type_utils.is_assignable_from(elem_type, value.type_signature):
         raise ValueError(
             'Found value of type {}, where {} was expected at position {} '
             'in the value tuple.'.format(

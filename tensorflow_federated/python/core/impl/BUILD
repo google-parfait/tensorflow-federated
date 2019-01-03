@@ -140,6 +140,7 @@ py_library(
     srcs = ["computation_wrapper.py"],
     deps = [
         ":func_utils",
+        ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
@@ -307,6 +308,7 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":func_utils",
+        ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -472,6 +474,7 @@ py_library(
         ":graph_utils",
         ":tensorflow_deserialization",
         ":transformations",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -505,6 +508,7 @@ py_library(
     deps = [
         ":graph_utils",
         ":type_serialization",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -685,6 +689,7 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":type_serialization",
+        ":type_utils",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
@@ -696,6 +701,7 @@ py_library(
     name = "type_utils",
     srcs = ["type_utils.py"],
     deps = [
+        ":placement_literals",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",

@@ -23,7 +23,6 @@ import collections
 # Dependency imports
 
 import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -36,18 +35,6 @@ class Type(object):
   """An abstract interface for all classes that represent TFF types."""
 
   @abc.abstractmethod
-  def is_assignable_from(self, other):
-    """Determines whether this TFF type is assignable from another TFF type.
-
-    Args:
-      other: Another type, an instance of `Type`.
-
-    Returns:
-      `True` if self is assignable from other, `False` otherwise.
-    """
-    raise NotImplementedError
-
-  @abc.abstractmethod
   def __repr__(self):
     """Returns a full-form representation of this type."""
     raise NotImplementedError
@@ -57,27 +44,28 @@ class Type(object):
     """Returns a concise representation of this type."""
     raise NotImplementedError
 
-  # Types are partially ordered by the relation of assignability: if type T is
-  # assignable from type T', so T' is more narrowly specialized than T, we say
-  # that T >= T'.
-
-  def __ge__(self, other):
-    return self.is_assignable_from(other)
-
-  def __le__(self, other):
-    return other.__ge__(self)
-
+  @abc.abstractmethod
   def __eq__(self, other):
-    return self.__ge__(other) and self.__le__(other)
+    """Determines whether two type definitions are identical.
+
+    Note that this notion of equality is stronger than equivalence. Two types
+    with equivalent definitions may not be identical, e.g., if they represent
+    templates with differently named type veriables in their definitions.
+
+    Args:
+      other: The other type to compare against.
+
+    Returns:
+      `True` iff type definitions are syntatically identical (as defined above),
+      or `False` otherwise.
+
+    Raises:
+      NotImplementedError: If not implemented in the derived class.
+    """
+    raise NotImplementedError
 
   def __ne__(self, other):
-    return not self.__eq__(other)
-
-  def __gt__(self, other):
-    return self.__ge__(other) and not self.__le__(other)
-
-  def __lt__(self, other):
-    return self.__le__(other) and not self.__ge__(other)
+    return not self == other
 
 
 class TensorType(Type):
@@ -112,25 +100,6 @@ class TensorType(Type):
   def shape(self):
     return self._shape
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-
-    def _shape_is_assignable_from(x, y):
-
-      def _dimension_is_assignable_from(x, y):
-        # Either the first dimension is undefined or it has the same size as
-        # the second.
-        return (x.value is None) or (x.value == y.value)
-
-      # Shapes must have equal ranks, and all dimensions in first have to be
-      # assignable from the corresponding dimensions in the second.
-      return ((x.ndims == y.ndims) and ((x.dims is None) or all(
-          _dimension_is_assignable_from(x.dims[k], y.dims[k])
-          for k in range(x.ndims))))
-
-    return (isinstance(other, TensorType) and (self.dtype == other.dtype) and
-            _shape_is_assignable_from(self.shape, other.shape))
-
   def __repr__(self):
     if self._shape.ndims > 0:
       values = repr([dim.value for dim in self._shape.dims])
@@ -147,6 +116,24 @@ class TensorType(Type):
       return '{}[{}]'.format(self._dtype.name, ','.join(values))
     else:
       return self._dtype.name
+
+  def __eq__(self, other):
+    def _same_dimension(x, y):
+      if x is None:
+        return y is None
+      else:
+        return y is not None and x.value == y.value
+    def _same_shape(x, y):
+      if x.ndims != y.ndims:
+        return False
+      if x.dims is None:
+        return y.dims is None
+      else:
+        return y.dims is not None and all(
+            _same_dimension(a, b) for a, b in zip(x.dims, y.dims))
+    return (isinstance(other, TensorType) and
+            self._dtype == other.dtype and
+            _same_shape(self._shape, other.shape))
 
 
 class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
@@ -199,16 +186,6 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
     # Shallow copy to prevent accidental modification by the caller.
     return list(anonymous_tuple.to_elements(self))
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-    if not isinstance(other, NamedTupleType):
-      return False
-    other_elements = other.elements
-    return ((len(self._elements) == len(other_elements)) and all(
-        ((self._elements[k][0] in [other_elements[k][0], None]) and
-         (self._elements[k][1].is_assignable_from(other_elements[k][1])))
-        for k in range(len(self._elements))))
-
   def __repr__(self):
 
     def _element_repr(e):
@@ -228,6 +205,12 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
     return ('<{}>'.format(','.join(
         [_element_str(name, value) for name, value in self._elements])))
 
+  def __eq__(self, other):
+    # pylint: disable=protected-access
+    return (isinstance(other, NamedTupleType) and
+            self._elements == other._elements)
+    # pylint: enable=protected-access
+
 
 class SequenceType(Type):
   """An implementation of `Type` for representing types of sequences in TFF."""
@@ -245,16 +228,14 @@ class SequenceType(Type):
   def element(self):
     return self._element
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-    return (isinstance(other, SequenceType) and
-            self.element.is_assignable_from(other.element))
-
   def __repr__(self):
     return 'SequenceType({})'.format(repr(self._element))
 
   def __str__(self):
     return '{}*'.format(str(self._element))
+
+  def __eq__(self, other):
+    return isinstance(other, SequenceType) and self._element == other.element
 
 
 class FunctionType(Type):
@@ -280,14 +261,6 @@ class FunctionType(Type):
   def result(self):
     return self._result
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-    return (isinstance(other, FunctionType) and
-            (((other.parameter is None) and (self.parameter is None)) or
-             ((other.parameter is not None) and (self.parameter is not None) and
-              other.parameter.is_assignable_from(self.parameter)) and
-             self.result.is_assignable_from(other.result)))
-
   def __repr__(self):
     return 'FunctionType({}, {})'.format(
         repr(self._parameter), repr(self._result))
@@ -296,6 +269,11 @@ class FunctionType(Type):
     return '({} -> {})'.format(
         str(self._parameter) if self._parameter is not None else '',
         str(self._result))
+
+  def __eq__(self, other):
+    return (isinstance(other, FunctionType) and
+            self._parameter == other.parameter and
+            self._result == other.result)
 
 
 class AbstractType(Type):
@@ -315,18 +293,14 @@ class AbstractType(Type):
   def label(self):
     return self._label
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-
-    # TODO(b/113112108): Revise this to extend the relation of assignability to
-    # abstract types.
-    raise ValueError('Abstract types are not comparable.')
-
   def __repr__(self):
     return 'AbstractType(\'{}\')'.format(self._label)
 
   def __str__(self):
     return self._label
+
+  def __eq__(self, other):
+    return isinstance(other, AbstractType) and self._label == other.label
 
 
 class PlacementType(Type):
@@ -337,15 +311,14 @@ class PlacementType(Type):
   built-in TFF placement type.
   """
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-    return isinstance(other, PlacementType)
-
   def __repr__(self):
     return 'PlacementType()'
 
   def __str__(self):
     return 'placement'
+
+  def __eq__(self, other):
+    return isinstance(other, PlacementType)
 
 
 class FederatedType(Type):
@@ -390,17 +363,6 @@ class FederatedType(Type):
   def all_equal(self):
     return self._all_equal
 
-  def is_assignable_from(self, other):
-    py_typecheck.check_type(other, Type)
-    if (not isinstance(other, FederatedType) or
-        not self._member.is_assignable_from(other.member) or
-        self._all_equal and not other.all_equal):
-      return False
-    for val in [self, other]:
-      py_typecheck.check_type(val.placement,
-                              placement_literals.PlacementLiteral)
-    return self.placement is other.placement
-
   def __repr__(self):
     return 'FederatedType({}, {}, {})'.format(
         repr(self._member), repr(self._placement), repr(self._all_equal))
@@ -410,6 +372,12 @@ class FederatedType(Type):
       return '{}@{}'.format(str(self._member), str(self._placement))
     else:
       return '{{{}}}@{}'.format(str(self._member), str(self._placement))
+
+  def __eq__(self, other):
+    return (isinstance(other, FederatedType) and
+            self._member == other.member and
+            self._placement == other.placement and
+            self._all_equal == other.all_equal)
 
 
 def to_type(spec):
