@@ -11,6 +11,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        ":computation_utils",
         ":tf_computation_utils",
     ],
 )
@@ -37,5 +38,28 @@ py_test(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "computation_utils",
+    srcs = ["computation_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api",
+    ],
+)
+
+py_test(
+    name = "computation_utils_test",
+    size = "small",
+    srcs = ["computation_utils_test.py"],
+    default_python_version = "PY3",
+    deps = [
+        ":computation_utils",
+        "//tensorflow_federated/python/core/api",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )

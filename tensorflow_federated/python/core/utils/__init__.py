@@ -23,9 +23,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.python.core.utils.computation_utils import IterativeProcess
 from tensorflow_federated.python.core.utils.tf_computation_utils import get_variables
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "IterativeProcess",
     "get_variables",
 ]
