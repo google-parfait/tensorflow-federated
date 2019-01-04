@@ -77,6 +77,8 @@ def infer_type(arg):
   # applying any kind of heavier-weight processing.
   elif isinstance(arg, six.string_types):
     return computation_types.TensorType(tf.string)
+  elif isinstance(arg, (tuple, list)):
+    return computation_types.NamedTupleType([infer_type(e) for e in arg])
   else:
     dtype = {bool: tf.bool, int: tf.int32, float: tf.float32}.get(type(arg))
     if dtype:
@@ -93,14 +95,8 @@ def infer_type(arg):
             tf.DType(tensor_proto.dtype),
             tf.TensorShape(tensor_proto.tensor_shape))
       except TypeError as err:
-        # We could not convert to a tensor type. First, check if we are dealing
-        # with a list or tuple, as those can be reinterpreted as named tuples.
-        if isinstance(arg, (tuple, list)):
-          return computation_types.NamedTupleType([infer_type(e) for e in arg])
-        else:
-          # If neiter a tuple nor a list, we are out of options.
-          raise TypeError('Could not infer the TFF type of {}: {}.'.format(
-              py_typecheck.type_string(type(arg)), str(err)))
+        raise TypeError('Could not infer the TFF type of {}: {}.'.format(
+            py_typecheck.type_string(type(arg)), str(err)))
 
 
 def tf_dtypes_and_shapes_to_type(dtypes, shapes):

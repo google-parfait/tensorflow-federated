@@ -103,15 +103,22 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
   def test_infer_type_with_numpy_int_array(self):
     self.assertEqual(str(type_utils.infer_type(np.array([10, 20]))), 'int64[2]')
 
+  def test_infer_type_with_numpy_nested_int_array(self):
+    self.assertEqual(
+        str(type_utils.infer_type(np.array([[10], [20]]))), 'int64[2,1]')
+
   def test_infer_type_with_numpy_float64_scalar(self):
     self.assertEqual(str(type_utils.infer_type(np.float64(1))), 'float64')
 
   def test_infer_type_with_int_list(self):
-    self.assertEqual(str(type_utils.infer_type([1, 2, 3])), 'int32[3]')
+    self.assertEqual(
+        str(type_utils.infer_type([1, 2, 3])),
+        '<int32,int32,int32>')
 
   def test_infer_type_with_nested_float_list(self):
     self.assertEqual(
-        str(type_utils.infer_type([[0.1], [0.2], [0.3]])), 'float32[3,1]')
+        str(type_utils.infer_type([[0.1], [0.2], [0.3]])),
+        '<<float32>,<float32>,<float32>>')
 
   def test_infer_type_with_anonymous_tuple(self):
     self.assertEqual(
