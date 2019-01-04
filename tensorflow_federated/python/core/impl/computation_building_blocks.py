@@ -227,7 +227,7 @@ class Selection(ComputationBuildingBlock):
     else:
       # Index must have been specified, since name is None.
       py_typecheck.check_type(index, int)
-      elements = source_type.elements
+      elements = anonymous_tuple.to_elements(source_type)
       if index >= 0 and index < len(elements):
         super(Selection, self).__init__(elements[index][1])
         self._name = None

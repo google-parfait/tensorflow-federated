@@ -216,7 +216,7 @@ def is_argument_tuple(arg):
   else:
     arg = computation_types.to_type(arg)
     if isinstance(arg, computation_types.NamedTupleType):
-      elements = arg.elements
+      elements = anonymous_tuple.to_elements(arg)
     else:
       return False
   max_unnamed = -1
@@ -249,7 +249,8 @@ def unpack_args_from_tuple(tuple_with_args):
     elements = anonymous_tuple.to_elements(tuple_with_args)
   elif isinstance(tuple_with_args, value_base.Value):
     elements = []
-    for index, (name, _) in enumerate(tuple_with_args.type_signature.elements):
+    for index, (name, _) in enumerate(
+        anonymous_tuple.to_elements(tuple_with_args.type_signature)):
       if name is not None:
         elements.append((name, getattr(tuple_with_args, name)))
       else:
@@ -257,7 +258,7 @@ def unpack_args_from_tuple(tuple_with_args):
   else:
     tuple_with_args = computation_types.to_type(tuple_with_args)
     py_typecheck.check_type(tuple_with_args, computation_types.NamedTupleType)
-    elements = tuple_with_args.elements
+    elements = anonymous_tuple.to_elements(tuple_with_args)
   args = []
   kwargs = {}
   for e in elements:
@@ -309,7 +310,8 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
       result_elements = []
       positions_used = set()
       keywords_used = set()
-      for index, (name, elem_type) in enumerate(type_spec.elements):
+      for index, (name, elem_type) in enumerate(
+          anonymous_tuple.to_elements(type_spec)):
         if index < len(args):
           if name is not None and name in kwargs:
             raise TypeError('Argument {} specified twice.'.format(name))

@@ -181,11 +181,6 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
 
     anonymous_tuple.AnonymousTuple.__init__(self, self._elements)
 
-  @property
-  def elements(self):
-    # Shallow copy to prevent accidental modification by the caller.
-    return list(anonymous_tuple.to_elements(self))
-
   def __repr__(self):
 
     def _element_repr(e):

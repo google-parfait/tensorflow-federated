@@ -25,6 +25,7 @@ from absl.testing import absltest
 from six.moves import range
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 
@@ -93,8 +94,8 @@ class TypesTest(absltest.TestCase):
   def test_named_tuple_type_elements(self):
     self.assertEqual(
         repr(
-            computation_types.NamedTupleType([tf.int32, ('a',
-                                                         tf.bool)]).elements),
+            anonymous_tuple.to_elements(
+                computation_types.NamedTupleType([tf.int32, ('a', tf.bool)]))),
         '[(None, TensorType(tf.int32)), (\'a\', TensorType(tf.bool))]')
 
   def test_sequence_type_repr(self):
@@ -237,7 +238,7 @@ class TypesTest(absltest.TestCase):
     elems = [tf.int32 for k in range(10)]
     t = computation_types.to_type(elems)
     self.assertIsInstance(t, computation_types.NamedTupleType)
-    for k in t.elements:
+    for k in anonymous_tuple.to_elements(t):
       self.assertLen(k, 2)
 
   def test_namedtuples_addressable_by_name(self):

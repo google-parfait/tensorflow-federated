@@ -79,7 +79,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   elif isinstance(parameter_type, computation_types.NamedTupleType):
     element_name_value_pairs = []
     element_bindings = []
-    for e in parameter_type.elements:
+    for e in anonymous_tuple.to_elements(parameter_type):
       e_val, e_binding = stamp_parameter_in_graph(
           '{}_{}'.format(parameter_name, e[0]), e[1], graph)
       element_name_value_pairs.append((e[0], e_val))
@@ -318,7 +318,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       raise ValueError(
           'Expected a tuple binding, found {}.'.format(binding_oneof))
     else:
-      type_elements = type_spec.elements
+      type_elements = anonymous_tuple.to_elements(type_spec)
       if len(binding.tuple.element) != len(type_elements):
         raise ValueError(
             'Mismatching tuple sizes in type ({}) and binding ({}).'.format(

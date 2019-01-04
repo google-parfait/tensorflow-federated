@@ -57,7 +57,7 @@ def get_variables(name, type_spec, **kwargs):
     with tf.variable_scope(name):
       return anonymous_tuple.AnonymousTuple(
           [(k, get_variables(k if k is not None else str(i), v, **kwargs))
-           for i, (k, v) in enumerate(type_spec.elements)])
+           for i, (k, v) in enumerate(anonymous_tuple.to_elements(type_spec))])
   else:
     raise TypeError(
         'Expected a TFF type signature composed of tensors and named tuples, '

@@ -22,6 +22,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import placement_literals
@@ -62,7 +63,7 @@ def serialize_type(type_spec):
     return pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
-            for e in target.elements
+            for e in anonymous_tuple.to_elements(target)
         ]))
   elif isinstance(target, computation_types.FunctionType):
     return pb.Type(

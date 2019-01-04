@@ -174,7 +174,7 @@ def type_to_tf_dtypes_and_shapes(type_spec):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     output_dtypes = collections.OrderedDict()
     output_shapes = collections.OrderedDict()
-    for e in type_spec.elements:
+    for e in anonymous_tuple.to_elements(type_spec):
       element_name = e[0]
       element_spec = e[1]
       if element_name is None:
@@ -212,7 +212,7 @@ def get_named_tuple_element_type(type_spec, name):
   py_typecheck.check_type(name, six.string_types)
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
-  elements = type_spec.elements
+  elements = anonymous_tuple.to_elements(type_spec)
   for elem_name, elem_type in elements:
     if name == elem_name:
       return elem_type
@@ -322,7 +322,7 @@ def check_all_abstract_types_are_bound(type_spec):
     elif isinstance(type_spec, computation_types.NamedTupleType):
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
-          for _, v in type_spec.elements
+          for _, v in anonymous_tuple.to_elements(type_spec)
       ])
     elif isinstance(type_spec, computation_types.AbstractType):
       if type_spec.label in bound_labels:
@@ -377,7 +377,8 @@ def is_sum_compatible(type_spec):
   if isinstance(type_spec, computation_types.TensorType):
     return is_numeric_dtype(type_spec.dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
-    return all(is_sum_compatible(v) for _, v in type_spec.elements)
+    return all(
+        is_sum_compatible(v) for _, v in anonymous_tuple.to_elements(type_spec))
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_sum_compatible(type_spec.member)
   else:
@@ -424,7 +425,9 @@ def is_average_compatible(type_spec):
   if isinstance(type_spec, computation_types.TensorType):
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
   elif isinstance(type_spec, computation_types.NamedTupleType):
-    return all(is_average_compatible(v) for _, v in type_spec.elements)
+    return all(
+        is_average_compatible(v)
+        for _, v in anonymous_tuple.to_elements(type_spec))
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_average_compatible(type_spec.member)
   else:
@@ -462,8 +465,8 @@ def is_assignable_from(target_type, source_type):
   elif isinstance(target_type, computation_types.NamedTupleType):
     if not isinstance(source_type, computation_types.NamedTupleType):
       return False
-    target_elements = target_type.elements
-    source_elements = source_type.elements
+    target_elements = anonymous_tuple.to_elements(target_type)
+    source_elements = anonymous_tuple.to_elements(source_type)
     return ((len(target_elements) == len(source_elements)) and all(
         ((target_elements[k][0] in [source_elements[k][0], None]) and
          is_assignable_from(target_elements[k][1], source_elements[k][1]))

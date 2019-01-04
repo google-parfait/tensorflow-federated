@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from six.moves import range
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
@@ -255,7 +256,7 @@ class IntrinsicFactory(object):
 
     value = value_impl.to_value(value, None, self._context_stack)
     if isinstance(value.type_signature, computation_types.NamedTupleType):
-      if len(value.type_signature.elements) >= 2:
+      if len(anonymous_tuple.to_elements(value.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         value = self.federated_zip(value)
     type_utils.check_federated_value_placement(value, placements.CLIENTS,
@@ -395,13 +396,13 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(value, value_base.Value)
     py_typecheck.check_type(value.type_signature,
                             computation_types.NamedTupleType)
-    num_elements = len(value.type_signature.elements)
+    num_elements = len(anonymous_tuple.to_elements(value.type_signature))
     if num_elements < 2:
       raise TypeError(
           'The federated zip operator zips tuples of at least two elements, '
           'but the tuple given as argument has {} '
           'elements.'.format(num_elements))
-    for _, elem in value.type_signature.elements:
+    for _, elem in anonymous_tuple.to_elements(value.type_signature):
       py_typecheck.check_type(elem, computation_types.FederatedType)
       if elem.placement is not placements.CLIENTS:
         raise TypeError(
@@ -423,7 +424,7 @@ class IntrinsicFactory(object):
       # elements returns list of 2-tuples of the form (name, type)--the [-1][1]
       # grabs the type from the last element
       new_type = computation_types.to_type(
-          zipped.type_signature.member.elements[-1][1])
+          anonymous_tuple.to_elements(zipped.type_signature.member)[-1][1])
       flatten_func = value_utils.flatten_first_index(flatten_func, new_type,
                                                      self._context_stack)
     return self.federated_map(zipped, flatten_func)

@@ -305,7 +305,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       [('test_n_' + str(n) + '_m_' + str(m), n, m)
-       for n, m in itertools.product([1, 2, 3, 5, 10], [1, 2, 3, 5, 10])])
+       for n, m in itertools.product([1, 2, 3, 5], [1, 2, 3, 5])])
   def test_n_tuple_federated_zip_mixed_args(self, n, m):
     tuple_fed_type = FederatedType([tf.int32, tf.int32], CLIENTS)
     single_fed_type = FederatedType(tf.int32, CLIENTS)

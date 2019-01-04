@@ -85,7 +85,11 @@ class ValueImpl(value_base.Value):
     else:
       # Not pre-creating or memoizing the list, as we do not expect this to be
       # a common enough operation to warrant doing so.
-      return [e[0] for e in self._comp.type_signature.elements if e[0]]
+      return [
+          e[0]
+          for e in anonymous_tuple.to_elements(self._comp.type_signature)
+          if e[0]
+      ]
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, six.string_types)
@@ -95,7 +99,9 @@ class ValueImpl(value_base.Value):
           'Operator getattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    if name not in [x for x, _ in self._comp.type_signature.elements]:
+    if name not in [
+        x for x, _ in anonymous_tuple.to_elements(self._comp.type_signature)
+    ]:
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
     if isinstance(self._comp, computation_building_blocks.Tuple):
@@ -113,7 +119,7 @@ class ValueImpl(value_base.Value):
           'on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
     else:
-      return len(self._comp.type_signature.elements)
+      return len(anonymous_tuple.to_elements(self._comp.type_signature))
 
   def __getitem__(self, key):
     py_typecheck.check_type(key, (int, slice))
@@ -123,7 +129,7 @@ class ValueImpl(value_base.Value):
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    elem_length = len(self._comp.type_signature.elements)
+    elem_length = len(anonymous_tuple.to_elements(self._comp.type_signature))
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
@@ -149,7 +155,8 @@ class ValueImpl(value_base.Value):
           'on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
     else:
-      for index in range(len(self._comp.type_signature.elements)):
+      for index in range(
+          len(anonymous_tuple.to_elements(self._comp.type_signature))):
         yield self[index]
 
   def __call__(self, *args, **kwargs):

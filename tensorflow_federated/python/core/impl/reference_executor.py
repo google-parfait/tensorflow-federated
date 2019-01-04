@@ -108,12 +108,13 @@ class NamedTupleValue(ComputedValue):
     for e in value_tuple:
       py_typecheck.check_type(e, ComputedValue)
     value_elements = anonymous_tuple.to_elements(value_tuple)
-    if len(value_elements) != len(type_spec.elements):
+    type_spec_elements = anonymous_tuple.to_elements(type_spec)
+    if len(value_elements) != len(type_spec_elements):
       raise ValueError(
           'The number of elements {} in the value tuple {} does not match the '
           'type spec {}.'.format(
               len(value_elements), str(value_tuple), str(type_spec)))
-    for index, (elem_name, elem_type) in enumerate(type_spec.elements):
+    for index, (elem_name, elem_type) in enumerate(type_spec_elements):
       value_name, value = value_elements[index]
       if value_name != elem_name:
         raise ValueError(
@@ -203,7 +204,8 @@ def to_computed_value(value, type_spec):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     py_typecheck.check_type(value, anonymous_tuple.AnonymousTuple)
     result_elements = []
-    for index, (elem_name, elem_type) in enumerate(type_spec.elements):
+    for index, (elem_name, elem_type) in enumerate(
+        anonymous_tuple.to_elements(type_spec)):
       result_elements.append((elem_name,
                               to_computed_value(value[index], elem_type)))
     return NamedTupleValue(

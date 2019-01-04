@@ -25,8 +25,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test_utils as common_test_utils
-from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import test_utils
@@ -62,10 +62,10 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
     else:
       self.assertEqual(binding_oneof, 'tuple')
       self.assertIsInstance(type_spec, computation_types.NamedTupleType)
-      if not isinstance(val, (list, tuple, AnonymousTuple)):
+      if not isinstance(val, (list, tuple, anonymous_tuple.AnonymousTuple)):
         self.assertIsInstance(val, dict)
         val = list(val.values())
-      for idx, e in enumerate(type_spec.elements):
+      for idx, e in enumerate(anonymous_tuple.to_elements(type_spec)):
         self._assert_binding_matches_type_and_value(binding.tuple.element[idx],
                                                     e[1], val[idx], graph)
 
@@ -115,7 +115,7 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
     with tf.Graph().as_default() as my_graph:
       x = self._checked_stamp_parameter('foo', (('a', tf.int32),
                                                 ('b', tf.bool)))
-    self.assertIsInstance(x, AnonymousTuple)
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertTrue(len(x), 2)
     self._assert_is_placeholder(x.a, 'foo_a:0', tf.int32, [], my_graph)
     self._assert_is_placeholder(x.b, 'foo_b:0', tf.bool, [], my_graph)
@@ -203,19 +203,21 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
     self.assertEqual(
         str(
             self._checked_capture_result(
-                AnonymousTuple(
-                    [('x', tf.constant(10)), (None, tf.constant(True)),
-                     ('y', tf.constant(0.66))]))), '<x=int32,bool,y=float32>')
+                anonymous_tuple.AnonymousTuple([('x', tf.constant(10)),
+                                                (None, tf.constant(True)),
+                                                ('y', tf.constant(0.66))]))),
+        '<x=int32,bool,y=float32>')
 
   def test_capture_result_with_nested_mixture_of_lists_and_tuples(self):
     self.assertEqual(
         str(
             self._checked_capture_result(
-                AnonymousTuple([('x', collections.namedtuple('_', 'a b')({
-                    'p': {
-                        'q': tf.constant(True)
-                    }
-                }, [tf.constant(False)])), (None, [[tf.constant(10)]])]))),
+                anonymous_tuple.AnonymousTuple(
+                    [('x', collections.namedtuple('_', 'a b')({
+                        'p': {
+                            'q': tf.constant(True)
+                        }
+                    }, [tf.constant(False)])), (None, [[tf.constant(10)]])]))),
         '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
 
   def test_capture_result_with_int_sequence_from_tensor(self):
@@ -332,7 +334,9 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
     self.assertEqual(result['B'], 105)
 
   def test_fetch_value_in_session_without_data_sets(self):
-    x = AnonymousTuple([('A', AnonymousTuple([('B', tf.constant(10))]))])
+    x = anonymous_tuple.AnonymousTuple([('A',
+                                         anonymous_tuple.AnonymousTuple(
+                                             [('B', tf.constant(10))]))])
     with self.session() as sess:
       y = graph_utils.fetch_value_in_session(x, sess)
     self.assertEqual(str(y), '<A=<B=10>>')

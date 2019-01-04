@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
@@ -45,14 +46,17 @@ def zip_two_tuple(input_val, context_stack):
                           computation_types.NamedTupleType)
   for elem in input_val:
     type_utils.check_federated_value_placement(elem, placements.CLIENTS)
-  num_elements = len(input_val.type_signature.elements)
+  num_elements = len(anonymous_tuple.to_elements(input_val.type_signature))
   if num_elements != 2:
     raise ValueError('The argument of zip_two_tuple must be a 2-tuple, '
                      'not an {}-tuple'.format(num_elements))
   result_type = computation_types.FederatedType(
-      [e.member for _, e in input_val.type_signature.elements],
-      placements.CLIENTS,
-      all(e.all_equal for _, e in input_val.type_signature.elements))
+      [
+          e.member
+          for _, e in anonymous_tuple.to_elements(input_val.type_signature)
+      ], placements.CLIENTS,
+      all(e.all_equal
+          for _, e in anonymous_tuple.to_elements(input_val.type_signature)))
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_ZIP.uri,
