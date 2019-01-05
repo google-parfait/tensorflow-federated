@@ -53,7 +53,7 @@ TensorFlow Federated library.
 
 [`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a federated value placed on the `CLIENTS`.
 
-[`federated_zip(...)`](./tff/federated_zip.md): Converts a 2-tuple of federated values into a federated 2-tuple value.
+[`federated_zip(...)`](./tff/federated_zip.md): Converts an N-tuple of federated values into a federated N-tuple value.
 
 [`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 

@@ -31,8 +31,8 @@ Constructs a `ClientData` object.
 #### Args:
 
 * <b>`client_ids`</b>: A list of client_id(s).
-* <b>`create_tf_dataset_fn`</b>: A callable that takes a client_id and returns
-    a `tf.data.Dataset` object.
+* <b>`create_tf_dataset_fn`</b>: A callable that takes a client_id and returns a
+    `tf.data.Dataset` object.
 
 
 

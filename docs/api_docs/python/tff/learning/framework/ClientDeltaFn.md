@@ -48,8 +48,8 @@ Typically implementations should be decorated with `tf.function`.
 * <b>`dataset`</b>: A `tf.data.Dataset` producing batches than can be fed to
     `model.forward_pass`.
 * <b>`initial_weights`</b>: A dictionary of initial values for all trainable and
-    non-trainable model variables, keyed by name. This will be supplied
-    by the server in Federated Averaging.
+    non-trainable model variables, keyed by name. This will be supplied by
+    the server in Federated Averaging.
 
 
 #### Returns:

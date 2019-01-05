@@ -28,11 +28,11 @@ TODO(b/122081673): This can be simplified once we move fully to TF 2.0.
 
 * <b>`model_fn`</b>: A no-arg function that returns a <a href="../../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 * <b>`model_to_client_delta_fn`</b>: A function from a model_fn to a `ClientDeltaFn`.
-* <b>`server_optimizer_fn`</b>: A no-arg function that returns a `tf.Optimizer`.
-    The apply_gradients method of this optimizer is used to apply
-    client updates to the server model. The default returns a
-    `tf.train.GradientDescent` with a learning_rate of 1.0, which simply
-    adds the average client delta to the server's model.
+* <b>`server_optimizer_fn`</b>: A no-arg function that returns a `tf.Optimizer`. The
+    apply_gradients method of this optimizer is used to apply client updates
+    to the server model. The default returns a `tf.train.GradientDescent` with
+    a learning_rate of 1.0, which simply adds the average client delta to the
+    server's model.
 
 
 #### Returns:

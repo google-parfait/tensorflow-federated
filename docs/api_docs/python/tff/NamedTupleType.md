@@ -1,15 +1,14 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
 <meta itemprop="name" content="tff.NamedTupleType" />
 <meta itemprop="path" content="Stable" />
-<meta itemprop="property" content="elements"/>
+<meta itemprop="property" content="__dir__"/>
 <meta itemprop="property" content="__eq__"/>
-<meta itemprop="property" content="__ge__"/>
-<meta itemprop="property" content="__gt__"/>
+<meta itemprop="property" content="__getattr__"/>
+<meta itemprop="property" content="__getitem__"/>
 <meta itemprop="property" content="__init__"/>
-<meta itemprop="property" content="__le__"/>
-<meta itemprop="property" content="__lt__"/>
+<meta itemprop="property" content="__iter__"/>
+<meta itemprop="property" content="__len__"/>
 <meta itemprop="property" content="__ne__"/>
-<meta itemprop="property" content="is_assignable_from"/>
 </div>
 
 # tff.NamedTupleType
@@ -30,12 +29,12 @@ Constructs a new instance from the given element types.
 
 #### Args:
 
-* <b>`elements`</b>: A list of element specifications. Each element specification is
-    either a type spec (an instance of `Type` or something convertible to it
-    via `to_type()`) for the element, or a pair (name, spec) for elements
-    that have defined names. Alternatively, one can supply here an instance
-    of `collections.OrderedDict` mapping element names to their types (or
-    things that are convertible to types).
+* <b>`elements`</b>: Element specifications, in the format of a list, OrderedDict, or
+    tuple. Each element specification is either a type spec (an instance of
+    `Type` or something convertible to it via `to_type()`) for the element,
+    or a (name, spec) for elements that have defined names. Alternatively
+    one can supply here an instance of `collections.OrderedDict` mapping
+    element names to their types (or things that are convertible to types).
 
 
 #### Raises:
@@ -45,15 +44,16 @@ Constructs a new instance from the given element types.
 
 
 
-## Properties
-
-<h3 id="elements"><code>elements</code></h3>
-
-
-
-
-
 ## Methods
+
+<h3 id="__dir__"><code>__dir__</code></h3>
+
+``` python
+__dir__()
+```
+
+__dir__() -> list
+default dir() implementation
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
@@ -61,39 +61,58 @@ Constructs a new instance from the given element types.
 __eq__(other)
 ```
 
-Return self==value.
+Determines whether two type definitions are identical.
 
-<h3 id="__ge__"><code>__ge__</code></h3>
+Note that this notion of equality is stronger than equivalence. Two types
+with equivalent definitions may not be identical, e.g., if they represent
+templates with differently named type veriables in their definitions.
 
-``` python
-__ge__(other)
-```
+#### Args:
 
-Return self>=value.
+* <b>`other`</b>: The other type to compare against.
 
-<h3 id="__gt__"><code>__gt__</code></h3>
 
-``` python
-__gt__(other)
-```
+#### Returns:
 
-Return self>value.
+`True` iff type definitions are syntatically identical (as defined above),
+or `False` otherwise.
 
-<h3 id="__le__"><code>__le__</code></h3>
 
-``` python
-__le__(other)
-```
+#### Raises:
 
-Return self<=value.
+* <b>`NotImplementedError`</b>: If not implemented in the derived class.
 
-<h3 id="__lt__"><code>__lt__</code></h3>
+<h3 id="__getattr__"><code>__getattr__</code></h3>
 
 ``` python
-__lt__(other)
+__getattr__(name)
 ```
 
-Return self<value.
+
+
+<h3 id="__getitem__"><code>__getitem__</code></h3>
+
+``` python
+__getitem__(key)
+```
+
+
+
+<h3 id="__iter__"><code>__iter__</code></h3>
+
+``` python
+__iter__()
+```
+
+
+
+<h3 id="__len__"><code>__len__</code></h3>
+
+``` python
+__len__()
+```
+
+
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
@@ -102,23 +121,6 @@ __ne__(other)
 ```
 
 Return self!=value.
-
-<h3 id="is_assignable_from"><code>is_assignable_from</code></h3>
-
-``` python
-is_assignable_from(other)
-```
-
-Determines whether this TFF type is assignable from another TFF type.
-
-#### Args:
-
-* <b>`other`</b>: Another type, an instance of `Type`.
-
-
-#### Returns:
-
-`True` if self is assignable from other, `False` otherwise.
 
 
 

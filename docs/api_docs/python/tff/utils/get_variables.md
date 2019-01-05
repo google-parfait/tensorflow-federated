@@ -19,9 +19,9 @@ Creates a set of variables that matches the given `type_spec`.
 
 * <b>`name`</b>: The common name to use for the scope in which all of the variables are
     to be created.
-* <b>`type_spec`</b>: An instance of `fc.Type` or something convertible to it. The type
-    signature may only be composed of tensor types and named tuples, possibly
-    nested.
+* <b>`type_spec`</b>: An instance of <a href="../../tff/Type.md"><code>tff.Type</code></a> or something convertible to it. The
+    type signature may only be composed of tensor types and named tuples,
+    possibly nested.
 * <b>`**kwargs`</b>: Additional keyword args to pass to `tf.get_variable` calls.
 
 
