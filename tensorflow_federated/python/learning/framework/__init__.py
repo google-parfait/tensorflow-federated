@@ -20,7 +20,6 @@ from __future__ import print_function
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_tff
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
-from tensorflow_federated.python.learning.framework.optimizer_utils import SequentialTffComputation
 
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
@@ -35,5 +34,4 @@ _allowed_symbols = [
     "EnhancedModel",
     "EnhancedTrainableModel",
     "ModelWeights",
-    "SequentialTffComputation",
 ]

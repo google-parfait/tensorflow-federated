@@ -25,8 +25,8 @@ import collections
 import six
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core import utils as tff_utils
 from tensorflow_federated.python.learning import model_utils
 
 
@@ -79,56 +79,6 @@ class ClientDeltaFn(object):
       An `optimizer_utils.ClientOutput` namedtuple.
     """
     pass
-
-
-class SequentialTffComputation(object):
-  """Container for a pair of TFF computations defining sequential processing.
-
-  A sequential computation will usually be driven by a control loop like:
-
-        seq_comp = ...
-        state = seq_comp.initialize()
-        for round in range(num_rounds):
-          state = seq_comp.run_one_round(state, ...)
-  """
-
-  def __init__(self, initialize, run_one_round):
-    """Creates a SequentialTffComputation."""
-    py_typecheck.check_type(initialize, tff.Computation)
-    if initialize.type_signature.parameter is not None:
-      raise ValueError('initialize must be a no-arg computation')
-    py_typecheck.check_type(run_one_round, tff.Computation)
-    # Read the type from the first parameter, which we assume
-    # is a NamedTupleType.
-    first_param = run_one_round.type_signature.parameter[0]
-    py_typecheck.check_type(first_param, tff.FederatedType)
-    first_param = first_param.member
-    if initialize.type_signature.result != first_param:
-      raise ValueError('The return type of initialize should match the '
-                       'first parameter of run_one_round, but found\n'
-                       'initialize.type_signature.result={}\n'
-                       'run_one_round.type_signature.parameter[0]={}'.format(
-                           initialize.type_signature.result, first_param))
-    self._initialize = initialize
-    self._run_one_round = run_one_round
-
-  @property
-  def initialize(self):
-    """A no-arg `tff.Computation` that returns the initial server state."""
-    return self._initialize
-
-  @property
-  def run_one_round(self):
-    """A `tff.Computation` that updates the server state.
-
-    The first argument of this computation should always be the current
-    server state as produced by `initialize`, and the return value is the
-    updated server state.
-
-    Returns:
-      A `tff.Computation`.
-    """
-    return self._run_one_round
 
 
 def _create_optimizer_and_server_state(model, optimizer):
@@ -248,9 +198,8 @@ def build_model_delta_optimizer_tff(model_fn,
   which applies aggregated model deltas to the server model with a ClientDeltaFn
   that specifies how weight_deltas are computed on device.
 
-  Note: We pass in functions rather than constructed objects so we can
-  ensure any variables or ops created in construtors are placed in the
-  correct graph.
+  Note: We pass in functions rather than constructed objects so we can ensure
+  any variables or ops created in constructors are placed in the correct graph.
   TODO(b/122081673): This can be simplified once we move fully to TF 2.0.
 
   Args:
@@ -263,7 +212,7 @@ def build_model_delta_optimizer_tff(model_fn,
       server's model.
 
   Returns:
-    A `SequentialTffComputation`.
+    A `tff.utils.IterativeProcess`.
   """
   if server_optimizer_fn is None:
     # TODO(b/121287923): Using an optimizer without variables is blocked
@@ -279,10 +228,13 @@ def build_model_delta_optimizer_tff(model_fn,
   server_state_type = server_init_tff.type_signature.result
   model_delta_type = server_init_tff.type_signature.result.model
 
-  server_state_type = tff.FederatedType(server_state_type, tff.SERVER, True)
-  model_delta_type = tff.FederatedType(model_delta_type, tff.SERVER, True)
+  # TODO(b/109733734): Complete FedAvg orchestration. Currently blocked
+  # by the federated_computation and federated types not being implemented.
+  # server_state_type = tff.FederatedType(server_state_type, tff.SERVER, True)
+  # model_delta_type = tff.FederatedType(model_delta_type, tff.SERVER, True)
 
-  @tff.federated_computation((server_state_type, model_delta_type))
+  # @tff.federated_computation((server_state_type, model_delta_type))
+  @tff.tf_computation((server_state_type, model_delta_type))
   def run_one_round(server_state, federated_dataset):
     """Orchestration logic for one round of optimization."""
     del federated_dataset  # Currently unused.
@@ -313,4 +265,5 @@ def build_model_delta_optimizer_tff(model_fn,
 
     return server_state
 
-  return SequentialTffComputation(server_init_tff, run_one_round)
+  return tff_utils.IterativeProcess(
+      initialize_fn=server_init_tff, next_fn=run_one_round)

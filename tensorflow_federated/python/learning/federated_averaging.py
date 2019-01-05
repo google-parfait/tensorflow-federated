@@ -111,10 +111,10 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         }))
 
 
-def federated_averaging(model_fn,
-                        server_optimizer_fn=None,
-                        client_weight_fn=None):
-  """Constructs complete TFF computations for federated averaging.
+def build_federated_averaging_process(model_fn,
+                                      server_optimizer_fn=None,
+                                      client_weight_fn=None):
+  """Builds the TFF computations for optimization using federated averaging.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
@@ -129,7 +129,7 @@ def federated_averaging(model_fn,
       the total number of examples processed on the client.
 
   Returns:
-    A `SequentialTffComputation`.
+    A `tff.utils.IterativeProcess`.
   """
 
   def client_fed_avg(model_fn):

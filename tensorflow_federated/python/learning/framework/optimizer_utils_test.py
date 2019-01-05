@@ -121,20 +121,20 @@ class ServerTest(test_utils.TffTestCase, parameterized.TestCase):
     self.assertEqual(server_state.model.non_trainable['c'], 0.0)
 
   def test_orchestration(self):
-    seq_comp = optimizer_utils.build_model_delta_optimizer_tff(
+    iterative_process = optimizer_utils.build_model_delta_optimizer_tff(
         model_fn=model_examples.TrainableLinearRegression,
         model_to_client_delta_fn=lambda _: DummyClientDeltaFn())
     self.assertEqual(
-        str(seq_comp.initialize.type_signature),
+        str(iterative_process.initialize.type_signature),
         '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
         'optimizer_state=<float32[2,1],float32>>)')
     self.assertEqual(
-        str(seq_comp.run_one_round.type_signature),
+        str(iterative_process.next.type_signature),
         '(<<model=<<a=float32[2,1],b=float32>,<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>@SERVER,'
-        '<<a=float32[2,1],b=float32>,<c=float32>>@SERVER> -> '
+        'optimizer_state=<float32[2,1],float32>>,'
+        '<<a=float32[2,1],b=float32>,<c=float32>>> -> '
         '<model=<<a=float32[2,1],b=float32>,<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>@SERVER)')
+        'optimizer_state=<float32[2,1],float32>>)')
 
 
 if __name__ == '__main__':
