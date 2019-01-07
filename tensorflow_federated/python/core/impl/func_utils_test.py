@@ -257,8 +257,8 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
       (4, lambda x, y: x + y, [tf.int32, tf.int32], None,
        AnonymousTuple([('x', 5), ('y', 6)]), 11),
       (5, lambda *args: str(args), [tf.int32, tf.int32], True,
-       AnonymousTuple([('x', 5), ('y', 6)]), '(5, 6)'),
-      (6, lambda *args: str(args), [tf.int32, tf.int32], False,
+       AnonymousTuple([(None, 5), (None, 6)]), '(5, 6)'),
+      (6, lambda *args: str(args), [('x', tf.int32), ('y', tf.int32)], False,
        AnonymousTuple([('x', 5), ('y', 6)]),
        '(AnonymousTuple([(x, 5), (y, 6)]),)'))
   # pyformat: enable

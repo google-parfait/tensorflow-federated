@@ -464,7 +464,7 @@ def is_assignable_from(target_type, source_type):
     target_elements = anonymous_tuple.to_elements(target_type)
     source_elements = anonymous_tuple.to_elements(source_type)
     return ((len(target_elements) == len(source_elements)) and all(
-        ((target_elements[k][0] in [source_elements[k][0], None]) and
+        ((source_elements[k][0] in [target_elements[k][0], None]) and
          is_assignable_from(target_elements[k][1], source_elements[k][1]))
         for k in range(len(target_elements))))
   elif isinstance(target_type, computation_types.SequenceType):

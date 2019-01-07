@@ -421,8 +421,8 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
     self.assertFalse(type_utils.is_assignable_from(t1, t3))
     self.assertFalse(type_utils.is_assignable_from(t1, t4))
     self.assertFalse(type_utils.is_assignable_from(t1, t5))
-    self.assertTrue(type_utils.is_assignable_from(t6, t1))
-    self.assertFalse(type_utils.is_assignable_from(t1, t6))
+    self.assertTrue(type_utils.is_assignable_from(t1, t6))
+    self.assertFalse(type_utils.is_assignable_from(t6, t1))
 
   def test_is_assignable_from_with_sequence_type(self):
     self.assertTrue(
