@@ -25,8 +25,7 @@ import collections
 import six
 import tensorflow as tf
 
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import utils as tff_utils
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.learning import model_utils
 
 
@@ -267,5 +266,5 @@ def build_model_delta_optimizer_tff(model_fn,
 
     return server_state
 
-  return tff_utils.IterativeProcess(
+  return tff.utils.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round)

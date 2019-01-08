@@ -20,8 +20,7 @@ py_library(
     name = "optimizer_utils",
     srcs = ["optimizer_utils.py"],
     deps = [
-        "//tensorflow_federated/python/core/api",
-        "//tensorflow_federated/python/core/utils",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",

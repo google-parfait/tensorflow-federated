@@ -7,8 +7,7 @@ py_library(
     name = "python",
     srcs = ["__init__.py"],
     deps = [
-        "//tensorflow_federated/python/core/api",
-        "//tensorflow_federated/python/core/utils",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning",
         "//tensorflow_federated/python/simulation",
     ],
