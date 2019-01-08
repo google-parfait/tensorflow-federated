@@ -22,12 +22,11 @@ import os.path
 
 # Dependency imports
 
-from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python.util import nest
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data
+from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 class FilePerUserClientData(client_data.ClientData):
@@ -59,19 +58,10 @@ class FilePerUserClientData(client_data.ClientData):
     return self._client_ids
 
   def create_tf_dataset_for_client(self, client_id):
-
-    def _assert_nested_equal(nested_x, nested_y):
-      nest.assert_same_structure(nested_x, nested_y)
-      flat_x = nest.flatten(nested_x)
-      flat_y = nest.flatten(nested_y)
-      for x, y in zip(flat_x, flat_y):
-        if x != y:
-          raise ValueError('{x} != {y} for client with id [{id}]'.format(
-              x=x, y=y, id=client_id))
-
     tf_dataset = self._create_tf_dataset_fn(client_id)
-    _assert_nested_equal(tf_dataset.output_types, self._output_types)
-    _assert_nested_equal(tf_dataset.output_shapes, self._output_shapes)
+    tensor_utils.check_nested_equal(tf_dataset.output_types, self._output_types)
+    tensor_utils.check_nested_equal(tf_dataset.output_shapes,
+                                    self._output_shapes)
     return tf_dataset
 
   @property

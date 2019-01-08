@@ -33,6 +33,74 @@ nest = tf.contrib.framework.nest
 
 class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
 
+  def test_check_nested_equal(self):
+    nested_dict = {
+        'KEY1': {
+            'NESTED_KEY': 0
+        },
+        'KEY2': 1,
+    }
+    nested_list = [('KEY1', ('NESTED_KEY', 0)), ('KEY2', 1)]
+    flat_dict = {
+        'KEY1': 0,
+        'KEY2': 1,
+    }
+    nested_dtypes = {
+        'x': [tf.int32, tf.float32],
+        'y': tf.float32,
+    }
+    nested_shapes = {
+        'x': [tf.TensorShape([1]), tf.TensorShape([None])],
+        'y': tf.TensorShape([1]),
+    }
+
+    # Should not raise an exception.
+    tensor_utils.check_nested_equal(nested_dict, nested_dict)
+    tensor_utils.check_nested_equal(nested_list, nested_list)
+    tensor_utils.check_nested_equal(flat_dict, flat_dict)
+    tensor_utils.check_nested_equal(nested_dtypes, nested_dtypes)
+    tensor_utils.check_nested_equal(nested_shapes, nested_shapes)
+
+    with self.assertRaises(TypeError):
+      tensor_utils.check_nested_equal(nested_dict, nested_list)
+
+    with self.assertRaises(ValueError):
+      # Different nested structures.
+      tensor_utils.check_nested_equal(nested_dict, flat_dict)
+
+    # Same as nested_dict, but using float values. Equality still holds for
+    # 0 == 0.0 despite different types.
+    nested_dict_different_types = {
+        'KEY1': {
+            'NESTED_KEY': 0.0
+        },
+        'KEY2': 1.0,
+    }
+    nest.assert_same_structure(nested_dict, nested_dict_different_types)
+
+    # Same as nested_dict but with one different value
+    nested_dict_different_value = {
+        'KEY1': {
+            'NESTED_KEY': 0.5
+        },
+        'KEY2': 1.0,
+    }
+    with self.assertRaises(ValueError):
+      tensor_utils.check_nested_equal(nested_dict, nested_dict_different_value)
+
+    tensor_utils.check_nested_equal([tf.TensorShape(None)],
+                                    [tf.TensorShape(None)])
+
+    # Pretend unknown shape tensors cannot be equal.
+    def eq_if_defined(x, y):
+      if x.rank is None or y.rank is None:
+        return False
+      return x.value == y.value
+    with self.assertRaises(ValueError):
+      tensor_utils.check_nested_equal([tf.TensorShape(None)],
+                                      [tf.TensorShape(None)],
+                                      eq_if_defined)
+
   def test_to_var_dict(self):
     v1 = tf.Variable(0, name='v1')
     v2 = tf.Variable(0, name='v2')

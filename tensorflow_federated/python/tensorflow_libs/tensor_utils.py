@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import collections
 import functools
+import operator
 
 # Dependency imports
 
@@ -28,8 +29,31 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-
 nest = tf.contrib.framework.nest
+
+
+def check_nested_equal(nested_x, nested_y, eq_fn=operator.eq):
+  """Raises error if two nested structures are not equal.
+
+  Nested structures are equal iff they have the same structure and the values at
+  each position are equal.
+
+  Args:
+    nested_x: an arbitrarily nested structure.
+    nested_y: an arbitrarily nested structure.
+    eq_fn: a callable of two parameters that returns True iff the two parameters
+      are equal.
+
+  Raises:
+    ValueError: If the two structures differ in value at any position in the
+      nested structure.
+  """
+  nest.assert_same_structure(nested_x, nested_y)
+  flat_x = nest.flatten(nested_x)
+  flat_y = nest.flatten(nested_y)
+  for x, y in zip(flat_x, flat_y):
+    if not eq_fn(x, y):
+      raise ValueError('{x} != {y}'.format(x=x, y=y))
 
 
 def to_var_dict(variables):

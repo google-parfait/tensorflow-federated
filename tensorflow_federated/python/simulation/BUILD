@@ -26,7 +26,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@six_archive//:six",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
