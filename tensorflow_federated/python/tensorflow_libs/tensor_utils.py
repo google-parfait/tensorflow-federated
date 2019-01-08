@@ -23,6 +23,7 @@ import functools
 # Dependency imports
 
 import six
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -117,3 +118,40 @@ def metrics_sum(values, name=None):
         trainable=False)
     update_op = tf.assign_add(sum_var, tf.reduce_sum(values))
     return sum_var, update_op
+
+
+def same_dimension(x, y):
+  """Determines if two `tf.Dimension`s are the same.
+
+  Args:
+    x: a `tf.Dimension` object.
+    y: a `tf.Dimension` object.
+
+  Returns:
+    True iff `x` and `y` are either both _unknown_ (i.e. `None`), or both have
+    the same value.
+  """
+  if x is None:
+    return y is None
+  else:
+    return y is not None and x.value == y.value
+
+
+def same_shape(x, y):
+  """Determines if two `tf.TensorShape`s are the same.
+
+  Args:
+    x: a `tf.TensorShape` object.
+    y: a `tf.TensorShape` object.
+
+  Returns:
+    True iff `x` and `y` are either both _unknonw_ shapes (e.g.
+    `tf.TensorShape(None)`) or have each dimension the same.
+  """
+  if x.ndims != y.ndims:
+    return False
+  if x.dims is None:
+    return y.dims is None
+  else:
+    return y.dims is not None and all(
+        same_dimension(a, b) for a, b in zip(x.dims, y.dims))

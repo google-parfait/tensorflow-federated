@@ -137,6 +137,44 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
       sess.run(update_op, feed_dict={v: [3.0]})
       self.assertEqual(sess.run(sum_tensor), 6.0)
 
+  def test_same_dimension(self):
+    self.assertTrue(
+        tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(None)))
+    self.assertTrue(
+        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(1)))
+
+    self.assertFalse(
+        tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(1)))
+    self.assertFalse(
+        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(None)))
+    self.assertFalse(
+        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(2)))
+
+  def test_same_shape(self):
+    self.assertTrue(
+        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape(None)))
+    self.assertTrue(
+        tensor_utils.same_shape(tf.TensorShape([None]), tf.TensorShape([None])))
+    self.assertTrue(
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([1])))
+    self.assertTrue(
+        tensor_utils.same_shape(
+            tf.TensorShape([None, 1]), tf.TensorShape([None, 1])))
+    self.assertTrue(
+        tensor_utils.same_shape(
+            tf.TensorShape([1, 2, 3]), tf.TensorShape([1, 2, 3])))
+
+    self.assertFalse(
+        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape([1])))
+    self.assertFalse(
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape(None)))
+    self.assertFalse(
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([None])))
+    self.assertFalse(
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([2])))
+    self.assertFalse(
+        tensor_utils.same_shape(tf.TensorShape([1, 2]), tf.TensorShape([2, 1])))
+
 
 if __name__ == '__main__':
   tf.test.main()

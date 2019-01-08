@@ -23,12 +23,12 @@ import collections
 # Dependency imports
 
 import six
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -119,24 +119,8 @@ class TensorType(Type):
       return self._dtype.name
 
   def __eq__(self, other):
-
-    def _same_dimension(x, y):
-      if x is None:
-        return y is None
-      else:
-        return y is not None and x.value == y.value
-
-    def _same_shape(x, y):
-      if x.ndims != y.ndims:
-        return False
-      if x.dims is None:
-        return y.dims is None
-      else:
-        return y.dims is not None and all(
-            _same_dimension(a, b) for a, b in zip(x.dims, y.dims))
-
     return (isinstance(other, TensorType) and self._dtype == other.dtype and
-            _same_shape(self._shape, other.shape))
+            tensor_utils.same_shape(self._shape, other.shape))
 
 
 class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):

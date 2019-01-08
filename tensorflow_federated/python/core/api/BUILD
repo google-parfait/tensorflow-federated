@@ -33,6 +33,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:placement_literals",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
