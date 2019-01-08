@@ -118,13 +118,89 @@ class ReferenceExecutorTest(absltest.TestCase):
     y = reference_executor.to_raw_value(x)
     self.assertEqual(str(y), '<x=10,y=<z=0.6>>')
 
-  def test_simple_tensorflow_without_datasets(self):
+  def test_tensorflow_computation_with_one_constant(self):
 
     @computations.tf_computation(tf.int32)
-    def add_one(x):
+    def foo(x):
       return x + 1
 
-    self.assertEqual(add_one(10), 11)
+    self.assertEqual(foo(10), 11)
+
+  def test_tensorflow_computation_with_two_constants(self):
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      return x + y
+
+    self.assertEqual(foo(10, 20), 30)
+    self.assertEqual(foo(20, 10), 30)
+
+  def test_tensorflow_computation_with_one_empty_tuple(self):
+    tuple_type = computation_types.NamedTupleType([])
+
+    @computations.tf_computation(tuple_type)
+    def foo(z):
+      del z  # unused
+      return tf.constant(1)
+
+    self.assertEqual(foo(()), 1)
+
+  def test_tensorflow_computation_with_one_tuple_of_one_constant(self):
+    tuple_type = computation_types.NamedTupleType([
+        ('x', tf.int32),
+    ])
+
+    # TODO(b/122478509): Handle single-element tuple types in decorators.
+    with self.assertRaises(TypeError):
+
+      @computations.tf_computation(tuple_type)
+      def foo(x):
+        return x + 1
+
+      self.assertEqual(foo((10,)), 11)
+
+  def test_tensorflow_computation_with_one_tuple_of_two_constants(self):
+    tuple_type = computation_types.NamedTupleType([
+        ('x', tf.int32),
+        ('y', tf.int32),
+    ])
+
+    @computations.tf_computation(tuple_type)
+    def foo(z):
+      return z.x + z.y
+
+    self.assertEqual(foo((10, 20)), 30)
+    self.assertEqual(foo((20, 10)), 30)
+
+  def test_tensorflow_computation_with_one_tuple_of_two_tuples(self):
+    tuple_type = computation_types.NamedTupleType([
+        ('x', tf.int32),
+        ('y', tf.int32),
+    ])
+    tuple_group_type = computation_types.NamedTupleType([
+        ('a', tuple_type),
+        ('b', tuple_type),
+    ])
+
+    @computations.tf_computation(tuple_group_type)
+    def foo(z):
+      return z.a.x + z.a.y + z.b.x + z.b.y
+
+    self.assertEqual(foo(((10, 20), (30, 40))), 100)
+    self.assertEqual(foo(((40, 30), (20, 10))), 100)
+
+  def test_tensorflow_computation_with_two_tuples_of_two_constants(self):
+    tuple_type = computation_types.NamedTupleType([
+        ('x', tf.int32),
+        ('y', tf.int32),
+    ])
+
+    @computations.tf_computation(tuple_type, tuple_type)
+    def foo(a, b):
+      return a.x + a.y + b.x + b.y
+
+    self.assertEqual(foo((10, 20), (30, 40)), 100)
+    self.assertEqual(foo((40, 30), (20, 10)), 100)
 
 
 if __name__ == '__main__':

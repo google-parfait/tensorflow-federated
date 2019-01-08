@@ -70,7 +70,7 @@ class Type(object):
 
 
 class TensorType(Type):
-  """An implementation of `Type` for representing types of tensors in TFF."""
+  """An implementation of `tff.Type` representing types of tensors in TFF."""
 
   def __init__(self, dtype, shape=None):
     """Constructs a new instance from the given dtype and shape.
@@ -140,30 +140,25 @@ class TensorType(Type):
 
 
 class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
-  """An implementation of `Type` for representing named tuple types in TFF."""
+  """An implementation of `tff.Type` representing named tuple types in TFF."""
 
   def __init__(self, elements):
     """Constructs a new instance from the given element types.
 
     Args:
-      elements: Element specifications, in the format of a list, OrderedDict, or
-        tuple. Each element specification is either a type spec (an instance of
-        `Type` or something convertible to it via `to_type()`) for the element,
-        or a (name, spec) for elements that have defined names. Alternatively
-        one can supply here an instance of `collections.OrderedDict` mapping
-        element names to their types (or things that are convertible to types).
-
-    Raises:
-      TypeError: if the arguments are of the wrong types.
-      ValueError: if the named tuple contains no elements.
+      elements: Element specifications, in the format of a `list`, `tuple`, or
+        `collections.OrderedDict`. Each element specification is either a type
+        spec (an instance of `tff.Type` or something convertible to it via
+        `tff.to_type()`) for the element, or a (name, spec) for elements that
+        have defined names. Alternatively, one can supply here an instance of
+        `collections.OrderedDict` mapping element names to their types (or
+        things that are convertible to types).
     """
     py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
     if '_asdict' in vars(type(elements)):
       elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
       elements = list(elements.items())
-    if not elements:
-      raise ValueError('A named tuple must contain at least one element.')
 
     def _is_named_element(e):
       return (isinstance(e, tuple) and (len(e) == 2) and
@@ -211,14 +206,14 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
 
 
 class SequenceType(Type):
-  """An implementation of `Type` for representing types of sequences in TFF."""
+  """An implementation of `tff.Type` representing types of sequences in TFF."""
 
   def __init__(self, element):
     """Constructs a new instance from the given element type.
 
     Args:
-      element: A specification of the element type, either an instance of `Type`
-        or something convertible to it by `to_type()`.
+      element: A specification of the element type, either an instance of
+        `tff.Type`  or something convertible to it by `tff.to_type()`.
     """
     self._element = to_type(element)
 
@@ -237,16 +232,16 @@ class SequenceType(Type):
 
 
 class FunctionType(Type):
-  """An implementation of `Type` for representing functional types in TFF."""
+  """An implementation of `tff.Type` representing functional types in TFF."""
 
   def __init__(self, parameter, result):
     """Constructs a new instance from the given parameter and result types.
 
     Args:
       parameter: A specification of the parameter type, either an instance of
-        `Type` or something convertible to it by `to_type()`.
-      result: A specification of the result type, either an instance of `Type`
-        or something convertible to it by `to_type()`.
+        `tff.Type` or something convertible to it by `tff.to_type()`.
+      result: A specification of the result type, either an instance of
+        `tff.Type` or something convertible to it by `tff.to_type()`.
     """
     self._parameter = to_type(parameter)
     self._result = to_type(result)
@@ -274,7 +269,7 @@ class FunctionType(Type):
 
 
 class AbstractType(Type):
-  """An implementation of `Type` for representing abstract types in TFF."""
+  """An implementation of `tff.Type` representing abstract types in TFF."""
 
   def __init__(self, label):
     """Constructs a new instance from the given string label.
@@ -301,7 +296,7 @@ class AbstractType(Type):
 
 
 class PlacementType(Type):
-  """An implementation of `Type` for representing the placement type in TFF.
+  """An implementation of `tff.Type` representing the placement type in TFF.
 
   There is only one placement type, a TFF built-in, just as there is only one
   `int` or `str` type in Python. All instances of this class represent the same
@@ -319,20 +314,21 @@ class PlacementType(Type):
 
 
 class FederatedType(Type):
-  """An implementation of `Type` for representing federated types in TFF."""
+  """An implementation of `tff.Type` representing federated types in TFF."""
 
   def __init__(self, member, placement, all_equal=False):
     """Constructs a new federated type instance.
 
     Args:
-      member: An instance of `Type` (or something convertible to it) that
+      member: An instance of `tff.Type` (or something convertible to it) that
         represents the type of the member components of each value of this
         federated type.
       placement: The specification of placement that the member components of
         this federated type are hosted on. Must be either a placement literal
-        such as `SERVER` or `CLIENTS` to refer to a globally defined placement,
-        or a placement label to refer to a placement defined in other parts of a
-        type signature. Specifying placement labels is not implemented yet.
+        such as `tff.SERVER` or `tff.CLIENTS` to refer to a globally defined
+        placement, or a placement label to refer to a placement defined in other
+        parts of a type signature. Specifying placement labels is not
+        implemented yet.
       all_equal: A `bool` value that indicates whether all members of the
         federated type are equal (`True`), or are allowed to differ (`False`).
     """
