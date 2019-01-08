@@ -48,7 +48,7 @@ or `False` otherwise.
 __ne__(other)
 ```
 
-
+Return self!=value.
 
 
 

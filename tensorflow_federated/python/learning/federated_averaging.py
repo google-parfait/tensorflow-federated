@@ -44,9 +44,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     Args:
       model: A `learning.TrainableModel`.
       client_weight_fn: Optional function that takes the output of
-        model.aggregated_outputs() and returns a tensor that provides the weight
-        in the federated average of model deltas. If not provided, the default
-        is the total number of examples processed on device.
+        model.report_local_outputs() and returns a tensor that provides
+        the weight in the federated average of model deltas. If not provided,
+        the default is the total number of examples processed on device.
     """
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedTrainableModel)
@@ -91,11 +91,11 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     weights_delta = tf.contrib.framework.nest.map_structure(
         tf.subtract, model.weights.trainable, initial_weights.trainable)
 
-    aggregated_outputs = model.aggregated_outputs()
+    aggregated_outputs = model.report_local_outputs()
     weights_delta_weight = self._client_weight_fn(aggregated_outputs)  # pylint:disable=not-callable
 
     # TODO(b/122071074): Consider moving this functionality into
-    # federated_averaging?
+    # tff.federated_average?
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
     weights_delta_weight = tf.cond(
@@ -123,10 +123,10 @@ def build_federated_averaging_process(model_fn,
       to the server model. The default returns a `tf.train.GradientDescent` with
       a learning_rate of 1.0, which simply adds the average client delta to the
       server's model.
-    client_weight_fn: Optional function that takes the output of
-      model.aggregated_outputs() and returns a tensor that provides the weight
-      in the federated average of model deltas. If not provided, the default is
-      the total number of examples processed on the client.
+      client_weight_fn: Optional function that takes the output of
+        model.report_local_outputs() and returns a tensor that provides
+        the weight in the federated average of model deltas. If not provided,
+        the default is the total number of examples processed on device.
 
   Returns:
     A `tff.utils.IterativeProcess`.

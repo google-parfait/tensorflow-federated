@@ -38,7 +38,7 @@ ClientOutput = collections.namedtuple(
         'weights_delta',
         # Weight to use in a weighted mean when aggregating weights_delta.
         'weights_delta_weight',
-        # A structure matching model.aggregated_outputs,
+        # A structure matching model.report_local_outputs,
         # reflecting the results of training on the input dataset.
         'model_output',
         # Additional metrics or other outputs defined by the optimizer.
@@ -259,7 +259,9 @@ def build_model_delta_optimizer_tff(model_fn,
     #    client_tf_tff)
 
     # TODO(b/109733734): Finish implementing this function:
-    # * Pass Compute federated_averages and other aggregates of client_output
+    # * Pass Compute federated_averages and other aggregates of client_output.
+    # * TODO(b/120147094): Compute aggregate metrics based on
+    #   model.federated_output_computation().
     # * Pass the model_delta into server_update_model
     # * Return the updated state.
 

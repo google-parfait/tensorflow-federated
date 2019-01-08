@@ -172,7 +172,7 @@ class ModelUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
     batch = model_utils._KerasModel.make_batch(x=x_placeholder, y=y_placeholder)
 
     output_op = tff_model.forward_pass(batch)
-    metrics = tff_model.aggregated_outputs()
+    metrics = tff_model.report_local_outputs()
 
     init_op = tf.variables_initializer(tff_model.trainable_variables +
                                        tff_model.non_trainable_variables +

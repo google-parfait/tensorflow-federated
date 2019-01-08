@@ -52,7 +52,8 @@ Constructs a new instance from the given element types.
 __dir__()
 ```
 
-
+__dir__() -> list
+default dir() implementation
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
@@ -60,7 +61,26 @@ __dir__()
 __eq__(other)
 ```
 
+Determines whether two type definitions are identical.
 
+Note that this notion of equality is stronger than equivalence. Two types
+with equivalent definitions may not be identical, e.g., if they represent
+templates with differently named type veriables in their definitions.
+
+#### Args:
+
+* <b>`other`</b>: The other type to compare against.
+
+
+#### Returns:
+
+`True` iff type definitions are syntatically identical (as defined above),
+or `False` otherwise.
+
+
+#### Raises:
+
+* <b>`NotImplementedError`</b>: If not implemented in the derived class.
 
 <h3 id="__getattr__"><code>__getattr__</code></h3>
 
@@ -100,7 +120,7 @@ __len__()
 __ne__(other)
 ```
 
-
+Return self!=value.
 
 
 

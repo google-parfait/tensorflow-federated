@@ -153,7 +153,7 @@ class _KerasModel(model_lib.Model):
     return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
 
   @tf.contrib.eager.function(autograph=False)
-  def aggregated_outputs(self):
+  def report_local_outputs(self):
     keras_metrics = getattr(self._keras_model, 'metrics')
     if keras_metrics:
       return collections.OrderedDict(
@@ -161,6 +161,12 @@ class _KerasModel(model_lib.Model):
     else:
       return collections.OrderedDict(
           [(metric.name, metric.result()) for metric in self._metrics])
+
+  def federated_output_computation(self):
+    # TODO(b/122116149): Automatically generate federated_output_computation
+    # for Keras models by appropriately aggregating the keras.Metrics using
+    # the metric's state variables' VariableAggregation properties.
+    return None
 
   @classmethod
   def make_batch(cls, x, y):
@@ -252,8 +258,12 @@ class EnhancedModel(model_lib.Model):
     return py_typecheck.check_type(
         self._model.forward_pass(batch, training), model_lib.BatchOutput)
 
-  def aggregated_outputs(self):
-    return self._model.aggregated_outputs()
+  def report_local_outputs(self):
+    return self._model.report_local_outputs()
+
+  @property
+  def federated_output_computation(self):
+    return self._model.federated_output_computation
 
 
 class EnhancedTrainableModel(EnhancedModel, model_lib.TrainableModel):

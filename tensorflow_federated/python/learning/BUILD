@@ -106,6 +106,7 @@ py_library(
     srcs = ["model_examples.py"],
     deps = [
         ":model",
+        "//tensorflow_federated/python/core/api",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -117,6 +118,7 @@ py_test(
     deps = [
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/core/api",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",

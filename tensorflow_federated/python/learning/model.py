@@ -130,13 +130,11 @@ class Model(object):
     pass
 
   @abc.abstractmethod
-  def aggregated_outputs(self):
+  def report_local_outputs(self):
     """Returns tensors representing values aggregated over forward_pass calls.
 
     In federated learning, the values returned by this method will typically
     be further aggregated across clients and made available on the server.
-
-    TODO(b/120147094): Support specification of aggregation across clients.
 
     This method returns results from aggregating across *all* previous calls
     to `forward_pass`, most typically metrics like Accuracy and Loss. If needed,
@@ -155,6 +153,34 @@ class Model(object):
     Returns:
       A structure of tensors (as supported by tf.contrib.framework.nest)
       to be aggregated across clients.
+    """
+    pass
+
+  @abc.abstractproperty
+  def federated_output_computation(self):
+    """Performs federated aggregation of the a a Model's local_outputs.
+
+    This is typically used to aggregate metrics across many clients, e.g. the
+    body of the computation might be:
+
+        return {
+          'num_examples': tff.federated_sum(local_outputs.num_examples),
+          'loss': tff.federated_average(local_outputs.loss)}
+
+    N.B. It is assumed all TensorFlow computation happens in the
+    `report_local_outputs` method, and this method only uses TFF
+    constructs to specify aggregations across clients.
+
+    Returns:
+      Either a `tff.Computation`, or None if no federated aggregation is needed.
+
+
+      The `tff.Computation` should take as its single input a
+      `tff.CLIENTS`-placed `tff.Value` corresponding to the return value of
+      Model.report_local_outputs, and return a dictionary or other
+      structure of `tff.SERVER`-placed values; consumers of this method should
+      generally provide these server-placed values as outputs of the overall
+      computation consuming the model.
     """
     pass
 

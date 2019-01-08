@@ -24,11 +24,14 @@ Builds the TFF computations for optimization using federated averaging.
     a learning_rate of 1.0, which simply adds the average client delta to the
     server's model.
 * <b>`client_weight_fn`</b>: Optional function that takes the output of
-    model.aggregated_outputs() and returns a tensor that provides the weight
-    in the federated average of model deltas. If not provided, the default is
-    the total number of examples processed on the client.
+
+      model.report_local_outputs() and returns a tensor that provides
+      the weight in the federated average of model deltas. If not provided,
+      the default is the total number of examples processed on device.
+
 
 
 #### Returns:
 
 A <a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>.
+

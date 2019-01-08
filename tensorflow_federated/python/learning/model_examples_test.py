@@ -24,7 +24,9 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
+from tensorflow.python.util import nest
 from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.learning import model_examples
 
 
@@ -37,6 +39,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
     tf.enable_resource_variables()
 
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
+  @test_utils.graph_mode_test
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
     init_op = tf.variables_initializer(model.trainable_variables +
@@ -46,7 +49,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
         x=tf.placeholder(tf.float32, shape=(None, feature_dim)),
         y=tf.placeholder(tf.float32, shape=(None, 1)))
     output_op = model.forward_pass(batch)
-    metrics = model.aggregated_outputs()
+    metrics = model.report_local_outputs()
 
     tf.get_default_graph().finalize()
     with self.session() as sess:
@@ -66,6 +69,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
       self.assertEqual(m['num_batches'], 1)
       self.assertEqual(m['loss'], 0.25)
 
+  @test_utils.graph_mode_test
   def test_trainable_linear_regression(self):
     dim = 1
     model = model_examples.TrainableLinearRegression(feature_dim=dim)
@@ -77,7 +81,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
         y=tf.placeholder(tf.float32, shape=(None, 1)))
 
     train_op = model.train_on_batch(batch)
-    metrics = model.aggregated_outputs()
+    metrics = model.report_local_outputs()
     train_feed_dict = {batch.x: [[0.0], [5.0]], batch.y: [[0.0], [5.0]]}
     prior_loss = float('inf')
     with self.session() as sess:
@@ -93,6 +97,33 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
       self.assertEqual(m['num_batches'], num_iters)
       self.assertEqual(m['num_examples'], 2 * num_iters)
       self.assertLess(m['loss'], 1.0)
+
+  @test_utils.graph_mode_test
+  def test_tff(self):
+
+    @tff.tf_computation
+    def forward_pass_and_output():
+      feature_dim = 2
+      model = model_examples.LinearRegression(feature_dim)
+      init_op = tf.variables_initializer(model.trainable_variables +
+                                         model.non_trainable_variables +
+                                         model.local_variables)
+      batch = model.make_batch(
+          x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
+          y=tf.constant([[0.0], [1.0]]))
+      with tf.control_dependencies([init_op]):
+        batch_output = model.forward_pass(batch)
+        with tf.control_dependencies(nest.flatten(batch_output)):
+          local_output = model.report_local_outputs()
+      return batch_output, local_output
+
+    batch_output, local_output = forward_pass_and_output()
+    self.assertAllEqual(batch_output.predictions, [[0.0], [0.0]])
+    self.assertEqual(batch_output.loss, 0.25)
+    self.assertEqual(local_output.num_examples, 2)
+    self.assertEqual(local_output.num_batches, 1)
+
+    # TODO(b/122114585): Add tests for model.federated_output_computation.
 
 
 if __name__ == '__main__':

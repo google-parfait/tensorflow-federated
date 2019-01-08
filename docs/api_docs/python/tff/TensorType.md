@@ -61,7 +61,26 @@ Constructs a new instance from the given dtype and shape.
 __eq__(other)
 ```
 
+Determines whether two type definitions are identical.
 
+Note that this notion of equality is stronger than equivalence. Two types
+with equivalent definitions may not be identical, e.g., if they represent
+templates with differently named type veriables in their definitions.
+
+#### Args:
+
+* <b>`other`</b>: The other type to compare against.
+
+
+#### Returns:
+
+`True` iff type definitions are syntatically identical (as defined above),
+or `False` otherwise.
+
+
+#### Raises:
+
+* <b>`NotImplementedError`</b>: If not implemented in the derived class.
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
@@ -69,7 +88,7 @@ __eq__(other)
 __ne__(other)
 ```
 
-
+Return self!=value.
 
 
 

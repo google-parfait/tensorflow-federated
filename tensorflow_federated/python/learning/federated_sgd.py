@@ -127,7 +127,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
                  0), lambda: self._batch_weight_sum, lambda: tf.constant(0.0))
 
     return optimizer_utils.ClientOutput(
-        weights_delta, weights_delta_weight, model.aggregated_outputs(),
+        weights_delta, weights_delta_weight, model.report_local_outputs(),
         tensor_utils.to_odict({
             'client_weight': weights_delta_weight,
             'has_non_finite_delta': has_non_finite_delta,
