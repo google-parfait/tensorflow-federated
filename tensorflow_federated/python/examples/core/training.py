@@ -57,8 +57,7 @@ NUM_Y_CLASSES = 3
 BATCH_TYPE = tff.NamedTupleType([
     ('X', tff.TensorType(tf.int32, shape=[None])),
     ('Y', tff.TensorType(tf.int32, shape=[None])),
-])  # pyformat: disable
-
+])
 
 # The input to training/evaluation is simply a sequence of such batches.
 INPUT_TYPE = tff.SequenceType(BATCH_TYPE)
@@ -68,7 +67,7 @@ INPUT_TYPE = tff.SequenceType(BATCH_TYPE)
 MODEL_TYPE = tff.NamedTupleType([
     ('weights', tff.TensorType(tf.float32, [NUM_X_CLASSES, NUM_Y_CLASSES])),
     ('bias', tff.TensorType(tf.float32, NUM_Y_CLASSES)),
-])  # pyformat: disable
+])
 
 
 # A simple TensorFlow computation that computes loss and accuracy metrics on a

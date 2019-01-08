@@ -19,9 +19,8 @@ This provides the TFF orchestration logic connecting the common server logic
 which applies aggregated model deltas to the server model with a ClientDeltaFn
 that specifies how weight_deltas are computed on device.
 
-Note: We pass in functions rather than constructed objects so we can
-ensure any variables or ops created in construtors are placed in the
-correct graph.
+Note: We pass in functions rather than constructed objects so we can ensure
+any variables or ops created in constructors are placed in the correct graph.
 TODO(b/122081673): This can be simplified once we move fully to TF 2.0.
 
 #### Args:
@@ -37,4 +36,4 @@ TODO(b/122081673): This can be simplified once we move fully to TF 2.0.
 
 #### Returns:
 
-A `SequentialTffComputation`.
+A <a href="../../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>.

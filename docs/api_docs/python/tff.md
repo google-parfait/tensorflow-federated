@@ -57,9 +57,9 @@ TensorFlow Federated library.
 
 [`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
-[`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of `Type`.
+[`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of <a href="./tff/Type.md"><code>tff.Type</code></a>.
 
-[`to_value(...)`](./tff/to_value.md): Converts the argument into an instance of the abstract base class `Value`.
+[`to_value(...)`](./tff/to_value.md): Converts the argument into an instance of the abstract class <a href="./tff/Value.md"><code>tff.Value</code></a>.
 
 ## Other Members
 

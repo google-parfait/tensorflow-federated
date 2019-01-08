@@ -31,7 +31,7 @@ __new__(
 )
 ```
 
-Create new instance of ModelWeightsBase(trainable, non_trainable)
+
 
 
 

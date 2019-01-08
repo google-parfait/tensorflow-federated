@@ -23,6 +23,7 @@ import collections
 # Dependency imports
 
 import six
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -118,11 +119,13 @@ class TensorType(Type):
       return self._dtype.name
 
   def __eq__(self, other):
+
     def _same_dimension(x, y):
       if x is None:
         return y is None
       else:
         return y is not None and x.value == y.value
+
     def _same_shape(x, y):
       if x.ndims != y.ndims:
         return False
@@ -131,8 +134,8 @@ class TensorType(Type):
       else:
         return y.dims is not None and all(
             _same_dimension(a, b) for a, b in zip(x.dims, y.dims))
-    return (isinstance(other, TensorType) and
-            self._dtype == other.dtype and
+
+    return (isinstance(other, TensorType) and self._dtype == other.dtype and
             _same_shape(self._shape, other.shape))
 
 
@@ -376,43 +379,41 @@ class FederatedType(Type):
 
 
 def to_type(spec):
-  # pyformat: disable
-  """Converts the argument into an instance of `Type`.
+  """Converts the argument into an instance of `tff.Type`.
+
+  Examples of arguments convertible to tensor types:
+
+  ```
+  tf.int32
+  (tf.int32, [10])
+  (tf.int32, [None])
+  ```
+
+  Examples of arguments convertible to flat named tuple types:
+
+  ```
+  [tf.int32, tf.bool]
+  (tf.int32, tf.bool)
+  [('a', tf.int32), ('b', tf.bool)]
+  ('a', tf.int32)
+  collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
+  ```
+
+  Examples of arguments convertible to nested named tuple types:
+
+  ```
+  (tf.int32, (tf.float32, tf.bool))
+  (tf.int32, (('x', tf.float32), tf.bool))
+  ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
+  ```
 
   Args:
-    spec: Either an instance of `Type`, or an argument convertible to Type.
-      Assorted examples of type specifications are included below.
-
-      Examples of arguments convertible to tensor types:
-
-      ```
-      tf.int32
-      (tf.int32, [10])
-      (tf.int32, [None])
-      ```
-
-      Examples of arguments convertible to flat named tuple types:
-
-      ```
-      [tf.int32, tf.bool]
-      (tf.int32, tf.bool)
-      [('a', tf.int32), ('b', tf.bool)]
-      ('a', tf.int32)
-      collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
-      ```
-
-      Examples of arguments convertible to nested named tuple types:
-
-      ```
-      (tf.int32, (tf.float32, tf.bool))
-      (tf.int32, (('x', tf.float32), tf.bool))
-      ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
-      ```
+    spec: Either an instance of `tff.Type`, or an argument convertible to
+      `tff.Type`. Assorted examples of type specifications are included below.
 
   Returns:
-    An instance of `Type` corresponding to the given spec.
+    An instance of `tff.Type` corresponding to the given spec.
   """
-  # pyformat: enable
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.
 

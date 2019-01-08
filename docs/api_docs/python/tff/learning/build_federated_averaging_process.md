@@ -1,19 +1,19 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tff.learning.federated_averaging" />
+<meta itemprop="name" content="tff.learning.build_federated_averaging_process" />
 <meta itemprop="path" content="Stable" />
 </div>
 
-# tff.learning.federated_averaging
+# tff.learning.build_federated_averaging_process
 
 ``` python
-tff.learning.federated_averaging(
+tff.learning.build_federated_averaging_process(
     model_fn,
     server_optimizer_fn=None,
     client_weight_fn=None
 )
 ```
 
-Constructs complete TFF computations for federated averaging.
+Builds the TFF computations for optimization using federated averaging.
 
 #### Args:
 
@@ -31,4 +31,4 @@ Constructs complete TFF computations for federated averaging.
 
 #### Returns:
 
-A `SequentialTffComputation`.
+A <a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>.

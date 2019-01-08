@@ -15,11 +15,9 @@ The public API for contributors who develop federated learning algorithms.
 
 [`class EnhancedModel`](../../tff/learning/framework/EnhancedModel.md): A wrapper around a Model that adds sanity checking and metadata helpers.
 
-[`class EnhancedTrainableModel`](../../tff/learning/framework/EnhancedTrainableModel.md): A wrapper around a Model that adds sanity checking and metadata helpers.
+[`class EnhancedTrainableModel`](../../tff/learning/framework/EnhancedTrainableModel.md)
 
 [`class ModelWeights`](../../tff/learning/framework/ModelWeights.md): A container for the trainable and non-trainable variables of a `Model`.
-
-[`class SequentialTffComputation`](../../tff/learning/framework/SequentialTffComputation.md): Container for a pair of TFF computations defining sequential processing.
 
 ## Functions
 

@@ -48,8 +48,8 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff/learning
-    - title: federated_averaging
-      path: /federated/api_docs/python/tff/learning/federated_averaging
+    - title: build_federated_averaging_process
+      path: /federated/api_docs/python/tff/learning/build_federated_averaging_process
     - title: from_compiled_keras_model
       path: /federated/api_docs/python/tff/learning/from_compiled_keras_model
     - title: from_keras_model
@@ -72,8 +72,6 @@ toc:
         path: /federated/api_docs/python/tff/learning/framework/EnhancedTrainableModel
       - title: ModelWeights
         path: /federated/api_docs/python/tff/learning/framework/ModelWeights
-      - title: SequentialTffComputation
-        path: /federated/api_docs/python/tff/learning/framework/SequentialTffComputation
   - title: tff.simulation
     section:
     - title: Overview
@@ -88,3 +86,5 @@ toc:
       path: /federated/api_docs/python/tff/utils
     - title: get_variables
       path: /federated/api_docs/python/tff/utils/get_variables
+    - title: IterativeProcess
+      path: /federated/api_docs/python/tff/utils/IterativeProcess

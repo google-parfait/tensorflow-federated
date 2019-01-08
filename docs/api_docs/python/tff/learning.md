@@ -17,7 +17,7 @@ The public API for model developers using federated learning algorithms.
 
 ## Functions
 
-[`federated_averaging(...)`](../tff/learning/federated_averaging.md): Constructs complete TFF computations for federated averaging.
+[`build_federated_averaging_process(...)`](../tff/learning/build_federated_averaging_process.md): Builds the TFF computations for optimization using federated averaging.
 
 [`from_compiled_keras_model(...)`](../tff/learning/from_compiled_keras_model.md): Builds a `tensorflow_federated.learning.TrainableModel`.
 

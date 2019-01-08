@@ -266,19 +266,21 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
 
 
 def to_value(arg, type_spec, context_stack):
-  # pyformat: disable
-  """Converts the argument into an instance of Value.
+  """Converts the argument into an instance of `tff.Value`.
+
+  The types of non-`tff.Value` arguments that are currently convertible to
+  `tff.Value` include the following:
+
+  * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all
+    of which are converted into instances of `tff.Tuple`.
+  * Placement literals, converted into instances of `tff.Placement`.
+  * Computations.
+  * Python constants of type `str`, `int`, `float`, `bool`, or
+    `np.ndarray`.
 
   Args:
-    arg: Either an instance of `Value`, or an argument convertible to `Value`.
-      The argument must not be `None`. The types of non-`Value` arguments that
-      are currently convertible to `Value` include the following:
-      * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all
-        of which are converted into instances of `Tuple`.
-      * Placement literals, converted into instances of `Placement`.
-      * Computations.
-      * Python constants of type `str`, `int`, `float`, `bool`, or numpy
-        `ndarray`.
+    arg: Either an instance of `tff.Value`, or an argument convertible to
+      `tff.Value`. The argument must not be `None`.
     type_spec: A type specifier that allows for disambiguating the target type
       (e.g., when two TFF types can be mapped to the same Python
       representations), or `None` if none available, in which case TFF tries to
@@ -286,7 +288,7 @@ def to_value(arg, type_spec, context_stack):
     context_stack: The context stack to use.
 
   Returns:
-    An instance of `Value` corresponding to the given `arg`, and of TFF type
+    An instance of `tff.Value` corresponding to the given `arg`, and of TFF type
     matching the `type_spec` if specified (not `None`).
 
   Raises:
@@ -294,7 +296,6 @@ def to_value(arg, type_spec, context_stack):
       match `type_spec`.
   """
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  # pyformat: enable
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
   if isinstance(arg, ValueImpl):
