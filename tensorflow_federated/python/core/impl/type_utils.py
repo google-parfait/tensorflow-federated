@@ -22,6 +22,7 @@ import collections
 
 import numpy as np
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -435,8 +436,8 @@ def is_assignable_from(target_type, source_type):
 
   Args:
     target_type: The expected type (that of the target of the assignment).
-    source_type: The actual type (that of the source of the assignment),
-      tested for being a specialization of the `target_type`.
+    source_type: The actual type (that of the source of the assignment), tested
+      for being a specialization of the `target_type`.
 
   Returns:
     `True` iff `target_type` is assignable from `source_type`, or else `False`.
@@ -449,12 +450,16 @@ def is_assignable_from(target_type, source_type):
   py_typecheck.check_type(target_type, computation_types.Type)
   py_typecheck.check_type(source_type, computation_types.Type)
   if isinstance(target_type, computation_types.TensorType):
+
     def _shape_is_assignable_from(x, y):
+
       def _dimension_is_assignable_from(x, y):
         return (x.value is None) or (x.value == y.value)
+
       return ((x.ndims == y.ndims) and ((x.dims is None) or all(
           _dimension_is_assignable_from(x.dims[k], y.dims[k])
           for k in range(x.ndims))))
+
     return (isinstance(source_type, computation_types.TensorType) and
             (target_type.dtype == source_type.dtype) and
             _shape_is_assignable_from(target_type.shape, source_type.shape))
@@ -475,8 +480,7 @@ def is_assignable_from(target_type, source_type):
             (((source_type.parameter is None) and
               (target_type.parameter is None)) or
              ((source_type.parameter is not None) and
-              (target_type.parameter is not None) and
-              is_assignable_from(
+              (target_type.parameter is not None) and is_assignable_from(
                   source_type.parameter, target_type.parameter)) and
              is_assignable_from(target_type.result, source_type.result)))
   elif isinstance(target_type, computation_types.AbstractType):
@@ -514,5 +518,5 @@ def are_equivalent_types(type1, type2):
   if type1 is None:
     return type2 is None
   else:
-    return type2 is not None and (
-        is_assignable_from(type1, type2) and is_assignable_from(type2, type1))
+    return type2 is not None and (is_assignable_from(type1, type2) and
+                                  is_assignable_from(type2, type1))

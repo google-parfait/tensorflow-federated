@@ -161,7 +161,7 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
     if '_asdict' in vars(type(elements)):
       elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
-      elements = elements.items()
+      elements = list(elements.items())
     if not elements:
       raise ValueError('A named tuple must contain at least one element.')
 
@@ -270,8 +270,7 @@ class FunctionType(Type):
 
   def __eq__(self, other):
     return (isinstance(other, FunctionType) and
-            self._parameter == other.parameter and
-            self._result == other.result)
+            self._parameter == other.parameter and self._result == other.result)
 
 
 class AbstractType(Type):

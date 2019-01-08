@@ -25,7 +25,6 @@ from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
 from tensorflow_federated.python.learning.model_utils import ModelWeights
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "build_model_delta_optimizer_tff",
