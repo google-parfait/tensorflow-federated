@@ -44,14 +44,22 @@ DEFAULT_ATOL = 1e-05
 
 
 # Named tuple containing the values summarizing the results for a single
-# evaluation of an encoding stage.
+# evaluation of an EncodingStageInterface or an AdaptiveEncodingStageInterface.
 TestData = collections.namedtuple(
     'TestData',
     [
         'x',  # The input provided to encoding.
         'encoded_x',  # A dictionary of values representing the encoded input x.
         'decoded_x',  # Decoded value. Has the same shape as x.
+        # The fields below are only relevant for AdaptiveEncodingStageInterface,
+        # and will not be populated while testing an EncodingStageInterface.
+        'initial_state',  # Initial state used for encoding.
+        'state_update_tensors',  # State update tensors created by encoding.
+        'updated_state',  # Updated state after encoding.
     ])
+# Set the dafault values to be None, to enable use of TestData while testing
+# EncodingStageInterface, without needing to be aware of the other fields.
+TestData.__new__.__defaults__ = (None,) * len(TestData._fields)
 
 
 # This metaclass enables adding abc.ABCMeta metaclass to a class inheriting from
@@ -62,15 +70,15 @@ class ParameterizedABCMeta(abc.ABCMeta, parameterized.TestGeneratorMetaclass):
 
 @six.add_metaclass(ParameterizedABCMeta)
 class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
-  """Abstract base class for tests of `EncodingStageInterface`.
+  """Abstract base class for testing encoding stage implementations.
 
-  Tests for each implementation `EncodingStageInterface` class should implement
-  this class, and add additional tests specific to the behavior of the tested
-  implementation.
+  Tests for each implementation of `EncodingStageInterface` and
+  `AdaptiveEncodingStageInterface` should implement this class, and add
+  additional tests specific to the behavior of the tested implementation.
 
   This class contains basic tests, which every implementation of
-  `EncodingStageInterface` is expected to pass. It also contains set of testing
-  utilities.
+  `EncodingStageInterface` is expected to pass, and it contains a set of
+  utilities for testing.
 
   In particular, the `test_one_to_many_encode_decode` and
   `test_many_to_one_encode_decode` methods ensure the implementation does not
@@ -138,9 +146,11 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
   # Test methods
   # -------------
   def test_default_encoding_stage(self):
-    """Tests that `default_encoding_stage` return `EncodingStageInterface`."""
+    """Tests the correctness of `default_encoding_stage`."""
     stage = self.default_encoding_stage()
-    self.assertIsInstance(stage, encoding_stage.EncodingStageInterface)
+    self.assertIsInstance(stage,
+                          (encoding_stage.EncodingStageInterface,
+                           encoding_stage.AdaptiveEncodingStageInterface))
 
   def test_encoding_stage_constructor_does_not_modify_graph(self):
     """Tests that the constructor of encoding stage does not modify graph."""
@@ -166,14 +176,23 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     # generic type assertions.
     x = self.default_input()
     stage = self.default_encoding_stage()
-    encode_params, decode_params = stage.get_params()
-    encoded_x, decoded_x = self.encode_decode_x(stage, x, encode_params,
-                                                decode_params)
-    test_data = TestData(x, encoded_x, decoded_x)
+    if is_adaptive_stage(stage):
+      state = stage.initial_state()
+      encode_params, decode_params = stage.get_params(state)
+      encoded_x, decoded_x, state_update_tensors = self.encode_decode_x(
+          stage, x, encode_params, decode_params)
+      updated_state = stage.update_state(state, state_update_tensors)
+      test_data = TestData(x, encoded_x, decoded_x, state, state_update_tensors,
+                           updated_state)
+    else:
+      encode_params, decode_params = stage.get_params()
+      encoded_x, decoded_x = self.encode_decode_x(stage, x, encode_params,
+                                                  decode_params)
+      test_data = TestData(x, encoded_x, decoded_x)
     self.generic_asserts(test_data, stage)
 
     # Evaluate the Tensors and get numpy values.
-    test_data = self.evaluate(test_data)
+    test_data = self.evaluate_test_data(test_data)
     if self.is_lossless:
       self.assertAllClose(test_data.x, test_data.decoded_x,
                           rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
@@ -232,62 +251,121 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     """Given params, encodes and decodes input `Tensor`.
 
     Args:
-      stage: An `EncodingStageInterface` to be used for encoding and decoding.
+      stage: An `EncodingStageInterface` or an `AdaptiveEncodingStageInterface`
+        to be used for encoding and decoding.
       x: A `Tensor` to be encoded and decoded.
       encode_params: Parameters to be provided to `stage.encode`
       decode_params: Parameters to be provided to `stage.decode`
 
     Returns:
-      A tuple (encoded_x, decoded_x), where these are:
+      A tuple (encoded_x, decoded_x) if `stage` is an `EncodingStageInterface`,
+      or a tuple (encoded_x, decoded_x, state_update_tensors) if `stage` is an
+      `AdaptiveEncodingStageInterface`, where these are:
         encoded_x: A dictionary of `Tensor` objects representing the encoded
           input `x`.
         decoded_x: A single `Tensor`, representing decoded `encoded_x`.
+        state_update_tensors: A dictionary of `Tensor` objects representing the
+          information necessary for updating the state.
     """
-    encoded_x = stage.encode(x, encode_params)
+    if is_adaptive_stage(stage):
+      encoded_x, state_update_tensors = stage.encode(x, encode_params)
+    else:
+      encoded_x = stage.encode(x, encode_params)
+
     shape = None
     if stage.decode_needs_input_shape:
       shape = utils.static_or_dynamic_shape(x)
     decoded_x = stage.decode(encoded_x, decode_params, shape)
-    return encoded_x, decoded_x
 
-  def run_one_to_many_encode_decode(self, stage, input_fn):
+    if is_adaptive_stage(stage):
+      return encoded_x, decoded_x, state_update_tensors
+    else:
+      return encoded_x, decoded_x
+
+  def run_one_to_many_encode_decode(self, stage, input_fn, state=None):
     """Runs encoding and decoding in the one-to-many setting.
 
     This method creates the input `Tensor` in the context of one graph, creates
     and evaluates the encoded structure, along with `decode_params`. These are
     used as Python constants in another graph to create and evaluate decoding.
 
+    The need for `input_fn`, as opposed to a simple numpy constant, is because
+    some stages need to work with `Tensor` objects that do not have statically
+    known shape. Such `Tensor` needs to be created in the context of the graph
+    in which it is to be evaluated, that is, inside of this method.
+
     Args:
-      stage: An `EncodingStageInterface` to be used for encoding.
-      input_fn: A callable object without arguments that creates and returns an
-        input `Tensor` to be used for encoding.
+      stage: An `EncodingStageInterface` or an `AdaptiveEncodingStageInterface`
+        to be used for encoding.
+      input_fn: A callable object without arguments that creates and returns a
+        `Tensor` or numpy value to be used for encoding.
+      state: A dictionary representing the state. Can be set only if `stage` is
+        an `AdaptiveEncodingStageInterface`.
 
     Returns:
       A `TestData` tuple containing numpy values representing the results.
     """
-    server_graph = tf.Graph()
-    with server_graph.as_default():
-      x = input_fn()
-      encode_params, decode_params = stage.get_params()
-      encoded_x = stage.encode(x, encode_params)
-      shape = utils.static_or_dynamic_shape(x)
 
-    # Get all values out of TensorFlow as Python constants. This is a trivial
-    # example of communication happening outside of TensorFlow.
-    with self.session(graph=server_graph):
-      x, decode_params, encoded_x, shape = self.evaluate_tf_py_list(
-          [x, decode_params, encoded_x, shape])
+    def _adaptive_one_to_many_encode_decode(state):
+      """Implementation of the method for `AdaptiveEncodingStageInterface`."""
+      server_graph = tf.Graph()
+      with server_graph.as_default():
+        x = input_fn()
+        shape = utils.static_or_dynamic_shape(x)
+        if state is None:
+          state = stage.initial_state()
+        encode_params, decode_params = stage.get_params(state)
+        encoded_x, state_update_tensors = stage.encode(x, encode_params)
+        updated_state = stage.update_state(state, state_update_tensors)
 
-    client_graph = tf.Graph()
-    with client_graph.as_default():
-      decoded_x = stage.decode(encoded_x, decode_params, shape=shape)
+      # Get all values out of TensorFlow as Python constants. This is a trivial
+      # example of communication happening outside of TensorFlow.
+      with self.session(graph=server_graph):
+        (x, decode_params, encoded_x, state, state_update_tensors,
+         updated_state, shape) = self.evaluate_tf_py_list([
+             x, decode_params, encoded_x, state, state_update_tensors,
+             updated_state, shape
+         ])
 
-    with self.session(graph=client_graph):
-      decoded_x = self.evaluate(decoded_x)
+      client_graph = tf.Graph()
+      with client_graph.as_default():
+        decoded_x = stage.decode(encoded_x, decode_params, shape=shape)
+      with self.session(graph=client_graph):
+        decoded_x = self.evaluate(decoded_x)
 
-    return TestData(x, encoded_x, decoded_x)
+      return TestData(x, encoded_x, decoded_x, state, state_update_tensors,
+                      updated_state)
 
-  def run_many_to_one_encode_decode(self, stage, input_values):
+    def _non_adaptive_one_to_many_encode_decode():
+      """Implementation of the method for `EncodingStageInterface`."""
+      server_graph = tf.Graph()
+      with server_graph.as_default():
+        x = input_fn()
+        shape = utils.static_or_dynamic_shape(x)
+        encode_params, decode_params = stage.get_params()
+        encoded_x = stage.encode(x, encode_params)
+
+      # Get all values out of TensorFlow as Python constants. This is a trivial
+      # example of communication happening outside of TensorFlow.
+      with self.session(graph=server_graph):
+        x, decode_params, encoded_x, shape = self.evaluate_tf_py_list(
+            [x, decode_params, encoded_x, shape])
+
+      client_graph = tf.Graph()
+      with client_graph.as_default():
+        decoded_x = stage.decode(encoded_x, decode_params, shape=shape)
+      with self.session(graph=client_graph):
+        decoded_x = self.evaluate(decoded_x)
+
+      return TestData(x, encoded_x, decoded_x)
+
+    if is_adaptive_stage(stage):
+      return _adaptive_one_to_many_encode_decode(state)
+    else:
+      assert state is None
+      return _non_adaptive_one_to_many_encode_decode()
+
+  def run_many_to_one_encode_decode(self, stage, input_values, state=None):
     """Runs encoding and decoding in the many-to-one setting.
 
     This method creates and evaluates the parameters in the context of one
@@ -297,9 +375,12 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     addition verified.
 
     Args:
-      stage: An `EncodingStageInterface` to be used for encoding.
+      stage: An `EncodingStageInterface` or an `AdaptiveEncodingStageInterface`
+        to be used for encoding.
       input_values: A list of numpy values to be used for encoding. All must
         have the same shape.
+      state: A dictionary representing the state. Can be set only if `stage` is
+        an `AdaptiveEncodingStageInterface`.
 
     Returns:
       A tuple `(server_test_data, decode_params)` where these are:
@@ -309,35 +390,87 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
         values that should be used if additional decoding is to be done, such as
         for `assert_commutes_with_sum`.
     """
-    server_graph = tf.Graph()
-    with server_graph.as_default():
-      shape = input_values[0].shape
-      encode_params, decode_params = stage.get_params()
 
-    with self.session(server_graph) as sess:
-      encode_params, decode_params = self.evaluate_tf_py_list(
-          [encode_params, decode_params], sess)
-
-    client_test_data = []
-    for x in input_values:
-      client_graph = tf.Graph()
-      with client_graph.as_default():
-        encoded_x = stage.encode(x, encode_params)
-
-      with self.session(client_graph):
-        encoded_x = self.evaluate(encoded_x)
-        client_test_data.append(TestData(x, encoded_x, None))
-
-    server_test_data = []
-    with server_graph.as_default():
+    def _adaptive_many_to_one_encode_decode(state):
+      """Implementation of the method for `AdaptiveEncodingStageInterface`."""
+      server_graph = tf.Graph()
+      with server_graph.as_default():
+        shape = input_values[0].shape
+        if state is None:
+          state = stage.initial_state()
+        encode_params, decode_params = stage.get_params(state)
       with self.session(server_graph) as sess:
-        for test_data in client_test_data:
-          decoded_x = stage.decode(
-              test_data.encoded_x, decode_params, shape=shape)
-          server_test_data.append(
-              TestData(test_data.x, test_data.encoded_x, sess.run(decoded_x)))
+        encode_params, decode_params, state = self.evaluate_tf_py_list(
+            [encode_params, decode_params, state], sess)
 
-    return server_test_data, decode_params
+      client_test_data = []
+      for x in input_values:
+        client_graph = tf.Graph()
+        with client_graph.as_default():
+          encoded_x, state_update_tensors = stage.encode(x, encode_params)
+        with self.session(client_graph):
+          encoded_x, state_update_tensors = self.evaluate(
+              [encoded_x, state_update_tensors])
+          client_test_data.append(
+              TestData(x, encoded_x, state_update_tensors=state_update_tensors))
+
+      server_test_data = []
+      with server_graph.as_default():
+        with self.session(server_graph) as sess:
+          for test_data in client_test_data:
+            decoded_x = stage.decode(
+                test_data.encoded_x, decode_params, shape=shape)
+            server_test_data.append(
+                test_data._replace(
+                    decoded_x=sess.run(decoded_x), initial_state=state))
+          # Compute and append the updated state to all TestData objects.
+          all_state_update_tensors = [
+              d.state_update_tensors for d in server_test_data
+          ]
+          aggregated_state_update_tensors = aggregate_state_update_tensors(
+              stage, all_state_update_tensors)
+          updated_state = sess.run(
+              stage.update_state(state, aggregated_state_update_tensors))
+          server_test_data = [
+              d._replace(updated_state=updated_state) for d in server_test_data
+          ]
+
+      return server_test_data, decode_params
+
+    def _non_adaptive_many_to_one_encode_decode():
+      """Implementation of the method for `EncodingStageInterface`."""
+      server_graph = tf.Graph()
+      with server_graph.as_default():
+        shape = input_values[0].shape
+        encode_params, decode_params = stage.get_params()
+      with self.session(server_graph) as sess:
+        encode_params, decode_params = self.evaluate_tf_py_list(
+            [encode_params, decode_params], sess)
+
+      client_test_data = []
+      for x in input_values:
+        client_graph = tf.Graph()
+        with client_graph.as_default():
+          encoded_x = stage.encode(x, encode_params)
+        with self.session(client_graph):
+          encoded_x = self.evaluate(encoded_x)
+          client_test_data.append(TestData(x, encoded_x))
+
+      server_test_data = []
+      with server_graph.as_default():
+        with self.session(server_graph) as sess:
+          for test_data in client_test_data:
+            decoded_x = stage.decode(
+                test_data.encoded_x, decode_params, shape=shape)
+            server_test_data.append(
+                test_data._replace(decoded_x=sess.run(decoded_x)))
+      return server_test_data, decode_params
+
+    if is_adaptive_stage(stage):
+      return _adaptive_many_to_one_encode_decode(state)
+    else:
+      assert state is None
+      return _non_adaptive_many_to_one_encode_decode()
 
   def evaluate_tf_py_list(self, fetches, session=None):
     """Evaluates only provided `Tensor` objects and returns numpy values.
@@ -378,17 +511,7 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
         # accept None as an input argument.
         tf_fetches.append(placeholder_empty_tuple)
 
-    # Evaluate the structure containing the TensorFlow objects.
-    if any((tf.contrib.framework.is_tensor(t)
-            for t in tf.contrib.framework.nest.flatten(tf_fetches))):
-      # Only evaluate something if there is a Tensor to be evaluated.
-      if session:
-        eval_fetches = session.run(tf_fetches)
-      else:
-        eval_fetches = self.evaluate(tf_fetches)
-    else:
-      eval_fetches = tf_fetches
-
+    eval_fetches = self.maybe_evaluate(tf_fetches, session)
     # Merge back the two structures, not contatining Tensors.
     for i, value in enumerate(eval_fetches):
       if isinstance(value, dict):
@@ -396,6 +519,45 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
       elif value == placeholder_empty_tuple:
         eval_fetches[i] = py_fetches[i]
     return eval_fetches
+
+  def evaluate_test_data(self, test_data, session=None):
+    """Evaluates a `TestData` object.
+
+    Args:
+      test_data: A `TestData` namedtuple.
+      session: Optional. A `tf.Session` object in the context of which the
+        evaluation is to happen.
+
+    Returns:
+      A new `TestData` object with `Tensor` objects in `test_data` replaced by
+      numpy values.
+
+    Raises:
+      TypeError: If `test_data` is not a `TestData` namedtuple.
+    """
+    if not isinstance(test_data, TestData):
+      raise TypeError('A TestData object must be provided.')
+    _, data_tf = utils.split_dict_py_tf(test_data._asdict())
+    return test_data._replace(**self.maybe_evaluate(data_tf, session))
+
+  def maybe_evaluate(self, fetches, session=None):
+    """Evaluates `fetches`, if containing any `Tensor` objects.
+
+    Args:
+      fetches: Any nested structure compatible with `tf.contrib.framework.nest`.
+      session: Optional. A `tf.Session` object in the context of which the
+        evaluation is to happen.
+
+    Returns:
+      `fetches` with any `Tensor` objects replaced by numpy values.
+    """
+    if any((tf.contrib.framework.is_tensor(t)
+            for t in tf.contrib.framework.nest.flatten(fetches))):
+      if session:
+        fetches = session.run(fetches)
+      else:
+        fetches = self.evaluate(fetches)
+    return fetches
 
   def generic_asserts(self, test_data, stage):
     """Collection of static checks every implementation is expected to satisfy.
@@ -416,6 +578,18 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     # With a statically known input shape, the shape of decoded_x should be
     # statically known. If not statically known, both should be unknown.
     self.assertEqual(test_data.x.shape, test_data.decoded_x.shape)
+
+    if is_adaptive_stage(stage):
+      # The property should have keys matching those of state_update_tensors.
+      self.assertSameElements(stage.state_update_aggregation_modes.keys(),
+                              test_data.state_update_tensors.keys())
+
+      for tensor in six.itervalues(test_data.initial_state):
+        self.assertTrue(tf.contrib.framework.is_tensor(tensor))
+      for tensor in six.itervalues(test_data.state_update_tensors):
+        self.assertTrue(tf.contrib.framework.is_tensor(tensor))
+      for tensor in six.itervalues(test_data.updated_state):
+        self.assertTrue(tf.contrib.framework.is_tensor(tensor))
 
   def asserts_for_test_many_to_one_encode_decode(self, data):
     """Additional asserts for `test_many_to_one_encode_decode` method.
@@ -834,6 +1008,64 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
     return x - addend
 
 
+class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
+  """[Example] adaptive encoding stage, adding N*N in N-th iteration.
+
+  This is an example implementation of an `AdaptiveEncodingStageInterface` that
+  modifies state, which controls the creation of params. This is also a simple
+  example of how an `EncodingStageInterface` can be wrapped as an
+  `AdaptiveEncodingStageInterface`, without modifying the wrapped encode and
+  decode methods.
+  """
+
+  def __init__(self):
+    self._stage = PlusOneEncodingStage()
+
+  @property
+  def compressible_tensors_keys(self):
+    """See base class."""
+    return ['values']
+
+  @property
+  def commutes_with_sum(self):
+    """See base class."""
+    return False
+
+  @property
+  def decode_needs_input_shape(self):
+    """See base class."""
+    return False
+
+  @property
+  def state_update_aggregation_modes(self):
+    """See base class."""
+    return {}
+
+  def initial_state(self, name=None):
+    """See base class."""
+    return {'iteration': tf.constant(1.0)}
+
+  def update_state(self, state, state_update_tensors, name=None):
+    """See base class."""
+    del state_update_tensors  # Unused.
+    return {'iteration': state['iteration'] + tf.constant(1.0)}
+
+  def get_params(self, state, name=None):
+    """See base class."""
+    params = {'add': state['iteration'] * state['iteration']}
+    return params, params
+
+  @encoding_stage.tf_style_encode('plus_n_squared_encode')
+  def encode(self, x, encode_params, name=None):
+    """See base class."""
+    return self._stage.encode(x, encode_params, name), {}
+
+  @encoding_stage.tf_style_decode('plus_n_squared_decode')
+  def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+    """See base class."""
+    return self._stage.decode(encoded_tensors, decode_params, shape, name)
+
+
 def get_tensor_with_random_shape(expected_num_elements=10,
                                  source_fn=tf.random.uniform):
   """Returns a 1-D `Tensor` with random shape.
@@ -856,3 +1088,57 @@ def get_tensor_with_random_shape(expected_num_elements=10,
           source_fn([2 * expected_num_elements]),
           tf.where(
               tf.less(tf.random_uniform([2 * expected_num_elements]), 0.5))))
+
+
+def is_adaptive_stage(stage):
+  """Returns `True` if `stage` is an `AdaptiveEncodingStageInterface`."""
+  if isinstance(stage, encoding_stage.EncodingStageInterface):
+    assert not isinstance(stage, encoding_stage.AdaptiveEncodingStageInterface)
+    return False
+  elif isinstance(stage, encoding_stage.AdaptiveEncodingStageInterface):
+    return True
+  else:
+    raise TypeError(
+        'The provided `stage` must be either `EncodingStageInterface` or '
+        '`AdaptiveEncodingStageInterface`.')
+
+
+def aggregate_state_update_tensors(stage, state_update_tensors):
+  """Aggregates a collection of values for state update.
+
+  This method in an trivial example of implementation of the aggregation modes,
+  when all the values are available as numpy values simultaneously.
+
+  Args:
+    stage: An `AdaptiveEncodingStageInterface` object.
+    state_update_tensors: A `list` of `dict` objects, each of which corresponds
+      to `state_update_tensors` generated by the `stage.encode` method. Each
+      dictionary thus needs to have the same structure, corresponding to
+      `stage.state_update_aggregation_modes`, and contain numpy values.
+
+  Returns:
+    A dictionary of aggregated values.
+
+  Raises:
+    TypeError: If `stage` is not an `AdaptiveEncodingStageInterface`.
+  """
+
+  def _aggregate(values, aggregation_mode):
+    """Aggregates values according to aggregation mode."""
+    if aggregation_mode == encoding_stage.StateAggregationMode.SUM:
+      return np.sum(np.stack(values), axis=0)
+    elif aggregation_mode == encoding_stage.StateAggregationMode.MAX:
+      return np.amax(np.stack(values), axis=0)
+    elif aggregation_mode == encoding_stage.StateAggregationMode.MIN:
+      return np.amin(np.stack(values), axis=0)
+    elif aggregation_mode == encoding_stage.StateAggregationMode.STACK:
+      return np.stack(values)
+
+  if not is_adaptive_stage(stage):
+    raise TypeError(
+        'The provided `stage` must be an `AdaptiveEncodingStageInterface`.')
+  aggregated_state_update_tensors = {}
+  for key, mode in six.iteritems(stage.state_update_aggregation_modes):
+    aggregated_state_update_tensors[key] = _aggregate(
+        [t[key] for t in state_update_tensors], mode)
+  return aggregated_state_update_tensors

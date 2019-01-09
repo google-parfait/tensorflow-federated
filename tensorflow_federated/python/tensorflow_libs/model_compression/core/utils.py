@@ -19,29 +19,33 @@ from __future__ import print_function
 
 # Dependency imports
 
+import numpy as np
 import six
 import tensorflow as tf
 
 
-def static_or_dynamic_shape(tensor):
-  """Returns shape of the input `Tensor`.
+def static_or_dynamic_shape(value):
+  """Returns shape of the input `Tensor` or a `np.ndarray`.
 
-  If the shape is statically known, it returns a Python object. Otherwise,
-  returns result of `tf.shape(tensor)`.
+  If `value` is a `np.ndarray` or a `Tensor` with statically known shape, it
+  returns a Python object. Otherwise, returns result of `tf.shape(value)`.
 
   Args:
-    tensor: A `Tensor`.
+    value: A `Tensor` or a `np.ndarray` object.
 
   Returns:
-    Static or dynamic shape of `tensor`.
+    Static or dynamic shape of `value`.
 
   Raises:
     TypeError:
-      If the input is not a `Tensor`.
+      If the input is not a `Tensor` or a `np.ndarray` object.
   """
-  if not tf.contrib.framework.is_tensor(tensor):
-    raise TypeError('The provided input is not a Tensor.')
-  return tensor.shape if tensor.shape.is_fully_defined() else tf.shape(tensor)
+  if tf.contrib.framework.is_tensor(value):
+    return value.shape if value.shape.is_fully_defined() else tf.shape(value)
+  elif isinstance(value, np.ndarray):
+    return value.shape
+  else:
+    raise TypeError('The provided input is not a Tensor or numpy array.')
 
 
 def split_dict_py_tf(dictionary):

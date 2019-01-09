@@ -54,6 +54,7 @@ py_library(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
+        ":encoding_stage",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
