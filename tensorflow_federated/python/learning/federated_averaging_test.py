@@ -17,14 +17,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import optimizer_utils
 
 
 class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
@@ -111,21 +115,44 @@ class FederatedAveragingTffTest(test.TestCase):
   def test_orchestration(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.TrainableLinearRegression)
+
+    expected_model_weights_type = model_utils.ModelWeights(
+        collections.OrderedDict([('a', tff.TensorType(tf.float32, [2, 1])),
+                                 ('b', tf.float32)]),
+        collections.OrderedDict([('c', tf.float32)]))
+
+    # ServerState consists of a model and optimizer_state. The optimizer_state
+    # is provided by TensorFlow, TFF doesn't care what the actual value is.
+    expected_federated_server_state_type = tff.FederatedType(
+        optimizer_utils.ServerState(expected_model_weights_type,
+                                    test.AnyType()),
+        placement=tff.SERVER,
+        all_equal=True)
+
+    expected_federated_dataset_type = tff.FederatedType(
+        tff.SequenceType(
+            model_examples.TrainableLinearRegression.make_batch(
+                tff.TensorType(tf.float32, [None, 2]),
+                tff.TensorType(tf.float32, [None, 1]))),
+        tff.CLIENTS,
+        all_equal=False)
+
+    # `initialize` is expected to be a funcion of no arguments to a ServerState.
     self.assertEqual(
-        str(iterative_process.initialize.type_signature),
-        '( -> <model=<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>)')
+        tff.FunctionType(
+            parameter=None, result=expected_federated_server_state_type),
+        iterative_process.initialize.type_signature)
+
+    # `next` is expected be a function of (ServerState, Datasets) to
+    # ServerState.
     self.assertEqual(
-        str(iterative_process.next.type_signature),
-        '(<<model=<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>,'
-        '<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>> -> '
-        '<model=<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>)')
+        tff.FunctionType(
+            parameter=[
+                expected_federated_server_state_type,
+                expected_federated_dataset_type
+            ],
+            result=expected_federated_server_state_type),
+        iterative_process.next.type_signature)
 
 
 if __name__ == '__main__':

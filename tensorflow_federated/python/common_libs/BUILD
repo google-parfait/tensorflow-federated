@@ -50,6 +50,7 @@ py_library(
     testonly = 1,
     srcs = ["test.py"],
     deps = [
+        "//tensorflow_federated/python/core",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
