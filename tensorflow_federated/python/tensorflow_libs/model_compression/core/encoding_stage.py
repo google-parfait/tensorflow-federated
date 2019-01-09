@@ -476,3 +476,80 @@ def tf_style_decode(default_name):
     return actual_decode_fn
 
   return actual_decorator
+
+
+def as_adaptive_encoding_stage(stage):
+  """Returns an instance of `AdaptiveEncodingStageInterface`.
+
+  If an `EncodingStageInterface` object is provided, the returned instance of
+  `AdaptiveEncodingStageInterface` is passing around an empty state, not
+  modifying the functionality of the `stage` in any way.
+
+  Args:
+    stage: An `EncodingStageInterface` or `AdaptiveEncodingStageInterface`
+      object.
+
+  Returns:
+    An instance of `AdaptiveEncodingStageInterface` with the same functionality
+    as `stage`.
+
+  Raises:
+    TypeError: If `stage` is not `EncodingStageInterface` or
+    `AdaptiveEncodingStageInterface`.
+  """
+
+  if isinstance(stage, EncodingStageInterface):
+    return NoneStateAdaptiveEncodingStage(stage)
+  elif isinstance(stage, AdaptiveEncodingStageInterface):
+    return stage
+  else:
+    raise TypeError
+
+
+class NoneStateAdaptiveEncodingStage(AdaptiveEncodingStageInterface):
+  """Wraps an `EncodingStageInterface` as `AdaptiveEncodingStageInterface`."""
+
+  def __init__(self, wrapped_stage):
+    if not isinstance(wrapped_stage, EncodingStageInterface):
+      raise TypeError(
+          'The provided stage must be an instance of EncodingStageInterface.')
+    self._wrapped_stage = wrapped_stage
+
+  def __getattr__(self, attr):
+    return self._wrapped_stage.__getattribute__(attr)
+
+  @property
+  def compressible_tensors_keys(self):
+    return self._wrapped_stage.compressible_tensors_keys
+
+  @property
+  def commutes_with_sum(self):
+    return self._wrapped_stage.commutes_with_sum
+
+  @property
+  def decode_needs_input_shape(self):
+    return self._wrapped_stage.decode_needs_input_shape
+
+  @property
+  def state_update_aggregation_modes(self):
+    return {}
+
+  def initial_state(self, name=None):
+    return {}
+
+  def update_state(self, state, state_update_tensors, name=None):
+    del state  # Unused.
+    del state_update_tensors  # Unused.
+    return {}
+
+  def get_params(self, state, name=None):
+    del state  # Unused.
+    return self._wrapped_stage.get_params(name)
+
+  def encode(self, x, encode_params, name=None):
+    return self._wrapped_stage.encode(x, encode_params, name), {}
+
+  def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+    return self._wrapped_stage.decode(
+        encoded_tensors, decode_params, shape, name)
+

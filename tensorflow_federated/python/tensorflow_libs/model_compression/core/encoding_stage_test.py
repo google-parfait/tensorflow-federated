@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import encoding_stage
+from tensorflow_federated.python.tensorflow_libs.model_compression.core import test_utils
 
 
 class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
@@ -100,6 +101,63 @@ class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
       params = {'param': tf.constant(10.0)}
     with self.assertRaises(ValueError):
       self.evaluate(test_decode_fn(None, x, params, [], None))
+
+
+class NoneStateAdaptiveEncodingStageTest(tf.test.TestCase,
+                                         parameterized.TestCase):
+
+  def test_as_adaptive_encoding_stage(self):
+    """Tests correctness of the wrapped encoding stage."""
+    a_var = tf.get_variable('a', initializer=2.0)
+    b_var = tf.get_variable('b', initializer=3.0)
+    stage = test_utils.SimpleLinearEncodingStage(a_var, b_var)
+    wrapped_stage = encoding_stage.as_adaptive_encoding_stage(stage)
+    self.assertIsInstance(wrapped_stage,
+                          encoding_stage.AdaptiveEncodingStageInterface)
+
+    x = tf.constant(2.0)
+    state = wrapped_stage.initial_state()
+    encode_params, decode_params = wrapped_stage.get_params(state)
+    encoded_x, state_update_tensors = wrapped_stage.encode(x, encode_params)
+    updated_state = wrapped_stage.update_state(state, state_update_tensors)
+    decoded_x = wrapped_stage.decode(encoded_x, decode_params)
+
+    # Test that the added state functionality is empty.
+    self.assertDictEqual({}, state)
+    self.assertDictEqual({}, state_update_tensors)
+    self.assertDictEqual({}, updated_state)
+    self.assertDictEqual({}, wrapped_stage.state_update_aggregation_modes)
+    # Test that __getattr__ retrieves attributes of the wrapped stage.
+    self.assertIsInstance(wrapped_stage._a, tf.Variable)
+    self.assertIs(wrapped_stage._a, a_var)
+    self.assertIsInstance(wrapped_stage._b, tf.Variable)
+    self.assertIs(wrapped_stage._b, b_var)
+
+    # Test the functionality remain unchanged.
+    self.assertEqual(stage.compressible_tensors_keys,
+                     wrapped_stage.compressible_tensors_keys)
+    self.assertEqual(stage.commutes_with_sum,
+                     wrapped_stage.commutes_with_sum)
+    self.assertEqual(stage.decode_needs_input_shape,
+                     wrapped_stage.decode_needs_input_shape)
+
+    self.evaluate(tf.global_variables_initializer())
+    test_data = test_utils.TestData(*self.evaluate([x, encoded_x, decoded_x]))
+    self.assertEqual(2.0, test_data.x)
+    self.assertEqual(7.0, test_data.encoded_x['values'])
+    self.assertEqual(2.0, test_data.decoded_x)
+
+  def test_as_adaptive_encoding_stage_identity(self):
+    """Tests that this acts as identity for an adaptive encoding stage."""
+    adaptive_stage = encoding_stage.NoneStateAdaptiveEncodingStage(
+        test_utils.PlusOneEncodingStage())
+    wrapped_stage = encoding_stage.as_adaptive_encoding_stage(adaptive_stage)
+    self.assertIs(adaptive_stage, wrapped_stage)
+
+  @parameterized.parameters(1.0, 'string', object)
+  def test_as_adaptive_encoding_stage_raises(self, not_a_stage):
+    with self.assertRaises(TypeError):
+      encoding_stage.as_adaptive_encoding_stage(not_a_stage)
 
 
 if __name__ == '__main__':

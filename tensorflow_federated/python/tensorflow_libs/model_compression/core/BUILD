@@ -19,6 +19,7 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":encoding_stage",
+        ":test_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
