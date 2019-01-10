@@ -77,6 +77,27 @@ def federated_aggregate(value, zero, accumulate, merge, report):
   return factory.federated_aggregate(value, zero, accumulate, merge, report)
 
 
+def federated_apply(func, arg):
+  """Applies a given function to a federated value on the `SERVER`.
+
+  Args:
+    func: A function to apply to the member content of `arg` on the `SERVER`.
+      The parameter of this function must be of the same type as the member
+      constituent of `arg`.
+    arg: A value of a TFF federated type placed at the `SERVER`, and with the
+      `all_equal` bit set.
+
+  Returns:
+    A federated value on the `SERVER` that represents the result of applying
+    `func` to the member constituent of `arg`.
+
+  Raises:
+    TypeError: if the arguments are not of the appropriates computation_types.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_apply(func, arg)
+
+
 # TODO(b/122071074): Consider renaming federated_mean to better match names
 # in TensorFlow, Numpy, and Pandas.
 def federated_average(value, weight=None):
@@ -210,6 +231,24 @@ def federated_sum(value):
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_sum(value)
+
+
+def federated_value(value, placement):
+  """Returns a federated value at `placement`, with `value` as the constituent.
+
+  Args:
+    value: A value of a non-federated TFF type to be placed.
+    placement: The desired result placement (either `SERVER` or `CLIENTS`).
+
+  Returns:
+    A federated value with the given placement `placement`, and the member
+    constituent `value` equal at all locations.
+
+  Raises:
+    TypeError: if the arguments are not of the appropriates computation_types.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_value(value, placement)
 
 
 def federated_zip(value):

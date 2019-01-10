@@ -17,7 +17,8 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-An implementation of `Type` for representing named tuple types in TFF.
+An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
+representing named tuple types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -29,20 +30,14 @@ Constructs a new instance from the given element types.
 
 #### Args:
 
-* <b>`elements`</b>: Element specifications, in the format of a list, OrderedDict, or
-    tuple. Each element specification is either a type spec (an instance of
-    `Type` or something convertible to it via `to_type()`) for the element,
-    or a (name, spec) for elements that have defined names. Alternatively
-    one can supply here an instance of `collections.OrderedDict` mapping
-    element names to their types (or things that are convertible to types).
-
-
-#### Raises:
-
-* <b>`TypeError`</b>: if the arguments are of the wrong types.
-* <b>`ValueError`</b>: if the named tuple contains no elements.
-
-
+*   <b>`elements`</b>: Element specifications, in the format of a `list`,
+    `tuple`, or `collections.OrderedDict`. Each element specification is either
+    a type spec (an instance of
+    <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible
+    to it via `tff.to_type()`) for the element, or a (name, spec) for elements
+    that have defined names. Alternatively, one can supply here an instance of
+    `collections.OrderedDict` mapping element names to their types (or things
+    that are convertible to types).
 
 ## Methods
 
@@ -52,35 +47,13 @@ Constructs a new instance from the given element types.
 __dir__()
 ```
 
-__dir__() -> list
-default dir() implementation
-
 <h3 id="__eq__"><code>__eq__</code></h3>
 
 ``` python
 __eq__(other)
 ```
 
-Determines whether two type definitions are identical.
 
-Note that this notion of equality is stronger than equivalence. Two types
-with equivalent definitions may not be identical, e.g., if they represent
-templates with differently named type veriables in their definitions.
-
-#### Args:
-
-* <b>`other`</b>: The other type to compare against.
-
-
-#### Returns:
-
-`True` iff type definitions are syntatically identical (as defined above),
-or `False` otherwise.
-
-
-#### Raises:
-
-* <b>`NotImplementedError`</b>: If not implemented in the derived class.
 
 <h3 id="__getattr__"><code>__getattr__</code></h3>
 
@@ -119,8 +92,3 @@ __len__()
 ``` python
 __ne__(other)
 ```
-
-Return self!=value.
-
-
-

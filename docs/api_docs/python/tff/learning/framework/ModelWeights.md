@@ -31,10 +31,6 @@ __new__(
 )
 ```
 
-Create new instance of ModelWeightsBase(trainable, non_trainable)
-
-
-
 ## Properties
 
 <h3 id="trainable"><code>trainable</code></h3>

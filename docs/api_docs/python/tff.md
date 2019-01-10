@@ -21,15 +21,25 @@ TensorFlow Federated library.
 
 [`class Computation`](./tff/Computation.md): An abstract interface for all classes that represent computations.
 
-[`class FederatedType`](./tff/FederatedType.md): An implementation of `Type` for representing federated types in TFF.
+[`class FederatedType`](./tff/FederatedType.md): An implementation of
+<a href="./tff/Type.md"><code>tff.Type</code></a> representing federated types
+in TFF.
 
-[`class FunctionType`](./tff/FunctionType.md): An implementation of `Type` for representing functional types in TFF.
+[`class FunctionType`](./tff/FunctionType.md): An implementation of
+<a href="./tff/Type.md"><code>tff.Type</code></a> representing functional types
+in TFF.
 
-[`class NamedTupleType`](./tff/NamedTupleType.md): An implementation of `Type` for representing named tuple types in TFF.
+[`class NamedTupleType`](./tff/NamedTupleType.md): An implementation of
+<a href="./tff/Type.md"><code>tff.Type</code></a> representing named tuple types
+in TFF.
 
-[`class SequenceType`](./tff/SequenceType.md): An implementation of `Type` for representing types of sequences in TFF.
+[`class SequenceType`](./tff/SequenceType.md): An implementation of
+<a href="./tff/Type.md"><code>tff.Type</code></a> representing types of
+sequences in TFF.
 
-[`class TensorType`](./tff/TensorType.md): An implementation of `Type` for representing types of tensors in TFF.
+[`class TensorType`](./tff/TensorType.md): An implementation of
+<a href="./tff/Type.md"><code>tff.Type</code></a> representing types of tensors
+in TFF.
 
 [`class Type`](./tff/Type.md): An abstract interface for all classes that represent TFF types.
 
@@ -38,6 +48,9 @@ TensorFlow Federated library.
 ## Functions
 
 [`federated_aggregate(...)`](./tff/federated_aggregate.md): Aggregates `value` from `CLIENTS` to `SERVER` using a multi-stage process.
+
+[`federated_apply(...)`](./tff/federated_apply.md): Applies a given function to
+a federated value on the `SERVER`.
 
 [`federated_average(...)`](./tff/federated_average.md): Computes a `SERVER` average of `value` placed on `CLIENTS`.
 
@@ -52,6 +65,9 @@ TensorFlow Federated library.
 [`federated_reduce(...)`](./tff/federated_reduce.md): Reduces `value` from `CLIENTS` to `SERVER` using a reduction operator `op`.
 
 [`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a federated value placed on the `CLIENTS`.
+
+[`federated_value(...)`](./tff/federated_value.md): Returns a federated value at
+`placement`, with `value` as the constituent.
 
 [`federated_zip(...)`](./tff/federated_zip.md): Converts an N-tuple of federated values into a federated N-tuple value.
 

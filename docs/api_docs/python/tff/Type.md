@@ -47,8 +47,3 @@ or `False` otherwise.
 ``` python
 __ne__(other)
 ```
-
-Return self!=value.
-
-
-

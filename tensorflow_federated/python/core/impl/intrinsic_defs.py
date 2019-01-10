@@ -23,7 +23,6 @@ import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import type_constructors
 
 
@@ -193,6 +192,21 @@ FEDERATED_AGGREGATE = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('R'))))
 
+# Applies a given function to a value on the server.
+#
+# Type signature: <T@SERVER,(T->U)> -> U@SERVER
+FEDERATED_APPLY = IntrinsicDef(
+    'FEDERATED_APPLY', 'federated_apply',
+    computation_types.FunctionType(
+        parameter=[
+            type_constructors.at_server(computation_types.AbstractType('T')),
+            computation_types.FunctionType(
+                computation_types.AbstractType('T'),
+                computation_types.AbstractType('U'))
+        ],
+        result=type_constructors.at_server(
+            computation_types.AbstractType('U'))))
+
 # Computes a simple (equally weighted) average of client items. Only supported
 # for numeric tensor types, or composite structures made up of numeric types.
 #
@@ -213,8 +227,8 @@ FEDERATED_BROADCAST = IntrinsicDef(
     computation_types.FunctionType(
         parameter=type_constructors.at_server(
             computation_types.AbstractType('T')),
-        result=computation_types.FederatedType(
-            computation_types.AbstractType('T'), placements.CLIENTS, True)))
+        result=type_constructors.at_clients(
+            computation_types.AbstractType('T'), True)))
 
 # Materializes client items as a sequence on the server.
 #
@@ -228,7 +242,7 @@ FEDERATED_COLLECT = IntrinsicDef(
             computation_types.SequenceType(
                 computation_types.AbstractType('T')))))
 
-# Maps member constituents of a client value pointwise uising a given mapping
+# Maps member constituents of a client value pointwise using a given mapping
 # function that operates independently on each client.
 #
 # Type signature: <{T}@CLIENTS,(T->U)> -> {U}@CLIENTS
@@ -276,6 +290,26 @@ FEDERATED_SUM = IntrinsicDef(
     computation_types.FunctionType(
         parameter=type_constructors.at_clients(
             computation_types.AbstractType('T')),
+        result=type_constructors.at_server(
+            computation_types.AbstractType('T'))))
+
+# Places a value at the clients.
+#
+# Type signature: T -> T@CLIENTS
+FEDERATED_VALUE_AT_CLIENTS = IntrinsicDef(
+    'FEDERATED_VALUE_AT_CLIENTS', 'federated_value_at_clients',
+    computation_types.FunctionType(
+        parameter=computation_types.AbstractType('T'),
+        result=type_constructors.at_clients(
+            computation_types.AbstractType('T'), True)))
+
+# Places a value at the server.
+#
+# Type signature: T -> T@SERVER
+FEDERATED_VALUE_AT_SERVER = IntrinsicDef(
+    'FEDERATED_VALUE_AT_SERVER', 'federated_value_at_server',
+    computation_types.FunctionType(
+        parameter=computation_types.AbstractType('T'),
         result=type_constructors.at_server(
             computation_types.AbstractType('T'))))
 

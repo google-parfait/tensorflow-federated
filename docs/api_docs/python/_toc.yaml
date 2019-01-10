@@ -10,6 +10,8 @@ toc:
       path: /federated/api_docs/python/tff/FederatedType
     - title: federated_aggregate
       path: /federated/api_docs/python/tff/federated_aggregate
+    - title: federated_apply
+      path: /federated/api_docs/python/tff/federated_apply
     - title: federated_average
       path: /federated/api_docs/python/tff/federated_average
     - title: federated_broadcast
@@ -24,6 +26,8 @@ toc:
       path: /federated/api_docs/python/tff/federated_reduce
     - title: federated_sum
       path: /federated/api_docs/python/tff/federated_sum
+    - title: federated_value
+      path: /federated/api_docs/python/tff/federated_value
     - title: federated_zip
       path: /federated/api_docs/python/tff/federated_zip
     - title: FunctionType

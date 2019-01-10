@@ -109,6 +109,48 @@ class IntrinsicFactory(object):
             ], result_type)), self._context_stack)
     return intrinsic(value, zero, accumulate, merge, report)
 
+  def federated_apply(self, func, arg):
+    """Implements `federated_apply` as defined in `api/intrinsics.py`.
+
+    Args:
+      func: As in `api/intrinsics.py`.
+      arg: As in `api/intrinsics.py`.
+
+    Returns:
+      As in `api/intrinsics.py`.
+
+    Raises:
+      TypeError: As in `api/intrinsics.py`.
+    """
+    func = value_impl.to_value(func, None, self._context_stack)
+    py_typecheck.check_type(func, value_base.Value)
+    py_typecheck.check_type(func.type_signature, computation_types.FunctionType)
+
+    arg = value_impl.to_value(arg, None, self._context_stack)
+    type_utils.check_federated_value_placement(arg, placements.SERVER,
+                                               'the argument')
+    if not arg.type_signature.all_equal:
+      raise TypeError('The argument should be equal at all locations.')
+
+    if not type_utils.is_assignable_from(func.type_signature.parameter,
+                                         arg.type_signature.member):
+      raise TypeError(
+          'The function to apply expects a parameter of type {}, but member '
+          'constituents of the argument are of an incompatible type {}.'.format(
+              str(func.type_signature.parameter_type),
+              str(arg.type_signature.member)))
+
+    # TODO(b/113112108): Replace this as noted in `federated_broadcast()`.
+    result_type = computation_types.FederatedType(func.type_signature.result,
+                                                  placements.SERVER, True)
+    intrinsic = value_impl.ValueImpl(
+        computation_building_blocks.Intrinsic(
+            intrinsic_defs.FEDERATED_APPLY.uri,
+            computation_types.FunctionType(
+                [func.type_signature, arg.type_signature], result_type)),
+        self._context_stack)
+    return intrinsic(func, arg)
+
   def federated_average(self, value, weight):
     """Implements `federated_average` as defined in `api/intrinsics.py`.
 
@@ -364,6 +406,40 @@ class IntrinsicFactory(object):
     intrinsic = value_impl.ValueImpl(
         computation_building_blocks.Intrinsic(
             intrinsic_defs.FEDERATED_SUM.uri,
+            computation_types.FunctionType(value.type_signature, result_type)),
+        self._context_stack)
+    return intrinsic(value)
+
+  def federated_value(self, value, placement):
+    """Implements `federated_value` as defined in `api/intrinsics.py`.
+
+    Args:
+      value: As in `api/intrinsics.py`.
+      placement: As in `api/intrinsics.py`.
+
+    Returns:
+      As in `api/intrinsics.py`.
+
+    Raises:
+      TypeError: As in `api/intrinsics.py`.
+    """
+    value = value_impl.to_value(value, None, self._context_stack)
+
+    # TODO(b/113112108): Verify that neither the value, nor any of its parts
+    # are of a federated type.
+
+    if placement is placements.CLIENTS:
+      uri = intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri
+    elif placement is placements.SERVER:
+      uri = intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri
+    else:
+      raise TypeError('The placement must be either CLIENTS or SERVER.')
+
+    result_type = computation_types.FederatedType(value.type_signature,
+                                                  placement, True)
+    intrinsic = value_impl.ValueImpl(
+        computation_building_blocks.Intrinsic(
+            uri,
             computation_types.FunctionType(value.type_signature, result_type)),
         self._context_stack)
     return intrinsic(value)

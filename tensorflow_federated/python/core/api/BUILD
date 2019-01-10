@@ -90,10 +90,7 @@ py_test(
     srcs = ["intrinsics_test.py"],
     default_python_version = "PY3",
     deps = [
-        ":computation_types",
-        ":computations",
-        ":intrinsics",
-        ":placements",
+        ":api",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",

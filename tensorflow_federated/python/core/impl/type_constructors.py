@@ -67,16 +67,18 @@ def at_server(type_spec):
       type_spec, placements.SERVER, all_equal=True)
 
 
-def at_clients(type_spec):
+def at_clients(type_spec, all_equal=False):
   """Constructs a federated type of the form `{T}@CLIENTS`.
 
   Args:
     type_spec: An instance of computation_types.Type, or something convertible
       to it.
+    all_equal: The optional `all_equal` bit, `False` by default.
 
   Returns:
-    The type of the form `{T}@CLIENTS` where `T` is the `type_spec`.
+    The type of the form `{T}@CLIENTS` (by default) or `T@CLIENTS` (if specified
+    by setting the `all_equal` bit), where `T` is the `type_spec`.
   """
   type_spec = computation_types.to_type(type_spec)
   return computation_types.FederatedType(
-      type_spec, placements.CLIENTS, all_equal=False)
+      type_spec, placements.CLIENTS, all_equal=all_equal)
