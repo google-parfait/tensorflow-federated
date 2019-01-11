@@ -17,8 +17,8 @@ Returns a federated value at `placement`, with `value` as the constituent.
 #### Args:
 
 *   <b>`value`</b>: A value of a non-federated TFF type to be placed.
-*   <b>`placement`</b>: The desired result placement, either `SERVER` or
-    `CLIENTS`.
+*   <b>`placement`</b>: The desired result placement (either `SERVER` or
+    `CLIENTS`).
 
 #### Returns:
 
