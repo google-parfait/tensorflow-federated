@@ -89,8 +89,8 @@ def check_representation_matches_type(value, type_spec):
     * For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
 
     * For TFF functional types, Python callables that accept a single argument
-      that is a `ComputationValue` (if the function has a parameter) or `None`
-      (otherwise), and return a `ComputationValue` in the result.
+      that is a `ComputedValue` (if the function has a parameter) or `None`
+      (otherwise), and return a `ComputedValue` in the result.
 
   Args:
     value: The raw representation of the value to verify against `type_spec`.
@@ -187,8 +187,8 @@ def capture_computed_value_from_graph(value, type_spec):
 
   Args:
     value: A Python object made of tensors in `graph`, `tf.data.Dataset`s,
-      `AnonymousTuple`s and other structures, to be captured as an instance
-      of `ComputedValue`.
+      `AnonymousTuple`s and other structures, to be captured as an instance of
+      `ComputedValue`.
     type_spec: The type of the value to be captured.
 
   Returns:
