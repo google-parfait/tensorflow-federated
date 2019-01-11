@@ -60,7 +60,7 @@ def federated_aggregate(value, zero, accumulate, merge, report):
       If `value` is of type `{T}@CLIENTS`, and `zero` is of type `U`, this
       operator should be of type `(<U,T> -> U)`.
     merge: The reduction operator to employ in the second stage of the process.
-      Must be of type `(<U,T> -> U)`, where `T` and `U` are as defined above.
+      Must be of type `(<U,U> -> U)`, where `U` is as defined above.
     report: The projection operator to use at the final stage of the process to
       compute the final resulrt of aggregation. If the indended result to be
       returned by `federated_aggregate` is of type `R@SERVER`, this operator
