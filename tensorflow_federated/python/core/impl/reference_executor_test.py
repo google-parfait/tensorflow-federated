@@ -40,83 +40,63 @@ class ReferenceExecutorTest(absltest.TestCase):
         context._executor,  # pylint: disable=protected-access
         reference_executor.ReferenceExecutor)
 
-  def test_tensor_value(self):
-    v = reference_executor.TensorValue(10, tf.int32)
+  def test_computed_value(self):
+    v = reference_executor.ComputedValue(10, tf.int32)
     self.assertEqual(str(v.type_signature), 'int32')
     self.assertEqual(v.value, 10)
 
-  def test_named_tuple_value_success(self):
-    v = reference_executor.NamedTupleValue(
-        anonymous_tuple.AnonymousTuple([
-            ('x', reference_executor.TensorValue(10, tf.int32)),
-            ('y', reference_executor.TensorValue(20, tf.int32)),
-        ]), [('x', tf.int32), ('y', tf.int32)])
-    self.assertEqual(str(v.type_signature), '<x=int32,y=int32>')
-    self.assertCountEqual(dir(v.value), ['x', 'y'])
-    self.assertEqual(str(v.value.x.type_signature), 'int32')
-    self.assertEqual(v.value.x.value, 10)
-    self.assertEqual(str(v.value.y.type_signature), 'int32')
-    self.assertEqual(v.value.y.value, 20)
-
-  def test_named_tuple_value_with_bad_elements(self):
-    v = anonymous_tuple.AnonymousTuple([('x', 10)])
+  def test_check_representation_matches_type_with_tensor_value(self):
+    reference_executor.check_representation_matches_type(10, tf.int32)
     with self.assertRaises(TypeError):
-      reference_executor.NamedTupleValue(v, [('x', tf.int32)])
+      reference_executor.check_representation_matches_type(0.1, tf.int32)
+    with self.assertRaises(TypeError):
+      reference_executor.check_representation_matches_type([], tf.int32)
 
-  def test_function_value(self):
+  def test_check_representation_matches_type_with_named_tuple_value(self):
+    reference_executor.check_representation_matches_type(
+        anonymous_tuple.AnonymousTuple([('x', 10), ('y', 20)]),
+        [('x', tf.int32), ('y', tf.int32)])
+    reference_executor.check_representation_matches_type(
+        anonymous_tuple.AnonymousTuple([
+            ('x', anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])),
+            ('y', 30),
+        ]), [('x', [tf.int32, tf.int32]), ('y', tf.int32)])
+    with self.assertRaises(TypeError):
+      reference_executor.check_representation_matches_type(
+          anonymous_tuple.AnonymousTuple([
+              ('x', [10, 20]),
+              ('y', 30),
+          ]), [('x', [tf.int32, tf.int32]), ('y', tf.int32)])
+    with self.assertRaises(TypeError):
+      reference_executor.check_representation_matches_type(
+          10, [tf.int32, tf.int32])
+
+  def test_check_representation_matches_type_with_function_value(self):
 
     def foo(x):
       self.assertIsInstance(x, reference_executor.ComputedValue)
-      return reference_executor.TensorValue(str(x.value), tf.string)
+      return reference_executor.ComputedValue(str(x.value), tf.string)
 
-    v = reference_executor.FunctionValue(
+    reference_executor.check_representation_matches_type(
         foo, computation_types.FunctionType(tf.int32, tf.string))
-    self.assertEqual(str(v.type_signature), '(int32 -> string)')
-    result = v.value(reference_executor.TensorValue(10, tf.int32))
-    self.assertIsInstance(result, reference_executor.TensorValue)
-    self.assertEqual(str(result.type_signature), 'string')
-    self.assertEqual(result.value, '10')
+    with self.assertRaises(TypeError):
+      reference_executor.check_representation_matches_type(
+          10, computation_types.FunctionType(tf.int32, tf.string))
 
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
-    v = reference_executor.NamedTupleValue(
-        anonymous_tuple.AnonymousTuple(
-            [('x', reference_executor.TensorValue(10, tf.int32)),
-             ('y',
-              reference_executor.NamedTupleValue(
-                  anonymous_tuple.AnonymousTuple([
-                      ('z', reference_executor.TensorValue(0.6, tf.float32)),
-                  ]), [('z', tf.float32)]))]), [('x', tf.int32),
-                                                ('y', [('z', tf.float32)])])
+    v = reference_executor.ComputedValue(
+        anonymous_tuple.AnonymousTuple([('x', 10),
+                                        ('y',
+                                         anonymous_tuple.AnonymousTuple(
+                                             [('z', 0.6)]))]),
+        [('x', tf.int32), ('y', [('z', tf.float32)])])
+    reference_executor.check_representation_matches_type(
+        v.value, v.type_signature)
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
       with tf.Session(graph=graph) as sess:
         v_val = graph_utils.fetch_value_in_session(stamped_v, sess)
     self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
-
-  def test_to_computed_value_with_tuples_of_constants(self):
-    v = reference_executor.to_computed_value(
-        anonymous_tuple.AnonymousTuple([
-            ('x', 10),
-            ('y', anonymous_tuple.AnonymousTuple([('z', 0.6)])),
-        ]), [('x', tf.int32), ('y', [('z', tf.float32)])])
-    with tf.Graph().as_default() as graph:
-      stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
-      with tf.Session(graph=graph) as sess:
-        v_val = graph_utils.fetch_value_in_session(stamped_v, sess)
-    self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
-
-  def test_to_raw_value_with_tuples_of_constants(self):
-    x = reference_executor.NamedTupleValue(
-        anonymous_tuple.AnonymousTuple(
-            [('x', reference_executor.TensorValue(10, tf.int32)),
-             ('y',
-              reference_executor.NamedTupleValue(
-                  anonymous_tuple.AnonymousTuple([
-                      ('z', reference_executor.TensorValue(0.6, tf.float32)),
-                  ]), [('z', tf.float32)]))]), [('x', tf.int32),
-                                                ('y', [('z', tf.float32)])])
-    y = reference_executor.to_raw_value(x)
-    self.assertEqual(str(y), '<x=10,y=<z=0.6>>')
 
   def test_tensorflow_computation_with_one_constant(self):
 
