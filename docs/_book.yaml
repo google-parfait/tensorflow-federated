@@ -1,0 +1,40 @@
+upper_tabs:
+# Tabs left of dropdown menu
+- include: /_upper_tabs_left.yaml
+- include: /api_docs/_upper_tabs_api.yaml
+# Dropdown menu
+- name: Resources
+  path: /resources
+  is_default: true
+  menu:
+  - include: /resources/_menu_toc.yaml
+  lower_tabs:
+    # Subsite tabs
+    other:
+    - name: Tutorials
+      contents:
+      - title: Federated Learning for Image Classification
+        path: /federated/tutorials/federated_learning_for_image_classification
+      - title: Federated Learning for Text Generation
+        path: /federated/tutorials/federated_learning_for_text_generation
+      - title: Custom Federated Algorithms with the TFF Core API
+        path: /federated/tutorials/custom_federated_algorithms
+    - name: Guide
+      contents:
+      # The first item serves as the landing page and transitively leads to all the remaining
+      # content on the website. The `get_started.md` also serves as the canonical entry point
+      # to all the developer documentation contained in the directory structure on GitHub.
+      - title: Overview
+        path: /federated/get_started
+      - title: Installation
+        path: /federated/install
+      - title: Federated Core
+        path: /federated/federated_core
+      - title: Federated Learning
+        path: /federated/federated_learning
+    - name: API
+      skip_translation: true
+      contents:
+      - include: /federated/api_docs/python/_toc.yaml
+
+- include: /_upper_tabs_right.yaml
