@@ -25,6 +25,8 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import executor_context
 from tensorflow_federated.python.core.impl import graph_utils
@@ -97,6 +99,26 @@ class ReferenceExecutorTest(absltest.TestCase):
       with tf.Session(graph=graph) as sess:
         v_val = graph_utils.fetch_value_in_session(stamped_v, sess)
     self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
+
+  def test_computation_context(self):
+    c1 = reference_executor.ComputationContext()
+    c2 = reference_executor.ComputationContext(c1, {
+        'foo': reference_executor.ComputedValue(10, tf.int32)})
+    c3 = reference_executor.ComputationContext(c2, {
+        'bar': reference_executor.ComputedValue(11, tf.int32)})
+    c4 = reference_executor.ComputationContext(c3)
+    c5 = reference_executor.ComputationContext(c4, {
+        'foo': reference_executor.ComputedValue(12, tf.int32)})
+    self.assertRaises(ValueError, c1.resolve_reference, 'foo')
+    self.assertEqual(c2.resolve_reference('foo').value, 10)
+    self.assertEqual(c3.resolve_reference('foo').value, 10)
+    self.assertEqual(c4.resolve_reference('foo').value, 10)
+    self.assertEqual(c5.resolve_reference('foo').value, 12)
+    self.assertRaises(ValueError, c1.resolve_reference, 'bar')
+    self.assertRaises(ValueError, c2.resolve_reference, 'bar')
+    self.assertEqual(c3.resolve_reference('bar').value, 11)
+    self.assertEqual(c4.resolve_reference('bar').value, 11)
+    self.assertEqual(c5.resolve_reference('bar').value, 11)
 
   def test_tensorflow_computation_with_one_constant(self):
 
@@ -181,6 +203,82 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     self.assertEqual(foo((10, 20), (30, 40)), 100)
     self.assertEqual(foo((40, 30), (20, 10)), 100)
+
+  def test_tensorflow_computation_with_simple_lambda(self):
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation(tf.int32)
+    def add_two(x):
+      return add_one(add_one(x))
+
+    self.assertEqual(add_two(5), 7)
+
+  def test_tensorflow_computation_with_lambda_and_selection(self):
+    @computations.federated_computation(
+        tf.int32, computation_types.FunctionType(tf.int32, tf.int32))
+    def apply_twice(x, f):
+      return f(f(x))
+
+    add_one = computations.tf_computation(lambda x: x + 1, tf.int32)
+
+    self.assertEqual(apply_twice(5, add_one), 7)
+
+  def test_execute_with_nested_lambda(self):
+    int32_add = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_impl.ComputationImpl.get_proto(
+            computations.tf_computation(tf.add, [tf.int32, tf.int32])))
+
+    curried_int32_add = computation_building_blocks.Lambda(
+        'x',
+        tf.int32,
+        computation_building_blocks.Lambda(
+            'y',
+            tf.int32,
+            computation_building_blocks.Call(
+                int32_add,
+                computation_building_blocks.Tuple([
+                    (None,
+                     computation_building_blocks.Reference('x', tf.int32)),
+                    (None,
+                     computation_building_blocks.Reference('y', tf.int32))]))))
+
+    make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_impl.ComputationImpl.get_proto(
+            computations.tf_computation(lambda: tf.constant(10))))
+
+    add_10 = computation_building_blocks.Call(
+        curried_int32_add, computation_building_blocks.Call(make_10))
+
+    add_10_computation = computation_impl.ComputationImpl(
+        add_10.proto, context_stack_impl.context_stack)
+
+    self.assertEqual(add_10_computation(5), 15)
+
+  def test_execute_with_block(self):
+    add_one = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_impl.ComputationImpl.get_proto(
+            computations.tf_computation(lambda x: x + 1, tf.int32)))
+
+    make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_impl.ComputationImpl.get_proto(
+            computations.tf_computation(lambda: tf.constant(10))))
+
+    make_13 = computation_building_blocks.Block(
+        [('x', computation_building_blocks.Call(make_10)),
+         ('x', computation_building_blocks.Call(
+             add_one, computation_building_blocks.Reference('x', tf.int32))),
+         ('x', computation_building_blocks.Call(
+             add_one, computation_building_blocks.Reference('x', tf.int32))),
+         ('x', computation_building_blocks.Call(
+             add_one, computation_building_blocks.Reference('x', tf.int32)))],
+        computation_building_blocks.Reference('x', tf.int32))
+
+    make_13_computation = computation_impl.ComputationImpl(
+        make_13.proto, context_stack_impl.context_stack)
+
+    self.assertEqual(make_13_computation(), 13)
 
 
 if __name__ == '__main__':

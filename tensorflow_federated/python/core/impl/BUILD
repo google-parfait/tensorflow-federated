@@ -480,6 +480,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 
@@ -489,6 +490,8 @@ py_test(
     srcs = ["reference_executor_test.py"],
     default_python_version = "PY3",
     deps = [
+        ":computation_building_blocks",
+        ":computation_impl",
         ":context_stack_impl",
         ":executor_context",
         ":graph_utils",

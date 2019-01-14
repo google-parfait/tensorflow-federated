@@ -26,6 +26,7 @@ from __future__ import print_function
 
 # Dependency imports
 import numpy as np
+import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -230,6 +231,52 @@ def run_tensorflow(comp, arg):
                                            comp.type_signature.result)
 
 
+class ComputationContext(object):
+  """Encapsulates context/state in which computations or parts thereof run."""
+
+  def __init__(self, parent_context=None, local_symbols=None):
+    """Constructs a new execution context.
+
+    Args:
+      parent_context: The parent context, or `None` if this is the root.
+      local_symbols: The dictionary of local symbols defined in this context,
+        or `None` if there are none. The keys (names) are of a string type,
+        and the values (what the names bind to) are of type `ComputedValue`.
+    """
+    if parent_context is not None:
+      py_typecheck.check_type(parent_context, ComputationContext)
+    self._parent_context = parent_context
+    self._local_symbols = {}
+    if local_symbols is not None:
+      py_typecheck.check_type(local_symbols, dict)
+      for k, v in six.iteritems(local_symbols):
+        py_typecheck.check_type(k, six.string_types)
+        py_typecheck.check_type(v, ComputedValue)
+        self._local_symbols[str(k)] = v
+
+  def resolve_reference(self, name):
+    """Resolves the given reference `name` in this context.
+
+    Args:
+      name: The string name to resolve.
+
+    Returns:
+      An instance of `ComputedValue` corresponding to this name.
+
+    Raises:
+      ValueError: If the name cannot be resolved.
+    """
+    py_typecheck.check_type(name, six.string_types)
+    value = self._local_symbols.get(str(name))
+    if value is not None:
+      return value
+    elif self._parent_context is not None:
+      return self._parent_context.resolve_reference(name)
+    else:
+      raise ValueError(
+          'The name \'{}\' is not defined in this context.'.format(name))
+
+
 class ReferenceExecutor(executor_base.Executor):
   """A simple interpreted reference executor.
 
@@ -284,7 +331,7 @@ class ReferenceExecutor(executor_base.Executor):
       expected_result_type = comp.type_signature
 
     comp = transformations.name_compiled_computations(comp)
-    result = self._compute(comp)
+    result = self._compute(comp, ComputationContext())
 
     if not type_utils.is_assignable_from(expected_result_type,
                                          result.type_signature):
@@ -294,12 +341,13 @@ class ReferenceExecutor(executor_base.Executor):
               str(result.type_signature), str(expected_result_type)))
     return result.value
 
-  def _compute(self, comp):
+  def _compute(self, comp, context):
     """Computes `comp` and returns the resulting computed value.
 
     Args:
       comp: An instance of
         `computation_building_blocks.ComputationBuildingBlock`.
+      context: An instance of `ComputationContext`.
 
     Returns:
       The corresponding instance of `ComputedValue` that represents the result
@@ -312,31 +360,31 @@ class ReferenceExecutor(executor_base.Executor):
         supported by this executor.
     """
     if isinstance(comp, computation_building_blocks.CompiledComputation):
-      return self._compute_compiled(comp)
+      return self._compute_compiled(comp, context)
     elif isinstance(comp, computation_building_blocks.Call):
-      return self._compute_call(comp)
+      return self._compute_call(comp, context)
     elif isinstance(comp, computation_building_blocks.Tuple):
-      return self._compute_tuple(comp)
+      return self._compute_tuple(comp, context)
     elif isinstance(comp, computation_building_blocks.Reference):
-      return self._compute_reference(comp)
+      return self._compute_reference(comp, context)
     elif isinstance(comp, computation_building_blocks.Selection):
-      return self._compute_selection(comp)
+      return self._compute_selection(comp, context)
     elif isinstance(comp, computation_building_blocks.Lambda):
-      return self._compute_lambda(comp)
+      return self._compute_lambda(comp, context)
     elif isinstance(comp, computation_building_blocks.Block):
-      return self._compute_block(comp)
+      return self._compute_block(comp, context)
     elif isinstance(comp, computation_building_blocks.Intrinsic):
-      return self._compute_intrinsic(comp)
+      return self._compute_intrinsic(comp, context)
     elif isinstance(comp, computation_building_blocks.Data):
-      return self._compute_data(comp)
+      return self._compute_data(comp, context)
     elif isinstance(comp, computation_building_blocks.Placement):
-      return self._compute_placement(comp)
+      return self._compute_placement(comp, context)
     else:
       raise NotImplementedError(
           'A computation building block of a type {} not currently recognized '
           'by the reference executor: {}.'.format(str(type(comp)), str(comp)))
 
-  def _compute_compiled(self, comp):
+  def _compute_compiled(self, comp, context):
     py_typecheck.check_type(comp,
                             computation_building_blocks.CompiledComputation)
     computation_oneof = comp.proto.WhichOneof('computation')
@@ -348,13 +396,13 @@ class ReferenceExecutor(executor_base.Executor):
       return ComputedValue(lambda x: run_tensorflow(comp, x),
                            comp.type_signature)
 
-  def _compute_call(self, comp):
+  def _compute_call(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Call)
-    computed_func = self._compute(comp.function)
+    computed_func = self._compute(comp.function, context)
     py_typecheck.check_type(computed_func.type_signature,
                             computation_types.FunctionType)
     if comp.argument is not None:
-      computed_arg = self._compute(comp.argument)
+      computed_arg = self._compute(comp.argument, context)
       if not type_utils.is_assignable_from(
           computed_func.type_signature.parameter, computed_arg.type_signature):
         raise TypeError(
@@ -374,12 +422,12 @@ class ReferenceExecutor(executor_base.Executor):
                           str(computed_func.type_signature.result)))
     return result
 
-  def _compute_tuple(self, comp):
+  def _compute_tuple(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Tuple)
     result_elements = []
     result_type_elements = []
     for k, v in anonymous_tuple.to_elements(comp):
-      computed_v = self._compute(v)
+      computed_v = self._compute(v, context)
       if not type_utils.is_assignable_from(v.type_signature,
                                            computed_v.type_signature):
         raise TypeError(
@@ -393,30 +441,63 @@ class ReferenceExecutor(executor_base.Executor):
         computation_types.NamedTupleType(
             [(k, v) if k else v for k, v in result_type_elements]))
 
-  def _compute_selection(self, comp):
+  def _compute_selection(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Selection)
-    raise NotImplementedError('Selection is currently unsupported.')
+    source = self._compute(comp.source, context)
+    py_typecheck.check_type(
+        source.type_signature, computation_types.NamedTupleType)
+    py_typecheck.check_type(source.value, anonymous_tuple.AnonymousTuple)
+    if comp.name is not None:
+      result_value = getattr(source.value, comp.name)
+      result_type = getattr(source.type_signature, comp.name)
+    else:
+      assert comp.index is not None
+      result_value = source.value[comp.index]
+      result_type = source.type_signature[comp.index]
+    if not type_utils.is_assignable_from(comp.type_signature, result_type):
+      raise TypeError(
+          'Expected the result of selection to be {}, found {}.'.format(
+              str(comp.type_signature), str(result_type)))
+    return ComputedValue(result_value, result_type)
 
-  def _compute_lambda(self, comp):
+  def _compute_lambda(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Lambda)
-    raise NotImplementedError('Lambda is currently unsupported.')
+    py_typecheck.check_type(context, ComputationContext)
+    def _wrap(arg):
+      py_typecheck.check_type(arg, ComputedValue)
+      if not type_utils.is_assignable_from(
+          comp.parameter_type, arg.type_signature):
+        raise TypeError(
+            'Expected the type of argument {} to be {}, found {}.'.format(
+                str(comp.parameter_name),
+                str(comp.parameter_type),
+                str(arg.type_signature)))
+      return ComputationContext(context, {comp.parameter_name: arg})
+    return ComputedValue(
+        lambda x: self._compute(comp.result, _wrap(x)),
+        comp.type_signature)
 
-  def _compute_reference(self, comp):
+  def _compute_reference(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Reference)
-    raise NotImplementedError('Reference is currently unsupported.')
+    py_typecheck.check_type(context, ComputationContext)
+    return context.resolve_reference(comp.name)
 
-  def _compute_block(self, comp):
+  def _compute_block(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Block)
-    raise NotImplementedError('Block is currently unsupported.')
+    py_typecheck.check_type(context, ComputationContext)
+    for local_name, local_comp in comp.locals:
+      local_val = self._compute(local_comp, context)
+      context = ComputationContext(context, {local_name: local_val})
+    return self._compute(comp.result, context)
 
-  def _compute_intrinsic(self, comp):
+  def _compute_intrinsic(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Intrinsic)
     raise NotImplementedError('Intrinsic is currently unsupported.')
 
-  def _compute_data(self, comp):
+  def _compute_data(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Data)
     raise NotImplementedError('Data is currently unsupported.')
 
-  def _compute_placement(self, comp):
+  def _compute_placement(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Placement)
     raise NotImplementedError('Placement is currently unsupported.')
