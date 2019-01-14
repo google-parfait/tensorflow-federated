@@ -137,7 +137,7 @@ class IntrinsicFactory(object):
       raise TypeError(
           'The function to apply expects a parameter of type {}, but member '
           'constituents of the argument are of an incompatible type {}.'.format(
-              str(func.type_signature.parameter_type),
+              str(func.type_signature.parameter),
               str(arg.type_signature.member)))
 
     # TODO(b/113112108): Replace this as noted in `federated_broadcast()`.
@@ -317,7 +317,7 @@ class IntrinsicFactory(object):
           'The mapping function expects a parameter of type {}, but member '
           'constituents of the mapped value are of incompatible type {}.'
           .format(
-              str(mapping_fn.type_signature.parameter_type),
+              str(mapping_fn.type_signature.parameter),
               str(value.type_signature.member)))
 
     # TODO(b/113112108): Replace this as noted above.
