@@ -39,6 +39,10 @@ from tensorflow_federated.python.tensorflow_libs.model_compression.core import e
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import utils
 
 
+DEFAULT_RTOL = 1e-05
+DEFAULT_ATOL = 1e-05
+
+
 # Named tuple containing the values summarizing the results for a single
 # evaluation of an encoding stage.
 TestData = collections.namedtuple(
@@ -171,7 +175,8 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     # Evaluate the Tensors and get numpy values.
     test_data = self.evaluate(test_data)
     if self.is_lossless:
-      self.assertAllClose(test_data.x, test_data.decoded_x)
+      self.assertAllClose(test_data.x, test_data.decoded_x,
+                          rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
     self.common_asserts_for_test_data(test_data)
 
   def test_one_to_many_encode_decode(self):
@@ -213,7 +218,8 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     if self.is_lossless:
       self.assertAllClose(
           np.sum([d.x for d in server_test_data], axis=0),
-          np.sum([d.decoded_x for d in server_test_data], axis=0))
+          np.sum([d.decoded_x for d in server_test_data], axis=0),
+          rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
     if stage.commutes_with_sum:
       self.assert_commutes_with_sum(server_test_data, stage, decode_params,
                                     input_values[0].shape)
@@ -457,7 +463,8 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
       with self.session() as sess:
         decode_sum_encoded_x = sess.run(
             stage.decode(sum_encoded_x, decode_params, shape))
-    self.assertAllClose(expected_sum, decode_sum_encoded_x)
+    self.assertAllClose(expected_sum, decode_sum_encoded_x,
+                        rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
 
 
 class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
@@ -670,9 +677,77 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
     return encoded_tensors['values']
 
 
-# TODO(b/120977011): Implement a deterministic random op that can be checked in
-# third_party and provide an example implementation of EncodingStageInterface
-# that relies on a shared random seed.
+def dummy_rng_source(seed, num_elements):
+  """Dummy TensorFlow random number generator.
+
+  We need a custom random source, which would be always deterministic given a
+  random seed. That is not currently available available in TensorFlow. This
+  simple function serves an illustrative purpose. It is *not* a useful random
+  number generator, and should only be used in tests.
+
+  Args:
+    seed: A random seed.
+    num_elements: Number of random values to generate.
+
+  Returns:
+    A `Tensor` of shape `(num_elements)` containing pseudorandom values.
+  """
+  def next_num(num):
+    # This creates a cycle of length 136.
+    return tf.mod((num * 13), 137)
+
+  num = tf.reshape(tf.mod(seed, 136) + 1, (1,))
+  result = num
+  for _ in range(num_elements - 1):
+    num = next_num(num)
+    result = tf.concat([result, num], 0)
+  return tf.to_float(result)
+
+
+class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
+  """[Example] encoding stage, adding random values given a random seed.
+
+  This is an example implementation of an `EncodingStageInterface` that depends
+  on a shared random seed. The seed `Tensor` should be created in the
+  `get_params` method, and the same values should evantually be passed to both
+  `encode` and `decode` methods, making sure a randomized transform is
+  invertible.
+  """
+
+  @property
+  def compressible_tensors_keys(self):
+    """See base class."""
+    return ['values']
+
+  @property
+  def commutes_with_sum(self):
+    """See base class."""
+    return False
+
+  @property
+  def decode_needs_input_shape(self):
+    """See base class."""
+    return False
+
+  def get_params(self, name=None):
+    """See base class."""
+    params = {'seed': tf.random.uniform((), maxval=137, dtype=tf.int32)}
+    return params, params
+
+  @encoding_stage.tf_style_encode('plus_one_encode')
+  def encode(self, x, encode_params, name=None):
+    """See base class."""
+    addend = dummy_rng_source(encode_params['seed'], x.shape.num_elements())
+    addend = tf.reshape(addend, x.shape)
+    return {'values': x + addend}
+
+  @encoding_stage.tf_style_decode('plus_one_decode')
+  def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+    """See base class."""
+    x = encoded_tensors['values']
+    addend = dummy_rng_source(decode_params['seed'], x.shape.num_elements())
+    addend = tf.reshape(addend, x.shape)
+    return x - addend
 
 
 def get_tensor_with_random_shape(expected_num_elements=10,
