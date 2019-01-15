@@ -86,6 +86,10 @@ class IntrinsicDef(object):
 # layers of intermediate aggregators. The type signatures of these generic
 # intrinsics are tentatively defined as follows:
 #
+# - Place an unplaced value:
+#
+#     generic_place: <T,p> -> T@p
+#
 # - Compute an aggregate using the 4-part aggregation operator interface:
 #
 #     generic_aggregate: <{T}@p,U,(<U,T>->U),(<U,U>->U),(U->R),q> -> R@q
@@ -352,6 +356,10 @@ FEDERATED_ZIP = IntrinsicDef(
             computation_types.AbstractType('T'),
             computation_types.AbstractType('U')
         ])))
+
+# TODO(b/122728050): Define GENERIC_DIVIDE, GENERIC_MULTIPLY, and GENERIC_ONE
+# to support intrinsic reductions (see the uses in intrinsic_bodies.py for
+# the motivation and usage in support of which we need to define semantics).
 
 # Generic plus operator that accepts a variety of types in federated computation
 # context. The range of types 'T' supported to be defined. It should work in a
