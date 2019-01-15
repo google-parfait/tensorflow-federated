@@ -52,7 +52,7 @@ class IntrinsicDefsTest(parameterized.TestCase):
 
   @parameterized.parameters(
       ('FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
-      ('FEDERATED_MAP', '(<{T}@CLIENTS,(T -> U)> -> {U}@CLIENTS)'),
+      ('FEDERATED_MAP', '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
       ('FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
       ('FEDERATED_ZIP', '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'))
   def test_type_signature_strings(self, name, type_str):

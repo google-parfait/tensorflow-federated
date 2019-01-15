@@ -110,7 +110,11 @@ class IntrinsicDef(object):
 #
 # - Pointwise mapping of constituents of a federated value:
 #
-#     generic_map: <{T}@p,(T->U)> -> {U}@p
+#     generic_map: <(T->U),{T}@p> -> {U}@p
+#
+# - Pointwise mapping of all-equal constituents of a federated value:
+#
+#     generic_apply: <(T->U),T@p> -> U@p
 #
 # - Perform one-stage set reduction of a federated value with a given operator,
 #   with the participants at 'q' reducing over disjoint subsets of 'p' that
@@ -169,7 +173,7 @@ class IntrinsicDef(object):
 # def federated_aggregate(x, zero, accumulate, merge, report):
 #   a = generic_partial_reduce(x, zero, accumulate, INTERMEDIATE_AGGREGATORS)
 #   b = generic_reduce(a, zero, merge, SERVER)
-#   c = generic_map(b, report)
+#   c = generic_map(report, b)
 #   return c
 #
 # Actual implementations might vary.
@@ -194,15 +198,15 @@ FEDERATED_AGGREGATE = IntrinsicDef(
 
 # Applies a given function to a value on the server.
 #
-# Type signature: <T@SERVER,(T->U)> -> U@SERVER
+# Type signature: <(T->U),T@SERVER> -> U@SERVER
 FEDERATED_APPLY = IntrinsicDef(
     'FEDERATED_APPLY', 'federated_apply',
     computation_types.FunctionType(
         parameter=[
-            type_constructors.at_server(computation_types.AbstractType('T')),
             computation_types.FunctionType(
                 computation_types.AbstractType('T'),
-                computation_types.AbstractType('U'))
+                computation_types.AbstractType('U')),
+            type_constructors.at_server(computation_types.AbstractType('T')),
         ],
         result=type_constructors.at_server(
             computation_types.AbstractType('U'))))
@@ -245,15 +249,15 @@ FEDERATED_COLLECT = IntrinsicDef(
 # Maps member constituents of a client value pointwise using a given mapping
 # function that operates independently on each client.
 #
-# Type signature: <{T}@CLIENTS,(T->U)> -> {U}@CLIENTS
+# Type signature: <(T->U),{T}@CLIENTS> -> {U}@CLIENTS
 FEDERATED_MAP = IntrinsicDef(
     'FEDERATED_MAP', 'federated_map',
     computation_types.FunctionType(
         parameter=[
-            type_constructors.at_clients(computation_types.AbstractType('T')),
             computation_types.FunctionType(
                 computation_types.AbstractType('T'),
-                computation_types.AbstractType('U'))
+                computation_types.AbstractType('U')),
+            type_constructors.at_clients(computation_types.AbstractType('T')),
         ],
         result=type_constructors.at_clients(
             computation_types.AbstractType('U'))))
@@ -369,3 +373,51 @@ GENERIC_PLUS = IntrinsicDef(
 # Type signature: T
 GENERIC_ZERO = IntrinsicDef('GENERIC_ZERO', 'generic_zero',
                             computation_types.AbstractType('T'))
+
+# Maps elements of a sequence using a given mapping function that operates
+# independently on each element.
+#
+# Type signature: <(T->U),T*> -> U*
+SEQUENCE_MAP = IntrinsicDef(
+    'SEQUENCE_MAP', 'sequence_map',
+    computation_types.FunctionType(
+        parameter=[
+            computation_types.FunctionType(
+                computation_types.AbstractType('T'),
+                computation_types.AbstractType('U')),
+            computation_types.SequenceType(computation_types.AbstractType('T')),
+        ],
+        result=computation_types.SequenceType(
+            computation_types.AbstractType('U'))))
+
+# Reduces a sequence using a given 'zero' in the algebra (i.e., the result of
+# reducing an empty sequence) and a given reduction operator with the signature
+# U,T->U that incorporates a single T-typed element into a U-typed result of
+# partial reduction. In the special case of T = U, this corresponds to the
+# classical notion of reduction of a set using a commutative associative binary
+# operator. The generalized reduction operator (with T != U) must yield the same
+# results when repeatedly applied on sequences of elements in any order.
+#
+# Type signature: <T*,U,(<U,T>->U)> -> U
+SEQUENCE_REDUCE = IntrinsicDef(
+    'SEQUENCE_REDUCE', 'sequence_reduce',
+    computation_types.FunctionType(
+        parameter=[
+            computation_types.SequenceType(computation_types.AbstractType('T')),
+            computation_types.AbstractType('U'),
+            type_constructors.reduction_op(
+                computation_types.AbstractType('U'),
+                computation_types.AbstractType('T'))
+        ],
+        result=computation_types.AbstractType('U')))
+
+# Computes the sum of values in a sequence. Only supported for numeric types
+# or nested structures made up of numeric types.
+#
+# Type signature: T* -> T
+SEQUENCE_SUM = IntrinsicDef(
+    'SEQUENCE_SUM', 'sequence_sum',
+    computation_types.FunctionType(
+        parameter=computation_types.SequenceType(
+            computation_types.AbstractType('T')),
+        result=computation_types.AbstractType('T')))

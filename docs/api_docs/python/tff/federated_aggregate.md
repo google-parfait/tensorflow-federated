@@ -48,18 +48,19 @@ The aggregation process is defined as follows:
 
 #### Args:
 
-* <b>`value`</b>: A value of a TFF federated type placed at `CLIENTS` to aggregate.
-* <b>`zero`</b>: The zero in the algebra of reduction operators, as described above.
-* <b>`accumulate`</b>: The reduction operator to use in the first stage of the process.
-    If `value` is of type `{T}@CLIENTS`, and `zero` is of type `U`, this
-    operator should be of type `(<U,T> -> U)`.
-* <b>`merge`</b>: The reduction operator to employ in the second stage of the process.
-    Must be of type `(<U,T> -> U)`, where `T` and `U` are as defined above.
-* <b>`report`</b>: The projection operator to use at the final stage of the process to
-    compute the final resulrt of aggregation. If the indended result to be
-    returned by `federated_aggregate` is of type `R@SERVER`, this operator
+*   <b>`value`</b>: A value of a TFF federated type placed at `CLIENTS` to
+    aggregate.
+*   <b>`zero`</b>: The zero in the algebra of reduction operators, as described
+    above.
+*   <b>`accumulate`</b>: The reduction operator to use in the first stage of the
+    process. If `value` is of type `{T}@CLIENTS`, and `zero` is of type `U`,
+    this operator should be of type `(<U,T> -> U)`.
+*   <b>`merge`</b>: The reduction operator to employ in the second stage of the
+    process. Must be of type `(<U,U> -> U)`, where `U` is as defined above.
+*   <b>`report`</b>: The projection operator to use at the final stage of the
+    process to compute the final resulrt of aggregation. If the indended result
+    to be returned by `federated_aggregate` is of type `R@SERVER`, this operator
     must be of type `(U -> R)`.
-
 
 #### Returns:
 

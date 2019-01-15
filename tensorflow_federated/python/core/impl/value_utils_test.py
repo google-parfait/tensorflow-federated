@@ -25,9 +25,12 @@ from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
 
@@ -117,6 +120,22 @@ class ValueUtilsTest(parameterized.TestCase):
         value_impl.to_value(input_function, None, _context_stack), type_to_add,
         _context_stack)
     self.assertEqual(str(new_func.type_signature), str(desired_function_type))
+
+  def test_get_curried(self):
+    add_numbers = value_impl.ValueImpl(
+        computation_building_blocks.ComputationBuildingBlock.from_proto(
+            computation_impl.ComputationImpl.get_proto(
+                computations.tf_computation(tf.add, [tf.int32, tf.int32]))),
+        _context_stack)
+
+    curried = value_utils.get_curried(add_numbers)
+    self.assertEqual(str(curried.type_signature), '(int32 -> (int32 -> int32))')
+
+    self.assertEqual(
+        str(
+            transformations.name_compiled_computations(
+                value_impl.ValueImpl.get_comp(curried))),
+        '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
 
 
 if __name__ == '__main__':

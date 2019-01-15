@@ -276,12 +276,12 @@ class IntrinsicFactory(object):
         self._context_stack)
     return intrinsic(value)
 
-  def federated_map(self, value, mapping_fn):
+  def federated_map(self, mapping_fn, value):
     """Implements `federated_map` as defined in `api/intrinsics.py`.
 
     Args:
-      value: As in `api/intrinsics.py`.
       mapping_fn: As in `api/intrinsics.py`.
+      value: As in `api/intrinsics.py`.
 
     Returns:
       As in `api/intrinsics.py`.
@@ -327,9 +327,10 @@ class IntrinsicFactory(object):
     intrinsic = value_impl.ValueImpl(
         computation_building_blocks.Intrinsic(
             intrinsic_defs.FEDERATED_MAP.uri,
-            computation_types.FunctionType(value.type_signature, result_type)),
-        self._context_stack)
-    return intrinsic(value)
+            computation_types.FunctionType(
+                [mapping_fn.type_signature, value.type_signature],
+                result_type)), self._context_stack)
+    return intrinsic(mapping_fn, value)
 
   def federated_reduce(self, value, zero, op):
     """Implements `federated_reduce` as defined in `api/intrinsics.py`.
@@ -503,4 +504,151 @@ class IntrinsicFactory(object):
           anonymous_tuple.to_elements(zipped.type_signature.member)[-1][1])
       flatten_func = value_utils.flatten_first_index(flatten_func, new_type,
                                                      self._context_stack)
-    return self.federated_map(zipped, flatten_func)
+    return self.federated_map(flatten_func, zipped)
+
+  def sequence_map(self, mapping_fn, value):
+    """Implements `sequence_map` as defined in `api/intrinsics.py`.
+
+    Args:
+      mapping_fn: As in `api/intrinsics.py`.
+      value: As in `api/intrinsics.py`.
+
+    Returns:
+      As in `api/intrinsics.py`.
+
+    Raises:
+      TypeError: As in `api/intrinsics.py`.
+    """
+    mapping_fn = value_impl.to_value(mapping_fn, None, self._context_stack)
+    py_typecheck.check_type(mapping_fn.type_signature,
+                            computation_types.FunctionType)
+    sequence_map_intrinsic = value_impl.ValueImpl(
+        computation_building_blocks.Intrinsic(
+            intrinsic_defs.SEQUENCE_MAP.uri,
+            computation_types.FunctionType([
+                mapping_fn.type_signature,
+                computation_types.SequenceType(
+                    mapping_fn.type_signature.parameter)
+            ], computation_types.SequenceType(
+                mapping_fn.type_signature.result))), self._context_stack)
+    value = value_impl.to_value(value, None, self._context_stack)
+    if isinstance(value.type_signature, computation_types.SequenceType):
+      return sequence_map_intrinsic(mapping_fn, value)
+    elif isinstance(value.type_signature, computation_types.FederatedType):
+      local_func = value_utils.get_curried(sequence_map_intrinsic)(mapping_fn)
+      if value.type_signature.placement is placements.SERVER:
+        return self.federated_apply(local_func, value)
+      elif value.type_signature.placement is placements.CLIENTS:
+        return self.federated_map(local_func, value)
+      else:
+        raise TypeError('Unsupported placement {}.'.format(
+            str(value.type_signature.placement)))
+    else:
+      raise TypeError(
+          'Cannot apply `tff.sequence_map()` to a value of type {}.'.format(
+              str(value.type_signature)))
+
+  def sequence_reduce(self, value, zero, op):
+    """Implements `sequence_reduce` as defined in `api/intrinsics.py`.
+
+    Args:
+      value: As in `api/intrinsics.py`.
+      zero: As in `api/intrinsics.py`.
+      op: As in `api/intrinsics.py`.
+
+    Returns:
+      As in `api/intrinsics.py`.
+
+    Raises:
+      TypeError: As in `api/intrinsics.py`.
+    """
+    value = value_impl.to_value(value, None, self._context_stack)
+    zero = value_impl.to_value(zero, None, self._context_stack)
+    op = value_impl.to_value(op, None, self._context_stack)
+    if isinstance(value.type_signature, computation_types.SequenceType):
+      element_type = value.type_signature.element
+    else:
+      py_typecheck.check_type(value.type_signature,
+                              computation_types.FederatedType)
+      py_typecheck.check_type(value.type_signature.member,
+                              computation_types.SequenceType)
+      element_type = value.type_signature.member.element
+    op_type_expected = type_constructors.reduction_op(zero.type_signature,
+                                                      element_type)
+    if not type_utils.is_assignable_from(op_type_expected, op.type_signature):
+      raise TypeError('Expected an operator of type {}, got {}.'.format(
+          str(op_type_expected), str(op.type_signature)))
+    sequence_reduce_building_block = computation_building_blocks.Intrinsic(
+        intrinsic_defs.SEQUENCE_REDUCE.uri,
+        computation_types.FunctionType([
+            computation_types.SequenceType(element_type), zero.type_signature,
+            op.type_signature
+        ], zero.type_signature))
+    if isinstance(value.type_signature, computation_types.SequenceType):
+      sequence_reduce_intrinsic = value_impl.ValueImpl(
+          sequence_reduce_building_block, self._context_stack)
+      return sequence_reduce_intrinsic(value, zero, op)
+    else:
+      federated_mapping_fn_building_block = computation_building_blocks.Lambda(
+          'arg', computation_types.SequenceType(element_type),
+          computation_building_blocks.Call(
+              sequence_reduce_building_block,
+              computation_building_blocks.Tuple([
+                  computation_building_blocks.Reference(
+                      'arg', computation_types.SequenceType(element_type)),
+                  value_impl.ValueImpl.get_comp(zero),
+                  value_impl.ValueImpl.get_comp(op)
+              ])))
+      federated_mapping_fn = value_impl.ValueImpl(
+          federated_mapping_fn_building_block, self._context_stack)
+      if value.type_signature.placement is placements.SERVER:
+        return self.federated_apply(federated_mapping_fn, value)
+      elif value.type_signature.placement is placements.CLIENTS:
+        return self.federated_map(federated_mapping_fn, value)
+      else:
+        raise TypeError('Unsupported placement {}.'.format(
+            str(value.type_signature.placement)))
+
+  def sequence_sum(self, value):
+    """Implements `sequence_sum` as defined in `api/intrinsics.py`.
+
+    Args:
+      value: As in `api/intrinsics.py`.
+
+    Returns:
+      As in `api/intrinsics.py`.
+
+    Raises:
+      TypeError: As in `api/intrinsics.py`.
+    """
+
+    def _make_sequence_sum_for(type_spec):
+      py_typecheck.check_type(type_spec, computation_types.SequenceType)
+      if not type_utils.is_sum_compatible(type_spec.element):
+        raise TypeError(
+            'The value type {} is not compatible with the sum operator.'.format(
+                str(type_spec)))
+      return value_impl.ValueImpl(
+          computation_building_blocks.Intrinsic(
+              intrinsic_defs.SEQUENCE_SUM.uri,
+              computation_types.FunctionType(type_spec, type_spec.element)),
+          self._context_stack)
+
+    value = value_impl.to_value(value, None, self._context_stack)
+    if isinstance(value.type_signature, computation_types.SequenceType):
+      sequence_sum_intrinsic = _make_sequence_sum_for(value.type_signature)
+      return sequence_sum_intrinsic(value)
+    elif isinstance(value.type_signature, computation_types.FederatedType):
+      sequence_sum_intrinsic = _make_sequence_sum_for(
+          value.type_signature.member)
+      if value.type_signature.placement is placements.SERVER:
+        return self.federated_apply(sequence_sum_intrinsic, value)
+      elif value.type_signature.placement is placements.CLIENTS:
+        return self.federated_map(sequence_sum_intrinsic, value)
+      else:
+        raise TypeError('Unsupported placement {}.'.format(
+            str(value.type_signature.placement)))
+    else:
+      raise TypeError(
+          'Cannot apply `tff.sequence_sum()` to a value of type {}.'.format(
+              str(value.type_signature)))

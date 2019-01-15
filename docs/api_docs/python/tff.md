@@ -71,6 +71,15 @@ a federated value on the `SERVER`.
 
 [`federated_zip(...)`](./tff/federated_zip.md): Converts an N-tuple of federated values into a federated N-tuple value.
 
+[`sequence_map(...)`](./tff/sequence_map.md): Maps a TFF sequence `value`
+pointwise using a given function `mapping_fn`.
+
+[`sequence_reduce(...)`](./tff/sequence_reduce.md): Reduces a TFF sequence
+`value` given a `zero` and reduction operator `op`.
+
+[`sequence_sum(...)`](./tff/sequence_sum.md): Computes a sum of elements in a
+sequence.
+
 [`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
 [`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of <a href="./tff/Type.md"><code>tff.Type</code></a>.

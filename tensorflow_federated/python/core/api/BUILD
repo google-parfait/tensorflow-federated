@@ -86,7 +86,7 @@ py_library(
 
 py_test(
     name = "intrinsics_test",
-    size = "small",
+    size = "large",
     srcs = ["intrinsics_test.py"],
     default_python_version = "PY3",
     deps = [

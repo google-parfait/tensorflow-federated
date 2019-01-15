@@ -92,7 +92,7 @@ def federated_apply(func, arg):
     `func` to the member constituent of `arg`.
 
   Raises:
-    TypeError: if the arguments are not of the appropriates computation_types.
+    TypeError: If the arguments are not of the appropriate types.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_apply(func, arg)
@@ -162,25 +162,25 @@ def federated_collect(value):
   return factory.federated_collect(value)
 
 
-def federated_map(value, mapping_fn):
+def federated_map(mapping_fn, value):
   """Maps a federated value on CLIENTS pointwise using a given mapping function.
 
   Args:
-    value: A value of a TFF federated type placed at the `CLIENTS`, or a value
-      that can be implicitly converted into a TFF federated type, e.g., by
-      zipping.
     mapping_fn: A mapping function to apply pointwise to member constituents of
       `value` on each of the participants in `CLIENTS`. The parameter of this
       function must be of the same type as the member constituents of `value`.
+    value: A value of a TFF federated type placed at the `CLIENTS`, or a value
+      that can be implicitly converted into a TFF federated type, e.g., by
+      zipping.
 
   Returns:
     A federated value on `CLIENTS` that represents the result of mapping.
 
   Raises:
-    TypeError: if the arguments are not of the appropriates computation_types.
+    TypeError: If the arguments are not of the appropriate types.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
-  return factory.federated_map(value, mapping_fn)
+  return factory.federated_map(mapping_fn, value)
 
 
 def federated_reduce(value, zero, op):
@@ -245,7 +245,7 @@ def federated_value(value, placement):
     constituent `value` equal at all locations.
 
   Raises:
-    TypeError: if the arguments are not of the appropriates computation_types.
+    TypeError: If the arguments are not of the appropriate types.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_value(value, placement)
@@ -269,3 +269,102 @@ def federated_zip(value):
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_zip(value)
+
+
+def sequence_map(mapping_fn, value):
+  """Maps a TFF sequence `value` pointwise using a given function `mapping_fn`.
+
+  This function supports two modes of usage:
+
+  * When applied to a non-federated sequence, it maps individual elements of
+    the sequence pointwise. If the supplied `mapping_fn` if of type `T->U` and
+    the sequence `value` is of type `T*` (a seqeunce of `T`-typed elements),
+    the result is a sequence of type `U*` (a sequence of `U`-typed elements),
+    with each element of the input sequence individually mapped by `mapping_fn`.
+    In this mode of usage, `sequence_map` behaves like a compuatation with type
+    signature `<T->U,T*> -> U*`.
+
+  * When applied to a federated sequence, `sequence_map` behaves as if it were
+    individually applied to each member constituent. In this mode of usage, one
+    can think of `sequence_map` as a specialized variant of `federated_map` or
+    `federated_apply` that is designed to work with sequences and allows one to
+    specify a `mapping_fn` that operates at the level of individual elements.
+    Indeed, under the hood, when `sequence_map` is invoked on a federated type,
+    it injects one of the `federated_map` or `federated_apply` variants, thus
+    emitting expressions like
+    `federated_map(a -> sequence_map(mapping_fn, x), value)`.
+
+  Args:
+    mapping_fn: A mapping function to apply pointwise to elements of `value`.
+    value: A value of a TFF type that is either a sequence, or a federated
+      sequence.
+
+  Returns:
+    A sequence with the result of applying `mapping_fn` pointwise to each
+    element of `value`, or if `value` was federated, a federated sequence
+    with the result of invoking `sequence_map` on member sequences locally
+    and independently at each location.
+
+  Raises:
+    TypeError: If the arguments are not of the appropriate types.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.sequence_map(mapping_fn, value)
+
+
+def sequence_reduce(value, zero, op):
+  """Reduces a TFF sequence `value` given a `zero` and reduction operator `op`.
+
+  This method reduces a set of elements of a TFF sequence `value`, using a given
+  `zero` in the algebra (i.e., the result of reducing an empty sequence) of some
+  type `U`, and a reduction operator `op` with type signature `(<U,T> -> U)`
+  that incorporates a single `T`-typed element of `value` into the `U`-typed
+  result of partial reduction. In the special case of `T` equal to `U`, this
+  corresponds to the classical notion of reduction of a set using a commutative
+  associative binary operator. The generalized reduction (with `T` not equal to
+  `U`) requires that repeated application of `op` to reduce a set of `T` always
+  yields the same `U`-typed result, regardless of the order in which elements
+  of `T` are processed in the course of the reduction.
+
+  One can also invoke `sequence` on a federated sequence, in which case the
+  reductions are performed pointwise; under the hood, we construct an expression
+  of the form `federated_map(a -> sequence_reduce(x, zero, op), value)`. See
+  also the discussion on `sequence_map`.
+
+  Args:
+    value: A value that is either a TFF sequence, or a federated sequence.
+    zero: The result of reducing a sequence with no elements.
+    op: An operator with type signature `(<U,T> -> U)`, where `T` is the type of
+      the elements of the sequence, and `U` is the type of `zero` to be used in
+      performing the reduction.
+
+  Returns:
+    The `U`-typed result of reducing elements in the sequence, or if the `value`
+    is federated, a federated `U` that represents the result of locally
+    reducing each member constituent of `value`.
+
+  Raises:
+    TypeError: If the arguments are not of the types specified above.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.sequence_reduce(value, zero, op)
+
+
+def sequence_sum(value):
+  """Computes a sum of elements in a sequence.
+
+  Args:
+    value: A value of a TFF type that is either a sequence, or a federated
+      sequence.
+
+  Returns:
+    The sum of elements in the sequence. If the argument `value` is of a
+    federated type, the result is also of a federated type, with the sum
+    computed locally and independently at each location (see also a discussion
+    on `sequence_map` and `sequence_reduce`).
+
+  Raises:
+    TypeError: If the arguments are of wrong or unsupported types.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.sequence_sum(value)

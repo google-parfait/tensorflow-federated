@@ -29,5 +29,4 @@ to the member constituent of `arg`.
 
 #### Raises:
 
-*   <b>`TypeError`</b>: if the arguments are not of the appropriates
-    computation_types.
+*   <b>`TypeError`</b>: If the arguments are not of the appropriate types.

@@ -69,6 +69,11 @@ class ValueImpl(value_base.Value):
     py_typecheck.check_type(value, cls)
     return value._comp  # pylint: disable=protected-access
 
+  @classmethod
+  def get_context_stack(cls, value):
+    py_typecheck.check_type(value, cls)
+    return value._context_stack  # pylint: disable=protected-access
+
   def __repr__(self):
     return repr(self._comp)
 

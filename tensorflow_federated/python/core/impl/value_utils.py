@@ -117,3 +117,38 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
       computation_building_blocks.Lambda(
           'inputs', inputs.type_signature,
           value_impl.ValueImpl.get_comp(new_elements)), None, context_stack)
+
+
+def get_curried(func):
+  """Returns a curried version of function `func` that takes a parameter tuple.
+
+  For functions `func` of types <T1,T2,....,Tn> -> U, the result is a function
+  of the form T1 -> (T2 -> (T3 -> .... (Tn -> U) ... )).
+
+  NOTE: No attempt is made at avoiding naming conflicts in cases where `func`
+  contains references. The arguments of the curriend function are named `argN`
+  with `N` starting at 0.
+
+  Args:
+    func: A value of a functional TFF type.
+
+  Returns:
+    A value that represents the curried form of `func`.
+  """
+  py_typecheck.check_type(func, value_base.Value)
+  py_typecheck.check_type(func.type_signature, computation_types.FunctionType)
+  py_typecheck.check_type(func.type_signature.parameter,
+                          computation_types.NamedTupleType)
+  param_elements = anonymous_tuple.to_elements(func.type_signature.parameter)
+  references = []
+  for idx, (_, elem_type) in enumerate(param_elements):
+    references.append(
+        computation_building_blocks.Reference('arg{}'.format(idx), elem_type))
+  result = computation_building_blocks.Call(
+      value_impl.ValueImpl.get_comp(func),
+      computation_building_blocks.Tuple(references))
+  for ref in references[::-1]:
+    result = computation_building_blocks.Lambda(ref.name, ref.type_signature,
+                                                result)
+  return value_impl.ValueImpl(result,
+                              value_impl.ValueImpl.get_context_stack(func))

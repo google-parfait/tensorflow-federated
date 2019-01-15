@@ -64,8 +64,8 @@ class IntrinsicsTest(parameterized.TestCase):
 
     @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS, True))
     def foo(x):
-      return tff.federated_map(x, tff.tf_computation(lambda x: x > 10,
-                                                     tf.int32))
+      return tff.federated_map(
+          tff.tf_computation(lambda x: x > 10, tf.int32), x)
 
     self.assertEqual(str(foo.type_signature), '(int32@CLIENTS -> bool@CLIENTS)')
 
@@ -73,8 +73,8 @@ class IntrinsicsTest(parameterized.TestCase):
 
     @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
     def foo(x):
-      return tff.federated_map(x, tff.tf_computation(lambda x: x > 10,
-                                                     tf.int32))
+      return tff.federated_map(
+          tff.tf_computation(lambda x: x > 10, tf.int32), x)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> {bool}@CLIENTS)')
@@ -84,8 +84,8 @@ class IntrinsicsTest(parameterized.TestCase):
 
       @tff.federated_computation(tf.int32)
       def _(x):
-        return tff.federated_map(x,
-                                 tff.tf_computation(lambda x: x > 10, tf.int32))
+        return tff.federated_map(
+            tff.tf_computation(lambda x: x > 10, tf.int32), x)
 
   def test_federated_sum_with_client_int(self):
 
@@ -254,16 +254,16 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(temperatures, threshold):
       return tff.federated_sum(
           tff.federated_map(
-              [temperatures, tff.federated_broadcast(threshold)],
               tff.tf_computation(lambda x, y: tf.to_int32(tf.greater(x, y)),
-                                 [tf.float32, tf.float32])))
+                                 [tf.float32, tf.float32]),
+              [temperatures, tff.federated_broadcast(threshold)]))
 
     self.assertEqual(
         str(foo.type_signature),
         '(<{float32}@CLIENTS,float32@SERVER> -> int32@SERVER)')
 
   @parameterized.named_parameters(('test_n_2', 2), ('test_n_3', 3),
-                                  ('test_n_5', 5), ('test_n_10', 10))
+                                  ('test_n_5', 5))
   def test_n_tuple_federated_zip_tensor_args(self, n):
     fed_type = tff.FederatedType(tf.int32, tff.CLIENTS)
     initial_tuple_type = tff.NamedTupleType([fed_type] * n)
@@ -278,7 +278,7 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(str(foo.type_signature), type_string)
 
   @parameterized.named_parameters(('test_n_2', 2), ('test_n_3', 3),
-                                  ('test_n_5', 5), ('test_n_10', 10))
+                                  ('test_n_5', 5))
   def test_n_tuple_federated_zip_namedtuple_args(self, n):
     fed_type = tff.FederatedType([tf.int32, tf.int32], tff.CLIENTS)
     initial_tuple_type = tff.NamedTupleType([fed_type] * n)
@@ -297,7 +297,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       [('test_n_' + str(n) + '_m_' + str(m), n, m)
-       for n, m in itertools.product([1, 2, 3, 5], [1, 2, 3, 5])])
+       for n, m in itertools.product([1, 2, 3], [1, 2, 3])])
   def test_n_tuple_federated_zip_mixed_args(self, n, m):
     tuple_fed_type = tff.FederatedType([tf.int32, tf.int32], tff.CLIENTS)
     single_fed_type = tff.FederatedType(tf.int32, tff.CLIENTS)
@@ -341,6 +341,83 @@ class IntrinsicsTest(parameterized.TestCase):
       return tff.federated_value(x, tff.SERVER)
 
     self.assertEqual(str(foo.type_signature), '(bool -> bool@SERVER)')
+
+  def test_sequence_sum(self):
+
+    @tff.federated_computation(tff.SequenceType(tf.int32))
+    def foo1(x):
+      return tff.sequence_sum(x)
+
+    self.assertEqual(str(foo1.type_signature), '(int32* -> int32)')
+
+    @tff.federated_computation(
+        tff.FederatedType(tff.SequenceType(tf.int32), tff.SERVER, True))
+    def foo2(x):
+      return tff.sequence_sum(x)
+
+    self.assertEqual(
+        str(foo2.type_signature), '(int32*@SERVER -> int32@SERVER)')
+
+    @tff.federated_computation(
+        tff.FederatedType(tff.SequenceType(tf.int32), tff.CLIENTS))
+    def foo3(x):
+      return tff.sequence_sum(x)
+
+    self.assertEqual(
+        str(foo3.type_signature), '({int32*}@CLIENTS -> {int32}@CLIENTS)')
+
+  def test_sequence_map(self):
+
+    @tff.tf_computation(tf.int32)
+    def over_threshold(x):
+      return x > 10
+
+    @tff.federated_computation(tff.SequenceType(tf.int32))
+    def foo1(x):
+      return tff.sequence_map(over_threshold, x)
+
+    self.assertEqual(str(foo1.type_signature), '(int32* -> bool*)')
+
+    @tff.federated_computation(
+        tff.FederatedType(tff.SequenceType(tf.int32), tff.SERVER, True))
+    def foo2(x):
+      return tff.sequence_map(over_threshold, x)
+
+    self.assertEqual(
+        str(foo2.type_signature), '(int32*@SERVER -> bool*@SERVER)')
+
+    @tff.federated_computation(
+        tff.FederatedType(tff.SequenceType(tf.int32), tff.CLIENTS))
+    def foo3(x):
+      return tff.sequence_map(over_threshold, x)
+
+    self.assertEqual(
+        str(foo3.type_signature), '({int32*}@CLIENTS -> {bool*}@CLIENTS)')
+
+  def test_sequence_reduce(self):
+    add_numbers = tff.tf_computation(tf.add, [tf.int32, tf.int32])
+
+    @tff.federated_computation(tff.SequenceType(tf.int32))
+    def foo1(x):
+      return tff.sequence_reduce(x, 0, add_numbers)
+
+    self.assertEqual(str(foo1.type_signature), '(int32* -> int32)')
+
+    @tff.federated_computation(
+        tff.FederatedType(tff.SequenceType(tf.int32), tff.SERVER, True))
+    def foo2(x):
+      return tff.sequence_reduce(x, 0, add_numbers)
+
+    self.assertEqual(
+        str(foo2.type_signature), '(int32*@SERVER -> int32@SERVER)')
+
+    @tff.federated_computation(
+        tff.FederatedType(tff.SequenceType(tf.int32), tff.CLIENTS))
+    def foo3(x):
+      return tff.sequence_reduce(x, 0, add_numbers)
+
+    self.assertEqual(
+        str(foo3.type_signature), '({int32*}@CLIENTS -> {int32}@CLIENTS)')
 
 
 if __name__ == '__main__':

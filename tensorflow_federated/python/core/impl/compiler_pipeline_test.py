@@ -48,11 +48,11 @@ class CompilerPipelineTest(absltest.TestCase):
     def foo(temperatures, threshold):
       return intrinsics.federated_sum(
           intrinsics.federated_map(
-              [temperatures,
-               intrinsics.federated_broadcast(threshold)],
               computations.tf_computation(
                   lambda x, y: tf.to_int32(tf.greater(x, y)),
-                  [tf.float32, tf.float32])))
+                  [tf.float32, tf.float32]),
+              [temperatures,
+               intrinsics.federated_broadcast(threshold)]))
 
     foo_proto = computation_impl.ComputationImpl.get_proto(foo)
     transformed_foo = (

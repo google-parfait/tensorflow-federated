@@ -36,6 +36,12 @@ toc:
       path: /federated/api_docs/python/tff/NamedTupleType
     - title: SequenceType
       path: /federated/api_docs/python/tff/SequenceType
+    - title: sequence_map
+      path: /federated/api_docs/python/tff/sequence_map
+    - title: sequence_reduce
+      path: /federated/api_docs/python/tff/sequence_reduce
+    - title: sequence_sum
+      path: /federated/api_docs/python/tff/sequence_sum
     - title: TensorType
       path: /federated/api_docs/python/tff/TensorType
     - title: tf_computation

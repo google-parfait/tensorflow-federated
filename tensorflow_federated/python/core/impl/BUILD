@@ -800,10 +800,13 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":computation_building_blocks",
+        ":computation_impl",
         ":context_stack_impl",
+        ":transformations",
         ":value_impl",
         ":value_utils",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
