@@ -13,6 +13,9 @@ tff.learning.framework.build_model_delta_optimizer_tff(
 )
 ```
 
+Defined in
+[`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
+
 Constructs complete TFF computations for Federated Averaging or SGD.
 
 This provides the TFF orchestration logic connecting the common server logic

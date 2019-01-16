@@ -9,7 +9,8 @@
 
 ## Class `Type`
 
-
+Defined in
+[`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
 An abstract interface for all classes that represent TFF types.
 

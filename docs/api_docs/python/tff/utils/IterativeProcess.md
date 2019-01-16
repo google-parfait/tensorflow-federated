@@ -10,7 +10,8 @@
 
 ## Class `IterativeProcess`
 
-
+Defined in
+[`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
 A process that includes an initialization and iterated computation.
 

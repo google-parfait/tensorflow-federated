@@ -15,6 +15,9 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
+Defined in
+[`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+
 An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
 representing federated types in TFF.
 

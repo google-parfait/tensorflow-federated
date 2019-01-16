@@ -15,6 +15,9 @@
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
+Defined in
+[`simulation/file_per_user_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py).
+
 ClientData that maps a set of files (one file per user) to a dataset.
 
 <h2 id="__init__"><code>__init__</code></h2>

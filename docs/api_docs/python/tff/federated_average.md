@@ -12,6 +12,9 @@ tff.federated_average(
 )
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Computes a `SERVER` average of `value` placed on `CLIENTS`.
 
 #### Args:

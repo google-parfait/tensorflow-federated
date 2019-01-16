@@ -9,6 +9,9 @@
 tff.federated_collect(value)
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Materializes a federated value from `CLIENTS` as a `SERVER` sequence.
 
 #### Args:

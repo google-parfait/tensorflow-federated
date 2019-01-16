@@ -13,7 +13,8 @@
 
 ## Class `Model`
 
-
+Defined in
+[`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
 Represents a Model for use in TensorFlow Federated.
 

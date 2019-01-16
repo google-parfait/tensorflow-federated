@@ -9,7 +9,8 @@
 
 ## Class `Computation`
 
-
+Defined in
+[`core/api/computation_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py).
 
 An abstract interface for all classes that represent computations.
 

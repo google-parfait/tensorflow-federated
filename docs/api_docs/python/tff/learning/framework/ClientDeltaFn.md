@@ -9,7 +9,8 @@
 
 ## Class `ClientDeltaFn`
 
-
+Defined in
+[`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
 
 Represents a client computation that produces an update to a model.
 

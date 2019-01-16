@@ -9,6 +9,9 @@
 tff.sequence_sum(value)
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Computes a sum of elements in a sequence.
 
 #### Args:

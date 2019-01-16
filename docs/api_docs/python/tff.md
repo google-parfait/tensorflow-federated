@@ -7,6 +7,9 @@
 
 # Module: tff
 
+Defined in
+[`__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/__init__.py).
+
 TensorFlow Federated library.
 
 ## Modules

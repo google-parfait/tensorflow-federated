@@ -14,7 +14,8 @@
 
 ## Class `Value`
 
-
+Defined in
+[`core/api/value_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py).
 
 An abstract base class for all values in the bodies of TFF computations.
 

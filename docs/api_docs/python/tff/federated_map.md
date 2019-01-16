@@ -12,6 +12,9 @@ tff.federated_map(
 )
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Maps a federated value on CLIENTS pointwise using a given mapping function.
 
 #### Args:

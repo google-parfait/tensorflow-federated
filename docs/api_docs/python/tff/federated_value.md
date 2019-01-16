@@ -12,6 +12,9 @@ tff.federated_value(
 )
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Returns a federated value at `placement`, with `value` as the constituent.
 
 #### Args:

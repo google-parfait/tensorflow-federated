@@ -13,6 +13,9 @@ tff.utils.get_variables(
 )
 ```
 
+Defined in
+[`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
+
 Creates a set of variables that matches the given `type_spec`.
 
 #### Args:

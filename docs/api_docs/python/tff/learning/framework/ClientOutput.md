@@ -12,7 +12,8 @@
 
 ## Class `ClientOutput`
 
-
+Defined in
+[`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
 
 ClientOutput(weights_delta, weights_delta_weight, model_output, optimizer_output)
 

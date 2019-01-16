@@ -9,6 +9,9 @@
 tff.federated_sum(value)
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Computes a sum at `SERVER` of a federated value placed on the `CLIENTS`.
 
 #### Args:

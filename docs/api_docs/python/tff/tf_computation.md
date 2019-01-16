@@ -9,6 +9,9 @@
 tff.tf_computation(*args)
 ```
 
+Defined in
+[`core/api/computations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py).
+
 Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
 This symbol can be used as either a decorator (`@tf_computation`) or a wrapper

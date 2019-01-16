@@ -11,7 +11,8 @@
 
 ## Class `ModelWeights`
 
-
+Defined in
+[`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
 A container for the trainable and non-trainable variables of a `Model`.
 

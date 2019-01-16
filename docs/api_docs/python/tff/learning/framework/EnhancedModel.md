@@ -17,6 +17,9 @@
 
 Inherits From: [`Model`](../../../tff/learning/Model.md)
 
+Defined in
+[`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+
 A wrapper around a Model that adds sanity checking and metadata helpers.
 
 <h2 id="__init__"><code>__init__</code></h2>

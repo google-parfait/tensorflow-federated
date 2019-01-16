@@ -14,6 +14,9 @@ tff.learning.from_keras_model(
 )
 ```
 
+Defined in
+[`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+
 Builds a `tensorflow_federated.learning.Model`.
 
 #### Args:

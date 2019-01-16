@@ -9,6 +9,9 @@
 tff.federated_broadcast(value)
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
 #### Args:

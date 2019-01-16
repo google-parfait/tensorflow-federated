@@ -13,6 +13,9 @@ tff.federated_reduce(
 )
 ```
 
+Defined in
+[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
 Reduces `value` from `CLIENTS` to `SERVER` using a reduction operator `op`.
 
 This method reduces a set of member constituents of a `value` of federated
