@@ -641,7 +641,7 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
 class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, randomly adding or subtracting 1.
 
-  This is an example implementation of an `EncodingStageInterface` that is
+  This is an example implementation of an `EncodingStageInterface` that is not
   lossless, but unbiased on expectation. This is a propery of a variety
   implementations of the interface, and this class serves as an example of how
   the unbiasedness can be tested.
@@ -669,14 +669,61 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
   @encoding_stage.tf_style_encode('plus_one_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
-    del encode_params
+    del encode_params  # Unused.
     return {'values': x + tf.sign(tf.random.normal(tf.shape(x)))}
 
   @encoding_stage.tf_style_decode('plus_one_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
-    del decode_params
+    del decode_params  # Unused.
     return encoded_tensors['values']
+
+
+class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
+  """[Example] encoding stage, encoding input into multiple outputs.
+
+  This is an example implementation of an `EncodingStageInterface` that is
+  losless and splits the input into three components - the integer part, the
+  floating part and the signs.
+  """
+
+  @property
+  def compressible_tensors_keys(self):
+    """See base class."""
+    return ['signs', 'ints', 'floats']
+
+  @property
+  def commutes_with_sum(self):
+    """See base class."""
+    return False
+
+  @property
+  def decode_needs_input_shape(self):
+    """See base class."""
+    return False
+
+  def get_params(self, name=None):
+    """See base class."""
+    return {}, {}
+
+  @encoding_stage.tf_style_encode('sign_int_float_encode')
+  def encode(self, x, encode_params, name=None):
+    """See base class."""
+    del encode_params  # Unused.
+    signs = tf.sign(x)
+    abs_vals = tf.abs(x)
+    ints = tf.floor(abs_vals)
+    floats = abs_vals - ints
+    return {'signs': signs, 'ints': ints, 'floats': floats}
+
+  @encoding_stage.tf_style_decode('sign_int_float_decode')
+  def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+    """See base class."""
+    del decode_params  # Unused.
+    signs = encoded_tensors['signs']
+    ints = encoded_tensors['ints']
+    floats = encoded_tensors['floats']
+    return signs * (ints + floats)
 
 
 def dummy_rng_source(seed, num_elements):

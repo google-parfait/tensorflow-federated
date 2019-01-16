@@ -195,6 +195,31 @@ class RandomAddSubtractOneEncodingStageTest(test_utils.BaseEncodingStageTest):
     self.assertGreater(mean_error, error_of_mean * 5)
 
 
+class SignIntFloatEncodingStageTest(test_utils.BaseEncodingStageTest):
+
+  def default_encoding_stage(self):
+    """See base class."""
+    return test_utils.SignIntFloatEncodingStage()
+
+  def default_input(self):
+    """See base class."""
+    return tf.constant([0.0, 0.1, -0.1, 0.9, -0.9, 1.6, -2.2])
+
+  @property
+  def is_lossless(self):
+    """See base class."""
+    return True
+
+  def common_asserts_for_test_data(self, data):
+    """See base class."""
+    signs = data.encoded_x['signs']
+    ints = data.encoded_x['ints']
+    floats = data.encoded_x['floats']
+    self.assertAllEqual(np.array([0.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]), signs)
+    self.assertAllEqual(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0]), ints)
+    self.assertAllClose(np.array([0.0, 0.1, 0.1, 0.9, 0.9, 0.6, 0.2]), floats)
+
+
 class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
 
   def default_encoding_stage(self):
