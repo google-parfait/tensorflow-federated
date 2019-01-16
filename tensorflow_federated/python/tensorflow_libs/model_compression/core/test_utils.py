@@ -599,6 +599,10 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
 
   This is an example implementation of an `EncodingStageInterface` that requires
   the original shape information for decoding.
+
+  Note that the encoding does not store the shape in the return structure of the
+  `encode` method. Instead, the shape information will be handled separately by
+  the higher level `Encoder`.
   """
 
   @property
@@ -625,8 +629,6 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
     """See base class."""
     del encode_params  # Unused.
     encoded_tensors = {'values': tf.reduce_mean(x, keepdims=True)}
-    if not x.shape.is_fully_defined():
-      encoded_tensors['shape'] = tf.shape(x)
     return encoded_tensors
 
   @encoding_stage.tf_style_decode('reduce_mean_decode')

@@ -132,10 +132,12 @@ class EncodingStageInterface(object):
     If `True`, it means that the `shape` of the `x` argument to the `encode`
     method needs to be provided to the `decode` method. For instance, this is
     needed for bitpacking, where inputs of multiple shapes can result in
-    identical bitpacked representations.
+    identical bitpacked representations. Note however, the shape information
+    should not be stored in the return structure of the `encode` method.
 
     This property will be used by `Encoder` to efficiently realize the
-    composition of implementations of this interface.
+    composition of implementations of this interface, and to make the necessary
+    shape information available.
     """
 
   @abc.abstractmethod
