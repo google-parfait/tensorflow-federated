@@ -136,6 +136,70 @@ class AnonymousTupleTest(absltest.TestCase):
     z = anonymous_tuple.pack_sequence_as(x, y)
     self.assertEqual(str(z), '<a=10,b=<x=<p=40>,y=30,z=<q=50,r=60>>,c=20>')
 
+  def test_is_same_structure_check_types(self):
+    self.assertTrue(
+        anonymous_tuple.is_same_structure(
+            anonymous_tuple.AnonymousTuple([('a', 10)]),
+            anonymous_tuple.AnonymousTuple([('a', 20)])))
+    self.assertTrue(
+        anonymous_tuple.is_same_structure(
+            anonymous_tuple.AnonymousTuple([
+                ('a', 10),
+                ('b', anonymous_tuple.AnonymousTuple([('z', 5)])),
+            ]),
+            anonymous_tuple.AnonymousTuple([
+                ('a', 20),
+                ('b', anonymous_tuple.AnonymousTuple([('z', 50)])),
+            ])))
+    self.assertFalse(
+        anonymous_tuple.is_same_structure(
+            anonymous_tuple.AnonymousTuple([('x', {'y': 4})]),
+            anonymous_tuple.AnonymousTuple([('x', {'y': 5, 'z': 6})])))
+    self.assertTrue(
+        anonymous_tuple.is_same_structure(
+            anonymous_tuple.AnonymousTuple([('x', {'y': 5})]),
+            anonymous_tuple.AnonymousTuple([('x', {'y': 6})])))
+    with self.assertRaises(TypeError):
+      self.assertTrue(
+          anonymous_tuple.is_same_structure(
+              {'x': 5.0},  # not an AnonymousTuple
+              anonymous_tuple.AnonymousTuple([('x', 5.0)])))
+
+  def test_map_structure(self):
+    x = anonymous_tuple.AnonymousTuple([
+        ('a', 10),
+        ('b',
+         anonymous_tuple.AnonymousTuple([
+             ('x', anonymous_tuple.AnonymousTuple([('p', 40)])),
+             ('y', 30),
+             ('z', anonymous_tuple.AnonymousTuple([('q', 50), ('r', 60)])),
+         ])),
+        ('c', 20),
+    ])
+    y = anonymous_tuple.AnonymousTuple([
+        ('a', 1),
+        ('b',
+         anonymous_tuple.AnonymousTuple([
+             ('x', anonymous_tuple.AnonymousTuple([('p', 4)])),
+             ('y', 3),
+             ('z', anonymous_tuple.AnonymousTuple([('q', 5), ('r', 6)])),
+         ])),
+        ('c', 2),
+    ])
+
+    self.assertEqual(
+        anonymous_tuple.map_structure(lambda x, y: x + y, x, y),
+        anonymous_tuple.AnonymousTuple([
+            ('a', 11),
+            ('b',
+             anonymous_tuple.AnonymousTuple([
+                 ('x', anonymous_tuple.AnonymousTuple([('p', 44)])),
+                 ('y', 33),
+                 ('z', anonymous_tuple.AnonymousTuple([('q', 55), ('r', 66)])),
+             ])),
+            ('c', 22),
+        ]))
+
 
 if __name__ == '__main__':
   absltest.main()

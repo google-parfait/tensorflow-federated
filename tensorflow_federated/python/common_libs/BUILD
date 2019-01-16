@@ -14,6 +14,7 @@ py_library(
     srcs = ["anonymous_tuple.py"],
     deps = [
         ":py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
 )

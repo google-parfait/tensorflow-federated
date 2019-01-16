@@ -22,8 +22,13 @@ import collections
 # Dependency imports
 
 import six
+from six.moves import zip
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+
+
+nest = tf.contrib.framework.nest
 
 
 class AnonymousTuple(object):
@@ -40,19 +45,21 @@ class AnonymousTuple(object):
 
   Example:
 
-    x = AnonymousTuple([('foo', 10), (None, 20), ('bar', 30)])
+  ```
+  x = AnonymousTuple([('foo', 10), (None, 20), ('bar', 30)])
 
-    len(x) == 3
-    x[0] == 10
-    x[1] == 20
-    x[2] == 30
-    list(iter(x)) == [10, 20, 30]
-    sorted(dir(x)) == ['bar', 'foo']
-    x.foo == 10
-    x.bar == 30
+  len(x) == 3
+  x[0] == 10
+  x[1] == 20
+  x[2] == 30
+  list(iter(x)) == [10, 20, 30]
+  sorted(dir(x)) == ['bar', 'foo']
+  x.foo == 10
+  x.bar == 30
+  ```
 
   Note that in general, naming the members of these tuples is optional. Thus,
-  an AnonymousTuple can be used just like an ordinary 'positional' tuple.
+  an `AnonymousTuple` can be used just like an ordinary 'positional' tuple.
 
   Also note that the user will not be creating such tuples. They are a hidden
   part of the impementation designed to work together with function decorators.
@@ -132,19 +139,19 @@ class AnonymousTuple(object):
 def to_elements(an_anonymous_tuple):
   """Retrieves the list of (name, value) pairs from an anonymous tuple.
 
-  Modeled as a module function rather than a method of AnonymousTuple to avoid
+  Modeled as a module function rather than a method of `AnonymousTuple` to avoid
   naming conflicts with the tuple attributes, and so as not to expose the user
   to this implementation-oriented functionality.
 
   Args:
-    an_anonymous_tuple: An instance of AnonymousTuple.
+    an_anonymous_tuple: An instance of `AnonymousTuple`.
 
   Returns:
     The list of (name, value) pairs in which names can be None. Identical to
     the format that's accepted by the tuple constructor.
 
   Raises:
-    TypeError: if the argument is not an AnonymousTuple.
+    TypeError: if the argument is not an `AnonymousTuple`.
   """
   py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
   # pylint: disable=protected-access
@@ -168,7 +175,7 @@ def flatten(structure):
     The list of values in the tuple (or the singleton argument if not a tuple).
   """
   if not isinstance(structure, AnonymousTuple):
-    return [structure]
+    return nest.flatten(structure)
   else:
     result = []
     for _, v in to_elements(structure):
@@ -203,3 +210,80 @@ def pack_sequence_as(structure, flat_sequence):
 
   result, _ = _pack(structure, flat_sequence, 0)
   return result
+
+
+def is_same_structure(a, b):
+  """Compares whether `a` and `b` have the same nested structure.
+
+  This method is analogous to `tf.contrib.framework.nest.assert_same_structure`,
+  but returns a boolean rather than throwing an exception.
+
+  Args:
+    a: an `AnonymousTuple` object.
+    b: an `AnonymousTuple` object.
+
+  Returns:
+    True iff `a` and `b` have the same nested structure.
+
+  Raises:
+    TypeError: if `a` or `b` are not of type AnonymousTuple.
+  """
+  py_typecheck.check_type(a, AnonymousTuple)
+  py_typecheck.check_type(b, AnonymousTuple)
+  elems_a = to_elements(a)
+  elems_b = to_elements(b)
+  if len(elems_a) != len(elems_b):
+    return False
+  for elem_a, elem_b in zip(elems_a, elems_b):
+    val_a = elem_a[1]
+    val_b = elem_b[1]
+    if elem_a[0] != elem_b[0]:
+      return False
+    if isinstance(val_a, AnonymousTuple) and isinstance(val_b, AnonymousTuple):
+      return is_same_structure(val_a, val_b)
+    elif isinstance(val_a, AnonymousTuple) or isinstance(val_b, AnonymousTuple):
+      return False
+    else:
+      try:
+        nest.assert_same_structure(val_a, val_b, check_types=True)
+      except (ValueError, TypeError):
+        return False
+  return True
+
+
+def map_structure(func, *structure):
+  """Applies `func` to each entry in `structure` and returns a new structure.
+
+  This is a special implementation of `tf.contrib.framework.nest.map_structure`
+  that works for `AnonymousTuple`.
+
+  Args:
+    func: a callable that accepts as many arguments as there are structures.
+    *structure: a scalar, tuple, or list of constructed scalars and/or
+      tuples/lists, or scalars. Note: numpy arrays are considered scalars.
+
+  Returns:
+    A new structure with the same arity as `structure` and same type as
+    `structure[0]`, whose values correspond to `func(x[0], x[1], ...)` where
+    `x[i]` is a value in the corresponding location in `structure[i]`.
+
+  Raises:
+    TypeError: if `func` is not a callable, or *structure contains types other
+      than AnonymousTuple.
+    ValueError: if `*structure` is empty.
+  """
+  py_typecheck.check_callable(func)
+  if not structure:
+    raise ValueError('Must provide at least one structure')
+
+  py_typecheck.check_type(structure[0], AnonymousTuple)
+  for i, other in enumerate(structure[1:]):
+    if not is_same_structure(structure[0], other):
+      raise TypeError('Structure at position {} is not the same '
+                      'structure'.format(i))
+
+  flat_structure = [flatten(s) for s in structure]
+  entries = zip(*flat_structure)
+  s = [func(*x) for x in entries]
+
+  return pack_sequence_as(structure[0], s)
