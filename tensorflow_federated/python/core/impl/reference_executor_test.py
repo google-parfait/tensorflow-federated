@@ -17,9 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 # Dependency imports
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -142,13 +145,13 @@ class ReferenceExecutorTest(absltest.TestCase):
 
   def test_computation_context(self):
     c1 = reference_executor.ComputationContext()
-    c2 = reference_executor.ComputationContext(c1, {
-        'foo': reference_executor.ComputedValue(10, tf.int32)})
-    c3 = reference_executor.ComputationContext(c2, {
-        'bar': reference_executor.ComputedValue(11, tf.int32)})
+    c2 = reference_executor.ComputationContext(
+        c1, {'foo': reference_executor.ComputedValue(10, tf.int32)})
+    c3 = reference_executor.ComputationContext(
+        c2, {'bar': reference_executor.ComputedValue(11, tf.int32)})
     c4 = reference_executor.ComputationContext(c3)
-    c5 = reference_executor.ComputationContext(c4, {
-        'foo': reference_executor.ComputedValue(12, tf.int32)})
+    c5 = reference_executor.ComputationContext(
+        c4, {'foo': reference_executor.ComputedValue(12, tf.int32)})
     self.assertRaises(ValueError, c1.resolve_reference, 'foo')
     self.assertEqual(c2.resolve_reference('foo').value, 10)
     self.assertEqual(c3.resolve_reference('foo').value, 10)
@@ -160,7 +163,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(c4.resolve_reference('bar').value, 11)
     self.assertEqual(c5.resolve_reference('bar').value, 11)
 
-  def test_tensorflow_computation_with_one_constant(self):
+  def test_tensorflow_computation_with_constant(self):
 
     @computations.tf_computation(tf.int32)
     def foo(x):
@@ -168,7 +171,7 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     self.assertEqual(foo(10), 11)
 
-  def test_tensorflow_computation_with_two_constants(self):
+  def test_tensorflow_computation_with_constants(self):
 
     @computations.tf_computation(tf.int32, tf.int32)
     def foo(x, y):
@@ -177,7 +180,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo(10, 20), 30)
     self.assertEqual(foo(20, 10), 30)
 
-  def test_tensorflow_computation_with_one_empty_tuple(self):
+  def test_tensorflow_computation_with_empty_tuple(self):
     tuple_type = computation_types.NamedTupleType([])
 
     @computations.tf_computation(tuple_type)
@@ -187,7 +190,7 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     self.assertEqual(foo(()), 1)
 
-  def test_tensorflow_computation_with_one_tuple_of_one_constant(self):
+  def test_tensorflow_computation_with_tuple_of_one_constant(self):
     tuple_type = computation_types.NamedTupleType([
         ('x', tf.int32),
     ])
@@ -201,7 +204,7 @@ class ReferenceExecutorTest(absltest.TestCase):
 
       self.assertEqual(foo((10,)), 11)
 
-  def test_tensorflow_computation_with_one_tuple_of_two_constants(self):
+  def test_tensorflow_computation_with_tuple_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
         ('x', tf.int32),
         ('y', tf.int32),
@@ -214,7 +217,21 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo((10, 20)), 30)
     self.assertEqual(foo((20, 10)), 30)
 
-  def test_tensorflow_computation_with_one_tuple_of_two_tuples(self):
+  def test_tensorflow_computation_with_tuple_of_empty_tuples(self):
+    tuple_type = computation_types.NamedTupleType([])
+    tuple_group_type = computation_types.NamedTupleType([
+        ('a', tuple_type),
+        ('b', tuple_type),
+    ])
+
+    @computations.tf_computation(tuple_group_type)
+    def foo(z):
+      del z  # unused
+      return tf.constant(1)
+
+    self.assertEqual(foo(((), ())), 1)
+
+  def test_tensorflow_computation_with_tuple_of_tuples(self):
     tuple_type = computation_types.NamedTupleType([
         ('x', tf.int32),
         ('y', tf.int32),
@@ -231,7 +248,30 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo(((10, 20), (30, 40))), 100)
     self.assertEqual(foo(((40, 30), (20, 10))), 100)
 
-  def test_tensorflow_computation_with_two_tuples_of_two_constants(self):
+  def test_tensorflow_computation_with_tuple_of_sequences(self):
+    sequence_type = computation_types.SequenceType(tf.int64)
+    tuple_type = computation_types.NamedTupleType([
+        ('a', sequence_type),
+        ('b', sequence_type),
+    ])
+
+    @computations.tf_computation(tuple_type)
+    def foo(z):
+      value1 = z.a.reduce(np.int64(0), lambda x, y: x + y)
+      value2 = z.b.reduce(np.int64(0), lambda x, y: x + y)
+      return value1 + value2
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.range(5)
+
+    @computations.federated_computation
+    def baz():
+      return foo((bar(), bar()))
+
+    self.assertEqual(baz(), 20)
+
+  def test_tensorflow_computation_with_tuples_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
         ('x', tf.int32),
         ('y', tf.int32),
@@ -244,7 +284,104 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo((10, 20), (30, 40)), 100)
     self.assertEqual(foo((40, 30), (20, 10)), 100)
 
+  def test_tensorflow_computation_with_empty_sequence(self):
+    sequence_type = computation_types.SequenceType(tf.int64)
+
+    @computations.tf_computation(sequence_type)
+    def foo(ds):
+      del ds  # unused
+      return tf.constant(1)
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.range(0)
+
+    @computations.federated_computation
+    def baz():
+      return foo(bar())
+
+    self.assertEqual(baz(), 1)
+
+  def test_tensorflow_computation_with_sequence_of_one_constant(self):
+    sequence_type = computation_types.SequenceType(tf.int64)
+
+    @computations.tf_computation(sequence_type)
+    def foo(ds):
+      return ds.reduce(np.int64(0), lambda x, y: x + y) + 1
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.range(10, 11)
+
+    @computations.federated_computation
+    def baz():
+      return foo(bar())
+
+    self.assertEqual(baz(), 11)
+
+  def test_tensorflow_computation_with_sequence_of_constants(self):
+    sequence_type = computation_types.SequenceType(tf.int64)
+
+    @computations.tf_computation(sequence_type)
+    def foo(ds):
+      return ds.reduce(np.int64(0), lambda x, y: x + y)
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.range(5)
+
+    @computations.federated_computation
+    def baz():
+      return foo(bar())
+
+    self.assertEqual(baz(), 10)
+
+  def test_tensorflow_computation_with_sequence_of_tuples(self):
+    tuple_type = computation_types.NamedTupleType([
+        ('x', tf.int32),
+        ('y', tf.int32),
+    ])
+    sequence_type = computation_types.SequenceType(tuple_type)
+
+    @computations.tf_computation(sequence_type)
+    def foo(ds):
+      return ds.reduce(np.int32(0), lambda x, y: x + y['x'] + y['y'])
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.from_tensor_slices(
+          collections.OrderedDict([
+              ('x', [10, 30]),
+              ('y', [20, 40]),
+          ]))
+
+    @computations.federated_computation
+    def baz():
+      return foo(bar())
+
+    self.assertEqual(baz(), 100)
+
+  def test_tensorflow_computation_with_sequences_of_constants(self):
+    sequence_type = computation_types.SequenceType(tf.int64)
+
+    @computations.tf_computation(sequence_type, sequence_type)
+    def foo(ds1, ds2):
+      value1 = ds1.reduce(np.int64(0), lambda x, y: x + y)
+      value2 = ds2.reduce(np.int64(0), lambda x, y: x + y)
+      return value1 + value2
+
+    @computations.tf_computation
+    def bar():
+      return tf.data.Dataset.range(5)
+
+    @computations.federated_computation
+    def baz():
+      return foo(bar(), bar())
+
+    self.assertEqual(baz(), 20)
+
   def test_tensorflow_computation_with_simple_lambda(self):
+
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -256,8 +393,10 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(add_two(5), 7)
 
   def test_tensorflow_computation_with_lambda_and_selection(self):
-    @computations.federated_computation(
-        tf.int32, computation_types.FunctionType(tf.int32, tf.int32))
+
+    @computations.federated_computation(tf.int32,
+                                        computation_types.FunctionType(
+                                            tf.int32, tf.int32))
     def apply_twice(x, f):
       return f(f(x))
 
@@ -271,18 +410,16 @@ class ReferenceExecutorTest(absltest.TestCase):
             computations.tf_computation(tf.add, [tf.int32, tf.int32])))
 
     curried_int32_add = computation_building_blocks.Lambda(
-        'x',
-        tf.int32,
+        'x', tf.int32,
         computation_building_blocks.Lambda(
-            'y',
-            tf.int32,
+            'y', tf.int32,
             computation_building_blocks.Call(
                 int32_add,
-                computation_building_blocks.Tuple([
-                    (None,
-                     computation_building_blocks.Reference('x', tf.int32)),
-                    (None,
-                     computation_building_blocks.Reference('y', tf.int32))]))))
+                computation_building_blocks.Tuple(
+                    [(None, computation_building_blocks.Reference(
+                        'x', tf.int32)),
+                     (None, computation_building_blocks.Reference(
+                         'y', tf.int32))]))))
 
     make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
@@ -307,12 +444,15 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     make_13 = computation_building_blocks.Block(
         [('x', computation_building_blocks.Call(make_10)),
-         ('x', computation_building_blocks.Call(
-             add_one, computation_building_blocks.Reference('x', tf.int32))),
-         ('x', computation_building_blocks.Call(
-             add_one, computation_building_blocks.Reference('x', tf.int32))),
-         ('x', computation_building_blocks.Call(
-             add_one, computation_building_blocks.Reference('x', tf.int32)))],
+         ('x',
+          computation_building_blocks.Call(
+              add_one, computation_building_blocks.Reference('x', tf.int32))),
+         ('x',
+          computation_building_blocks.Call(
+              add_one, computation_building_blocks.Reference('x', tf.int32))),
+         ('x',
+          computation_building_blocks.Call(
+              add_one, computation_building_blocks.Reference('x', tf.int32)))],
         computation_building_blocks.Reference('x', tf.int32))
 
     make_13_computation = computation_impl.ComputationImpl(

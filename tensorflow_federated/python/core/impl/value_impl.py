@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import collections
 
 # Dependency imports
 
@@ -190,8 +191,8 @@ class ValueImpl(value_base.Value):
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
-    if not type_utils.are_equivalent_types(
-        self.type_signature, other.type_signature):
+    if not type_utils.are_equivalent_types(self.type_signature,
+                                           other.type_signature):
       raise TypeError('Cannot add {} and {}.'.format(
           str(self.type_signature), str(other.type_signature)))
     return ValueImpl(
@@ -326,10 +327,14 @@ def to_value(arg, type_spec, context_stack):
   elif '_asdict' in vars(type(arg)):
     result = to_value(arg._asdict(), None, context_stack)
   elif isinstance(arg, dict):
-    result = ValueImpl(
-        computation_building_blocks.Tuple(
-            [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-             for k, v in six.iteritems(arg)]), context_stack)
+    if isinstance(arg, collections.OrderedDict):
+      items = six.iteritems(arg)
+    else:
+      items = sorted(six.iteritems(arg))
+    value = computation_building_blocks.Tuple(
+        [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
+         for k, v in items])
+    result = ValueImpl(value, context_stack)
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(
         computation_building_blocks.Tuple([

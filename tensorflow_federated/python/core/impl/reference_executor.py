@@ -233,8 +233,8 @@ def stamp_computed_value_into_graph(value, graph):
 
   Returns:
     A Python object made of tensors stamped into `graph`, `tf.data.Dataset`s,
-    and `AnonymousTuple`s that structurally corresponds to the value passed
-    at input.
+    and `anonymous_tuple.AnonymousTuple`s that structurally corresponds to the
+    value passed at input.
   """
   if value is None:
     return None
@@ -259,9 +259,10 @@ def stamp_computed_value_into_graph(value, graph):
         stamped_v = stamp_computed_value_into_graph(computed_v, graph)
         stamped_elements.append((k, stamped_v))
       return anonymous_tuple.AnonymousTuple(stamped_elements)
+    elif isinstance(value.type_signature, computation_types.SequenceType):
+      return graph_utils.make_data_set_from_elements(
+          graph, value.value, value.type_signature.element)
     else:
-      # TODO(b/113123634): Add support for embedding sequences (`tf.Dataset`s).
-
       raise NotImplementedError(
           'Unable to embed a computed value of type {} in graph.'.format(
               str(value.type_signature)))
@@ -272,8 +273,8 @@ def capture_computed_value_from_graph(value, type_spec):
 
   Args:
     value: A Python object made of tensors in `graph`, `tf.data.Dataset`s,
-      `AnonymousTuple`s and other structures, to be captured as an instance of
-      `ComputedValue`.
+      `anonymous_tuple.AnonymousTuple`s and other structures, to be captured as
+      an instance of `ComputedValue`.
     type_spec: The type of the value to be captured.
 
   Returns:
@@ -284,7 +285,7 @@ def capture_computed_value_from_graph(value, type_spec):
 
   # TODO(b/113123634): Add handling for things like `tf.Dataset`s, as well as
   # possibly other Python structures that don't match the kinds of permitted
-  # representations for payloads (see `check_representation_matches_type()`).
+  # representations for pyaloads (see `check_representation_matches_type()`).
 
   return ComputedValue(to_representation_for_type(value, type_spec), type_spec)
 
@@ -322,9 +323,9 @@ class ComputationContext(object):
 
     Args:
       parent_context: The parent context, or `None` if this is the root.
-      local_symbols: The dictionary of local symbols defined in this context,
-        or `None` if there are none. The keys (names) are of a string type,
-        and the values (what the names bind to) are of type `ComputedValue`.
+      local_symbols: The dictionary of local symbols defined in this context, or
+        `None` if there are none. The keys (names) are of a string type, and the
+        values (what the names bind to) are of type `ComputedValue`.
     """
     if parent_context is not None:
       py_typecheck.check_type(parent_context, ComputationContext)
@@ -536,8 +537,8 @@ class ReferenceExecutor(context_base.Context):
   def _compute_selection(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Selection)
     source = self._compute(comp.source, context)
-    py_typecheck.check_type(
-        source.type_signature, computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature,
+                            computation_types.NamedTupleType)
     py_typecheck.check_type(source.value, anonymous_tuple.AnonymousTuple)
     if comp.name is not None:
       result_value = getattr(source.value, comp.name)
@@ -552,13 +553,19 @@ class ReferenceExecutor(context_base.Context):
   def _compute_lambda(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Lambda)
     py_typecheck.check_type(context, ComputationContext)
+
     def _wrap(arg):
       py_typecheck.check_type(arg, ComputedValue)
-      type_utils.check_assignable_from(comp.parameter_type, arg.type_signature)
+      if not type_utils.is_assignable_from(comp.parameter_type,
+                                           arg.type_signature):
+        raise TypeError(
+            'Expected the type of argument {} to be {}, found {}.'.format(
+                str(comp.parameter_name), str(comp.parameter_type),
+                str(arg.type_signature)))
       return ComputationContext(context, {comp.parameter_name: arg})
-    return ComputedValue(
-        lambda x: self._compute(comp.result, _wrap(x)),
-        comp.type_signature)
+
+    return ComputedValue(lambda x: self._compute(comp.result, _wrap(x)),
+                         comp.type_signature)
 
   def _compute_reference(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Reference)

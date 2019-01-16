@@ -40,13 +40,14 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
   """Deserializes and invokes a serialized TF computation with a given argument.
 
   This method performs an action that can be considered roughly the opposite of
-  what `serialize_py_func_as_tf_computation` in `tensorflow_serialization` does.
-  At the moment, it simply imports the graph in the current context. A future
+  what `tensorflow_serialization.serialize_py_func_as_tf_computation` does. At
+  the moment, it simply imports the graph in the current context. A future
   implementation may rely on different mechanisms. The caller should not be
   concerned with the specifics of the implementation. At this point, the method
   is expected to only be used within the body of another TF computation (within
-  an instance of `TensorFlowComputationContext` at the top of the stack), and
-  potentially also in certain types of interpreted execution contexts (TBD).
+  an instance of `tf_computation_context.TensorFlowComputationContext` at the
+  top of the stack), and potentially also in certain types of interpreted
+  execution contexts (TBD).
 
   Args:
     computation_proto: An instance of `pb.Computation` with the `computation`
@@ -57,8 +58,9 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
 
   Returns:
     The result of calling the computation in the current context. Depending on
-    the type of the result, this can be `tf.Tensor` or `tf.Dataset` instances,
-    or a nested structure (such as an `AnonymousTuple`).
+    the type of the result, this can be `tf.Tensor` or `tf.data.Dataset`
+    instances, or a nested structure (such as an
+    `anonymous_tuple.AnonymousTuple`).
 
   Raises:
     TypeError: If the arguments are of the wrong types.

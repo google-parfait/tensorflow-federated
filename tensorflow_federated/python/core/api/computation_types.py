@@ -197,7 +197,7 @@ class SequenceType(Type):
 
     Args:
       element: A specification of the element type, either an instance of
-        `tff.Type`  or something convertible to it by `tff.to_type()`.
+        `tff.Type` or something convertible to it by `tff.to_type()`.
     """
     self._element = to_type(element)
 

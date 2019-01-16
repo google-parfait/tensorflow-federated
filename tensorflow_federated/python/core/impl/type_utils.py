@@ -67,13 +67,16 @@ def infer_type(arg):
     return computation_types.NamedTupleType(
         [(k, infer_type(v)) if k else infer_type(v)
          for k, v in anonymous_tuple.to_elements(arg)])
+  # Special handling needed for collections.namedtuple.
   elif '_asdict' in type(arg).__dict__:
-    # Special handling needed for collections.namedtuple.
     return infer_type(arg._asdict())
   elif isinstance(arg, dict):
-    # This also handles 'OrderedDict', as it inherits from 'dict'.
+    if isinstance(arg, collections.OrderedDict):
+      items = six.iteritems(arg)
+    else:
+      items = sorted(six.iteritems(arg))
     return computation_types.NamedTupleType(
-        [(k, infer_type(v)) for k, v in six.iteritems(arg)])
+        [(k, infer_type(v)) for k, v in items])
   # Quickly try special-casing a few very common built-in scalar types before
   # applying any kind of heavier-weight processing.
   elif isinstance(arg, six.string_types):
@@ -100,6 +103,29 @@ def infer_type(arg):
             py_typecheck.type_string(type(arg)), str(err)))
 
 
+def to_canonical_value(value):
+  """Converts a Python object to a canonical TFF value for a given type.
+
+  Args:
+    value: The object to convert.
+
+  Returns:
+    The canonical TFF representation of `value` for a given type.
+  """
+  if value is None:
+    return None
+  elif isinstance(value, dict):
+    if isinstance(value, collections.OrderedDict):
+      items = six.iteritems(value)
+    else:
+      items = sorted(six.iteritems(value))
+    return anonymous_tuple.AnonymousTuple(
+        [(k, to_canonical_value(v)) for k, v in items])
+  elif isinstance(value, (tuple, list)):
+    return [to_canonical_value(e) for e in value]
+  return value
+
+
 def check_type(val, type_spec):
   """Checks whether `val` is of TFF type `type_spec`.
 
@@ -123,10 +149,10 @@ def check_type(val, type_spec):
 def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   """Returns computation_types.Type for the given TF (dtypes, shapes) tuple.
 
-  The returned dtypes and shapes match those used by tf.Datasets to indicate
-  the type and shape of their elements. They can be used, e.g., as arguments in
-  constructing an iterator over a string handle. Note that the nested structure
-  of dtypes and shapes must be identical.
+  The returned dtypes and shapes match those used by `tf.data.Dataset`s to
+  indicate the type and shape of their elements. They can be used, e.g., as
+  arguments in constructing an iterator over a string handle. Note that the
+  nested structure of dtypes and shapes must be identical.
 
   Args:
     dtypes: A nested structure of dtypes, such as what is returned by Dataset's
@@ -148,10 +174,14 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
     # a base class. Note this must precede the test for being a list.
     return tf_dtypes_and_shapes_to_type(dtypes._asdict(), shapes._asdict())
   elif isinstance(dtypes, dict):
-    # This also handles 'OrderedDict', as it inherits from 'dict'.
-    return computation_types.NamedTupleType(
-        [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
-         for name, dtypes_elem in six.iteritems(dtypes)])
+    if isinstance(dtypes, collections.OrderedDict):
+      items = six.iteritems(dtypes)
+    else:
+      items = sorted(six.iteritems(dtypes))
+    return computation_types.NamedTupleType([(name,
+                                              tf_dtypes_and_shapes_to_type(
+                                                  dtypes_elem, shapes[name]))
+                                             for name, dtypes_elem in items])
   elif isinstance(dtypes, (list, tuple)):
     return computation_types.NamedTupleType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
@@ -165,46 +195,63 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
 def type_to_tf_dtypes_and_shapes(type_spec):
   """Returns nested structures of tensor dtypes and shapes for a given TFF type.
 
-  The returned dtypes and shapes match those used by tf.Datasets to indicate
-  the type and shape of their elements. They can be used, e.g., as arguments in
-  constructing an iterator over a string handle.
+  The returned dtypes and shapes match those used by `tf.data.Dataset`s to
+  indicate the type and shape of their elements. They can be used, e.g., as
+  arguments in constructing an iterator over a string handle.
 
   Args:
-    type_spec: Type specification, either an instance of computation_types.Type,
-      or something convertible to it. Ther type specification must be composed
-      of only named tuples and tensors. In all named tuples that appear in the
-      type spec, all the elements must be named.
+    type_spec: Type specification, either an instance of
+      `computation_types.Type`, or something convertible to it. Ther type
+      specification must be composed of only named tuples and tensors. In all
+      named tuples that appear in the type spec, all the elements must be named.
 
   Returns:
     A pair of parallel nested structures with the dtypes and shapes of tensors
-    defined in type_spec. The layout of the two structures returned is the same
-    as the layout of the nesdted type defined by type_spec. Named tuples are
-    represented as dictionaries.
+    defined in `type_spec`. The layout of the two structures returned is the
+    same as the layout of the nesdted type defined by `type_spec`. Named tuples
+    are represented as dictionaries.
 
   Raises:
-    ValueError: if the type_spec is composed of something other than named
+    ValueError: if the `type_spec` is composed of something other than named
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   type_spec = computation_types.to_type(type_spec)
   if isinstance(type_spec, computation_types.TensorType):
     return (type_spec.dtype, type_spec.shape)
   elif isinstance(type_spec, computation_types.NamedTupleType):
-    output_dtypes = collections.OrderedDict()
-    output_shapes = collections.OrderedDict()
-    for e in anonymous_tuple.to_elements(type_spec):
-      element_name = e[0]
-      element_spec = e[1]
-      if element_name is None:
-        # TODO(b/113112108): Possibly remove this limitation.
-        raise ValueError(
-            'When a sequence appears as a part of a parameter to a section of '
-            'TensorFlow code, in the type signature of elements of that '
-            'sequence all named tuples must have their elements explicitly '
-            'named, and this does not appear to be the case in {}.'.format(
-                str(type_spec)))
-      element_output = type_to_tf_dtypes_and_shapes(element_spec)
-      output_dtypes[element_name] = element_output[0]
-      output_shapes[element_name] = element_output[1]
+    elements = anonymous_tuple.to_elements(type_spec)
+    if elements[0][0] is not None:
+      output_dtypes = collections.OrderedDict()
+      output_shapes = collections.OrderedDict()
+      for e in elements:
+        element_name = e[0]
+        element_spec = e[1]
+        if element_name is None:
+          raise ValueError(
+              'When a sequence appears as a part of a parameter to a section '
+              'of TensorFlow code, in the type signature of elements of that '
+              'sequence all named tuples must have their elements explicitly '
+              'named, and this does not appear to be the case in {}.'.format(
+                  str(type_spec)))
+        element_output = type_to_tf_dtypes_and_shapes(element_spec)
+        output_dtypes[element_name] = element_output[0]
+        output_shapes[element_name] = element_output[1]
+    else:
+      output_dtypes = []
+      output_shapes = []
+      for e in elements:
+        element_name = e[0]
+        element_spec = e[1]
+        if element_name is not None:
+          raise ValueError(
+              'When a sequence appears as a part of a parameter to a section '
+              'of TensorFlow code, in the type signature of elements of that '
+              'sequence all named tuples must have their elements explicitly '
+              'named, and this does not appear to be the case in {}.'.format(
+                  str(type_spec)))
+        element_output = type_to_tf_dtypes_and_shapes(element_spec)
+        output_dtypes.append(element_output[0])
+        output_shapes.append(element_output[1])
     return (output_dtypes, output_shapes)
   else:
     raise ValueError('Unsupported type {}.'.format(

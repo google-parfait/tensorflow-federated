@@ -59,8 +59,8 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     to the tensors and ops stamped into the graph.
 
   Raises:
-    TypeError: if the arguments are of the wrong computation_types.
-    ValueError: if the parameter type cannot be stamped in a TensorFlow graph.
+    TypeError: If the arguments are of the wrong computation_types.
+    ValueError: If the parameter type cannot be stamped in a TensorFlow graph.
   """
   py_typecheck.check_type(parameter_name, six.string_types)
   py_typecheck.check_type(graph, tf.Graph)
@@ -142,7 +142,7 @@ def capture_result_from_graph(result):
     type relate to the tensors and ops that appear in the result.
 
   Raises:
-    TypeError: if the argument or any of its parts are of an uexpected type.
+    TypeError: If the argument or any of its parts are of an uexpected type.
   """
   # TODO(b/113112885): The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
@@ -160,11 +160,12 @@ def capture_result_from_graph(result):
     return capture_result_from_graph(result._asdict())
     # pylint: enable=protected-access
   elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
-    # This also handles 'OrderedDict', as it inherits from 'dict'.
     if isinstance(result, anonymous_tuple.AnonymousTuple):
       name_value_pairs = anonymous_tuple.to_elements(result)
-    else:
+    elif isinstance(result, collections.OrderedDict):
       name_value_pairs = six.iteritems(result)
+    else:
+      name_value_pairs = sorted(six.iteritems(result))
     element_name_type_binding_triples = [
         ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs
     ]
@@ -359,6 +360,33 @@ def nested_structures_equal(x, y):
       x) == tf.contrib.framework.nest.flatten(y)
 
 
+def to_nested_structure(value):
+  """Converts a TFF object to the nested structure for a given type.
+
+  Args:
+    value: The object to convert.
+
+  Returns:
+    The nested representation of `value` for a given type.
+
+  Raises:
+    TypeError: If the contains an unnamed element.
+  """
+  if value is None:
+    return None
+  elif isinstance(value, anonymous_tuple.AnonymousTuple):
+    ordered_dict = collections.OrderedDict()
+    for name, element in anonymous_tuple.to_elements(value):
+      if name is None:
+        raise TypeError(
+            'Expected anonymous tuple to contain only named elements.')
+      ordered_dict[name] = to_nested_structure(element)
+    return ordered_dict
+  elif isinstance(value, (tuple, list)):
+    return [to_nested_structure(e) for e in value]
+  return value
+
+
 def make_data_set_from_elements(graph, elements, element_type):
   """Creates a `tf.data.Dataset` in `graph` from explicitly listed `elements`.
 
@@ -394,13 +422,19 @@ def make_data_set_from_elements(graph, elements, element_type):
           graph, elements[:-1], element_type).concatenate(
               make_data_set_from_elements(graph, elements[-1:], element_type))
     else:
-      ds = tf.data.Dataset.from_tensors(elements[0])
-      if not nested_structures_equal(ds.output_types, output_types):
-        raise TypeError('Expected dtypes {}, found {}.'.format(
-            str(output_types), str(ds.output_types)))
-      if not nested_structures_equal(ds.output_shapes, output_shapes):
-        raise TypeError('Expected shapes {}, found {}.'.format(
-            str(output_shapes), str(ds.output_shapes)))
+      element = elements[0]
+      if isinstance(element, anonymous_tuple.AnonymousTuple):
+        element = to_nested_structure(element)
+      if isinstance(element, list):
+        ds = tf.data.Dataset.from_tensor_slices(element)
+      else:
+        ds = tf.data.Dataset.from_tensors(element)
+        if not nested_structures_equal(ds.output_types, output_types):
+          raise TypeError('Expected dtypes {}, found {}.'.format(
+              str(output_types), str(ds.output_types)))
+        if not nested_structures_equal(ds.output_shapes, output_shapes):
+          raise TypeError('Expected shapes {}, found {}.'.format(
+              str(output_shapes), str(ds.output_shapes)))
       return ds
 
 
@@ -409,22 +443,38 @@ def fetch_value_in_session(value, session):
 
   Args:
     value: A Python object of a form analogous to that constructed by the
-      function `assemble_result_from_graph`, made of tensors, data sets, and
-      anononymous tuples.
+      function `assemble_result_from_graph`, made of tensors and anononymous
+      tuples, or a `tf.data.Dataset`.
     session: The session in which to perform the fetch (as a single run).
 
   Returns:
     A Python object with structure similar to `value`, but with tensors
     replaced with their values, and data sets replaced with lists of their
     elements, all fetched with a single call `session.run()`.
+
+  Raises:
+    ValueError: If `value` is not a `tf.data.Dataset` or not a structure of
+      tensors and anonoymous tuples.
   """
   py_typecheck.check_type(session, tf.Session)
-  flattened_value = anonymous_tuple.flatten(value)
-
-  # TODO(b/113123634): Add support for tf.data.Datasets.
-  for v in flattened_value:
-    if not tf.contrib.framework.is_tensor(v):
-      raise ValueError('Unsupported value type {}.'.format(str(v)))
-
-  flattened_results = session.run(flattened_value)
-  return anonymous_tuple.pack_sequence_as(value, flattened_results)
+  # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
+  # `tf.data.Dataset`s and what the API would look like to support this.
+  if isinstance(value, tf.data.Dataset):
+    with session.graph.as_default():
+      iterator = value.make_initializable_iterator()
+      next_element = iterator.get_next()
+    session.run(iterator.initializer)
+    elements = []
+    while True:
+      try:
+        elements.append(session.run(next_element))
+      except tf.errors.OutOfRangeError:
+        break
+    return elements
+  else:
+    flattened_value = anonymous_tuple.flatten(value)
+    for v in flattened_value:
+      if not tf.contrib.framework.is_tensor(v):
+        raise ValueError('Unsupported value type {}.'.format(str(v)))
+    flattened_results = session.run(flattened_value)
+    return anonymous_tuple.pack_sequence_as(value, flattened_results)
