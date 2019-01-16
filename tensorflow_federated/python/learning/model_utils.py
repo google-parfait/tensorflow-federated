@@ -67,7 +67,7 @@ class ModelWeights(
 
 
 def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
-  """Builds a `tensorflow_federated.learning.Model`.
+  """Builds a `tff.learning.Model`.
 
   Args:
     keras_model: a `tf.keras.Model` object that is not compiled.
@@ -79,12 +79,11 @@ def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
     optimizer: a `tf.keras.optimizer.Optimizer`.
 
   Returns:
-    A `tensorflow_federated.learning.TrainableModel` object iff optimizer is not
-    `None`, otherwise a `tensorflow_federated.learning.Model` object.
+    A `tff.learning.Model` object.
 
   Raises:
-    TypeError: if keras_model is not an instace of `tf.keras.Model`.
-    ValueError: if keras_model was compiled.
+    TypeError: if `keras_model` is not an instance of `tf.keras.Model`.
+    ValueError: if `keras_model` was compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
   if keras_model._is_compiled:  # pylint: disable=protected-access
@@ -97,17 +96,17 @@ def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
 
 
 def from_compiled_keras_model(keras_model):
-  """Builds a `tensorflow_federated.learning.TrainableModel`.
+  """Builds a `tff.learning.Model`.
 
   Args:
     keras_model: a `tf.keras.Model` object that was compiled.
 
   Returns:
-    A `tensorflow_federated.learning.TrainableModel`.
+    A `tff.learning.Model`.
 
   Raises:
-    TypeError: if keras_model is not an instace of `tf.keras.Model`.
-    ValueError: if keras_model was not compiled.
+    TypeError: if `keras_model` is not an instance of `tf.keras.Model`.
+    ValueError: if `keras_model` was *not* compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
   # Optimizer attribute is only set after calling tf.keras.Model.compile().
@@ -195,11 +194,11 @@ def enhance(model):
   """Wraps a `tff.learning.Model` as an `EnhancedModel`.
 
   Args:
-    model: A `tff.learning.Model` or `tff.learning.TrainableModel`.
+    model: A `tff.learning.Model`.
 
   Returns:
-    An EnhancedModel or TrainableEnhancedModel, depending on the type of the
-    input model. If model has already been wrapped as such, this is a no-op.
+    An `EnhancedModel` or `TrainableEnhancedModel`, depending on the type of the
+    input model. If `model` has already been wrapped as such, this is a no-op.
   """
   py_typecheck.check_type(model, model_lib.Model)
   if isinstance(model, EnhancedModel):

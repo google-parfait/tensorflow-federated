@@ -17,7 +17,8 @@ tff.learning.from_keras_model(
 Defined in
 [`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
-Builds a `tensorflow_federated.learning.Model`.
+Builds a
+<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
 #### Args:
 
@@ -32,11 +33,10 @@ Builds a `tensorflow_federated.learning.Model`.
 
 #### Returns:
 
-A `tensorflow_federated.learning.TrainableModel` object iff optimizer is not
-`None`, otherwise a `tensorflow_federated.learning.Model` object.
-
+A <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>
+object.
 
 #### Raises:
 
-* <b>`TypeError`</b>: if keras_model is not an instace of `tf.keras.Model`.
-* <b>`ValueError`</b>: if keras_model was compiled.
+*   <b>`TypeError`</b>: if `keras_model` is not an instance of `tf.keras.Model`.
+*   <b>`ValueError`</b>: if `keras_model` was compiled.
