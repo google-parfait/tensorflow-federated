@@ -24,6 +24,7 @@ import itertools
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core import api as tff
@@ -333,6 +334,21 @@ class IntrinsicsTest(parameterized.TestCase):
       return tff.federated_value(x, tff.CLIENTS)
 
     self.assertEqual(str(foo.type_signature), '(bool -> bool@CLIENTS)')
+
+  def test_federated_value_raw_np_scalar(self):
+    floatv = np.float64(0)
+    tff_float = tff.federated_value(floatv, tff.SERVER)
+    self.assertEqual(str(tff_float.type_signature), 'float64@SERVER')
+    intv = np.int64(0)
+    tff_int = tff.federated_value(intv, tff.SERVER)
+    self.assertEqual(str(tff_int.type_signature), 'int64@SERVER')
+
+  def test_federated_value_raw_tf_scalar_variable(self):
+    v = tf.Variable(initial_value=0., name='test_var')
+    with self.assertRaisesRegexp(
+        TypeError, 'TensorFlow construct (.*) has been '
+        'encountered in a federated context.'):
+      _ = tff.federated_value(v, tff.SERVER)
 
   def test_federated_value_with_bool_on_server(self):
 

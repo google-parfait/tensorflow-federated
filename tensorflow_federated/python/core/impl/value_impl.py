@@ -207,19 +207,16 @@ class ValueImpl(value_base.Value):
 
 
 def _wrap_constant_as_value(const, context_stack):
-  """Wraps the given Python constant as a TFF `Value`.
+  """Wraps the given Python constant as a `tff.Value`.
 
   Args:
-    const: Python constant to be converted to TFF value. Allowable types are
-      `str`, `int`, `float`, `boolean`, or `numpy.ndarray`.
+    const: Python constant to be converted to TFF value. Anything convertible to
+      Tensor via `tf.constant` can be passed in.
     context_stack: The context stack to use.
 
   Returns:
     An instance of `value_base.Value`.
   """
-  if not isinstance(const, (str, int, float, bool, np.ndarray)):
-    raise TypeError('Please pass one of str, int, float, bool, or '
-                    'numpy ndarray to value_impl._wrap_constant_as_value')
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   tf_comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
       lambda: tf.constant(const), None, context_stack)
@@ -238,7 +235,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
     context_stack: The context stack to use.
 
   Returns:
-    An instance of `Value`.
+    An instance of `tff.Value`.
 
   Raises:
     TypeError: If `elements` and `element_type` are of incompatible types.
@@ -280,8 +277,9 @@ def to_value(arg, type_spec, context_stack):
     of which are converted into instances of `tff.Tuple`.
   * Placement literals, converted into instances of `tff.Placement`.
   * Computations.
-  * Python constants of type `str`, `int`, `float`, `bool`, or
-    `np.ndarray`.
+  * Python constants of type `str`, `int`, `float`, `bool`
+  * Numpy objects inherting from `np.ndarray` or `np.generic` (the parent
+    of numpy scalar types)
 
   Args:
     arg: Either an instance of `tff.Value`, or an argument convertible to
@@ -298,7 +296,9 @@ def to_value(arg, type_spec, context_stack):
 
   Raises:
     TypeError: if `arg` is of an unsupported type, or of a type that does not
-      match `type_spec`.
+      match `type_spec`. Raises explicit error message if TensorFlow constructs
+      are encountered, as TensorFlow code should be sealed away from TFF
+      federated context.
   """
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if type_spec is not None:
@@ -314,8 +314,6 @@ def to_value(arg, type_spec, context_stack):
     result = ValueImpl(
         computation_building_blocks.CompiledComputation(
             computation_impl.ComputationImpl.get_proto(arg)), context_stack)
-  elif isinstance(arg, (str, int, float, bool, np.ndarray)):
-    result = _wrap_constant_as_value(arg, context_stack)
   elif type_spec is not None and isinstance(type_spec,
                                             computation_types.SequenceType):
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
@@ -336,11 +334,19 @@ def to_value(arg, type_spec, context_stack):
         computation_building_blocks.Tuple([
             ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg
         ]), context_stack)
+  elif isinstance(arg, (str, int, float, bool, np.ndarray, np.generic)):
+    result = _wrap_constant_as_value(arg, context_stack)
+  elif isinstance(arg, (tf.Tensor, tf.Variable)):
+    raise TypeError(
+        'TensorFlow construct {} has been encountered in a federated '
+        'context. TFF does not support mixing TF and federated orchestration '
+        'code. Please wrap any TensorFlow constructs with '
+        '`tff.tf_computation`.'.format(arg))
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(
             py_typecheck.type_string(type(arg))))
-  assert isinstance(result, ValueImpl)
+  py_typecheck.check_type(result, ValueImpl)
   if (type_spec is not None and
       not type_utils.is_assignable_from(type_spec, result.type_signature)):
     raise TypeError(

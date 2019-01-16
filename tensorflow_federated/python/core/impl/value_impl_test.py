@@ -263,7 +263,9 @@ class ValueImplTest(absltest.TestCase):
     raw_float_val = value_impl.to_value(10.0, None,
                                         context_stack_impl.context_stack)
     self.assertIsInstance(raw_float_val, value_base.Value)
-    self.assertEqual(str(raw_float_val.type_signature), 'float32')
+    np_float_val = value_impl.to_value(
+        np.float(10), None, context_stack_impl.context_stack)
+    self.assertEqual(str(np_float_val.type_signature), 'float32')
     np_array_val = value_impl.to_value(
         np.array([10.0]), None, context_stack_impl.context_stack)
     self.assertIsInstance(np_array_val, value_base.Value)
@@ -282,6 +284,18 @@ class ValueImplTest(absltest.TestCase):
                                          context_stack_impl.context_stack)
     self.assertIsInstance(raw_string_val, value_base.Value)
     self.assertEqual(str(raw_string_val.type_signature), 'string')
+
+  def test_tf_mapping_raises_helpful_error(self):
+    with self.assertRaisesRegexp(
+        TypeError, 'TensorFlow construct (.*) has been '
+        'encountered in a federated context.'):
+      _ = value_impl.to_value(
+          tf.constant(10), None, context_stack_impl.context_stack)
+    with self.assertRaisesRegexp(
+        TypeError, 'TensorFlow construct (.*) has been '
+        'encountered in a federated context.'):
+      _ = value_impl.to_value(
+          tf.Variable(np.array([10.0])), None, context_stack_impl.context_stack)
 
   def test_slicing_support_namedtuple(self):
     x = value_impl.ValueImpl(
