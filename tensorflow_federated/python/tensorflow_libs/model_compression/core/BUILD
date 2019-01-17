@@ -1,6 +1,6 @@
 # Placeholder for internal Python version compatibility macro.
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//tensorflow_federated/python/tensorflow_libs/model_compression:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
