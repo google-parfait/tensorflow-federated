@@ -15,6 +15,7 @@ py_library(
         ":computations",
         ":intrinsics",
         ":placements",
+        ":typed_object",
         ":value_base",
         ":values",
     ],
@@ -23,7 +24,10 @@ py_library(
 py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
-    deps = ["@six_archive//:six"],
+    deps = [
+        ":typed_object",
+        "@six_archive//:six",
+    ],
 )
 
 py_library(
@@ -47,6 +51,7 @@ py_test(
     deps = [
         ":computation_types",
         ":placements",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
@@ -106,9 +111,18 @@ py_library(
 )
 
 py_library(
+    name = "typed_object",
+    srcs = ["typed_object.py"],
+    deps = ["@six_archive//:six"],
+)
+
+py_library(
     name = "value_base",
     srcs = ["value_base.py"],
-    deps = ["@six_archive//:six"],
+    deps = [
+        ":typed_object",
+        "@six_archive//:six",
+    ],
 )
 
 py_library(

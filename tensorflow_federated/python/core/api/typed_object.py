@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines the abstract interface for classes that represent computations."""
+"""Defines an abstract interface for things that possess TFF type signatures."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,23 +23,12 @@ import abc
 
 import six
 
-from tensorflow_federated.python.core.api import typed_object
-
 
 @six.add_metaclass(abc.ABCMeta)
-class Computation(typed_object.TypedObject):
-  """An abstract interface for all classes that represent computations."""
+class TypedObject(object):
+  """An abstract interface for things that possess TFF type signatures."""
 
-  @abc.abstractmethod
-  def __call__(self, *args, **kwargs):
-    """Invokes the computation with the given arguments in the given context.
-
-    Args:
-      *args: The positional arguments.
-      **kwargs: The keyword-based arguments.
-
-    Returns:
-      The result of invoking the computation, the exact form of which depends
-      on the context.
-    """
+  @abc.abstractproperty
+  def type_signature(self):
+    """Returns the TFF type of this object (an instance of `tff.Type`)."""
     raise NotImplementedError

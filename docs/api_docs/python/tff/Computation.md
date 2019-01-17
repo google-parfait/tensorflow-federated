@@ -9,6 +9,8 @@
 
 ## Class `Computation`
 
+Inherits From: [`TypedObject`](../tff/TypedObject.md)
+
 Defined in
 [`core/api/computation_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py).
 
@@ -18,11 +20,8 @@ An abstract interface for all classes that represent computations.
 
 <h3 id="type_signature"><code>type_signature</code></h3>
 
-Provides access to the type signature of this computation.
-
-#### Returns:
-
-An instance of a class that represents this computation's type signature.
+Returns the TFF type of this object (an instance of
+<a href="../tff/Type.md"><code>tff.Type</code></a>).
 
 ## Methods
 

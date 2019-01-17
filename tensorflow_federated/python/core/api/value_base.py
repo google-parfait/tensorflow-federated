@@ -23,11 +23,13 @@ import abc
 
 import six
 
+from tensorflow_federated.python.core.api import typed_object
+
 # TODO(b/113112108): Add derived interfaces and functions to support reflection.
 
 
 @six.add_metaclass(abc.ABCMeta)
-class Value(object):
+class Value(typed_object.TypedObject):
   """An abstract base class for all values in the bodies of TFF computations.
 
   This interface is only relevant in the context of non-TensorFlow computations,
@@ -40,11 +42,6 @@ class Value(object):
   Outside of the bodies of composite non-TensorFlow computations, this interface
   is not used. All fully constructed computations implement 'Computation'.
   """
-
-  @abc.abstractproperty
-  def type_signature(self):
-    """Returns the TFF type of this value (an instance of Type)."""
-    raise NotImplementedError
 
   @abc.abstractmethod
   def __repr__(self):

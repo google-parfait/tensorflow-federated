@@ -28,6 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
@@ -42,7 +43,7 @@ def _check_computation_oneof(computation_proto, expected_computation_oneof):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class ComputationBuildingBlock(object):
+class ComputationBuildingBlock(typed_object.TypedObject):
   """A generic base class for all computation building blocks defined below."""
 
   _deserializer_dict = None  # Defined at the end of this file.
