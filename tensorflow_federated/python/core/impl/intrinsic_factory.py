@@ -479,11 +479,22 @@ class IntrinsicFactory(object):
           'The federated zip operator zips tuples of at least two elements, '
           'but the tuple given as argument has {} '
           'elements.'.format(num_elements))
-    for _, elem in anonymous_tuple.to_elements(value.type_signature):
+    elements_to_zip = anonymous_tuple.to_elements(value.type_signature)
+    output_placement = elements_to_zip[0][1].placement
+    zip_apply_fn = {
+        placements.CLIENTS: self.federated_map,
+        placements.SERVER: self.federated_apply
+    }
+    if output_placement not in zip_apply_fn:
+      raise TypeError(
+          'federated_zip only supports components with CLIENTS or '
+          'SERVER placement, [{}] is unsupported'.format(output_placement))
+    for _, elem in elements_to_zip:
       py_typecheck.check_type(elem, computation_types.FederatedType)
-      if elem.placement is not placements.CLIENTS:
+      if elem.placement is not output_placement:
         raise TypeError(
-            'The elements of the named tuple to zip must be placed at CLIENTS.')
+            'The elements of the named tuple to zip must be placed at {}.'
+            .format(output_placement))
     zipped = value_utils.zip_two_tuple(
         value_impl.to_value([value[0], value[1]], None, self._context_stack),
         self._context_stack)
@@ -504,7 +515,7 @@ class IntrinsicFactory(object):
           anonymous_tuple.to_elements(zipped.type_signature.member)[-1][1])
       flatten_func = value_utils.flatten_first_index(flatten_func, new_type,
                                                      self._context_stack)
-    return self.federated_map(flatten_func, zipped)
+    return zip_apply_fn[output_placement](flatten_func, zipped)
 
   def sequence_map(self, mapping_fn, value):
     """Implements `sequence_map` as defined in `api/intrinsics.py`.

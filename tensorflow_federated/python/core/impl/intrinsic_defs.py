@@ -345,14 +345,26 @@ FEDERATED_WEIGHTED_AVERAGE = IntrinsicDef(
 # Zips a tuple of two federated types into a federated tuple.
 #
 # Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS
-FEDERATED_ZIP = IntrinsicDef(
-    'FEDERATED_ZIP', 'federated_zip',
+FEDERATED_ZIP_AT_CLIENTS = IntrinsicDef(
+    'FEDERATED_ZIP_AT_CLIENTS', 'federated_zip_at_clients',
     computation_types.FunctionType(
         parameter=[
             type_constructors.at_clients(computation_types.AbstractType('T')),
             type_constructors.at_clients(computation_types.AbstractType('U'))
         ],
         result=type_constructors.at_clients([
+            computation_types.AbstractType('T'),
+            computation_types.AbstractType('U')
+        ])))
+# Type signature: <T@SERVER,U@SERVER> -> <T,U>@SERVER
+FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
+    'FEDERATED_ZIP_AT_SERVER', 'federated_zip_at_server',
+    computation_types.FunctionType(
+        parameter=[
+            type_constructors.at_server(computation_types.AbstractType('T')),
+            type_constructors.at_server(computation_types.AbstractType('U'))
+        ],
+        result=type_constructors.at_server([
             computation_types.AbstractType('T'),
             computation_types.AbstractType('U')
         ])))

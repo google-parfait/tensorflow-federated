@@ -35,7 +35,7 @@ def zip_two_tuple(input_val, context_stack):
 
   Args:
     input_val: 2-tuple TFF `Value` of `NamedTuple` type, whose elements must be
-      `FederatedTypes` with `CLIENT` placements.
+      `FederatedTypes` with the same placement.
     context_stack: The context stack to use, as in `impl.value_impl.to_value`.
 
   Returns:
@@ -44,8 +44,19 @@ def zip_two_tuple(input_val, context_stack):
   py_typecheck.check_type(input_val, value_base.Value)
   py_typecheck.check_type(input_val.type_signature,
                           computation_types.NamedTupleType)
+  py_typecheck.check_type(input_val[0].type_signature,
+                          computation_types.FederatedType)
+
+  zip_uris = {
+      placements.CLIENTS: intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
+      placements.SERVER: intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
+  }
+  output_placement = input_val[0].type_signature.placement
+  if output_placement not in zip_uris:
+    raise TypeError('The argument must have components placed at SERVER or '
+                    'CLIENTS')
   for elem in input_val:
-    type_utils.check_federated_value_placement(elem, placements.CLIENTS)
+    type_utils.check_federated_value_placement(elem, output_placement)
   num_elements = len(anonymous_tuple.to_elements(input_val.type_signature))
   if num_elements != 2:
     raise ValueError('The argument of zip_two_tuple must be a 2-tuple, '
@@ -54,12 +65,12 @@ def zip_two_tuple(input_val, context_stack):
       [
           e.member
           for _, e in anonymous_tuple.to_elements(input_val.type_signature)
-      ], placements.CLIENTS,
+      ], output_placement,
       all(e.all_equal
           for _, e in anonymous_tuple.to_elements(input_val.type_signature)))
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
-          intrinsic_defs.FEDERATED_ZIP.uri,
+          zip_uris[output_placement],
           computation_types.FunctionType(input_val.type_signature,
                                          result_type)), context_stack)
   return intrinsic(input_val)

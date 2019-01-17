@@ -256,16 +256,16 @@ def federated_zip(value):
 
   Args:
     value: A value of a TFF named tuple type, the elements of which are
-      federated values placed at the `CLIENTS`.
+      federated values with the same placement.
 
   Returns:
-    A federated value placed at the `CLIENTS` in which every member component
-    at the given client is a named tuple that consists of the corresponding
-     member components of the elements of `value` residing at that client.
+    A federated value placed at the same location as the members of `value`, in
+    which every member component is a named tuple that consists of the
+    corresponding member components of the elements of `value`.
 
   Raises:
-    TypeError: if the argument is not a named tuple of federated values placed
-    at 'CLIENTS`.
+    TypeError: if the argument is not a named tuple of federated values with the
+      same placement.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_zip(value)

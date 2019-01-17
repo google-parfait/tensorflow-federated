@@ -54,7 +54,10 @@ class IntrinsicDefsTest(parameterized.TestCase):
       ('FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
       ('FEDERATED_MAP', '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
       ('FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
-      ('FEDERATED_ZIP', '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'))
+      ('FEDERATED_ZIP_AT_CLIENTS',
+       '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),
+      ('FEDERATED_ZIP_AT_SERVER', '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)')
+  )
   def test_type_signature_strings(self, name, type_str):
     self.assertEqual(
         str(getattr(intrinsic_defs, name).type_signature), type_str)

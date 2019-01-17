@@ -138,14 +138,17 @@ class IntrinsicsTest(parameterized.TestCase):
         '(<int32@CLIENTS,bool@CLIENTS> -> <int32,bool>@CLIENTS)')
 
   def test_federated_zip_with_server_int_and_bool(self):
-    with self.assertRaises(TypeError):
 
-      @tff.federated_computation([
-          tff.FederatedType(tf.int32, tff.SERVER),
-          tff.FederatedType(tf.bool, tff.SERVER)
-      ])
-      def _(x, y):
-        return tff.federated_zip([x, y])
+    @tff.federated_computation([
+        tff.FederatedType(tf.int32, tff.SERVER, True),
+        tff.FederatedType(tf.bool, tff.SERVER, True)
+    ])
+    def foo(x, y):
+      return tff.federated_zip([x, y])
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<int32@SERVER,bool@SERVER> -> <int32,bool>@SERVER)')
 
   def test_federated_collect_with_client_int(self):
 
