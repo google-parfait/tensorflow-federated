@@ -135,6 +135,13 @@ class AnonymousTuple(object):
         ('{}={}'.format(e[0], str(e[1])) if e[0] is not None else str(e[1]))
         for e in to_elements(self)))
 
+  def __hash__(self):
+    # TODO(b/123041122): memoize this call
+    return hash((
+        'anonymous_tuple',  # salting to avoid type mismatch.
+        tuple(self._element_array),
+        tuple(self._name_to_index.items())))
+
 
 def to_elements(an_anonymous_tuple):
   """Retrieves the list of (name, value) pairs from an anonymous tuple.

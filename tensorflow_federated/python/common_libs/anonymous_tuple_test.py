@@ -105,6 +105,22 @@ class AnonymousTupleTest(absltest.TestCase):
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
 
+  def test_hash(self):
+    v1 = [(str(i) if i > 30 else None, i) for i in range(0, 50, 10)]
+    x1 = anonymous_tuple.AnonymousTuple(v1)
+    self.assertNotEqual(x1, v1)
+    self.assertNotEqual(hash(x1), hash(iter(v1)))
+    v2 = [(None, i) for i in range(0, 50, 10)]
+    x2 = anonymous_tuple.AnonymousTuple(v2)
+    self.assertNotEqual(hash(x2), hash(iter(v2)))
+    self.assertNotEqual(x1, x2)
+    self.assertNotEqual(hash(x1), hash(x2))
+    v3 = [(None, 0), (None, 10), (None, 20), (None, 30), (None, 40)]
+    x3 = anonymous_tuple.AnonymousTuple(v3)
+    self.assertEqual(v2, v3)
+    self.assertEqual(x2, x3)
+    self.assertEqual(hash(x2), hash(x3))
+
   def test_slicing_behavior(self):
     v = [(None, i) for i in range(0, 50, 10)]
     x = anonymous_tuple.AnonymousTuple(v)
