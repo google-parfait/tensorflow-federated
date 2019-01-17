@@ -52,6 +52,8 @@ toc:
       path: /federated/api_docs/python/tff/to_value
     - title: Type
       path: /federated/api_docs/python/tff/Type
+    - title: TypedObject
+      path: /federated/api_docs/python/tff/TypedObject
     - title: Value
       path: /federated/api_docs/python/tff/Value
   - title: tff.learning

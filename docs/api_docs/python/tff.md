@@ -51,6 +51,9 @@ in TFF.
 [`class Type`](./tff/Type.md): An abstract interface for all classes that
 represent TFF types.
 
+[`class TypedObject`](./tff/TypedObject.md): An abstract interface for things
+that possess TFF type signatures.
+
 [`class Value`](./tff/Value.md): An abstract base class for all values in the
 bodies of TFF computations.
 

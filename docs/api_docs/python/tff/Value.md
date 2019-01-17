@@ -14,6 +14,8 @@
 
 ## Class `Value`
 
+Inherits From: [`TypedObject`](../tff/TypedObject.md)
+
 Defined in
 [`core/api/value_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py).
 
@@ -33,7 +35,8 @@ is not used. All fully constructed computations implement 'Computation'.
 
 <h3 id="type_signature"><code>type_signature</code></h3>
 
-Returns the TFF type of this value (an instance of Type).
+Returns the TFF type of this object (an instance of
+<a href="../tff/Type.md"><code>tff.Type</code></a>).
 
 ## Methods
 
