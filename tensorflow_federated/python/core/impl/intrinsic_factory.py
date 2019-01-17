@@ -311,8 +311,8 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(mapping_fn, value_base.Value)
     py_typecheck.check_type(mapping_fn.type_signature,
                             computation_types.FunctionType)
-    if not type_utils.is_assignable_from(
-        mapping_fn.type_signature.parameter, value.type_signature.member):
+    if not type_utils.is_assignable_from(mapping_fn.type_signature.parameter,
+                                         value.type_signature.member):
       raise TypeError(
           'The mapping function expects a parameter of type {}, but member '
           'constituents of the mapped value are of incompatible type {}.'

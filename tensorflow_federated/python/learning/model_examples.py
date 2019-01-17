@@ -108,6 +108,7 @@ class LinearRegression(model.Model):
               tff.federated_average(
                   local_outputs['loss'], weight=local_outputs['num_examples'])
       }
+
     return fed_output
 
   @classmethod

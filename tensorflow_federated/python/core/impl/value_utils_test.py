@@ -34,7 +34,6 @@ from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
 
-
 _context_stack = context_stack_impl.context_stack
 
 

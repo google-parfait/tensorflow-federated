@@ -153,12 +153,19 @@ class AnonymousTupleTest(absltest.TestCase):
             ])))
     self.assertFalse(
         anonymous_tuple.is_same_structure(
-            anonymous_tuple.AnonymousTuple([('x', {'y': 4})]),
-            anonymous_tuple.AnonymousTuple([('x', {'y': 5, 'z': 6})])))
+            anonymous_tuple.AnonymousTuple([('x', {
+                'y': 4
+            })]), anonymous_tuple.AnonymousTuple([('x', {
+                'y': 5,
+                'z': 6
+            })])))
     self.assertTrue(
         anonymous_tuple.is_same_structure(
-            anonymous_tuple.AnonymousTuple([('x', {'y': 5})]),
-            anonymous_tuple.AnonymousTuple([('x', {'y': 6})])))
+            anonymous_tuple.AnonymousTuple([('x', {
+                'y': 5
+            })]), anonymous_tuple.AnonymousTuple([('x', {
+                'y': 6
+            })])))
     with self.assertRaises(TypeError):
       self.assertTrue(
           anonymous_tuple.is_same_structure(
