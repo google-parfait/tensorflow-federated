@@ -240,8 +240,11 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
     frac_x, _ = np.modf(data.x)
     frac_encoded_x, _ = np.modf(data.encoded_x['values'])
     # The decimal places should be the same.
-    self.assertAllClose(frac_x, frac_encoded_x, rtol=test_utils.DEFAULT_RTOL,
-                        atol=test_utils.DEFAULT_ATOL)
+    self.assertAllClose(
+        frac_x,
+        frac_encoded_x,
+        rtol=test_utils.DEFAULT_RTOL,
+        atol=test_utils.DEFAULT_ATOL)
 
   def test_encoding_differs_given_different_seed(self):
     """Tests that encoded_x is different in different evaluations."""
@@ -254,13 +257,16 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
     test_data_2 = self.evaluate(test_utils.TestData(x, encoded_x, decoded_x))
 
     # The decoded values should be the sam, but the encoded values not.
-    self.assertAllClose(test_data_1.decoded_x, test_data_2.decoded_x,
-                        rtol=test_utils.DEFAULT_RTOL,
-                        atol=test_utils.DEFAULT_ATOL)
-    self.assertNotAllClose(test_data_1.encoded_x['values'],
-                           test_data_2.encoded_x['values'],
-                           rtol=test_utils.DEFAULT_RTOL,
-                           atol=test_utils.DEFAULT_ATOL)
+    self.assertAllClose(
+        test_data_1.decoded_x,
+        test_data_2.decoded_x,
+        rtol=test_utils.DEFAULT_RTOL,
+        atol=test_utils.DEFAULT_ATOL)
+    self.assertNotAllClose(
+        test_data_1.encoded_x['values'],
+        test_data_2.encoded_x['values'],
+        rtol=test_utils.DEFAULT_RTOL,
+        atol=test_utils.DEFAULT_ATOL)
 
 
 class TestUtilsTest(tf.test.TestCase):
@@ -268,8 +274,9 @@ class TestUtilsTest(tf.test.TestCase):
 
   def test_dummy_rng_source(self):
     default_seed = 1
-    self.assertTrue(tf.contrib.framework.is_tensor(
-        test_utils.dummy_rng_source(default_seed, 1)))
+    self.assertTrue(
+        tf.contrib.framework.is_tensor(
+            test_utils.dummy_rng_source(default_seed, 1)))
 
     # Test that the outputs are different given different seeds.
     val_1 = self.evaluate(test_utils.dummy_rng_source(default_seed, 1))

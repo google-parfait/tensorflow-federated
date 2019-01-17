@@ -28,7 +28,6 @@ from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
-
 nest = tf.contrib.framework.nest
 
 

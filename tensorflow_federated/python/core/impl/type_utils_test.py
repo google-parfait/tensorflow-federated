@@ -112,8 +112,7 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
 
   def test_infer_type_with_int_list(self):
     self.assertEqual(
-        str(type_utils.infer_type([1, 2, 3])),
-        '<int32,int32,int32>')
+        str(type_utils.infer_type([1, 2, 3])), '<int32,int32,int32>')
 
   def test_infer_type_with_nested_float_list(self):
     self.assertEqual(
@@ -392,8 +391,8 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
   def test_is_assignable_from_with_tensor_type_and_tensor_type(self):
     t = computation_types.TensorType(tf.int32, [10])
     self.assertFalse(
-        type_utils.is_assignable_from(
-            t, computation_types.TensorType(tf.int32)))
+        type_utils.is_assignable_from(t,
+                                      computation_types.TensorType(tf.int32)))
     self.assertFalse(
         type_utils.is_assignable_from(
             t, computation_types.TensorType(tf.int32, [5])))

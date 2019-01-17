@@ -35,7 +35,6 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-
 nest = tf.contrib.framework.nest
 
 

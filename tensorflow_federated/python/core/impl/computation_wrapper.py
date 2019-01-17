@@ -89,8 +89,8 @@ def _wrap(func, parameter_type, wrapper_fn):
       parameter_type)
   py_typecheck.check_type(concrete_fn, func_utils.ConcreteFunction,
                           'value returned by the wrapper')
-  if not type_utils.are_equivalent_types(
-      concrete_fn.type_signature.parameter, parameter_type):
+  if not type_utils.are_equivalent_types(concrete_fn.type_signature.parameter,
+                                         parameter_type):
     raise TypeError(
         'Expected a concrete function that takes parameter {}, got one '
         'that takes {}.'.format(

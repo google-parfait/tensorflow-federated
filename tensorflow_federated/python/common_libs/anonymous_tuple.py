@@ -27,7 +27,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-
 nest = tf.contrib.framework.nest
 
 

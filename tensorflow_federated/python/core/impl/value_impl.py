@@ -190,8 +190,8 @@ class ValueImpl(value_base.Value):
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
-    if not type_utils.are_equivalent_types(
-        self.type_signature, other.type_signature):
+    if not type_utils.are_equivalent_types(self.type_signature,
+                                           other.type_signature):
       raise TypeError('Cannot add {} and {}.'.format(
           str(self.type_signature), str(other.type_signature)))
     return ValueImpl(

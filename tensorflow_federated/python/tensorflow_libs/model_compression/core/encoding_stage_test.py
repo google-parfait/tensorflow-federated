@@ -136,8 +136,7 @@ class NoneStateAdaptiveEncodingStageTest(tf.test.TestCase,
     # Test the functionality remain unchanged.
     self.assertEqual(stage.compressible_tensors_keys,
                      wrapped_stage.compressible_tensors_keys)
-    self.assertEqual(stage.commutes_with_sum,
-                     wrapped_stage.commutes_with_sum)
+    self.assertEqual(stage.commutes_with_sum, wrapped_stage.commutes_with_sum)
     self.assertEqual(stage.decode_needs_input_shape,
                      wrapped_stage.decode_needs_input_shape)
 

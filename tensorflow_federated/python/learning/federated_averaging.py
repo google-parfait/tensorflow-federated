@@ -44,9 +44,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     Args:
       model: A `learning.TrainableModel`.
       client_weight_fn: Optional function that takes the output of
-        model.report_local_outputs() and returns a tensor that provides
-        the weight in the federated average of model deltas. If not provided,
-        the default is the total number of examples processed on device.
+        model.report_local_outputs() and returns a tensor that provides the
+        weight in the federated average of model deltas. If not provided, the
+        default is the total number of examples processed on device.
     """
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedTrainableModel)
@@ -124,9 +124,9 @@ def build_federated_averaging_process(model_fn,
       a learning_rate of 1.0, which simply adds the average client delta to the
       server's model.
       client_weight_fn: Optional function that takes the output of
-        model.report_local_outputs() and returns a tensor that provides
-        the weight in the federated average of model deltas. If not provided,
-        the default is the total number of examples processed on device.
+        model.report_local_outputs() and returns a tensor that provides the
+        weight in the federated average of model deltas. If not provided, the
+        default is the total number of examples processed on device.
 
   Returns:
     A `tff.utils.IterativeProcess`.
