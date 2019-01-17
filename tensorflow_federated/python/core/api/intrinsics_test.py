@@ -29,6 +29,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core import api as tff
 
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import federated_computation_context
+
 
 class IntrinsicsTest(parameterized.TestCase):
 
@@ -339,12 +342,15 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(str(foo.type_signature), '(bool -> bool@CLIENTS)')
 
   def test_federated_value_raw_np_scalar(self):
-    floatv = np.float64(0)
-    tff_float = tff.federated_value(floatv, tff.SERVER)
-    self.assertEqual(str(tff_float.type_signature), 'float64@SERVER')
-    intv = np.int64(0)
-    tff_int = tff.federated_value(intv, tff.SERVER)
-    self.assertEqual(str(tff_int.type_signature), 'int64@SERVER')
+    with context_stack_impl.context_stack.install(
+        federated_computation_context.FederatedComputationContext(
+            context_stack_impl.context_stack)):
+      floatv = np.float64(0)
+      tff_float = tff.federated_value(floatv, tff.SERVER)
+      self.assertEqual(str(tff_float.type_signature), 'float64@SERVER')
+      intv = np.int64(0)
+      tff_int = tff.federated_value(intv, tff.SERVER)
+      self.assertEqual(str(tff_int.type_signature), 'int64@SERVER')
 
   def test_federated_value_raw_tf_scalar_variable(self):
     v = tf.Variable(initial_value=0., name='test_var')

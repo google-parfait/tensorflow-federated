@@ -21,11 +21,9 @@ import contextlib
 import threading
 
 from tensorflow_federated.python.common_libs import py_typecheck
-
-from tensorflow_federated.python.core.impl import compiler_pipeline_impl
+from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import executor_context
 from tensorflow_federated.python.core.impl import reference_executor
 
 
@@ -35,9 +33,8 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
   def __init__(self):
     super(ContextStackImpl, self).__init__()
     self._stack = [
-        executor_context.ExecutorContext(
-            reference_executor.ReferenceExecutor(), self,
-            compiler_pipeline_impl.CompilerPipelineImpl(self))
+        reference_executor.ReferenceExecutor(
+            compiler_pipeline.CompilerPipeline(self))
     ]
 
   @property

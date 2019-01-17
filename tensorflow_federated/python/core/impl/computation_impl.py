@@ -55,9 +55,6 @@ class ComputationImpl(func_utils.ConcreteFunction):
     # a function that needs to be invoked.
     if not isinstance(type_spec, computation_types.FunctionType):
       type_spec = computation_types.FunctionType(None, type_spec)
-    super(ComputationImpl, self).__init__(type_spec)
-    self._computation_proto = computation_proto
-    self._context_stack = context_stack
 
-  def _invoke(self, arg):
-    return self._context_stack.current.invoke(self, arg)
+    super(ComputationImpl, self).__init__(type_spec, context_stack)
+    self._computation_proto = computation_proto

@@ -499,6 +499,10 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
     self.assertFalse(type_utils.are_equivalent_types(t1, t2))
     self.assertFalse(type_utils.are_equivalent_types(t2, t1))
 
+  def test_check_type(self):
+    type_utils.check_type(10, tf.int32)
+    self.assertRaises(TypeError, type_utils.check_type, 10, tf.bool)
+
 
 if __name__ == '__main__':
   tf.test.main()

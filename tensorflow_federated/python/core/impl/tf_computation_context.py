@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
+from tensorflow_federated.python.core.impl import type_utils
 
 
 class TensorFlowComputationContext(context_base.Context):
@@ -34,6 +35,10 @@ class TensorFlowComputationContext(context_base.Context):
   def __init__(self, graph):
     py_typecheck.check_type(graph, tf.Graph)
     self._graph = graph
+
+  def ingest(self, val, type_spec):
+    type_utils.check_type(val, type_spec)
+    return val
 
   def invoke(self, comp, arg):
     py_typecheck.check_type(comp, computation_base.Computation)

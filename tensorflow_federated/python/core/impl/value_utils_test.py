@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
@@ -139,4 +140,7 @@ class ValueUtilsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  with context_stack_impl.context_stack.install(
+      federated_computation_context.FederatedComputationContext(
+          context_stack_impl.context_stack)):
+    absltest.main()

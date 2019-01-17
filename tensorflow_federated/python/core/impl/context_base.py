@@ -43,19 +43,41 @@ class Context(object):
   """
 
   @abc.abstractmethod
-  def invoke(self, comp, arg):
-    """Invokes computation 'comp' with argument 'arg'.
+  def ingest(self, val, type_spec):
+    """Ingests value 'val' given the expected type `type_spec`.
+
+    This function is invoked on Python call arguments and/or their constituents
+    to translate them into a form that can be used in the given context. This
+    is performed in the process of handling a computation's `__call__()`, while
+    bundling arguments together, and prior to calling `invoke()`.
 
     Args:
-      comp: The computation being invoked. The Python type of 'comp' expected
-        here (e.g., pb.Computation. ComputationImpl, or other) may depend on the
-        context. It is the responsibility of the concrete implementation of this
-        interface to verify that the type of 'comp' matches what the context is
-        expecting.
+      val: An object that represents the value to ingest in the given context.
+      type_spec: The `tff.Type` of the value represented by this object.
+
+    Returns:
+      The result of ingestion, which is context-dependent.
+    """
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def invoke(self, comp, arg):
+    """Invokes computation `comp` with argument `arg`.
+
+    Prior to calling `invoke`, the argument `arg` or its constituents must have
+    been ingested by the context by calling `ingest`.
+
+    Args:
+      comp: The computation being invoked. The Python type of `comp` expected
+        here (e.g., `pb.Computation`. `ComputationImpl`, or other) may depend on
+        the context. It is the responsibility of the concrete implementation of
+        this interface to verify that the type of `comp` matches what the
+        context is expecting.
       arg: The optional argument of the call (possibly an argument tuple with a
-        nested structure), or None if no argument was supplied. Computations
-        accept arguments in a variety of forms, but those are bundled together
-        into a single object before invoking the context.
+        nested structure), or `None` if no argument was supplied. Computations
+        accept arguments in a variety of forms, but those are first ingested by
+        calling `ingest()` above, then bundled together into a single object
+        before calling `invoke()` in the given context.
 
     Returns:
       The result of invocation, which is context-dependent.

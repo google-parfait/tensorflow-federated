@@ -25,17 +25,23 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
+
 import numpy as np
 import six
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import executor_base
+from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
@@ -49,7 +55,7 @@ class ComputedValue(object):
 
     For performance reasons, the constructor does not check that the payload is
     of the corresponding type. It is the responsibility of the caller to do so,
-    e.g., by calling the helper function `check_representation_matches_type()`.
+    e.g., by calling the helper function `to_representation_for_type()`.
     See the definition of this function for the value representations.
 
     Args:
@@ -75,28 +81,64 @@ class ComputedValue(object):
 # TODO(b/113123634): Address this in a more systematic way, and possibly narrow
 # this down to a smaller set.
 _TENSOR_REPRESENTATION_TYPES = (str, int, float, bool, np.int32, np.int64,
-                                np.float32, np.float64, np.ndarray)
+                                np.float32, np.float64, np.bool, np.ndarray)
 
 
-def check_representation_matches_type(value, type_spec):
-  """Checks that payload (value representation) `value` matches `type_spec`.
+def to_representation_for_type(value, type_spec, callable_handler=None):
+  """Verifies or converts the `value` representation to match `type_spec`.
 
-    The accepted forms of payload as as follows:
+  This method first tries to determine whether `value` is a valid representation
+  of TFF type `type_spec`. If so, it is returned unchanged. If not, but if it
+  can be converted into a valid representation, it is converted to such, and the
+  valid representation is returned. If no conversion to a valid representation
+  is possible, TypeError is raised.
 
-    * For TFF tensor types, either primitive Python types such as `str`, `int`,
-      `float`, and `bool`, Numpy primitive types (such as `np.int32`), and
-      Numpy arrays (`np.ndarray`), as listed in `_TENSOR_REPRESENTATION_TYPES`.
+  The accepted forms of `value` for vaqrious TFF types as as follows:
 
-    * For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
+  * For TFF tensor types, either primitive Python types such as `str`, `int`,
+    `float`, and `bool`, or Numpy primitive types (such as `np.int32`), or
+    Numpy arrays (`np.ndarray`), as listed in `_TENSOR_REPRESENTATION_TYPES`.
 
-    * For TFF functional types, Python callables that accept a single argument
-      that is a `ComputedValue` (if the function has a parameter) or `None`
-      (otherwise), and return a `ComputedValue` in the result.
+  * For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
+
+  * For TFF sequences, Python lists.
+
+  * For TFF functional types, Python callables that accept a single argument
+    that is an instance of `ComputedValue` (if the function has a parameter)
+    or `None` (otherwise), and return a `ComputedValue` instance as a result.
+    This function only verifies that `value` is a callable.
+
+  * For TFF abstract types, there is no valid representation. The reference
+    executor requires all types in an executable computation to be concrete.
+
+  * For TFF placement types, the valid representations are the placement
+    literals (currently only `tff.SERVER` and `tff.CLIENTS`).
+
+  * For TFF federated types with `all_equal` set to `True`, the representation
+    is the same as the representation of the member constituent (thus, e.g.,
+    a valid representation of `int32@SERVER` is the same as that of `int32`).
+    For those types that have `all_equal_` set to `False`, the representation
+    is a Python list of member constituents.
+
+    NOTE: This function does not attempt at validating that the sizes of lists
+    that represent federated values match the corresponding placemenets. The
+    cardinality analysis is a separate step, handled by the reference executor
+    at a different point. As long as values can be packed into a Python list,
+    they are accepted as they are.
 
   Args:
-    value: The raw representation of the value to verify against `type_spec`.
+    value: The raw representation of a value to compare against `type_spec` and
+      potentially to be converted into a canonical form for the given TFF type.
     type_spec: The TFF type, an instance of `tff.Type` or something convertible
-      to it.
+      to it that determines what the valid representation should be.
+    callable_handler: The function to invoke to handle TFF functional types. If
+      this is `None`, functional types are not supported. The function must
+      accept `value` and `type_spec` as arguments and return the converted valid
+      representation, just as `to_representation_for_type`.
+
+  Returns:
+    Either `value` itself, or the `value` converted into a valid representation
+    for `type_spec`.
 
   Raises:
     TypeError: If `value` is not a valid representation for given `type_spec`.
@@ -104,9 +146,11 @@ def check_representation_matches_type(value, type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
+  if callable_handler is not None:
+    py_typecheck.check_callable(callable_handler)
 
   # NOTE: We do not simply call `type_utils.infer_type()` on `value`, as the
-  # representations of values in the refernece executor are only a subset of
+  # representations of values in the reference executor are only a subset of
   # the Python types recognized by that helper function.
 
   if isinstance(type_spec, computation_types.TensorType):
@@ -116,8 +160,9 @@ def check_representation_matches_type(value, type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
           'the type spec {}.'.format(str(inferred_type_spec), str(type_spec)))
+    return value
   elif isinstance(type_spec, computation_types.NamedTupleType):
-    py_typecheck.check_type(value, anonymous_tuple.AnonymousTuple)
+    value = anonymous_tuple.from_container(value)
     value_elements = anonymous_tuple.to_elements(value)
     type_spec_elements = anonymous_tuple.to_elements(type_spec)
     if len(value_elements) != len(type_spec_elements):
@@ -126,20 +171,57 @@ def check_representation_matches_type(value, type_spec):
           'number of elements {} in the type spec {}.'.format(
               len(value_elements), str(value), len(type_spec_elements),
               str(type_spec)))
+    result_elements = []
     for index, (type_elem_name, type_elem) in enumerate(type_spec_elements):
       value_elem_name, value_elem = value_elements[index]
-      if value_elem_name != type_elem_name:
+      if value_elem_name not in [type_elem_name, None]:
         raise TypeError(
             'Found element named {} where {} was expected at position {} '
             'in the value tuple.'.format(value_elem_name, type_elem_name,
                                          index))
-      check_representation_matches_type(value_elem, type_elem)
+      converted_value_elem = to_representation_for_type(value_elem, type_elem,
+                                                        callable_handler)
+      result_elements.append((type_elem_name, converted_value_elem))
+    return anonymous_tuple.AnonymousTuple(result_elements)
+  elif isinstance(type_spec, computation_types.SequenceType):
+    return [
+        to_representation_for_type(v, type_spec.element, callable_handler)
+        for v in value
+    ]
   elif isinstance(type_spec, computation_types.FunctionType):
-    py_typecheck.check_callable(value)
+    if callable_handler is not None:
+      return callable_handler(value, type_spec)
+    else:
+      raise TypeError(
+          'Values that are callables have been explicitly disallowed '
+          'in this context. If you would like to supply here a function '
+          'as a parameter, please construct a computation that contains '
+          'this call.')
+  elif isinstance(type_spec, computation_types.AbstractType):
+    raise TypeError(
+        'Abstract types are not supported by the reference executor.')
+  elif isinstance(type_spec, computation_types.PlacementType):
+    py_typecheck.check_type(value, placement_literals.PlacementLiteral)
+    return value
+  elif isinstance(type_spec, computation_types.FederatedType):
+    if type_spec.all_equal:
+      return to_representation_for_type(value, type_spec.member,
+                                        callable_handler)
+    elif type_spec.placement is not placements.CLIENTS:
+      raise TypeError(
+          'Unable to determine a valid value representation for a federated '
+          'type with non-equal memebrs placed at {}.'.format(
+              str(type_spec.placement)))
+    else:
+      return [
+          to_representation_for_type(v, type_spec.member, callable_handler)
+          for v in value
+      ]
   else:
     raise NotImplementedError(
-        'Unable to verify value representation of type {}.'.format(
-            str(type_spec)))
+        'Unable to determine valid value representation for {} for what '
+        'is currently an unsupported TFF type {}.'.format(
+            str(value), str(type_spec)))
 
 
 def stamp_computed_value_into_graph(value, graph):
@@ -158,7 +240,9 @@ def stamp_computed_value_into_graph(value, graph):
     return None
   else:
     py_typecheck.check_type(value, ComputedValue)
-    check_representation_matches_type(value.value, value.type_signature)
+    value = ComputedValue(
+        to_representation_for_type(value.value, value.type_signature),
+        value.type_signature)
     py_typecheck.check_type(graph, tf.Graph)
     if isinstance(value.type_signature, computation_types.TensorType):
       with graph.as_default():
@@ -200,10 +284,9 @@ def capture_computed_value_from_graph(value, type_spec):
 
   # TODO(b/113123634): Add handling for things like `tf.Dataset`s, as well as
   # possibly other Python structures that don't match the kinds of permitted
-  # representations for pyaloads (see `check_representation_matches_type()`).
+  # representations for payloads (see `check_representation_matches_type()`).
 
-  check_representation_matches_type(value, type_spec)
-  return ComputedValue(value, type_spec)
+  return ComputedValue(to_representation_for_type(value, type_spec), type_spec)
 
 
 def run_tensorflow(comp, arg):
@@ -277,7 +360,7 @@ class ComputationContext(object):
           'The name \'{}\' is not defined in this context.'.format(name))
 
 
-class ReferenceExecutor(executor_base.Executor):
+class ReferenceExecutor(context_base.Context):
   """A simple interpreted reference executor.
 
   This executor is to be used by default in unit tests and simple applications
@@ -293,53 +376,75 @@ class ReferenceExecutor(executor_base.Executor):
   the handler of computation invocations at the top level of the context stack.
   """
 
-  def __init__(self):
-    """Creates a reference executor."""
-
-    # TODO(b/113116813): Add a way to declare environmental bindings here,
-    # e.g., a way to specify how data URIs are mapped to physical resources.
-    pass
-
-  def execute(self, computation_proto):
-    """Runs the given self-contained computation, and returns the final results.
+  def __init__(self, compiler=None):
+    """Creates a reference executor.
 
     Args:
-      computation_proto: An instance of `Computation` proto to execute. It must
-        be self-contained, i.e., it must not declare any parameters (all inputs
-        it needs should be baked into its body by the time it is submitted for
-        execution by the default execution context that spawns it).
+      compiler: The compiler pipeline to be used by this executor, or `None` if
+        the executor is to run without one.
+    """
+    # TODO(b/113116813): Add a way to declare environmental bindings here,
+    # e.g., a way to specify how data URIs are mapped to physical resources.
+
+    if compiler is not None:
+      py_typecheck.check_type(compiler, compiler_pipeline.CompilerPipeline)
+    self._compiler = compiler
+
+  def ingest(self, arg, type_spec):
+
+    def _handle_callable(func, func_type):
+      py_typecheck.check_type(func, computation_base.Computation)
+      type_utils.check_assignable_from(func.type_signature, func_type)
+      return func
+
+    return to_representation_for_type(arg, type_spec, _handle_callable)
+
+  def invoke(self, func, arg):
+    comp = self._compile(func)
+    computed_comp = self._compute(comp, ComputationContext())
+    type_utils.check_assignable_from(comp.type_signature,
+                                     computed_comp.type_signature)
+    if not isinstance(computed_comp.type_signature,
+                      computation_types.FunctionType):
+      return computed_comp.value
+    else:
+      if arg is not None:
+
+        def _handle_callable(func, func_type):
+          py_typecheck.check_type(func, computation_base.Computation)
+          type_utils.check_assignable_from(func.type_signature, func_type)
+          computed_func = self._compute(
+              self._compile(func), ComputationContext())
+          return computed_func.value
+
+        computed_arg = ComputedValue(
+            to_representation_for_type(
+                arg, computed_comp.type_signature.parameter, _handle_callable),
+            computed_comp.type_signature.parameter)
+      else:
+        computed_arg = None
+      result = computed_comp.value(computed_arg)
+      py_typecheck.check_type(result, ComputedValue)
+      type_utils.check_assignable_from(comp.type_signature.result,
+                                       result.type_signature)
+      return result.value
+
+  def _compile(self, comp):
+    """Compiles a `computation_base.Computation` to prepare it for execution.
+
+    Args:
+      comp: An instance of `computation_base.Computation`.
 
     Returns:
-      The result produced by the computation (the format to be described).
-
-    Raises:
-      ValueError: If the computation is malformed.
-      TypeError: If type mismatch occurs anywhere in the course of computing.
+      An instance of `computation_building_blocks.ComputationBuildingBlock` that
+      contains the compiled logic of `comp`.
     """
-    py_typecheck.check_type(computation_proto, pb.Computation)
-    comp = computation_building_blocks.ComputationBuildingBlock.from_proto(
-        computation_proto)
-    if isinstance(comp.type_signature, computation_types.FunctionType):
-      if comp.type_signature.parameter is not None:
-        raise ValueError(
-            'Computations submitted for execution must not declare any '
-            'parameters, but the executor found a parameter of '
-            'type {}.'.format(str(comp.type_signature.parameter)))
-      else:
-        expected_result_type = comp.type_signature.result
-    else:
-      expected_result_type = comp.type_signature
-
-    comp = transformations.name_compiled_computations(comp)
-    result = self._compute(comp, ComputationContext())
-
-    if not type_utils.is_assignable_from(expected_result_type,
-                                         result.type_signature):
-      raise TypeError(
-          'The type {} of the result does not match the return type {} of '
-          'the computation.'.format(
-              str(result.type_signature), str(expected_result_type)))
-    return result.value
+    py_typecheck.check_type(comp, computation_base.Computation)
+    if self._compiler is not None:
+      comp = self._compiler.compile(comp)
+    return transformations.name_compiled_computations(
+        computation_building_blocks.ComputationBuildingBlock.from_proto(
+            computation_impl.ComputationImpl.get_proto(comp)))
 
   def _compute(self, comp, context):
     """Computes `comp` and returns the resulting computed value.
@@ -403,23 +508,14 @@ class ReferenceExecutor(executor_base.Executor):
                             computation_types.FunctionType)
     if comp.argument is not None:
       computed_arg = self._compute(comp.argument, context)
-      if not type_utils.is_assignable_from(
-          computed_func.type_signature.parameter, computed_arg.type_signature):
-        raise TypeError(
-            'The type {} of the argument does not match the '
-            'type {} expected by the function being invoked.'.format(
-                str(computed_arg.type_signature),
-                str(computed_func.type_signature.parameter)))
+      type_utils.check_assignable_from(computed_func.type_signature.parameter,
+                                       computed_arg.type_signature)
     else:
       computed_arg = None
     result = computed_func.value(computed_arg)
     py_typecheck.check_type(result, ComputedValue)
-    if not type_utils.is_assignable_from(computed_func.type_signature.result,
-                                         result.type_signature):
-      raise TypeError('The type {} of the result does not match the '
-                      'type {} returned by the invoked function.'.format(
-                          str(result.type_signature),
-                          str(computed_func.type_signature.result)))
+    type_utils.check_assignable_from(computed_func.type_signature.result,
+                                     result.type_signature)
     return result
 
   def _compute_tuple(self, comp, context):
@@ -428,12 +524,8 @@ class ReferenceExecutor(executor_base.Executor):
     result_type_elements = []
     for k, v in anonymous_tuple.to_elements(comp):
       computed_v = self._compute(v, context)
-      if not type_utils.is_assignable_from(v.type_signature,
-                                           computed_v.type_signature):
-        raise TypeError(
-            'The computed type {} of a tuple element does not match '
-            'the declated type {}.'.format(
-                str(computed_v.type_signature), str(v.type_signature)))
+      type_utils.check_assignable_from(v.type_signature,
+                                       computed_v.type_signature)
       result_elements.append((k, computed_v.value))
       result_type_elements.append((k, computed_v.type_signature))
     return ComputedValue(
@@ -454,10 +546,7 @@ class ReferenceExecutor(executor_base.Executor):
       assert comp.index is not None
       result_value = source.value[comp.index]
       result_type = source.type_signature[comp.index]
-    if not type_utils.is_assignable_from(comp.type_signature, result_type):
-      raise TypeError(
-          'Expected the result of selection to be {}, found {}.'.format(
-              str(comp.type_signature), str(result_type)))
+    type_utils.check_assignable_from(comp.type_signature, result_type)
     return ComputedValue(result_value, result_type)
 
   def _compute_lambda(self, comp, context):
@@ -465,13 +554,7 @@ class ReferenceExecutor(executor_base.Executor):
     py_typecheck.check_type(context, ComputationContext)
     def _wrap(arg):
       py_typecheck.check_type(arg, ComputedValue)
-      if not type_utils.is_assignable_from(
-          comp.parameter_type, arg.type_signature):
-        raise TypeError(
-            'Expected the type of argument {} to be {}, found {}.'.format(
-                str(comp.parameter_name),
-                str(comp.parameter_type),
-                str(arg.type_signature)))
+      type_utils.check_assignable_from(comp.parameter_type, arg.type_signature)
       return ComputationContext(context, {comp.parameter_name: arg})
     return ComputedValue(
         lambda x: self._compute(comp.result, _wrap(x)),
@@ -492,7 +575,19 @@ class ReferenceExecutor(executor_base.Executor):
 
   def _compute_intrinsic(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Intrinsic)
-    raise NotImplementedError('Intrinsic is currently unsupported.')
+
+    # TODO(b/113123634): Implement all the remaining cases.
+    if comp.uri != intrinsic_defs.SEQUENCE_SUM.uri:
+      raise NotImplementedError('Intrinsic {} is currently unsupported.'.format(
+          comp.uri))
+    elif str(comp.type_signature.result) != 'int32':
+      raise NotImplementedError(
+          'Intrinsic sequence_sum for sequences of type {} is currently '
+          'unsupported.'.format(str(comp.type_signature_result)))
+    else:
+      return ComputedValue(
+          lambda x: ComputedValue(sum(x.value), x.type_signature.element),
+          comp.type_signature)
 
   def _compute_data(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Data)
