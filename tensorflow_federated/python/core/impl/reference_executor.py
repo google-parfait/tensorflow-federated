@@ -239,9 +239,9 @@ class ComputationContext(object):
 
     Args:
       parent_context: The parent context, or `None` if this is the root.
-      local_symbols: The dictionary of local symbols defined in this context,
-        or `None` if there are none. The keys (names) are of a string type,
-        and the values (what the names bind to) are of type `ComputedValue`.
+      local_symbols: The dictionary of local symbols defined in this context, or
+        `None` if there are none. The keys (names) are of a string type, and the
+        values (what the names bind to) are of type `ComputedValue`.
     """
     if parent_context is not None:
       py_typecheck.check_type(parent_context, ComputationContext)
@@ -444,8 +444,8 @@ class ReferenceExecutor(executor_base.Executor):
   def _compute_selection(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Selection)
     source = self._compute(comp.source, context)
-    py_typecheck.check_type(
-        source.type_signature, computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature,
+                            computation_types.NamedTupleType)
     py_typecheck.check_type(source.value, anonymous_tuple.AnonymousTuple)
     if comp.name is not None:
       result_value = getattr(source.value, comp.name)
@@ -463,19 +463,19 @@ class ReferenceExecutor(executor_base.Executor):
   def _compute_lambda(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Lambda)
     py_typecheck.check_type(context, ComputationContext)
+
     def _wrap(arg):
       py_typecheck.check_type(arg, ComputedValue)
-      if not type_utils.is_assignable_from(
-          comp.parameter_type, arg.type_signature):
+      if not type_utils.is_assignable_from(comp.parameter_type,
+                                           arg.type_signature):
         raise TypeError(
             'Expected the type of argument {} to be {}, found {}.'.format(
-                str(comp.parameter_name),
-                str(comp.parameter_type),
+                str(comp.parameter_name), str(comp.parameter_type),
                 str(arg.type_signature)))
       return ComputationContext(context, {comp.parameter_name: arg})
-    return ComputedValue(
-        lambda x: self._compute(comp.result, _wrap(x)),
-        comp.type_signature)
+
+    return ComputedValue(lambda x: self._compute(comp.result, _wrap(x)),
+                         comp.type_signature)
 
   def _compute_reference(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Reference)

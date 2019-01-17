@@ -27,7 +27,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-
 nest = tf.contrib.framework.nest
 
 
@@ -96,10 +95,10 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
       if x.rank is None or y.rank is None:
         return False
       return x.value == y.value
+
     with self.assertRaises(ValueError):
       tensor_utils.check_nested_equal([tf.TensorShape(None)],
-                                      [tf.TensorShape(None)],
-                                      eq_if_defined)
+                                      [tf.TensorShape(None)], eq_if_defined)
 
   def test_to_var_dict(self):
     v1 = tf.Variable(0, name='v1')

@@ -102,13 +102,13 @@ class ReferenceExecutorTest(absltest.TestCase):
 
   def test_computation_context(self):
     c1 = reference_executor.ComputationContext()
-    c2 = reference_executor.ComputationContext(c1, {
-        'foo': reference_executor.ComputedValue(10, tf.int32)})
-    c3 = reference_executor.ComputationContext(c2, {
-        'bar': reference_executor.ComputedValue(11, tf.int32)})
+    c2 = reference_executor.ComputationContext(
+        c1, {'foo': reference_executor.ComputedValue(10, tf.int32)})
+    c3 = reference_executor.ComputationContext(
+        c2, {'bar': reference_executor.ComputedValue(11, tf.int32)})
     c4 = reference_executor.ComputationContext(c3)
-    c5 = reference_executor.ComputationContext(c4, {
-        'foo': reference_executor.ComputedValue(12, tf.int32)})
+    c5 = reference_executor.ComputationContext(
+        c4, {'foo': reference_executor.ComputedValue(12, tf.int32)})
     self.assertRaises(ValueError, c1.resolve_reference, 'foo')
     self.assertEqual(c2.resolve_reference('foo').value, 10)
     self.assertEqual(c3.resolve_reference('foo').value, 10)
@@ -205,6 +205,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo((40, 30), (20, 10)), 100)
 
   def test_tensorflow_computation_with_simple_lambda(self):
+
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -216,8 +217,10 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(add_two(5), 7)
 
   def test_tensorflow_computation_with_lambda_and_selection(self):
-    @computations.federated_computation(
-        tf.int32, computation_types.FunctionType(tf.int32, tf.int32))
+
+    @computations.federated_computation(tf.int32,
+                                        computation_types.FunctionType(
+                                            tf.int32, tf.int32))
     def apply_twice(x, f):
       return f(f(x))
 
@@ -231,18 +234,16 @@ class ReferenceExecutorTest(absltest.TestCase):
             computations.tf_computation(tf.add, [tf.int32, tf.int32])))
 
     curried_int32_add = computation_building_blocks.Lambda(
-        'x',
-        tf.int32,
+        'x', tf.int32,
         computation_building_blocks.Lambda(
-            'y',
-            tf.int32,
+            'y', tf.int32,
             computation_building_blocks.Call(
                 int32_add,
-                computation_building_blocks.Tuple([
-                    (None,
-                     computation_building_blocks.Reference('x', tf.int32)),
-                    (None,
-                     computation_building_blocks.Reference('y', tf.int32))]))))
+                computation_building_blocks.Tuple(
+                    [(None, computation_building_blocks.Reference(
+                        'x', tf.int32)),
+                     (None, computation_building_blocks.Reference(
+                         'y', tf.int32))]))))
 
     make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
@@ -267,12 +268,15 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     make_13 = computation_building_blocks.Block(
         [('x', computation_building_blocks.Call(make_10)),
-         ('x', computation_building_blocks.Call(
-             add_one, computation_building_blocks.Reference('x', tf.int32))),
-         ('x', computation_building_blocks.Call(
-             add_one, computation_building_blocks.Reference('x', tf.int32))),
-         ('x', computation_building_blocks.Call(
-             add_one, computation_building_blocks.Reference('x', tf.int32)))],
+         ('x',
+          computation_building_blocks.Call(
+              add_one, computation_building_blocks.Reference('x', tf.int32))),
+         ('x',
+          computation_building_blocks.Call(
+              add_one, computation_building_blocks.Reference('x', tf.int32))),
+         ('x',
+          computation_building_blocks.Call(
+              add_one, computation_building_blocks.Reference('x', tf.int32)))],
         computation_building_blocks.Reference('x', tf.int32))
 
     make_13_computation = computation_impl.ComputationImpl(

@@ -114,9 +114,10 @@ class FederatedAveragingTffTest(test_utils.TffTestCase):
   def test_orchestration(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.TrainableLinearRegression)
-    self.assertEqual(str(iterative_process.initialize.type_signature),
-                     '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
-                     'optimizer_state=<float32[2,1],float32>>)')
+    self.assertEqual(
+        str(iterative_process.initialize.type_signature),
+        '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
+        'optimizer_state=<float32[2,1],float32>>)')
     self.assertEqual(
         str(iterative_process.next.type_signature),
         '(<<model=<<a=float32[2,1],b=float32>,<c=float32>>,'

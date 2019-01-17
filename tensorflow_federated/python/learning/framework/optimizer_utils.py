@@ -28,7 +28,6 @@ import tensorflow as tf
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.learning import model_utils
 
-
 # TODO(b/117226648): Make this a proper class for better documentation.
 ClientOutput = collections.namedtuple(
     'ClientOutput',
