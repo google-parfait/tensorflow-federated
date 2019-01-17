@@ -23,7 +23,7 @@ representing federated types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(
     member,
     placement,
@@ -53,30 +53,20 @@ Constructs a new federated type instance.
 
 <h3 id="all_equal"><code>all_equal</code></h3>
 
-
-
 <h3 id="member"><code>member</code></h3>
 
-
-
 <h3 id="placement"><code>placement</code></h3>
-
-
-
-
 
 ## Methods
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-``` python
+```python
 __eq__(other)
 ```
 
-
-
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-``` python
+```python
 __ne__(other)
 ```

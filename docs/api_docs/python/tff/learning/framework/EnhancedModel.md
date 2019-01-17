@@ -24,7 +24,7 @@ A wrapper around a Model that adds sanity checking and metadata helpers.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(model)
 ```
 
@@ -42,28 +42,19 @@ __init__(model)
 
 Returns a `tff.learning.ModelWeights`.
 
-
-
 ## Methods
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
-``` python
+```python
 forward_pass(
     batch,
     training=True
 )
 ```
 
-
-
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
 
-``` python
+```python
 report_local_outputs()
 ```
-
-
-
-
-

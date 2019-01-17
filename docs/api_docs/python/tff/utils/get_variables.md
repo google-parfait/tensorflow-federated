@@ -5,7 +5,7 @@
 
 # tff.utils.get_variables
 
-``` python
+```python
 tff.utils.get_variables(
     name,
     type_spec,
@@ -20,22 +20,22 @@ Creates a set of variables that matches the given `type_spec`.
 
 #### Args:
 
-* <b>`name`</b>: The common name to use for the scope in which all of the variables are
-    to be created.
-* <b>`type_spec`</b>: An instance of <a href="../../tff/Type.md"><code>tff.Type</code></a> or something convertible to it. The
-    type signature may only be composed of tensor types and named tuples,
-    possibly nested.
-* <b>`**kwargs`</b>: Additional keyword args to pass to `tf.get_variable` calls.
-
+*   <b>`name`</b>: The common name to use for the scope in which all of the
+    variables are to be created.
+*   <b>`type_spec`</b>: An instance of
+    <a href="../../tff/Type.md"><code>tff.Type</code></a> or something
+    convertible to it. The type signature may only be composed of tensor types
+    and named tuples, possibly nested.
+*   <b>`**kwargs`</b>: Additional keyword args to pass to `tf.get_variable`
+    calls.
 
 #### Returns:
 
 Either a single variable when invoked with a tensor TFF type, or a nested
-structure of variables created in the appropriately-named variable scopes
-made up of anonymous tuples if invoked with a named tuple TFF type.
-
+structure of variables created in the appropriately-named variable scopes made
+up of anonymous tuples if invoked with a named tuple TFF type.
 
 #### Raises:
 
-* <b>`TypeError`</b>: if `type_spec` is not a type signature composed of tensor and
-    named tuple TFF types.
+*   <b>`TypeError`</b>: if `type_spec` is not a type signature composed of
+    tensor and named tuple TFF types.

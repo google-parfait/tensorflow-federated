@@ -22,7 +22,7 @@ representing functional types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(
     parameter,
     result
@@ -44,26 +44,18 @@ Constructs a new instance from the given parameter and result types.
 
 <h3 id="parameter"><code>parameter</code></h3>
 
-
-
 <h3 id="result"><code>result</code></h3>
-
-
-
-
 
 ## Methods
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-``` python
+```python
 __eq__(other)
 ```
 
-
-
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-``` python
+```python
 __ne__(other)
 ```

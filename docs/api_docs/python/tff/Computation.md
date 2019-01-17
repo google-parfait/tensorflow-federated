@@ -24,13 +24,11 @@ Provides access to the type signature of this computation.
 
 An instance of a class that represents this computation's type signature.
 
-
-
 ## Methods
 
 <h3 id="__call__"><code>__call__</code></h3>
 
-``` python
+```python
 __call__(
     *args,
     **kwargs
@@ -41,14 +39,10 @@ Invokes the computation with the given arguments in the given context.
 
 #### Args:
 
-* <b>`*args`</b>: The positional arguments.
-* <b>`**kwargs`</b>: The keyword-based arguments.
-
+*   <b>`*args`</b>: The positional arguments.
+*   <b>`**kwargs`</b>: The keyword-based arguments.
 
 #### Returns:
 
-The result of invoking the computation, the exact form of which depends
-on the context.
-
-
-
+The result of invoking the computation, the exact form of which depends on the
+context.

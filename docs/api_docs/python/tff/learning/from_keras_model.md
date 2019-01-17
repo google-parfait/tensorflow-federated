@@ -5,7 +5,7 @@
 
 # tff.learning.from_keras_model
 
-``` python
+```python
 tff.learning.from_keras_model(
     keras_model,
     loss,
@@ -22,14 +22,13 @@ Builds a
 
 #### Args:
 
-* <b>`keras_model`</b>: a `tf.keras.Model` object that is not compiled.
-* <b>`loss`</b>: a callable that takes two batched tensor parameters, `y_true` and
-    `y_pred`, and returns the loss.
-* <b>`metrics`</b>: a list of `tf.keras.metrics.Metric` objects. The value of
+*   <b>`keras_model`</b>: a `tf.keras.Model` object that is not compiled.
+*   <b>`loss`</b>: a callable that takes two batched tensor parameters, `y_true`
+    and `y_pred`, and returns the loss.
+*   <b>`metrics`</b>: a list of `tf.keras.metrics.Metric` objects. The value of
     `Metric.result()` for each metric is included in the list of tensors
     returned in `aggregated_outputs()`.
-* <b>`optimizer`</b>: a `tf.keras.optimizer.Optimizer`.
-
+*   <b>`optimizer`</b>: a `tf.keras.optimizer.Optimizer`.
 
 #### Returns:
 

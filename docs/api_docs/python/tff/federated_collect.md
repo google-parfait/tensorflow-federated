@@ -5,7 +5,7 @@
 
 # tff.federated_collect
 
-``` python
+```python
 tff.federated_collect(value)
 ```
 
@@ -16,15 +16,14 @@ Materializes a federated value from `CLIENTS` as a `SERVER` sequence.
 
 #### Args:
 
-* <b>`value`</b>: A value of a TFF federated type placed at the `CLIENTS`.
-
+*   <b>`value`</b>: A value of a TFF federated type placed at the `CLIENTS`.
 
 #### Returns:
 
-A stream of the same type as the member constituents of `value` placed at
-the `SERVER`.
-
+A stream of the same type as the member constituents of `value` placed at the
+`SERVER`.
 
 #### Raises:
 
-* <b>`TypeError`</b>: if the argument is not a federated TFF value placed at `CLIENTS`.
+*   <b>`TypeError`</b>: if the argument is not a federated TFF value placed at
+    `CLIENTS`.

@@ -16,14 +16,15 @@
 
 ## Class `EnhancedTrainableModel`
 
-Inherits From: [`EnhancedModel`](../../../tff/learning/framework/EnhancedModel.md)
+Inherits From:
+[`EnhancedModel`](../../../tff/learning/framework/EnhancedModel.md)
 
 Defined in
 [`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(model)
 ```
 
@@ -41,36 +42,25 @@ __init__(model)
 
 Returns a `tff.learning.ModelWeights`.
 
-
-
 ## Methods
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
-``` python
+```python
 forward_pass(
     batch,
     training=True
 )
 ```
 
-
-
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
 
-``` python
+```python
 report_local_outputs()
 ```
 
-
-
 <h3 id="train_on_batch"><code>train_on_batch</code></h3>
 
-``` python
+```python
 train_on_batch(batch)
 ```
-
-
-
-
-

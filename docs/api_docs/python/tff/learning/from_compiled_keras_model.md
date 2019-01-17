@@ -5,7 +5,7 @@
 
 # tff.learning.from_compiled_keras_model
 
-``` python
+```python
 tff.learning.from_compiled_keras_model(keras_model)
 ```
 
@@ -17,8 +17,7 @@ Builds a
 
 #### Args:
 
-* <b>`keras_model`</b>: a `tf.keras.Model` object that was compiled.
-
+*   <b>`keras_model`</b>: a `tf.keras.Model` object that was compiled.
 
 #### Returns:
 

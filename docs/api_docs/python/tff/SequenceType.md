@@ -21,7 +21,7 @@ representing types of sequences in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(element)
 ```
 
@@ -37,22 +37,16 @@ Constructs a new instance from the given element type.
 
 <h3 id="element"><code>element</code></h3>
 
-
-
-
-
 ## Methods
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-``` python
+```python
 __eq__(other)
 ```
 
-
-
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-``` python
+```python
 __ne__(other)
 ```

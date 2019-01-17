@@ -25,7 +25,7 @@ representing named tuple types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(elements)
 ```
 
@@ -46,52 +46,42 @@ Constructs a new instance from the given element types.
 
 <h3 id="__dir__"><code>__dir__</code></h3>
 
-``` python
+```python
 __dir__()
 ```
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-``` python
+```python
 __eq__(other)
 ```
 
-
-
 <h3 id="__getattr__"><code>__getattr__</code></h3>
 
-``` python
+```python
 __getattr__(name)
 ```
 
-
-
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-``` python
+```python
 __getitem__(key)
 ```
 
-
-
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-``` python
+```python
 __iter__()
 ```
 
-
-
 <h3 id="__len__"><code>__len__</code></h3>
 
-``` python
+```python
 __len__()
 ```
 
-
-
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-``` python
+```python
 __ne__(other)
 ```

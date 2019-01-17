@@ -22,7 +22,7 @@ ClientData that maps a set of files (one file per user) to a dataset.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(
     client_ids,
     create_tf_dataset_fn
@@ -33,33 +33,23 @@ Constructs a `ClientData` object.
 
 #### Args:
 
-* <b>`client_ids`</b>: A list of client_id(s).
-* <b>`create_tf_dataset_fn`</b>: A callable that takes a client_id and returns a
-    `tf.data.Dataset` object.
-
-
+*   <b>`client_ids`</b>: A list of client_id(s).
+*   <b>`create_tf_dataset_fn`</b>: A callable that takes a client_id and returns
+    a `tf.data.Dataset` object.
 
 ## Properties
 
 <h3 id="client_ids"><code>client_ids</code></h3>
 
-
-
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
-
-
 <h3 id="output_types"><code>output_types</code></h3>
-
-
-
-
 
 ## Methods
 
 <h3 id="create_from_dir"><code>create_from_dir</code></h3>
 
-``` python
+```python
 @classmethod
 create_from_dir(
     cls,
@@ -68,17 +58,17 @@ create_from_dir(
 )
 ```
 
-Builds a <a href="../../tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>.
+Builds a
+<a href="../../tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>.
 
-Iterates over all files in `path`, using the filename as the client ID. Does
-not recursively search `path`.
+Iterates over all files in `path`, using the filename as the client ID. Does not
+recursively search `path`.
 
 #### Args:
 
-* <b>`path`</b>: A directory path to search for per-client files.
-* <b>`create_tf_dataset_fn`</b>: A callable that creates a `tf.data.Datasaet` object
-    for a given file in the directory specified in `path`.
-
+*   <b>`path`</b>: A directory path to search for per-client files.
+*   <b>`create_tf_dataset_fn`</b>: A callable that creates a `tf.data.Datasaet`
+    object for a given file in the directory specified in `path`.
 
 #### Returns:
 
@@ -86,11 +76,6 @@ A `FilePerUserClientData` object.
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-``` python
+```python
 create_tf_dataset_for_client(client_id)
 ```
-
-
-
-
-

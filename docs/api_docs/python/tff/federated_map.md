@@ -31,7 +31,6 @@ Maps a federated value on CLIENTS pointwise using a given mapping function.
 
 A federated value on `CLIENTS` that represents the result of mapping.
 
-
 #### Raises:
 
 *   <b>`TypeError`</b>: If the arguments are not of the appropriate types.
