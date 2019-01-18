@@ -354,6 +354,87 @@ class PlusNSquaredEncodingStageTest(test_utils.BaseEncodingStageTest):
       state = data[0].updated_state
 
 
+class AdaptiveNormalizeEncodingStageTest(test_utils.BaseEncodingStageTest):
+
+  _VALUES_KEY = test_utils.AdaptiveNormalizeEncodingStage.ENCODED_VALUES_KEY
+  _FACTOR_STATE_KEY = test_utils.AdaptiveNormalizeEncodingStage.FACTOR_STATE_KEY
+  _NORM_STATE_UPDATE_KEY = (
+      test_utils.AdaptiveNormalizeEncodingStage.NORM_STATE_UPDATE_KEY)
+
+  def default_encoding_stage(self):
+    """See base class."""
+    return test_utils.AdaptiveNormalizeEncodingStage()
+
+  def default_input(self):
+    """See base class."""
+    return tf.random.normal([10])
+
+  @property
+  def is_lossless(self):
+    """See base class."""
+    return True
+
+  def common_asserts_for_test_data(self, data):
+    """See base class."""
+    self.assertIn(self._NORM_STATE_UPDATE_KEY, data.state_update_tensors)
+
+  def test_one_to_many_few_rounds(self):
+    """Encoding and decoding in the one-to-many setting for a few rounds.
+
+    This is an example of how behavior of adaptive encoding stage can be tested
+    over multiple iterations of encoding. The one-to-many setting does not
+    include aggregation of state_update_tensors.
+    """
+    stage = self.default_encoding_stage()
+    state = self.evaluate(stage.initial_state())
+    for _ in range(5):
+      data = self.run_one_to_many_encode_decode(stage, lambda: tf.ones([10]),
+                                                state)
+      self.assertAllClose(data.x, data.decoded_x)
+      # Make sure the estimated factor is decreasing.
+      self.assertLess(data.updated_state[self._FACTOR_STATE_KEY],
+                      data.initial_state[self._FACTOR_STATE_KEY])
+      state = data.updated_state
+
+    # Run a few more times and verify that the factor is close to correct value.
+    # That means, the encoded values are close to having norm 1.
+    for _ in range(30):
+      data = self.run_one_to_many_encode_decode(stage, lambda: tf.ones([10]),
+                                                state)
+      state = data.updated_state
+    encoded_norm = np.linalg.norm(data.encoded_x[self._VALUES_KEY])
+    self.assertAllClose(1.0, encoded_norm, atol=0.1)
+
+  def test_many_to_one_few_rounds(self):
+    """Encoding and decoding in the many-to-one setting for a few rounds.
+
+    This is an example of how behavior of adaptive encoding stage can be tested
+    over multiple iterations of encoding, including the aggregation of
+    state_update_tensors.
+    """
+    stage = self.default_encoding_stage()
+    state = self.evaluate(stage.initial_state())
+    input_values = list(np.ones((3, 10), dtype=np.float32))
+    for _ in range(5):
+      data, _ = self.run_many_to_one_encode_decode(stage, input_values, state)
+      for d in data:
+        self.assertAllClose(d.x, d.decoded_x)
+        # Make sure the estimated factor is increasing.
+        self.assertLess(d.updated_state[self._FACTOR_STATE_KEY],
+                        d.initial_state[self._FACTOR_STATE_KEY])
+      state = data[0].updated_state
+
+    # Run a few more times and verify that the factor is close to correct value.
+    # That means, the encoded values are close to having norm 1.
+    for _ in range(20):
+      # input_values = self.evaluate([self.default_input() for _ in range(3)])
+      data, _ = self.run_many_to_one_encode_decode(stage, input_values, state)
+      state = data[0].updated_state
+    for d in data:
+      encoded_norm = np.linalg.norm(d.encoded_x[self._VALUES_KEY])
+      self.assertAllClose(1.0, encoded_norm, atol=0.002)
+
+
 class TestUtilsTest(tf.test.TestCase, parameterized.TestCase):
   """Tests for other utilities in `test_utils.py`."""
 

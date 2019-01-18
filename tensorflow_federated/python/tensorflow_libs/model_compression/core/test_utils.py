@@ -1051,23 +1051,26 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
 
   def initial_state(self, name=None):
     """See base class."""
-    return {self.ITERATION_STATE_KEY: tf.constant(1.0)}
+    with tf.name_scope(name, 'plus_n_squared_initial_state'):
+      return {self.ITERATION_STATE_KEY: tf.constant(1.0)}
 
   def update_state(self, state, state_update_tensors, name=None):
     """See base class."""
     del state_update_tensors  # Unused.
-    return {
-        self.ITERATION_STATE_KEY:
-            state[self.ITERATION_STATE_KEY] + tf.constant(1.0)
-    }
+    with tf.name_scope(name, 'plus_n_squared_update_state'):
+      return {
+          self.ITERATION_STATE_KEY:
+              state[self.ITERATION_STATE_KEY] + tf.constant(1.0)
+      }
 
   def get_params(self, state, name=None):
     """See base class."""
-    params = {
-        self.ADD_PARAM_KEY:
-            state[self.ITERATION_STATE_KEY] * state[self.ITERATION_STATE_KEY]
-    }
-    return params, params
+    with tf.name_scope(name, 'plus_n_squared_get_params'):
+      params = {
+          self.ADD_PARAM_KEY:
+              state[self.ITERATION_STATE_KEY] * state[self.ITERATION_STATE_KEY]
+      }
+      return params, params
 
   @encoding_stage.tf_style_encode('plus_n_squared_encode')
   def encode(self, x, encode_params, name=None):
@@ -1075,6 +1078,106 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
     return self._stage.encode(x, encode_params, name), {}
 
   @encoding_stage.tf_style_decode('plus_n_squared_decode')
+  def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+    """See base class."""
+    return self._stage.decode(encoded_tensors, decode_params, shape, name)
+
+
+class AdaptiveNormalizeEncodingStage(
+    encoding_stage.AdaptiveEncodingStageInterface):
+  """[Example] encoding stage, adaptively normalizing data.
+
+  This is an example implementation of an `AdaptiveEncodingStageInterface` that
+  updates the state based on information stored in `state_update_tensors`. This
+  implementation wraps `TimesTwoEncodingStage`, and adaptively changes the
+  parameters that control the `encode` and `decode` methods.
+
+  It assumes that over iterations, the input values to be encoded come from
+  certain static distribution, and tries to find a good factor to normalize the
+  input to be of unit norm.
+  """
+
+  ENCODED_VALUES_KEY = TimesTwoEncodingStage.ENCODED_VALUES_KEY
+  FACTOR_PARAM_KEY = TimesTwoEncodingStage.FACTOR_PARAM_KEY
+  FACTOR_STATE_KEY = 'factor'
+  NORM_STATE_UPDATE_KEY = 'norm'
+
+  def __init__(self):
+    self._stage = TimesTwoEncodingStage()
+
+  @property
+  def compressible_tensors_keys(self):
+    """See base class."""
+    return [self.ENCODED_VALUES_KEY]
+
+  @property
+  def commutes_with_sum(self):
+    """See base class."""
+    return True
+
+  @property
+  def decode_needs_input_shape(self):
+    """See base class."""
+    return False
+
+  @property
+  def state_update_aggregation_modes(self):
+    """See base class."""
+    return {
+        self.NORM_STATE_UPDATE_KEY: encoding_stage.StateAggregationMode.STACK
+    }
+
+  def initial_state(self, name=None):
+    """See base class."""
+    with tf.name_scope(name, 'adaptive_normalize_initial_state'):
+      return {self.FACTOR_STATE_KEY: tf.constant(1.0)}
+
+  # pylint: disable=g-doc-args,g-doc-return-or-yield
+  def update_state(self, state, state_update_tensors, name=None):
+    """Updates the state (see base class).
+
+    This method illustrates how the implementation can handle state update based
+    on a single encoding, or based on a multiple encodings collectively.
+
+    As specified by `self.state_update_aggregation_modes`, the
+    `NORM_STATE_UPDATE_KEY` from `state_update_tensors` are to be stacked. That
+    means, that the corresponding input to this method should be a `Tensor` with
+    each element corresponding to a single output of an encoding. So this can be
+    a single element, in the one-to-many setting, or multiple elements, in the
+    many-to-one setting.
+
+    The `update_state` method thus can compute arbitrary function of the
+    relevant values. In this case, it maintains a rolling average of previous
+    states, where the weight to be used depends on the number of updates
+    received. Note that the specific implementation is not necessarily useful or
+    efficient; it rather serves as an illustration of what can be done.
+    """
+    with tf.name_scope(name, 'adaptive_normalize_update_state'):
+      # This can be either a Tensor or a numpy value. Number of elements can be
+      # computed for both as product of the elements of the shape vector.
+      num_updates = np.prod(
+          state_update_tensors[self.NORM_STATE_UPDATE_KEY].shape)
+      norm_mean = tf.reduce_mean(
+          state_update_tensors[self.NORM_STATE_UPDATE_KEY])
+      weight = 0.9**num_updates  # Use a stronger weight for more updates.
+      new_factor = (
+          weight * state[self.FACTOR_STATE_KEY] + (1 - weight) / norm_mean)
+      return {self.FACTOR_STATE_KEY: new_factor}
+
+  def get_params(self, state, name=None):
+    """See base class."""
+    with tf.name_scope(name, 'adaptive_normalize_get_params'):
+      params = {self.FACTOR_PARAM_KEY: state[self.FACTOR_STATE_KEY]}
+      return params, params
+
+  @encoding_stage.tf_style_encode('times_n_encode')
+  def encode(self, x, encode_params, name=None):
+    """See base class."""
+    return (self._stage.encode(x, encode_params, name), {
+        self.NORM_STATE_UPDATE_KEY: tf.norm(x)
+    })
+
+  @encoding_stage.tf_style_decode('times_n_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     return self._stage.decode(encoded_tensors, decode_params, shape, name)
