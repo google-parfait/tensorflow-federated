@@ -45,7 +45,9 @@ class PlusOneEncodingStageTest(test_utils.BaseEncodingStageTest):
   def common_asserts_for_test_data(self, data):
     """See base class."""
     self.assertAllClose(data.x, data.decoded_x)
-    self.assertAllClose(data.x + 1.0, data.encoded_x['values'])
+    self.assertAllClose(
+        data.x + 1.0,
+        data.encoded_x[test_utils.PlusOneEncodingStage.ENCODED_VALUES_KEY])
 
 
 class TimesTwoEncodingStageTest(test_utils.BaseEncodingStageTest):
@@ -66,13 +68,16 @@ class TimesTwoEncodingStageTest(test_utils.BaseEncodingStageTest):
   def common_asserts_for_test_data(self, data):
     """See base class."""
     self.assertAllClose(data.x, data.decoded_x)
-    self.assertAllClose(data.x * 2.0, data.encoded_x['values'])
+    self.assertAllClose(
+        data.x * 2.0,
+        data.encoded_x[test_utils.TimesTwoEncodingStage.ENCODED_VALUES_KEY])
 
 
 class SimpleLinearEncodingStageTest(test_utils.BaseEncodingStageTest):
 
   _DEFAULT_A = 2.0
   _DEFAULT_B = 3.0
+  _ENCODED_VALUES_KEY = test_utils.SimpleLinearEncodingStage.ENCODED_VALUES_KEY
 
   def default_encoding_stage(self):
     """See base class."""
@@ -92,12 +97,12 @@ class SimpleLinearEncodingStageTest(test_utils.BaseEncodingStageTest):
     """See base class."""
     self.assertAllClose(data.x, data.decoded_x)
     self.assertAllClose(data.x * self._DEFAULT_A + self._DEFAULT_B,
-                        data.encoded_x['values'])
+                        data.encoded_x[self._ENCODED_VALUES_KEY])
 
   def test_basic_encode_decode_tf_constructor_parameters(self):
     """Tests the core funcionality with `tf.Variable` constructor parameters."""
-    a_var = tf.get_variable('a', initializer=self._DEFAULT_A)
-    b_var = tf.get_variable('b', initializer=self._DEFAULT_B)
+    a_var = tf.get_variable('a_var', initializer=self._DEFAULT_A)
+    b_var = tf.get_variable('b_var', initializer=self._DEFAULT_B)
     stage = test_utils.SimpleLinearEncodingStage(a_var, b_var)
 
     with self.cached_session() as sess:
@@ -112,7 +117,8 @@ class SimpleLinearEncodingStageTest(test_utils.BaseEncodingStageTest):
     # Change the variables and verify the behavior of stage changes.
     self.evaluate([tf.assign(a_var, 5.0), tf.assign(b_var, 6.0)])
     test_data = self.evaluate(test_utils.TestData(x, encoded_x, decoded_x))
-    self.assertAllClose(test_data.x * 5.0 + 6.0, test_data.encoded_x['values'])
+    self.assertAllClose(test_data.x * 5.0 + 6.0,
+                        test_data.encoded_x[self._ENCODED_VALUES_KEY])
 
 
 class ReduceMeanEncodingStageTest(test_utils.BaseEncodingStageTest):
@@ -134,7 +140,8 @@ class ReduceMeanEncodingStageTest(test_utils.BaseEncodingStageTest):
     """See base class."""
     self.assertAllClose(np.tile(np.mean(data.x), data.x.shape), data.decoded_x)
     self.assertAllClose(
-        np.mean(data.x, keepdims=True), data.encoded_x['values'])
+        np.mean(data.x, keepdims=True),
+        data.encoded_x[test_utils.ReduceMeanEncodingStage.ENCODED_VALUES_KEY])
 
   def test_one_to_many_with_unknown_shape(self):
     """Tests that encoding works with statically not known input shape."""
@@ -170,7 +177,9 @@ class RandomAddSubtractOneEncodingStageTest(test_utils.BaseEncodingStageTest):
       self.assertTrue(
           np.isclose(decoded_x, x - 1) or np.isclose(decoded_x, x) or
           np.isclose(decoded_x, x + 1))
-    self.assertAllEqual(data.encoded_x['values'], data.decoded_x)
+    self.assertAllEqual(
+        data.encoded_x[test_utils.ReduceMeanEncodingStage.ENCODED_VALUES_KEY],
+        data.decoded_x)
 
   def test_approximately_unbiased_in_expectation(self):
     """Tests that average of encodings is more accurate than a single one."""
@@ -212,15 +221,18 @@ class SignIntFloatEncodingStageTest(test_utils.BaseEncodingStageTest):
 
   def common_asserts_for_test_data(self, data):
     """See base class."""
-    signs = data.encoded_x['signs']
-    ints = data.encoded_x['ints']
-    floats = data.encoded_x['floats']
+    signs, ints, floats = (
+        data.encoded_x[test_utils.SignIntFloatEncodingStage.ENCODED_SIGNS_KEY],
+        data.encoded_x[test_utils.SignIntFloatEncodingStage.ENCODED_INTS_KEY],
+        data.encoded_x[test_utils.SignIntFloatEncodingStage.ENCODED_FLOATS_KEY])
     self.assertAllEqual(np.array([0.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]), signs)
     self.assertAllEqual(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0]), ints)
     self.assertAllClose(np.array([0.0, 0.1, 0.1, 0.9, 0.9, 0.6, 0.2]), floats)
 
 
 class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
+
+  _ENCODED_VALUES_KEY = test_utils.PlusRandomNumEncodingStage.ENCODED_VALUES_KEY
 
   def default_encoding_stage(self):
     """See base class."""
@@ -238,7 +250,7 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
   def common_asserts_for_test_data(self, data):
     """See base class."""
     frac_x, _ = np.modf(data.x)
-    frac_encoded_x, _ = np.modf(data.encoded_x['values'])
+    frac_encoded_x, _ = np.modf(data.encoded_x[self._ENCODED_VALUES_KEY])
     # The decimal places should be the same.
     self.assertAllClose(frac_x, frac_encoded_x, rtol=test_utils.DEFAULT_RTOL,
                         atol=test_utils.DEFAULT_ATOL)
@@ -257,10 +269,11 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
     self.assertAllClose(test_data_1.decoded_x, test_data_2.decoded_x,
                         rtol=test_utils.DEFAULT_RTOL,
                         atol=test_utils.DEFAULT_ATOL)
-    self.assertNotAllClose(test_data_1.encoded_x['values'],
-                           test_data_2.encoded_x['values'],
-                           rtol=test_utils.DEFAULT_RTOL,
-                           atol=test_utils.DEFAULT_ATOL)
+    self.assertNotAllClose(
+        test_data_1.encoded_x[self._ENCODED_VALUES_KEY],
+        test_data_2.encoded_x[self._ENCODED_VALUES_KEY],
+        rtol=test_utils.DEFAULT_RTOL,
+        atol=test_utils.DEFAULT_ATOL)
 
 
 class TestUtilsTest(tf.test.TestCase):

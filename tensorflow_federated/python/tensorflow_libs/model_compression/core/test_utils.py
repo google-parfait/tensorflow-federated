@@ -475,13 +475,13 @@ class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
   no commutativity with sum.
   """
 
-  def __init__(self):
-    self._plus_value = 1.0
+  ENCODED_VALUES_KEY = 'values'
+  ADD_PARAM_KEY = 'add'
 
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -495,18 +495,22 @@ class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    params = {'add': tf.constant(self._plus_value)}
-    return params, params
+    with tf.name_scope(name, 'plus_one_get_params'):
+      params = {self.ADD_PARAM_KEY: tf.constant(1.0)}
+      return params, params
 
   @encoding_stage.tf_style_encode('plus_one_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
-    return {'values': x + encode_params['add']}
+    return {self.ENCODED_VALUES_KEY: x + encode_params[self.ADD_PARAM_KEY]}
 
   @encoding_stage.tf_style_decode('plus_one_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
-    return encoded_tensors['values'] - decode_params['add']
+    decoded_x = (
+        encoded_tensors[self.ENCODED_VALUES_KEY] -
+        decode_params[self.ADD_PARAM_KEY])
+    return decoded_x
 
 
 class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
@@ -516,13 +520,13 @@ class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
   with sum.
   """
 
-  def __init__(self):
-    self._factor = 2.0
+  ENCODED_VALUES_KEY = 'values'
+  FACTOR_PARAM_KEY = 'factor'
 
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -536,18 +540,22 @@ class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    params = {'factor': tf.constant(self._factor)}
-    return params, params
+    with tf.name_scope(name, 'times_two_get_params'):
+      params = {self.FACTOR_PARAM_KEY: tf.constant(2.0)}
+      return params, params
 
   @encoding_stage.tf_style_encode('times_two_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
-    return {'values': x * encode_params['factor']}
+    return {self.ENCODED_VALUES_KEY: x * encode_params[self.FACTOR_PARAM_KEY]}
 
   @encoding_stage.tf_style_decode('times_two_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
-    return encoded_tensors['values'] / decode_params['factor']
+    decoded_x = (
+        encoded_tensors[self.ENCODED_VALUES_KEY] /
+        decode_params[self.FACTOR_PARAM_KEY])
+    return decoded_x
 
 
 class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
@@ -558,6 +566,10 @@ class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
   objects, and subsequently expose those via `encode_params` / `decode_params`.
   """
 
+  ENCODED_VALUES_KEY = 'values'
+  A_PARAM_KEY = 'a_param'
+  B_PARAM_KEY = 'b_param'
+
   def __init__(self, a, b):
     self._a = a
     self._b = b
@@ -565,7 +577,7 @@ class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -579,19 +591,20 @@ class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    params = {'a': self._a, 'b': self._b}
+    params = {self.A_PARAM_KEY: self._a, self.B_PARAM_KEY: self._b}
     return params, params
 
   @encoding_stage.tf_style_encode('simple_linear_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
-    return {'values': encode_params['a'] * x + encode_params['b']}
+    a, b = encode_params[self.A_PARAM_KEY], encode_params[self.B_PARAM_KEY]
+    return {self.ENCODED_VALUES_KEY: a * x + b}
 
   @encoding_stage.tf_style_decode('simple_linear_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
-    return (
-        (encoded_tensors['values'] - decode_params['b']) / decode_params['a'])
+    a, b = decode_params[self.A_PARAM_KEY], decode_params[self.B_PARAM_KEY]
+    return (encoded_tensors[self.ENCODED_VALUES_KEY] - b) / a
 
 
 class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
@@ -605,10 +618,12 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
   the higher level `Encoder`.
   """
 
+  ENCODED_VALUES_KEY = 'values'
+
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -628,14 +643,13 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
   def encode(self, x, encode_params, name=None):
     """See base class."""
     del encode_params  # Unused.
-    encoded_tensors = {'values': tf.reduce_mean(x, keepdims=True)}
-    return encoded_tensors
+    return {self.ENCODED_VALUES_KEY: tf.reduce_mean(x, keepdims=True)}
 
   @encoding_stage.tf_style_decode('reduce_mean_decode')
   def decode(self, encoded_tensors, decode_params, shape, name=None):
     """See base class."""
     del decode_params  # Unused.
-    return tf.tile(encoded_tensors['values'], shape)
+    return tf.tile(encoded_tensors[self.ENCODED_VALUES_KEY], shape)
 
 
 class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
@@ -647,10 +661,12 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
   the unbiasedness can be tested.
   """
 
+  ENCODED_VALUES_KEY = 'values'
+
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -666,17 +682,17 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
     """See base class."""
     return {}, {}
 
-  @encoding_stage.tf_style_encode('plus_one_encode')
+  @encoding_stage.tf_style_encode('add_subtract_one_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     del encode_params  # Unused.
-    return {'values': x + tf.sign(tf.random.normal(tf.shape(x)))}
+    return {self.ENCODED_VALUES_KEY: x + tf.sign(tf.random.normal(tf.shape(x)))}
 
-  @encoding_stage.tf_style_decode('plus_one_decode')
+  @encoding_stage.tf_style_decode('add_subtract_one_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     del decode_params  # Unused.
-    return encoded_tensors['values']
+    return encoded_tensors[self.ENCODED_VALUES_KEY]
 
 
 class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
@@ -687,10 +703,16 @@ class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
   floating part and the signs.
   """
 
+  ENCODED_SIGNS_KEY = 'signs'
+  ENCODED_INTS_KEY = 'ints'
+  ENCODED_FLOATS_KEY = 'floats'
+
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['signs', 'ints', 'floats']
+    return [
+        self.ENCODED_SIGNS_KEY, self.ENCODED_INTS_KEY, self.ENCODED_FLOATS_KEY
+    ]
 
   @property
   def commutes_with_sum(self):
@@ -714,15 +736,19 @@ class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
     abs_vals = tf.abs(x)
     ints = tf.floor(abs_vals)
     floats = abs_vals - ints
-    return {'signs': signs, 'ints': ints, 'floats': floats}
+    return {
+        self.ENCODED_SIGNS_KEY: signs,
+        self.ENCODED_INTS_KEY: ints,
+        self.ENCODED_FLOATS_KEY: floats
+    }
 
   @encoding_stage.tf_style_decode('sign_int_float_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     del decode_params  # Unused.
-    signs = encoded_tensors['signs']
-    ints = encoded_tensors['ints']
-    floats = encoded_tensors['floats']
+    signs = encoded_tensors[self.ENCODED_SIGNS_KEY]
+    ints = encoded_tensors[self.ENCODED_INTS_KEY]
+    floats = encoded_tensors[self.ENCODED_FLOATS_KEY]
     return signs * (ints + floats)
 
 
@@ -763,10 +789,13 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
   invertible.
   """
 
+  ENCODED_VALUES_KEY = 'values'
+  SEED_PARAM_KEY = 'seed'
+
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -780,21 +809,27 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    params = {'seed': tf.random.uniform((), maxval=137, dtype=tf.int32)}
-    return params, params
+    with tf.name_scope(name, 'plus_random_num_get_params'):
+      params = {
+          self.SEED_PARAM_KEY:
+              tf.random.uniform((), maxval=tf.int32.max, dtype=tf.int32)
+      }
+      return params, params
 
-  @encoding_stage.tf_style_encode('plus_one_encode')
+  @encoding_stage.tf_style_encode('plus_random_num_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
-    addend = dummy_rng_source(encode_params['seed'], x.shape.num_elements())
+    addend = dummy_rng_source(encode_params[self.SEED_PARAM_KEY],
+                              x.shape.num_elements())
     addend = tf.reshape(addend, x.shape)
-    return {'values': x + addend}
+    return {self.ENCODED_VALUES_KEY: x + addend}
 
-  @encoding_stage.tf_style_decode('plus_one_decode')
+  @encoding_stage.tf_style_decode('plus_random_num_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
-    x = encoded_tensors['values']
-    addend = dummy_rng_source(decode_params['seed'], x.shape.num_elements())
+    x = encoded_tensors[self.ENCODED_VALUES_KEY]
+    addend = dummy_rng_source(decode_params[self.SEED_PARAM_KEY],
+                              x.shape.num_elements())
     addend = tf.reshape(addend, x.shape)
     return x - addend
 
