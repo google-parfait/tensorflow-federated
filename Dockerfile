@@ -18,26 +18,45 @@ ARG USE_PYTHON_3=True
 ARG _PY_SUFFIX=${USE_PYTHON_3:+3}
 ARG PYTHON=python${_PY_SUFFIX}
 ARG PIP=pip${_PY_SUFFIX}
-RUN test ${USE_PYTHON_3} && ln -s /usr/bin/python3 /usr/local/bin/python || true
+
+RUN echo "** Using [${PYTHON}]"
+
+# See http://bugs.python.org/issue19846
+ENV LANG C.UTF-8
+
 RUN apt-get update && apt-get install -y \
     ${PYTHON}-dev \
     ${PYTHON}-pip
-RUN ${PIP} install --upgrade \
+
+RUN ${PIP} --no-cache-dir install --upgrade \
     pip \
     setuptools
 
-# Install Bazel
+RUN ln -s -f $(which ${PYTHON}) /usr/local/bin/python
+
 RUN apt update && apt install -y \
+    build-essential \
     curl \
-    openjdk-8-jdk
-RUN echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" \
-    | tee "/etc/apt/sources.list.d/bazel.list"
-RUN curl https://bazel.build/bazel-release.pub.gpg \
-    | apt-key add -
-RUN apt update && apt install -y bazel
+    openjdk-8-jdk \
+    pkg-config \
+    swig \
+    unzip \
+    wget \
+    g++ \
+    zlib1g-dev \
+    zip
+
+# Install bazel
+ARG BAZEL_VERSION=0.19.2
+RUN mkdir /bazel && \
+    wget -O /bazel/installer.sh "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh" && \
+    wget -O /bazel/LICENSE.txt "https://raw.githubusercontent.com/bazelbuild/bazel/master/LICENSE" && \
+    chmod +x /bazel/installer.sh && \
+    /bazel/installer.sh && \
+    rm -f /bazel/installer.sh
 
 # Install the Tensorflow Federated package dependencies
-RUN ${PIP} install --no-cache-dir \
+RUN ${PIP} --no-cache-dir install \
     enum34 \
     keras_applications \
     keras_preprocessing \
