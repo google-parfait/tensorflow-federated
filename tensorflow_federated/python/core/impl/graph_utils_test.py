@@ -41,7 +41,10 @@ class GraphUtilsTest(test.TestCase):
     binding_oneof = binding.WhichOneof('binding')
     if binding_oneof == 'tensor':
       self.assertTrue(tf.contrib.framework.is_tensor(val))
-      self.assertEqual(binding.tensor.tensor_name, val.name)
+      if not isinstance(val, tf.Variable):
+        # We insert a read_value() op for Variables, which produces
+        # a name we don't control. Otherwise, names should match:
+        self.assertEqual(binding.tensor.tensor_name, val.name)
       self.assertIsInstance(type_spec, computation_types.TensorType)
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
       self.assertEqual(repr(type_spec.shape), repr(val.shape))
@@ -640,7 +643,7 @@ class GraphUtilsTest(test.TestCase):
         ])),
     ])
     with self.session() as sess:
-      y = graph_utils.fetch_value_in_session(x, sess)
+      y = graph_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=10>>')
 
 

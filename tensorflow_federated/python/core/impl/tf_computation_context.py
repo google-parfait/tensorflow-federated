@@ -33,13 +33,25 @@ class TensorFlowComputationContext(context_base.Context):
   def __init__(self, graph):
     py_typecheck.check_type(graph, tf.Graph)
     self._graph = graph
+    self._init_ops = []
+
+  @property
+  def init_ops(self):
+    """Returns a list of init ops for computations invoked in this context."""
+    return list(self._init_ops)
 
   def ingest(self, val, type_spec):
     type_utils.check_type(val, type_spec)
     return val
 
   def invoke(self, comp, arg):
+    # We are invoking a tff.tf_computation inside of another
+    # tf_computation.
     py_typecheck.check_type(comp, computation_base.Computation)
     computation_proto = computation_impl.ComputationImpl.get_proto(comp)
-    return tensorflow_deserialization.deserialize_and_call_tf_computation(
-        computation_proto, arg, self._graph)
+    init_op, result = (
+        tensorflow_deserialization.deserialize_and_call_tf_computation(
+            computation_proto, arg, self._graph))
+    if init_op:
+      self._init_ops.append(init_op)
+    return result

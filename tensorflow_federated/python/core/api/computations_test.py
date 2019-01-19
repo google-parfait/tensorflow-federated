@@ -32,6 +32,8 @@ class ComputationsTest(test.TestCase):
     # Wrapping a lambda with a parameter.
     foo = computations.tf_computation(lambda x: x > 10, tf.int32)
     self.assertEqual(str(foo.type_signature), '(int32 -> bool)')
+    self.assertEqual(foo(9), False)
+    self.assertEqual(foo(11), True)
 
     # Wrapping an existing Python function with a parameter.
     bar = computations.tf_computation(tf.add, (tf.int32, tf.int32))
@@ -40,6 +42,7 @@ class ComputationsTest(test.TestCase):
     # Wrapping a no-parameter lambda.
     baz = computations.tf_computation(lambda: tf.constant(10))
     self.assertEqual(str(baz.type_signature), '( -> int32)')
+    self.assertEqual(baz(), 10)
 
     # Wrapping a no-parameter Python function.
     def bak_func():
@@ -47,6 +50,15 @@ class ComputationsTest(test.TestCase):
 
     bak = computations.tf_computation(bak_func)
     self.assertEqual(str(bak.type_signature), '( -> int32)')
+    self.assertEqual(bak(), 10)
+
+  def test_tf_fn_with_variable(self):
+    @computations.tf_computation
+    def read_var():
+      v = tf.Variable(10, name='test_var')
+      return v
+
+    self.assertEqual(read_var(), 10)
 
   def test_tf_comp_second_mode_of_usage_as_non_polymorphic_decorator(self):
     # Decorating a Python function with a parameter.

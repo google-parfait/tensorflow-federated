@@ -69,11 +69,11 @@ class ComputationWrapperInstancesTest(test.TestCase):
             comp.tensorflow.parameter.tuple.element[0].tensor.tensor_name: x,
             comp.tensorflow.parameter.tuple.element[1].tensor.tensor_name: y
         }, [comp.tensorflow.result.tensor.tensor_name])
-    self.assertEqual(
-        list(tf.Session().run(result, feed_dict={
-            x: n,
-            y: 3
-        }) for n in [1, 20, 5, 10, 30]), [[4], [23], [8], [13], [33]])
+    with self.session() as sess:
+      results = [
+          sess.run(result, feed_dict={x: n, y: 3}) for n in [1, 20, 5, 10, 30]
+      ]
+      self.assertEqual(results, [[4], [23], [8], [13], [33]])
 
   def test_federated_computation_wrapper(self):
 

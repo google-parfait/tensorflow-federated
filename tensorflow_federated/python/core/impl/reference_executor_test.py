@@ -19,11 +19,11 @@ from __future__ import print_function
 
 import collections
 
-from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -37,7 +37,7 @@ from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import type_constructors
 
 
-class ReferenceExecutorTest(absltest.TestCase):
+class ReferenceExecutorTest(test.TestCase):
 
   def test_computed_value(self):
     v = reference_executor.ComputedValue(10, tf.int32)
@@ -136,7 +136,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
       with tf.Session(graph=graph) as sess:
-        v_val = graph_utils.fetch_value_in_session(stamped_v, sess)
+        v_val = graph_utils.fetch_value_in_session(sess, stamped_v)
     self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
 
   def test_computation_context_resolve_reference(self):
@@ -908,4 +908,4 @@ if __name__ == '__main__':
   # against this implementation, not the other way round.
   executor_without_compiler = reference_executor.ReferenceExecutor()
   with context_stack_impl.context_stack.install(executor_without_compiler):
-    absltest.main()
+    test.main()

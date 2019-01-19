@@ -299,10 +299,13 @@ def run_tensorflow(comp, arg):
     py_typecheck.check_type(arg, ComputedValue)
   with tf.Graph().as_default() as graph:
     stamped_arg = stamp_computed_value_into_graph(arg, graph)
-    result = tensorflow_deserialization.deserialize_and_call_tf_computation(
-        comp.proto, stamped_arg, graph)
+    init_op, result = (
+        tensorflow_deserialization.deserialize_and_call_tf_computation(
+            comp.proto, stamped_arg, graph))
   with tf.Session(graph=graph) as sess:
-    result_val = graph_utils.fetch_value_in_session(result, sess)
+    if init_op:
+      sess.run(init_op)
+    result_val = graph_utils.fetch_value_in_session(sess, result)
   return capture_computed_value_from_graph(result_val,
                                            comp.type_signature.result)
 
