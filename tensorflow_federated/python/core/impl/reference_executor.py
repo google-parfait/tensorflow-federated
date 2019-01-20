@@ -81,7 +81,7 @@ class ComputedValue(object):
 # TODO(b/113123634): Address this in a more systematic way, and possibly narrow
 # this down to a smaller set.
 _TENSOR_REPRESENTATION_TYPES = (str, int, float, bool, np.int32, np.int64,
-                                np.float32, np.float64, np.bool, np.ndarray)
+                                np.float32, np.float64, np.ndarray, np.bool_)
 
 
 def to_representation_for_type(value, type_spec, callable_handler=None):

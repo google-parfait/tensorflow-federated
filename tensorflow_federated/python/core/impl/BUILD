@@ -286,6 +286,7 @@ py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
     deps = [
+        ":func_utils",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

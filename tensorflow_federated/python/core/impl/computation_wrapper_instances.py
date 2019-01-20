@@ -21,10 +21,13 @@ from tensorflow_federated.python.core.impl import computation_building_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
 
-def _tf_wrapper_fn(target_fn, parameter_type):
+def _tf_wrapper_fn(target_fn, parameter_type, unpack):
+  target_fn = func_utils.wrap_as_zero_or_one_arg_callable(
+      target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
   comp_pb = tensorflow_serialization.serialize_py_func_as_tf_computation(
       target_fn, parameter_type, ctx_stack)
@@ -34,7 +37,20 @@ def _tf_wrapper_fn(target_fn, parameter_type):
 tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
-def _federated_computation_wrapper_fn(target_fn, parameter_type):
+def _tf2_wrapper_fn(target_fn, parameter_type, unpack):
+  del unpack  # Unused.
+  comp_pb = tensorflow_serialization.serialize_tf2_as_tf_computation(
+      target_fn, parameter_type)
+  return computation_impl.ComputationImpl(comp_pb,
+                                          context_stack_impl.context_stack)
+
+
+tf2_wrapper = computation_wrapper.ComputationWrapper(_tf2_wrapper_fn)
+
+
+def _federated_computation_wrapper_fn(target_fn, parameter_type, unpack):
+  target_fn = func_utils.wrap_as_zero_or_one_arg_callable(
+      target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
   target_lambda = (
       computation_building_utils.zero_or_one_arg_func_to_building_block(

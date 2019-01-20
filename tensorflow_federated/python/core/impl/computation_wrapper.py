@@ -67,13 +67,11 @@ def _wrap(func, parameter_type, wrapper_fn):
   argspec = func_utils.get_argspec(func)
   parameter_type = computation_types.to_type(parameter_type)
   if not parameter_type:
-    if argspec.args or argspec.varargs or argspec.keywords:
+    if (argspec.args or argspec.varargs or argspec.keywords):
       # There is no TFF type specification, and the function/defun declares
       # parameters. Create a polymorphic template.
       def _wrap_polymorphic(wrapper_fn, func, parameter_type):
-        return wrapper_fn(
-            func_utils.wrap_as_zero_or_one_arg_callable(
-                func, parameter_type, unpack=True), parameter_type)
+        return wrapper_fn(func, parameter_type, unpack=True)
 
       polymorphic_fn = func_utils.PolymorphicFunction(
           lambda pt: _wrap_polymorphic(wrapper_fn, func, pt))
@@ -84,9 +82,9 @@ def _wrap(func, parameter_type, wrapper_fn):
       # explicitly.
       polymorphic_fn.__doc__ = getattr(func, '__doc__', None)
       return polymorphic_fn
-  concrete_fn = wrapper_fn(
-      func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type),
-      parameter_type)
+
+  # Either we have a concrete parameter type, or this is no-arg function.
+  concrete_fn = wrapper_fn(func, parameter_type, unpack=None)
   py_typecheck.check_type(concrete_fn, func_utils.ConcreteFunction,
                           'value returned by the wrapper')
   if not type_utils.are_equivalent_types(

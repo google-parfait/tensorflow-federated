@@ -130,6 +130,13 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
     """Constructs a new instance from the given element types.
 
     Args:
+      # XXX Q - This is different than AnonymousTuple, where you
+      # would do (None, foo) instead of just listing foo.
+      # I prefer the AnonymousTuple convention I think.
+      # At least (None, foo) should be allowed here, though I haven't
+      # thought through whether that would introduce ambiguity.
+      # But the "fancier" logic for pairs-and-singles should maybe
+      # move to only be in to_type() rather than here.
       elements: Element specifications, in the format of a `list`, `tuple`, or
         `collections.OrderedDict`. Each element specification is either a type
         spec (an instance of `tff.Type` or something convertible to it via

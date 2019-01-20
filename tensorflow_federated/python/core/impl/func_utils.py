@@ -26,6 +26,7 @@ import six
 from six.moves import range
 
 from tensorflow.python.framework import function as tf_function
+from tensorflow.python.util import tf_inspect
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -48,10 +49,6 @@ def is_defun(func):
   return isinstance(
       func,
       (
-          # TODO(b/113112885): Add support for tfe Function and
-          # PolymorphicFunction,
-          # currently omitted due to issues with visibility.
-
           # While these classes can be private to TF users, we need to peek into
           # the private interfaces of these classes in order to obtain the
           # function signatures and type information that are otherwise
@@ -62,7 +59,9 @@ def is_defun(func):
           # upstreaming some helper library or extending the public interface.
           tf_function._DefinedFunction,  # pylint: disable=protected-access
           tf_function._OverloadedFunction  # pylint: disable=protected-access
-      ))
+      )) or (
+          # TODO(b/113112885): Add (cleaner) support for tf.Function and
+          'def_function.Function' in str(type(func)))
 
 
 def get_argspec(func):
@@ -95,9 +94,7 @@ def get_argspec(func):
     # inside to extract arguments.
     return inspect.getargspec(func._func)  # pylint: disable=protected-access
   elif is_defun(func):
-    raise TypeError(
-        'Support for defuns of type {} has not been implemented yet.'.format(
-            py_typecheck.type_string(type(func))))
+    return tf_inspect.getargspec(func)
   else:
     raise TypeError('Expected a Python function or a defun, found {}.'.format(
         py_typecheck.type_string(type(func))))
@@ -239,13 +236,15 @@ def unpack_args_from_tuple(tuple_with_args):
       computation_types.to_type()), on which is_argument_tuple() is True.
 
   Returns:
-    A pair (args, kwargs) containing tuple elements from 'tuple_with_args'.
+    A pair (args, kwargs) containing tuple elements from 'tuple_with_args',
+    where args is a list, and kwargs is a dict.
 
   Raises:
     TypeError: if 'tuple_with_args' is of a wrong type.
   """
   if not is_argument_tuple(tuple_with_args):
     raise TypeError('Not an argument tuple: {}.'.format(str(tuple_with_args)))
+
   if isinstance(tuple_with_args, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(tuple_with_args)
   elif isinstance(tuple_with_args, value_base.Value):
@@ -504,6 +503,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       # condition holds and need only be verified in tests.
       assert unpack_required == unpack_possible
       unpack = unpack_possible
+
     if unpack:
 
       def _unpack_and_call(func, arg_types, kwarg_types, arg):
@@ -547,6 +547,12 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
                                 name, str(expected_type), str(actual_type)))
           kwargs[name] = element_value
         return func(*args, **kwargs)
+
+      # XXX Q - I don't see what this accomplishes. We immediately invoke
+      # the outer lambda, so isn't this the same as returning
+      # lambda arg: _unpack_and_call(func, arg_types, kwarg_types, arg)?
+      # Also, _call doesn't seem relevant in this branch? This probably is
+      # a Python nuance I am not recalling.
 
       # Deliberate wrapping to isolate the caller from the underlying function
       # and the interceptor '_call' again, so those cannot be tampered with,

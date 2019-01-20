@@ -29,7 +29,139 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_utils
+
+
+class UniqueNameFn(object):
+  """Callable which generates names that are unique across calls."""
+
+  def __init__(self):
+    self._used_names = set()
+
+  def __call__(self, s):
+    py_typecheck.check_type(s, six.string_types)
+    next_name_int = 1
+    proposal = s
+    while proposal in self._used_names:
+      proposal = '{}_{}'.format(s, next_name_int)
+      next_name_int += 1
+    self._used_names.add(proposal)
+    return proposal
+
+
+# XXX Q - Currently no direct unit tests for this function and the one below?
+# Thoughts on philosophy? Q -  This is closely related to
+# stamp_parameter_in_graph, but it isn't graph related. Perhaps this file should
+# be called tensorflow_utils?
+def get_tf_typespec_and_binding(parameter_type, arg_names):
+  """Computes a TensorSpec input_signature and bindings for parameter_type.
+
+  Args:
+    parameter_type: The TFF type of the input to a tensorflow function. Must be
+      either an instance of computation_types.Type (or convertible to it), or
+      None in the case of a no-arg function.
+    arg_names: String names for any positional arguments to the tensorflow
+      function.
+
+  Returns:
+    A tuple (args_typespec, kwargs_typespec, binding), where args_typespec
+    is a list and kwargs_typespec is a dict. Note the "binding" is
+    "preliminary" in that it includes the names of the TensorSpecs produced;
+    these must be converted to the names of actual tensors based on the
+    SignatureDef of the SavedModel before the binding is finalized.
+  """
+  if parameter_type is None:
+    return ([], {}, None)
+
+  if isinstance(parameter_type, computation_types.NamedTupleType):
+    arg_types, kwarg_types = func_utils.unpack_args_from_tuple(parameter_type)
+    pack_in_tuple = True
+  else:
+    pack_in_tuple = False
+    arg_types, kwarg_types = [parameter_type], {}
+
+  py_typecheck.check_type(arg_names, collections.Iterable)
+  if len(arg_names) < len(arg_types):
+    raise ValueError(
+        'If provided, arg_names must be a list of at least {} strings to '
+        'match the number of positional arguments. Found: {}'.format(
+            len(arg_types), arg_names))
+
+  get_unique_name = UniqueNameFn()
+
+  def _get_one_typespec_and_binding(parameter_name, parameter_type):
+    """Returns a (typespec, binding) pair."""
+    parameter_type = computation_types.to_type(parameter_type)
+    if isinstance(parameter_type, computation_types.TensorType):
+      name = get_unique_name(parameter_name)
+      tf_spec = tf.TensorSpec(
+          shape=parameter_type.shape, dtype=parameter_type.dtype, name=name)
+      binding = pb.TensorFlow.Binding(
+          tensor=pb.TensorFlow.TensorBinding(tensor_name=name))
+      return (tf_spec, binding)
+    elif isinstance(parameter_type, computation_types.NamedTupleType):
+      element_typespec_pairs = []
+      element_bindings = []
+      have_names = False
+      have_nones = False
+      for e_name, e_type in anonymous_tuple.to_elements(parameter_type):
+        if e_name is None:
+          have_nones = True
+        else:
+          have_names = True
+        name = '_'.join([n for n in [parameter_name, e_name] if n])
+        e_typespec, e_binding = _get_one_typespec_and_binding(
+            name if name else None, e_type)
+        element_typespec_pairs.append((e_name, e_typespec))
+        element_bindings.append(e_binding)
+      # For a given argument or kwarg, we shouldn't have both:
+      if (have_names and have_nones):
+        raise('A mix of named and unnamed entries are not supported inside '
+              'a nested structure representing a single argument in a call '
+              'to a TensorFlow or Python function.\n' + str(parameter_type))
+      if have_names:
+        tf_typespec = collections.OrderedDict(element_typespec_pairs)
+      else:
+        tf_typespec = [t[1] for t in element_typespec_pairs]
+      return (tf_typespec,
+              pb.TensorFlow.Binding(
+                  tuple=pb.TensorFlow.NamedTupleBinding(
+                      element=element_bindings)))
+    elif isinstance(parameter_type, computation_types.SequenceType):
+      raise NotImplementedError('Sequence iputs not yet supported for TF 2.0.')
+    else:
+      raise ValueError('Parameter type component {} cannot be converted '
+                       'to a TensorSpec'.format(repr(parameter_type)))
+
+  def get_arg_name(i):
+    name = arg_names[i]
+    if not isinstance(name, six.string_types):
+      raise ValueError('arg_names must be strings, but got' + str(name))
+    return name
+
+  # Main logic --- process arg_types and kwarg_types:
+  arg_typespecs = []
+  kwarg_typespecs = {}
+  bindings = []
+  for i, arg_type in enumerate(arg_types):
+    name = get_arg_name(i)
+    typespec, binding = _get_one_typespec_and_binding(name, arg_type)
+    arg_typespecs.append(typespec)
+    bindings.append(binding)
+  for name, kwarg_type in six.iteritems(kwarg_types):
+    typespec, binding = _get_one_typespec_and_binding(name, kwarg_type)
+    kwarg_typespecs[name] = typespec
+    bindings.append(binding)
+
+  assert bindings
+  if pack_in_tuple:
+    final_binding = pb.TensorFlow.Binding(
+        tuple=pb.TensorFlow.NamedTupleBinding(element=bindings))
+  else:
+    final_binding = bindings[0]
+
+  return (arg_typespecs, kwarg_typespecs, final_binding)
 
 
 def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
@@ -53,6 +185,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   Returns:
     A tuple (val, binding), where 'val' is a Python object (such as a dataset,
     a placeholder, or a dictionary that represents a named tuple) that
+    # XXX Q - It looks like it is actually an AnonymousTuple, not a dict?
     represents the stamped parameter for use in the body of a Python function
     that consumes this parameter, and the 'binding' is an instance of
     TensorFlow.Binding that indicates how parts of the type signature relate
@@ -127,6 +260,91 @@ def make_dataset_from_string_handle(handle, type_spec):
     return tf.data.Dataset.range(1).repeat().map(lambda _: it.get_next())
 
 
+def get_result_dict_and_binding(result, name_prefix=None):
+  """Returns the result_dict, type, and bindings for this result..
+
+  Args:
+    result: The result to flatten as a dict, a Python object that is composed of
+      tensors, possibly nested within Python structures such as dictionaries,
+      lists, tuples, or named tuples.
+    name_prefix: Prefix for names to be added to result_dict.
+
+  Returns:
+    A tuple (result_type, partial_binding), where  ...
+
+  Raises:
+    TypeError: if the argument or any of its parts are of an uexpected type.
+  """
+  result_dict = collections.OrderedDict()
+
+  get_unique_name = UniqueNameFn()
+
+  def get_name(s):
+    return get_unique_name(
+        s if not name_prefix else '{}_{}'.format(name_prefix, s))
+
+  # Recusrive helper function.
+  def _get_result_type_and_binding_impl(result, name_prefix):
+    """Recurse, returning (result_type, partial_binding)."""
+    if tf.contrib.framework.is_tensor(result):
+      output_name = get_name(result.name)
+      assert output_name not in result_dict
+      result_dict[output_name] = result
+      return (computation_types.TensorType(result.dtype.base_dtype,
+                                           result.shape),
+              pb.TensorFlow.Binding(
+                  tensor=pb.TensorFlow.TensorBinding(tensor_name=output_name)))
+    elif '_asdict' in type(result).__dict__:
+      # Special handling needed for collections.namedtuples since they do not
+      # have anything in the way of a shared base class. Note we don't want to
+      # rely on the fact that collections.namedtuples inherit from 'tuple'
+      # because we'd be failing to retain the information about naming of tuple
+      # members.
+      return _get_result_type_and_binding_impl(result._asdict(), name_prefix)  # pylint: disable=protected-access
+    elif isinstance(result,
+                    (collections.Mapping, anonymous_tuple.AnonymousTuple)):
+      # This also handles 'OrderedDict', as it inherits from 'dict'.
+      if isinstance(result, anonymous_tuple.AnonymousTuple):
+        name_value_pairs = anonymous_tuple.to_elements(result)
+      else:
+        name_value_pairs = six.iteritems(result)
+
+      ntt_pairs = []
+      partial_bindings = []
+      for name, value in name_value_pairs:
+        result_type, output_binding = _get_result_type_and_binding_impl(
+            value, get_name(name))
+        partial_bindings.append(output_binding)
+        ntt_pairs.append((name, result_type))
+
+      return (computation_types.NamedTupleType(ntt_pairs),
+              pb.TensorFlow.Binding(
+                  tuple=pb.TensorFlow.NamedTupleBinding(
+                      element=partial_bindings)))
+    elif isinstance(result, (list, tuple)):
+      ntt_elements = []
+      partial_bindings = []
+      for value in result:
+        result_type, output_binding = _get_result_type_and_binding_impl(
+            value, name_prefix)
+        partial_bindings.append(output_binding)
+        ntt_elements.append(result_type)
+      return (computation_types.NamedTupleType(ntt_elements),
+              pb.TensorFlow.Binding(
+                  tuple=pb.TensorFlow.NamedTupleBinding(
+                      element=partial_bindings)))
+    elif isinstance(result, tf.data.Dataset):
+      # TODO(b/122081673): Support Datasets here.
+      raise NotImplementedError(
+          'Datasets not currently supported for TF 2 serialization.')
+    else:
+      raise TypeError(
+          'Cannot capture a result of an unsupported type {}.'.format(
+              py_typecheck.type_string(type(result))))
+  result_type, binding = _get_result_type_and_binding_impl(result, name_prefix)
+  return result_dict, result_type, binding
+
+
 def capture_result_from_graph(result):
   """Captures a result stamped into a tf.Graph as a type signature and binding.
 
@@ -159,8 +377,8 @@ def capture_result_from_graph(result):
     # pylint: disable=protected-access
     return capture_result_from_graph(result._asdict())
     # pylint: enable=protected-access
-  elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
-    # This also handles 'OrderedDict', as it inherits from 'dict'.
+  elif isinstance(result,
+                  (collections.Mapping, anonymous_tuple.AnonymousTuple)):
     if isinstance(result, anonymous_tuple.AnonymousTuple):
       name_value_pairs = anonymous_tuple.to_elements(result)
     else:
