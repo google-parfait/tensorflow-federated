@@ -19,29 +19,35 @@ from __future__ import print_function
 # Dependency imports
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import utils
 
 
-class StaticOrDynamicShapeTest(tf.test.TestCase):
+class StaticOrDynamicShapeTest(tf.test.TestCase, parameterized.TestCase):
   """Tests for `static_or_dynamic_shape` method."""
 
   def test_static_or_dynamic_shape(self):
     # Tensor with statically known shape.
     x = tf.constant([0.0, 2.0, -1.5])
-    self.assertAllEqual([3], utils.static_or_dynamic_shape(x))
+    self.assertAllEqual((3,), utils.static_or_dynamic_shape(x))
 
     # Tensor without statically known shape.
     x = tf.squeeze(tf.where(tf.less(tf.random_uniform([10]), 0.5)))
     shape = utils.static_or_dynamic_shape(x)
     self.assertIsInstance(shape, tf.Tensor)
     x, shape = self.evaluate([x, shape])
-    self.assertEqual(len(x), shape)
+    self.assertLen(x, shape)
 
-  def test_static_or_dynamic_shape_raises(self):
+    # Numpy value.
+    x = np.array([0.0, 2.0, -1.5])
+    self.assertAllEqual((3,), utils.static_or_dynamic_shape(x))
+
+  @parameterized.parameters([1.0, 'str', object])
+  def test_static_or_dynamic_shape_raises(self, bad_input):
     with self.assertRaises(TypeError):
-      utils.static_or_dynamic_shape(1.0)
+      utils.static_or_dynamic_shape(bad_input)
 
 
 class SplitMergeDictTest(parameterized.TestCase):

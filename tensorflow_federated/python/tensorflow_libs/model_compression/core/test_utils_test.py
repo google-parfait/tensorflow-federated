@@ -19,11 +19,13 @@ from __future__ import print_function
 # Dependency imports
 
 from absl.testing import parameterized
+import mock
 import numpy as np
 from six.moves import range
 from six.moves import zip
 import tensorflow as tf
 
+from tensorflow_federated.python.tensorflow_libs.model_compression.core import encoding_stage
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import test_utils
 
 
@@ -111,12 +113,14 @@ class SimpleLinearEncodingStageTest(test_utils.BaseEncodingStageTest):
     encode_params, decode_params = stage.get_params()
     encoded_x, decoded_x = self.encode_decode_x(stage, x, encode_params,
                                                 decode_params)
-    test_data = self.evaluate(test_utils.TestData(x, encoded_x, decoded_x))
+    test_data = self.evaluate_test_data(
+        test_utils.TestData(x, encoded_x, decoded_x))
     self.common_asserts_for_test_data(test_data)
 
     # Change the variables and verify the behavior of stage changes.
     self.evaluate([tf.assign(a_var, 5.0), tf.assign(b_var, 6.0)])
-    test_data = self.evaluate(test_utils.TestData(x, encoded_x, decoded_x))
+    test_data = self.evaluate_test_data(
+        test_utils.TestData(x, encoded_x, decoded_x))
     self.assertAllClose(test_data.x * 5.0 + 6.0,
                         test_data.encoded_x[self._ENCODED_VALUES_KEY])
 
@@ -262,8 +266,10 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
     encode_params, decode_params = stage.get_params()
     encoded_x, decoded_x = self.encode_decode_x(stage, x, encode_params,
                                                 decode_params)
-    test_data_1 = self.evaluate(test_utils.TestData(x, encoded_x, decoded_x))
-    test_data_2 = self.evaluate(test_utils.TestData(x, encoded_x, decoded_x))
+    test_data_1 = self.evaluate_test_data(
+        test_utils.TestData(x, encoded_x, decoded_x))
+    test_data_2 = self.evaluate_test_data(
+        test_utils.TestData(x, encoded_x, decoded_x))
 
     # The decoded values should be the sam, but the encoded values not.
     self.assertAllClose(test_data_1.decoded_x, test_data_2.decoded_x,
@@ -276,7 +282,72 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
         atol=test_utils.DEFAULT_ATOL)
 
 
-class TestUtilsTest(tf.test.TestCase):
+class PlusNSquaredEncodingStageTest(test_utils.BaseEncodingStageTest):
+
+  def default_encoding_stage(self):
+    """See base class."""
+    return test_utils.PlusNSquaredEncodingStage()
+
+  def default_input(self):
+    """See base class."""
+    return tf.random.uniform([5])
+
+  @property
+  def is_lossless(self):
+    """See base class."""
+    return True
+
+  def common_asserts_for_test_data(self, data):
+    """See base class."""
+    self.assertAllClose(data.x, data.decoded_x)
+    self.assertAllClose(data.x + 1.0, data.encoded_x['values'])
+    self.assertAllClose(data.initial_state['iteration'] + 1.0,
+                        data.updated_state['iteration'])
+    self.assertDictEqual(data.state_update_tensors, {})
+
+  def test_one_to_many_few_rounds(self):
+    """Encoding and decoding in the one-to-many setting for a few rounds.
+
+    This is an example of how behavior of adaptive encoding stage can be tested
+    over multiple iterations of encoding. The one-to-many setting does not
+    include aggregation of state_update_tensors.
+    """
+    stage = self.default_encoding_stage()
+    state = self.evaluate(stage.initial_state())
+    for i in range(1, 5):
+      data = self.run_one_to_many_encode_decode(stage, self.default_input,
+                                                state)
+      self.assertAllClose(data.x, data.decoded_x)
+      self.assertAllClose(data.x + data.initial_state['iteration']**2,
+                          data.encoded_x['values'])
+      self.assertEqual(data.initial_state['iteration'], i)
+      self.assertDictEqual(data.state_update_tensors, {})
+      self.assertEqual(data.updated_state['iteration'], i + 1.0)
+      state = data.updated_state
+
+  def test_many_to_one_few_rounds(self):
+    """Encoding and decoding in the many-to-one setting for a few rounds.
+
+    This is an example of how behavior of adaptive encoding stage can be tested
+    over multiple iterations of encoding, including the aggregation of
+    state_update_tensors.
+    """
+    stage = self.default_encoding_stage()
+    state = self.evaluate(stage.initial_state())
+    for i in range(1, 5):
+      input_values = self.evaluate([self.default_input() for _ in range(3)])
+      data, _ = self.run_many_to_one_encode_decode(stage, input_values, state)
+      for d in data:
+        self.assertAllClose(d.x, d.decoded_x)
+        self.assertAllClose(d.x + d.initial_state['iteration']**2,
+                            d.encoded_x['values'])
+        self.assertEqual(d.initial_state['iteration'], i)
+        self.assertDictEqual(d.state_update_tensors, {})
+        self.assertEqual(d.updated_state['iteration'], i + 1.0)
+      state = data[0].updated_state
+
+
+class TestUtilsTest(tf.test.TestCase, parameterized.TestCase):
   """Tests for other utilities in `test_utils.py`."""
 
   def test_dummy_rng_source(self):
@@ -310,6 +381,57 @@ class TestUtilsTest(tf.test.TestCase):
         expected_num_elements=50, source_fn=tf.random.normal)
     self.assertGreaterEqual(self.evaluate(tf.reduce_min(x_uniform)), 0.0)
     self.assertLess(self.evaluate(tf.reduce_min(x_normal)), 0.0)
+
+  def test_is_adaptive_stage(self):
+    self.assertFalse(
+        test_utils.is_adaptive_stage(test_utils.PlusOneEncodingStage()))
+    self.assertTrue(
+        test_utils.is_adaptive_stage(test_utils.PlusNSquaredEncodingStage()))
+
+  @parameterized.parameters([1.0, 'str', object])
+  def test_is_adaptive_stage_raises(self, not_a_stage):
+    with self.assertRaises(TypeError):
+      test_utils.is_adaptive_stage(not_a_stage)
+
+  def test_aggregate_state_update_tensors(self):
+    test_state_update_aggregation_modes = {
+        'sum': encoding_stage.StateAggregationMode.SUM,
+        'max': encoding_stage.StateAggregationMode.MAX,
+        'min': encoding_stage.StateAggregationMode.MIN,
+        'stack': encoding_stage.StateAggregationMode.STACK
+    }
+    # Ensure every option is captured by this test.
+    self.assertSetEqual(
+        set(encoding_stage.StateAggregationMode),
+        set(test_state_update_aggregation_modes.values()))
+
+    mock_stage = mock.Mock(
+        spec=encoding_stage.AdaptiveEncodingStageInterface,
+        state_update_aggregation_modes=test_state_update_aggregation_modes)
+    array = np.array([[1.0, 2.0, -3.0], [-4.0, 5.0, 6.0]])
+    state_update_tensors = [{
+        'sum': array,
+        'max': array,
+        'min': array,
+        'stack': array
+    }, {
+        'sum': -array,
+        'max': -array,
+        'min': -array,
+        'stack': -array
+    }]
+    aggregated_tensors = test_utils.aggregate_state_update_tensors(
+        mock_stage, state_update_tensors)
+
+    self.assertAllEqual(aggregated_tensors['sum'], np.zeros((2, 3)))
+    self.assertAllEqual(aggregated_tensors['max'],
+                        np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))
+    self.assertAllEqual(aggregated_tensors['min'],
+                        np.array([[-1.0, -2.0, -3.0], [-4.0, -5.0, -6.0]]))
+    self.assertAllEqual(
+        aggregated_tensors['stack'],
+        np.array([[[1.0, 2.0, -3.0], [-4.0, 5.0, 6.0]],
+                  [[-1.0, -2.0, 3.0], [4.0, -5.0, -6.0]]]))
 
 
 if __name__ == '__main__':

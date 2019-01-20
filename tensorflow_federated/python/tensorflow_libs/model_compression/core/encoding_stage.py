@@ -59,13 +59,13 @@ class StateAggregationMode(enum.Enum):
   * `SUM`: Summation.
   * `MIN`: Minimum.
   * `MAX`: Maximum.
-  * `CONCAT`: Concatenation. This can necessary for computing arbitrary function
-    of a collection of those values, such as a percentile.
+  * `STACK`: Stacking along a new dimentsion. This can necessary for computing
+    arbitrary function of a collection of those values, such as a percentile.
   """
   SUM = 1
   MIN = 2
   MAX = 3
-  CONCAT = 4
+  STACK = 4
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -325,15 +325,11 @@ class AdaptiveEncodingStageInterface(object):
     """
 
   @abc.abstractmethod
-  def get_params(self, name=None):
+  def get_params(self, state, name=None):
     """Returns the parameters needed for encoding.
 
     This method returns parameters controlling the behavior of the `encode` and
     `decode` methods.
-
-    Implementation of this method should clearly document what are the keys of
-    parameters returned by this method, in order for a potential stateful
-    subclass being able to adaptively modify only existing keys.
 
     Note that this method is not purely functional in terms of `TensorFlow`. The
     params can be derived from an internal state of the compressor. For
@@ -342,6 +338,8 @@ class AdaptiveEncodingStageInterface(object):
     `Variable`, or a function of it, would be exposed via this method.
 
     Args:
+      state: A dictionary of `Tensor` objects. This should be the object
+        controlled by the `initial_state` and `update_state` methods.
       name: `string`, name of the operation.
 
     Returns:
@@ -470,7 +468,7 @@ def tf_style_decode(default_name):
             tf.convert_to_tensor, encoded_tensors)
         decode_params = tf.contrib.framework.nest.map_structure(
             tf.convert_to_tensor, decode_params)
-        if shape:
+        if shape is not None:
           shape = tf.convert_to_tensor(shape)
         return decode_fn(
             self, encoded_tensors, decode_params, shape=shape, name=name)
@@ -554,4 +552,3 @@ class NoneStateAdaptiveEncodingStage(AdaptiveEncodingStageInterface):
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     return self._wrapped_stage.decode(
         encoded_tensors, decode_params, shape, name)
-
