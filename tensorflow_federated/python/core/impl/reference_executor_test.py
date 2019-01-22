@@ -25,10 +25,11 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import executor_context
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import reference_executor
 
@@ -37,63 +38,102 @@ class ReferenceExecutorTest(absltest.TestCase):
 
   def test_installed_by_default(self):
     context = context_stack_impl.context_stack.current
-    self.assertIsInstance(context, executor_context.ExecutorContext)
-    self.assertIsInstance(
-        context._executor,  # pylint: disable=protected-access
-        reference_executor.ReferenceExecutor)
+    self.assertIsInstance(context, reference_executor.ReferenceExecutor)
 
   def test_computed_value(self):
     v = reference_executor.ComputedValue(10, tf.int32)
     self.assertEqual(str(v.type_signature), 'int32')
     self.assertEqual(v.value, 10)
 
-  def test_check_representation_matches_type_with_tensor_value(self):
-    reference_executor.check_representation_matches_type(10, tf.int32)
+  def test_to_representation_for_type_with_tensor_type(self):
+    self.assertEqual(
+        reference_executor.to_representation_for_type(10, tf.int32), 10)
     with self.assertRaises(TypeError):
-      reference_executor.check_representation_matches_type(0.1, tf.int32)
+      reference_executor.to_representation_for_type(0.1, tf.int32)
     with self.assertRaises(TypeError):
-      reference_executor.check_representation_matches_type([], tf.int32)
+      reference_executor.to_representation_for_type([], tf.int32)
 
-  def test_check_representation_matches_type_with_named_tuple_value(self):
-    reference_executor.check_representation_matches_type(
-        anonymous_tuple.AnonymousTuple([('x', 10), ('y', 20)]),
-        [('x', tf.int32), ('y', tf.int32)])
-    reference_executor.check_representation_matches_type(
-        anonymous_tuple.AnonymousTuple([
-            ('x', anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])),
-            ('y', 30),
-        ]), [('x', [tf.int32, tf.int32]), ('y', tf.int32)])
+  def test_to_representation_for_type_with_named_tuple_type(self):
+    foo = anonymous_tuple.AnonymousTuple([('x', 10), ('y', 20)])
+    self.assertEqual(
+        reference_executor.to_representation_for_type(foo, [('x', tf.int32),
+                                                            ('y', tf.int32)]),
+        foo)
+    foo = anonymous_tuple.AnonymousTuple([
+        ('x', anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])),
+        ('y', 30),
+    ])
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            foo, [('x', [tf.int32, tf.int32]), ('y', tf.int32)]), foo)
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            anonymous_tuple.AnonymousTuple([('x', [10, 20]), ('y', 30)]),
+            [('x', [tf.int32, tf.int32]), ('y', tf.int32)]),
+        anonymous_tuple.AnonymousTuple([('x',
+                                         anonymous_tuple.AnonymousTuple(
+                                             [(None, 10), (None, 20)])),
+                                        ('y', 30)]))
     with self.assertRaises(TypeError):
-      reference_executor.check_representation_matches_type(
-          anonymous_tuple.AnonymousTuple([
-              ('x', [10, 20]),
-              ('y', 30),
-          ]), [('x', [tf.int32, tf.int32]), ('y', tf.int32)])
-    with self.assertRaises(TypeError):
-      reference_executor.check_representation_matches_type(
-          10, [tf.int32, tf.int32])
+      reference_executor.to_representation_for_type(10, [tf.int32, tf.int32])
 
-  def test_check_representation_matches_type_with_function_value(self):
+  def test_to_representation_for_type_with_sequence_type(self):
+    foo = [1, 2, 3]
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            foo, computation_types.SequenceType(tf.int32)), foo)
+
+  def test_to_representation_for_type_with_function_type(self):
 
     def foo(x):
       self.assertIsInstance(x, reference_executor.ComputedValue)
       return reference_executor.ComputedValue(str(x.value), tf.string)
 
-    reference_executor.check_representation_matches_type(
-        foo, computation_types.FunctionType(tf.int32, tf.string))
+    self.assertIs(
+        reference_executor.to_representation_for_type(
+            foo, computation_types.FunctionType(
+                tf.int32, tf.string), lambda x, t: x), foo)
+
     with self.assertRaises(TypeError):
-      reference_executor.check_representation_matches_type(
+      reference_executor.to_representation_for_type(
+          foo, computation_types.FunctionType(tf.int32, tf.string))
+
+    with self.assertRaises(TypeError):
+      reference_executor.to_representation_for_type(
           10, computation_types.FunctionType(tf.int32, tf.string))
 
+  def test_to_representation_for_type_with_abstract_type(self):
+    with self.assertRaises(TypeError):
+      reference_executor.to_representation_for_type(
+          10, computation_types.AbstractType('T'))
+
+  def test_to_representation_for_type_with_placement_type(self):
+    self.assertIs(
+        reference_executor.to_representation_for_type(
+            placements.CLIENTS, computation_types.PlacementType()),
+        placements.CLIENTS)
+
+  def test_to_representation_for_type_with_federated_type(self):
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            10,
+            computation_types.FederatedType(
+                tf.int32, placements.SERVER, all_equal=True)), 10)
+    x = [1, 2, 3]
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            x,
+            computation_types.FederatedType(
+                tf.int32, placements.CLIENTS, all_equal=False)), x)
+
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
+    v_val = anonymous_tuple.AnonymousTuple([('x', 10),
+                                            ('y',
+                                             anonymous_tuple.AnonymousTuple(
+                                                 [('z', 0.6)]))])
+    v_type = [('x', tf.int32), ('y', [('z', tf.float32)])]
     v = reference_executor.ComputedValue(
-        anonymous_tuple.AnonymousTuple([('x', 10),
-                                        ('y',
-                                         anonymous_tuple.AnonymousTuple(
-                                             [('z', 0.6)]))]),
-        [('x', tf.int32), ('y', [('z', tf.float32)])])
-    reference_executor.check_representation_matches_type(
-        v.value, v.type_signature)
+        reference_executor.to_representation_for_type(v_val, v_type), v_type)
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
       with tf.Session(graph=graph) as sess:
@@ -279,6 +319,15 @@ class ReferenceExecutorTest(absltest.TestCase):
         make_13.proto, context_stack_impl.context_stack)
 
     self.assertEqual(make_13_computation(), 13)
+
+  def test_intrinsic(self):
+
+    @computations.federated_computation(
+        computation_types.SequenceType(tf.int32))
+    def foo(x):
+      return intrinsics.sequence_sum(x)
+
+    self.assertEqual(foo([1, 2, 3]), 6)
 
 
 if __name__ == '__main__':

@@ -294,3 +294,35 @@ def map_structure(func, *structure):
   s = [func(*x) for x in entries]
 
   return pack_sequence_as(structure[0], s)
+
+
+def from_container(value):
+  """Creates an instance of `AnonymousTuple` from a Python container.
+
+  This conversion is only performed at the top level for Python dictionaries,
+  `collections.OrderedDict`s, `namedtuple`s, `list`s and `tuple`s. Elements
+  of these structures are not recursively converted.
+
+  Args:
+    value: The Python container to convert.
+
+  Returns:
+    The corresponding instance of `AnonymousTuple`.
+
+  Raises:
+    TypeError: If the `value` is not of one of the supported container types.
+  """
+  if isinstance(value, AnonymousTuple):
+    return value
+  elif '_asdict' in vars(type(value)):
+    return from_container(value._asdict())
+  elif isinstance(value, collections.OrderedDict):
+    return AnonymousTuple(list(six.iteritems(value)))
+  elif isinstance(value, dict):
+    return AnonymousTuple(sorted(list(six.iteritems(value))))
+  elif isinstance(value, (tuple, list)):
+    return AnonymousTuple([(None, v) for v in value])
+  else:
+    raise TypeError('Unable to convert a Python object of type {} into '
+                    'an `AnoymousTuple`.'.format(
+                        py_typecheck.type_string(type(value))))

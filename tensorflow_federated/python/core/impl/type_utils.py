@@ -100,6 +100,26 @@ def infer_type(arg):
             py_typecheck.type_string(type(arg)), str(err)))
 
 
+def check_type(val, type_spec):
+  """Checks whether `val` is of TFF type `type_spec`.
+
+  Args:
+    val: The object to check.
+    type_spec: An instance of `tff.Type` or something convertible to it that the
+      `val` is checked against.
+
+  Raises:
+    TypeError: If the inefferred type of `val` is not `type_spec`.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  val_type = infer_type(val)
+  if not is_assignable_from(type_spec, val_type):
+    raise TypeError(
+        'Expected TFF type {}, which is not assignable from {}.'.format(
+            str(type_spec), str(val_type)))
+
+
 def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   """Returns computation_types.Type for the given TF (dtypes, shapes) tuple.
 
@@ -500,6 +520,15 @@ def is_assignable_from(target_type, source_type):
     return target_type.placement is source_type.placement
   else:
     raise TypeError('Unexpected target type {}.'.format(str(target_type)))
+
+
+def check_assignable_from(target, source):
+  target = computation_types.to_type(target)
+  source = computation_types.to_type(source)
+  if not is_assignable_from(target, source):
+    raise TypeError(
+        'The target type {} is not assignable from source type {}.'.format(
+            str(target), str(source)))
 
 
 def are_equivalent_types(type1, type2):

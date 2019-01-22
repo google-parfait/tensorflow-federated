@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import abc
 import inspect
 import types
 
@@ -32,6 +31,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -269,7 +270,7 @@ def unpack_args_from_tuple(tuple_with_args):
   return (args, kwargs)
 
 
-def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
+def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
   """Packs positional and keyword arguments into an anonymous tuple.
 
   If 'type_spec' is not None, it must be a tuple type or something that's
@@ -288,6 +289,9 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
       computation_types.NamedTupleType or something convertible to it), or None
       if there's no type. Used to drive the arrangements of args into fields of
       the constructed anonymous tuple, as noted in the description.
+    context: The optional context (an instance of `context_base.Context`) in
+      which the arguments are being packed. Required if and only if the
+      `type_spec` is not `None`.
 
   Returns:
     An anoymous tuple containing all the arguments.
@@ -301,6 +305,7 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
                                           list(six.iteritems(kwargs)))
   else:
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+    py_typecheck.check_type(context, context_base.Context)
     if not is_argument_tuple(type_spec):
       raise TypeError(
           'Parameter type {} does not have a structure of an argument '
@@ -317,25 +322,11 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
             raise TypeError('Argument {} specified twice.'.format(name))
           else:
             arg_value = args[index]
-            arg_type = type_utils.infer_type(arg_value)
-            if not type_utils.is_assignable_from(elem_type, arg_type):
-              raise TypeError(
-                  'Positional argument at {} has type {}, which is '
-                  'incompatible with the expected type {} at the matching '
-                  'position of the parameter type tuple.'.format(
-                      index, str(arg_type), str(elem_type)))
-            result_elements.append((name, arg_value))
+            result_elements.append((name, context.ingest(arg_value, elem_type)))
             positions_used.add(index)
         elif name is not None and name in kwargs:
           arg_value = kwargs[name]
-          arg_type = type_utils.infer_type(arg_value)
-          if not type_utils.is_assignable_from(elem_type, arg_type):
-            raise TypeError(
-                'Keyword argument named {} has type {}, which is incompatible '
-                'with the expected type {} at position {} of the parameter '
-                'type tuple.'.format(name, str(arg_type), str(elem_type),
-                                     index))
-          result_elements.append((name, arg_value))
+          result_elements.append((name, context.ingest(arg_value, elem_type)))
           keywords_used.add(name)
         elif name:
           raise TypeError('Argument named {} is missing.'.format(name))
@@ -352,7 +343,7 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None):
       return anonymous_tuple.AnonymousTuple(result_elements)
 
 
-def pack_args(parameter_type, args, kwargs):
+def pack_args(parameter_type, args, kwargs, context):
   """Pack arguments into a single one that matches the given parameter type.
 
   The arguments may or may not be packed into a tuple, depending on the type of
@@ -364,6 +355,8 @@ def pack_args(parameter_type, args, kwargs):
       None if the computation is not expecting a parameter.
     args: Positional arguments of a call.
     kwargs: Keyword arguments of a call.
+    context: The context (an instance of `context_base.Context`) in which the
+      arguments are being packed.
 
   Returns:
     A single value object of type that matches 'parameter_type' that contains
@@ -372,6 +365,7 @@ def pack_args(parameter_type, args, kwargs):
   Raises:
     TypeError: if the args/kwargs do not match the given parameter type.
   """
+  py_typecheck.check_type(context, context_base.Context)
   if parameter_type is None:
     # If there's no parameter type, there should be no args of any kind.
     if args or kwargs:
@@ -405,15 +399,9 @@ def pack_args(parameter_type, args, kwargs):
             'keyword arguments; please construct a tuple before the '
             'call.'.format(str(parameter_type)))
       else:
-        arg = pack_args_into_anonymous_tuple(args, kwargs, parameter_type)
-      actual_type = type_utils.infer_type(arg)
-      if type_utils.is_assignable_from(parameter_type, actual_type):
-        return arg
-      else:
-        raise TypeError(
-            'Expected a parameter of type {}, which is not assignable from '
-            'the type {} of the arguments.'.format(
-                str(parameter_type), str(actual_type)))
+        arg = pack_args_into_anonymous_tuple(args, kwargs, parameter_type,
+                                             context)
+      return context.ingest(arg, parameter_type)
 
 
 def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
@@ -586,49 +574,38 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       # pylint: enable=unnecessary-lambda,undefined-variable
 
 
-@six.add_metaclass(abc.ABCMeta)
 class ConcreteFunction(computation_base.Computation):
-  """An abstract base class for concretely-typed (non-polymorphic) functions."""
+  """A base class for concretely-typed (non-polymorphic) functions."""
 
-  def __init__(self, type_signature):
+  def __init__(self, type_signature, context_stack):
     """Constructs this concrete function with the give type signature.
 
     Args:
       type_signature: An instance of computation_types.FunctionType.
+      context_stack: The context stack to use.
 
     Raises:
       TypeError: if the arguments are of the wrong computation_types.
     """
     py_typecheck.check_type(type_signature, computation_types.FunctionType)
+    py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     self._type_signature = type_signature
+    self._context_stack = context_stack
 
   @property
   def type_signature(self):
     return self._type_signature
 
   def __call__(self, *args, **kwargs):
-    arg = pack_args(self._type_signature.parameter, args, kwargs)
-    result = self._invoke(arg)
+    context = self._context_stack.current
+    arg = pack_args(self._type_signature.parameter, args, kwargs, context)
+    result = context.invoke(self, arg)
     result_type = type_utils.infer_type(result)
     if not type_utils.is_assignable_from(
         self._type_signature.result, result_type):
       raise TypeError('Expected result to be of type {}, found {}.'.format(
           str(self._type_signature.result), str(result_type)))
     return result
-
-  @abc.abstractmethod
-  def _invoke(self, arg):
-    """Invokes the computation on the given (consolidated) argument.
-
-    Args:
-      arg: A single object with a value that matches the TFF type of the
-        parameter of this concrete function (or None if there is no parameter).
-
-    Returns:
-      The result of invocation, which must be a value that matches the TFF
-      type of the result of this concrete function.
-    """
-    raise NotImplementedError
 
 
 class PolymorphicFunction(object):

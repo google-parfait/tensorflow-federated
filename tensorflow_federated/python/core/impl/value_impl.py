@@ -180,7 +180,7 @@ class ValueImpl(value_base.Value):
             for k, v in six.iteritems(kwargs)
         }
         arg = func_utils.pack_args(self._comp.type_signature.parameter, args,
-                                   kwargs)
+                                   kwargs, self._context_stack.current)
         arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
       else:
         arg = None

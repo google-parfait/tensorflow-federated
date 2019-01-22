@@ -23,15 +23,16 @@ import six
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import compiler_pipeline_base
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import transformations
 
 
-class CompilerPipelineImpl(compiler_pipeline_base.CompilerPipeline):
-  """An implementation of the compiler pipeline.
+class CompilerPipeline(object):
+  """The compiler pipeline.
 
   This pipeline will eventually be made configurable, and driven largely by what
   the targeted backend can support. The set of conversions that are currently
@@ -52,7 +53,21 @@ class CompilerPipelineImpl(compiler_pipeline_base.CompilerPipeline):
     self._intrinsic_bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack)
 
-  def compile(self, computation_proto):
+  def compile(self, computation_to_compile):
+    """Compiles `computation_to_compile`.
+
+    Args:
+      computation_to_compile: An instance of `computation_base.Computation` to
+        compile.
+
+    Returns:
+      An instance of `computation_base.Computation` that repeesents the result.
+    """
+    py_typecheck.check_type(computation_to_compile,
+                            computation_base.Computation)
+    computation_proto = computation_impl.ComputationImpl.get_proto(
+        computation_to_compile)
+
     # TODO(b/113123410): Add a compiler options argument that characterizes the
     # desired form of the output. To be driven by what the specific backend the
     # pipeline is targeting is able to understand. Pending a more fleshed out
@@ -76,4 +91,4 @@ class CompilerPipelineImpl(compiler_pipeline_base.CompilerPipeline):
     # * merging TensorFlow blocks where appropriate,
     # * ...and so on.
 
-    return comp.proto
+    return computation_impl.ComputationImpl(comp.proto, self._context_stack)

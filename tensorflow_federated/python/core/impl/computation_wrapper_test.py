@@ -24,6 +24,8 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_wrapper
+from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import func_utils
 
 
@@ -38,12 +40,23 @@ class WrappedForTest(func_utils.ConcreteFunction):
   def __init__(self, func, parameter_type):
     self._func = func
     super(WrappedForTest, self).__init__(
-        computation_types.FunctionType(parameter_type, tf.string))
+        computation_types.FunctionType(parameter_type, tf.string),
+        context_stack_impl.context_stack)
 
-  def _invoke(self, arg):
-    result = self._func(arg) if self.type_signature.parameter else self._func()
+  @property
+  def func(self):
+    return self._func
+
+
+class ContextForTest(context_base.Context):
+
+  def ingest(self, val, type_spec):
+    return val
+
+  def invoke(self, comp, arg):
+    result = comp.func(arg) if comp.type_signature.parameter else comp.func()
     return '{} : {} -> {}'.format(
-        str(arg), str(self.type_signature.parameter), str(result))
+        str(arg), str(comp.type_signature.parameter), str(result))
 
 
 test_wrap = computation_wrapper.ComputationWrapper(WrappedForTest)
@@ -341,4 +354,5 @@ class ComputationWrapperTest(test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  with context_stack_impl.context_stack.install(ContextForTest()):
+    tf.test.main()

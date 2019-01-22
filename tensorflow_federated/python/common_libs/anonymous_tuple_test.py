@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 # Dependency imports
 
 from absl.testing import absltest
@@ -215,6 +217,45 @@ class AnonymousTupleTest(absltest.TestCase):
              ])),
             ('c', 22),
         ]))
+
+  def test_from_container_with_none(self):
+    with self.assertRaises(TypeError):
+      anonymous_tuple.from_container(None)
+
+  def test_from_container_with_int(self):
+    with self.assertRaises(TypeError):
+      anonymous_tuple.from_container(10)
+
+  def test_from_container_with_list(self):
+    x = anonymous_tuple.from_container([10, 20])
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(str(x), '<10,20>')
+
+  def test_from_container_with_tuple(self):
+    x = anonymous_tuple.from_container(tuple([10, 20]))
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(str(x), '<10,20>')
+
+  def test_from_container_with_dict(self):
+    x = anonymous_tuple.from_container({'z': 10, 'y': 20, 'a': 30})
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(str(x), '<a=30,y=20,z=10>')
+
+  def test_from_container_with_ordered_dict(self):
+    x = anonymous_tuple.from_container(
+        collections.OrderedDict([('z', 10), ('y', 20), ('a', 30)]))
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(str(x), '<z=10,y=20,a=30>')
+
+  def test_from_container_with_namedtuple(self):
+    x = anonymous_tuple.from_container(collections.namedtuple('_', 'x y')(1, 2))
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(str(x), '<x=1,y=2>')
+
+  def test_from_container_with_anonymous_tuple(self):
+    x = anonymous_tuple.from_container(
+        anonymous_tuple.AnonymousTuple([('a', 10), ('b', 20)]))
+    self.assertIs(x, x)
 
 
 if __name__ == '__main__':
