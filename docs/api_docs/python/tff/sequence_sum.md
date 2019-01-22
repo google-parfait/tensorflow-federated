@@ -5,27 +5,30 @@
 
 # tff.sequence_sum
 
-```python
+``` python
 tff.sequence_sum(value)
 ```
 
-Defined in
-[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
+
+Defined in [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
 Computes a sum of elements in a sequence.
 
 #### Args:
 
-*   <b>`value`</b>: A value of a TFF type that is either a sequence, or a
-    federated sequence.
+* <b>`value`</b>: A value of a TFF type that is either a sequence, or a federated
+    sequence.
+
 
 #### Returns:
 
-The sum of elements in the sequence. If the argument `value` is of a federated
-type, the result is also of a federated type, with the sum computed locally and
-independently at each location (see also a discussion on `sequence_map` and
-`sequence_reduce`).
+The sum of elements in the sequence. If the argument `value` is of a
+federated type, the result is also of a federated type, with the sum
+computed locally and independently at each location (see also a discussion
+on `sequence_map` and `sequence_reduce`).
+
 
 #### Raises:
 
-*   <b>`TypeError`</b>: If the arguments are of wrong or unsupported types.
+* <b>`TypeError`</b>: If the arguments are of wrong or unsupported types.

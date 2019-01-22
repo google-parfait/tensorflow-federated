@@ -17,9 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 # Dependency imports
 
 import numpy as np
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
@@ -29,6 +32,68 @@ from tensorflow_federated.python.core.api import value_base
 
 
 class ComputationsTest(test_utils.TffTestCase):
+
+  def test_more_structured_input_explicit_types(self):
+
+    def foo(tuple1, tuple2=(1, 2)):
+      return tuple1[0] + tuple1[1][0] + tuple1[1][1] + tuple2[0] + tuple2[1]
+
+    tff_type = [(tf.int32, (tf.int32, tf.int32)), (tf.int32, tf.int32)]
+    tf_comp = computations.tf_computation(foo, tff_type)
+    self.assertEqual(tf_comp((1, (2, 3)), (0, 0)), 6)
+
+  def test_tf_dict_arg(self):
+
+    def foo(d):
+      assert isinstance(d, collections.Mapping), (
+          'Expected a Mapping, got a ' + str(type(d)))
+      print('Called on', d)
+      return d['a'] + d['b']
+
+    tff_poly = computations.tf_computation(foo)
+    print(tff_poly(collections.OrderedDict(
+        [('a', 1), ('b', 2)])))
+
+  def test_tf_nexted_tuple(self):
+
+    def foo(t):
+      return t[0] + t[1][0] + t[1][1]
+
+    test_args = [(1, (2, 3))]
+
+    tff_poly = computations.tf_computation(foo)
+    print(tff_poly(*test_args))
+
+  def xxx_test_tf2_structured_input(self):
+
+    #@tf.contrib.eager.function(autograph=False)
+    def foo(t, d=None):
+      return t[0] + t[1][0] + t[1][1] + d['a'] + d['b']
+
+    test_args = [(1, (2, 3)), {'a': 2, 'b': 3}]
+    #print('Running directly produces: ' + foo(*test_args).numpy())
+
+    tff_poly = computations.tf_computation(foo)
+    print(tff_poly(*test_args))
+
+  def test_simple_structured_input(self):
+
+    def foo(t):
+      return tf.convert_to_tensor(t[0]) + tf.convert_to_tensor(t[1])
+
+    tff_poly = computations.tf_computation(foo)
+    print(tff_poly((1, 2)))
+    for k, v in six.iteritems(tff_poly._concrete_function_cache):
+      print(k, v.type_signature)
+
+  def xxx_test_simple_structured_input(self):
+
+    @tf.contrib.eager.function(autograph=False)
+    def foo(t):
+      return t[0] + t[1]
+
+    tff_poly = computations.tf_computation(foo)
+    print(tff_poly((1, 2)))
 
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(self):
     # Wrapping a lambda with a parameter.

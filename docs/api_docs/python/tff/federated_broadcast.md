@@ -5,27 +5,30 @@
 
 # tff.federated_broadcast
 
-```python
+``` python
 tff.federated_broadcast(value)
 ```
 
-Defined in
-[`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+
+
+Defined in [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
 Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
 #### Args:
 
-*   <b>`value`</b>: A value of a TFF federated type placed at the `SERVER`, all
-    members of which are equal (the `all_equal` property of the federated type
-    of `value` is True).
+* <b>`value`</b>: A value of a TFF federated type placed at the `SERVER`, all members
+    of which are equal (the `all_equal` property of the federated type of
+    `value` is True).
+
 
 #### Returns:
 
-A representation of the result of broadcasting: a value of a TFF federated type
-placed at the `CLIENTS`, all members of which are equal.
+A representation of the result of broadcasting: a value of a TFF federated
+type placed at the `CLIENTS`, all members of which are equal.
+
 
 #### Raises:
 
-*   <b>`TypeError`</b>: if the argument is not a federated TFF value placed at
-    the `SERVER`.
+* <b>`TypeError`</b>: if the argument is not a federated TFF value placed at the
+    `SERVER`.

@@ -11,8 +11,11 @@
 
 ## Class `ClientData`
 
-Defined in
-[`simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
+
+
+
+
+Defined in [`simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
 
 Object to hold a dataset and a mapping of clients to examples.
 
@@ -23,8 +26,8 @@ Object to hold a dataset and a mapping of clients to examples.
 The list of identifiers for clients in this dataset.
 
 A client identifier can be any type understood by the
-<a href="../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a>
-method, determined by the implementation.
+<a href="../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a> method, determined
+by the implementation.
 
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
@@ -35,8 +38,8 @@ Any `tf.data.Dataset` constructed by this class is expected to have matching
 
 #### Returns:
 
-A nested structure of `tf.TensorShape` objects corresponding to each component
-of an element of the client datasets.
+  A nested structure of `tf.TensorShape` objects corresponding to each
+component of an element of the client datasets.
 
 <h3 id="output_types"><code>output_types</code></h3>
 
@@ -47,14 +50,16 @@ Any `tf.data.Dataset` constructed by this class is expected have matching
 
 #### Returns:
 
-A nested structure of `tf.DType` objects corresponding to each component of an
-element of the client datasets.
+  A nested structure of `tf.DType` objects corresponding to each component
+of an element of the client datasets.
+
+
 
 ## Methods
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-```python
+``` python
 create_tf_dataset_for_client(client_id)
 ```
 
@@ -62,8 +67,12 @@ Creates a new `tf.data.Dataset` containing the client training examples.
 
 #### Args:
 
-*   <b>`client_id`</b>: The identifier for the desired client.
+* <b>`client_id`</b>: The identifier for the desired client.
+
 
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+
+

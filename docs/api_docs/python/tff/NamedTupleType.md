@@ -17,15 +17,15 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-Defined in
-[`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
-An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
-representing named tuple types in TFF.
+
+Defined in [`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+
+An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a> representing named tuple types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-```python
+``` python
 __init__(elements)
 ```
 
@@ -33,55 +33,73 @@ Constructs a new instance from the given element types.
 
 #### Args:
 
-*   <b>`elements`</b>: Element specifications, in the format of a `list`,
-    `tuple`, or `collections.OrderedDict`. Each element specification is either
-    a type spec (an instance of
-    <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible
-    to it via `tff.to_type()`) for the element, or a (name, spec) for elements
-    that have defined names. Alternatively, one can supply here an instance of
-    `collections.OrderedDict` mapping element names to their types (or things
-    that are convertible to types).
+* <b>`elements`</b>: Element specifications, in the format of a `list`, `tuple`, or
+    `collections.OrderedDict`. Each element specification is either a type
+    spec (an instance of <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible to it via
+    `tff.to_type()`) for the element, or a (name, spec) for elements that
+    have defined names. Alternatively, one can supply here an instance of
+    `collections.OrderedDict` mapping element names to their types (or
+    things that are convertible to types).
+
+
 
 ## Methods
 
 <h3 id="__dir__"><code>__dir__</code></h3>
 
-```python
+``` python
 __dir__()
 ```
 
+
+
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-```python
+``` python
 __eq__(other)
 ```
 
+
+
 <h3 id="__getattr__"><code>__getattr__</code></h3>
 
-```python
+``` python
 __getattr__(name)
 ```
 
+
+
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-```python
+``` python
 __getitem__(key)
 ```
 
+
+
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-```python
+``` python
 __iter__()
 ```
 
+
+
 <h3 id="__len__"><code>__len__</code></h3>
 
-```python
+``` python
 __len__()
 ```
 
+
+
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-```python
+``` python
 __ne__(other)
 ```
+
+
+
+
+

@@ -7,111 +7,79 @@
 
 # Module: tff
 
-Defined in
-[`__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/__init__.py).
+
+
+Defined in [`__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/__init__.py).
 
 TensorFlow Federated library.
 
 ## Modules
 
-[`learning`](./tff/learning.md) module: The public API for model developers
-using federated learning algorithms.
+[`learning`](./tff/learning.md) module: The public API for model developers using federated learning algorithms.
 
-[`simulation`](./tff/simulation.md) module: The public API for experimenters
-running federated learning simulations.
+[`simulation`](./tff/simulation.md) module: The public API for experimenters running federated learning simulations.
 
-[`utils`](./tff/utils.md) module: Utility classes/functions built on top of
-TensorFlow Federated Core API.
+[`utils`](./tff/utils.md) module: Utility classes/functions built on top of TensorFlow Federated Core API.
 
 ## Classes
 
-[`class Computation`](./tff/Computation.md): An abstract interface for all
-classes that represent computations.
+[`class Computation`](./tff/Computation.md): An abstract interface for all classes that represent computations.
 
-[`class FederatedType`](./tff/FederatedType.md): An implementation of
-<a href="./tff/Type.md"><code>tff.Type</code></a> representing federated types
-in TFF.
+[`class FederatedType`](./tff/FederatedType.md): An implementation of <a href="./tff/Type.md"><code>tff.Type</code></a> representing federated types in TFF.
 
-[`class FunctionType`](./tff/FunctionType.md): An implementation of
-<a href="./tff/Type.md"><code>tff.Type</code></a> representing functional types
-in TFF.
+[`class FunctionType`](./tff/FunctionType.md): An implementation of <a href="./tff/Type.md"><code>tff.Type</code></a> representing functional types in TFF.
 
-[`class NamedTupleType`](./tff/NamedTupleType.md): An implementation of
-<a href="./tff/Type.md"><code>tff.Type</code></a> representing named tuple types
-in TFF.
+[`class NamedTupleType`](./tff/NamedTupleType.md): An implementation of <a href="./tff/Type.md"><code>tff.Type</code></a> representing named tuple types in TFF.
 
-[`class SequenceType`](./tff/SequenceType.md): An implementation of
-<a href="./tff/Type.md"><code>tff.Type</code></a> representing types of
-sequences in TFF.
+[`class SequenceType`](./tff/SequenceType.md): An implementation of <a href="./tff/Type.md"><code>tff.Type</code></a> representing types of sequences in TFF.
 
-[`class TensorType`](./tff/TensorType.md): An implementation of
-<a href="./tff/Type.md"><code>tff.Type</code></a> representing types of tensors
-in TFF.
+[`class TensorType`](./tff/TensorType.md): An implementation of <a href="./tff/Type.md"><code>tff.Type</code></a> representing types of tensors in TFF.
 
-[`class Type`](./tff/Type.md): An abstract interface for all classes that
-represent TFF types.
+[`class Type`](./tff/Type.md): An abstract interface for all classes that represent TFF types.
 
-[`class TypedObject`](./tff/TypedObject.md): An abstract interface for things
-that possess TFF type signatures.
+[`class TypedObject`](./tff/TypedObject.md): An abstract interface for things that possess TFF type signatures.
 
-[`class Value`](./tff/Value.md): An abstract base class for all values in the
-bodies of TFF computations.
+[`class Value`](./tff/Value.md): An abstract base class for all values in the bodies of TFF computations.
 
 ## Functions
 
-[`federated_aggregate(...)`](./tff/federated_aggregate.md): Aggregates `value`
-from `CLIENTS` to `SERVER` using a multi-stage process.
+[`federated_aggregate(...)`](./tff/federated_aggregate.md): Aggregates `value` from `CLIENTS` to `SERVER` using a multi-stage process.
 
-[`federated_apply(...)`](./tff/federated_apply.md): Applies a given function to
-a federated value on the `SERVER`.
+[`federated_apply(...)`](./tff/federated_apply.md): Applies a given function to a federated value on the `SERVER`.
 
-[`federated_average(...)`](./tff/federated_average.md): Computes a `SERVER`
-average of `value` placed on `CLIENTS`.
+[`federated_average(...)`](./tff/federated_average.md): Computes a `SERVER` average of `value` placed on `CLIENTS`.
 
-[`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a
-federated value from the `SERVER` to the `CLIENTS`.
+[`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a federated value from the `SERVER` to the `CLIENTS`.
 
-[`federated_collect(...)`](./tff/federated_collect.md): Materializes a federated
-value from `CLIENTS` as a `SERVER` sequence.
+[`federated_collect(...)`](./tff/federated_collect.md): Materializes a federated value from `CLIENTS` as a `SERVER` sequence.
 
-[`federated_computation(...)`](./tff/federated_computation.md): Decorates/wraps
-Python functions as TFF federated/composite computations.
+[`federated_computation(...)`](./tff/federated_computation.md): Decorates/wraps Python functions as TFF federated/composite computations.
 
-[`federated_map(...)`](./tff/federated_map.md): Maps a federated value on
-CLIENTS pointwise using a given mapping function.
+[`federated_map(...)`](./tff/federated_map.md): Maps a federated value on CLIENTS pointwise using a given mapping function.
 
-[`federated_reduce(...)`](./tff/federated_reduce.md): Reduces `value` from
-`CLIENTS` to `SERVER` using a reduction operator `op`.
+[`federated_reduce(...)`](./tff/federated_reduce.md): Reduces `value` from `CLIENTS` to `SERVER` using a reduction operator `op`.
 
-[`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a
-federated value placed on the `CLIENTS`.
+[`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a federated value placed on the `CLIENTS`.
 
-[`federated_value(...)`](./tff/federated_value.md): Returns a federated value at
-`placement`, with `value` as the constituent.
+[`federated_value(...)`](./tff/federated_value.md): Returns a federated value at `placement`, with `value` as the constituent.
 
-[`federated_zip(...)`](./tff/federated_zip.md): Converts an N-tuple of federated
-values into a federated N-tuple value.
+[`federated_zip(...)`](./tff/federated_zip.md): Converts an N-tuple of federated values into a federated N-tuple value.
 
-[`sequence_map(...)`](./tff/sequence_map.md): Maps a TFF sequence `value`
-pointwise using a given function `mapping_fn`.
+[`sequence_map(...)`](./tff/sequence_map.md): Maps a TFF sequence `value` pointwise using a given function `mapping_fn`.
 
-[`sequence_reduce(...)`](./tff/sequence_reduce.md): Reduces a TFF sequence
-`value` given a `zero` and reduction operator `op`.
+[`sequence_reduce(...)`](./tff/sequence_reduce.md): Reduces a TFF sequence `value` given a `zero` and reduction operator `op`.
 
-[`sequence_sum(...)`](./tff/sequence_sum.md): Computes a sum of elements in a
-sequence.
+[`sequence_sum(...)`](./tff/sequence_sum.md): Computes a sum of elements in a sequence.
 
-[`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python
-functions and defuns as TFF TensorFlow computations.
+[`tf_computation(...)`](./tff/tf_computation.md): Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
-[`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of
-<a href="./tff/Type.md"><code>tff.Type</code></a>.
+[`to_type(...)`](./tff/to_type.md): Converts the argument into an instance of <a href="./tff/Type.md"><code>tff.Type</code></a>.
 
-[`to_value(...)`](./tff/to_value.md): Converts the argument into an instance of
-the abstract class <a href="./tff/Value.md"><code>tff.Value</code></a>.
+[`to_value(...)`](./tff/to_value.md): Converts the argument into an instance of the abstract class <a href="./tff/Value.md"><code>tff.Value</code></a>.
 
 ## Other Members
 
 <h3 id="CLIENTS"><code>CLIENTS</code></h3>
 
 <h3 id="SERVER"><code>SERVER</code></h3>
+

@@ -10,8 +10,11 @@
 
 ## Class `IterativeProcess`
 
-Defined in
-[`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
+
+
+
+
+Defined in [`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
 A process that includes an initialization and iterated computation.
 
@@ -45,7 +48,7 @@ for round in range(num_rounds):
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-```python
+``` python
 __init__(
     initialize_fn,
     next_fn
@@ -56,35 +59,37 @@ Creates a `tff.IterativeProcess`.
 
 #### Args:
 
-*   <b>`initialize_fn`</b>: a no-arg
-    <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that
-    creates the initial state of the chained computation.
-*   <b>`next_fn`</b>: a
-    <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that
-    defines an iterated function. If `initialize_fn` returns a type _T_, then
-    `next_fn` must also return type _T_ and accept either a single argument of
-    type _T_ or a named tuple whose first argument is of type _T_.
+* <b>`initialize_fn`</b>: a no-arg <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that creates the initial state
+    of the chained computation.
+* <b>`next_fn`</b>: a <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that defines an iterated function. If
+    `initialize_fn` returns a type _T_, then `next_fn` must also return type
+    _T_ and accept either a single argument of type _T_ or a named tuple
+    whose first argument is of type _T_.
+
 
 #### Raises:
 
-*   <b>`TypeError`</b>: initialize_fn and next_fn are not compatible function
-    types.
+* <b>`TypeError`</b>: initialize_fn and next_fn are not compatible function types.
+
+
 
 ## Properties
 
 <h3 id="initialize"><code>initialize</code></h3>
 
-A no-arg <a href="../../tff/Computation.md"><code>tff.Computation</code></a>
-that returns the initial state.
+A no-arg <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that returns the initial state.
 
 <h3 id="next"><code>next</code></h3>
 
-A <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that
-produces the next state.
+A <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that produces the next state.
 
-The first argument of should always be the current state (originally produced by
-`tff.IterativeProcess.initialize`), and the return value is the updated state.
+The first argument of should always be the current state (originally
+produced by `tff.IterativeProcess.initialize`), and the return value is the
+updated state.
 
 #### Returns:
 
 A <a href="../../tff/Computation.md"><code>tff.Computation</code></a>.
+
+
+

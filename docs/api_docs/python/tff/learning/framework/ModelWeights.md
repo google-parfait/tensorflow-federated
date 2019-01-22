@@ -11,8 +11,11 @@
 
 ## Class `ModelWeights`
 
-Defined in
-[`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+
+
+
+
+Defined in [`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
 A container for the trainable and non-trainable variables of a `Model`.
 
@@ -23,7 +26,7 @@ e.g., tensors corresponding to variable values, or updates to model variables.
 
 <h2 id="__new__"><code>__new__</code></h2>
 
-```python
+``` python
 @staticmethod
 __new__(
     cls,
@@ -32,20 +35,35 @@ __new__(
 )
 ```
 
+
+
+
+
 ## Properties
 
 <h3 id="trainable"><code>trainable</code></h3>
 
+
+
 <h3 id="non_trainable"><code>non_trainable</code></h3>
+
+
+
+
 
 ## Methods
 
 <h3 id="from_model"><code>from_model</code></h3>
 
-```python
+``` python
 @classmethod
 from_model(
     cls,
     model
 )
 ```
+
+
+
+
+

@@ -9,8 +9,11 @@
 
 ## Class `Type`
 
-Defined in
-[`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+
+
+
+
+Defined in [`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
 An abstract interface for all classes that represent TFF types.
 
@@ -18,31 +21,38 @@ An abstract interface for all classes that represent TFF types.
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-```python
+``` python
 __eq__(other)
 ```
 
 Determines whether two type definitions are identical.
 
-Note that this notion of equality is stronger than equivalence. Two types with
-equivalent definitions may not be identical, e.g., if they represent templates
-with differently named type veriables in their definitions.
+Note that this notion of equality is stronger than equivalence. Two types
+with equivalent definitions may not be identical, e.g., if they represent
+templates with differently named type veriables in their definitions.
 
 #### Args:
 
-*   <b>`other`</b>: The other type to compare against.
+* <b>`other`</b>: The other type to compare against.
+
 
 #### Returns:
 
-`True` iff type definitions are syntatically identical (as defined above), or
-`False` otherwise.
+`True` iff type definitions are syntatically identical (as defined above),
+or `False` otherwise.
+
 
 #### Raises:
 
-*   <b>`NotImplementedError`</b>: If not implemented in the derived class.
+* <b>`NotImplementedError`</b>: If not implemented in the derived class.
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-```python
+``` python
 __ne__(other)
 ```
+
+
+
+
+

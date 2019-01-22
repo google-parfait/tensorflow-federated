@@ -8,8 +8,11 @@
 
 ## Class `TypedObject`
 
-Defined in
-[`core/api/typed_object.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/typed_object.py).
+
+
+
+
+Defined in [`core/api/typed_object.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/typed_object.py).
 
 An abstract interface for things that possess TFF type signatures.
 
@@ -17,5 +20,7 @@ An abstract interface for things that possess TFF type signatures.
 
 <h3 id="type_signature"><code>type_signature</code></h3>
 
-Returns the TFF type of this object (an instance of
-<a href="../tff/Type.md"><code>tff.Type</code></a>).
+Returns the TFF type of this object (an instance of <a href="../tff/Type.md"><code>tff.Type</code></a>).
+
+
+

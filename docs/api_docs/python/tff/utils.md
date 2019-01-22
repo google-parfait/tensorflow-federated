@@ -5,8 +5,9 @@
 
 # Module: tff.utils
 
-Defined in
-[`core/utils/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py).
+
+
+Defined in [`core/utils/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py).
 
 Utility classes/functions built on top of TensorFlow Federated Core API.
 
@@ -17,10 +18,9 @@ depend on implementation classes. It should be written against the Core API.
 
 ## Classes
 
-[`class IterativeProcess`](../tff/utils/IterativeProcess.md): A process that
-includes an initialization and iterated computation.
+[`class IterativeProcess`](../tff/utils/IterativeProcess.md): A process that includes an initialization and iterated computation.
 
 ## Functions
 
-[`get_variables(...)`](../tff/utils/get_variables.md): Creates a set of
-variables that matches the given `type_spec`.
+[`get_variables(...)`](../tff/utils/get_variables.md): Creates a set of variables that matches the given `type_spec`.
+
