@@ -1,0 +1,62 @@
+book_path: /federated/_book.yaml
+project_path: /federated/_project.yaml
+description: <!--no description-->
+landing_page:
+  custom_css_path: /site-assets/css/style.css
+  rows:
+  - heading: Collaborative machine learning without centralized training data
+    items:
+    - classname: devsite-landing-row-50
+      description: >
+        <p>Federated Learning (FL) is the approach of training a shared global
+        model under the coordination of a central server, from a federation of
+        participating devices which maintain control of their own data.</p>
+        <p>Federated Learning enables mobile phones to collaboratively learn a
+        shared prediction model while keeping all the training data on device,
+        decoupling the ability to do machine learning from the need to store the
+        data in the cloud. This goes beyond the use of local models that make
+        predictions on mobile devices by bringing model training to the device as well.</p>
+
+      code_block: |
+        <pre class = "prettyprint">
+        import tensorflow as tf
+        import tensorflow_federated as tff
+
+        @tff.tf_computation([BATCH_TYPE, MODEL_TYPE])
+        def forward_pass(features, model):
+          ...
+          loss = tf.reduce_mean(
+            -tf.reduce_sum(encoded_y * tf.log(softmax_y), reduction_indices=1))
+          prediction = tf.cast(tf.argmax(softmax_y, 1), tf.int32)
+          is_correct = tf.equal(prediction, features.Y)
+          accuracy = tf.reduce_mean(tf.cast(is_correct, tf.float32))
+          count = tf.size(features.X)
+          return collections.OrderedDict([
+            ('loss', loss),
+            ('accuracy', accuracy),
+            ('count', count),
+          ])
+        </pre>
+        {% dynamic if request.tld != 'cn' %}
+        <a class="colab-button" target="_blank" href="https://colab.research.google.com/github/tensorflow/docs/blob/master/site/en/tutorials/_index.ipynb">Run in a <span>Notebook</span></a>
+        {% dynamic endif %}
+
+  - classname: devsite-landing-row-cards
+    items:
+    - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
+      image_path: /resources/images/google-research-card-16x9.png
+      path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
+      buttons:
+      - label: "Read on Google AI blog"
+        path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
+    - heading: "Making every phone smarter with Federated Learning"
+      youtube_id: gbRJPa9d-VU
+      buttons:
+      - label: Watch the video
+        path: https://www.youtube.com/watch?v=gbRJPa9d-VU
+    - heading: "TF Federated on GitHub"
+      image_path: /resources/images/github-card-16x9.png
+      path: https://github.com/tensorflow/federated
+      buttons:
+      - label: "View on GitHub"
+        path: https://github.com/tensorflow/federated

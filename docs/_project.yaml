@@ -1,0 +1,9 @@
+name: TensorFlow Federated
+breadcrumb_name: Federated
+home_url: /federated/
+parent_project_metadata_path: /_project.yaml
+description: "This is federated."
+hide_from_products_list: true
+content_license: cc3-apache2
+# Use project ID, if available
+buganizer_id: 162698
