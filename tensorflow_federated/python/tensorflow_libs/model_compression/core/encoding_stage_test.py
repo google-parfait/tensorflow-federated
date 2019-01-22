@@ -16,8 +16,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -136,8 +134,7 @@ class NoneStateAdaptiveEncodingStageTest(tf.test.TestCase,
     # Test the functionality remain unchanged.
     self.assertEqual(stage.compressible_tensors_keys,
                      wrapped_stage.compressible_tensors_keys)
-    self.assertEqual(stage.commutes_with_sum,
-                     wrapped_stage.commutes_with_sum)
+    self.assertEqual(stage.commutes_with_sum, wrapped_stage.commutes_with_sum)
     self.assertEqual(stage.decode_needs_input_shape,
                      wrapped_stage.decode_needs_input_shape)
 

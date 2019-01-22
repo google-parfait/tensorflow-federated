@@ -17,8 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -27,7 +25,6 @@ from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
-
 
 nest = tf.contrib.framework.nest
 

@@ -19,8 +19,6 @@ from __future__ import print_function
 
 import re
 
-# Dependency imports
-
 from absl.testing import absltest
 import tensorflow as tf
 

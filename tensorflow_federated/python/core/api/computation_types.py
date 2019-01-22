@@ -20,8 +20,6 @@ from __future__ import print_function
 import abc
 import collections
 
-# Dependency imports
-
 import six
 import tensorflow as tf
 

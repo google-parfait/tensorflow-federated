@@ -19,8 +19,6 @@ from __future__ import print_function
 
 import collections
 
-# Dependency imports
-
 import tensorflow as tf
 
 from tensorflow_federated.python.core import api as tff
@@ -108,6 +106,7 @@ class LinearRegression(model.Model):
               tff.federated_average(
                   local_outputs['loss'], weight=local_outputs['num_examples'])
       }
+
     return fed_output
 
   @classmethod

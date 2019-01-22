@@ -19,8 +19,6 @@ from __future__ import print_function
 
 import collections
 
-# Dependency imports
-
 from absl.testing import absltest
 import numpy as np
 from six.moves import range

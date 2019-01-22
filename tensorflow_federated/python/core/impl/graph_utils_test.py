@@ -19,8 +19,6 @@ from __future__ import print_function
 
 import collections
 
-# Dependency imports
-
 import numpy as np
 import six
 import tensorflow as tf

@@ -20,8 +20,6 @@ from __future__ import print_function
 import inspect
 import types
 
-# Dependency imports
-
 import six
 from six.moves import range
 
@@ -601,8 +599,8 @@ class ConcreteFunction(computation_base.Computation):
     arg = pack_args(self._type_signature.parameter, args, kwargs, context)
     result = context.invoke(self, arg)
     result_type = type_utils.infer_type(result)
-    if not type_utils.is_assignable_from(
-        self._type_signature.result, result_type):
+    if not type_utils.is_assignable_from(self._type_signature.result,
+                                         result_type):
       raise TypeError('Expected result to be of type {}, found {}.'.format(
           str(self._type_signature.result), str(result_type)))
     return result

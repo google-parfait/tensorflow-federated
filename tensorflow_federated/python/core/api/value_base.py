@@ -19,8 +19,6 @@ from __future__ import print_function
 
 import abc
 
-# Dependency imports
-
 import six
 
 from tensorflow_federated.python.core.api import typed_object

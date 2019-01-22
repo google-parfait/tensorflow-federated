@@ -23,8 +23,6 @@ from __future__ import print_function
 import functools
 import itertools
 
-# Dependency imports
-
 from absl.testing import parameterized
 import numpy as np
 from six.moves import range

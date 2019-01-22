@@ -34,8 +34,6 @@ from __future__ import print_function
 
 import abc
 
-# Dependency imports
-
 import enum
 import six
 import tensorflow as tf
@@ -550,5 +548,5 @@ class NoneStateAdaptiveEncodingStage(AdaptiveEncodingStageInterface):
     return self._wrapped_stage.encode(x, encode_params, name), {}
 
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
-    return self._wrapped_stage.decode(
-        encoded_tensors, decode_params, shape, name)
+    return self._wrapped_stage.decode(encoded_tensors, decode_params, shape,
+                                      name)

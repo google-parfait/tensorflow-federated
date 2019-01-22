@@ -20,8 +20,6 @@ from __future__ import print_function
 import abc
 import collections
 
-# Dependency imports
-
 import numpy as np
 import six
 from six.moves import range

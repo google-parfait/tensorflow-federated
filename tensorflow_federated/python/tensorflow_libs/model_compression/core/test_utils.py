@@ -27,8 +27,6 @@ from __future__ import print_function
 import abc
 import collections
 
-# Dependency imports
-
 from absl.testing import parameterized
 import numpy as np
 import six
@@ -38,10 +36,8 @@ import tensorflow as tf
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import encoding_stage
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import utils
 
-
 DEFAULT_RTOL = 1e-05
 DEFAULT_ATOL = 1e-05
-
 
 # Named tuple containing the values summarizing the results for a single
 # evaluation of an EncodingStageInterface or an AdaptiveEncodingStageInterface.
@@ -194,8 +190,11 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     # Evaluate the Tensors and get numpy values.
     test_data = self.evaluate_test_data(test_data)
     if self.is_lossless:
-      self.assertAllClose(test_data.x, test_data.decoded_x,
-                          rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
+      self.assertAllClose(
+          test_data.x,
+          test_data.decoded_x,
+          rtol=DEFAULT_RTOL,
+          atol=DEFAULT_ATOL)
     self.common_asserts_for_test_data(test_data)
 
   def test_one_to_many_encode_decode(self):
@@ -238,7 +237,8 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(
           np.sum([d.x for d in server_test_data], axis=0),
           np.sum([d.decoded_x for d in server_test_data], axis=0),
-          rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
+          rtol=DEFAULT_RTOL,
+          atol=DEFAULT_ATOL)
     if stage.commutes_with_sum:
       self.assert_commutes_with_sum(server_test_data, stage, decode_params,
                                     input_values[0].shape)
@@ -637,8 +637,11 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
       with self.session() as sess:
         decode_sum_encoded_x = sess.run(
             stage.decode(sum_encoded_x, decode_params, shape))
-    self.assertAllClose(expected_sum, decode_sum_encoded_x,
-                        rtol=DEFAULT_RTOL, atol=DEFAULT_ATOL)
+    self.assertAllClose(
+        expected_sum,
+        decode_sum_encoded_x,
+        rtol=DEFAULT_RTOL,
+        atol=DEFAULT_ATOL)
 
 
 class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
@@ -941,6 +944,7 @@ def dummy_rng_source(seed, num_elements):
   Returns:
     A `Tensor` of shape `(num_elements)` containing pseudorandom values.
   """
+
   def next_num(num):
     # This creates a cycle of length 136.
     return tf.mod((num * 13), 137)
