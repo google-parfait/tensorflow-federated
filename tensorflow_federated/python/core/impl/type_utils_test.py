@@ -25,8 +25,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test_utils as common_test_utils
-from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
@@ -122,18 +122,25 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
 
   def test_infer_type_with_anonymous_tuple(self):
     self.assertEqual(
-        str(type_utils.infer_type(AnonymousTuple([('a', 10), (None, False)]))),
-        '<a=int32,bool>')
+        str(
+            type_utils.infer_type(
+                anonymous_tuple.AnonymousTuple([
+                    ('a', 10),
+                    (None, False),
+                ]))), '<a=int32,bool>')
 
   def test_infer_type_with_nested_anonymous_tuple(self):
     self.assertEqual(
         str(
             type_utils.infer_type(
-                AnonymousTuple([('a', 10),
-                                (None,
-                                 AnonymousTuple([(None, True), (None,
-                                                                0.5)]))]))),
-        '<a=int32,<bool,float32>>')
+                anonymous_tuple.AnonymousTuple([
+                    ('a', 10),
+                    (None,
+                     anonymous_tuple.AnonymousTuple([
+                         (None, True),
+                         (None, 0.5),
+                     ])),
+                ]))), '<a=int32,<bool,float32>>')
 
   def test_infer_type_with_namedtuple(self):
     self.assertEqual(

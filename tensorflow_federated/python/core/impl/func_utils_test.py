@@ -28,8 +28,8 @@ import six
 import tensorflow as tf
 
 from tensorflow.python.framework import function as tf_function
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test_utils
-from tensorflow_federated.python.common_libs.anonymous_tuple import AnonymousTuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import type_utils
@@ -142,16 +142,16 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
       ([tf.int32, ('b', tf.int32)], True),
       ([('a', tf.int32), ('b', tf.int32)], True),
       ([('a', tf.int32), tf.int32], False),
-      (AnonymousTuple([(None, 1), ('a', 2)]), True),
-      (AnonymousTuple([('a', 1), (None, 2)]), False))
+      (anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2)]), True),
+      (anonymous_tuple.AnonymousTuple([('a', 1), (None, 2)]), False))
   # pyformat: enable
   def test_is_argument_tuple(self, arg, expected_result):
     self.assertEqual(func_utils.is_argument_tuple(arg), expected_result)
 
   # pyformat: disable
   @parameterized.parameters(
-      (AnonymousTuple([(None, 1)]), [1], {}),
-      (AnonymousTuple([(None, 1), ('a', 2)]), [1], {'a': 2}))
+      (anonymous_tuple.AnonymousTuple([(None, 1)]), [1], {}),
+      (anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2)]), [1], {'a': 2}))
   # pyformat: enable
   def test_unpack_args_from_anonymous_tuple(self, tuple_with_args,
                                             expected_args, expected_kwargs):
@@ -183,26 +183,36 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(
         func_utils.pack_args_into_anonymous_tuple([1], {'a': 10}),
-        AnonymousTuple([(None, 1), ('a', 10)]))
+        anonymous_tuple.AnonymousTuple([(None, 1), ('a', 10)]))
     self.assertIn(
         func_utils.pack_args_into_anonymous_tuple([1, 2], {
             'a': 10,
             'b': 20
         }), [
-            AnonymousTuple([(None, 1), (None, 2), ('a', 10), ('b', 20)]),
-            AnonymousTuple([(None, 1), (None, 2), ('b', 20), ('a', 10)])
+            anonymous_tuple.AnonymousTuple([
+                (None, 1),
+                (None, 2),
+                ('a', 10),
+                ('b', 20),
+            ]),
+            anonymous_tuple.AnonymousTuple([
+                (None, 1),
+                (None, 2),
+                ('b', 20),
+                ('a', 10),
+            ])
         ])
     self.assertIn(
         func_utils.pack_args_into_anonymous_tuple([], {
             'a': 10,
             'b': 20
         }), [
-            AnonymousTuple([('a', 10), ('b', 20)]),
-            AnonymousTuple([('b', 20), ('a', 10)])
+            anonymous_tuple.AnonymousTuple([('a', 10), ('b', 20)]),
+            anonymous_tuple.AnonymousTuple([('b', 20), ('a', 10)])
         ])
     self.assertEqual(
         func_utils.pack_args_into_anonymous_tuple([1], {}),
-        AnonymousTuple([(None, 1)]))
+        anonymous_tuple.AnonymousTuple([(None, 1)]))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -222,7 +232,7 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
       self, args, kwargs, type_spec, elements):
     self.assertEqual(
         func_utils.pack_args_into_anonymous_tuple(args, kwargs, type_spec),
-        AnonymousTuple(elements))
+        anonymous_tuple.AnonymousTuple(elements))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -234,14 +244,15 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       func_utils.pack_args_into_anonymous_tuple(args, kwargs, type_spec)
 
-      # pyformat: disable
+  # pyformat: disable
   @parameterized.parameters(
       (None, [], {}, 'None'),
       (tf.int32, [1], {}, '1'),
       ([tf.int32, tf.bool], [1, True], {}, '<1,True>'),
       ([('x', tf.int32), ('y', tf.bool)], [1, True], {}, '<x=1,y=True>'),
       ([('x', tf.int32), ('y', tf.bool)], [1], {'y': True}, '<x=1,y=True>'),
-      ([tf.int32, tf.bool], [AnonymousTuple([(None, 1), (None, True)])], {},
+      ([tf.int32, tf.bool],
+       [anonymous_tuple.AnonymousTuple([(None, 1), (None, True)])], {},
        '<1,True>'))
   # pyformat: enable
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
@@ -255,11 +266,11 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
       (2, lambda x=1: x + 10, None, None, None, 11),
       (3, lambda x=1: x + 10, tf.int32, None, 20, 30),
       (4, lambda x, y: x + y, [tf.int32, tf.int32], None,
-       AnonymousTuple([('x', 5), ('y', 6)]), 11),
+       anonymous_tuple.AnonymousTuple([('x', 5), ('y', 6)]), 11),
       (5, lambda *args: str(args), [tf.int32, tf.int32], True,
-       AnonymousTuple([(None, 5), (None, 6)]), '(5, 6)'),
+       anonymous_tuple.AnonymousTuple([(None, 5), (None, 6)]), '(5, 6)'),
       (6, lambda *args: str(args), [('x', tf.int32), ('y', tf.int32)], False,
-       AnonymousTuple([('x', 5), ('y', 6)]),
+       anonymous_tuple.AnonymousTuple([('x', 5), ('y', 6)]),
        '(AnonymousTuple([(x, 5), (y, 6)]),)'))
   # pyformat: enable
   def test_wrap_as_zero_or_one_arg_callable(
