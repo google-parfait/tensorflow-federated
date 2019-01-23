@@ -1018,13 +1018,17 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
   decode methods.
   """
 
+  ENCODED_VALUES_KEY = PlusOneEncodingStage.ENCODED_VALUES_KEY
+  ADD_PARAM_KEY = PlusOneEncodingStage.ADD_PARAM_KEY
+  ITERATION_STATE_KEY = 'iteration'
+
   def __init__(self):
     self._stage = PlusOneEncodingStage()
 
   @property
   def compressible_tensors_keys(self):
     """See base class."""
-    return ['values']
+    return [self.ENCODED_VALUES_KEY]
 
   @property
   def commutes_with_sum(self):
@@ -1043,16 +1047,22 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
 
   def initial_state(self, name=None):
     """See base class."""
-    return {'iteration': tf.constant(1.0)}
+    return {self.ITERATION_STATE_KEY: tf.constant(1.0)}
 
   def update_state(self, state, state_update_tensors, name=None):
     """See base class."""
     del state_update_tensors  # Unused.
-    return {'iteration': state['iteration'] + tf.constant(1.0)}
+    return {
+        self.ITERATION_STATE_KEY:
+            state[self.ITERATION_STATE_KEY] + tf.constant(1.0)
+    }
 
   def get_params(self, state, name=None):
     """See base class."""
-    params = {'add': state['iteration'] * state['iteration']}
+    params = {
+        self.ADD_PARAM_KEY:
+            state[self.ITERATION_STATE_KEY] * state[self.ITERATION_STATE_KEY]
+    }
     return params, params
 
   @encoding_stage.tf_style_encode('plus_n_squared_encode')

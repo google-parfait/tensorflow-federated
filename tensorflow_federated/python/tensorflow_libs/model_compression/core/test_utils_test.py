@@ -284,6 +284,10 @@ class PlusRandomNumEncodingStageTest(test_utils.BaseEncodingStageTest):
 
 class PlusNSquaredEncodingStageTest(test_utils.BaseEncodingStageTest):
 
+  _ENCODED_VALUES_KEY = test_utils.PlusNSquaredEncodingStage.ENCODED_VALUES_KEY
+  _ADD_PARAM_KEY = test_utils.PlusNSquaredEncodingStage.ADD_PARAM_KEY
+  _ITERATION_KEY = test_utils.PlusNSquaredEncodingStage.ITERATION_STATE_KEY
+
   def default_encoding_stage(self):
     """See base class."""
     return test_utils.PlusNSquaredEncodingStage()
@@ -300,9 +304,9 @@ class PlusNSquaredEncodingStageTest(test_utils.BaseEncodingStageTest):
   def common_asserts_for_test_data(self, data):
     """See base class."""
     self.assertAllClose(data.x, data.decoded_x)
-    self.assertAllClose(data.x + 1.0, data.encoded_x['values'])
-    self.assertAllClose(data.initial_state['iteration'] + 1.0,
-                        data.updated_state['iteration'])
+    self.assertAllClose(data.x + 1.0, data.encoded_x[self._ENCODED_VALUES_KEY])
+    self.assertAllClose(data.initial_state[self._ITERATION_KEY] + 1.0,
+                        data.updated_state[self._ITERATION_KEY])
     self.assertDictEqual(data.state_update_tensors, {})
 
   def test_one_to_many_few_rounds(self):
@@ -318,11 +322,11 @@ class PlusNSquaredEncodingStageTest(test_utils.BaseEncodingStageTest):
       data = self.run_one_to_many_encode_decode(stage, self.default_input,
                                                 state)
       self.assertAllClose(data.x, data.decoded_x)
-      self.assertAllClose(data.x + data.initial_state['iteration']**2,
-                          data.encoded_x['values'])
-      self.assertEqual(data.initial_state['iteration'], i)
+      self.assertAllClose(data.x + data.initial_state[self._ITERATION_KEY]**2,
+                          data.encoded_x[self._ENCODED_VALUES_KEY])
+      self.assertEqual(data.initial_state[self._ITERATION_KEY], i)
       self.assertDictEqual(data.state_update_tensors, {})
-      self.assertEqual(data.updated_state['iteration'], i + 1.0)
+      self.assertEqual(data.updated_state[self._ITERATION_KEY], i + 1.0)
       state = data.updated_state
 
   def test_many_to_one_few_rounds(self):
@@ -339,11 +343,11 @@ class PlusNSquaredEncodingStageTest(test_utils.BaseEncodingStageTest):
       data, _ = self.run_many_to_one_encode_decode(stage, input_values, state)
       for d in data:
         self.assertAllClose(d.x, d.decoded_x)
-        self.assertAllClose(d.x + d.initial_state['iteration']**2,
-                            d.encoded_x['values'])
-        self.assertEqual(d.initial_state['iteration'], i)
+        self.assertAllClose(d.x + d.initial_state[self._ITERATION_KEY]**2,
+                            d.encoded_x[self._ENCODED_VALUES_KEY])
+        self.assertEqual(d.initial_state[self._ITERATION_KEY], i)
         self.assertDictEqual(d.state_update_tensors, {})
-        self.assertEqual(d.updated_state['iteration'], i + 1.0)
+        self.assertEqual(d.updated_state[self._ITERATION_KEY], i + 1.0)
       state = data[0].updated_state
 
 
