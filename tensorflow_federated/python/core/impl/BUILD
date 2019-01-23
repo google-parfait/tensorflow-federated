@@ -463,6 +463,7 @@ py_test(
         ":computation_impl",
         ":context_stack_impl",
         ":graph_utils",
+        ":intrinsic_utils",
         ":reference_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
