@@ -284,11 +284,7 @@ def capture_computed_value_from_graph(value, type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
-
-  # TODO(b/113123634): Add handling for things like `tf.Dataset`s, as well as
-  # possibly other Python structures that don't match the kinds of permitted
-  # representations for pyaloads (see `check_representation_matches_type()`).
-
+  value = type_utils.to_canonical_value(value)
   return ComputedValue(to_representation_for_type(value, type_spec), type_spec)
 
 
