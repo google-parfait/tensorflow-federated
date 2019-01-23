@@ -2,7 +2,7 @@
 
 ## Install from package
 
-#### 1. Install the python developement environment
+#### 1. Install the python development environment
 
 ##### Ubuntu
 
