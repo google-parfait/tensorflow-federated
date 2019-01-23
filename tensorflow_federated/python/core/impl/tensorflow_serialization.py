@@ -20,8 +20,6 @@ from __future__ import print_function
 import inspect
 import types
 
-# Dependency imports
-
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb

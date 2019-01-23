@@ -17,8 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-
 from absl.testing import absltest
 import tensorflow as tf
 
@@ -37,6 +35,7 @@ from tensorflow_federated.python.core.impl import transformations
 class CompilerPipelineTest(absltest.TestCase):
 
   def test_compile_computation(self):
+
     @computations.federated_computation([
         computation_types.FederatedType(tf.float32, placements.CLIENTS),
         computation_types.FederatedType(tf.float32, placements.SERVER, True)

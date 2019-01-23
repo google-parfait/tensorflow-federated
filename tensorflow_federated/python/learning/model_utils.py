@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import collections
 
-# Dependency imports
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck

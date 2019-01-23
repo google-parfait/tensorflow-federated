@@ -20,8 +20,6 @@ from __future__ import print_function
 import abc
 import zlib
 
-# Dependency imports
-
 import six
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -70,8 +68,8 @@ class ComputationBuildingBlock(typed_object.TypedObject):
     if deserializer is not None:
       deserialized = deserializer(computation_proto)
       type_spec = type_serialization.deserialize_type(computation_proto.type)
-      if not type_utils.are_equivalent_types(
-          deserialized.type_signature, type_spec):
+      if not type_utils.are_equivalent_types(deserialized.type_signature,
+                                             type_spec):
         raise ValueError(
             'The type {} derived from the computation structure does not '
             'match the type {} declared in its signature'.format(
@@ -386,8 +384,8 @@ class Call(ComputationBuildingBlock):
         raise TypeError('The invoked function expects an argument of type {}, '
                         'but got None instead.'.format(
                             str(func.type_signature.parameter)))
-      if not type_utils.is_assignable_from(
-          func.type_signature.parameter, arg.type_signature):
+      if not type_utils.is_assignable_from(func.type_signature.parameter,
+                                           arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '

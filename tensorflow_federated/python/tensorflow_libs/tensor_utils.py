@@ -21,8 +21,6 @@ import collections
 import functools
 import operator
 
-# Dependency imports
-
 import six
 from six.moves import zip
 import tensorflow as tf

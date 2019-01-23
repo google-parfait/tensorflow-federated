@@ -17,8 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-
 from absl.testing import absltest
 from absl.testing import parameterized
 from six.moves import range
@@ -34,7 +32,6 @@ from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
-
 
 _context_stack = context_stack_impl.context_stack
 

@@ -17,8 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Dependency imports
-
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -56,8 +54,7 @@ class IntrinsicDefsTest(parameterized.TestCase):
       ('FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
       ('FEDERATED_ZIP_AT_CLIENTS',
        '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),
-      ('FEDERATED_ZIP_AT_SERVER', '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)')
-  )
+      ('FEDERATED_ZIP_AT_SERVER', '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'))
   def test_type_signature_strings(self, name, type_str):
     self.assertEqual(
         str(getattr(intrinsic_defs, name).type_signature), type_str)
