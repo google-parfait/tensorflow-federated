@@ -149,7 +149,7 @@ def capture_result_from_graph(result):
     return (computation_types.TensorType(result.dtype.base_dtype, result.shape),
             pb.TensorFlow.Binding(
                 tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
-  elif '_asdict' in type(result).__dict__:
+  elif py_typecheck.is_named_tuple(result):
     # Special handling needed for collections.namedtuples since they do not have
     # anything in the way of a shared base class. Note we don't want to rely on
     # the fact that collections.namedtuples inherit from 'tuple' because we'd be

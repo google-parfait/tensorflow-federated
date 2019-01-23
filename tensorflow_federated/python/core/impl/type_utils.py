@@ -65,8 +65,8 @@ def infer_type(arg):
     return computation_types.NamedTupleType(
         [(k, infer_type(v)) if k else infer_type(v)
          for k, v in anonymous_tuple.to_elements(arg)])
-  # Special handling needed for collections.namedtuple.
-  elif '_asdict' in type(arg).__dict__:
+  elif py_typecheck.is_named_tuple(arg):
+    # Special handling needed for collections.namedtuple.
     return infer_type(arg._asdict())
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
@@ -167,7 +167,7 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   tf.contrib.framework.nest.assert_same_structure(dtypes, shapes)
   if isinstance(dtypes, tf.DType):
     return computation_types.TensorType(dtypes, shapes)
-  elif '_asdict' in type(dtypes).__dict__:
+  elif py_typecheck.is_named_tuple(dtypes):
     # Special handling needed for collections.namedtuple due to the lack of
     # a base class. Note this must precede the test for being a list.
     return tf_dtypes_and_shapes_to_type(dtypes._asdict(), shapes._asdict())
