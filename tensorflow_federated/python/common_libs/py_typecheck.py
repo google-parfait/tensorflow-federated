@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import inspect
+
 # Dependency imports
 
 from six.moves import builtins
@@ -103,3 +105,27 @@ def _check_is_type_spec(type_spec):
   raise TypeError(
       'Expected a type, or a tuple or list of types, found {}.'.format(
           type_string(type(type_spec))))
+
+
+def is_named_tuple(value):
+  """Determines whether `value` can be considered a `collections.namedtuple`.
+
+  As `collections.namedtuple` creates a new class with no common a base for each
+  named tuple, there is no simple way to check the type with `isintance(T)`.
+  Instead, this method looks to see if `value` has an `_asdict` attribute (which
+  all namedtuple subclasses support).
+
+  Args:
+    value: an instance of a Python class.
+
+  Returns:
+    True iff `value` can be considered a named tuple.
+  """
+  cls = type(value)
+  if '_asdict' in vars(cls):
+    return True
+  parent_classes = inspect.getmro(cls)[1:]
+  for p in parent_classes:
+    if '_asdict' in vars(p):
+      return True
+  return False

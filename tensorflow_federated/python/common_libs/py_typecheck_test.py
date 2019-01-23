@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 # Dependency imports
 
 from absl.testing import absltest
@@ -62,6 +64,19 @@ class PyTypeCheckTest(absltest.TestCase):
     self.assertRaisesRegexp(TypeError,
                             'Expected a callable, found non-callable int.',
                             py_typecheck.check_callable, 10)
+
+  def test_is_named_tuple(self):
+    T = collections.namedtuple('T', ['a', 'b'])  # pylint: disable=invalid-name
+
+    class U(T):
+      pass
+
+    t = T(1, 2)
+    self.assertIn('_asdict', vars(type(t)))
+    self.assertTrue(py_typecheck.is_named_tuple(t))
+    u = U(3, 4)
+    self.assertNotIn('_asdict', vars(type(u)))
+    self.assertTrue(py_typecheck.is_named_tuple(u))
 
 
 if __name__ == '__main__':
