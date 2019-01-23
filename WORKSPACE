@@ -5,11 +5,11 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # A recent green build also used by the tensorflow_serving project:
 http_archive(
     name = "org_tensorflow",
-    sha256 = "919b241eed69e57c3840e42756b2f1f57e04fd501d3189926cacfde2c873d8f3",
-    strip_prefix = "tensorflow-f6b81f458da1f7b68e06c6a4501c5c380d33d590",
+    sha256 = "7462e8d25c04e05781e62018e43ec0a9ca46bbb312c1b97488c5578e90de0d98",
+    strip_prefix = "tensorflow-4a9ebc33bc2e72a8efc8b360277856f38fd7692d",
     urls = [
-        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/f6b81f458da1f7b68e06c6a4501c5c380d33d590.tar.gz",
-        "https://github.com/tensorflow/tensorflow/archive/f6b81f458da1f7b68e06c6a4501c5c380d33d590.tar.gz",
+        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/4a9ebc33bc2e72a8efc8b360277856f38fd7692d.tar.gz",
+        "https://github.com/tensorflow/tensorflow/archive/4a9ebc33bc2e72a8efc8b360277856f38fd7692d.tar.gz",
     ],
 )
 
