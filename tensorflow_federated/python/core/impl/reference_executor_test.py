@@ -198,8 +198,8 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     @computations.tf_computation(tuple_type)
     def foo(z):
-      del z  # unused
-      return 1
+      self.assertEmpty(z)
+      return tf.constant(1)
 
     self.assertEqual(foo(()), 1)
 
@@ -208,14 +208,11 @@ class ReferenceExecutorTest(absltest.TestCase):
         ('x', tf.int32),
     ])
 
-    # TODO(b/122478509): Handle single-element tuple types in decorators.
-    with self.assertRaises(TypeError):
+    @computations.tf_computation(tuple_type)
+    def foo(z):
+      return z.x + 1
 
-      @computations.tf_computation(tuple_type)
-      def foo(x):
-        return x + 1
-
-      foo((10,))
+    self.assertEqual(foo((10,)), 11)
 
   def test_tensorflow_computation_with_tuple_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
@@ -239,8 +236,9 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     @computations.tf_computation(tuple_group_type)
     def foo(z):
-      del z  # unused
-      return 1
+      self.assertEmpty(z.a)
+      self.assertEmpty(z.b)
+      return tf.constant(1)
 
     self.assertEqual(foo(((), ())), 1)
 
@@ -262,7 +260,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo(((40, 30), (20, 10))), 100)
 
   def test_tensorflow_computation_with_tuple_of_sequences(self):
-    sequence_type = computation_types.SequenceType(tf.int64)
+    sequence_type = computation_types.SequenceType(tf.int32)
     tuple_type = computation_types.NamedTupleType([
         ('a', sequence_type),
         ('b', sequence_type),
@@ -270,19 +268,23 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     @computations.tf_computation(tuple_type)
     def foo(z):
-      value1 = z.a.reduce(np.int64(0), lambda x, y: x + y)
-      value2 = z.b.reduce(np.int64(0), lambda x, y: x + y)
+      value1 = z.a.reduce(0, lambda x, y: x + y)
+      value2 = z.b.reduce(0, lambda x, y: x + y)
       return value1 + value2
 
     @computations.tf_computation
-    def bar():
-      return tf.data.Dataset.range(5)
+    def bar1():
+      return tf.data.Dataset.from_tensor_slices([10, 20])
+
+    @computations.tf_computation
+    def bar2():
+      return tf.data.Dataset.from_tensor_slices([30, 40])
 
     @computations.federated_computation
     def baz():
-      return foo((bar(), bar()))
+      return foo((bar1(), bar2()))
 
-    self.assertEqual(baz(), 20)
+    self.assertEqual(baz(), 100)
 
   def test_tensorflow_computation_with_tuples_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
@@ -298,7 +300,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(foo((40, 30), (20, 10)), 100)
 
   def test_tensorflow_computation_with_empty_sequence(self):
-    sequence_type = computation_types.SequenceType(tf.int64)
+    sequence_type = computation_types.SequenceType(tf.float32)
 
     @computations.tf_computation(sequence_type)
     def foo(ds):
@@ -307,7 +309,7 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     @computations.tf_computation
     def bar():
-      return tf.data.Dataset.range(0)
+      return tf.data.Dataset.from_tensor_slices([])
 
     @computations.federated_computation
     def baz():
@@ -316,15 +318,15 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(baz(), 1)
 
   def test_tensorflow_computation_with_sequence_of_one_constant(self):
-    sequence_type = computation_types.SequenceType(tf.int64)
+    sequence_type = computation_types.SequenceType(tf.int32)
 
     @computations.tf_computation(sequence_type)
     def foo(ds):
-      return ds.reduce(np.int64(0), lambda x, y: x + y) + 1
+      return ds.reduce(1, lambda x, y: x + y)
 
     @computations.tf_computation
     def bar():
-      return tf.data.Dataset.range(10, 11)
+      return tf.data.Dataset.from_tensor_slices([10])
 
     @computations.federated_computation
     def baz():
@@ -333,21 +335,21 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(baz(), 11)
 
   def test_tensorflow_computation_with_sequence_of_constants(self):
-    sequence_type = computation_types.SequenceType(tf.int64)
+    sequence_type = computation_types.SequenceType(tf.int32)
 
     @computations.tf_computation(sequence_type)
     def foo(ds):
-      return ds.reduce(np.int64(0), lambda x, y: x + y)
+      return ds.reduce(0, lambda x, y: x + y)
 
     @computations.tf_computation
     def bar():
-      return tf.data.Dataset.range(5)
+      return tf.data.Dataset.from_tensor_slices([10, 20])
 
     @computations.federated_computation
     def baz():
       return foo(bar())
 
-    self.assertEqual(baz(), 10)
+    self.assertEqual(baz(), 30)
 
   def test_tensorflow_computation_with_sequence_of_tuples(self):
     tuple_type = computation_types.NamedTupleType([
@@ -358,7 +360,7 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     @computations.tf_computation(sequence_type)
     def foo(ds):
-      return ds.reduce(np.int32(0), lambda x, y: x + y['x'] + y['y'])
+      return ds.reduce(0, lambda x, y: x + y['x'] + y['y'])
 
     @computations.tf_computation
     def bar():
@@ -375,23 +377,27 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(baz(), 100)
 
   def test_tensorflow_computation_with_sequences_of_constants(self):
-    sequence_type = computation_types.SequenceType(tf.int64)
+    sequence_type = computation_types.SequenceType(tf.int32)
 
     @computations.tf_computation(sequence_type, sequence_type)
     def foo(ds1, ds2):
-      value1 = ds1.reduce(np.int64(0), lambda x, y: x + y)
-      value2 = ds2.reduce(np.int64(0), lambda x, y: x + y)
+      value1 = ds1.reduce(0, lambda x, y: x + y)
+      value2 = ds2.reduce(0, lambda x, y: x + y)
       return value1 + value2
 
     @computations.tf_computation
-    def bar():
-      return tf.data.Dataset.range(5)
+    def bar1():
+      return tf.data.Dataset.from_tensor_slices([10, 20])
+
+    @computations.tf_computation
+    def bar2():
+      return tf.data.Dataset.from_tensor_slices([30, 40])
 
     @computations.federated_computation
     def baz():
-      return foo(bar(), bar())
+      return foo(bar1(), bar2())
 
-    self.assertEqual(baz(), 20)
+    self.assertEqual(baz(), 100)
 
   def test_tensorflow_computation_with_simple_lambda(self):
 

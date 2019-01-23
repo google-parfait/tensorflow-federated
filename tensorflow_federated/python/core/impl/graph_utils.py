@@ -377,7 +377,8 @@ def to_nested_structure(value):
     The nested representation of `value` for a given type.
 
   Raises:
-    TypeError: If the contains an unnamed element.
+    ValueError: If `value` contains an `anonymous_tuple.AnonymousTuple` with an
+      unnamed element.
   """
   if value is None:
     return None
@@ -385,13 +386,82 @@ def to_nested_structure(value):
     ordered_dict = collections.OrderedDict()
     for name, element in anonymous_tuple.to_elements(value):
       if name is None:
-        raise TypeError(
-            'Expected anonymous tuple to contain only named elements.')
+        raise ValueError(
+            'Expected anonymous tuple \'{}\' to contain only named elements.'
+            .format(value))
       ordered_dict[name] = to_nested_structure(element)
     return ordered_dict
   elif isinstance(value, (tuple, list)):
-    return [to_nested_structure(e) for e in value]
+    if not value:
+      return []
+    value = [to_nested_structure(e) for e in value]
+    if isinstance(value[0], dict):
+      return to_parallel_lists(value)
   return value
+
+
+def to_parallel_lists(value):
+  """Converts a list of dictionaries to an ordered dictionary of parallel lists.
+
+  Converts a `list` of `dict`s or `collections.OrderedDict`s into an
+  `collections.OrderedDict` whose keys are equal to keys from the `dict`s in
+  `value` and whose values are equal to a `list` of the values for a key from
+  the `dict`s in `value`.
+
+  For examples:
+
+  ```python
+  x = [{
+      'a': 1,
+      'b': 2,
+  }, {
+      'a': 3,
+      'b': 4,
+  }]
+  ```
+
+  is convereted to:
+
+  ```python
+  y = {
+      ('a', [1, 3]),
+      ('b', [2, 4]),
+  }
+  ```
+
+  Args:
+    value: The list to convert.
+
+  Returns:
+    An `collections.OrderedDict` of parallel lists.
+
+  Raises:
+    TypeError: If `value` is not a `list` or if the element in `value` are not a
+      `dict`.
+    ValueError: If `value` is a `list` of `dict`s that do not all contain the
+      same keys.
+  """
+  py_typecheck.check_type(value, list)
+  if not value:
+    return collections.OrderedDict()
+  first_element = value[0]
+  py_typecheck.check_type(first_element, dict)
+  if isinstance(first_element, collections.OrderedDict):
+    keys = first_element.keys()
+  else:
+    keys = sorted(first_element.keys())
+  ordered_dict = collections.OrderedDict([(key, []) for key in keys])
+  keys = set(keys)
+  for element in value:
+    py_typecheck.check_type(element, dict)
+    if keys == set(element.keys()):
+      for element_key, element_value in six.iteritems(element):
+        ordered_dict[element_key].append(element_value)
+    else:
+      raise ValueError(
+          'Expected list \'{}\' to contain dicts with the same keys.'.format(
+              value))
+  return ordered_dict
 
 
 def make_data_set_from_elements(graph, elements, element_type):
@@ -408,41 +478,12 @@ def make_data_set_from_elements(graph, elements, element_type):
   Raises:
     TypeError: If element types do not match `element_type`.
   """
-  # TODO(b/121032194): It would be great not to have to stitch the input by
-  # concatenation, as done below. Upgrade this to something better after we
-  # identify a better solution.
-
   py_typecheck.check_type(graph, tf.Graph)
   py_typecheck.check_type(elements, list)
   element_type = computation_types.to_type(element_type)
   py_typecheck.check_type(element_type, computation_types.Type)
-  output_types, output_shapes = (
-      type_utils.type_to_tf_dtypes_and_shapes(element_type))
-  with graph.as_default():
-    if not elements:
-      # Just return an empty data set.
-      return tf.data.Dataset.from_generator((lambda: ()),
-                                            output_types=output_types,
-                                            output_shapes=output_shapes)
-    elif len(elements) > 1:
-      return make_data_set_from_elements(
-          graph, elements[:-1], element_type).concatenate(
-              make_data_set_from_elements(graph, elements[-1:], element_type))
-    else:
-      element = elements[0]
-      if isinstance(element, anonymous_tuple.AnonymousTuple):
-        element = to_nested_structure(element)
-      if isinstance(element, list):
-        ds = tf.data.Dataset.from_tensor_slices(element)
-      else:
-        ds = tf.data.Dataset.from_tensors(element)
-        if not nested_structures_equal(ds.output_types, output_types):
-          raise TypeError('Expected dtypes {}, found {}.'.format(
-              str(output_types), str(ds.output_types)))
-        if not nested_structures_equal(ds.output_shapes, output_shapes):
-          raise TypeError('Expected shapes {}, found {}.'.format(
-              str(output_shapes), str(ds.output_shapes)))
-      return ds
+  elements = to_nested_structure(elements)
+  return tf.data.Dataset.from_tensor_slices(elements)
 
 
 def fetch_value_in_session(value, session):
