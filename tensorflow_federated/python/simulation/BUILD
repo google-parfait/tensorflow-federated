@@ -1,5 +1,3 @@
-# Placeholder for internal Python version compatibility macro.
-
 package(default_visibility = ["//tensorflow_federated/python/simulation:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -27,13 +25,14 @@ py_library(
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
 py_test(
     name = "file_per_user_client_data_test",
+    size = "small",
     srcs = ["file_per_user_client_data_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":file_per_user_client_data",
         "@absl_py//absl/testing:absltest",

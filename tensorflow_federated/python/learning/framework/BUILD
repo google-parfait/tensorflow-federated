@@ -1,5 +1,3 @@
-# Placeholder for internal Python version compatibility macro.
-
 package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -29,8 +27,8 @@ py_library(
 
 py_test(
     name = "optimizer_utils_test",
+    size = "small",
     srcs = ["optimizer_utils_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":optimizer_utils",
         "//tensorflow_federated/python/common_libs:test",

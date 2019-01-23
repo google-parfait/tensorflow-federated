@@ -1,5 +1,3 @@
-# Placeholder for internal Python version compatibility macro.
-
 package(default_visibility = ["//tensorflow_federated/python:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -23,7 +21,6 @@ py_test(
     name = "anonymous_tuple_test",
     size = "small",
     srcs = ["anonymous_tuple_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":anonymous_tuple",
         "@absl_py//absl/testing:absltest",
@@ -39,8 +36,8 @@ py_library(
 
 py_test(
     name = "py_typecheck_test",
+    size = "small",
     srcs = ["py_typecheck_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":py_typecheck",
         "@absl_py//absl/testing:absltest",
@@ -63,6 +60,5 @@ py_test(
     name = "test_test",
     size = "small",
     srcs = ["test_test.py"],
-    default_python_version = "PY3",
     deps = [":test"],
 )

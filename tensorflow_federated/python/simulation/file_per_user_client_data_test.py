@@ -30,7 +30,6 @@ import tempfile
 from absl.testing import absltest
 import numpy as np
 import six
-from six import assertRaisesRegex
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import file_per_user_client_data
@@ -149,13 +148,13 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
         create_tf_dataset_fn=fake_user_data.create_test_dataset_fn)
 
   def test_construct_with_non_callable(self):
-    with assertRaisesRegex(self, TypeError, r'found non-callable'):
+    with six.assertRaisesRegex(self, TypeError, r'found non-callable'):
       file_per_user_client_data.FilePerUserClientData(
           client_ids=FilePerUserClientDataTest.fake_user_data.client_ids,
           create_tf_dataset_fn=None)
 
   def test_construct_with_non_list(self):
-    with assertRaisesRegex(self, TypeError, r'Expected list, found dict'):
+    with six.assertRaisesRegex(self, TypeError, r'Expected list, found dict'):
       file_per_user_client_data.FilePerUserClientData(
           client_ids={},  # Not a list.
           create_tf_dataset_fn=tf.data.TFRecordDataset)

@@ -1,6 +1,4 @@
-# Placeholder for internal Python version compatibility macro.
-
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//tensorflow_federated/python/core:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -32,7 +30,6 @@ py_test(
     name = "tf_computation_utils_test",
     size = "small",
     srcs = ["tf_computation_utils_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -54,7 +51,6 @@ py_test(
     name = "computation_utils_test",
     size = "small",
     srcs = ["computation_utils_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api",

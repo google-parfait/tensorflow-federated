@@ -1,5 +1,3 @@
-# Placeholder for internal Python version compatibility macro.
-
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
@@ -18,7 +16,6 @@ py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":tensor_utils",
         "@absl_py//absl/testing:absltest",

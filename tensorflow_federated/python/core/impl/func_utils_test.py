@@ -25,7 +25,7 @@ from absl.testing import parameterized
 import six
 import tensorflow as tf
 
-from tensorflow.python.framework import function as tf_function
+from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
@@ -48,10 +48,10 @@ class NoopIngestContextForTest(context_base.Context):
 class FuncUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_is_defun(self):
-    self.assertTrue(func_utils.is_defun(tf_function.Defun()(lambda x: None)))
+    self.assertTrue(func_utils.is_defun(function.Defun()(lambda x: None)))
     self.assertTrue(
-        func_utils.is_defun(tf_function.Defun(tf.int32)(lambda x: None)))
-    self.assertFalse(func_utils.is_defun(tf_function.Defun))
+        func_utils.is_defun(function.Defun(tf.int32)(lambda x: None)))
+    self.assertFalse(func_utils.is_defun(function.Defun))
     self.assertFalse(func_utils.is_defun(lambda x: None))
     self.assertFalse(func_utils.is_defun(None))
 
@@ -61,8 +61,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     # overlap with *args.
     self.assertEqual(
         func_utils.get_argspec(
-            tf_function.Defun(tf.int32, tf.bool, tf.float32,
-                              tf.float32)(lambda x, y, *z: None)),
+            function.Defun(tf.int32, tf.bool, tf.float32,
+                           tf.float32)(lambda x, y, *z: None)),
         inspect.ArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
@@ -70,7 +70,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     # In a non-eager defun with no input signature, the same restrictions as in
     # a typed defun apply.
     self.assertEqual(
-        func_utils.get_argspec(tf_function.Defun()(lambda x, y, *z: None)),
+        func_utils.get_argspec(function.Defun()(lambda x, y, *z: None)),
         inspect.ArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
