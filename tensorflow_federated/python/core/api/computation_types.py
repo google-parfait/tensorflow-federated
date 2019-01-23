@@ -139,7 +139,7 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
         things that are convertible to types).
     """
     py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
-    if '_asdict' in vars(type(elements)):
+    if py_typecheck.is_named_tuple(elements):
       elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
       elements = list(elements.items())
