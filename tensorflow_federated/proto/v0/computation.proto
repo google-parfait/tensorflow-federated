@@ -473,7 +473,8 @@ message PlacementType {
 // representation requires all type signatures, including those of individual
 // elements of a sequence, to be fully specified. In case of sequences, the
 // structure of their elements is effectively encoded in the parts of the graph
-// that constitute the serialized representation of tf.Datasets and iterators.
+// that constitute the serialized representation of tf.data.Datasets and
+// iterators.
 //
 // While we will offer support for writing polymorphic TensorFlow logic, types
 // will be captured automatically and made concrete based on usage at the Python

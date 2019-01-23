@@ -77,13 +77,30 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
         str(type_utils.infer_type(tf.data.Dataset.from_tensors(10))), 'int32*')
 
   def test_infer_type_with_dict_dataset(self):
-    self.assertIn(
+    self.assertEqual(
         str(
             type_utils.infer_type(
                 tf.data.Dataset.from_tensors({
                     'a': 10,
-                    'b': 20
-                }))), ['<a=int32,b=int32>*', '<b=int32,a=int32>*'])
+                    'b': 20,
+                }))), '<a=int32,b=int32>*')
+    self.assertEqual(
+        str(
+            type_utils.infer_type(
+                tf.data.Dataset.from_tensors({
+                    'b': 20,
+                    'a': 10,
+                }))), '<a=int32,b=int32>*')
+
+  def test_infer_type_with_ordered_dict_dataset(self):
+    self.assertEqual(
+        str(
+            type_utils.infer_type(
+                tf.data.Dataset.from_tensors(
+                    collections.OrderedDict([
+                        ('b', 20),
+                        ('a', 10),
+                    ])))), '<b=int32,a=int32>*')
 
   def test_infer_type_with_int(self):
     self.assertEqual(str(type_utils.infer_type(10)), 'int32')
@@ -112,8 +129,7 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
 
   def test_infer_type_with_int_list(self):
     self.assertEqual(
-        str(type_utils.infer_type([1, 2, 3])),
-        '<int32,int32,int32>')
+        str(type_utils.infer_type([1, 2, 3])), '<int32,int32,int32>')
 
   def test_infer_type_with_nested_float_list(self):
     self.assertEqual(
@@ -148,11 +164,16 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
         '<y=int32,x=bool>')
 
   def test_infer_type_with_dict(self):
-    self.assertIn(
+    self.assertEqual(
         str(type_utils.infer_type({
             'a': 1,
-            'b': 2.0
-        })), ['<a=int32,b=float32>', '<b=float32,a=int32>'])
+            'b': 2.0,
+        })), '<a=int32,b=float32>')
+    self.assertEqual(
+        str(type_utils.infer_type({
+            'b': 2.0,
+            'a': 1,
+        })), '<a=int32,b=float32>')
 
   def test_infer_type_with_ordered_dict(self):
     self.assertEqual(
@@ -176,6 +197,96 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
                        for x in [1, True, [0.5]]]))),
         '<<int32*>,<bool*>,<float32[1]*>>')
 
+  def test_to_canonical_value_with_none(self):
+    self.assertEqual(type_utils.to_canonical_value(None), None)
+
+  def test_to_canonical_value_with_int(self):
+    self.assertEqual(type_utils.to_canonical_value(1), 1)
+
+  def test_to_canonical_value_with_float(self):
+    self.assertEqual(type_utils.to_canonical_value(1.0), 1.0)
+
+  def test_to_canonical_value_with_bool(self):
+    self.assertEqual(type_utils.to_canonical_value(True), True)
+    self.assertEqual(type_utils.to_canonical_value(False), False)
+
+  def test_to_canonical_value_with_string(self):
+    self.assertEqual(type_utils.to_canonical_value('a'), 'a')
+
+  def test_to_canonical_value_with_list_of_ints(self):
+    self.assertEqual(type_utils.to_canonical_value([1, 2, 3]), [1, 2, 3])
+
+  def test_to_canonical_value_with_list_of_floats(self):
+    self.assertEqual(
+        type_utils.to_canonical_value([1.0, 2.0, 3.0]), [1.0, 2.0, 3.0])
+
+  def test_to_canonical_value_with_list_of_bools(self):
+    self.assertEqual(
+        type_utils.to_canonical_value([True, False]), [True, False])
+
+  def test_to_canonical_value_with_list_of_strings(self):
+    self.assertEqual(
+        type_utils.to_canonical_value(['a', 'b', 'c']), ['a', 'b', 'c'])
+
+  def test_to_canonical_value_with_list_of_dict(self):
+    self.assertEqual(
+        type_utils.to_canonical_value([{
+            'a': 1,
+            'b': 0.1,
+        }]), [anonymous_tuple.AnonymousTuple([
+            ('a', 1),
+            ('b', 0.1),
+        ])])
+
+  def test_to_canonical_value_with_list_of_ordered_dict(self):
+    self.assertEqual(
+        type_utils.to_canonical_value(
+            [collections.OrderedDict([
+                ('a', 1),
+                ('b', 0.1),
+            ])]), [anonymous_tuple.AnonymousTuple([
+                ('a', 1),
+                ('b', 0.1),
+            ])])
+
+  def test_to_canonical_value_with_dict(self):
+    self.assertEqual(
+        type_utils.to_canonical_value({
+            'a': 1,
+            'b': 0.1,
+        }), anonymous_tuple.AnonymousTuple([
+            ('a', 1),
+            ('b', 0.1),
+        ]))
+    self.assertEqual(
+        type_utils.to_canonical_value({
+            'b': 0.1,
+            'a': 1,
+        }), anonymous_tuple.AnonymousTuple([
+            ('a', 1),
+            ('b', 0.1),
+        ]))
+
+  def test_to_canonical_value_with_ordered_dict(self):
+    self.assertEqual(
+        type_utils.to_canonical_value(
+            collections.OrderedDict([
+                ('a', 1),
+                ('b', 0.1),
+            ])), anonymous_tuple.AnonymousTuple([
+                ('a', 1),
+                ('b', 0.1),
+            ]))
+    self.assertEqual(
+        type_utils.to_canonical_value(
+            collections.OrderedDict([
+                ('b', 0.1),
+                ('a', 1),
+            ])), anonymous_tuple.AnonymousTuple([
+                ('b', 0.1),
+                ('a', 1),
+            ]))
+
   def test_tf_dtypes_and_shapes_to_type_with_int(self):
     self.assertEqual(
         str(
@@ -189,24 +300,40 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
                 [2]))), 'int32[2]')
 
   def test_tf_dtypes_and_shapes_to_type_with_dict(self):
-    self.assertIn(
+    self.assertEqual(
         str(
-            type_utils.tf_dtypes_and_shapes_to_type({
-                'a': tf.int32,
-                'b': tf.bool
-            }, {
-                'a': tf.TensorShape([]),
-                'b': tf.TensorShape([5])
-            })), ['<a=int32,b=bool[5]>', '<b=bool[5],a=int32>'])
+            type_utils.tf_dtypes_and_shapes_to_type(
+                {
+                    'a': tf.int32,
+                    'b': tf.bool,
+                },
+                {
+                    'a': tf.TensorShape([]),
+                    'b': tf.TensorShape([5]),
+                },
+            )), '<a=int32,b=bool[5]>')
+    self.assertEqual(
+        str(
+            type_utils.tf_dtypes_and_shapes_to_type(
+                {
+                    'b': tf.bool,
+                    'a': tf.int32,
+                },
+                {
+                    'a': tf.TensorShape([]),
+                    'b': tf.TensorShape([5]),
+                },
+            )), '<a=int32,b=bool[5]>')
 
   def test_tf_dtypes_and_shapes_to_type_with_ordered_dict(self):
     self.assertEqual(
         str(
             type_utils.tf_dtypes_and_shapes_to_type(
                 collections.OrderedDict([('b', tf.int32), ('a', tf.bool)]),
-                collections.OrderedDict([('b', tf.TensorShape([1])),
-                                         ('a', tf.TensorShape([]))]))),
-        '<b=int32[1],a=bool>')
+                collections.OrderedDict([
+                    ('b', tf.TensorShape([1])),
+                    ('a', tf.TensorShape([])),
+                ]))), '<b=int32[1],a=bool>')
 
   def test_tf_dtypes_and_shapes_to_type_with_tuple(self):
     self.assertEqual(
@@ -223,6 +350,16 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
                 [tf.int32, tf.bool],
                 [tf.TensorShape([1]), tf.TensorShape([2])])),
         '<int32[1],bool[2]>')
+
+  def test_tf_dtypes_and_shapes_to_type_with_list_of_lists(self):
+    self.assertEqual(
+        str(
+            type_utils.tf_dtypes_and_shapes_to_type(
+                [[tf.int32, tf.int32], [tf.bool, tf.bool]], [
+                    [tf.TensorShape([1]),
+                     tf.TensorShape([2])],
+                    [tf.TensorShape([]), tf.TensorShape([])],
+                ])), '<<int32[1],int32[2]>,<bool,bool>>')
 
   def test_tf_dtypes_and_shapes_to_type_with_namedtuple(self):
     foo = collections.namedtuple('_', 'y x')
@@ -399,8 +536,8 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
   def test_is_assignable_from_with_tensor_type_and_tensor_type(self):
     t = computation_types.TensorType(tf.int32, [10])
     self.assertFalse(
-        type_utils.is_assignable_from(
-            t, computation_types.TensorType(tf.int32)))
+        type_utils.is_assignable_from(t,
+                                      computation_types.TensorType(tf.int32)))
     self.assertFalse(
         type_utils.is_assignable_from(
             t, computation_types.TensorType(tf.int32, [5])))

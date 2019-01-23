@@ -181,12 +181,18 @@ class ValueImplTest(absltest.TestCase):
     y = value_impl.ValueImpl(
         computation_building_blocks.Reference('bar', tf.bool),
         context_stack_impl.context_stack)
-    v = value_impl.to_value({
+    v1 = value_impl.to_value({
         'a': x,
-        'b': y
+        'b': y,
     }, None, context_stack_impl.context_stack)
-    self.assertIsInstance(v, value_base.Value)
-    self.assertIn(str(v), ['<a=foo,b=bar>', '<b=bar,a=foo>'])
+    self.assertIsInstance(v1, value_base.Value)
+    self.assertEqual(str(v1), '<a=foo,b=bar>')
+    v2 = value_impl.to_value({
+        'b': y,
+        'a': x,
+    }, None, context_stack_impl.context_stack)
+    self.assertIsInstance(v2, value_base.Value)
+    self.assertEqual(str(v2), '<a=foo,b=bar>')
 
   def test_to_value_for_ordered_dict(self):
     x = value_impl.ValueImpl(
@@ -196,10 +202,10 @@ class ValueImplTest(absltest.TestCase):
         computation_building_blocks.Reference('bar', tf.bool),
         context_stack_impl.context_stack)
     v = value_impl.to_value(
-        collections.OrderedDict([('a', x), ('b', y)]), None,
+        collections.OrderedDict([('b', y), ('a', x)]), None,
         context_stack_impl.context_stack)
     self.assertIsInstance(v, value_base.Value)
-    self.assertEqual(str(v), '<a=foo,b=bar>')
+    self.assertEqual(str(v), '<b=bar,a=foo>')
 
   def test_to_value_for_named_tuple(self):
     x = value_impl.ValueImpl(
