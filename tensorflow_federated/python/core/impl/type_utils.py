@@ -238,32 +238,80 @@ def get_named_tuple_element_type(type_spec, name):
                        name, str([e[0] for e in elements if e[0]])))
 
 
-def check_well_formed(type_spec):
-  """Checks that 'type_spec' represents a well-formed type.
+def preorder_call(given_type, func, arg):
+  """Recursively calls `func` on the possibly nested structure `given_type`.
 
-  WARNING: This function is only partially implemented. See the documentation
-  in 'computation.proto' for what factors determine well-formedness.
+  Walks the tree in a preorder manner. Updates `arg` on the way down with
+  the appropriate information, as defined in `func`.
 
   Args:
+    given_type: Possibly nested `computation_types.Type` or object convertible
+      to it by `computation_types.to_type`.
+    func: Function to apply to each of the constituent elements of `given_type`
+      with the argument `arg`. Must return an updated version of `arg` which
+      incorporated the information we'd like to track as we move down the nested
+      type tree.
+    arg: Initial state of information to be passed down the tree.
+  """
+  type_signature = computation_types.to_type(given_type)
+  arg = func(type_signature, arg)
+  if isinstance(type_signature, computation_types.FederatedType):
+    preorder_call(type_signature.member, func, arg)
+  elif isinstance(type_signature, computation_types.SequenceType):
+    preorder_call(type_signature.element, func, arg)
+  elif isinstance(type_signature, computation_types.FunctionType):
+    preorder_call(type_signature.parameter, func, arg)
+    preorder_call(type_signature.result, func, arg)
+  elif isinstance(type_signature, computation_types.NamedTupleType):
+    for element in anonymous_tuple.to_elements(type_signature):
+      preorder_call(element[1], func, arg)
+
+
+def check_well_formed(type_spec):
+  """Checks that `type_spec` represents a well-formed type.
+
+  Performs the following checks of well-formedness for `type_spec`:
+    1. If `type_spec` contains a  `computation_types.FederatedType`, checks
+    that its `member` contains nowhere in its structure intances
+    of `computation_types.FunctionType` or `computation_types.FederatedType`.
+    2. If `type_spec` contains a `computation_types.SequenceType`, checks that
+    its `element` contains nowhere in its structure instances of
+    `computation_types.SequenceType`,  `computation_types.FederatedType`
+    or `computation_types.FunctionType`.
+  Args:
     type_spec: The type specification to check, either an instance of
-      computation_types.Type or something convertible to it by
-      computation_types.to_type().
+      `computation_types.Type` or something convertible to it by
+      `computation_types.to_type()`.
 
   Returns:
-    True iff the type is well-formed, otherwise False.
+    True iff `type_spec` represents a well-formed TFF type.
 
   Raises:
-    TypeError: if arguments are of the wrong types, or if 'type_spec' is not a
-      well-formed TFF type.
+    TypeError: if `type_spec` is not a well-formed TFF type.
   """
-  # TODO(b/113112885): Implement this function, and document the conditions for
-  # well-formedness here as well.
 
   # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
   # after revising the definition of well-formedness.
+  type_signature = computation_types.to_type(type_spec)
 
-  _ = type_spec
+  def _check_for_disallowed_type(type_to_check, disallowed_types):
+    """Checks subtree of `type_to_check` for nonlocal `disallowed_types`."""
+    if isinstance(type_to_check, tuple(disallowed_types)):
+      raise TypeError('A {} has been encountered in the given type signature, '
+                      ' but {} is disallowed.'.format(type_to_check,
+                                                      disallowed_types))
+    if isinstance(type_to_check, computation_types.FederatedType):
+      disallowed_types = set(
+          [computation_types.FederatedType,
+           computation_types.FunctionType]).union(disallowed_types)
+    if isinstance(type_to_check, computation_types.SequenceType):
+      disallowed_types = set([
+          computation_types.FederatedType, computation_types.FunctionType,
+          computation_types.SequenceType
+      ]).union(disallowed_types)
+    return disallowed_types
 
+  preorder_call(type_signature, _check_for_disallowed_type, set())
   return True
 
 
