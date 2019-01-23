@@ -26,18 +26,18 @@ from tensorflow_federated.python.core.impl import type_utils
 
 
 def _wrap(func, parameter_type, wrapper_fn):
-  """Wrap a given 'func' with a given 'parameter_type' using 'wrapper_fn'.
+  """Wrap a given `func` with a given `parameter_type` using `wrapper_fn`.
 
   This method does not handle the multiple modes of usage as wrapper/decorator,
   as those are handled by ComputationWrapper below. It focused on the simple
   case with a function/defun (always present) and either a valid parameter type
   or an indication that there's no parameter (None).
 
-  The only ambiguity left to resolve is whether 'func' should be immediately
+  The only ambiguity left to resolve is whether `func` should be immediately
   wrapped, or treated as a polymorphic callable to be wrapped upon invocation
   based on actual parameter types. The determination is based on the presence
-  or absence of parameters in the declaration of 'func'. In order to be
-  treated as a concrete no-argument computation, 'func' shouldn't declare any
+  or absence of parameters in the declaration of `func`. In order to be
+  treated as a concrete no-argument computation, `func` shouldn't declare any
   arguments (even with default values).
 
   Args:
@@ -59,7 +59,7 @@ def _wrap(func, parameter_type, wrapper_fn):
     argument types.
 
   Raises:
-    TypeError: if the arguments are of the wrong types, or the wrapper_fn
+    TypeError: if the arguments are of the wrong types, or the `wrapper_fn`
       constructs something that isn't a ConcreteFunction.
   """
   argspec = func_utils.get_argspec(func)
@@ -121,38 +121,45 @@ class ComputationWrapper(object):
   parameters and call arguments to TFF types, packing and unpacking arguments,
   verifying types, and support for polymorphism.
 
-  Here's how one can construct a decorator/wrapper named 'xyz':
+  Here's how one can construct a decorator/wrapper named `xyz`:
 
-    xyz = computation_wrapper.ComputationWrapper(...constructor arguments...)
+  ```python
+  xyz = computation_wrapper.ComputationWrapper(...constructor arguments...)
+  ```
 
   Here's how one can use it as a decorator to transform a Python function to a
   computation:
 
-    @xyz(...decorator arguments...)
-    def my_comp(...function parameters...):
-      ...
-
+  ```python
+  @xyz(...decorator arguments...)
+  def my_comp(...function parameters...):
+    ...
+  ```
   Converting defuns works in the same way:
 
-    @xyz(...decorator arguments...)
-    @tf.contrib.eager.defun
-    def my_comp(...function parameters...):
-      ...
+  ```python
+  @xyz(...decorator arguments...)
+  @tf.contrib.eager.defun
+  def my_comp(...function parameters...):
+    ...
+  ```
 
-  Alternatively, the newly defined 'xyz' can also always be used inline, i.e.,
+  Alternatively, the newly defined `xyz` can also always be used inline, i.e.,
   with the Python function (or a defun) that's to be converted passed to it
   explicitly as an argument, as in the example below:
 
-     my_comp = xyz(func, ...decorator arguments...)
+  ```python
+  my_comp = xyz(func, ...decorator arguments...)
+  ```
 
-  This mode of invocation can be used, e.g., to transform 'func' that's been
+  This mode of invocation can be used, e.g., to transform `func` that's been
   defined in an external module, or an anonymous lambda that may be more
   convenient to define in-line in the call arguments in case where the lambda
   is short and simple (e.g., a single TF op).
 
-  In the description that follows, the three terms 'constructor arguments',
-  'decorator arguments', and 'function parameters' will refer to the parts of
-  the code in the example shown above. Terms like 'decorator' and 'wrapper'
+  In the description that follows, the three terms "constructor arguments",
+  "decorator arguments", and "function parameters" will refer to the parts of
+  the code in the example shown above. Terms like "decorator" and "wrapper"
   will refer to objects constructed and returned by this function, and they
   may be used interchangeably.
 
@@ -174,7 +181,7 @@ class ComputationWrapper(object):
   and the type signatures of the computations in TFF.
 
   At the definition time, the following scenarios are supported. In case when
-  the decorator is used with a defun, the term 'Python function' refers to the
+  the decorator is used with a defun, the term "Python function" refers to the
   abstract Python function that takes the same arguments (both ordinary Python
   functions and defuns are manipulated using helper functionality defined in
   func_utils.py).
@@ -182,15 +189,17 @@ class ComputationWrapper(object):
   1. The decorator is invoked with a single positional decorator argument, as
      in the example below.
 
-       @xyz([('x', tf.int32), ('y', tf.int32)])
+     ```python
+     @xyz([('x', tf.int32), ('y', tf.int32)])
+     ```
 
-     The decorator argument must be an instance of types.Type, or something
-     convertible to it by types.to_type(). The argument is interpreted as the
+     The decorator argument must be an instance of `types.Type`, or something
+     convertible to it by `types.to_type()`. The argument is interpreted as the
      specification of the (single) formal parameter of the computation being
      constructed by the decorator.
 
      In the above example, the computation will accept as an argument a pair
-     of integers named 'x' and 'y'.
+     of integers named `x` and `y`.
 
      The function being decorated this way must declare at least one parameter.
 
@@ -198,20 +207,22 @@ class ComputationWrapper(object):
         represents the (single, as always) parameter of the computation under
         construction in its entirety, as in the example below.
 
-          @xyz([('x', tf.int32), ('y', tf.int32)])
-          def my_comp(coord):
-            ...
+        ```python
+        @xyz([('x', tf.int32), ('y', tf.int32)])
+        def my_comp(coord):
+          ...
+        ```
 
-        Here, in the body of 'my_comp', the parameter 'coord' represents the
+        Here, in the body of `my_comp`, the parameter `coord` represents the
         entire integer pair, so its constituents would be referred to in the
-        code of 'my_comp' as 'coord.x' and 'coord.y', respectively.
+        code of `my_comp` as `coord.x` and `coord.y`, respectively.
 
-        Note that the name 'coord' has no meaning outside of 'my_comp' body,
+        Note that the name `coord` has no meaning outside of `my_comp` body,
         in that it does not affect the type signature of the constructed
         computation. It does, however, generally affect naming used internally,
         as we make best-effort attempt at making names that appear internally
         match those that appear in Python code for the ease of debugging. For
-        example, 'coord' might be used as a common naming scope for parameter
+        example, `coord` might be used as a common naming scope for parameter
         placeholders or variables in a TensorFlow graph constructed.
 
      b. If the Python function declares multiple parameters, the computation's
@@ -219,44 +230,52 @@ class ComputationWrapper(object):
         function are interpreted as capturing elements of that parameter tuple,
         as in the example below.
 
-          @xyz([('x', tf.int32), ('y', tf.int32)])
-          def my_comp(x, y):
-            ...
+        ```python
+        @xyz([('x', tf.int32), ('y', tf.int32)])
+        def my_comp(x, y):
+          ...
+        ```
 
         The number of parameters accepted by the Python function in this case
         must match the number of elements in the named tuple type specified in
         the decorator argument. The elements of the tuple type do not have to
         be named, and the example below is also valid.
 
-          @xyz([tf.int32, tf.int32])
-          def my_comp(x, y):
-            ...
+        ```python
+        @xyz([tf.int32, tf.int32])
+        def my_comp(x, y):
+          ...
+        ```
 
         However, where named tuple elements are named, their names must match
         those that appear on the parameter list of the Python function, and
         they have to be listed in the same order, as we assume correspondence
         based on the position in the tuple, not based on the naming.
 
-     c. If the Python function declares *args or *kwargs, the parameter type is
-        mapped to those in the intuitive way, except if there's an ambigiuty in
-        the mapping. The latter will be the case, e.g., when the parameter type
-        is a typle, and the function defines *args and nothing else, leaving
-        ambiguity as to whether it expects to accept the tuple in its entirety,
-        or its elements. In this case, an exception is thrown.
+     c. If the Python function declares `*args` or `*kwargs`, the parameter type
+        is mapped to those in the intuitive way, except if there's an ambigiuty
+        in the mapping. The latter will be the case, e.g., when the parameter
+        type is a typle, and the function defines *args and nothing else,
+        leaving ambiguity as to whether it expects to accept the tuple in its
+        entirety, or its elements. In this case, an exception is thrown.
 
-          @xyz([tf.int32, tf.int32, tf.int32])
-          def my_comp(x, y, *args):
-            ...
+        ```python
+        @xyz([tf.int32, tf.int32, tf.int32])
+        def my_comp(x, y, *args):
+          ...
+        ```
 
-  2. The decorator is specified without arguments '@xyz', or invoked with an
-     empty list of arguments '@xyz()'. The two are treated as equivalent.
+  2. The decorator is specified without arguments `xyz`, or invoked with an
+     empty list of arguments `xyz()`. The two are treated as equivalent.
 
      a. If the Python function declares no parameters, the decorator constructs
         a no-parameter computation, as in the following example:
 
-          @xyz
-          def my_comp():
-            ...
+        ```python
+        @xyz
+        def my_comp():
+          ...
+        ```
 
      b. If the function does declare at least one parameter, it is treated as a
         polymorphic function that's instantiated in each concrete context in
@@ -266,11 +285,13 @@ class ComputationWrapper(object):
 
         Thus, for example, consider the decorastor used as follows:
 
-          @xyz
-          def my_comp(x, y):
-            ...
+        ```python
+        @xyz
+        def my_comp(x, y):
+          ...
+        ```
 
-        In this case, 'my_comp' becomes a polymorphic callable, with the actual
+        In this case, `my_comp` becomes a polymorphic callable, with the actual
         construction postponed. Suppose it's then used as follows, e.g., in an
         orchestration context:
 
@@ -291,15 +312,17 @@ class ComputationWrapper(object):
 
         Polymorphic functions are the only case where no constraints exist on
         the kinds of arguments that may be present: declaring default values,
-        *args or **kwargs, and any combination of those are valid. The mapping
-        is resolved at invocation time based on arguments of the call, as in
-        the example below:
+        `*args` or `**kwargs`, and any combination of those are valid. The
+        mapping is resolved at invocation time based on arguments of the call,
+        as in the example below:
 
-          @xyz
-          def my_comp(x, y=True, *args, **kwargs):
-            ...
+        ```python
+        @xyz
+        def my_comp(x, y=True, *args, **kwargs):
+          ...
 
-          my_comp(1, False, 2, 3, 'foo', name='bar')
+        my_comp(1, False, 2, 3, 'foo', name='bar')
+        ```
 
         As with all polymorphic functions, no construction is actually performed
         until invocation, and at invocation time, the default parameter values
@@ -309,7 +332,7 @@ class ComputationWrapper(object):
         being decorated were driven by the default values, or by the arguments
         of the actual call.
 
-  For more examples of usage, see computation_wrapper_test.py.
+  For more examples of usage, see `computation_wrapper_test`.
 
   If the user specifies a tuple type in an unbundled form (simply by listing the
   types of its constituents as separate arguments), the tuple type is formed on
@@ -321,7 +344,7 @@ class ComputationWrapper(object):
 
     Args:
       wrapper_fn: The Python callable that performs actual wrapping (as in the
-        specification of _wrap() above).
+        specification of `_wrap`).
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -334,7 +357,7 @@ class ComputationWrapper(object):
 
     This method only acts as a frontend that allows this class to be used as a
     decorator or wrapper in a variety of ways. The actual wrapping is performed
-    by the private method _wrap() below.
+    by the private method `_wrap`.
 
     Args:
       *args: Positional arguments (the decorator at this point does not accept

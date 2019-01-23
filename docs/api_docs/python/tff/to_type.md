@@ -17,7 +17,7 @@ Converts the argument into an instance of
 
 Examples of arguments convertible to tensor types:
 
-```
+```python
 tf.int32
 (tf.int32, [10])
 (tf.int32, [None])
@@ -25,7 +25,7 @@ tf.int32
 
 Examples of arguments convertible to flat named tuple types:
 
-```
+```python
 [tf.int32, tf.bool]
 (tf.int32, tf.bool)
 [('a', tf.int32), ('b', tf.bool)]
@@ -35,7 +35,7 @@ collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
 
 Examples of arguments convertible to nested named tuple types:
 
-```
+```python
 (tf.int32, (tf.float32, tf.bool))
 (tf.int32, (('x', tf.float32), tf.bool))
 ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
@@ -51,4 +51,4 @@ Examples of arguments convertible to nested named tuple types:
 #### Returns:
 
 An instance of <a href="../tff/Type.md"><code>tff.Type</code></a> corresponding
-to the given spec.
+to the given `spec`.

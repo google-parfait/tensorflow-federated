@@ -77,7 +77,7 @@ class FakeUserData(object):
   """Container object that creates fake per-user data.
 
   Using the fake test data, create temporary per-user TFRecord files used for
-  the test. Convert each feature-tuple to a tf.Example protocol buffer message
+  the test. Convert each feature-tuple to a `tf.Example` protocol buffer message
   and serialize it to the per-user file.
   """
 

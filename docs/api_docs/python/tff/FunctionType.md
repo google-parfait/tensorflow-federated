@@ -29,16 +29,17 @@ __init__(
 )
 ```
 
-Constructs a new instance from the given parameter and result types.
+Constructs a new instance from the given `parameter` and `result` types.
 
 #### Args:
 
 *   <b>`parameter`</b>: A specification of the parameter type, either an
     instance of <a href="../tff/Type.md"><code>tff.Type</code></a> or something
-    convertible to it by `tff.to_type()`.
+    convertible to it by
+    <a href="../tff/to_type.md"><code>tff.to_type</code></a>.
 *   <b>`result`</b>: A specification of the result type, either an instance of
     <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible
-    to it by `tff.to_type()`.
+    to it by <a href="../tff/to_type.md"><code>tff.to_type</code></a>.
 
 ## Properties
 

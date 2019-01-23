@@ -29,7 +29,8 @@ that appear in those computations implement this common interface, just like all
 values in TensorFlow computations appear as tensors.
 
 Outside of the bodies of composite non-TensorFlow computations, this interface
-is not used. All fully constructed computations implement 'Computation'.
+is not used. All fully constructed computations implement
+<a href="../tff/Computation.md"><code>tff.Computation</code></a>.
 
 ## Properties
 
@@ -65,7 +66,7 @@ For values of a named tuple type, returns the list of named members.
 __getattr__(name)
 ```
 
-For values of a named tuple type, returns the element named 'name'.
+For values of a named tuple type, returns the element named `name`.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
@@ -73,7 +74,7 @@ For values of a named tuple type, returns the element named 'name'.
 __getitem__(index)
 ```
 
-For values of a named tuple type, returns the element at 'index'.
+For values of a named tuple type, returns the element at `index`.
 
 <h3 id="__iter__"><code>__iter__</code></h3>
 

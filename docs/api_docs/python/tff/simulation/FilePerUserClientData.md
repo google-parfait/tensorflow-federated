@@ -18,7 +18,9 @@ Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 Defined in
 [`simulation/file_per_user_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py).
 
-ClientData that maps a set of files (one file per user) to a dataset.
+A `tf.simulation.ClientData` that maps a set of files to a dataset.
+
+This mapping is restricted to one file per user.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -29,13 +31,13 @@ __init__(
 )
 ```
 
-Constructs a `ClientData` object.
+Constructs a `tf.simulation.ClientData` object.
 
 #### Args:
 
-*   <b>`client_ids`</b>: A list of client_id(s).
-*   <b>`create_tf_dataset_fn`</b>: A callable that takes a client_id and returns
-    a `tf.data.Dataset` object.
+*   <b>`client_ids`</b>: A list of `client_id`s.
+*   <b>`create_tf_dataset_fn`</b>: A callable that takes a `client_id` and
+    returns a `tf.data.Dataset` object.
 
 ## Properties
 
@@ -72,7 +74,9 @@ recursively search `path`.
 
 #### Returns:
 
-A `FilePerUserClientData` object.
+A
+<a href="../../tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>
+object.
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 

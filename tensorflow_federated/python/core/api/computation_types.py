@@ -71,7 +71,7 @@ class TensorType(Type):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
   def __init__(self, dtype, shape=None):
-    """Constructs a new instance from the given dtype and shape.
+    """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
       dtype: An instance of `tf.DType`.
@@ -131,8 +131,8 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
       elements: Element specifications, in the format of a `list`, `tuple`, or
         `collections.OrderedDict`. Each element specification is either a type
         spec (an instance of `tff.Type` or something convertible to it via
-        `tff.to_type()`) for the element, or a (name, spec) for elements that
-        have defined names. Alternatively, one can supply here an instance of
+        `tff.to_type`) for the element, or a (name, spec) for elements that have
+        defined names. Alternatively, one can supply here an instance of
         `collections.OrderedDict` mapping element names to their types (or
         things that are convertible to types).
     """
@@ -191,11 +191,11 @@ class SequenceType(Type):
   """An implementation of `tff.Type` representing types of sequences in TFF."""
 
   def __init__(self, element):
-    """Constructs a new instance from the given element type.
+    """Constructs a new instance from the given `element` type.
 
     Args:
       element: A specification of the element type, either an instance of
-        `tff.Type` or something convertible to it by `tff.to_type()`.
+        `tff.Type` or something convertible to it by `tff.to_type`.
     """
     self._element = to_type(element)
 
@@ -217,13 +217,13 @@ class FunctionType(Type):
   """An implementation of `tff.Type` representing functional types in TFF."""
 
   def __init__(self, parameter, result):
-    """Constructs a new instance from the given parameter and result types.
+    """Constructs a new instance from the given `parameter` and `result` types.
 
     Args:
       parameter: A specification of the parameter type, either an instance of
-        `tff.Type` or something convertible to it by `tff.to_type()`.
+        `tff.Type` or something convertible to it by `tff.to_type`.
       result: A specification of the result type, either an instance of
-        `tff.Type` or something convertible to it by `tff.to_type()`.
+        `tff.Type` or something convertible to it by `tff.to_type`.
     """
     self._parameter = to_type(parameter)
     self._result = to_type(result)
@@ -254,7 +254,7 @@ class AbstractType(Type):
   """An implementation of `tff.Type` representing abstract types in TFF."""
 
   def __init__(self, label):
-    """Constructs a new instance from the given string label.
+    """Constructs a new instance from the given string `label`.
 
     Args:
       label: A string label of an abstract type. All occurences of the label
@@ -360,7 +360,7 @@ def to_type(spec):
 
   Examples of arguments convertible to tensor types:
 
-  ```
+  ```python
   tf.int32
   (tf.int32, [10])
   (tf.int32, [None])
@@ -368,7 +368,7 @@ def to_type(spec):
 
   Examples of arguments convertible to flat named tuple types:
 
-  ```
+  ```python
   [tf.int32, tf.bool]
   (tf.int32, tf.bool)
   [('a', tf.int32), ('b', tf.bool)]
@@ -378,7 +378,7 @@ def to_type(spec):
 
   Examples of arguments convertible to nested named tuple types:
 
-  ```
+  ```python
   (tf.int32, (tf.float32, tf.bool))
   (tf.int32, (('x', tf.float32), tf.bool))
   ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
@@ -389,7 +389,7 @@ def to_type(spec):
       `tff.Type`. Assorted examples of type specifications are included below.
 
   Returns:
-    An instance of `tff.Type` corresponding to the given spec.
+    An instance of `tff.Type` corresponding to the given `spec`.
   """
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.

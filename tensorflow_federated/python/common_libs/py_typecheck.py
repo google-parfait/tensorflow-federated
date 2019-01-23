@@ -23,7 +23,7 @@ from six.moves import builtins
 
 
 def check_type(target, type_spec, label=None):
-  """Checks that 'target' is of Python type or types 'type_spec'.
+  """Checks that `target` is of Python type or types `type_spec`.
 
   Args:
     target: An object, the Python type of which to check.
@@ -36,7 +36,7 @@ def check_type(target, type_spec, label=None):
     The target.
 
   Raises:
-    TypeError: when the target is not of one of the types in 'type_spec'.
+    TypeError: when the target is not of one of the types in `type_spec`.
   """
   _check_is_type_spec(type_spec)
   if not isinstance(target, type_spec):
@@ -56,7 +56,7 @@ def check_callable(target, label=None):
 
 
 def type_string(type_spec):
-  """Creates a string representation of 'type_spec' for error reporting.
+  """Creates a string representation of `type_spec` for error reporting.
 
   Args:
     type_spec: Either a Python type, or a tuple of Python types; the same as
@@ -66,7 +66,7 @@ def type_string(type_spec):
     A string representation for use in error reporting.
 
   Raises:
-    TypeError: if the 'type_spec' is not of the right type.
+    TypeError: if the `type_spec` is not of the right type.
   """
   _check_is_type_spec(type_spec)
   if isinstance(type_spec, type):
@@ -86,14 +86,14 @@ def type_string(type_spec):
 
 
 def _check_is_type_spec(type_spec):
-  """Determines if 'type_spec' is a valid type_spec.
+  """Determines if `type_spec` is a valid type specification.
 
   Args:
     type_spec: Either a Python type, or a tuple of Python types; the same as
       what's accepted by isinstance.
 
   Raises:
-    TypeError: if 'type_spec' is not as defined above.
+    TypeError: if `type_spec` is not as defined above.
   """
   if isinstance(type_spec, type):
     return

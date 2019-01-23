@@ -80,8 +80,8 @@ def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
     loss: a callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss.
     metrics: a list of `tf.keras.metrics.Metric` objects. The value of
-      `Metric.result()` for each metric is included in the list of tensors
-      returned in `aggregated_outputs()`.
+      `Metric.result` for each metric is included in the list of tensors
+      returned in `aggregated_outputs`.
     optimizer: a `tf.keras.optimizer.Optimizer`.
 
   Returns:

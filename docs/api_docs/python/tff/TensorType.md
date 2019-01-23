@@ -29,7 +29,7 @@ __init__(
 )
 ```
 
-Constructs a new instance from the given dtype and shape.
+Constructs a new instance from the given `dtype` and `shape`.
 
 #### Args:
 

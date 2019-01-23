@@ -17,14 +17,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# We are doing a wildcard import here, since symbols to export have already been
-# explicitly whitelisted in core/api, and it makes no sense to repeat them here.
-from tensorflow_federated.python.core import *  # pylint: disable=g-bad-import-order,wildcard-import
+# TensorFlow Federated uses Python imports to manage namespaces in ways that are
+# different from the Google Python Style guide.
+#
+# go/tf-wildcard-import
+# pylint: disable=g-bad-import-order,wildcard-import
+from tensorflow_federated.python.core import *
 
 # N.B. This import must happen after core.api, since we import core.api
 # inside of learning.
-from tensorflow_federated.python import learning  # pylint: disable=g-bad-import-order
-from tensorflow_federated.python import simulation  # pylint: disable=g-bad-import-order
+from tensorflow_federated.python import learning
+from tensorflow_federated.python import simulation
+# pylint: enable=g-bad-import-order,wildcard-import
 
 # Used by doc generation script.
 _allowed_symbols = [

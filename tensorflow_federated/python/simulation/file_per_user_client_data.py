@@ -28,14 +28,17 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 class FilePerUserClientData(client_data.ClientData):
-  """ClientData that maps a set of files (one file per user) to a dataset."""
+  """A `tf.simulation.ClientData` that maps a set of files to a dataset.
+
+  This mapping is restricted to one file per user.
+  """
 
   def __init__(self, client_ids, create_tf_dataset_fn):
-    """Constructs a `ClientData` object.
+    """Constructs a `tf.simulation.ClientData` object.
 
     Args:
-      client_ids: A list of client_id(s).
-      create_tf_dataset_fn: A callable that takes a client_id and returns a
+      client_ids: A list of `client_id`s.
+      create_tf_dataset_fn: A callable that takes a `client_id` and returns a
         `tf.data.Dataset` object.
     """
     py_typecheck.check_type(client_ids, list)
@@ -83,7 +86,7 @@ class FilePerUserClientData(client_data.ClientData):
         for a given file in the directory specified in `path`.
 
     Returns:
-      A `FilePerUserClientData` object.
+      A `tff.simulation.FilePerUserClientData` object.
     """
     client_ids_to_paths_dict = {
         filename: os.path.join(path, filename) for filename in os.listdir(path)

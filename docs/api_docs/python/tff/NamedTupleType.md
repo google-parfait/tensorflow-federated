@@ -37,10 +37,11 @@ Constructs a new instance from the given element types.
     `tuple`, or `collections.OrderedDict`. Each element specification is either
     a type spec (an instance of
     <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible
-    to it via `tff.to_type()`) for the element, or a (name, spec) for elements
-    that have defined names. Alternatively, one can supply here an instance of
-    `collections.OrderedDict` mapping element names to their types (or things
-    that are convertible to types).
+    to it via <a href="../tff/to_type.md"><code>tff.to_type</code></a>) for the
+    element, or a (name, spec) for elements that have defined names.
+    Alternatively, one can supply here an instance of `collections.OrderedDict`
+    mapping element names to their types (or things that are convertible to
+    types).
 
 ## Methods
 

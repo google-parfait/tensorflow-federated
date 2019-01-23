@@ -32,17 +32,17 @@ class AnonymousTuple(object):
   """Represents an anonymous named tuple.
 
   Anonymous tuples are similar to named tuples, in that their elements can be
-  accessed by name or by index, but unlike collections.namedtuple, they can
+  accessed by name or by index, but unlike `collections.namedtuple`, they can
   be instantiated without having to explicitly construct a new class for each
   instance, which incurs unnecessary overhead. Anonymous tuples are thus
-  related to collections.namedtuples much in the same way anonymous lambdas
-  are related to named functions explicitly declared with 'def()'. One of the
+  related to `collections.namedtuples` much in the same way anonymous lambdas
+  are related to named functions explicitly declared with `def`. One of the
   intended uses of annoymous tuples is to represent structured parameters in
   computations defined as Python functions or TF defuns.
 
   Example:
 
-  ```
+  ```python
   x = AnonymousTuple([('foo', 10), (None, 20), ('bar', 30)])
 
   len(x) == 3
@@ -56,7 +56,7 @@ class AnonymousTuple(object):
   ```
 
   Note that in general, naming the members of these tuples is optional. Thus,
-  an `AnonymousTuple` can be used just like an ordinary 'positional' tuple.
+  an `AnonymousTuple` can be used just like an ordinary positional tuple.
 
   Also note that the user will not be creating such tuples. They are a hidden
   part of the impementation designed to work together with function decorators.
@@ -75,7 +75,7 @@ class AnonymousTuple(object):
         The order is significant.
 
     Raises:
-      TypeError: if the 'elements' are not a list, or if any of the items on
+      TypeError: if the `elements` are not a list, or if any of the items on
         the list is not a pair with a string at the first position.
     """
     py_typecheck.check_type(elements, list)
