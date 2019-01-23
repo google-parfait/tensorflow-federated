@@ -52,6 +52,13 @@ class ModelWeights(
   e.g., tensors corresponding to variable values, or updates to model variables.
   """
 
+  # Necessary to work around for problematic _asdict() returning empty
+  # dictionary between Python 3.4.2 and 3.4.5.
+  #
+  # Addtionally prevents __dict__ from being created, which can improve memory
+  # usage of ModelWeights object.
+  __slots__ = ()
+
   def __new__(cls, trainable, non_trainable):
     return super(ModelWeights, cls).__new__(
         cls, tensor_utils.to_odict(trainable),

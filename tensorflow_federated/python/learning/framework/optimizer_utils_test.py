@@ -124,14 +124,18 @@ class ServerTest(test_utils.TffTestCase, parameterized.TestCase):
         model_to_client_delta_fn=lambda _: DummyClientDeltaFn())
     self.assertEqual(
         str(iterative_process.initialize.type_signature),
-        '( -> <model=<<a=float32[2,1],b=float32>,<c=float32>>,'
+        '( -> <model=<trainable=<a=float32[2,1],b=float32>,'
+        'non_trainable=<c=float32>>,'
         'optimizer_state=<float32[2,1],float32>>)')
     self.assertEqual(
         str(iterative_process.next.type_signature),
-        '(<<model=<<a=float32[2,1],b=float32>,<c=float32>>,'
+        '(<<model=<trainable=<a=float32[2,1],b=float32>,'
+        'non_trainable=<c=float32>>,'
         'optimizer_state=<float32[2,1],float32>>,'
-        '<<a=float32[2,1],b=float32>,<c=float32>>> -> '
-        '<model=<<a=float32[2,1],b=float32>,<c=float32>>,'
+        '<trainable=<a=float32[2,1],b=float32>,'
+        'non_trainable=<c=float32>>> -> '
+        '<model=<trainable=<a=float32[2,1],b=float32>,'
+        'non_trainable=<c=float32>>,'
         'optimizer_state=<float32[2,1],float32>>)')
 
 
