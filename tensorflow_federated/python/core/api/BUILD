@@ -95,7 +95,10 @@ py_test(
     srcs = ["intrinsics_test.py"],
     default_python_version = "PY3",
     deps = [
-        ":api",
+        ":computation_types",
+        ":computations",
+        ":intrinsics",
+        ":placements",
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:federated_computation_context",
         "@absl_py//absl/testing:absltest",
