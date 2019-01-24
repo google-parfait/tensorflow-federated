@@ -127,6 +127,10 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(func.type_signature, computation_types.FunctionType)
 
     arg = value_impl.to_value(arg, None, self._context_stack)
+    if isinstance(arg.type_signature, computation_types.NamedTupleType):
+      if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
+        # We've been passed a value which the user expects to be zipped.
+        arg = self.federated_zip(arg)
     type_utils.check_federated_value_placement(arg, placements.SERVER,
                                                'the argument')
     if not arg.type_signature.all_equal:
