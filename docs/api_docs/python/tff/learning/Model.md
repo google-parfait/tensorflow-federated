@@ -45,7 +45,7 @@ device, and then used to produce `aggregated_outputs` which are sent to the
 server.
 
 All `tf.Variables` should be introduced in `__init__`; this could move to a
-`build()` method more inline with Keras (see
+`build` method more inline with Keras (see
 https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in the future.
 
 ## Properties
@@ -57,9 +57,12 @@ Performs federated aggregation of the a a Model's local_outputs.
 This is typically used to aggregate metrics across many clients, e.g. the body
 of the computation might be:
 
-    return {
-      'num_examples': tff.federated_sum(local_outputs.num_examples),
-      'loss': tff.federated_average(local_outputs.loss)}
+```python
+return {
+    'num_examples': tff.federated_sum(local_outputs.num_examples),
+    'loss': tff.federated_average(local_outputs.loss)
+}
+```
 
 N.B. It is assumed all TensorFlow computation happens in the
 `report_local_outputs` method, and this method only uses TFF constructs to
@@ -74,7 +77,7 @@ The <a href="../../tff/Computation.md"><code>tff.Computation</code></a> should
 take as its single input a
 <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>-placed
 <a href="../../tff/Value.md"><code>tff.Value</code></a> corresponding to the
-return value of Model.report_local_outputs, and return a dictionary or other
+return value of `Model.report_local_outputs`, and return a dictionary or other
 structure of <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>-placed
 values; consumers of this method should generally provide these server-placed
 values as outputs of the overall computation consuming the model.
@@ -127,9 +130,9 @@ access to the shape/dtype/structure expected for the `batch`.
 #### Args:
 
 *   <b>`batch`</b>: A structure of tensors (as supported by
-    tf.contrib.framework.nest, or could be produced by a `tf.data.Dataset`) for
-    the current batch. It is the caller's responsibility to provide data of the
-    format expected by the Model being called.
+    `tf.contrib.framework.nest`, or could be produced by a `tf.data.Dataset`)
+    for the current batch. It is the caller's responsibility to provide data of
+    the format expected by the `Model` being called.
 *   <b>`training`</b>: If True, run the training forward pass, otherwise, run in
     evaluation mode. The semantics are generally the same as the `training`
     argument to `keras.Model.__call__`; this might e.g. influence how dropout or
@@ -167,5 +170,5 @@ each feature exceed a certain magnitude.
 
 #### Returns:
 
-A structure of tensors (as supported by tf.contrib.framework.nest) to be
+A structure of tensors (as supported by `tf.contrib.framework.nest`) to be
 aggregated across clients.

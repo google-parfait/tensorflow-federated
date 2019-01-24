@@ -31,7 +31,7 @@ method, determined by the implementation.
 Returns the shape of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected to have matching
-`output_shapes` properties.
+`tf.data.Dataset.output_shapes` properties.
 
 #### Returns:
 
@@ -43,7 +43,7 @@ of an element of the client datasets.
 Returns the type of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected have matching
-`output_types` properties.
+`tf.data.Dataset.output_types` properties.
 
 #### Returns:
 

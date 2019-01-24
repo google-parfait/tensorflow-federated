@@ -25,13 +25,13 @@ representing types of sequences in TFF.
 __init__(element)
 ```
 
-Constructs a new instance from the given element type.
+Constructs a new instance from the given `element` type.
 
 #### Args:
 
 *   <b>`element`</b>: A specification of the element type, either an instance of
     <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible
-    to it by `tff.to_type()`.
+    to it by <a href="../tff/to_type.md"><code>tff.to_type</code></a>.
 
 ## Properties
 

@@ -17,5 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# pylint: disable=wildcard-import
 from tensorflow_federated.python.core import utils
-from tensorflow_federated.python.core.api import *  # pylint: disable=wildcard-import
+from tensorflow_federated.python.core.api import *
+# pylint: enable=wildcard-import

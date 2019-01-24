@@ -20,8 +20,9 @@ Returns a federated value at `placement`, with `value` as the constituent.
 #### Args:
 
 *   <b>`value`</b>: A value of a non-federated TFF type to be placed.
-*   <b>`placement`</b>: The desired result placement (either `SERVER` or
-    `CLIENTS`).
+*   <b>`placement`</b>: The desired result placement (either
+    <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> or
+    <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>).
 
 #### Returns:
 

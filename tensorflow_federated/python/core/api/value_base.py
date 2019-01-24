@@ -38,7 +38,7 @@ class Value(typed_object.TypedObject):
   like all values in TensorFlow computations appear as tensors.
 
   Outside of the bodies of composite non-TensorFlow computations, this interface
-  is not used. All fully constructed computations implement 'Computation'.
+  is not used. All fully constructed computations implement `tff.Computation`.
   """
 
   @abc.abstractmethod
@@ -58,7 +58,7 @@ class Value(typed_object.TypedObject):
 
   @abc.abstractmethod
   def __getattr__(self, name):
-    """For values of a named tuple type, returns the element named 'name'."""
+    """For values of a named tuple type, returns the element named `name`."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -68,7 +68,7 @@ class Value(typed_object.TypedObject):
 
   @abc.abstractmethod
   def __getitem__(self, index):
-    """For values of a named tuple type, returns the element at 'index'."""
+    """For values of a named tuple type, returns the element at `index`."""
     raise NotImplementedError
 
   @abc.abstractmethod

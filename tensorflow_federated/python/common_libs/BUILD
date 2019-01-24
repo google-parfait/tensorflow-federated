@@ -6,8 +6,8 @@ licenses(["notice"])  # Apache 2.0
 
 # NOTE: TFF code outside this directory can depend on libraries defined in this
 # directory, but not the other way round. In particular, utility classes and
-# functions that depend on interfaces defined in the Core API belong in 'core',
-# and those that deal with TensorFlow belong in 'tensorflow_libs'.
+# functions that depend on interfaces defined in the Core API belong in `core`,
+# and those that deal with TensorFlow belong in `tensorflow_libs`.
 
 py_library(
     name = "anonymous_tuple",

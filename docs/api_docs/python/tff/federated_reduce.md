@@ -16,7 +16,8 @@ tff.federated_reduce(
 Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
-Reduces `value` from `CLIENTS` to `SERVER` using a reduction operator `op`.
+Reduces `value` from <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to
+<a href="../tff.md#SERVER"><code>tff.SERVER</code></a> using a reduction `op`.
 
 This method reduces a set of member constituents of a `value` of federated type
 `T@CLIENTS` for some `T`, using a given `zero` in the algebra (i.e., the result
@@ -32,7 +33,8 @@ course of the reduction.
 
 #### Args:
 
-*   <b>`value`</b>: A value of a TFF federated type placed at the `CLIENTS`.
+*   <b>`value`</b>: A value of a TFF federated type placed at the
+    <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 *   <b>`zero`</b>: The result of reducing a value with no constituents.
 *   <b>`op`</b>: An operator with type signature `(<U,T> -> U)`, where `T` is
     the type of the constituents of `value` and `U` is the type of `zero` to be
@@ -40,8 +42,9 @@ course of the reduction.
 
 #### Returns:
 
-A representation on the `SERVER` of the result of reducing the set of all member
-constituents of `value` using the operator `op` into a single item.
+A representation on the <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>
+of the result of reducing the set of all member constituents of `value` using
+the operator `op` into a single item.
 
 #### Raises:
 

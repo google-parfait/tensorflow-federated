@@ -26,8 +26,8 @@ Builds a
 *   <b>`loss`</b>: a callable that takes two batched tensor parameters, `y_true`
     and `y_pred`, and returns the loss.
 *   <b>`metrics`</b>: a list of `tf.keras.metrics.Metric` objects. The value of
-    `Metric.result()` for each metric is included in the list of tensors
-    returned in `aggregated_outputs()`.
+    `Metric.result` for each metric is included in the list of tensors returned
+    in `aggregated_outputs`.
 *   <b>`optimizer`</b>: a `tf.keras.optimizer.Optimizer`.
 
 #### Returns:

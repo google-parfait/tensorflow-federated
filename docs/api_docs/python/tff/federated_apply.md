@@ -15,20 +15,23 @@ tff.federated_apply(
 Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
-Applies a given function to a federated value on the `SERVER`.
+Applies a given function to a federated value on the
+<a href="../tff.md#SERVER"><code>tff.SERVER</code></a>.
 
 #### Args:
 
 *   <b>`func`</b>: A function to apply to the member content of `arg` on the
-    `SERVER`. The parameter of this function must be of the same type as the
-    member constituent of `arg`.
-*   <b>`arg`</b>: A value of a TFF federated type placed at the `SERVER`, and
-    with the `all_equal` bit set.
+    <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>. The parameter of
+    this function must be of the same type as the member constituent of `arg`.
+*   <b>`arg`</b>: A value of a TFF federated type placed at the
+    <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>, and with the
+    `all_equal` bit set.
 
 #### Returns:
 
-A federated value on the `SERVER` that represents the result of applying `func`
-to the member constituent of `arg`.
+A federated value on the <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>
+that represents the result of applying `func` to the member constituent of
+`arg`.
 
 #### Raises:
 

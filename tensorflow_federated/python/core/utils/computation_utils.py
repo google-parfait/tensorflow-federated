@@ -26,7 +26,7 @@ class IterativeProcess(object):
 
   An iterated process will usually be driven by a control loop like:
 
-  ```
+  ```python
   def initialize():
     ...
 
@@ -42,7 +42,7 @@ class IterativeProcess(object):
   The iteration step can accept arguments in addition to `state` (which must be
   the first argument):
 
-  ```
+  ```python
   def next(state, item):
     ...
 
@@ -60,12 +60,13 @@ class IterativeProcess(object):
       initialize_fn: a no-arg `tff.Computation` that creates the initial state
         of the chained computation.
       next_fn: a `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type _T_, then `next_fn` must also return type
-        _T_ and accept either a single argument of type _T_ or a named tuple
-        whose first argument is of type _T_.
+        `initialize_fn` returns a type `T`, then `next_fn` must also return type
+        `T` and accept either a single argument of type `T` or a named tuple
+        whose first argument is of type `T`.
 
     Raises:
-      TypeError: initialize_fn and next_fn are not compatible function types.
+      TypeError: `initialize_fn` and `next_fn` are not compatible function
+        types.
     """
     py_typecheck.check_type(initialize_fn, tff.Computation)
     if initialize_fn.type_signature.parameter is not None:

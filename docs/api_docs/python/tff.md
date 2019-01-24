@@ -60,31 +60,38 @@ bodies of TFF computations.
 ## Functions
 
 [`federated_aggregate(...)`](./tff/federated_aggregate.md): Aggregates `value`
-from `CLIENTS` to `SERVER` using a multi-stage process.
+from <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to
+<a href="./tff.md#SERVER"><code>tff.SERVER</code></a>.
 
 [`federated_apply(...)`](./tff/federated_apply.md): Applies a given function to
-a federated value on the `SERVER`.
+a federated value on the <a href="./tff.md#SERVER"><code>tff.SERVER</code></a>.
 
-[`federated_average(...)`](./tff/federated_average.md): Computes a `SERVER`
-average of `value` placed on `CLIENTS`.
+[`federated_average(...)`](./tff/federated_average.md): Computes a
+<a href="./tff.md#SERVER"><code>tff.SERVER</code></a> average of `value` placed
+on <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 [`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a
-federated value from the `SERVER` to the `CLIENTS`.
+federated value from the <a href="./tff.md#SERVER"><code>tff.SERVER</code></a>
+to the <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
-[`federated_collect(...)`](./tff/federated_collect.md): Materializes a federated
-value from `CLIENTS` as a `SERVER` sequence.
+[`federated_collect(...)`](./tff/federated_collect.md): Returns a federated
+value from <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> as a
+<a href="./tff.md#SERVER"><code>tff.SERVER</code></a> sequence.
 
 [`federated_computation(...)`](./tff/federated_computation.md): Decorates/wraps
 Python functions as TFF federated/composite computations.
 
 [`federated_map(...)`](./tff/federated_map.md): Maps a federated value on
-CLIENTS pointwise using a given mapping function.
+<a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> pointwise using a
+mapping function.
 
 [`federated_reduce(...)`](./tff/federated_reduce.md): Reduces `value` from
-`CLIENTS` to `SERVER` using a reduction operator `op`.
+<a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to
+<a href="./tff.md#SERVER"><code>tff.SERVER</code></a> using a reduction `op`.
 
-[`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at `SERVER` of a
-federated value placed on the `CLIENTS`.
+[`federated_sum(...)`](./tff/federated_sum.md): Computes a sum at
+<a href="./tff.md#SERVER"><code>tff.SERVER</code></a> of a `value` placed on the
+<a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 [`federated_value(...)`](./tff/federated_value.md): Returns a federated value at
 `placement`, with `value` as the constituent.

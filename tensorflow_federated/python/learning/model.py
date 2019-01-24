@@ -67,7 +67,7 @@ class Model(object):
   are sent to the server.
 
   All `tf.Variables` should be introduced in `__init__`; this could move to a
-  `build()` method more inline with Keras (see
+  `build` method more inline with Keras (see
   https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in
   the future.
   """
@@ -112,10 +112,11 @@ class Model(object):
     provides access to the shape/dtype/structure expected for the `batch`.
 
     Args:
-      batch: A structure of tensors (as supported by tf.contrib.framework.nest,
-        or could be produced by a `tf.data.Dataset`) for the current batch. It
-        is the caller's responsibility to provide data of the format expected by
-        the Model being called.
+      batch: A structure of tensors (as supported by
+        `tf.contrib.framework.nest`, or could be produced by a
+        `tf.data.Dataset`) for the current batch. It is the caller's
+        responsibility to provide data of the format expected by the `Model`
+        being called.
       training: If True, run the training forward pass, otherwise, run in
         evaluation mode. The semantics are generally the same as the `training`
         argument to `keras.Model.__call__`; this might e.g. influence how
@@ -149,7 +150,7 @@ class Model(object):
     how many times each feature exceed a certain magnitude.
 
     Returns:
-      A structure of tensors (as supported by tf.contrib.framework.nest)
+      A structure of tensors (as supported by `tf.contrib.framework.nest`)
       to be aggregated across clients.
     """
     pass
@@ -161,13 +162,16 @@ class Model(object):
     This is typically used to aggregate metrics across many clients, e.g. the
     body of the computation might be:
 
-        return {
-          'num_examples': tff.federated_sum(local_outputs.num_examples),
-          'loss': tff.federated_average(local_outputs.loss)}
+    ```python
+    return {
+        'num_examples': tff.federated_sum(local_outputs.num_examples),
+        'loss': tff.federated_average(local_outputs.loss)
+    }
+    ```
 
     N.B. It is assumed all TensorFlow computation happens in the
-    `report_local_outputs` method, and this method only uses TFF
-    constructs to specify aggregations across clients.
+    `report_local_outputs` method, and this method only uses TFF constructs to
+    specify aggregations across clients.
 
     Returns:
       Either a `tff.Computation`, or None if no federated aggregation is needed.
@@ -175,10 +179,10 @@ class Model(object):
 
       The `tff.Computation` should take as its single input a
       `tff.CLIENTS`-placed `tff.Value` corresponding to the return value of
-      Model.report_local_outputs, and return a dictionary or other
-      structure of `tff.SERVER`-placed values; consumers of this method should
-      generally provide these server-placed values as outputs of the overall
-      computation consuming the model.
+      `Model.report_local_outputs`, and return a dictionary or other structure
+      of `tff.SERVER`-placed values; consumers of this method should generally
+      provide these server-placed values as outputs of the overall computation
+      consuming the model.
     """
     pass
 
@@ -193,13 +197,13 @@ class TrainableModel(Model):
 
   @abc.abstractmethod
   def train_on_batch(self, batch):
-    """Like forward_pass, but updates the model variables.
+    """Like `forward_pass`, but updates the model variables.
 
-    Typically this will invoke forward_pass, with any corresponding
+    Typically this will invoke `forward_pass`, with any corresponding
     side-effects such as updating metrics.
 
     Args:
-      batch: The current batch, as for forward_pass().
+      batch: The current batch, as for `forward_pass`.
 
     Returns:
       The same `BatchOutput` as `forward_pass`.
