@@ -32,14 +32,11 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import reference_executor
 
 
 class ReferenceExecutorTest(absltest.TestCase):
-
-  def test_installed_by_default(self):
-    context = context_stack_impl.context_stack.current
-    self.assertIsInstance(context, reference_executor.ReferenceExecutor)
 
   def test_computed_value(self):
     v = reference_executor.ComputedValue(10, tf.int32)
@@ -458,15 +455,231 @@ class ReferenceExecutorTest(absltest.TestCase):
 
     self.assertEqual(make_13_computation(), 13)
 
-  def test_intrinsic(self):
+  def test_sequence_sum_with_list_of_integers(self):
 
     @computations.federated_computation(
         computation_types.SequenceType(tf.int32))
     def foo(x):
       return intrinsics.sequence_sum(x)
 
+    self.assertEqual(str(foo.type_signature), '(int32* -> int32)')
     self.assertEqual(foo([1, 2, 3]), 6)
+
+  def test_sequence_sum_with_list_of_tuples(self):
+
+    @computations.federated_computation(
+        computation_types.SequenceType([tf.int32, tf.int32]))
+    def foo(x):
+      return intrinsics.sequence_sum(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(<int32,int32>* -> <int32,int32>)')
+    self.assertEqual(str(foo([[1, 2], [3, 4], [5, 6]])), '<9,12>')
+
+  def test_federated_collect_with_list_of_integers(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_collect(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> int32*@SERVER)')
+    self.assertEqual(foo([1, 2, 3]), [1, 2, 3])
+
+  def test_federated_map_with_list_of_integers(self):
+
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+      return x + 1
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def bar(x):
+      return intrinsics.federated_map(foo, x)
+
+    self.assertEqual(
+        str(bar.type_signature), '({int32}@CLIENTS -> {int32}@CLIENTS)')
+    self.assertEqual(bar([1, 10, 3, 7, 2]), [2, 11, 4, 8, 3])
+
+  def test_federated_apply_with_int(self):
+
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+      return x + 1
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+    def bar(x):
+      return intrinsics.federated_apply(foo, x)
+
+    self.assertEqual(str(bar.type_signature), '(int32@SERVER -> int32@SERVER)')
+    self.assertEqual(bar(10), 11)
+
+  def test_federated_sum_with_list_of_integers(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_sum(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
+    self.assertEqual(foo([1, 2, 3]), 6)
+
+  def test_federated_value_at_clients_and_at_server(self):
+
+    @computations.federated_computation(tf.int32)
+    def foo(x):
+      return [
+          intrinsics.federated_value(x, placements.CLIENTS),
+          intrinsics.federated_value(x, placements.SERVER)
+      ]
+
+    self.assertEqual(
+        str(foo.type_signature), '(int32 -> <int32@CLIENTS,int32@SERVER>)')
+    self.assertEqual(str(foo(11)), '<11,11>')
+
+  def test_generic_zero_with_scalar_int32_tensor_type(self):
+
+    @computations.federated_computation
+    def foo():
+      return intrinsic_utils.zero_for(tf.int32,
+                                      context_stack_impl.context_stack)
+
+    self.assertEqual(str(foo.type_signature), '( -> int32)')
+    self.assertEqual(foo(), 0)
+
+  def test_generic_zero_with_two_dimensional_float32_tensor_type(self):
+
+    @computations.federated_computation
+    def foo():
+      return intrinsic_utils.zero_for(
+          computation_types.TensorType(tf.float32, [2, 3]),
+          context_stack_impl.context_stack)
+
+    self.assertEqual(str(foo.type_signature), '( -> float32[2,3])')
+    foo_result = foo()
+    self.assertEqual(type(foo_result), np.ndarray)
+    self.assertTrue(np.array_equal(foo_result, [[0., 0., 0.], [0., 0., 0.]]))
+
+  def test_generic_zero_with_tuple_type(self):
+
+    @computations.federated_computation
+    def foo():
+      return intrinsic_utils.zero_for([('A', tf.int32), ('B', tf.float32)],
+                                      context_stack_impl.context_stack)
+
+    self.assertEqual(str(foo.type_signature), '( -> <A=int32,B=float32>)')
+    self.assertEqual(str(foo()), '<A=0,B=0.0>')
+
+  def test_generic_zero_with_federated_int_on_server(self):
+
+    @computations.federated_computation
+    def foo():
+      return intrinsic_utils.zero_for(
+          computation_types.FederatedType(tf.int32, placements.SERVER, True),
+          context_stack_impl.context_stack)
+
+    self.assertEqual(str(foo.type_signature), '( -> int32@SERVER)')
+    self.assertEqual(foo(), 0)
+
+  def test_generic_plus_with_integers(self):
+
+    @computations.federated_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      return intrinsic_utils.plus_for(tf.int32,
+                                      context_stack_impl.context_stack)(x, y)
+
+    self.assertEqual(str(foo.type_signature), '(<int32,int32> -> int32)')
+    self.assertEqual(foo(2, 3), 5)
+
+  def test_generic_plus_with_tuples(self):
+    type_spec = [('A', tf.int32), ('B', tf.float32)]
+
+    @computations.federated_computation(type_spec, type_spec)
+    def foo(x, y):
+      return intrinsic_utils.plus_for(type_spec,
+                                      context_stack_impl.context_stack)(x, y)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<<A=int32,B=float32>,<A=int32,B=float32>> -> <A=int32,B=float32>)')
+    foo_result = foo([2, 0.1], [3, 0.2])
+    self.assertIsInstance(foo_result, anonymous_tuple.AnonymousTuple)
+    self.assertSameElements(dir(foo_result), ['A', 'B'])
+    self.assertEqual(foo_result.A, 5)
+    self.assertAlmostEqual(foo_result.B, 0.3, places=2)
+
+  def test_sequence_map_with_list_of_integers(self):
+
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+      return x + 1
+
+    @computations.federated_computation(
+        computation_types.SequenceType(tf.int32))
+    def bar(x):
+      return intrinsics.sequence_map(foo, x)
+
+    self.assertEqual(str(bar.type_signature), '(int32* -> int32*)')
+    self.assertEqual(bar([1, 10, 3]), [2, 11, 4])
+
+  def test_sequence_reduce_with_integers(self):
+
+    @computations.tf_computation(tf.int32, tf.float32)
+    def foo(x, y):
+      return x + tf.to_int32(y > 0.5)
+
+    @computations.federated_computation(
+        computation_types.SequenceType(tf.float32))
+    def bar(x):
+      return intrinsics.sequence_reduce(x, 0, foo)
+
+    self.assertEqual(str(bar.type_signature), '(float32* -> int32)')
+    self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
+
+  def test_sequence_reduce_with_tuples(self):
+
+    accumulator_type = [('sum', tf.int32), ('product', tf.int32)]
+
+    @computations.tf_computation(accumulator_type, tf.int32)
+    def foo(accumulator, x):
+      return collections.OrderedDict([('sum', accumulator.sum + x),
+                                      ('product', accumulator.product * x)])
+
+    @computations.federated_computation(
+        computation_types.SequenceType(tf.int32))
+    def bar(x):
+      zero = collections.OrderedDict([('sum', 0), ('product', 1)])
+      return intrinsics.sequence_reduce(x, zero, foo)
+
+    self.assertEqual(
+        str(bar.type_signature), '(int32* -> <sum=int32,product=int32>)')
+    self.assertEqual(str(bar([1, 2, 3, 4, 5])), '<sum=15,product=120>')
+
+  def test_federated_reduce_with_integers(self):
+
+    @computations.tf_computation(tf.int32, tf.float32)
+    def foo(x, y):
+      return x + tf.to_int32(y > 0.5)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+    def bar(x):
+      return intrinsics.federated_reduce(x, 0, foo)
+
+    self.assertEqual(
+        str(bar.type_signature), '({float32}@CLIENTS -> int32@SERVER)')
+    self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
 
 
 if __name__ == '__main__':
-  absltest.main()
+  # We need to be able to individually test all components of the executor, and
+  # the compiler pipeline will potentially interfere with this process by
+  # performing reductions. Since this executor is intended to be the standards
+  # to compare against, it is the compiler pipeline that should get tested
+  # against this implementation, not the other way round.
+  executor_without_compiler = reference_executor.ReferenceExecutor()
+  with context_stack_impl.context_stack.install(executor_without_compiler):
+    absltest.main()
