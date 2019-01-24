@@ -20,13 +20,13 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
 
 
-class ComputationsTest(test_utils.TffTestCase):
+class ComputationsTest(test.TestCase):
 
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(self):
     # Wrapping a lambda with a parameter.
@@ -134,4 +134,4 @@ class ComputationsTest(test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

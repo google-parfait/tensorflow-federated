@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from tensorflow.python.framework import function as tf_function
 from tensorflow_federated.python.common_libs import anonymous_tuple
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_impl
@@ -45,7 +45,7 @@ class NoopIngestContextForTest(context_base.Context):
     raise NotImplementedError
 
 
-class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
+class FuncUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_is_defun(self):
     self.assertTrue(func_utils.is_defun(tf_function.Defun()(lambda x: None)))
@@ -379,4 +379,4 @@ class FuncUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

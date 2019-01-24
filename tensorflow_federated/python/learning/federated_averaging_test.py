@@ -21,14 +21,13 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
 
-class FederatedAveragingClientTest(test_utils.TffTestCase,
-                                   parameterized.TestCase):
+class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
   """Tests of ClientFedAvg that use a common model and data."""
 
   def dataset(self):
@@ -54,7 +53,7 @@ class FederatedAveragingClientTest(test_utils.TffTestCase,
         },
         non_trainable={'c': 0.0})
 
-  @test_utils.graph_mode_test
+  @test.graph_mode_test
   def test_client_tf(self):
     model = self.model()
     dataset = self.dataset()
@@ -107,7 +106,7 @@ class FederatedAveragingClientTest(test_utils.TffTestCase,
     self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
 
 
-class FederatedAveragingTffTest(test_utils.TffTestCase):
+class FederatedAveragingTffTest(test.TestCase):
 
   def test_orchestration(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
@@ -133,4 +132,4 @@ if __name__ == '__main__':
   # We default to TF 2.0 behavior, including eager execution, and use the
   # @graph_mode_test annotation for graph-mode (sess.run) tests.
   tf.compat.v1.enable_v2_behavior()
-  tf.test.main()
+  test.main()

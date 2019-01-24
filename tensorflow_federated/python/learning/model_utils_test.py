@@ -28,7 +28,7 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
@@ -125,7 +125,7 @@ def build_linear_regresion_keras_subclass_model(feature_dims):
   return KerasLinearRegression(feature_dims)
 
 
-class ModelUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
+class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_model_initializer(self):
     model = model_utils.enhance(model_examples.LinearRegression(2))
@@ -310,4 +310,4 @@ class ModelUtilsTest(test_utils.TffTestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

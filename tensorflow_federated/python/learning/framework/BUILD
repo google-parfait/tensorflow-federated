@@ -33,7 +33,7 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":optimizer_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@absl_py//absl/testing:parameterized",

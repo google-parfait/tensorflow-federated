@@ -17,25 +17,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils as common_test_utils
-from tensorflow_federated.python.core.impl import test_utils
+from tensorflow_federated.python.common_libs import test
 
 
-class TestUtilsTest(common_test_utils.TffTestCase):
+class TestUtilsTest(test.TestCase):
 
   def test_nested_structures_are_same_where_they_are_same(self):
-    test_utils.assert_nested_struct_eq({'a': 10}, {'a': 10})
+    test.assert_nested_struct_eq({'a': 10}, {'a': 10})
 
   def test_nested_structures_are_same_where_nesting_differs(self):
     with self.assertRaises(ValueError):
-      test_utils.assert_nested_struct_eq({'a': 10}, 10)
+      test.assert_nested_struct_eq({'a': 10}, 10)
 
   def test_nested_structures_are_same_where_values_differ(self):
     with self.assertRaises(ValueError):
-      test_utils.assert_nested_struct_eq({'a': 10}, {'a': False})
+      test.assert_nested_struct_eq({'a': 10}, {'a': False})
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

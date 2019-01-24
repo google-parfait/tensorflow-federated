@@ -49,11 +49,20 @@ py_test(
 )
 
 py_library(
-    name = "test_utils",
+    name = "test",
     testonly = 1,
-    srcs = ["test_utils.py"],
+    srcs = ["test.py"],
     deps = [
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
+)
+
+py_test(
+    name = "test_test",
+    size = "small",
+    srcs = ["test_test.py"],
+    default_python_version = "PY3",
+    deps = [":test"],
 )

@@ -20,14 +20,14 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
 
 
-class TensorFlowSerializationTest(test_utils.TffTestCase):
+class TensorFlowSerializationTest(test.TestCase):
 
   def test_serialize_tensorflow_with_no_parameter(self):
     comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
@@ -77,4 +77,4 @@ class TensorFlowSerializationTest(test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

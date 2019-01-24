@@ -19,13 +19,13 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
 
-class TensorFlowDeserializationTest(test_utils.TffTestCase):
+class TensorFlowDeserializationTest(test.TestCase):
 
   def test_deserialize_and_call_tf_computation_with_add_one(self):
     ctx_stack = context_stack_impl.context_stack
@@ -40,4 +40,4 @@ class TensorFlowDeserializationTest(test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

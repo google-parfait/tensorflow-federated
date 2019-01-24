@@ -19,14 +19,14 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 
 
-class ComputationWrapperInstancesTest(test_utils.TffTestCase):
+class ComputationWrapperInstancesTest(test.TestCase):
 
   def test_tf_wrapper_with_one_op_py_func(self):
 
@@ -95,4 +95,4 @@ class ComputationWrapperInstancesTest(test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

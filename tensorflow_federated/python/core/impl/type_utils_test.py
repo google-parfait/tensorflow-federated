@@ -24,18 +24,17 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
-from tensorflow_federated.python.common_libs import test_utils as common_test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
 
-class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
+class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_infer_type_with_none(self):
     self.assertEqual(type_utils.infer_type(None), None)
@@ -384,23 +383,23 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
 
   def test_type_to_tf_dtypes_and_shapes_with_int_scalar(self):
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(tf.int32)
-    test_utils.assert_nested_struct_eq(dtypes, tf.int32)
-    test_utils.assert_nested_struct_eq(shapes, tf.TensorShape([]))
+    test.assert_nested_struct_eq(dtypes, tf.int32)
+    test.assert_nested_struct_eq(shapes, tf.TensorShape([]))
 
   def test_type_to_tf_dtypes_and_shapes_with_int_vector(self):
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes((tf.int32, [10]))
-    test_utils.assert_nested_struct_eq(dtypes, tf.int32)
-    test_utils.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
+    test.assert_nested_struct_eq(dtypes, tf.int32)
+    test.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
 
   def test_type_to_tf_dtypes_and_shapes_with_tensor_triple(self):
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(
         [('a', (tf.int32, [5])), ('b', tf.bool), ('c', (tf.float32, [3]))])
-    test_utils.assert_nested_struct_eq(dtypes, {
+    test.assert_nested_struct_eq(dtypes, {
         'a': tf.int32,
         'b': tf.bool,
         'c': tf.float32
     })
-    test_utils.assert_nested_struct_eq(shapes, {
+    test.assert_nested_struct_eq(shapes, {
         'a': tf.TensorShape([5]),
         'b': tf.TensorShape([]),
         'c': tf.TensorShape([3])
@@ -409,14 +408,14 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
   def test_type_to_tf_dtypes_and_shapes_with_two_level_tuple(self):
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(
         [('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])])
-    test_utils.assert_nested_struct_eq(dtypes, {
+    test.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {
             'c': tf.float32,
             'd': tf.int32
         }
     })
-    test_utils.assert_nested_struct_eq(
+    test.assert_nested_struct_eq(
         shapes, {
             'a': tf.TensorShape([]),
             'b': {

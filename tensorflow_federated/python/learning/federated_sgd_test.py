@@ -21,7 +21,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -29,7 +29,7 @@ from tensorflow_federated.python.learning import model_utils
 nest = tf.contrib.framework.nest
 
 
-class FederatedSgdTest(test_utils.TffTestCase, parameterized.TestCase):
+class FederatedSgdTest(test.TestCase, parameterized.TestCase):
 
   def dataset(self):
     # Create a dataset with 4 examples:
@@ -100,7 +100,7 @@ class FederatedSgdTest(test_utils.TffTestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  # We default to TF 2 with eager execution, and use the @graph_mode_test
-  # annotation for graph-mode (sess.run) tests.
+  # We default to TF 2.0 behavior, including eager execution, and use the
+  # @graph_mode_test annotation for graph-mode (sess.run) tests.
   tf.compat.v1.enable_v2_behavior()
-  tf.test.main()
+  test.main()

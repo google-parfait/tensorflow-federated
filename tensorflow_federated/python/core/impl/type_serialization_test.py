@@ -19,14 +19,14 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
-class TypeSerializationTest(test_utils.TffTestCase):
+class TypeSerializationTest(test.TestCase):
 
   def test_serialize_type_with_tensor_dtype_without_shape(self):
     self.assertEqual(

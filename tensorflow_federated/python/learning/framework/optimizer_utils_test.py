@@ -21,7 +21,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -44,7 +44,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
         optimizer_output={'client_weight': client_weight})
 
 
-class ServerTest(test_utils.TffTestCase, parameterized.TestCase):
+class ServerTest(test.TestCase, parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -78,7 +78,7 @@ class ServerTest(test_utils.TffTestCase, parameterized.TestCase):
     self.assertAllClose(train_vars['b'].numpy(), updated_val)
     self.assertEqual(server_state.model.non_trainable['c'].numpy(), 0.0)
 
-  @test_utils.graph_mode_test
+  @test.graph_mode_test
   def test_server_graph_mode(self):
     optimizer_fn = lambda: tf.train.GradientDescentOptimizer(learning_rate=0.1)
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
@@ -143,4 +143,4 @@ if __name__ == '__main__':
   # We default to TF 2.0 behavior, including eager execution, and use the
   # @graph_mode_test annotation for graph-mode (sess.run) tests.
   tf.compat.v1.enable_v2_behavior()
-  tf.test.main()
+  test.main()

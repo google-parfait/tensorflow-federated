@@ -23,12 +23,12 @@ from six.moves import range
 import tensorflow as tf
 
 from tensorflow.python.util import nest
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.learning import model_examples
 
 
-class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
+class ModelExamplesTest(test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(ModelExamplesTest, self).setUp()
@@ -37,7 +37,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
     tf.enable_resource_variables()
 
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
-  @test_utils.graph_mode_test
+  @test.graph_mode_test
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
     init_op = tf.variables_initializer(model.trainable_variables +
@@ -67,7 +67,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
       self.assertEqual(m['num_batches'], 1)
       self.assertEqual(m['loss'], 0.25)
 
-  @test_utils.graph_mode_test
+  @test.graph_mode_test
   def test_trainable_linear_regression(self):
     dim = 1
     model = model_examples.TrainableLinearRegression(feature_dim=dim)
@@ -96,7 +96,7 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
       self.assertEqual(m['num_examples'], 2 * num_iters)
       self.assertLess(m['loss'], 1.0)
 
-  @test_utils.graph_mode_test
+  @test.graph_mode_test
   def test_tff(self):
 
     @tff.tf_computation
@@ -125,4 +125,4 @@ class ModelExamplesTest(test_utils.TffTestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

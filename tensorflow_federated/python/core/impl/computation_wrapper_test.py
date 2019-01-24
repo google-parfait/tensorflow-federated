@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_base
@@ -60,7 +60,7 @@ class ContextForTest(context_base.Context):
 test_wrap = computation_wrapper.ComputationWrapper(WrappedForTest)
 
 
-class ComputationWrapperTest(test_utils.TffTestCase):
+class ComputationWrapperTest(test.TestCase):
 
   # NOTE: Many tests below silence certain linter warnings. These warnings are
   # not applicable, since it's the wrapper code, not not the dummy functions
@@ -353,4 +353,4 @@ class ComputationWrapperTest(test_utils.TffTestCase):
 
 if __name__ == '__main__':
   with context_stack_impl.context_stack.install(ContextForTest()):
-    tf.test.main()
+    test.main()
