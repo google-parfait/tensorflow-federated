@@ -97,8 +97,12 @@ class ValueImpl(value_base.Value):
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, six.string_types)
-    if not isinstance(self._comp.type_signature,
-                      computation_types.NamedTupleType):
+    if (isinstance(self._comp.type_signature, computation_types.FederatedType)
+        and isinstance(self._comp.type_signature.member,
+                       computation_types.NamedTupleType)):
+      return _construct_getattr_call(self._comp, name, self._context_stack)
+    elif not isinstance(self._comp.type_signature,
+                        computation_types.NamedTupleType):
       raise TypeError(
           'Operator getattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
@@ -127,6 +131,10 @@ class ValueImpl(value_base.Value):
 
   def __getitem__(self, key):
     py_typecheck.check_type(key, (int, slice))
+    if (isinstance(self._comp.type_signature, computation_types.FederatedType)
+        and isinstance(self._comp.type_signature.member,
+                       computation_types.NamedTupleType)):
+      return _construct_getitem_call(self._comp, key, self._context_stack)
     if not isinstance(self._comp.type_signature,
                       computation_types.NamedTupleType):
       raise TypeError(
@@ -203,6 +211,179 @@ class ValueImpl(value_base.Value):
             ValueImpl.get_comp(
                 to_value([self, other], None, self._context_stack))),
         self._context_stack)
+
+
+def _construct_getitem_call(arg, idx, context_stack):
+  """Calls intrinsic `ValueImpl`, passing getitem to a federated value.
+
+  The main piece of orchestration plugging __getitem__ call together with a
+  federated value.
+
+  Args:
+    arg: Instance of `computation_building_blocks.ComputationBuildingBlock` of
+      `computation_types.FederatedType` with member of type
+      `computation_types.NamedTupleType` from which we wish to pick out item
+      `idx`.
+    idx: Index, instance of `int` or `slice` used to address the
+      `computation_types.NamedTupleType` underlying `arg`.
+    context_stack: The context stack to use.
+
+  Returns:
+    Returns an instance of `ValueImpl` of type `computation_types.FederatedType`
+    of same placement as `arg`, the result of applying or mapping the
+    appropriate `__getitem__` function, as defined by `idx`.
+  """
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(idx, (int, slice))
+  py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+  py_typecheck.check_type(arg.type_signature.member,
+                          computation_types.NamedTupleType)
+  getitem_comp = _construct_getitem_comp(arg, idx, context_stack)
+  intrinsic = _construct_map_or_apply(getitem_comp, arg)
+  call = computation_building_blocks.Call(
+      intrinsic, computation_building_blocks.Tuple([getitem_comp, arg]))
+  return ValueImpl(call, context_stack)
+
+
+def _construct_getattr_call(arg, name, context_stack):
+  """Calls intrinsic `ValueImpl`, passing getattr to a federated value.
+
+  The main piece of orchestration plugging __getattr__ call together with a
+  federated value.
+
+  Args:
+    arg: Instance of `computation_building_blocks.ComputationBuildingBlock` of
+      `computation_types.FederatedType` with member of type
+      `computation_types.NamedTupleType` from which we wish to pick out item
+      `name`.
+    name: String name to address the `computation_types.NamedTupleType`
+      underlying `arg`.
+    context_stack: The context stack to use.
+
+  Returns:
+    Returns an instance of `ValueImpl` of type `computation_types.FederatedType`
+    of same placement as `arg`, the result of applying or mapping the
+    appropriate `__getattr__` function, as defined by `name`.
+  """
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(name, str)
+  py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+  py_typecheck.check_type(arg.type_signature.member,
+                          computation_types.NamedTupleType)
+  getattr_comp = _construct_getattr_comp(arg, name)
+  intrinsic = _construct_map_or_apply(getattr_comp, arg)
+  call = computation_building_blocks.Call(
+      intrinsic, computation_building_blocks.Tuple([getattr_comp, arg]))
+  return ValueImpl(call, context_stack)
+
+
+def _construct_map_or_apply(func, arg):
+  """Injects intrinsic to allow application of `func` to federated `arg`.
+
+  Currently only supports `arg` placed at server.
+
+  Args:
+    func: `value_base.Value` instance of non-federated type to be wrapped with
+      intrinsic in order to call on `arg`.
+    arg: `computation_building_blocks.ComputationBuildingBlock` instance of
+      federated type for which to construct intrinsic in order to call `func` on
+      `value`.
+
+  Returns:
+    Returns `value_base.Value` instance wrapping
+      `computation_building_blocks.Intrinsic` which can call `func` on `arg`.
+  """
+  py_typecheck.check_type(func,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+  result_type = computation_types.FederatedType(func.type_signature.result,
+                                                arg.type_signature.placement,
+                                                arg.type_signature.all_equal)
+  if arg.type_signature.placement == placement_literals.SERVER:
+    intrinsic = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_APPLY.uri,
+        computation_types.FunctionType(
+            [func.type_signature, arg.type_signature], result_type))
+  elif arg.type_signature.placement == placement_literals.CLIENTS:
+    intrinsic = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MAP.uri,
+        computation_types.FunctionType(
+            [func.type_signature, arg.type_signature], result_type))
+  return intrinsic
+
+
+def _construct_getattr_comp(comp, name):
+  """Function to construct computation for `federated_apply` of `__getattr__`.
+
+  Constructs a `computation_building_blocks.ComputationBuildingBlock`
+  which selects `name` from its argument, of type `comp.type_signature.member`,
+  an instance of `computation_types.NamedTupleType`.
+
+  Args:
+    comp: Instance of `ValueImpl` or
+      `computation_building_blocks.ComputationBuildingBlock` with type signature
+      `computation_types.FederatedType` whose `member` attribute is of type
+      `computation_types.NamedTupleType`.
+    name: String name of attribute to grab.
+
+  Returns:
+    Instance of `computation_building_blocks.Lambda` which grabs attribute
+      according to `name` of its argument.
+  """
+  py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
+  py_typecheck.check_type(comp.type_signature.member,
+                          computation_types.NamedTupleType)
+  element_names = [
+      x for x, _ in anonymous_tuple.to_elements(comp.type_signature.member)
+  ]
+  if name not in element_names:
+    raise ValueError('The federated value {} has no element of name {}'.format(
+        comp, name))
+  apply_input = computation_building_blocks.Reference(
+      'x', comp.type_signature.member)
+  selected = computation_building_blocks.Selection(apply_input, name=name)
+  apply_lambda = computation_building_blocks.Lambda(
+      'x', apply_input.type_signature, selected)
+  return apply_lambda
+
+
+def _construct_getitem_comp(comp, key, context_stack):
+  """Function to construct computation for `federated_apply` of `__getitem__`.
+
+  Constructs a `computation_building_blocks.ComputationBuildingBlock`
+  which selects `key` from its argument, of type `comp.type_signature.member`,
+  of type `computation_types.NamedTupleType`.
+
+  Args:
+    comp: Instance of `ValueImpl` or
+      `computation_building_blocks.ComputationBuildingBlock` with type signature
+      `computation_types.FederatedType` whose `member` attribute is of type
+      `computation_types.NamedTupleType`.
+    key: Instance of `int` or `slice`, key used to grab elements from the member
+      of `comp`.
+    context_stack: Context stack to use, necessary to take advantage of
+      implementation of slicing for `ValueImpl` objects with `type_signature`
+      `computation_types.NamedTupleType`.
+
+  Returns:
+    Instance of `computation_building_blocks.Lambda` which grabs slice
+      according to `key` of its argument.
+  """
+  py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
+  py_typecheck.check_type(comp.type_signature.member,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_type(key, (int, slice))
+  apply_input = computation_building_blocks.Reference(
+      'x', comp.type_signature.member)
+  input_val = to_value(apply_input, None, context_stack)
+  selected = input_val[key]
+  apply_lambda = computation_building_blocks.Lambda(
+      'x', apply_input.type_signature, ValueImpl.get_comp(selected))
+  return apply_lambda
 
 
 def _wrap_constant_as_value(const, context_stack):
