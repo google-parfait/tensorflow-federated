@@ -111,6 +111,21 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
   def test_infer_type_with_string(self):
     self.assertEqual(str(type_utils.infer_type('abc')), 'string')
 
+  def test_infer_type_with_np_int32(self):
+    self.assertEqual(str(type_utils.infer_type(np.int32(10))), 'int32')
+
+  def test_infer_type_with_np_int64(self):
+    self.assertEqual(str(type_utils.infer_type(np.int64(10))), 'int64')
+
+  def test_infer_type_with_np_float32(self):
+    self.assertEqual(str(type_utils.infer_type(np.float32(10))), 'float32')
+
+  def test_infer_type_with_np_float64(self):
+    self.assertEqual(str(type_utils.infer_type(np.float64(10))), 'float64')
+
+  def test_infer_type_with_np_bool(self):
+    self.assertEqual(str(type_utils.infer_type(np.bool(True))), 'bool')
+
   def test_infer_type_with_unicode_string(self):
     self.assertEqual(str(type_utils.infer_type(u'abc')), 'string')
 

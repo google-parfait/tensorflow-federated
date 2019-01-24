@@ -28,6 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -113,9 +114,9 @@ def make_dataset_from_string_handle(handle, type_spec):
     A corresponding instance of `tf.data.Dataset`.
   """
   type_spec = computation_types.to_type(type_spec)
-  dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
+  tf_dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
   with handle.graph.as_default():
-    it = tf.data.Iterator.from_string_handle(handle, dtypes, shapes)
+    it = tf.data.Iterator.from_string_handle(handle, tf_dtypes, shapes)
     # In order to convert an iterator into something that looks like a data
     # set, we create a dummy data set that consists of an infinite sequence
     # of zeroes, and filter it through a map function that invokes
@@ -126,13 +127,14 @@ def make_dataset_from_string_handle(handle, type_spec):
     return tf.data.Dataset.range(1).repeat().map(lambda _: it.get_next())
 
 
-def capture_result_from_graph(result):
+def capture_result_from_graph(result, graph):
   """Captures a result stamped into a tf.Graph as a type signature and binding.
 
   Args:
     result: The result to capture, a Python object that is composed of tensors,
       possibly nested within Python structures such as dictionaries, lists,
       tuples, or named tuples.
+    graph: The instance of tf.Graph to use.
 
   Returns:
     A tuple (type_spec, binding), where 'type_spec' is an instance of
@@ -146,6 +148,9 @@ def capture_result_from_graph(result):
   # TODO(b/113112885): The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
+  if isinstance(result, dtype_utils.TENSOR_REPRESENTATION_TYPES):
+    with graph.as_default():
+      result = tf.constant(result)
   if tf.contrib.framework.is_tensor(result):
     return (computation_types.TensorType(result.dtype.base_dtype, result.shape),
             pb.TensorFlow.Binding(
@@ -156,7 +161,7 @@ def capture_result_from_graph(result):
     # the fact that collections.namedtuples inherit from 'tuple' because we'd be
     # failing to retain the information about naming of tuple members.
     # pylint: disable=protected-access
-    return capture_result_from_graph(result._asdict())
+    return capture_result_from_graph(result._asdict(), graph)
     # pylint: enable=protected-access
   elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
     if isinstance(result, anonymous_tuple.AnonymousTuple):
@@ -166,7 +171,8 @@ def capture_result_from_graph(result):
     else:
       name_value_pairs = sorted(six.iteritems(result))
     element_name_type_binding_triples = [
-        ((k,) + capture_result_from_graph(v)) for k, v in name_value_pairs
+        ((k,) + capture_result_from_graph(v, graph))
+        for k, v in name_value_pairs
     ]
     return (computation_types.NamedTupleType(
         [((e[0], e[1]) if e[0] else e[1])
@@ -175,7 +181,9 @@ def capture_result_from_graph(result):
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[2] for e in element_name_type_binding_triples])))
   elif isinstance(result, (list, tuple)):
-    element_type_binding_pairs = [capture_result_from_graph(e) for e in result]
+    element_type_binding_pairs = [
+        capture_result_from_graph(e, graph) for e in result
+    ]
     return (computation_types.NamedTupleType(
         [e[0] for e in element_type_binding_pairs]),
             pb.TensorFlow.Binding(

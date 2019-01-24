@@ -84,7 +84,7 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
           'The computation declared a parameter of type {}, but the argument '
           'was not supplied.'.format(str(type_spec.parameter)))
     else:
-      arg_type, arg_binding = graph_utils.capture_result_from_graph(arg)
+      arg_type, arg_binding = graph_utils.capture_result_from_graph(arg, graph)
       if not type_utils.is_assignable_from(type_spec.parameter, arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '

@@ -24,7 +24,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import six
 from six.moves import range
 import tensorflow as tf
@@ -38,6 +37,7 @@ from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
@@ -82,12 +82,6 @@ class ComputedValue(object):
         str(self._value), str(self._type_signature))
 
 
-# TODO(b/113123634): Address this in a more systematic way, and possibly narrow
-# this down to a smaller set.
-_TENSOR_REPRESENTATION_TYPES = (str, int, float, bool, np.int32, np.int64,
-                                np.float32, np.float64, np.bool, np.ndarray)
-
-
 def to_representation_for_type(value, type_spec, callable_handler=None):
   """Verifies or converts the `value` representation to match `type_spec`.
 
@@ -99,9 +93,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
 
   The accepted forms of `value` for vaqrious TFF types as as follows:
 
-  * For TFF tensor types, either primitive Python types such as `str`, `int`,
-    `float`, and `bool`, or Numpy primitive types (such as `np.int32`), or
-    Numpy arrays (`np.ndarray`), as listed in `_TENSOR_REPRESENTATION_TYPES`.
+  * For TFF tensor types listed in `dtypes.TENSOR_REPRESENTATION_TYPES`.
 
   * For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
 
@@ -158,7 +150,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   # the Python types recognized by that helper function.
 
   if isinstance(type_spec, computation_types.TensorType):
-    py_typecheck.check_type(value, _TENSOR_REPRESENTATION_TYPES)
+    py_typecheck.check_type(value, dtype_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_utils.infer_type(value)
     if inferred_type_spec != type_spec:
       raise TypeError(

@@ -89,7 +89,8 @@ def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
       result = target(*args)
-    result_type, result_binding = graph_utils.capture_result_from_graph(result)
+    result_type, result_binding = graph_utils.capture_result_from_graph(
+        result, graph)
 
   return pb.Computation(
       type=pb.Type(

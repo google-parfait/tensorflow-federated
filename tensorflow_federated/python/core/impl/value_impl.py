@@ -20,7 +20,6 @@ from __future__ import print_function
 import abc
 import collections
 
-import numpy as np
 import six
 from six.moves import range
 import tensorflow as tf
@@ -33,6 +32,7 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
+from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import func_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
@@ -519,7 +519,7 @@ def to_value(arg, type_spec, context_stack):
         computation_building_blocks.Tuple([
             ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg
         ]), context_stack)
-  elif isinstance(arg, (str, int, float, bool, np.ndarray, np.generic)):
+  elif isinstance(arg, dtype_utils.TENSOR_REPRESENTATION_TYPES):
     result = _wrap_constant_as_value(arg, context_stack)
   elif isinstance(arg, (tf.Tensor, tf.Variable)):
     raise TypeError(
