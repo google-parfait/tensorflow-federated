@@ -75,6 +75,10 @@ class ComputedValue(object):
   def value(self):
     return self._value
 
+  def __str__(self):
+    return 'ComputedValue({}, {})'.format(
+        str(self._value), str(self._type_signature))
+
 
 # TODO(b/113123634): Address this in a more systematic way, and possibly narrow
 # this down to a smaller set.
@@ -388,6 +392,33 @@ class ReferenceExecutor(context_base.Context):
     if compiler is not None:
       py_typecheck.check_type(compiler, compiler_pipeline.CompilerPipeline)
     self._compiler = compiler
+    self._intrinsic_method_dict = {
+        k.uri: v for k, v in
+        [(intrinsic_defs.FEDERATED_AGGREGATE, self._federated_aggregate
+         ), (intrinsic_defs.FEDERATED_APPLY, self._federated_apply
+            ), (intrinsic_defs.FEDERATED_AVERAGE, self._federated_average
+               ), (intrinsic_defs.FEDERATED_BROADCAST,
+                   self._federated_broadcast),
+         (intrinsic_defs.FEDERATED_COLLECT, self._federated_collect
+         ), (intrinsic_defs.FEDERATED_MAP, self._federated_map
+            ), (intrinsic_defs.FEDERATED_REDUCE, self._federated_reduce
+               ), (intrinsic_defs.FEDERATED_SUM, self._federated_sum),
+         (intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS,
+          self._federated_value_at_clients),
+         (intrinsic_defs.FEDERATED_VALUE_AT_SERVER,
+          self._federated_value_at_server),
+         (intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE,
+          self._federated_weighted_average),
+         (intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS,
+          self._federated_zip_at_clients),
+         (intrinsic_defs.FEDERATED_ZIP_AT_SERVER, self._federated_zip_at_server
+         ), (intrinsic_defs.GENERIC_PLUS, self._generic_plus),
+         (intrinsic_defs.GENERIC_ZERO,
+          self._generic_zero), (intrinsic_defs.SEQUENCE_MAP,
+                                self._sequence_map),
+         (intrinsic_defs.SEQUENCE_REDUCE, self._sequence_reduce
+         ), (intrinsic_defs.SEQUENCE_SUM, self._sequence_sum)]
+    }
 
   def ingest(self, arg, type_spec):
 
@@ -405,7 +436,10 @@ class ReferenceExecutor(context_base.Context):
                                      computed_comp.type_signature)
     if not isinstance(computed_comp.type_signature,
                       computation_types.FunctionType):
-      return computed_comp.value
+      if arg is not None:
+        raise TypeError('Unexpected argument {}.'.format(str(arg)))
+      else:
+        return computed_comp.value
     else:
       if arg is not None:
 
@@ -580,19 +614,20 @@ class ReferenceExecutor(context_base.Context):
 
   def _compute_intrinsic(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Intrinsic)
-
-    # TODO(b/113123634): Implement all the remaining cases.
-    if comp.uri != intrinsic_defs.SEQUENCE_SUM.uri:
+    my_method = self._intrinsic_method_dict.get(comp.uri)
+    if my_method is not None:
+      # The interpretation of `my_method` depends on whether the intrinsic does
+      # or does not take arguments. If it does, the method accepts the argument
+      # as a `ComputedValue` instance. Otherwise, if the intrinsic is not a
+      # function, but a constant (such as `GENERIC_ZERO`), the method accepts
+      # the type of the result.
+      if isinstance(comp.type_signature, computation_types.FunctionType):
+        return ComputedValue(my_method, comp.type_signature)
+      else:
+        return my_method(comp.type_signature)
+    else:
       raise NotImplementedError('Intrinsic {} is currently unsupported.'.format(
           comp.uri))
-    elif str(comp.type_signature.result) != 'int32':
-      raise NotImplementedError(
-          'Intrinsic sequence_sum for sequences of type {} is currently '
-          'unsupported.'.format(str(comp.type_signature_result)))
-    else:
-      return ComputedValue(
-          lambda x: ComputedValue(sum(x.value), x.type_signature.element),
-          comp.type_signature)
 
   def _compute_data(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Data)
@@ -601,3 +636,216 @@ class ReferenceExecutor(context_base.Context):
   def _compute_placement(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Placement)
     raise NotImplementedError('Placement is currently unsupported.')
+
+  def _sequence_sum(self, arg):
+    py_typecheck.check_type(arg.type_signature, computation_types.SequenceType)
+    total = self._generic_zero(arg.type_signature.element)
+    for v in arg.value:
+      total = self._generic_plus(
+          ComputedValue(
+              anonymous_tuple.AnonymousTuple([(None, total.value), (None, v)]),
+              [arg.type_signature.element, arg.type_signature.element]))
+    return total
+
+  def _federated_collect(self, arg):
+    type_utils.check_federated_type(arg.type_signature, None,
+                                    placements.CLIENTS, False)
+    return ComputedValue(
+        arg.value,
+        computation_types.FederatedType(
+            computation_types.SequenceType(arg.type_signature.member),
+            placements.SERVER, True))
+
+  def _federated_map(self, arg):
+    mapping_type = arg.type_signature[0]
+    py_typecheck.check_type(mapping_type, computation_types.FunctionType)
+    type_utils.check_federated_type(arg.type_signature[1],
+                                    mapping_type.parameter, placements.CLIENTS,
+                                    False)
+    fn = arg.value[0]
+    result_val = [
+        fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
+    ]
+    result_type = computation_types.FederatedType(mapping_type.result,
+                                                  placements.CLIENTS, False)
+    return ComputedValue(result_val, result_type)
+
+  def _federated_apply(self, arg):
+    mapping_type = arg.type_signature[0]
+    py_typecheck.check_type(mapping_type, computation_types.FunctionType)
+    type_utils.check_federated_type(
+        arg.type_signature[1], mapping_type.parameter, placements.SERVER, True)
+    fn = arg.value[0]
+    result_val = fn(ComputedValue(arg.value[1], mapping_type.parameter)).value
+    result_type = computation_types.FederatedType(mapping_type.result,
+                                                  placements.SERVER, True)
+    return ComputedValue(result_val, result_type)
+
+  def _federated_sum(self, arg):
+    type_utils.check_federated_type(arg.type_signature, None,
+                                    placements.CLIENTS, False)
+    collected_val = self._federated_collect(arg)
+    federated_apply_arg = anonymous_tuple.AnonymousTuple(
+        [(None, self._sequence_sum), (None, collected_val.value)])
+    apply_fn_type = computation_types.FunctionType(
+        computation_types.SequenceType(arg.type_signature.member),
+        arg.type_signature.member)
+    return self._federated_apply(
+        ComputedValue(federated_apply_arg,
+                      [apply_fn_type, collected_val.type_signature]))
+
+  def _federated_value_at_clients(self, arg):
+    return ComputedValue(
+        arg.value,
+        computation_types.FederatedType(
+            arg.type_signature, placements.CLIENTS, all_equal=True))
+
+  def _federated_value_at_server(self, arg):
+    return ComputedValue(
+        arg.value,
+        computation_types.FederatedType(
+            arg.type_signature, placements.SERVER, all_equal=True))
+
+  def _generic_zero(self, type_spec):
+    if isinstance(type_spec, computation_types.TensorType):
+      # TODO(b/113116813): Replace this with something more efficient, probably
+      # calling some helper method from Numpy.
+      with tf.Graph().as_default() as graph:
+        zeros = tf.constant(0, type_spec.dtype, type_spec.shape)
+        with tf.Session(graph=graph) as sess:
+          zeros_val = sess.run(zeros)
+      return ComputedValue(zeros_val, type_spec)
+    elif isinstance(type_spec, computation_types.NamedTupleType):
+      return ComputedValue(
+          anonymous_tuple.AnonymousTuple(
+              [(k, self._generic_zero(v).value)
+               for k, v in anonymous_tuple.to_elements(type_spec)]), type_spec)
+    elif isinstance(
+        type_spec,
+        (computation_types.SequenceType, computation_types.FunctionType,
+         computation_types.AbstractType, computation_types.PlacementType)):
+      raise TypeError(
+          'The generic_zero is not well-defined for TFF type {}.'.format(
+              str(type_spec)))
+    elif isinstance(type_spec, computation_types.FederatedType):
+      if type_spec.all_equal:
+        return ComputedValue(
+            self._generic_zero(type_spec.member).value, type_spec)
+      else:
+        # TODO(b/113116813): Implement this in terms of the generic placement
+        # operator once it's been added to the mix.
+        raise NotImplementedError(
+            'Generic zero support for non-all_equal federated types is not '
+            'implemented yet.')
+    else:
+      raise NotImplementedError(
+          'Generic zero support for {} is not implemented yet.'.format(
+              str(type_spec)))
+
+  def _generic_plus(self, arg):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    if len(arg.type_signature) != 2:
+      raise TypeError('Generic plus is undefined for tuples of size {}.'.format(
+          str(len(arg.type_signature))))
+    element_type = arg.type_signature[0]
+    if arg.type_signature[1] != element_type:
+      raise TypeError('Generic plus is undefined for two-tuples of different '
+                      'types ({} vs. {}).'.format(
+                          str(element_type), str(arg.type_signature[1])))
+    if isinstance(element_type, computation_types.TensorType):
+      return ComputedValue(arg.value[0] + arg.value[1], element_type)
+    elif isinstance(element_type, computation_types.NamedTupleType):
+      py_typecheck.check_type(arg.value[0], anonymous_tuple.AnonymousTuple)
+      py_typecheck.check_type(arg.value[1], anonymous_tuple.AnonymousTuple)
+      result_val_elements = []
+      for idx, (name, elem_type) in enumerate(
+          anonymous_tuple.to_elements(element_type)):
+        to_add = ComputedValue(
+            anonymous_tuple.AnonymousTuple([(None, arg.value[0][idx]),
+                                            (None, arg.value[1][idx])]),
+            [elem_type, elem_type])
+        add_result = self._generic_plus(to_add)
+        result_val_elements.append((name, add_result.value))
+      return ComputedValue(
+          anonymous_tuple.AnonymousTuple(result_val_elements), element_type)
+    else:
+      # TODO(b/113116813): Implement the remaining cases.
+      raise NotImplementedError
+
+  def _sequence_map(self, arg):
+    mapping_type = arg.type_signature[0]
+    py_typecheck.check_type(mapping_type, computation_types.FunctionType)
+    sequence_type = arg.type_signature[1]
+    py_typecheck.check_type(sequence_type, computation_types.SequenceType)
+    type_utils.check_assignable_from(mapping_type.parameter,
+                                     sequence_type.element)
+    fn = arg.value[0]
+    result_val = [
+        fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
+    ]
+    result_type = computation_types.SequenceType(mapping_type.result)
+    return ComputedValue(result_val, result_type)
+
+  def _sequence_reduce(self, arg):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    sequence_type = arg.type_signature[0]
+    py_typecheck.check_type(sequence_type, computation_types.SequenceType)
+    zero_type = arg.type_signature[1]
+    op_type = arg.type_signature[2]
+    py_typecheck.check_type(op_type, computation_types.FunctionType)
+    type_utils.check_assignable_from(op_type.parameter,
+                                     [zero_type, sequence_type.element])
+    total = ComputedValue(arg.value[1], zero_type)
+    reduce_fn = arg.value[2]
+    for v in arg.value[0]:
+      total = reduce_fn(
+          ComputedValue(
+              anonymous_tuple.AnonymousTuple([(None, total.value), (None, v)]),
+              op_type.parameter))
+    return total
+
+  def _federated_reduce(self, arg):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    federated_type = arg.type_signature[0]
+    type_utils.check_federated_type(federated_type, None, placements.CLIENTS,
+                                    False)
+    zero_type = arg.type_signature[1]
+    op_type = arg.type_signature[2]
+    py_typecheck.check_type(op_type, computation_types.FunctionType)
+    type_utils.check_assignable_from(op_type.parameter,
+                                     [zero_type, federated_type.member])
+    total = ComputedValue(arg.value[1], zero_type)
+    reduce_fn = arg.value[2]
+    for v in arg.value[0]:
+      total = reduce_fn(
+          ComputedValue(
+              anonymous_tuple.AnonymousTuple([(None, total.value), (None, v)]),
+              op_type.parameter))
+    return self._federated_value_at_server(total)
+
+  def _federated_zip_at_clients(self, arg):
+    # TODO(b/113116813): Implement this.
+    raise NotImplementedError
+
+  def _federated_zip_at_server(self, arg):
+    # TODO(b/113116813): Implement this.
+    raise NotImplementedError
+
+  def _federated_aggregate(self, arg):
+    # TODO(b/113116813): Implement this.
+    raise NotImplementedError
+
+  def _federated_average(self, arg):
+    # TODO(b/113116813): Implement this.
+    raise NotImplementedError
+
+  def _federated_weighted_average(self, arg):
+    # TODO(b/113116813): Implement this.
+    raise NotImplementedError
+
+  def _federated_broadcast(self, arg):
+    # TODO(b/113116813): Implement this.
+    raise NotImplementedError

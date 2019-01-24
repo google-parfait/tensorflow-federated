@@ -746,6 +746,21 @@ class TypeUtilsTest(common_test_utils.TffTestCase, parameterized.TestCase):
     placement = computation_types.PlacementType()
     self.assertTrue(type_utils.check_well_formed(placement))
 
+  def test_check_federated_type(self):
+    type_spec = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                False)
+    type_utils.check_federated_type(type_spec, tf.int32, placements.CLIENTS,
+                                    False)
+    type_utils.check_federated_type(type_spec, tf.int32, None, None)
+    type_utils.check_federated_type(type_spec, None, placements.CLIENTS, None)
+    type_utils.check_federated_type(type_spec, None, None, False)
+    self.assertRaises(TypeError, type_utils.check_federated_type, type_spec,
+                      tf.bool, None, None)
+    self.assertRaises(TypeError, type_utils.check_federated_type, type_spec,
+                      None, placements.SERVER, None)
+    self.assertRaises(TypeError, type_utils.check_federated_type, type_spec,
+                      None, None, True)
+
 
 if __name__ == '__main__':
   tf.test.main()

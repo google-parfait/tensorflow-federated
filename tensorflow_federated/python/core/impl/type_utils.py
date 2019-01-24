@@ -495,6 +495,41 @@ def is_sum_compatible(type_spec):
     return False
 
 
+def check_federated_type(type_spec, member=None, placement=None,
+                         all_equal=None):
+  """Checks that `type_spec` is a federated type with the given parameters.
+
+  Args:
+    type_spec: The `tff.Type` to check (or something convertible to it).
+    member: The expected member type, or `None` if unspecified.
+    placement: The desired placement, or `None` if unspecified.
+    all_equal: The desired result of accessing the property
+      `tff.FederatedType.all_equal` of `type_spec`, or `None` if left
+      unspecified.
+
+  Raises:
+    TypeError: if `type_spec` is not a federated type of the given kind.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.FederatedType)
+  if member is not None:
+    member = computation_types.to_type(member)
+    py_typecheck.check_type(member, computation_types.Type)
+    check_assignable_from(member, type_spec.member)
+  if placement is not None:
+    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    if type_spec.placement != placement:
+      raise TypeError(
+          'Expected federated type placed at {}, got one placed at {}.'.format(
+              str(placement), str(type_spec.placement)))
+  if all_equal is not None:
+    py_typecheck.check_type(all_equal, bool)
+    if type_spec.all_equal != all_equal:
+      raise TypeError(
+          'Expected federated type with all_equial {}, got one with {}.'.format(
+              str(all_equal), str(type_spec.all_equal)))
+
+
 def check_federated_value_placement(value, placement, label=None):
   """Checks that `value` is a federated value placed at `placement`.
 
