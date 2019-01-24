@@ -1,7 +1,5 @@
 # Package for TensorFlow containing tools for lossy compression of models.
 
-# Placeholder for internal Python version compatibility macro.
-
 package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])  # Apache 2.0
@@ -17,8 +15,8 @@ py_library(
 
 py_test(
     name = "encoders_test",
+    size = "small",
     srcs = ["encoders_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":encoders",
         "//tensorflow_federated/python/tensorflow_libs/model_compression/core:test_utils",

@@ -1,5 +1,3 @@
-# Placeholder for internal Python version compatibility macro.
-
 package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
@@ -12,6 +10,7 @@ py_library(
     deps = [
         ":federated_averaging",
         ":model",
+        ":model_utils",
         "//tensorflow_federated/python/learning/framework",
     ],
 )
@@ -20,8 +19,8 @@ py_library(
     name = "federated_averaging",
     srcs = ["federated_averaging.py"],
     deps = [
-        ":model",
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -30,8 +29,8 @@ py_library(
 
 py_test(
     name = "federated_averaging_test",
+    size = "small",
     srcs = ["federated_averaging_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":federated_averaging",
         ":model_examples",
@@ -49,6 +48,7 @@ py_library(
     deps = [
         ":model",
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -57,8 +57,8 @@ py_library(
 
 py_test(
     name = "federated_sgd_test",
+    size = "small",
     srcs = ["federated_sgd_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":federated_sgd",
         ":model_examples",
@@ -89,8 +89,8 @@ py_library(
 
 py_test(
     name = "model_utils_test",
+    size = "small",
     srcs = ["model_utils_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":model_examples",
         ":model_utils",
@@ -113,8 +113,8 @@ py_library(
 
 py_test(
     name = "model_examples_test",
+    size = "small",
     srcs = ["model_examples_test.py"],
-    default_python_version = "PY3",
     deps = [
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test",

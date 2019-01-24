@@ -23,7 +23,7 @@ import types
 import six
 from six.moves import range
 
-from tensorflow.python.framework import function as tf_function
+from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -58,8 +58,8 @@ def is_defun(func):
           # structure we create a dependency on.
           # TODO(b/113112885): Work towards avoiding this, posisbly by
           # upstreaming some helper library or extending the public interface.
-          tf_function._DefinedFunction,  # pylint: disable=protected-access
-          tf_function._OverloadedFunction  # pylint: disable=protected-access
+          function._DefinedFunction,  # pylint: disable=protected-access
+          function._OverloadedFunction  # pylint: disable=protected-access
       ))
 
 
@@ -86,8 +86,8 @@ def get_argspec(func):
           # There does not appear to be a robust way to distinguish between
           # typed and polymorphic defuns, so we refer to private class names
           # again.
-          tf_function._DefinedFunction,  # pylint: disable=protected-access
-          tf_function._OverloadedFunction  # pylint: disable=protected-access
+          function._DefinedFunction,  # pylint: disable=protected-access
+          function._OverloadedFunction  # pylint: disable=protected-access
       )):
     # On the non-eager defuns, tf_inspect does not appear to work, so we peek
     # inside to extract arguments.

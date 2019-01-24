@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
-from six import assertRaisesRegex
+import six
 from six.moves import range
 import tensorflow as tf
 
@@ -70,12 +70,13 @@ class ComputationUtilsTest(absltest.TestCase):
     self.assertEqual(state, sum(range(iterations)))
 
   def test_iterative_process_initialize_bad_type(self):
-    with assertRaisesRegex(self, TypeError, r'Expected .*\.Computation, .*'):
+    with six.assertRaisesRegex(self, TypeError,
+                               r'Expected .*\.Computation, .*'):
       _ = computation_utils.IterativeProcess(
           initialize_fn=None, next_fn=add_int32)
 
-    with assertRaisesRegex(self, TypeError,
-                           r'initialize_fn must be a no-arg tff.Computation'):
+    with six.assertRaisesRegex(
+        self, TypeError, r'initialize_fn must be a no-arg tff.Computation'):
 
       @tff.federated_computation(tf.int32)
       def one_arg_initialize(one_arg):
@@ -86,13 +87,14 @@ class ComputationUtilsTest(absltest.TestCase):
           initialize_fn=one_arg_initialize, next_fn=add_int32)
 
   def test_iterative_process_next_bad_type(self):
-    with assertRaisesRegex(self, TypeError, r'Expected .*\.Computation, .*'):
+    with six.assertRaisesRegex(self, TypeError,
+                               r'Expected .*\.Computation, .*'):
       _ = computation_utils.IterativeProcess(
           initialize_fn=initialize, next_fn=None)
 
   def test_iterative_process_type_mismatch(self):
-    with assertRaisesRegex(self, TypeError,
-                           r'The return type of initialize_fn should match.*'):
+    with six.assertRaisesRegex(
+        self, TypeError, r'The return type of initialize_fn should match.*'):
 
       @tff.federated_computation([tf.float32, tf.float32])
       def add_float32(current, val):
@@ -101,7 +103,7 @@ class ComputationUtilsTest(absltest.TestCase):
       _ = computation_utils.IterativeProcess(
           initialize_fn=initialize, next_fn=add_float32)
 
-    with assertRaisesRegex(
+    with six.assertRaisesRegex(
         self, TypeError,
         'The return type of next_fn should match the first parameter'):
 
