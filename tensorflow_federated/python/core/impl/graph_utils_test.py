@@ -25,14 +25,13 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
-from tensorflow_federated.python.common_libs import test_utils as common_test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import graph_utils
-from tensorflow_federated.python.core.impl import test_utils
 from tensorflow_federated.python.core.impl import type_utils
 
 
-class GraphUtilsTest(common_test_utils.TffTestCase):
+class GraphUtilsTest(test.TestCase):
 
   def _assert_binding_matches_type_and_value(self, binding, type_spec, val,
                                              graph):
@@ -56,8 +55,8 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       output_dtypes, output_shapes = (
           type_utils.type_to_tf_dtypes_and_shapes(type_spec.element))
-      test_utils.assert_nested_struct_eq(val.output_types, output_dtypes)
-      test_utils.assert_nested_struct_eq(val.output_shapes, output_shapes)
+      test.assert_nested_struct_eq(val.output_types, output_dtypes)
+      test.assert_nested_struct_eq(val.output_shapes, output_shapes)
     else:
       self.assertEqual(binding_oneof, 'tuple')
       self.assertIsInstance(type_spec, computation_types.NamedTupleType)
@@ -127,16 +126,16 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
       x = self._checked_stamp_parameter('foo',
                                         computation_types.SequenceType(tf.bool))
     self.assertIsInstance(x, tf.data.Dataset)
-    test_utils.assert_nested_struct_eq(x.output_types, tf.bool)
-    test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
+    test.assert_nested_struct_eq(x.output_types, tf.bool)
+    test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo', computation_types.SequenceType((tf.int32, [50])))
     self.assertIsInstance(x, tf.data.Dataset)
-    test_utils.assert_nested_struct_eq(x.output_types, tf.int32)
-    test_utils.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
+    test.assert_nested_struct_eq(x.output_types, tf.int32)
+    test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
 
   def test_stamp_parameter_in_graph_with_tensor_pair_sequence(self):
     with tf.Graph().as_default():
@@ -145,11 +144,11 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
           computation_types.SequenceType([('A', (tf.float32, [3, 4, 5])),
                                           ('B', (tf.int32, [1]))]))
     self.assertIsInstance(x, tf.data.Dataset)
-    test_utils.assert_nested_struct_eq(x.output_types, {
+    test.assert_nested_struct_eq(x.output_types, {
         'A': tf.float32,
         'B': tf.int32
     })
-    test_utils.assert_nested_struct_eq(x.output_shapes, {
+    test.assert_nested_struct_eq(x.output_shapes, {
         'A': tf.TensorShape([3, 4, 5]),
         'B': tf.TensorShape([1])
     })
@@ -517,4 +516,4 @@ class GraphUtilsTest(common_test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()

@@ -160,7 +160,7 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":computation_wrapper_instances",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -176,7 +176,7 @@ py_test(
         ":context_base",
         ":context_stack_impl",
         ":func_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -274,7 +274,7 @@ py_test(
         ":func_utils",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -303,11 +303,10 @@ py_test(
     default_python_version = "PY3",
     deps = [
         ":graph_utils",
-        ":test_utils",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -498,7 +497,7 @@ py_test(
         ":context_stack_impl",
         ":tensorflow_deserialization",
         ":tensorflow_serialization",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -527,29 +526,8 @@ py_test(
         ":context_stack_impl",
         ":tensorflow_serialization",
         ":type_serialization",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "test_utils",
-    srcs = ["test_utils.py"],
-    deps = [
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
-)
-
-py_test(
-    name = "test_utils_test",
-    size = "small",
-    srcs = ["test_utils_test.py"],
-    default_python_version = "PY3",
-    deps = [
-        ":test_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -664,7 +642,7 @@ py_test(
     deps = [
         ":type_serialization",
         ":type_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -694,11 +672,10 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
-        ":test_utils",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",

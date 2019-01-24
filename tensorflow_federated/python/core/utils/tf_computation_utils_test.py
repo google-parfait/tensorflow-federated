@@ -20,11 +20,11 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.utils import tf_computation_utils
 
 
-class TfComputationUtilsTest(test_utils.TffTestCase):
+class TfComputationUtilsTest(test.TestCase):
 
   def test_get_variables_with_tensor_type(self):
     x = tf_computation_utils.get_variables('foo', tf.int32)
@@ -44,4 +44,4 @@ class TfComputationUtilsTest(test_utils.TffTestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test.main()
