@@ -38,7 +38,7 @@ py_library(
 
 py_test(
     name = "test_utils_test",
-    size = "small",
+    size = "medium",
     srcs = ["test_utils_test.py"],
     deps = [
         ":encoding_stage",
