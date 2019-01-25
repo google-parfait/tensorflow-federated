@@ -20,6 +20,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import functools
 import itertools
 
@@ -31,6 +32,8 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
+
+nest = tf.contrib.framework.nest
 
 
 class NumBatchesCounter(tf.keras.metrics.Sum):
@@ -110,6 +113,12 @@ def build_linear_regresion_keras_subclass_model(feature_dims):
   return KerasLinearRegression()
 
 
+def _create_dummy_batch(feature_dims):
+  """Creates a dummy batch of zeros."""
+  return collections.OrderedDict([('x', tf.zeros([1, feature_dims])),
+                                  ('y', tf.zeros([1]))])
+
+
 class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
   def setUp(self):
@@ -133,6 +142,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegexp(TypeError, r'keras\..*\.Model'):
       model_utils.from_keras_model(
           keras_model=0,  # not a tf.keras.Model
+          dummy_batch=_create_dummy_batch(1),
           loss=tf.keras.losses.MeanSquaredError())
 
   @parameterized.parameters(
@@ -149,13 +159,14 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_fn(feature_dims)
     tff_model = model_utils.from_keras_model(
         keras_model=keras_model,
+        dummy_batch=_create_dummy_batch(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
     x_placeholder = tf.placeholder(
         tf.float32, shape=(None, feature_dims), name='x')
     y_placeholder = tf.placeholder(tf.float32, shape=(None, 1), name='y')
-    batch = model_utils._KerasModel.make_batch(x=x_placeholder, y=y_placeholder)
+    batch = {'x': x_placeholder, 'y': y_placeholder}
 
     output_op = tff_model.forward_pass(batch)
     metrics = tff_model.report_local_outputs()
@@ -176,9 +187,9 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       output = sess.run(
           fetches=output_op,
           feed_dict={
-              batch.x: [np.zeros(feature_dims),
-                        np.ones(feature_dims)],
-              batch.y: [[0.0], [1.0]],
+              batch['x']: [np.zeros(feature_dims),
+                           np.ones(feature_dims)],
+              batch['y']: [[0.0], [1.0]],
           })
       # Since the model initializes all weights and biases to zero, we expect
       # all predictions to be zero:
@@ -216,18 +227,13 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         optimizer=tf.keras.optimizers.SGD(lr=0.01),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
-    # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
-    # until the model has been called on input. The work-around is to call
-    # Model.test_on_batch() once before asking for metrics.
-    _ = keras_model.test_on_batch(
-        x=tf.zeros([1, feature_dims]), y=tf.zeros([1]))
-
-    tff_model = model_utils.from_compiled_keras_model(keras_model)
+    tff_model = model_utils.from_compiled_keras_model(
+        keras_model=keras_model, dummy_batch=_create_dummy_batch(feature_dims))
 
     x_placeholder = tf.placeholder(
         shape=(None, feature_dims), dtype=tf.float32, name='x')
     y_placeholder = tf.placeholder(shape=(None, 1), dtype=tf.float32, name='y')
-    batch = model_utils._KerasModel.make_batch(x=x_placeholder, y=y_placeholder)
+    batch = {'x': x_placeholder, 'y': y_placeholder}
 
     train_op = tff_model.train_on_batch(batch)
     metrics = tff_model.report_local_outputs()
@@ -247,8 +253,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     ]
 
     train_feed_dict = {
-        batch.x: [[0.0] * feature_dims, [5.0] * feature_dims],
-        batch.y: [[0.0], [5.0 * feature_dims]]
+        batch['x']: [[0.0] * feature_dims, [5.0] * feature_dims],
+        batch['y']: [[0.0], [5.0 * feature_dims]]
     }
     prior_loss = float('inf')
 
@@ -272,6 +278,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = build_linear_regresion_keras_functional_model(feature_dims=1)
     tff_model = model_utils.from_keras_model(
         keras_model=keras_model,
+        dummy_batch=_create_dummy_batch(1),
         loss=tf.keras.losses.MeanSquaredError(),
         optimizer=tf.keras.optimizers.SGD(lr=0.01))
     self.assertIsInstance(tff_model, model_utils.EnhancedTrainableModel)

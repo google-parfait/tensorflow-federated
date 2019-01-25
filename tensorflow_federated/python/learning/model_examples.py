@@ -48,6 +48,9 @@ class LinearRegression(model.Model):
     # Define a non-trainable model variable (another bias term)
     # for code coverage in testing.
     self._c = tf.Variable(0.0, name='c', trainable=False)
+    self._input_spec = LinearRegression.make_batch(
+        x=tf.TensorSpec([None, self._feature_dim], tf.float32),
+        y=tf.TensorSpec([None, 1.0], tf.float32))
 
   @property
   def trainable_variables(self):
@@ -61,6 +64,11 @@ class LinearRegression(model.Model):
   def local_variables(self):
     return [self._num_examples, self._num_batches, self._loss_sum]
 
+  @property
+  def input_spec(self):
+    # Model expects batched input, but the batch dimension is unspecified.
+    return self._input_spec
+
   @tf.contrib.eager.defun(autograph=False)
   def _predict(self, x):
     return tf.matmul(x, self._a) + self._b + self._c
@@ -69,14 +77,15 @@ class LinearRegression(model.Model):
   def forward_pass(self, batch, training=True):
     del training  # Unused
     if isinstance(batch, dict):
-      batch = self.make_batch(batch['x'], batch['y'])
-    if not batch.y.shape.is_compatible_with([None, 1]):
-      raise ValueError('Expected batch.y to be compatible with shape '
-                       '[None, 1] but found {}'.format(batch.y.shape))
-    if not batch.x.shape.is_compatible_with([None, self._feature_dim]):
-      raise ValueError('Expected batch.x to be compatible with shape '
-                       '[None, {}] but found {}'.format(self._feature_dim,
-                                                        batch.x.shape))
+      batch = self.make_batch(**batch)
+    if not self._input_spec.y.is_compatible_with(batch.y):
+      raise ValueError('Expected batch.y to be compatible with '
+                       '{} but found {}'.format(self._input_spec.y,
+                                                batch.y))
+    if not self._input_spec.x.is_compatible_with(batch.x):
+      raise ValueError('Expected batch.x to be compatible with '
+                       '{} but found {}'.format(self._input_spec.x,
+                                                batch.x))
     predictions = self._predict(batch.x)
     residuals = predictions - batch.y
     num_examples = tf.gather(tf.shape(predictions), 0)
