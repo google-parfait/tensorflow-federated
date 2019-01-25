@@ -367,19 +367,97 @@ class ValueImplTest(absltest.TestCase):
     with self.assertRaisesRegexp(IndexError, 'slice 0 elements'):
       _ = v[2:4:-1]
 
-  def test_intrinsic_construction_server(self):
-    federated_comp = computation_building_blocks.Reference(
-        'test',
-        computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                        placements.SERVER, True))
-    arg_ref = computation_building_blocks.Reference('x', [('a', tf.int32),
-                                                          ('b', tf.bool)])
-    return_val = computation_building_blocks.Selection(arg_ref, name='a')
-    non_federated_func = computation_building_blocks.Lambda(
-        'x', arg_ref.type_signature, return_val)
-    intrinsic = value_impl._construct_map_or_apply(
-        non_federated_func, federated_comp)
-    self.assertEqual(str(intrinsic), 'federated_apply')
+  def test_slicing_tuple_values(self):
+    for op in [list, tuple]:
+      t = op(range(0, 50, 10))
+      v = value_impl.to_value(t, None, context_stack_impl.context_stack)
+      self.assertEqual((str(v.type_signature)),
+                       '<int32,int32,int32,int32,int32>')
+      self.assertEqual(
+          str(v[:]),
+          str(value_impl.to_value(t, None, context_stack_impl.context_stack)))
+      sliced = v[:2]
+      self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
+      self.assertEqual(
+          str(sliced),
+          str(
+              value_impl.to_value(t[:2], None,
+                                  context_stack_impl.context_stack)))
+      sliced = v[-3:]
+      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
+      self.assertEqual(
+          str(sliced),
+          str(
+              value_impl.to_value(t[-3:], None,
+                                  context_stack_impl.context_stack)))
+      sliced = v[::2]
+      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
+      self.assertEqual(
+          str(sliced),
+          str(
+              value_impl.to_value(t[::2], None,
+                                  context_stack_impl.context_stack)))
+
+  def test_getitem_resolution_federated_value_clients(self):
+    federated_value = value_impl.to_value(
+        computation_building_blocks.Reference(
+            'test',
+            computation_types.FederatedType([tf.int32, tf.bool],
+                                            placements.CLIENTS, True)), None,
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(federated_value.type_signature), '<int32,bool>@CLIENTS')
+    federated_attribute = federated_value[0]
+    self.assertEqual(str(federated_attribute.type_signature), 'int32@CLIENTS')
+
+  def test_getitem_federated_slice_constructs_comp_clients(self):
+    federated_value = value_impl.to_value(
+        computation_building_blocks.Reference(
+            'test',
+            computation_types.FederatedType([tf.int32, tf.bool],
+                                            placements.CLIENTS, True)), None,
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(federated_value.type_signature), '<int32,bool>@CLIENTS')
+    identity = federated_value[:]
+    self.assertEqual(str(identity.type_signature), '<int32,bool>@CLIENTS')
+    self.assertEqual(str(identity), 'federated_map(<(x -> <x[0],x[1]>),test>)')
+
+  def test_getitem_resolution_federated_value_server(self):
+    federated_value = value_impl.to_value(
+        computation_building_blocks.Reference(
+            'test',
+            computation_types.FederatedType([tf.int32, tf.bool],
+                                            placements.SERVER, True)), None,
+        context_stack_impl.context_stack)
+    self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
+    federated_attribute = federated_value[0]
+    self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
+
+  def test_getitem_federated_slice_constructs_comp_server(self):
+    federated_value = value_impl.to_value(
+        computation_building_blocks.Reference(
+            'test',
+            computation_types.FederatedType([tf.int32, tf.bool],
+                                            placements.SERVER, True)), None,
+        context_stack_impl.context_stack)
+    self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
+    identity = federated_value[:]
+    self.assertEqual(str(identity.type_signature), '<int32,bool>@SERVER')
+    self.assertEqual(
+        str(identity), 'federated_apply(<(x -> <x[0],x[1]>),test>)')
+
+  def test_getattr_resolution_federated_value_server(self):
+    federated_value = value_impl.to_value(
+        computation_building_blocks.Reference(
+            'test',
+            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                            placements.SERVER, True)), None,
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
+    federated_attribute = federated_value.a
+    self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
 
   def test_getattr_resolution_federated_value_clients(self):
     federated_value = value_impl.to_value(
@@ -414,133 +492,6 @@ class ValueImplTest(absltest.TestCase):
         str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
     with self.assertRaisesRegexp(ValueError, r'has no element of name c'):
       _ = federated_value_server.c
-
-  def test_getitem_resolution_federated_value_clients(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, True)), None,
-        context_stack_impl.context_stack)
-    self.assertEqual(
-        str(federated_value.type_signature), '<int32,bool>@CLIENTS')
-    federated_attribute = federated_value[0]
-    self.assertEqual(str(federated_attribute.type_signature), 'int32@CLIENTS')
-
-  def test_getitem_federated_slice_constructs_comp_clients(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, True)), None,
-        context_stack_impl.context_stack)
-    self.assertEqual(
-        str(federated_value.type_signature), '<int32,bool>@CLIENTS')
-    identity = federated_value[:]
-    self.assertEqual(str(identity.type_signature), '<int32,bool>@CLIENTS')
-    self.assertEqual(str(identity), 'federated_map(<(x -> <x[0],x[1]>),test>)')
-
-  def test_getitem_comp_construction_server(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
-    get_0_comp = value_impl._construct_getitem_comp(
-        federated_value, 0, context_stack_impl.context_stack)
-    self.assertEqual(str(get_0_comp), '(x -> x[0])')
-    get_slice_comp = value_impl._construct_getitem_comp(
-        federated_value, slice(None, None, -1),
-        context_stack_impl.context_stack)
-    self.assertEqual(str(get_slice_comp), '(x -> <x[1],x[0]>)')
-
-  def test_getattr_comp_construction_server(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
-    get_a_comp = value_impl._construct_getattr_comp(federated_value, 'a')
-    self.assertEqual(str(get_a_comp), '(x -> x.a)')
-    get_b_comp = value_impl._construct_getattr_comp(federated_value, 'b')
-    self.assertEqual(str(get_b_comp), '(x -> x.b)')
-    bad_arg = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.NamedTupleType([('a', tf.int32),
-                                              ('b', tf.bool)])), None,
-        context_stack_impl.context_stack)
-    with self.assertRaises(TypeError):
-      _ = value_impl._construct_getattr_comp(bad_arg, 'a')
-
-  def test_getattr_resolution_federated_value_server(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
-    self.assertEqual(
-        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
-    federated_attribute = federated_value.a
-    self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
-
-  def test_getitem_resolution_federated_value_server(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
-    self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
-    federated_attribute = federated_value[0]
-    self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
-
-  def test_getitem_federated_server_slice_constructs_comp(self):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
-    self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
-    identity = federated_value[:]
-    self.assertEqual(str(identity.type_signature), '<int32,bool>@SERVER')
-    self.assertEqual(
-        str(identity), 'federated_apply(<(x -> <x[0],x[1]>),test>)')
-
-  def test_slicing_tuple_values(self):
-    for op in [list, tuple]:
-      t = op(range(0, 50, 10))
-      v = value_impl.to_value(t, None, context_stack_impl.context_stack)
-      self.assertEqual((str(v.type_signature)),
-                       '<int32,int32,int32,int32,int32>')
-      self.assertEqual(
-          str(v[:]),
-          str(value_impl.to_value(t, None, context_stack_impl.context_stack)))
-      sliced = v[:2]
-      self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
-      self.assertEqual(
-          str(sliced),
-          str(
-              value_impl.to_value(t[:2], None,
-                                  context_stack_impl.context_stack)))
-      sliced = v[-3:]
-      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-      self.assertEqual(
-          str(sliced),
-          str(
-              value_impl.to_value(t[-3:], None,
-                                  context_stack_impl.context_stack)))
-      sliced = v[::2]
-      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-      self.assertEqual(
-          str(sliced),
-          str(
-              value_impl.to_value(t[::2], None,
-                                  context_stack_impl.context_stack)))
 
 
 if __name__ == '__main__':
