@@ -217,6 +217,11 @@ py_test(
 )
 
 py_library(
+    name = "dtype_utils",
+    srcs = ["dtype_utils.py"],
+)
+
+py_library(
     name = "federated_computation_context",
     srcs = ["federated_computation_context.py"],
     deps = [
@@ -281,6 +286,7 @@ py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
     deps = [
+        ":dtype_utils",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -429,6 +435,7 @@ py_library(
         ":computation_building_blocks",
         ":computation_impl",
         ":context_base",
+        ":dtype_utils",
         ":graph_utils",
         ":intrinsic_defs",
         ":placement_literals",
@@ -679,6 +686,7 @@ py_library(
         ":computation_building_blocks",
         ":computation_impl",
         ":context_stack_base",
+        ":dtype_utils",
         ":func_utils",
         ":graph_utils",
         ":intrinsic_defs",

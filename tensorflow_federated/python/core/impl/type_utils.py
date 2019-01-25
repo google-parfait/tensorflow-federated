@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl import placement_literals
 
 
 def infer_type(arg):
-  """Infers the TFF type of the argument (a computation_types.Type instance).
+  """Infers the TFF type of the argument (a `computation_types.Type` instance).
 
   WARNING: This function is only partially implemented.
 
@@ -46,8 +46,8 @@ def infer_type(arg):
     arg: The argument, the TFF type of which to infer.
 
   Returns:
-    Either an instance of computation_types.Type, or None if the argument is
-    None.
+    Either an instance of `computation_types.Type`, or `None` if the argument is
+    `None`.
   """
   # TODO(b/113112885): Implement the remaining cases here on the need basis.
   if arg is None:
@@ -56,8 +56,6 @@ def infer_type(arg):
     return arg.type_signature
   elif tf.contrib.framework.is_tensor(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
-  elif isinstance(arg, (np.generic, np.ndarray)):
-    return computation_types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
   elif isinstance(arg, tf.data.Dataset):
     return computation_types.SequenceType(
         tf_dtypes_and_shapes_to_type(arg.output_types, arg.output_shapes))
@@ -75,12 +73,12 @@ def infer_type(arg):
       items = sorted(six.iteritems(arg))
     return computation_types.NamedTupleType(
         [(k, infer_type(v)) for k, v in items])
-  # Quickly try special-casing a few very common built-in scalar types before
-  # applying any kind of heavier-weight processing.
-  elif isinstance(arg, six.string_types):
-    return computation_types.TensorType(tf.string)
   elif isinstance(arg, (tuple, list)):
     return computation_types.NamedTupleType([infer_type(e) for e in arg])
+  elif isinstance(arg, six.string_types):
+    return computation_types.TensorType(tf.string)
+  elif isinstance(arg, (np.generic, np.ndarray)):
+    return computation_types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
   else:
     dtype = {bool: tf.bool, int: tf.int32, float: tf.float32}.get(type(arg))
     if dtype:

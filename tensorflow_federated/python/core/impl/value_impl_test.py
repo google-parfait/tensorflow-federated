@@ -245,50 +245,75 @@ class ValueImplTest(absltest.TestCase):
     self.assertIsInstance(val, value_base.Value)
     self.assertEqual(str(val.type_signature), '( -> int32)')
 
-  def test_to_value_with_int_and_int_type_spec(self):
-    val = value_impl.to_value(10, tf.int32, context_stack_impl.context_stack)
-    self.assertIsInstance(val, value_base.Value)
-    self.assertEqual(str(val.type_signature), 'int32')
+  def test_to_value_with_string(self):
+    value = value_impl.to_value('a', tf.string,
+                                context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'string')
 
-  def test_to_value_with_int_and_bool_type_spec(self):
+  def test_to_value_with_int(self):
+    value = value_impl.to_value(1, tf.int32, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'int32')
+
+  def test_to_value_with_float(self):
+    value = value_impl.to_value(1.0, tf.float32,
+                                context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'float32')
+
+  def test_to_value_with_bool(self):
+    value = value_impl.to_value(True, tf.bool, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'bool')
+
+  def test_to_value_with_np_int32(self):
+    value = value_impl.to_value(
+        np.int32(1), tf.int32, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'int32')
+
+  def test_to_value_with_np_int64(self):
+    value = value_impl.to_value(
+        np.int64(1), tf.int64, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'int64')
+
+  def test_to_value_with_np_float32(self):
+    value = value_impl.to_value(
+        np.float32(1.0), tf.float32, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'float32')
+
+  def test_to_value_with_np_float64(self):
+    value = value_impl.to_value(
+        np.float64(1.0), tf.float64, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'float64')
+
+  def test_to_value_with_np_bool(self):
+    value = value_impl.to_value(
+        np.bool(1.0), tf.bool, context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'bool')
+
+  def test_to_value_with_np_ndarray(self):
+    value = value_impl.to_value(
+        np.ndarray(shape=(2, 0), dtype=np.int32), (tf.int32, [2, 0]),
+        context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'int32[2,0]')
+
+  def test_to_value_with_list_of_ints(self):
+    value = value_impl.to_value([1, 2, 3],
+                                computation_types.SequenceType(tf.int32),
+                                context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'int32*')
+
+  def test_to_value_raises_type_error(self):
     with self.assertRaises(TypeError):
       value_impl.to_value(10, tf.bool, context_stack_impl.context_stack)
-
-  def test_to_value_with_int_list_and_int_sequence_type_spec(self):
-    val = value_impl.to_value([1, 2, 3], computation_types.SequenceType(
-        tf.int32), context_stack_impl.context_stack)
-    self.assertIsInstance(val, value_base.Value)
-    self.assertEqual(str(val.type_signature), 'int32*')
-
-  def test_constant_mapping(self):
-    raw_int_val = value_impl.to_value(10, None,
-                                      context_stack_impl.context_stack)
-    self.assertIsInstance(raw_int_val, value_base.Value)
-    self.assertEqual(str(raw_int_val.type_signature), 'int32')
-    raw_float_val = value_impl.to_value(10.0, None,
-                                        context_stack_impl.context_stack)
-    self.assertIsInstance(raw_float_val, value_base.Value)
-    np_float_val = value_impl.to_value(
-        np.float(10), None, context_stack_impl.context_stack)
-    self.assertEqual(str(np_float_val.type_signature), 'float32')
-    np_array_val = value_impl.to_value(
-        np.array([10.0]), None, context_stack_impl.context_stack)
-    self.assertIsInstance(np_array_val, value_base.Value)
-    self.assertEqual(str(np_array_val.type_signature), 'float64[1]')
-    lg_np_array_flt = value_impl.to_value(
-        np.ones([10, 10, 10], dtype=np.float32), None,
-        context_stack_impl.context_stack)
-    self.assertIsInstance(lg_np_array_flt, value_base.Value)
-    self.assertEqual(str(lg_np_array_flt.type_signature), 'float32[10,10,10]')
-    lg_np_array_int = value_impl.to_value(
-        np.ones([10, 10, 10], dtype=np.int32), None,
-        context_stack_impl.context_stack)
-    self.assertIsInstance(lg_np_array_int, value_base.Value)
-    self.assertEqual(str(lg_np_array_int.type_signature), 'int32[10,10,10]')
-    raw_string_val = value_impl.to_value('10', None,
-                                         context_stack_impl.context_stack)
-    self.assertIsInstance(raw_string_val, value_base.Value)
-    self.assertEqual(str(raw_string_val.type_signature), 'string')
 
   def test_tf_mapping_raises_helpful_error(self):
     with self.assertRaisesRegexp(

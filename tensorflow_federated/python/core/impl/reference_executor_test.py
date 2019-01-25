@@ -168,6 +168,14 @@ class ReferenceExecutorTest(absltest.TestCase):
     c2 = reference_executor.ComputationContext(c1)
     self.assertEqual(c2.get_cardinality(placements.CLIENTS), 10)
 
+  def test_tensorflow_computation_with_no_argument(self):
+
+    @computations.tf_computation()
+    def foo():
+      return 1
+
+    self.assertEqual(foo(), 1)
+
   def test_tensorflow_computation_with_constant(self):
 
     @computations.tf_computation(tf.int32)
@@ -191,7 +199,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     @computations.tf_computation(tuple_type)
     def foo(z):
       del z  # unused
-      return tf.constant(1)
+      return 1
 
     self.assertEqual(foo(()), 1)
 
@@ -207,7 +215,7 @@ class ReferenceExecutorTest(absltest.TestCase):
       def foo(x):
         return x + 1
 
-      self.assertEqual(foo((10,)), 11)
+      foo((10,))
 
   def test_tensorflow_computation_with_tuple_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
@@ -232,7 +240,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     @computations.tf_computation(tuple_group_type)
     def foo(z):
       del z  # unused
-      return tf.constant(1)
+      return 1
 
     self.assertEqual(foo(((), ())), 1)
 
@@ -295,7 +303,7 @@ class ReferenceExecutorTest(absltest.TestCase):
     @computations.tf_computation(sequence_type)
     def foo(ds):
       del ds  # unused
-      return tf.constant(1)
+      return 1
 
     @computations.tf_computation
     def bar():
