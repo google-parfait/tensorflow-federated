@@ -176,10 +176,10 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
       items = six.iteritems(dtypes)
     else:
       items = sorted(six.iteritems(dtypes))
-    return computation_types.NamedTupleType([(name,
-                                              tf_dtypes_and_shapes_to_type(
-                                                  dtypes_elem, shapes[name]))
-                                             for name, dtypes_elem in items])
+    result_elem = [
+        (name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
+        for name, dtypes_elem in items]
+    return computation_types.NamedTupleType(result_elem)
   elif isinstance(dtypes, (list, tuple)):
     return computation_types.NamedTupleType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
@@ -556,7 +556,7 @@ def check_federated_value_placement(value, placement, label=None):
 def is_average_compatible(type_spec):
   """Determines if `type_spec` can be averaged.
 
-  Types that are average-compatible are composed of scalars of numeric types,
+  Types that are average-compatible are composed of numeric tensor types,
   either floating-point or complex, possibly packaged into nested named tuples,
   and possibly federated.
 

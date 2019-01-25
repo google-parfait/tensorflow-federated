@@ -43,6 +43,15 @@ class PlacementLiteral(object):
   def __repr__(self):
     return 'PlacementLiteral(\'{}\')'.format(self._uri)
 
+  def __eq__(self, other):
+    return self._uri == other.uri
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+  def __hash__(self):
+    return hash(self._uri)
+
 
 # TODO(b/113112108): Define the remaining placement literals (e.g., intermediate
 # coordinators). Possibly rename SERVER to COORDINATOR or some such if desired.

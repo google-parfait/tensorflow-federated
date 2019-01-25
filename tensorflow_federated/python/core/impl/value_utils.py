@@ -51,28 +51,38 @@ def zip_two_tuple(input_val, context_stack):
       placements.CLIENTS: intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
       placements.SERVER: intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
   }
+  zip_all_equal = {
+      placements.CLIENTS: False,
+      placements.SERVER: True,
+  }
   output_placement = input_val[0].type_signature.placement
   if output_placement not in zip_uris:
     raise TypeError('The argument must have components placed at SERVER or '
                     'CLIENTS')
+  output_all_equal_bit = zip_all_equal[output_placement]
   for elem in input_val:
     type_utils.check_federated_value_placement(elem, output_placement)
   num_elements = len(anonymous_tuple.to_elements(input_val.type_signature))
   if num_elements != 2:
     raise ValueError('The argument of zip_two_tuple must be a 2-tuple, '
                      'not an {}-tuple'.format(num_elements))
-  result_type = computation_types.FederatedType(
-      [
-          e.member
-          for _, e in anonymous_tuple.to_elements(input_val.type_signature)
-      ], output_placement,
-      all(e.all_equal
-          for _, e in anonymous_tuple.to_elements(input_val.type_signature)))
+  result_type = computation_types.FederatedType([
+      e.member for _, e in anonymous_tuple.to_elements(input_val.type_signature)
+  ], output_placement, output_all_equal_bit)
+
+  def _adjust_all_equal_bit(x):
+    return computation_types.FederatedType(x.member, x.placement,
+                                           output_all_equal_bit)
+
+  adjusted_input_type = computation_types.NamedTupleType(
+      [(k, _adjust_all_equal_bit(v)) if k else _adjust_all_equal_bit(v)
+       for k, v in anonymous_tuple.to_elements(input_val.type_signature)])
+
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(
           zip_uris[output_placement],
-          computation_types.FunctionType(input_val.type_signature,
-                                         result_type)), context_stack)
+          computation_types.FunctionType(adjusted_input_type, result_type)),
+      context_stack)
   return intrinsic(input_val)
 
 
