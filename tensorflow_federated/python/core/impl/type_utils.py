@@ -176,10 +176,9 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
       items = six.iteritems(dtypes)
     else:
       items = sorted(six.iteritems(dtypes))
-    result_elem = [
-        (name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
-        for name, dtypes_elem in items]
-    return computation_types.NamedTupleType(result_elem)
+    elements = [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
+                for name, dtypes_elem in items]
+    return computation_types.NamedTupleType(elements)
   elif isinstance(dtypes, (list, tuple)):
     return computation_types.NamedTupleType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
