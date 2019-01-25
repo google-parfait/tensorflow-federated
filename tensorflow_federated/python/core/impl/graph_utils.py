@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import itertools
 
 import six
 from six.moves import zip
@@ -257,10 +258,10 @@ def extract_tensor_names_from_binding(binding):
   elif binding_oneof == 'sequence':
     return [str(binding.sequence.iterator_string_handle_name)]
   elif binding_oneof == 'tuple':
-    return [
-        name for e in binding.tuple.element
-        for name in extract_tensor_names_from_binding(e)
-    ]
+    return list(
+        itertools.chain.from_iterable([
+            extract_tensor_names_from_binding(e) for e in binding.tuple.element
+        ]))
   else:
     raise ValueError(
         'Unsupported type of binding \'{}\'.'.format(binding_oneof))
