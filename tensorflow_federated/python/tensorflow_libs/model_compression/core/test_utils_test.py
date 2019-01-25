@@ -160,6 +160,8 @@ class ReduceMeanEncodingStageTest(test_utils.BaseEncodingStageTest):
 
 class RandomAddSubtractOneEncodingStageTest(test_utils.BaseEncodingStageTest):
 
+  _VALUES_KEY = test_utils.RandomAddSubtractOneEncodingStage.ENCODED_VALUES_KEY
+
   def default_encoding_stage(self):
     """See base class."""
     return test_utils.RandomAddSubtractOneEncodingStage()
@@ -179,9 +181,7 @@ class RandomAddSubtractOneEncodingStageTest(test_utils.BaseEncodingStageTest):
       self.assertTrue(
           np.isclose(decoded_x, x - 1) or np.isclose(decoded_x, x) or
           np.isclose(decoded_x, x + 1))
-    self.assertAllEqual(
-        data.encoded_x[test_utils.ReduceMeanEncodingStage.ENCODED_VALUES_KEY],
-        data.decoded_x)
+    self.assertAllEqual(data.encoded_x[self._VALUES_KEY], data.decoded_x)
 
   def test_approximately_unbiased_in_expectation(self):
     """Tests that average of encodings is more accurate than a single one."""

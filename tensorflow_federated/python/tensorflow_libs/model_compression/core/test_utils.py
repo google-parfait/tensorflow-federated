@@ -652,8 +652,8 @@ class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
   no commutativity with sum.
   """
 
-  ENCODED_VALUES_KEY = 'values'
-  ADD_PARAM_KEY = 'add'
+  ENCODED_VALUES_KEY = 'p1_values'
+  ADD_PARAM_KEY = 'p1_add'
 
   @property
   def compressible_tensors_keys(self):
@@ -697,8 +697,8 @@ class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
   with sum.
   """
 
-  ENCODED_VALUES_KEY = 'values'
-  FACTOR_PARAM_KEY = 'factor'
+  ENCODED_VALUES_KEY = 't2_values'
+  FACTOR_PARAM_KEY = 't2_factor'
 
   @property
   def compressible_tensors_keys(self):
@@ -743,9 +743,9 @@ class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
   objects, and subsequently expose those via `encode_params` / `decode_params`.
   """
 
-  ENCODED_VALUES_KEY = 'values'
-  A_PARAM_KEY = 'a_param'
-  B_PARAM_KEY = 'b_param'
+  ENCODED_VALUES_KEY = 'sl_values'
+  A_PARAM_KEY = 'sl_a_param'
+  B_PARAM_KEY = 'sl_b_param'
 
   def __init__(self, a, b):
     self._a = a
@@ -795,7 +795,7 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
   the higher level `Encoder`.
   """
 
-  ENCODED_VALUES_KEY = 'values'
+  ENCODED_VALUES_KEY = 'rm_values'
 
   @property
   def compressible_tensors_keys(self):
@@ -838,7 +838,7 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
   the unbiasedness can be tested.
   """
 
-  ENCODED_VALUES_KEY = 'values'
+  ENCODED_VALUES_KEY = 'ras_values'
 
   @property
   def compressible_tensors_keys(self):
@@ -880,9 +880,9 @@ class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
   floating part and the signs.
   """
 
-  ENCODED_SIGNS_KEY = 'signs'
-  ENCODED_INTS_KEY = 'ints'
-  ENCODED_FLOATS_KEY = 'floats'
+  ENCODED_SIGNS_KEY = 'sif_signs'
+  ENCODED_INTS_KEY = 'sif_ints'
+  ENCODED_FLOATS_KEY = 'sif_floats'
 
   @property
   def compressible_tensors_keys(self):
@@ -967,8 +967,8 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
   invertible.
   """
 
-  ENCODED_VALUES_KEY = 'values'
-  SEED_PARAM_KEY = 'seed'
+  ENCODED_VALUES_KEY = 'prn_values'
+  SEED_PARAM_KEY = 'prn_seed'
 
   @property
   def compressible_tensors_keys(self):
@@ -1024,7 +1024,7 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
 
   ENCODED_VALUES_KEY = PlusOneEncodingStage.ENCODED_VALUES_KEY
   ADD_PARAM_KEY = PlusOneEncodingStage.ADD_PARAM_KEY
-  ITERATION_STATE_KEY = 'iteration'
+  ITERATION_STATE_KEY = 'pn_iteration'
 
   def __init__(self):
     self._stage = PlusOneEncodingStage()
@@ -1099,8 +1099,8 @@ class AdaptiveNormalizeEncodingStage(
 
   ENCODED_VALUES_KEY = TimesTwoEncodingStage.ENCODED_VALUES_KEY
   FACTOR_PARAM_KEY = TimesTwoEncodingStage.FACTOR_PARAM_KEY
-  FACTOR_STATE_KEY = 'factor'
-  NORM_STATE_UPDATE_KEY = 'norm'
+  FACTOR_STATE_KEY = 'an_factor'
+  NORM_STATE_UPDATE_KEY = 'an_norm'
 
   def __init__(self):
     self._stage = TimesTwoEncodingStage()
