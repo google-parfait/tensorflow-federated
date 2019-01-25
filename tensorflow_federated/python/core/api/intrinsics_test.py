@@ -363,6 +363,20 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(str(foo.type_signature), '(int32@SERVER -> bool@SERVER)')
 
+  def test_federated_apply_injected_zip_int(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(tf.int32, placements.SERVER, True),
+        computation_types.FederatedType(tf.int32, placements.SERVER, True)
+    ])
+    def foo(x, y):
+      return intrinsics.federated_apply(
+          computations.tf_computation(lambda x, y: x > 10,
+                                      [tf.int32, tf.int32]), [x, y])
+
+    self.assertEqual(
+        str(foo.type_signature), '(<int32@SERVER,int32@SERVER> -> bool@SERVER)')
+
   def test_federated_value_with_bool_on_clients(self):
 
     @computations.federated_computation(tf.bool)
