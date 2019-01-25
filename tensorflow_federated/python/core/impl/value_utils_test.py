@@ -58,7 +58,7 @@ class ValueUtilsTest(parameterized.TestCase):
         ]))
     zipped = value_utils.zip_two_tuple(
         value_impl.to_value(test_ref, None, _context_stack), _context_stack)
-    self.assertEqual(str(zipped.type_signature), '<int32,bool>@CLIENTS')
+    self.assertEqual(str(zipped.type_signature), '{<int32,bool>}@CLIENTS')
 
   def test_two_tuple_zip_fails_bad_args(self):
     server_test_ref = computation_building_blocks.Reference(

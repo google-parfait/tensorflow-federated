@@ -31,6 +31,17 @@ class PlacementLiteralsTest(absltest.TestCase):
       self.assertIs(
           placement_literals.uri_to_placement_literal(literal.uri), literal)
 
+  def test_comparators_and_hashing(self):
+    self.assertEqual(placement_literals.CLIENTS, placement_literals.CLIENTS)
+    self.assertNotEqual(placement_literals.CLIENTS, placement_literals.SERVER)
+    self.assertEqual(
+        hash(placement_literals.CLIENTS), hash(placement_literals.CLIENTS))
+    self.assertNotEqual(
+        hash(placement_literals.CLIENTS), hash(placement_literals.SERVER))
+    foo = {placement_literals.CLIENTS: 10, placement_literals.SERVER: 20}
+    self.assertEqual(foo[placement_literals.CLIENTS], 10)
+    self.assertEqual(foo[placement_literals.SERVER], 20)
+
 
 if __name__ == '__main__':
   absltest.main()

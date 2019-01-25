@@ -29,7 +29,7 @@ py_library(
 
 py_test(
     name = "federated_averaging_test",
-    size = "small",
+    size = "large",
     srcs = ["federated_averaging_test.py"],
     deps = [
         ":federated_averaging",
@@ -89,7 +89,7 @@ py_library(
 
 py_test(
     name = "model_utils_test",
-    size = "small",
+    size = "large",
     srcs = ["model_utils_test.py"],
     deps = [
         ":model_examples",

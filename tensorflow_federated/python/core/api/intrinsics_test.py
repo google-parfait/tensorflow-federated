@@ -146,7 +146,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(
         str(foo.type_signature),
-        '(<int32@CLIENTS,bool@CLIENTS> -> <int32,bool>@CLIENTS)')
+        '(<int32@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
   def test_federated_zip_with_server_int_and_bool(self):
 

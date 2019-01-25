@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import reference_executor
+from tensorflow_federated.python.core.impl import type_constructors
 
 
 class ReferenceExecutorTest(absltest.TestCase):
@@ -138,7 +139,7 @@ class ReferenceExecutorTest(absltest.TestCase):
         v_val = graph_utils.fetch_value_in_session(stamped_v, sess)
     self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
 
-  def test_computation_context(self):
+  def test_computation_context_resolve_reference(self):
     c1 = reference_executor.ComputationContext()
     c2 = reference_executor.ComputationContext(
         c1, {'foo': reference_executor.ComputedValue(10, tf.int32)})
@@ -157,6 +158,15 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(c3.resolve_reference('bar').value, 11)
     self.assertEqual(c4.resolve_reference('bar').value, 11)
     self.assertEqual(c5.resolve_reference('bar').value, 11)
+
+  def test_computation_context_get_cardinality(self):
+    c1 = reference_executor.ComputationContext(None, None,
+                                               {placements.CLIENTS: 10})
+    self.assertEqual(c1.get_cardinality(placements.CLIENTS), 10)
+    with self.assertRaises(ValueError):
+      c1.get_cardinality(placements.SERVER)
+    c2 = reference_executor.ComputationContext(c1)
+    self.assertEqual(c2.get_cardinality(placements.CLIENTS), 10)
 
   def test_tensorflow_computation_with_constant(self):
 
@@ -398,6 +408,64 @@ class ReferenceExecutorTest(absltest.TestCase):
     add_one = computations.tf_computation(lambda x: x + 1, tf.int32)
 
     self.assertEqual(apply_twice(5, add_one), 7)
+
+  def test_multiply_by_scalar_with_float_and_float(self):
+    self.assertEqual(
+        reference_executor.multiply_by_scalar(
+            reference_executor.ComputedValue(10.0, tf.float32), 0.5).value, 5.0)
+
+  def test_multiply_by_scalar_with_tuple_and_float(self):
+    self.assertEqual(
+        str(
+            reference_executor.multiply_by_scalar(
+                reference_executor.ComputedValue(
+                    anonymous_tuple.AnonymousTuple([
+                        ('A', 10.0),
+                        ('B', anonymous_tuple.AnonymousTuple([('C', 20.0)])),
+                    ]), [('A', tf.float32), ('B', [('C', tf.float32)])]),
+                0.5).value), '<A=5.0,B=<C=10.0>>')
+
+  def test_get_cardinalities_success(self):
+    foo = reference_executor.get_cardinalities(
+        reference_executor.ComputedValue(
+            anonymous_tuple.AnonymousTuple(
+                [('A', [1, 2, 3]),
+                 ('B',
+                  anonymous_tuple.AnonymousTuple(
+                      [('C', [[1, 2], [3, 4], [5, 6]]),
+                       ('D', [True, False, True])]))]),
+            [('A', computation_types.FederatedType(tf.int32,
+                                                   placements.CLIENTS)),
+             ('B', [('C',
+                     computation_types.FederatedType(
+                         computation_types.SequenceType(tf.int32),
+                         placements.CLIENTS)),
+                    ('D',
+                     computation_types.FederatedType(tf.bool,
+                                                     placements.CLIENTS))])]))
+    self.assertDictEqual(foo, {placements.CLIENTS: 3})
+
+  def test_get_cardinalities_failure(self):
+    with self.assertRaises(ValueError):
+      reference_executor.get_cardinalities(
+          reference_executor.ComputedValue(
+              anonymous_tuple.AnonymousTuple([('A', [1, 2, 3]), ('B', [1, 2])]),
+              [('A',
+                computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+               ('B',
+                computation_types.FederatedType(tf.int32, placements.CLIENTS))
+              ]))
+
+  def test_fit_argument(self):
+    old_arg = reference_executor.ComputedValue(
+        anonymous_tuple.AnonymousTuple([('A', 10)]),
+        [('A', type_constructors.at_clients(tf.int32, all_equal=True))])
+    new_arg = reference_executor.fit_argument(
+        old_arg, [('A', type_constructors.at_clients(tf.int32))],
+        reference_executor.ComputationContext(
+            cardinalities={placements.CLIENTS: 3}))
+    self.assertEqual(str(new_arg.type_signature), '<A={int32}@CLIENTS>')
+    self.assertEqual(new_arg.value.A, [10, 10, 10])
 
   def test_execute_with_nested_lambda(self):
     int32_add = computation_building_blocks.ComputationBuildingBlock.from_proto(
@@ -672,6 +740,139 @@ class ReferenceExecutorTest(absltest.TestCase):
     self.assertEqual(
         str(bar.type_signature), '({float32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
+
+  def test_federated_average_with_floats(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_average(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
+    self.assertEqual(foo([1.0, 2.0, 3.0, 4.0, 5.0]), 3.0)
+
+  def test_federated_average_with_tuples(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('A', tf.float32), ('B', tf.float32)],
+                                        placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_average(x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({<A=float32,B=float32>}@CLIENTS -> <A=float32,B=float32>@SERVER)')
+    self.assertEqual(
+        str(
+            foo([{
+                'A': 1.0,
+                'B': 5.0
+            }, {
+                'A': 2.0,
+                'B': 6.0
+            }, {
+                'A': 3.0,
+                'B': 7.0
+            }])), '<A=2.0,B=6.0>')
+
+  def test_federated_zip_at_server(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(tf.int32, placements.SERVER, True),
+        computation_types.FederatedType(tf.int32, placements.SERVER, True)
+    ])
+    def foo(x):
+      return intrinsics.federated_zip(x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<int32@SERVER,int32@SERVER> -> <int32,int32>@SERVER)')
+
+    self.assertEqual(str(foo(5, 6)), '<5,6>')  # pylint: disable=too-many-function-args
+
+  def test_federated_zip_at_clients(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(tf.int32, placements.CLIENTS),
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    ])
+    def foo(x):
+      return intrinsics.federated_zip(x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<{int32}@CLIENTS,{int32}@CLIENTS> -> {<int32,int32>}@CLIENTS)')
+    foo_result = foo([[1, 2, 3], [4, 5, 6]])
+    self.assertIsInstance(foo_result, list)
+    foo_result_str = ','.join(str(x) for x in foo_result)
+    self.assertEqual(foo_result_str, '<1,4>,<2,5>,<3,6>')
+
+  def test_federated_aggregate_with_integers(self):
+    accu_type = computation_types.to_type([('sum', tf.int32), ('n', tf.int32)])
+
+    @computations.tf_computation(accu_type, tf.int32)
+    def accumulate(a, x):
+      return collections.OrderedDict([('sum', a.sum + x), ('n', a.n + 1)])
+
+    @computations.tf_computation(accu_type, accu_type)
+    def merge(a, b):
+      return collections.OrderedDict([('sum', a.sum + b.sum), ('n', a.n + b.n)])
+
+    @computations.tf_computation(accu_type)
+    def report(a):
+      return tf.to_float(a.sum) / tf.to_float(a.n)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_aggregate(
+          x, collections.OrderedDict([('sum', 0), ('n', 0)]), accumulate, merge,
+          report)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
+    self.assertEqual(foo([1, 2, 3, 4, 5, 6, 7]), 4.0)
+
+  def test_federated_weighted_average_with_floats(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS),
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+    def foo(v, w):
+      return intrinsics.federated_average(v, w)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<{float32}@CLIENTS,{float32}@CLIENTS> -> float32@SERVER)')
+    self.assertEqual(foo([5.0, 2.0, 3.0], [10.0, 20.0, 30.0]), 3.0)
+
+  def test_federated_broadcast_without_data_on_clients(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+    def foo(x):
+      return intrinsics.federated_broadcast(x)
+
+    self.assertEqual(str(foo.type_signature), '(int32@SERVER -> int32@CLIENTS)')
+    self.assertEqual(foo(10), 10)
+
+  def test_federated_broadcast_zipped_with_client_data(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS),
+        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+    def foo(x, y):
+      return intrinsics.federated_zip([x, intrinsics.federated_broadcast(y)])
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<{int32}@CLIENTS,int32@SERVER> -> {<int32,int32>}@CLIENTS)')
+
+    foo_result = foo([1, 2, 3], 10)
+    self.assertIsInstance(foo_result, list)
+    foo_result_str = ','.join(str(x) for x in foo_result)
+    self.assertEqual(foo_result_str, '<1,10>,<2,10>,<3,10>')
 
 
 if __name__ == '__main__':
