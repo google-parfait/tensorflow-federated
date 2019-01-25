@@ -22,6 +22,7 @@ from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python import tf2
+from tensorflow_federated.python.core.api import computation_types
 
 
 class TestCase(tf.test.TestCase, absltest.TestCase):
@@ -83,3 +84,20 @@ def assert_nested_struct_eq(x, y):
     if xe != ye:
       raise ValueError('Mismatching elements {} and {}.'.format(
           str(xe), str(ye)))
+
+
+# A test only class that matches any type. This is used for types returned
+# by TensorFlow that TFF should not be concerned about.
+#
+# Unfortunately, this only works if AnyType is "one the left" of the equality
+# operator. Otherwise each TFF type needs to be updated to understand AnyType.
+class AnyType(computation_types.Type):
+
+  def __repr__(self):
+    return 'AnyType()'
+
+  def __str__(self):
+    return 'Any'
+
+  def __eq__(self, other):
+    return True

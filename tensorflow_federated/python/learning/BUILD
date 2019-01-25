@@ -20,6 +20,7 @@ py_library(
     srcs = ["federated_averaging.py"],
     deps = [
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
@@ -36,6 +37,8 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -57,7 +60,7 @@ py_library(
 
 py_test(
     name = "federated_sgd_test",
-    size = "small",
+    size = "medium",
     srcs = ["federated_sgd_test.py"],
     deps = [
         ":federated_sgd",

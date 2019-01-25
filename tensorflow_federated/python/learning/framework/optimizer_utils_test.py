@@ -17,28 +17,38 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
+from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
+nest = tf.contrib.framework.nest
+
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
+
+  def __init__(self, unused_model_fn):
+    del unused_model_fn
 
   @property
   def variables(self):
     return []
 
+  @tf.contrib.eager.function(autograph=False)
   def __call__(self, dataset, initial_weights):
-    weights_delta = tf.contrib.framework.nest.map_structure(
-        lambda x: -1.0 * x, initial_weights)
+    trainable_weights_delta = nest.map_structure(lambda x: -1.0 * x,
+                                                 initial_weights.trainable)
     client_weight = tf.constant(3.0)
     return optimizer_utils.ClientOutput(
-        weights_delta,
+        trainable_weights_delta,
         weights_delta_weight=client_weight,
         model_output={},
         optimizer_output={'client_weight': client_weight})
@@ -80,7 +90,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
   @test.graph_mode_test
   def test_server_graph_mode(self):
-    optimizer_fn = lambda: tf.train.GradientDescentOptimizer(learning_rate=0.1)
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
 
     # Explicitly entering a graph as a default enables graph-mode.
@@ -96,7 +106,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
     self.assertEqual(train_vars['b'], 0.0)
     self.assertEqual(server_state.model.non_trainable['c'], 0.0)
-    self.assertEmpty(server_state.optimizer_state)
+    self.assertEqual(server_state.optimizer_state, [0.0])
 
     with tf.Graph().as_default() as g:
       # N.B. Must use a fresh graph so variable names are the same.
@@ -118,25 +128,50 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertAllClose(train_vars['b'], 0.2)
     self.assertEqual(server_state.model.non_trainable['c'], 0.0)
 
+  # TODO(b/109733734): update these tests to actually execute the iterative
+  # process, instead of only checkign the type signatures.
   def test_orchestration(self):
-    iterative_process = optimizer_utils.build_model_delta_optimizer_tff(
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.TrainableLinearRegression,
-        model_to_client_delta_fn=lambda _: DummyClientDeltaFn())
+        model_to_client_delta_fn=DummyClientDeltaFn)
+
+    expected_model_weights_type = model_utils.ModelWeights(
+        collections.OrderedDict([('a', tff.TensorType(tf.float32, [2, 1])),
+                                 ('b', tf.float32)]),
+        collections.OrderedDict([('c', tf.float32)]))
+
+    # ServerState consists of a model and optimizer_state. The optimizer_state
+    # is provided by TensorFlow, TFF doesn't care what the actual value is.
+    expected_federated_server_state_type = tff.FederatedType(
+        optimizer_utils.ServerState(expected_model_weights_type,
+                                    test.AnyType()),
+        placement=tff.SERVER,
+        all_equal=True)
+
+    expected_federated_dataset_type = tff.FederatedType(
+        tff.SequenceType(
+            model_examples.TrainableLinearRegression.make_batch(
+                tff.TensorType(tf.float32, [None, 2]),
+                tff.TensorType(tf.float32, [None, 1]))),
+        tff.CLIENTS,
+        all_equal=False)
+
+    # `initialize` is expected to be a funcion of no arguments to a ServerState.
     self.assertEqual(
-        str(iterative_process.initialize.type_signature),
-        '( -> <model=<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>)')
+        tff.FunctionType(
+            parameter=None, result=expected_federated_server_state_type),
+        iterative_process.initialize.type_signature)
+
+    # `next` is expected be a function of (ServerState, Datasets) to
+    # ServerState.
     self.assertEqual(
-        str(iterative_process.next.type_signature),
-        '(<<model=<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>,'
-        '<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>> -> '
-        '<model=<trainable=<a=float32[2,1],b=float32>,'
-        'non_trainable=<c=float32>>,'
-        'optimizer_state=<float32[2,1],float32>>)')
+        tff.FunctionType(
+            parameter=[
+                expected_federated_server_state_type,
+                expected_federated_dataset_type
+            ],
+            result=expected_federated_server_state_type),
+        iterative_process.next.type_signature)
 
 
 if __name__ == '__main__':

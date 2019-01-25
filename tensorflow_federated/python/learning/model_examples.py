@@ -68,6 +68,8 @@ class LinearRegression(model.Model):
   @tf.contrib.eager.defun(autograph=False)
   def forward_pass(self, batch, training=True):
     del training  # Unused
+    if isinstance(batch, dict):
+      batch = self.make_batch(batch['x'], batch['y'])
     if not batch.y.shape.is_compatible_with([None, 1]):
       raise ValueError('Expected batch.y to be compatible with shape '
                        '[None, 1] but found {}'.format(batch.y.shape))

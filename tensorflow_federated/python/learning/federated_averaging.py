@@ -32,6 +32,8 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
+nest = tf.contrib.framework.nest
+
 
 class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
@@ -72,12 +74,11 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     # Or, we may just need a convention that TFF initializes all variables
     # before invoking the TF function.
 
-    tf.contrib.framework.nest.map_structure(tf.assign, model.weights,
-                                            initial_weights)
+    nest.map_structure(tf.assign, model.weights, initial_weights)
 
     @tf.contrib.eager.function(autograph=False)
     def reduce_fn(dummy_state, batch):
-      """Runs train_on_batch on batch."""
+      """Runs `tff.learning.Model.train_on_batch` on local client batch."""
       output = model.train_on_batch(batch)
       tf.assign_add(self._num_examples, tf.shape(output.predictions)[0])
       return dummy_state
@@ -86,8 +87,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     dummy_output = dataset.reduce(
         initial_state=tf.constant(0.0), reduce_func=reduce_fn)
 
-    weights_delta = tf.contrib.framework.nest.map_structure(
-        tf.subtract, model.weights.trainable, initial_weights.trainable)
+    weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
+                                       initial_weights.trainable)
 
     aggregated_outputs = model.report_local_outputs()
     weights_delta_weight = self._client_weight_fn(aggregated_outputs)  # pylint:disable=not-callable
@@ -133,5 +134,5 @@ def build_federated_averaging_process(model_fn,
   def client_fed_avg(model_fn):
     return ClientFedAvg(model_fn(), client_weight_fn)
 
-  return optimizer_utils.build_model_delta_optimizer_tff(
+  return optimizer_utils.build_model_delta_optimizer_process(
       model_fn, client_fed_avg, server_optimizer_fn)
