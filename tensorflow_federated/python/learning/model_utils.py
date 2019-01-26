@@ -130,7 +130,7 @@ class _KerasModel(model_lib.Model):
   def __init__(self, inner_model, loss_func, metrics):
     self._keras_model = inner_model
     self._loss_fn = loss_func
-    self._metrics = metrics if metrics is not None else []
+    self._metrics = metrics
 
   @property
   def trainable_variables(self):
@@ -143,29 +143,30 @@ class _KerasModel(model_lib.Model):
   @property
   def local_variables(self):
     local_variables = []
-    for metric in self._metrics:
+    for metric in self.get_metrics():
       local_variables.extend(metric.variables)
     return local_variables
 
-  @tf.contrib.eager.function
+  def get_metrics(self):
+    if not self._keras_model._is_compiled:  # pylint: disable=protected-access
+      return self._metrics
+    else:
+      return self._keras_model.metrics
+
+  @tf.contrib.eager.function(autograph=False)
   def forward_pass(self, batch_input, training=True):
     predictions = self._keras_model(batch_input.x, training=training)
     batch_loss = self._loss_fn(y_true=batch_input.y, y_pred=predictions)
 
-    for metric in self._metrics:
+    for metric in self.get_metrics():
       metric.update_state(y_true=batch_input.y, y_pred=predictions)
 
     return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
 
   @tf.contrib.eager.function(autograph=False)
   def report_local_outputs(self):
-    keras_metrics = getattr(self._keras_model, 'metrics')
-    if keras_metrics:
-      return collections.OrderedDict(
-          [(metric.name, metric.result()) for metric in keras_metrics])
-    else:
-      return collections.OrderedDict(
-          [(metric.name, metric.result()) for metric in self._metrics])
+    return collections.OrderedDict(
+        [(metric.name, metric.result()) for metric in self.get_metrics()])
 
   def federated_output_computation(self):
     # TODO(b/122116149): Automatically generate federated_output_computation
@@ -179,14 +180,16 @@ class _KerasModel(model_lib.Model):
 
 
 class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
-  """Wrapper class for tf.keras.Models that can be trained."""
+  """Wrapper class for `tf.keras.Model`s that can be trained."""
 
   def __init__(self, inner_model):
     super(_TrainableKerasModel, self).__init__(inner_model, inner_model.loss,
                                                inner_model.metrics)
-    # NOTE: the Keras optimizer lazily creates variables under-the-hood. Ideally
-    # we'd expose them in the `local_variables` property, but there isn't a way
-    # to get them currently. Users must use tf.global_variables_initializer().
+
+  @property
+  def non_trainable_variables(self):
+    return (super(_TrainableKerasModel, self).non_trainable_variables +
+            self._keras_model.optimizer.variables())
 
   @tf.contrib.eager.function
   def train_on_batch(self, batch_input):

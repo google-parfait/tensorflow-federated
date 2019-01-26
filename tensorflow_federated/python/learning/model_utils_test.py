@@ -33,47 +33,31 @@ from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
 
-# TODO(b/121048501): look into doing this more correctly and up-streaming to
-# Keras.
-class SumMetric(object):
-  """A stateful metric that sums values from an input function.
+class NumBatchesCounter(tf.keras.metrics.Sum):
+  """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
 
-  Behaves like a tf.keras.metrics.Metric (which is not exposed in the API).
-  """
+  def __init__(self):
+    super(NumBatchesCounter, self).__init__('num_batches', tf.int64)
 
-  def __init__(self, name, dtype, fn):
-    self._name = name
-    self._total = tf.Variable(0, dtype=dtype, name=name)
-    self._fn = fn
-
-  def update_state(self, y_true, y_pred):
-    tf.assign_add(self._total, self._fn(y_true, y_pred))
-
-  def result(self):
-    return self._total
-
-  @property
-  def name(self):
-    return self._name
-
-  @property
-  def variables(self):
-    return [self._total]
+  def update_state(self, y_true, y_pred, sample_weight=None):
+    return super(NumBatchesCounter, self).update_state(1, sample_weight)
 
 
-def num_examples_metric():
-  return SumMetric(
-      name='num_examples', dtype=tf.int32, fn=lambda u, v: tf.shape(u)[0])
+class NumExamplesCounter(tf.keras.metrics.Sum):
+  """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
+  def __init__(self):
+    super(NumExamplesCounter, self).__init__('num_examples', tf.int64)
 
-def num_batches_metric():
-  return SumMetric(name='num_batches', dtype=tf.int32, fn=lambda u, v: 1)
+  def update_state(self, y_true, y_pred, sample_weight=None):
+    return super(NumExamplesCounter, self).update_state(
+        tf.shape(y_pred)[0], sample_weight)
 
 
 def dense_all_zeros_layer(feature_dims=None):
   """Create a layer that can be used in isolation for linear regression.
 
-  Constructs a keras Dense layer with a single output, using biases and weights
+  Constructs a Keras dense layer with a single output, using biases and weights
   that are initialized to zero. No activation function is applied. When this is
   the only layer in a model, the model is effectively a linear regression model.
 
@@ -82,7 +66,7 @@ def dense_all_zeros_layer(feature_dims=None):
       the layer input size does not need to be specified.
 
   Returns:
-    a tf.kears.layers.Dense object.
+    a `tf.keras.layers.Dense` object.
   """
   build_keras_dense_layer = functools.partial(
       tf.keras.layers.Dense,
@@ -97,35 +81,40 @@ def dense_all_zeros_layer(feature_dims=None):
 
 
 def build_linear_regresion_keras_sequential_model(feature_dims):
-  """Build a linear regression keras.Model using the Sequential API."""
+  """Build a linear regression `tf.keras.Model` using the Sequential API."""
   model = tf.keras.models.Sequential()
   model.add(dense_all_zeros_layer(feature_dims))
   return model
 
 
 def build_linear_regresion_keras_functional_model(feature_dims):
-  """Build a linear regression keras.Model using the functional API."""
+  """Build a linear regression `tf.keras.Model` using the functional API."""
   a = tf.keras.layers.Input(shape=(feature_dims,))
   b = dense_all_zeros_layer()(a)
   return tf.keras.Model(inputs=a, outputs=b)
 
 
 def build_linear_regresion_keras_subclass_model(feature_dims):
-  """Build a linear regression model by sub-classing keras.Model."""
+  """Build a linear regression model by sub-classing `tf.keras.Model`."""
+  del feature_dims  # unused.
 
   class KerasLinearRegression(tf.keras.Model):
 
-    def __init__(self, feature_dims):
+    def __init__(self):
       super(KerasLinearRegression, self).__init__()
-      self._weights = dense_all_zeros_layer(feature_dims)
+      self._weights = dense_all_zeros_layer()
 
     def call(self, inputs, training=True):
       return self._weights(inputs)
 
-  return KerasLinearRegression(feature_dims)
+  return KerasLinearRegression()
 
 
 class ModelUtilsTest(test.TestCase, parameterized.TestCase):
+
+  def setUp(self):
+    tf.keras.backend.clear_session()
+    super(ModelUtilsTest, self).setUp()
 
   def test_model_initializer(self):
     model = model_utils.enhance(model_examples.LinearRegression(2))
@@ -137,7 +126,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         sess.run(model.local_variables)
         sess.run(model.weights)
       except tf.errors.FailedPreconditionError:
-        self.fail('Excpected variables to be initialized, but got '
+        self.fail('Expected variables to be initialized, but got '
                   'tf.errors.FailedPreconditionError')
 
   def test_non_keras_model(self):
@@ -161,8 +150,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     tff_model = model_utils.from_keras_model(
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[num_examples_metric(),
-                 num_batches_metric()])
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
     x_placeholder = tf.placeholder(
         tf.float32, shape=(None, feature_dims), name='x')
@@ -221,13 +209,19 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
               build_linear_regresion_keras_subclass_model,
           ],
       ))
-  def test_tff_model_from_keras_model_with_optimizer(self, feature_dims,
-                                                     model_fn):
+  def test_tff_model_from_compiled_keras_model(self, feature_dims, model_fn):
     keras_model = model_fn(feature_dims)
     # If the model is intended to be used for training, it must be compiled.
     keras_model.compile(
         optimizer=tf.keras.optimizers.SGD(lr=0.01),
-        loss=tf.keras.losses.MeanSquaredError())
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+    # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
+    # until the model has been called on input. The work-around is to call
+    # Model.test_on_batch() once before asking for metrics.
+    _ = keras_model.test_on_batch(
+        x=tf.zeros([1, feature_dims]), y=tf.zeros([1]))
+
     tff_model = model_utils.from_compiled_keras_model(keras_model)
 
     x_placeholder = tf.placeholder(
@@ -236,6 +230,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     batch = model_utils._KerasModel.make_batch(x=x_placeholder, y=y_placeholder)
 
     train_op = tff_model.train_on_batch(batch)
+    metrics = tff_model.report_local_outputs()
 
     # NOTE: this must occur after the model setup above. Otherwise some
     # variables may not have been created yet and the following list will not be
@@ -244,7 +239,12 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     # Specifically, Keras creates variables under the hood in the
     # Optimizer.get_updates() call, so we need to initialize all global
     # variables (not only the model variables as we do in the test above).
-    init_op = tf.global_variables_initializer()
+    init_ops = [
+        tf.variables_initializer(tff_model.trainable_variables +
+                                 tff_model.non_trainable_variables +
+                                 tff_model.local_variables),
+        tf.global_variables_initializer()
+    ]
 
     train_feed_dict = {
         batch.x: [[0.0] * feature_dims, [5.0] * feature_dims],
@@ -254,12 +254,18 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
     tf.get_default_graph().finalize()
     with self.session() as sess:
-      sess.run(init_op)
+      sess.run(init_ops)
       num_iterations = 10
       for _ in range(num_iterations):
         r = sess.run(train_op, feed_dict=train_feed_dict)
         self.assertLess(r.loss, prior_loss)
         prior_loss = r.loss
+      m = sess.run(metrics)
+
+    self.assertDictEqual({
+        'num_batches': num_iterations,
+        'num_examples': 2 * num_iterations,
+    }, m)
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.
