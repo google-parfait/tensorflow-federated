@@ -110,7 +110,9 @@ class AnonymousTuple(object):
   def __getattr__(self, name):
     if name not in self._name_to_index:
       raise AttributeError(
-          'The tuple does not have a member "{}".'.format(name))
+          'The tuple does not have a member "{}". Members (only first 10): {}'
+          .format(name,
+                  list(self._name_to_index.keys())[:10]))
     return self._element_array[self._name_to_index[name]]
 
   def __eq__(self, other):
