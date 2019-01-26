@@ -557,31 +557,42 @@ class ReferenceExecutor(context_base.Context):
       py_typecheck.check_type(compiler, compiler_pipeline.CompilerPipeline)
     self._compiler = compiler
     self._intrinsic_method_dict = {
-        k.uri: v for k, v in
-        [(intrinsic_defs.FEDERATED_AGGREGATE, self._federated_aggregate
-         ), (intrinsic_defs.FEDERATED_APPLY, self._federated_apply
-            ), (intrinsic_defs.FEDERATED_AVERAGE, self._federated_average
-               ), (intrinsic_defs.FEDERATED_BROADCAST,
-                   self._federated_broadcast),
-         (intrinsic_defs.FEDERATED_COLLECT, self._federated_collect
-         ), (intrinsic_defs.FEDERATED_MAP, self._federated_map
-            ), (intrinsic_defs.FEDERATED_REDUCE, self._federated_reduce
-               ), (intrinsic_defs.FEDERATED_SUM, self._federated_sum),
-         (intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS,
-          self._federated_value_at_clients),
-         (intrinsic_defs.FEDERATED_VALUE_AT_SERVER,
-          self._federated_value_at_server),
-         (intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE,
-          self._federated_weighted_average),
-         (intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS,
-          self._federated_zip_at_clients),
-         (intrinsic_defs.FEDERATED_ZIP_AT_SERVER, self._federated_zip_at_server
-         ), (intrinsic_defs.GENERIC_PLUS, self._generic_plus),
-         (intrinsic_defs.GENERIC_ZERO,
-          self._generic_zero), (intrinsic_defs.SEQUENCE_MAP,
-                                self._sequence_map),
-         (intrinsic_defs.SEQUENCE_REDUCE, self._sequence_reduce
-         ), (intrinsic_defs.SEQUENCE_SUM, self._sequence_sum)]
+        intrinsic_defs.FEDERATED_AGGREGATE.uri:
+            self._federated_aggregate,
+        intrinsic_defs.FEDERATED_APPLY.uri:
+            self._federated_apply,
+        intrinsic_defs.FEDERATED_AVERAGE.uri:
+            self._federated_average,
+        intrinsic_defs.FEDERATED_BROADCAST.uri:
+            self._federated_broadcast,
+        intrinsic_defs.FEDERATED_COLLECT.uri:
+            self._federated_collect,
+        intrinsic_defs.FEDERATED_MAP.uri:
+            self._federated_map,
+        intrinsic_defs.FEDERATED_REDUCE.uri:
+            self._federated_reduce,
+        intrinsic_defs.FEDERATED_SUM.uri:
+            self._federated_sum,
+        intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri:
+            self._federated_value_at_clients,
+        intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri:
+            self._federated_value_at_server,
+        intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE.uri:
+            self._federated_weighted_average,
+        intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri:
+            self._federated_zip_at_clients,
+        intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri:
+            self._federated_zip_at_server,
+        intrinsic_defs.GENERIC_PLUS.uri:
+            self._generic_plus,
+        intrinsic_defs.GENERIC_ZERO.uri:
+            self._generic_zero,
+        intrinsic_defs.SEQUENCE_MAP.uri:
+            self._sequence_map,
+        intrinsic_defs.SEQUENCE_REDUCE.uri:
+            self._sequence_reduce,
+        intrinsic_defs.SEQUENCE_SUM.uri:
+            self._sequence_sum,
     }
 
   def ingest(self, arg, type_spec):
