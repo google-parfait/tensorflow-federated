@@ -155,6 +155,8 @@ class _KerasModel(model_lib.Model):
 
   @tf.contrib.eager.function(autograph=False)
   def forward_pass(self, batch_input, training=True):
+    if isinstance(batch_input, dict):
+      batch_input = self.make_batch(batch_input['x'], batch_input['y'])
     predictions = self._keras_model(batch_input.x, training=training)
     batch_loss = self._loss_fn(y_true=batch_input.y, y_pred=predictions)
 
