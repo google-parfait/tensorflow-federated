@@ -80,6 +80,30 @@ py_library(
 )
 
 py_library(
+    name = "model_examples",
+    srcs = ["model_examples.py"],
+    deps = [
+        ":model",
+        "//tensorflow_federated/python/core/api",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "model_examples_test",
+    size = "small",
+    srcs = ["model_examples_test.py"],
+    deps = [
+        ":model_examples",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_library(
     name = "model_utils",
     srcs = ["model_utils.py"],
     deps = [
@@ -98,30 +122,6 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
-)
-
-py_library(
-    name = "model_examples",
-    srcs = ["model_examples.py"],
-    deps = [
-        ":model",
-        "//tensorflow_federated/python/core/api",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "model_examples_test",
-    size = "small",
-    srcs = ["model_examples_test.py"],
-    deps = [
-        ":model_examples",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
