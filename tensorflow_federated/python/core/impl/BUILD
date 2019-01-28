@@ -586,7 +586,6 @@ py_test(
         ":intrinsic_bodies",
         ":intrinsic_defs",
         ":transformations",
-        ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
