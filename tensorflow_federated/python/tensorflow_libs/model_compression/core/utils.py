@@ -17,9 +17,38 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import enum
 import numpy as np
 import six
 import tensorflow as tf
+
+
+class OrderedEnum(enum.Enum):
+  """Ordered version of `Enum`.
+
+  As opposed to `IntEnum`, This class maintains other `Enum` invariants, such as
+  not being comparable to other enumerations.
+  """
+
+  def __ge__(self, other):
+    if self.__class__ is other.__class__:
+      return self.value >= other.value
+    return NotImplemented
+
+  def __gt__(self, other):
+    if self.__class__ is other.__class__:
+      return self.value > other.value
+    return NotImplemented
+
+  def __le__(self, other):
+    if self.__class__ is other.__class__:
+      return self.value <= other.value
+    return NotImplemented
+
+  def __lt__(self, other):
+    if self.__class__ is other.__class__:
+      return self.value < other.value
+    return NotImplemented
 
 
 def static_or_dynamic_shape(value):
