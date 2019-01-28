@@ -23,6 +23,24 @@ import tensorflow as tf
 from tensorflow_federated.python.tensorflow_libs.model_compression.core import utils
 
 
+class OrderedEnumTest(parameterized.TestCase):
+
+  def test_ordered_enum(self):
+    class Grade(utils.OrderedEnum):
+      A = 5
+      B = 4
+      C = 3
+      D = 2
+      F = 1
+
+    self.assertGreater(Grade.A, Grade.B)
+    self.assertLessEqual(Grade.F, Grade.C)
+    self.assertLess(Grade.D, Grade.A)
+    self.assertGreaterEqual(Grade.B, Grade.B)
+    self.assertEqual(Grade.B, Grade.B)
+    self.assertNotEqual(Grade.C, Grade.D)
+
+
 class StaticOrDynamicShapeTest(tf.test.TestCase, parameterized.TestCase):
   """Tests for `static_or_dynamic_shape` method."""
 
