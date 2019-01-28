@@ -172,6 +172,12 @@ class TypesTest(absltest.TestCase):
     self.assertIsInstance(t, computation_types.TensorType)
     self.assertEqual(str(t), 'int32')
 
+  def test_to_type_with_tf_tensorspec(self):
+    s = tf.TensorSpec([None, 3], dtype=tf.float32)
+    t = computation_types.to_type(s)
+    self.assertIsInstance(t, computation_types.TensorType)
+    self.assertEqual(str(t), 'float32[?,3]')
+
   def test_to_type_with_tf_type_and_shape(self):
     s = (tf.int32, [10])
     t = computation_types.to_type(s)

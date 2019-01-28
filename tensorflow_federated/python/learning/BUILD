@@ -34,6 +34,7 @@ py_test(
     srcs = ["federated_averaging_test.py"],
     deps = [
         ":federated_averaging",
+        ":model",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
@@ -64,6 +65,7 @@ py_test(
     srcs = ["federated_sgd_test.py"],
     deps = [
         ":federated_sgd",
+        ":model",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
@@ -109,6 +111,7 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -119,6 +122,7 @@ py_test(
     size = "large",
     srcs = ["model_utils_test.py"],
     deps = [
+        ":model",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",

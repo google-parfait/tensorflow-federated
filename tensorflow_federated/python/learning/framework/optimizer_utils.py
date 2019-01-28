@@ -27,7 +27,6 @@ from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.learning import model_utils
 
-
 nest = tf.contrib.framework.nest
 
 
@@ -229,6 +228,12 @@ def build_model_delta_optimizer_process(model_fn,
   if server_optimizer_fn is None:
     server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
+  # TODO(b/109733734): would be nice not to have the construct a throwaway model
+  # here just to get the types.
+  # Wrap in a new Graph to prevent pollution.
+  with tf.Graph().as_default():
+    model = model_utils.enhance(model_fn())
+
   @tff.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
@@ -239,11 +244,7 @@ def build_model_delta_optimizer_process(model_fn,
   federated_server_state_type = server_init_tff.type_signature.result
   server_state_type = federated_server_state_type.member
 
-  # FIXME: The model input type should be taken from the model specification,
-  # the following is hardcoded to match the unit tests!
-  tf_dataset_type = tff.SequenceType(
-      collections.OrderedDict([('x', tff.TensorType(tf.float32, [None, 2])),
-                               ('y', tff.TensorType(tf.float32, [None, 1]))]))
+  tf_dataset_type = tff.SequenceType(model.input_spec)
   federated_dataset_type = tff.FederatedType(
       tf_dataset_type, tff.CLIENTS, all_equal=False)
 
@@ -274,13 +275,6 @@ def build_model_delta_optimizer_process(model_fn,
         A `ClientOutput` structure.
       """
       client_delta_fn = model_to_client_delta_fn(model_fn)
-
-      # TODO(b/109733734): expose an API to get the types of the model variables
-      # in the tff.learning.Model API so that we don't need to trace the model
-      # here.
-      with tf.Graph().as_default():
-        # Wrap in a new Graph to prevent pollution.
-        model = model_utils.enhance(model_fn())
 
       # TODO(b/123092620): this can be removed once AnonymousTuple works with
       # tf.contrib.framework.nest, or the following behavior is moved to

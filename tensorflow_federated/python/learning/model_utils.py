@@ -25,6 +25,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
+nest = tf.contrib.framework.nest
+
 
 def model_initializer(model, name=None):
   """Creates an initializer op for all of the model's variables."""
@@ -72,17 +74,25 @@ class ModelWeights(
         tensor_utils.to_var_dict(model.non_trainable_variables))
 
 
-def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
-  """Builds a `tff.learning.Model`.
+def from_keras_model(keras_model,
+                     dummy_batch,
+                     loss,
+                     metrics=None,
+                     optimizer=None):
+  """Builds a `tff.learning.Model` for an example mini batch.
 
   Args:
     keras_model: a `tf.keras.Model` object that is not compiled.
+    dummy_batch: a nested structure of *batched* tensors with the same shapes
+      and types as would be input to `keras_model`. The values of the tensors
+      are not important and can be filled with any reasonable input value.
     loss: a callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss.
-    metrics: a list of `tf.keras.metrics.Metric` objects. The value of
-      `Metric.result` for each metric is included in the list of tensors
+    metrics: (optional) a list of `tf.keras.metrics.Metric` objects. The value
+      of `Metric.result` for each metric is included in the list of tensors
       returned in `aggregated_outputs`.
-    optimizer: a `tf.keras.optimizer.Optimizer`.
+    optimizer: (optional) a `tf.keras.optimizer.Optimizer`. If None, returned
+      model cannot be used for training.
 
   Returns:
     A `tff.learning.Model` object.
@@ -96,16 +106,19 @@ def from_keras_model(keras_model, loss, metrics=None, optimizer=None):
     raise ValueError('`keras_model` must not be compiled. Use '
                      'from_compiled_keras_model() instead.')
   if optimizer is None:
-    return enhance(_KerasModel(keras_model, loss, metrics))
+    return enhance(_KerasModel(keras_model, dummy_batch, loss, metrics))
   keras_model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-  return enhance(_TrainableKerasModel(keras_model))
+  return enhance(_TrainableKerasModel(keras_model, dummy_batch))
 
 
-def from_compiled_keras_model(keras_model):
-  """Builds a `tff.learning.Model`.
+def from_compiled_keras_model(keras_model, dummy_batch):
+  """Builds a `tff.learning.Model` for an example mini batch.
 
   Args:
     keras_model: a `tf.keras.Model` object that was compiled.
+    dummy_batch: a nested structure of batched tensors with the same shapes and
+      types as expected by `forward_pass()`. The values of the tensors are not
+      important and can be filled with any reasonable input value.
 
   Returns:
     A `tff.learning.Model`.
@@ -119,18 +132,26 @@ def from_compiled_keras_model(keras_model):
   if not hasattr(keras_model, 'optimizer'):
     raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
                      'instead.')
-  return enhance(_TrainableKerasModel(keras_model))
+  return enhance(_TrainableKerasModel(keras_model, dummy_batch))
 
 
 class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
-  Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
-
-  def __init__(self, inner_model, loss_func, metrics):
+  def __init__(self, inner_model, dummy_batch, loss_func, metrics):
     self._keras_model = inner_model
     self._loss_fn = loss_func
     self._metrics = metrics
+
+    def _tensor_spec_with_undefined_batch_dim(tensor):
+      # Remove the batch dimension and leave it unspecified.
+      spec = tf.TensorSpec(
+          shape=[None] + tensor.shape.dims[1:],
+          dtype=tensor.dtype)
+      return spec
+
+    self._input_spec = nest.map_structure(_tensor_spec_with_undefined_batch_dim,
+                                          dummy_batch)
 
   @property
   def trainable_variables(self):
@@ -153,13 +174,30 @@ class _KerasModel(model_lib.Model):
     else:
       return self._keras_model.metrics
 
+  @property
+  def input_spec(self):
+    return self._input_spec
+
   @tf.contrib.eager.function(autograph=False)
   def forward_pass(self, batch_input, training=True):
-    predictions = self._keras_model(batch_input.x, training=training)
-    batch_loss = self._loss_fn(y_true=batch_input.y, y_pred=predictions)
+    # forward_pass requires batch_input be a dictionary that can be passed to
+    # tf.keras.Model.__call__, namely it has keys `x`, and optionally `y`.
+    if hasattr(batch_input, '_asdict'):
+      batch_input = batch_input._asdict()
 
-    for metric in self.get_metrics():
-      metric.update_state(y_true=batch_input.y, y_pred=predictions)
+    inputs = batch_input.get('x')
+    if inputs is None:
+      raise KeyError('Received a batch_input that is missing required key `x`. '
+                     'Instead have keys {}'.format(batch_input.keys()))
+    predictions = self._keras_model(inputs=inputs, training=training)
+
+    y_true = batch_input.get('y')
+    if y_true is not None:
+      batch_loss = self._loss_fn(y_true=y_true, y_pred=predictions)
+      for metric in self.get_metrics():
+        metric.update_state(y_true=y_true, y_pred=predictions)
+    else:
+      batch_loss = None
 
     return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
 
@@ -182,9 +220,13 @@ class _KerasModel(model_lib.Model):
 class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
   """Wrapper class for `tf.keras.Model`s that can be trained."""
 
-  def __init__(self, inner_model):
-    super(_TrainableKerasModel, self).__init__(inner_model, inner_model.loss,
-                                               inner_model.metrics)
+  def __init__(self, inner_model, dummy_batch):
+    # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
+    # until the model has been called on input. The work-around is to call
+    # Model.test_on_batch() once before asking for metrics.
+    inner_model.test_on_batch(**dummy_batch)
+    super(_TrainableKerasModel, self).__init__(
+        inner_model, dummy_batch, inner_model.loss, inner_model.metrics)
 
   @property
   def non_trainable_variables(self):
@@ -262,9 +304,13 @@ class EnhancedModel(model_lib.Model):
   def local_variables(self):
     return _check_iterable_of_variables(self._model.local_variables)
 
-  def forward_pass(self, batch, training=True):
+  @property
+  def input_spec(self):
+    return self._model.input_spec
+
+  def forward_pass(self, batch_input, training=True):
     return py_typecheck.check_type(
-        self._model.forward_pass(batch, training), model_lib.BatchOutput)
+        self._model.forward_pass(batch_input, training), model_lib.BatchOutput)
 
   def report_local_outputs(self):
     return self._model.report_local_outputs()
@@ -280,6 +326,6 @@ class EnhancedTrainableModel(EnhancedModel, model_lib.TrainableModel):
     py_typecheck.check_type(model, model_lib.TrainableModel)
     super(EnhancedTrainableModel, self).__init__(model)
 
-  def train_on_batch(self, batch):
+  def train_on_batch(self, batch_input):
     return py_typecheck.check_type(
-        self._model.train_on_batch(batch), model_lib.BatchOutput)
+        self._model.train_on_batch(batch_input), model_lib.BatchOutput)

@@ -150,9 +150,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
     expected_federated_dataset_type = tff.FederatedType(
         tff.SequenceType(
-            model_examples.TrainableLinearRegression.make_batch(
-                tff.TensorType(tf.float32, [None, 2]),
-                tff.TensorType(tf.float32, [None, 1]))),
+            model_examples.TrainableLinearRegression().input_spec),
         tff.CLIENTS,
         all_equal=False)
 

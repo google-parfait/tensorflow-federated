@@ -398,6 +398,8 @@ def to_type(spec):
     return spec
   elif isinstance(spec, tf.DType):
     return TensorType(spec)
+  elif isinstance(spec, tf.TensorSpec):
+    return TensorType(spec.dtype, spec.shape)
   elif (isinstance(spec, tuple) and (len(spec) == 2) and
         isinstance(spec[0], tf.DType) and
         (isinstance(spec[1], tf.TensorShape) or

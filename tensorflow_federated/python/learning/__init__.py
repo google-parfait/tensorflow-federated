@@ -20,13 +20,17 @@ from __future__ import print_function
 from tensorflow_federated.python.learning import framework
 
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process
+from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
+from tensorflow_federated.python.learning.model import TrainableModel
 from tensorflow_federated.python.learning.model_utils import from_compiled_keras_model
 from tensorflow_federated.python.learning.model_utils import from_keras_model
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "BatchOutput",
     "Model",
+    "TrainableModel",
     "build_federated_averaging_process",
     "framework",
     "from_compiled_keras_model",

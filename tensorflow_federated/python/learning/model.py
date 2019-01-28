@@ -22,18 +22,18 @@ import collections
 
 import six
 
-# We might replace this with a class that allows customers to
-# return arbitrary values; we might also just use AnonymousTuple.
-BatchOutput = collections.namedtuple(
-    # All fields are optional (may be None).
-    'BatchOutput',
-    [
-        # The scalar average loss on the examples.
-        'loss',
-        # Tensor of predictions on the examples, first dimenion the same size
-        # as batch.
-        'predictions',
-    ])
+
+class BatchOutput(
+    collections.namedtuple('BatchOutput', ['loss', 'predictions'])):
+  """A structre that holds the output of a `tff.learning.Model`.
+
+  NOTE: All fields are optional (may be None).
+
+  -   `loss`: The scalar mean loss on the examples in the batch.
+  -   `predictions`: Tensor of predictions on the examples. The first dimension
+      must be the same size (the size of the batch).
+  """
+  __slots__ = ()
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -87,12 +87,25 @@ class Model(object):
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
+  @abc.abstractproperty
+  def input_spec(self):
+    """The type specification of the `batch_input` parameter for `forward_pass`.
+
+    A nested structure of `tf.TensorSpec` objects, that matches the structure of
+    arguments that will be passed as the `batch_input` argument of
+    `forward_pass`. The tensors must include a batch dimension as the first
+    dimension, but the batch dimension may be undefined.
+
+    Similar in spirit to `tf.keras.models.Model.input_spec`.
+    """
+    pass
+
   @abc.abstractmethod
-  def forward_pass(self, batch, training=True):
+  def forward_pass(self, batch_input, training=True):
     """Runs the forward pass and returns results.
 
-    This method should not modify any variables that are part of the model,
-    that is, variables that influence the predictions; for that, see
+    This method should not modify any variables that are part of the model, that
+    is, variables that influence the predictions; for that, see
     `TrainableModel.train_on_batch`.
 
     However, this method may update aggregated metrics computed across calls to
@@ -108,23 +121,19 @@ class Model(object):
         (we might only compute gradients on the returned loss).
       * To implement FederatedAveraging, when augmented as a `TrainableModel`.
 
-    TODO(b/120493676): We expect to add another method to this class which
-    provides access to the shape/dtype/structure expected for the `batch`.
-
     Args:
-      batch: A structure of tensors (as supported by
-        `tf.contrib.framework.nest`, or could be produced by a
-        `tf.data.Dataset`) for the current batch. It is the caller's
-        responsibility to provide data of the format expected by the `Model`
-        being called.
+      batch_input: a nested structure that matches the structure of
+        `Model.input_spec` and each tensor in `batch_input` satisfies
+        `tf.TensorSpec.is_compatible_with()` for the corresponding
+        `tf.TensorSpec` in `Model.input_spec`.
       training: If True, run the training forward pass, otherwise, run in
         evaluation mode. The semantics are generally the same as the `training`
         argument to `keras.Model.__call__`; this might e.g. influence how
         dropout or batch normalization is handled.
 
     Returns:
-      A BatchOutput namedtuple. This must define a `loss` tensor if the model
-      will be trained via a gradient-based algorithm.
+      A `BatchOutput` object. The object must include the `loss` tensor if the
+      model will be trained via a gradient-based algorithm.
     """
     pass
 
@@ -196,14 +205,14 @@ class TrainableModel(Model):
   """
 
   @abc.abstractmethod
-  def train_on_batch(self, batch):
+  def train_on_batch(self, batch_input):
     """Like `forward_pass`, but updates the model variables.
 
     Typically this will invoke `forward_pass`, with any corresponding
     side-effects such as updating metrics.
 
     Args:
-      batch: The current batch, as for `forward_pass`.
+      batch_input: The current batch, as for `forward_pass`.
 
     Returns:
       The same `BatchOutput` as `forward_pass`.
