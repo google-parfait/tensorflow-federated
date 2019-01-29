@@ -23,6 +23,8 @@ import collections
 import six
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.learning import model_utils
@@ -226,7 +228,7 @@ def build_model_delta_optimizer_process(model_fn,
     A `tff.utils.IterativeProcess`.
   """
   if server_optimizer_fn is None:
-    server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    server_optimizer_fn = lambda: gradient_descent.SGD(learning_rate=1.0)
 
   # TODO(b/109733734): would be nice not to have the construct a throwaway model
   # here just to get the types.

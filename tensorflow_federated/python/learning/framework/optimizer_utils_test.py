@@ -23,6 +23,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
@@ -90,7 +92,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
   @test.graph_mode_test
   def test_server_graph_mode(self):
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer_fn = lambda: gradient_descent.SGD(learning_rate=0.1)
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
 
     # Explicitly entering a graph as a default enables graph-mode.

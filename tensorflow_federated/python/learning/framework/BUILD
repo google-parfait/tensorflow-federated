@@ -17,11 +17,13 @@ py_library(
 py_library(
     name = "optimizer_utils",
     srcs = ["optimizer_utils.py"],
+    # TODO(b/123578208): Remove deep keras.optimizer_v2 imports after updating TF version.
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
         "@six_archive//:six",
     ],
 )
@@ -30,6 +32,7 @@ py_test(
     name = "optimizer_utils_test",
     size = "medium",
     srcs = ["optimizer_utils_test.py"],
+    # TODO(b/123578208): Remove deep keras/optimizer_v2 imports after updating TF version.
     deps = [
         ":optimizer_utils",
         "//tensorflow_federated/python/common_libs:test",
@@ -39,5 +42,6 @@ py_test(
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
     ],
 )

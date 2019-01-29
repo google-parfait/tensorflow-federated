@@ -29,6 +29,8 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -224,7 +226,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_fn(feature_dims)
     # If the model is intended to be used for training, it must be compiled.
     keras_model.compile(
-        optimizer=tf.keras.optimizers.SGD(lr=0.01),
+        optimizer=gradient_descent.SGD(learning_rate=0.01),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     tff_model = model_utils.from_compiled_keras_model(
@@ -280,7 +282,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         dummy_batch=_create_dummy_batch(1),
         loss=tf.keras.losses.MeanSquaredError(),
-        optimizer=tf.keras.optimizers.SGD(lr=0.01))
+        optimizer=gradient_descent.SGD(learning_rate=0.01))
     self.assertIsInstance(tff_model, model_utils.EnhancedTrainableModel)
     # pylint: disable=internal-access
     self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
