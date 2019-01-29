@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import parameterized
+import mock
 import numpy as np
 import tensorflow as tf
 
@@ -25,80 +26,218 @@ from tensorflow_federated.python.tensorflow_libs.model_compression.core import t
 
 
 class TFStyleEncodeDecodeTest(tf.test.TestCase, parameterized.TestCase):
-  """Tests for `tf_style_encode` and `tf_style_decode` decorators."""
+  """Tests for `_tf_style_*` decorators.
 
-  _DEFAULT_SCOPE = 'test_variable_scope'
+  The class decorators, `tf_style_encoding_stage` and
+  `tf_style_adaptive_encoding_stage` are tested by the example implementations
+  of `EncodingStageInterface` and `AdaptiveEncodingStageInterface`, in
+  `test_utils.py`.
+  """
 
-  def _test_encode_fn(self, default_scope):
-    """Returns decorated test encode method."""
-    return encoding_stage.tf_style_encode(
-        default_scope)(lambda _, x, p, name: x + p['param'])
+  _DEFAULT_NAME = 'test_stage_name'
 
-  def _test_decode_fn(self, default_scope):
-    """Returns decorated test decode method."""
-    return encoding_stage.tf_style_decode(default_scope)(
+  def _get_mock_stage(self):
+    """Returns a mock stage with a name property."""
+    stage = mock.Mock()
+    type(stage).name = mock.PropertyMock(return_value=self._DEFAULT_NAME)
+    return stage
+
+  def _test_initial_state_fn(self):
+    """Returns decorated test `initial_state` method."""
+    return encoding_stage._tf_style_initial_state(
+        lambda _, name: {'state': tf.constant(1.0)})
+
+  def _test_update_state_fn(self):
+    """Returns decorated test `update_state` method."""
+    return encoding_stage._tf_style_update_state(
+        lambda _, s, sut, name: {'state': s['state'] + sut['tensor']})
+
+  def _test_get_params_fn(self):
+    """Returns decorated test `get_params` method."""
+    return encoding_stage._tf_style_get_params(
+        lambda _, name: ({'param': tf.constant(1.0)},) * 2)
+
+  def _test_adaptive_get_params_fn(self):
+    """Returns decorated test `get_params` method."""
+    return encoding_stage._tf_style_adaptive_get_params(
+        lambda _, state, name: ({'param': state['state'] * 2.0},) * 2)
+
+  def _test_encode_fn(self):
+    """Returns decorated test `encode` method."""
+    return encoding_stage._tf_style_encode(lambda _, x, p, name: x + p['param'])
+
+  def _test_decode_fn(self):
+    """Returns decorated test `decode` method."""
+    return encoding_stage._tf_style_decode(
         lambda _, x, p, shape, name: tf.reshape(x['val'] + p['param'], shape))
+
+  def _assert_all_graph_nodes_in_name_scope(self, graph, name):
+    """Asserts that names of all nodes in `graph` contain `name`."""
+    for node in graph.as_graph_def().node:
+      self.assertIn(name, node.name)
+
+  @parameterized.parameters(1.0, 'string', object)
+  def test_tf_style_encoding_stage_raises(self, bad_stage):
+    with self.assertRaises(TypeError):
+      encoding_stage.tf_style_encoding_stage(bad_stage)
+
+  @parameterized.parameters(1.0, 'string', object)
+  def test_tf_style_adaptive_encoding_stage_raises(self, bad_stage):
+    with self.assertRaises(TypeError):
+      encoding_stage.tf_style_adaptive_encoding_stage(bad_stage)
+
+  @parameterized.parameters(None, 'different_test_name_scope')
+  def test_initial_state_decorator(self, name):
+    """Test initial_state decorator works as expected."""
+    test_initial_state_fn = self._test_initial_state_fn()
+    stage = self._get_mock_stage()
+    initial_state = self.evaluate(test_initial_state_fn(stage, name))
+
+    # The graph should contain a single node.
+    graph = tf.get_default_graph()
+    self.assertLen(graph.as_graph_def().node, 1)
+    if name is not None:
+      self._assert_all_graph_nodes_in_name_scope(graph, name)
+    else:
+      self._assert_all_graph_nodes_in_name_scope(
+          graph, self._DEFAULT_NAME + '_initial_state')
+    # The functionality is not modified.
+    self.assertEqual(1.0, initial_state['state'])
+
+  @parameterized.parameters(None, 'different_test_name_scope')
+  def test_update_state_decorator(self, name):
+    """Test initial_state decorator works as expected."""
+    test_update_state_fn = self._test_update_state_fn()
+    stage = self._get_mock_stage()
+    state = {'state': 1.0}
+    state_update_tensors = {'tensor': 2.0}
+    updated_state = self.evaluate(
+        test_update_state_fn(stage, state, state_update_tensors, name))
+
+    # The graph should contain three nodes. Two for the constants created, and
+    # one for their addition.
+    graph = tf.get_default_graph()
+    self.assertLen(graph.as_graph_def().node, 3)
+    if name is not None:
+      self._assert_all_graph_nodes_in_name_scope(graph, name)
+    else:
+      self._assert_all_graph_nodes_in_name_scope(
+          graph, self._DEFAULT_NAME + '_update_state')
+    # The functionality is not modified.
+    self.assertEqual(3.0, updated_state['state'])
+
+  @parameterized.parameters(None, 'different_test_name_scope')
+  def test_get_params_decorator(self, name):
+    """Test get_params decorator works as expected."""
+    test_get_params_fn = self._test_get_params_fn()
+    stage = self._get_mock_stage()
+    encode_params, decode_params = self.evaluate(
+        test_get_params_fn(stage, name))
+
+    # The graph should contain a single node.
+    graph = tf.get_default_graph()
+    self.assertLen(graph.as_graph_def().node, 1)
+    if name is not None:
+      self._assert_all_graph_nodes_in_name_scope(graph, name)
+    else:
+      self._assert_all_graph_nodes_in_name_scope(
+          graph, self._DEFAULT_NAME + '_get_params')
+    # The functionality is not modified.
+    self.assertEqual(1.0, encode_params['param'])
+    self.assertEqual(1.0, decode_params['param'])
+
+  @parameterized.parameters(None, 'different_test_name_scope')
+  def test_adaptive_get_params_decorator(self, name):
+    """Test adaptive_get_params decorator works as expected."""
+    test_adaptive_get_params_fn = self._test_adaptive_get_params_fn()
+    stage = self._get_mock_stage()
+    state = {'state': 3.0}
+    encode_params, decode_params = self.evaluate(
+        test_adaptive_get_params_fn(stage, state, name))
+
+    # The graph should contain three nodes. Two for the constants created, and
+    # one for the multiplication to create the params.
+    graph = tf.get_default_graph()
+    self.assertLen(graph.as_graph_def().node, 3)
+    if name is not None:
+      self._assert_all_graph_nodes_in_name_scope(graph, name)
+    else:
+      self._assert_all_graph_nodes_in_name_scope(
+          graph, self._DEFAULT_NAME + '_get_params')
+    # The functionality is not modified.
+    self.assertEqual(6.0, encode_params['param'])
+    self.assertEqual(6.0, decode_params['param'])
 
   @parameterized.parameters(None, 'different_test_variable_scope')
   def test_encode_decorator(self, name):
     """Test encode decorator works as expected."""
-    test_encode_fn = self._test_encode_fn(self._DEFAULT_SCOPE)
-    encoded_x = self.evaluate(test_encode_fn(None, 2.5, {'param': 10.0}, name))
+    test_encode_fn = self._test_encode_fn()
+    stage = self._get_mock_stage()
+    encoded_x = self.evaluate(test_encode_fn(stage, 2.5, {'param': 10.0}, name))
 
     # The graph should contain three nodes. The two above Python constants
     # converted to a Tensor object, and the resulting sum.
-    self.assertLen(tf.get_default_graph().as_graph_def().node, 3)
-    for node in tf.get_default_graph().as_graph_def().node:
-      # All nodes should be enclosed in appropriate scope.
-      self.assertIn(self._DEFAULT_SCOPE if name is None else name, node.name)
+    graph = tf.get_default_graph()
+    self.assertLen(graph.as_graph_def().node, 3)
+    if name is not None:
+      self._assert_all_graph_nodes_in_name_scope(graph, name)
+    else:
+      self._assert_all_graph_nodes_in_name_scope(
+          graph, self._DEFAULT_NAME + '_encode')
     # The functionality (sum) is not modified.
     self.assertEqual(12.5, encoded_x)
 
   def test_encode_decorator_different_graphs(self):
     """Input Tensors from different tf.Graph instances should raise an error."""
-    # The test method should not actually use the input valueas, to ensure the
+    # The test method should not actually use the input values, to ensure the
     # error is not raised in a different way.
-    test_encode_fn = encoding_stage.tf_style_encode(
-        self._DEFAULT_SCOPE)(lambda _, x, p, name: tf.constant(0.0))
+    test_encode_fn = encoding_stage._tf_style_encode(
+        lambda _, x, p, name: tf.constant(0.0))
+    stage = self._get_mock_stage()
     graph_1, graph_2 = tf.Graph(), tf.Graph()
     with graph_1.as_default():
       x = tf.constant(2.5)
     with graph_2.as_default():
       params = {'param': tf.constant(10.0)}
     with self.assertRaises(ValueError):
-      self.evaluate(test_encode_fn(None, x, params, None))
+      test_encode_fn(stage, x, params, None)
 
   @parameterized.parameters(None, 'different_test_variable_scope')
   def test_decode_decorator(self, name):
     """Test decode decorator works as expected."""
-    test_decode_fn = self._test_decode_fn(self._DEFAULT_SCOPE)
+    test_decode_fn = self._test_decode_fn()
+    stage = self._get_mock_stage()
     decoded_x = self.evaluate(
-        test_decode_fn(None,
+        test_decode_fn(stage,
                        {'val': np.array([[1.0, 2.0], [3.0, 4.0]], np.float32)},
                        {'param': 1.0}, [4], name))
 
     # The graph should contain five nodes. The three above Python constants
     # converted to a Tensor object, the subtraction, and the final reshape.
-    self.assertLen(tf.get_default_graph().as_graph_def().node, 5)
-    for node in tf.get_default_graph().as_graph_def().node:
-      # All nodes should be enclosed in appropriate scope.
-      self.assertIn(self._DEFAULT_SCOPE if name is None else name, node.name)
+    graph = tf.get_default_graph()
+    self.assertLen(graph.as_graph_def().node, 5)
+    if name is not None:
+      self._assert_all_graph_nodes_in_name_scope(graph, name)
+    else:
+      self._assert_all_graph_nodes_in_name_scope(
+          graph, self._DEFAULT_NAME + '_decode')
     # The functionality (sum + reshape) is not modified.
     self.assertAllEqual(np.array([2.0, 3.0, 4.0, 5.0]), decoded_x)
 
   def test_decode_decorator_different_graphs(self):
     """Input Tensors from different tf.Graph instances should raise an error."""
-    # The test method should not actually use the input valueas, to ensure the
+    # The test method should not actually use the input values, to ensure the
     # error is not raised in a different way.
-    test_decode_fn = encoding_stage.tf_style_decode(
-        self._DEFAULT_SCOPE)(lambda _, x, p, shape, name: tf.constant(0.0))
+    test_decode_fn = encoding_stage._tf_style_decode(
+        lambda _, x, p, shape, name: tf.constant(0.0))
+    stage = self._get_mock_stage()
     graph_1, graph_2 = tf.Graph(), tf.Graph()
     with graph_1.as_default():
       x = {'val': tf.constant(2.5)}
     with graph_2.as_default():
       params = {'param': tf.constant(10.0)}
     with self.assertRaises(ValueError):
-      self.evaluate(test_decode_fn(None, x, params, [], None))
+      test_decode_fn(stage, x, params, [], None)
 
 
 class NoneStateAdaptiveEncodingStageTest(tf.test.TestCase,
@@ -132,6 +271,7 @@ class NoneStateAdaptiveEncodingStageTest(tf.test.TestCase,
     self.assertIs(wrapped_stage._b, b_var)
 
     # Test the functionality remain unchanged.
+    self.assertEqual(stage.name, wrapped_stage.name)
     self.assertEqual(stage.compressible_tensors_keys,
                      wrapped_stage.compressible_tensors_keys)
     self.assertEqual(stage.commutes_with_sum, wrapped_stage.commutes_with_sum)
