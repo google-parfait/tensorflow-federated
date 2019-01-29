@@ -233,7 +233,7 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
     return (super(_TrainableKerasModel, self).non_trainable_variables +
             self._keras_model.optimizer.variables())
 
-  @tf.contrib.eager.function
+  @tf.contrib.eager.function(autograph=False)
   def train_on_batch(self, batch_input):
     batch_output = self.forward_pass(batch_input)
     _ = self._keras_model.optimizer.get_updates(
