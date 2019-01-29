@@ -78,7 +78,10 @@ def to_odict(d):
   return collections.OrderedDict(sorted(items))
 
 
-@tf.contrib.eager.function(autograph=True)
+# TODO(b/122081673): autograph was explicitly disabled here to work with TF
+# v1.13. Once TFF moves past 1.13, autograh should be able to be renabled and
+# the tf.cond() statement replaced with python control flow.
+@tf.contrib.eager.function(autograph=False)
 def zero_all_if_any_non_finite(structure):
   """Zeroes out all entries in input if any are not finite.
 
@@ -94,10 +97,14 @@ def zero_all_if_any_non_finite(structure):
     return (structure, tf.constant(0))
   flat_bools = [tf.reduce_all(tf.is_finite(t)) for t in flat]
   all_finite = functools.reduce(tf.logical_and, flat_bools)
-  if all_finite:
+
+  def t_fn():
     return (structure, tf.constant(0))
-  else:
+
+  def f_fn():
     return (nest.map_structure(tf.zeros_like, structure), tf.constant(1))
+
+  return tf.cond(pred=all_finite, true_fn=t_fn, false_fn=f_fn)
 
 
 def is_scalar(tensor):
