@@ -1,12 +1,12 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tff.learning.framework.build_model_delta_optimizer_tff" />
+<meta itemprop="name" content="tff.learning.framework.build_model_delta_optimizer_process" />
 <meta itemprop="path" content="Stable" />
 </div>
 
-# tff.learning.framework.build_model_delta_optimizer_tff
+# tff.learning.framework.build_model_delta_optimizer_process
 
 ```python
-tff.learning.framework.build_model_delta_optimizer_tff(
+tff.learning.framework.build_model_delta_optimizer_process(
     model_fn,
     model_to_client_delta_fn,
     server_optimizer_fn=None
@@ -16,7 +16,9 @@ tff.learning.framework.build_model_delta_optimizer_tff(
 Defined in
 [`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
 
-Constructs complete TFF computations for Federated Averaging or SGD.
+Constructs
+<a href="../../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
+for Federated Averaging or SGD.
 
 This provides the TFF orchestration logic connecting the common server logic
 which applies aggregated model deltas to the server model with a ClientDeltaFn
@@ -24,7 +26,6 @@ that specifies how weight_deltas are computed on device.
 
 Note: We pass in functions rather than constructed objects so we can ensure any
 variables or ops created in constructors are placed in the correct graph.
-TODO(b/122081673): This can be simplified once we move fully to TF 2.0.
 
 #### Args:
 

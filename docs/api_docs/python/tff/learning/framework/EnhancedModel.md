@@ -2,6 +2,7 @@
 <meta itemprop="name" content="tff.learning.framework.EnhancedModel" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="federated_output_computation"/>
+<meta itemprop="property" content="input_spec"/>
 <meta itemprop="property" content="local_variables"/>
 <meta itemprop="property" content="non_trainable_variables"/>
 <meta itemprop="property" content="trainable_variables"/>
@@ -32,6 +33,8 @@ __init__(model)
 
 <h3 id="federated_output_computation"><code>federated_output_computation</code></h3>
 
+<h3 id="input_spec"><code>input_spec</code></h3>
+
 <h3 id="local_variables"><code>local_variables</code></h3>
 
 <h3 id="non_trainable_variables"><code>non_trainable_variables</code></h3>
@@ -48,7 +51,7 @@ Returns a `tff.learning.ModelWeights`.
 
 ```python
 forward_pass(
-    batch,
+    batch_input,
     training=True
 )
 ```

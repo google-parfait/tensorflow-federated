@@ -60,6 +60,8 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff/learning
+    - title: BatchOutput
+      path: /federated/api_docs/python/tff/learning/BatchOutput
     - title: build_federated_averaging_process
       path: /federated/api_docs/python/tff/learning/build_federated_averaging_process
     - title: from_compiled_keras_model
@@ -68,12 +70,14 @@ toc:
       path: /federated/api_docs/python/tff/learning/from_keras_model
     - title: Model
       path: /federated/api_docs/python/tff/learning/Model
+    - title: TrainableModel
+      path: /federated/api_docs/python/tff/learning/TrainableModel
     - title: framework
       section:
       - title: Overview
         path: /federated/api_docs/python/tff/learning/framework
-      - title: build_model_delta_optimizer_tff
-        path: /federated/api_docs/python/tff/learning/framework/build_model_delta_optimizer_tff
+      - title: build_model_delta_optimizer_process
+        path: /federated/api_docs/python/tff/learning/framework/build_model_delta_optimizer_process
       - title: ClientDeltaFn
         path: /federated/api_docs/python/tff/learning/framework/ClientDeltaFn
       - title: ClientOutput

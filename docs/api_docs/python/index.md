@@ -22,7 +22,9 @@
 *   <a href="./tff/federated_value.md"><code>tff.federated_value</code></a>
 *   <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *   <a href="./tff/learning.md"><code>tff.learning</code></a>
+*   <a href="./tff/learning/BatchOutput.md"><code>tff.learning.BatchOutput</code></a>
 *   <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>
+*   <a href="./tff/learning/TrainableModel.md"><code>tff.learning.TrainableModel</code></a>
 *   <a href="./tff/learning/build_federated_averaging_process.md"><code>tff.learning.build_federated_averaging_process</code></a>
 *   <a href="./tff/learning/framework.md"><code>tff.learning.framework</code></a>
 *   <a href="./tff/learning/framework/ClientDeltaFn.md"><code>tff.learning.framework.ClientDeltaFn</code></a>
@@ -30,7 +32,7 @@
 *   <a href="./tff/learning/framework/EnhancedModel.md"><code>tff.learning.framework.EnhancedModel</code></a>
 *   <a href="./tff/learning/framework/EnhancedTrainableModel.md"><code>tff.learning.framework.EnhancedTrainableModel</code></a>
 *   <a href="./tff/learning/framework/ModelWeights.md"><code>tff.learning.framework.ModelWeights</code></a>
-*   <a href="./tff/learning/framework/build_model_delta_optimizer_tff.md"><code>tff.learning.framework.build_model_delta_optimizer_tff</code></a>
+*   <a href="./tff/learning/framework/build_model_delta_optimizer_process.md"><code>tff.learning.framework.build_model_delta_optimizer_process</code></a>
 *   <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
 *   <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
 *   <a href="./tff/sequence_map.md"><code>tff.sequence_map</code></a>

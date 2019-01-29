@@ -29,5 +29,7 @@ container for the trainable and non-trainable variables of a `Model`.
 
 ## Functions
 
-[`build_model_delta_optimizer_tff(...)`](../../tff/learning/framework/build_model_delta_optimizer_tff.md):
-Constructs complete TFF computations for Federated Averaging or SGD.
+[`build_model_delta_optimizer_process(...)`](../../tff/learning/framework/build_model_delta_optimizer_process.md):
+Constructs
+<a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
+for Federated Averaging or SGD.

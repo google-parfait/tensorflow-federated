@@ -1,5 +1,5 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tff.learning.Model" />
+<meta itemprop="name" content="tff.learning.TrainableModel" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="federated_output_computation"/>
 <meta itemprop="property" content="input_spec"/>
@@ -8,46 +8,22 @@
 <meta itemprop="property" content="trainable_variables"/>
 <meta itemprop="property" content="forward_pass"/>
 <meta itemprop="property" content="report_local_outputs"/>
+<meta itemprop="property" content="train_on_batch"/>
 </div>
 
-# tff.learning.Model
+# tff.learning.TrainableModel
 
-## Class `Model`
+## Class `TrainableModel`
+
+Inherits From: [`Model`](../../tff/learning/Model.md)
 
 Defined in
 [`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
-Represents a Model for use in TensorFlow Federated.
+A Model with an additional method for (local) training.
 
-Each Model will work on a set of Variables, and each method should be a
-computation that can be implemented as a `tf.defun`; this implies the class
-should essentially be stateless from a Python perspective, as each method will
-generally only be traced once (per set of arguments) to create the corresponding
-TensorFlow graph functions. Thus, `Model` instances should behave as expected in
-both eager and graph (TF 1.0) usage.
-
-In general, Variables may be either:
-
-*   Weights, the variables needed to make predictions with the model.
-*   Local variables, e.g. to accumulate aggregated metrics across calls to
-    forward_pass.
-
-The weights can be broken down into trainable variables (variables that can and
-should be trained using gradient-based methods), and non-trainable variables
-(which could include fixed pre-trained layers, or static model data). These
-variables are provided via the `trainable_variables`, `non_trainable_variables`,
-and `local_variables` properties, and must be initialized by the user of the
-`Model`.
-
-In federated learning, model weights will generally be provided by the server,
-and updates to trainable model variables will be sent back to the server. Local
-variables are not transmitted, and are instead initialized locally on the
-device, and then used to produce `aggregated_outputs` which are sent to the
-server.
-
-All `tf.Variables` should be introduced in `__init__`; this could move to a
-`build` method more inline with Keras (see
-https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in the future.
+This class is primarily intended to be used in the implementation of
+FederatedAveraging.
 
 ## Properties
 
@@ -181,3 +157,22 @@ each feature exceed a certain magnitude.
 
 A structure of tensors (as supported by `tf.contrib.framework.nest`) to be
 aggregated across clients.
+
+<h3 id="train_on_batch"><code>train_on_batch</code></h3>
+
+```python
+train_on_batch(batch_input)
+```
+
+Like `forward_pass`, but updates the model variables.
+
+Typically this will invoke `forward_pass`, with any corresponding side-effects
+such as updating metrics.
+
+#### Args:
+
+*   <b>`batch_input`</b>: The current batch, as for `forward_pass`.
+
+#### Returns:
+
+The same `BatchOutput` as `forward_pass`.

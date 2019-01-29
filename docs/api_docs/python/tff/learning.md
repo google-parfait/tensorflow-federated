@@ -17,8 +17,15 @@ contributors who develop federated learning algorithms.
 
 ## Classes
 
+[`class BatchOutput`](../tff/learning/BatchOutput.md): A structre that holds the
+output of a
+<a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
+
 [`class Model`](../tff/learning/Model.md): Represents a Model for use in
 TensorFlow Federated.
+
+[`class TrainableModel`](../tff/learning/TrainableModel.md): A Model with an
+additional method for (local) training.
 
 ## Functions
 
@@ -26,7 +33,9 @@ TensorFlow Federated.
 Builds the TFF computations for optimization using federated averaging.
 
 [`from_compiled_keras_model(...)`](../tff/learning/from_compiled_keras_model.md):
-Builds a <a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
+Builds a <a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a>
+for an example mini batch.
 
 [`from_keras_model(...)`](../tff/learning/from_keras_model.md): Builds a
-<a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
+<a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a> for an
+example mini batch.
