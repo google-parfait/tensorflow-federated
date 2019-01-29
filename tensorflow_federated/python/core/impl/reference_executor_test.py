@@ -888,6 +888,17 @@ class ReferenceExecutorTest(absltest.TestCase):
     foo_result_str = ','.join(str(x) for x in foo_result)
     self.assertEqual(foo_result_str, '<1,10>,<2,10>,<3,10>')
 
+  def test_with_unequal_tensor_types(self):
+    @computations.tf_computation
+    def foo():
+      return tf.data.Dataset.range(5).map(lambda _: tf.constant(10.0)).batch(1)
+
+    self.assertEqual(str(foo.type_signature), '( -> float32[?]*)')
+    foo_result = foo()
+    self.assertIsInstance(foo_result, list)
+    foo_result_str = ','.join(str(x) for x in foo_result).replace(' ', '')
+    self.assertEqual(foo_result_str, '[10.],[10.],[10.],[10.],[10.]')
+
 
 if __name__ == '__main__':
   # We need to be able to individually test all components of the executor, and
