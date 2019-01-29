@@ -152,7 +152,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(value, dtype_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_utils.infer_type(value)
-    if inferred_type_spec != type_spec:
+    if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
           'the type spec {}.'.format(str(inferred_type_spec), str(type_spec)))
