@@ -25,8 +25,8 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_building_utils
 from tensorflow_federated.python.core.impl import context_stack_base
+from tensorflow_federated.python.core.impl import federated_computation_utils
 
 
 def transform_postorder(comp, func):
@@ -168,7 +168,7 @@ def replace_intrinsic(comp, uri, body, context_stack):
                               computation_types.FunctionType)
       # We need 'wrapped_body' to accept exactly one argument.
       wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
-      return computation_building_utils.zero_or_one_arg_func_to_building_block(
+      return federated_computation_utils.zero_or_one_arg_func_to_building_block(
           wrapped_body, 'arg', comp.type_signature.parameter, context_stack)
 
   return transform_postorder(comp, lambda x: _transformation_func(x, uri, body))

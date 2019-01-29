@@ -16,11 +16,10 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-from tensorflow_federated.python.core.impl import computation_building_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
 
@@ -37,7 +36,7 @@ tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 def _federated_computation_wrapper_fn(target_fn, parameter_type):
   ctx_stack = context_stack_impl.context_stack
   target_lambda = (
-      computation_building_utils.zero_or_one_arg_func_to_building_block(
+      federated_computation_utils.zero_or_one_arg_func_to_building_block(
           target_fn, 'arg' if parameter_type else None, parameter_type,
           ctx_stack))
   return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack)
