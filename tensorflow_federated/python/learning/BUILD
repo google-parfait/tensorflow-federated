@@ -121,6 +121,7 @@ py_test(
     name = "model_utils_test",
     size = "large",
     srcs = ["model_utils_test.py"],
+    # TODO(b/123578208): Remove deep keras.optimizer_v2 imports after updating TF version.
     deps = [
         ":model",
         ":model_examples",
@@ -128,6 +129,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
         "@six_archive//:six",
     ],
 )
