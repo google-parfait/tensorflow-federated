@@ -40,7 +40,7 @@ class IterativeProcess(object):
   ```
 
   The iteration step can accept arguments in addition to `state` (which must be
-  the first argument):
+  the first argument), and return additional arguments:
 
   ```python
   def next(state, item):
@@ -49,7 +49,7 @@ class IterativeProcess(object):
   iterative_process = ...
   state = iterative_process.initialize()
   for round in range(num_rounds):
-    state = iterative_process.next(state, round)
+    state, output = iterative_process.next(state, round)
   ```
   """
 
@@ -60,9 +60,10 @@ class IterativeProcess(object):
       initialize_fn: a no-arg `tff.Computation` that creates the initial state
         of the chained computation.
       next_fn: a `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type `T`, then `next_fn` must also return type
-        `T` and accept either a single argument of type `T` or a named tuple
-        whose first argument is of type `T`.
+        `initialize_fn` returns a type _T_, then `next_fn` must also return type
+        _T_  or multiple values where the first is of type _T_, and accept
+        either a single argument of type _T_ or multiple arguments where the
+        first argument must be of type _T_.
 
     Raises:
       TypeError: `initialize_fn` and `next_fn` are not compatible function
@@ -87,11 +88,17 @@ class IterativeProcess(object):
 
     next_result_type = next_fn.type_signature.result
     if next_first_param_type != next_result_type:
-      raise TypeError('The return type of next_fn should match the '
-                      'first parameter, but found\n'
-                      'next_fn.type_signature.parameter[0]={}\n'
-                      'next_fn.type_signature.result={}'.format(
-                          next_first_param_type, next_result_type))
+      # This might be multiple output next_fn, check if the first argument might
+      # be the state. If still not the right type, raise and error.
+      if isinstance(next_result_type, tff.NamedTupleType):
+        next_result_type = next_result_type[0]
+      if next_first_param_type != next_result_type:
+        raise TypeError('The return type of next_fn should match the '
+                        'first parameter, but found\n'
+                        'next_fn.type_signature.parameter[0]={}\n'
+                        'next_fn.type_signature.result={}'.format(
+                            next_first_param_type,
+                            next_fn.type_signature.result))
     self._initialize_fn = initialize_fn
     self._next_fn = next_fn
 
@@ -105,8 +112,8 @@ class IterativeProcess(object):
     """A `tff.Computation` that produces the next state.
 
     The first argument of should always be the current state (originally
-    produced by `tff.IterativeProcess.initialize`), and the return value is the
-    updated state.
+    produced by `tff.IterativeProcess.initialize`), and the first (or only)
+    returned value is the updated state.
 
     Returns:
       A `tff.Computation`.

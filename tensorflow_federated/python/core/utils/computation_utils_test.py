@@ -38,6 +38,11 @@ def add_int32(current, val):
   return current + val
 
 
+@tff.tf_computation([tf.int32, tf.int32])
+def add_mul_int32(current, val):
+  return current + val, current * val
+
+
 @tff.tf_computation(tf.int32)
 def count_int32(current):
   return current + 1
@@ -57,17 +62,26 @@ class ComputationUtilsTest(absltest.TestCase):
       state = iterative_process.next(state.item())
     self.assertEqual(state, iterations)
 
-  def test_iterative_process_state_tuple(self):
+  def test_iterative_process_state_tuple_arg(self):
     iterative_process = computation_utils.IterativeProcess(
         initialize, add_int32)
 
     state = iterative_process.initialize()
     iterations = 10
     for val in range(iterations):
-      # TODO(b/122321354): remove the .item() call on `state` once numpy.int32
-      # type is supported.
-      state = iterative_process.next(state.item(), val)
+      state = iterative_process.next(state, val)
     self.assertEqual(state, sum(range(iterations)))
+
+  def test_iterative_process_state_multiple_return_values(self):
+    iterative_process = computation_utils.IterativeProcess(
+        initialize, add_mul_int32)
+
+    state = iterative_process.initialize()
+    iterations = 10
+    for val in range(iterations):
+      state, product = iterative_process.next(state, val)
+    self.assertEqual(state, sum(range(iterations)))
+    self.assertEqual(product, sum(range(iterations - 1)) * (iterations - 1))
 
   def test_iterative_process_initialize_bad_type(self):
     with six.assertRaisesRegex(self, TypeError,
@@ -113,6 +127,17 @@ class ComputationUtilsTest(absltest.TestCase):
 
       _ = computation_utils.IterativeProcess(
           initialize_fn=initialize, next_fn=add_bad_result)
+
+    with six.assertRaisesRegex(
+        self, TypeError,
+        'The return type of next_fn should match the first parameter'):
+
+      @tff.federated_computation(tf.int32)
+      def add_bad_multi_result(_):
+        return 0.0, 0
+
+      _ = computation_utils.IterativeProcess(
+          initialize_fn=initialize, next_fn=add_bad_multi_result)
 
 
 if __name__ == '__main__':
