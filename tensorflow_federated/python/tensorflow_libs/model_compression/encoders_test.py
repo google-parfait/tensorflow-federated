@@ -62,12 +62,17 @@ class EncoderTest(tf.test.TestCase):
     And verifies that the structured objects created by the methods of `Encoder`
     are of the expected structure.
     """
-    encoder = encoders.EncoderComposer(test_utils.SignIntFloatEncodingStage())
-    encoder.add_child(test_utils.TimesTwoEncodingStage(), SIF_SIGNS)
-    encoder.add_child(test_utils.PlusOneEncodingStage(), SIF_INTS)
-    encoder.add_child(test_utils.PlusNSquaredEncodingStage(),
-                      SIF_FLOATS).add_child(
-                          test_utils.AdaptiveNormalizeEncodingStage(), PN_VALS)
+    sif_stage = test_utils.SignIntFloatEncodingStage()
+    times_two_stage = test_utils.TimesTwoEncodingStage()
+    plus_one_stage = test_utils.PlusOneEncodingStage()
+    plus_n_squared_stage = test_utils.PlusNSquaredEncodingStage()
+    adaptive_normalize_stage = test_utils.AdaptiveNormalizeEncodingStage()
+
+    encoder = encoders.EncoderComposer(sif_stage)
+    encoder.add_child(times_two_stage, SIF_SIGNS)
+    encoder.add_child(plus_one_stage, SIF_INTS)
+    encoder.add_child(plus_n_squared_stage, SIF_FLOATS).add_child(
+        adaptive_normalize_stage, PN_VALS)
     encoder = encoder.make()
 
     # Create all intermediary objects.
@@ -79,7 +84,7 @@ class EncoderTest(tf.test.TestCase):
     decoded_x = encoder.decode(encoded_x, decode_params, input_shapes)
     updated_state = encoder.update_state(initial_state, state_update_tensors)
 
-    # Verify the structure of those objects is as expected.
+    # Verify the structure and naming of those objects is as expected.
     for state in [initial_state, updated_state]:
       tf.contrib.framework.nest.assert_same_structure({
           STATE: {},
@@ -107,6 +112,26 @@ class EncoderTest(tf.test.TestCase):
               }
           }
       }, state)
+    self.assertIn(
+        'encoder_initial_state/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+        plus_n_squared_stage.name + '_initial_state',
+        initial_state[CHILDREN][SIF_FLOATS][STATE][PN_ITER_STATE].name)
+    self.assertIn(
+        'encoder_initial_state/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+        plus_n_squared_stage.name + '/' + PN_VALS + '/' +
+        adaptive_normalize_stage.name + '_initial_state',
+        initial_state[CHILDREN][SIF_FLOATS][CHILDREN][PN_VALS][STATE]
+        [AN_FACTOR_STATE].name)
+    self.assertIn(
+        'encoder_update_state/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+        plus_n_squared_stage.name + '_update_state',
+        updated_state[CHILDREN][SIF_FLOATS][STATE][PN_ITER_STATE].name)
+    self.assertIn(
+        'encoder_update_state/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+        plus_n_squared_stage.name + '/' + PN_VALS + '/' +
+        adaptive_normalize_stage.name + '_update_state', updated_state[CHILDREN]
+        [SIF_FLOATS][CHILDREN][PN_VALS][STATE][AN_FACTOR_STATE].name)
+
     for params in [encode_params, decode_params]:
       tf.contrib.framework.nest.assert_same_structure({
           PARAMS: {},
@@ -138,6 +163,23 @@ class EncoderTest(tf.test.TestCase):
               }
           }
       }, params)
+      self.assertIn(
+          'encoder_get_params/' + sif_stage.name + '/' + SIF_INTS + '/' +
+          plus_one_stage.name + '_get_params',
+          params[CHILDREN][SIF_INTS][PARAMS][P1_ADD_PARAM].name)
+      self.assertIn(
+          'encoder_get_params/' + sif_stage.name + '/' + SIF_SIGNS + '/' +
+          times_two_stage.name + '_get_params',
+          params[CHILDREN][SIF_SIGNS][PARAMS][T2_FACTOR_PARAM].name)
+      self.assertIn(
+          'encoder_get_params/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+          plus_n_squared_stage.name + '_get_params',
+          params[CHILDREN][SIF_FLOATS][PARAMS][PN_ADD_PARAM].name)
+      # Note: we do not check the value of
+      # params[CHILDREN][SIF_FLOATS][CHILDREN][PN_VALS][PARAMS][AN_FACTOR_PARAM]
+      # because the get_params method of adaptive_normalize_stage does not
+      # modify the graph, only passes through the provided state tensor.
+
     tf.contrib.framework.nest.assert_same_structure({
         SIF_INTS: {
             P1_VALS: None
@@ -151,6 +193,20 @@ class EncoderTest(tf.test.TestCase):
             }
         }
     }, encoded_x)
+    self.assertIn(
+        'encoder_encode/' + sif_stage.name + '/' + SIF_INTS + '/' +
+        plus_one_stage.name + '_encode',
+        encoded_x[SIF_INTS][P1_VALS].name)
+    self.assertIn(
+        'encoder_encode/' + sif_stage.name + '/' + SIF_SIGNS + '/' +
+        times_two_stage.name + '_encode',
+        encoded_x[SIF_SIGNS][T2_VALS].name)
+    self.assertIn(
+        'encoder_encode/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+        plus_n_squared_stage.name + '/' + PN_VALS + '/' +
+        adaptive_normalize_stage.name + '_encode',
+        encoded_x[SIF_FLOATS][PN_VALS][AN_VALS].name)
+
     tf.contrib.framework.nest.assert_same_structure({
         TENSORS: {},
         CHILDREN: {
@@ -175,6 +231,13 @@ class EncoderTest(tf.test.TestCase):
             }
         }
     }, state_update_tensors)
+    self.assertIn(
+        'encoder_encode/' + sif_stage.name + '/' + SIF_FLOATS + '/' +
+        plus_n_squared_stage.name + '/' + PN_VALS + '/' +
+        adaptive_normalize_stage.name + '_encode',
+        state_update_tensors[CHILDREN][SIF_FLOATS][CHILDREN][PN_VALS][TENSORS]
+        [AN_NORM_UPDATE].name)
+
     tf.contrib.framework.nest.assert_same_structure({
         SHAPE: None,
         CHILDREN: {
@@ -198,6 +261,7 @@ class EncoderTest(tf.test.TestCase):
         }
     }, input_shapes)
     self.assertTrue(tf.contrib.framework.is_tensor(decoded_x))
+    self.assertIn('encoder_decode/', decoded_x.name)
 
   # A utility for tests testing commutation with sum works as expected.
   commutation_test_data = collections.namedtuple(
