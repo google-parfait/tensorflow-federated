@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import itertools
 
+import numpy as np
 import six
 from six.moves import zip
 import tensorflow as tf
@@ -371,101 +372,172 @@ def nested_structures_equal(x, y):
       x) == tf.contrib.framework.nest.flatten(y)
 
 
-def to_nested_structure(value):
-  """Converts a TFF object to the nested structure for a given type.
+def make_empty_list_structure_for_element_type_spec(type_spec):
+  """Creates a nested structure of empty Python lists for `type_spec`.
+
+  This function prepares a nested structure made of `collections.OrderedDict`s
+  and Python `tuple`s at the intermediate (non-leaf) levels, and that has empty
+  Python `list`s at the leaf level, with the shape of the structure matching
+  that of `type_spec`. This structure is used to accumulate elemnts of a data
+  set for ingestion by `tf.data.Dataset.from_tensor_slices`.
 
   Args:
-    value: The object to convert.
+    type_spec: An instance of `tff.Type` or something convertible to it that
+      consists of only tensor and named tuple types, and in which rach of the
+      named tuples either have all or none of their elements named.
 
   Returns:
-    The nested representation of `value` for a given type.
+    The nested structure, as described above.
 
   Raises:
-    ValueError: If `value` contains an `anonymous_tuple.AnonymousTuple` with an
-      unnamed element.
+    TypeError: If the `type_spec` is not of a form described above.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if isinstance(type_spec, computation_types.TensorType):
+    return []
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    elements = anonymous_tuple.to_elements(type_spec)
+    if all(k is not None for k, _ in elements):
+      return collections.OrderedDict(
+          [(k, make_empty_list_structure_for_element_type_spec(v))
+           for k, v in elements])
+    elif all(k is None for k, _ in elements):
+      return tuple([
+          make_empty_list_structure_for_element_type_spec(v)
+          for _, v in elements
+      ])
+    else:
+      raise TypeError(
+          'Expected a named tuple type with either all elements named '
+          'or all unnamed, got {}.'.format(str(type_spec)))
+  else:
+    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
+        str(type_spec)))
+
+
+def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
+  """Adds an element `value` to a nested `structure` of lists for `type_spec`.
+
+  This function appends tensor-level constituents of an element `value` to the
+  lists created by `make_empty_list_structure_for_element_type_spec`. The
+  nested structure of `value` must match that created by the above function,
+  and consistent with `type_spec`.
+
+  Args:
+    structure: Output of `make_empty_list_structure_for_element_type_spec`.
+    value: A value (Python object) that a hierarchical structure of dictionary,
+      list, and other containers holding tensor-like items that matches the
+      hierarchy of `type_spec`.
+    type_spec: An instance of `tff.Type` or something convertible to it, as in
+      `make_empty_list_structure_for_element_type_spec`.
+
+  Raises:
+    TypeError: If the `type_spec` is not of a form described above, or the value
+      is not of a type compatible with `type_spec`.
   """
   if value is None:
-    return None
-  elif isinstance(value, anonymous_tuple.AnonymousTuple):
-    ordered_dict = collections.OrderedDict()
-    for name, element in anonymous_tuple.to_elements(value):
-      if name is None:
-        raise ValueError(
-            'Expected anonymous tuple \'{}\' to contain only named elements.'
-            .format(value))
-      ordered_dict[name] = to_nested_structure(element)
-    return ordered_dict
-  elif isinstance(value, (tuple, list)):
-    if not value:
-      return []
-    value = [to_nested_structure(e) for e in value]
-    if isinstance(value[0], dict):
-      return to_parallel_lists(value)
-  return value
+    return
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  # TODO(b/113116813): This could be made more efficient, but for now we won't
+  # need to worry about it as this is an odd corner case.
+  if isinstance(value, anonymous_tuple.AnonymousTuple):
+    value = collections.OrderedDict(anonymous_tuple.to_elements(value))
+  if isinstance(type_spec, computation_types.TensorType):
+    py_typecheck.check_type(structure, list)
+    structure.append(value)
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    elements = anonymous_tuple.to_elements(type_spec)
+    if isinstance(structure, collections.OrderedDict):
+      if py_typecheck.is_named_tuple(value):
+        value = value._asdict()
+      if isinstance(value, dict):
+        if set(value.keys()) != set(k for k, _ in elements):
+          raise TypeError('Value {} does not match type {}.'.format(
+              str(value), str(type_spec)))
+        for elem_name, elem_type in elements:
+          append_to_list_structure_for_element_type_spec(
+              structure[elem_name], value[elem_name], elem_type)
+      elif isinstance(value, (list, tuple)):
+        if len(value) != len(elements):
+          raise TypeError('Value {} does not match type {}.'.format(
+              str(value), str(type_spec)))
+        for idx, (elem_name, elem_type) in enumerate(elements):
+          append_to_list_structure_for_element_type_spec(
+              structure[elem_name], value[idx], elem_type)
+      else:
+        raise TypeError('Unexpected type of value {} for TFF type {}.'.format(
+            py_typecheck.type_string(type(value)), str(type_spec)))
+    elif isinstance(structure, tuple):
+      py_typecheck.check_type(value, (list, tuple))
+      if len(value) != len(elements):
+        raise TypeError('Value {} does not match type {}.'.format(
+            str(value), str(type_spec)))
+      for idx, (_, elem_type) in enumerate(elements):
+        append_to_list_structure_for_element_type_spec(structure[idx],
+                                                       value[idx], elem_type)
+    else:
+      raise TypeError(
+          'Invalid nested structure, unexpected container type {}.'.format(
+              py_typecheck.type_string(type(structure))))
+  else:
+    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
+        str(type_spec)))
 
 
-def to_parallel_lists(value):
-  """Converts a list of dictionaries to an ordered dictionary of parallel lists.
+def to_tensor_slices_from_list_structure_for_element_type_spec(
+    structure, type_spec):
+  """Converts `structure` for use with `tf.data.Dataset.from_tensor_slices`.
 
-  Converts a `list` of `dict`s or `collections.OrderedDict`s into an
-  `collections.OrderedDict` whose keys are equal to keys from the `dict`s in
-  `value` and whose values are equal to a `list` of the values for a key from
-  the `dict`s in `value`.
-
-  For examples:
-
-  ```python
-  x = [{
-      'a': 1,
-      'b': 2,
-  }, {
-      'a': 3,
-      'b': 4,
-  }]
-  ```
-
-  is convereted to:
-
-  ```python
-  y = {
-      ('a', [1, 3]),
-      ('b', [2, 4]),
-  }
-  ```
+  This function wraps lists in the leaves of `structure` with `np.array()` for
+  consumption by `tf.data.Dataset.from_tensor_slices`.
 
   Args:
-    value: The list to convert.
+    structure: Output of `make_empty_list_structure_for_element_type_spec`.
+    type_spec: An instance of `tff.Type` or something convertible to it, as in
+      `make_empty_list_structure_for_element_type_spec`.
 
   Returns:
-    An `collections.OrderedDict` of parallel lists.
+    The transformed version of `structure`, in a form that can be consumed and
+    correctly parsed by `tf.data.Dataset.from_tensor_slices`.
 
   Raises:
-    TypeError: If `value` is not a `list` or if the element in `value` are not a
-      `dict`.
-    ValueError: If `value` is a `list` of `dict`s that do not all contain the
-      same keys.
+    TypeError: If the `type_spec` is not of a form described above, or the
+      structure is not of a type compatible with `type_spec`.
   """
-  py_typecheck.check_type(value, list)
-  if not value:
-    return collections.OrderedDict()
-  first_element = value[0]
-  py_typecheck.check_type(first_element, dict)
-  if isinstance(first_element, collections.OrderedDict):
-    keys = first_element.keys()
-  else:
-    keys = sorted(first_element.keys())
-  ordered_dict = collections.OrderedDict([(key, []) for key in keys])
-  keys = set(keys)
-  for element in value:
-    py_typecheck.check_type(element, dict)
-    if keys == set(element.keys()):
-      for element_key, element_value in six.iteritems(element):
-        ordered_dict[element_key].append(element_value)
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if isinstance(type_spec, computation_types.TensorType):
+    py_typecheck.check_type(structure, list)
+    # TODO(b/113116813): Perhaps this can be done more selectively, based on the
+    # type of elements on the list as well as the `type_spec`. Also, passing the
+    # explicit `dtype` here will trigger implicit conversion, e.g., from `int32`
+    # to `bool`, which may not be desirable.
+    return np.array(structure, dtype=type_spec.dtype.as_numpy_dtype)
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    elements = anonymous_tuple.to_elements(type_spec)
+    if isinstance(structure, collections.OrderedDict):
+      to_return = []
+      for elem_name, elem_type in elements:
+        elem_val = to_tensor_slices_from_list_structure_for_element_type_spec(
+            structure[elem_name], elem_type)
+        to_return.append((elem_name, elem_val))
+      return collections.OrderedDict(to_return)
+    elif isinstance(structure, tuple):
+      to_return = []
+      for idx, (_, elem_type) in enumerate(elements):
+        elem_val = to_tensor_slices_from_list_structure_for_element_type_spec(
+            structure[idx], elem_type)
+        to_return.append(elem_val)
+      return tuple(to_return)
     else:
-      raise ValueError(
-          'Expected list \'{}\' to contain dicts with the same keys.'.format(
-              value))
-  return ordered_dict
+      raise TypeError(
+          'Invalid nested structure, unexpected container type {}.'.format(
+              py_typecheck.type_string(type(structure))))
+  else:
+    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
+        str(type_spec)))
 
 
 def make_data_set_from_elements(graph, elements, element_type):
@@ -486,8 +558,20 @@ def make_data_set_from_elements(graph, elements, element_type):
   py_typecheck.check_type(elements, list)
   element_type = computation_types.to_type(element_type)
   py_typecheck.check_type(element_type, computation_types.Type)
-  elements = to_nested_structure(elements)
-  return tf.data.Dataset.from_tensor_slices(elements)
+  structure = make_empty_list_structure_for_element_type_spec(element_type)
+  for el in elements:
+    append_to_list_structure_for_element_type_spec(structure, el, element_type)
+  tensor_slices = to_tensor_slices_from_list_structure_for_element_type_spec(
+      structure, element_type)
+  ds = tf.data.Dataset.from_tensor_slices(tensor_slices)
+  ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
+      ds.output_types, ds.output_shapes)
+  if not type_utils.is_assignable_from(element_type, ds_element_type):
+    raise TypeError(
+        'Failure during data set construction, expected elements of type {}, '
+        'but the constructed data set has elements of type {}.'.format(
+            str(element_type), str(ds_element_type)))
+  return ds
 
 
 def fetch_value_in_session(sess, value):

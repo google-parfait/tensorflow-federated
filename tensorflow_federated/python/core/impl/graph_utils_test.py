@@ -383,196 +383,6 @@ class GraphUtilsTest(test.TestCase):
     self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
     self.assertFalse(graph_utils.nested_structures_equal([10, 20], ['x']))
 
-  def test_to_nested_strucutre_with_none(self):
-    self.assertEqual(graph_utils.to_nested_structure(None), None)
-
-  def test_to_nested_strucutre_with_int(self):
-    self.assertEqual(graph_utils.to_nested_structure(1), 1)
-
-  def test_to_nested_strucutre_with_empty_dict(self):
-    self.assertEqual(graph_utils.to_nested_structure({}), {})
-
-  def test_to_nested_strucutre_with_dict(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure({
-            'a': 1,
-            'b': 2,
-        }), {
-            'a': 1,
-            'b': 2,
-        })
-
-  def test_to_nested_strucutre_with_empty_list(self):
-    self.assertEqual(graph_utils.to_nested_structure([]), [])
-
-  def test_to_nested_strucutre_with_list_of_ints(self):
-    self.assertEqual(graph_utils.to_nested_structure([1, 2, 3]), [1, 2, 3])
-
-  def test_to_nested_strucutre_with_list_of_empty_dicts(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure([{}, {}]), collections.OrderedDict())
-
-  def test_to_nested_strucutre_with_list_of_dicts(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure([{
-            'a': 1,
-            'b': 0.1,
-        }, {
-            'a': 10,
-            'b': True,
-        }]), collections.OrderedDict([
-            ('a', [1, 10]),
-            ('b', [0.1, True]),
-        ]))
-
-  def test_to_nested_strucutre_with_list_of_empty_anonymous_tuples(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure([
-            anonymous_tuple.AnonymousTuple([]),
-            anonymous_tuple.AnonymousTuple([]),
-        ]), collections.OrderedDict())
-
-  def test_to_nested_strucutre_with_list_of_anonymous_tuples(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure([
-            anonymous_tuple.AnonymousTuple([
-                ('a', 1),
-                ('b', 0.1),
-            ]),
-            anonymous_tuple.AnonymousTuple([
-                ('a', 10),
-                ('b', True),
-            ]),
-        ]), collections.OrderedDict([
-            ('a', [1, 10]),
-            ('b', [0.1, True]),
-        ]))
-
-  def test_to_nested_strucutre_with_empty_anonymous_tuple(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure(anonymous_tuple.AnonymousTuple([])),
-        collections.OrderedDict())
-
-  def test_to_nested_strucutre_with_anonymous_tuple(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure(
-            anonymous_tuple.AnonymousTuple([
-                ('a', 1),
-                ('b', 0.1),
-            ])), collections.OrderedDict([
-                ('a', 1),
-                ('b', 0.1),
-            ]))
-
-  def test_to_nested_strucutre_with_anonymous_tuple_of_empty_anonyous_tuple(
-      self):
-    self.assertEqual(
-        graph_utils.to_nested_structure(
-            anonymous_tuple.AnonymousTuple([
-                ('a', anonymous_tuple.AnonymousTuple([])),
-                ('b', anonymous_tuple.AnonymousTuple([])),
-            ])),
-        collections.OrderedDict([
-            ('a', collections.OrderedDict([])),
-            ('b', collections.OrderedDict([])),
-        ]))
-
-  def test_to_nested_strucutre_with_anonymous_tuple_of_anonyous_tuple(self):
-    self.assertEqual(
-        graph_utils.to_nested_structure(
-            anonymous_tuple.AnonymousTuple([
-                ('a', anonymous_tuple.AnonymousTuple([
-                    ('a', 1),
-                    ('b', 0.1),
-                ])),
-                ('b', anonymous_tuple.AnonymousTuple([
-                    ('c', 10),
-                    ('d', True),
-                ])),
-            ])),
-        collections.OrderedDict([
-            ('a', collections.OrderedDict([
-                ('a', 1),
-                ('b', 0.1),
-            ])),
-            ('b', collections.OrderedDict([
-                ('c', 10),
-                ('d', True),
-            ])),
-        ]))
-
-  def test_to_nested_strucutre_with_anonymous_tuple_raises_value_error(self):
-    with self.assertRaises(ValueError):
-      graph_utils.to_nested_structure(
-          anonymous_tuple.AnonymousTuple([
-              ('a', 1),
-              ('b', 0.1),
-              (None, True),
-          ]))
-
-  def test_to_parallel_lists_with_none_raises_type_error(self):
-    with self.assertRaises(TypeError):
-      graph_utils.to_parallel_lists(None)
-
-  def test_to_parallel_lists_with_int_raises_type_error(self):
-    with self.assertRaises(TypeError):
-      graph_utils.to_parallel_lists(1)
-
-  def test_to_parallel_lists_with_dict_raises_type_error(self):
-    with self.assertRaises(TypeError):
-      graph_utils.to_parallel_lists({})
-
-  def test_to_parallel_lists_with_empty_list(self):
-    self.assertEqual(
-        graph_utils.to_parallel_lists([]), collections.OrderedDict())
-
-  def test_to_parallel_lists_with_list_of_ints(self):
-    with self.assertRaises(TypeError):
-      graph_utils.to_parallel_lists([1, 2, 3])
-
-  def test_to_parallel_lists_with_list_of_empty_dicts(self):
-    self.assertEqual(
-        graph_utils.to_parallel_lists([{}, {}]), collections.OrderedDict())
-
-  def test_to_parallel_lists_with_list_of_dicts(self):
-    self.assertEqual(
-        graph_utils.to_parallel_lists([{
-            'a': 1,
-            'b': 0.1,
-        }, {
-            'a': 10,
-            'b': True,
-        }]), collections.OrderedDict([
-            ('a', [1, 10]),
-            ('b', [0.1, True]),
-        ]))
-
-  def test_to_parallel_lists_with_list_of_ordered_dicts(self):
-    self.assertEqual(
-        graph_utils.to_parallel_lists([
-            collections.OrderedDict([
-                ('a', 1),
-                ('b', 0.1),
-            ]),
-            collections.OrderedDict([
-                ('a', 10),
-                ('b', True),
-            ]),
-        ]), collections.OrderedDict([
-            ('a', [1, 10]),
-            ('b', [0.1, True]),
-        ]))
-
-  def test_to_parallel_lists_with_list_of_dicts_raises_type_error(self):
-    with self.assertRaises(ValueError):
-      graph_utils.to_parallel_lists([{
-          'a': 1,
-          'b': 0.1,
-      }, {
-          'c': 10,
-          'd': True,
-      }])
-
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [],
                                                  tf.float32)
@@ -614,8 +424,8 @@ class GraphUtilsTest(test.TestCase):
 
   def test_make_data_set_from_elements_with_list_of_lists(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
-        [1, 2],
-        [3, 4],
+        [[1], [2]],
+        [[3], [4]],
     ], [[tf.int32], [tf.int32]])
     self.assertIsInstance(ds, tf.data.Dataset)
     self.assertEqual(
@@ -636,6 +446,53 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
+  def test_make_data_set_from_elements_with_list_of_dicts_with_lists(self):
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'a': [1],
+        'b': [2],
+    }, {
+        'a': [3],
+        'b': [4],
+    }], [('a', [tf.int32]), ('b', [tf.int32])])
+
+    self.assertIsInstance(ds, tf.data.Dataset)
+
+    def reduce_func(x, y):
+      return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
+
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+
+  def test_make_data_set_from_elements_with_list_of_dicts_with_tensors(self):
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'a': 1,
+        'b': 2,
+    }, {
+        'a': 3,
+        'b': 4,
+    }], [('a', tf.int32), ('b', tf.int32)])
+
+    self.assertIsInstance(ds, tf.data.Dataset)
+
+    def reduce_func(x, y):
+      return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
+
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+
+  def test_make_data_set_from_elements_with_list_of_dicts_with_np_array(self):
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'a': np.array([1], dtype=np.int32),
+        'b': np.array([2], dtype=np.int32),
+    }, {
+        'a': np.array([3], dtype=np.int32),
+        'b': np.array([4], dtype=np.int32),
+    }], [('a', (tf.int32, [1])), ('b', (tf.int32, [1]))])
+    self.assertIsInstance(ds, tf.data.Dataset)
+
+    def reduce_func(x, y):
+      return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
+
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+
   def test_fetch_value_in_session_without_data_sets(self):
     x = anonymous_tuple.AnonymousTuple([
         ('a', anonymous_tuple.AnonymousTuple([
@@ -645,6 +502,159 @@ class GraphUtilsTest(test.TestCase):
     with self.session() as sess:
       y = graph_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=10>>')
+
+  def test_make_empty_list_structure_for_element_type_spec_w_tuple_dict(self):
+    type_spec = computation_types.to_type(
+        [tf.int32, [('a', tf.bool), ('b', tf.float32)]])
+    structure = graph_utils.make_empty_list_structure_for_element_type_spec(
+        type_spec)
+    self.assertEqual(
+        str(structure), '([], OrderedDict([(\'a\', []), (\'b\', [])]))')
+
+  def test_append_to_list_structure_for_element_type_spec_w_tuple_dict(self):
+    type_spec = computation_types.to_type(
+        [tf.int32, [('a', tf.bool), ('b', tf.float32)]])
+    structure = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
+    for value in [[10, {'a': 20, 'b': 30}], (40, [50, 60])]:
+      graph_utils.append_to_list_structure_for_element_type_spec(
+          structure, value, type_spec)
+    self.assertEqual(
+        str(structure),
+        '([10, 40], OrderedDict([(\'a\', [20, 50]), (\'b\', [30, 60])]))')
+
+  def test_append_to_list_structure_with_too_few_element_keys(self):
+    type_spec = computation_types.to_type([('a', tf.int32), ('b', tf.int32)])
+    structure = collections.OrderedDict([('a', []), ('b', [])])
+    value = {'a': 10}
+    with self.assertRaises(TypeError):
+      graph_utils.append_to_list_structure_for_element_type_spec(
+          structure, value, type_spec)
+
+  def test_append_to_list_structure_with_too_many_element_keys(self):
+    type_spec = computation_types.to_type([('a', tf.int32), ('b', tf.int32)])
+    structure = collections.OrderedDict([('a', []), ('b', [])])
+    value = {'a': 10, 'b': 20, 'c': 30}
+    with self.assertRaises(TypeError):
+      graph_utils.append_to_list_structure_for_element_type_spec(
+          structure, value, type_spec)
+
+  def test_append_to_list_structure_with_too_few_unnamed_elements(self):
+    type_spec = computation_types.to_type([tf.int32, tf.int32])
+    structure = tuple([[], []])
+    value = [10]
+    with self.assertRaises(TypeError):
+      graph_utils.append_to_list_structure_for_element_type_spec(
+          structure, value, type_spec)
+
+  def test_append_to_list_structure_with_too_many_unnamed_elements(self):
+    type_spec = computation_types.to_type([tf.int32, tf.int32])
+    structure = tuple([[], []])
+    value = [10, 20, 30]
+    with self.assertRaises(TypeError):
+      graph_utils.append_to_list_structure_for_element_type_spec(
+          structure, value, type_spec)
+
+  def test_to_tensor_slices_from_list_structure_for_element_type_spec(self):
+    type_spec = computation_types.to_type(
+        [tf.int32, [('a', tf.bool), ('b', tf.float32)]])
+    structure = tuple([[10, 40],
+                       collections.OrderedDict([('a', [20, 50]), ('b', [30,
+                                                                        60])])])
+    structure = (
+        graph_utils.to_tensor_slices_from_list_structure_for_element_type_spec(
+            structure, type_spec))
+
+    expected_structure = tuple([
+        np.array([10, 40], dtype=np.int32),
+        collections.OrderedDict([('a', np.array([True, True], dtype=np.bool)),
+                                 ('b', np.array([30.0, 60.0],
+                                                dtype=np.float32))])
+    ])
+
+    self.assertEqual(
+        str(structure).replace(' ', ''),
+        str(expected_structure).replace(' ', ''))
+
+  def _test_list_structure(self, type_spec, elements, expected_output_str):
+    structure = graph_utils.make_empty_list_structure_for_element_type_spec(
+        type_spec)
+    for element_value in elements:
+      graph_utils.append_to_list_structure_for_element_type_spec(
+          structure, element_value, type_spec)
+    structure = (
+        graph_utils.to_tensor_slices_from_list_structure_for_element_type_spec(
+            structure, type_spec))
+    self.assertEqual(
+        str(structure).replace(' ', ''), expected_output_str.replace(' ', ''))
+
+  def test_list_structures_from_element_type_spec_with_none_value(self):
+    self._test_list_structure([tf.int32, [('a', tf.bool), ('b', tf.float32)]],
+                              [None],
+                              str(
+                                  tuple([
+                                      np.array([], dtype=np.int32),
+                                      collections.OrderedDict([
+                                          ('a', np.array([], dtype=np.bool)),
+                                          ('b', np.array([], dtype=np.float32)),
+                                      ])
+                                  ])))
+
+  def test_list_structures_from_element_type_spec_with_int_value(self):
+    self._test_list_structure(tf.int32, [1], '[1]')
+
+  def test_list_structures_from_element_type_spec_with_empty_dict_value(self):
+    self._test_list_structure(
+        computation_types.NamedTupleType([]), [{}], 'OrderedDict()')
+
+  def test_list_structures_from_element_type_spec_with_dict_value(self):
+    self._test_list_structure([('a', tf.int32), ('b', tf.int32)], [{
+        'a': 1,
+        'b': 2
+    }, {
+        'a': 1,
+        'b': 2
+    }], 'OrderedDict([(\'a\',array([1,1],dtype=int32)),'
+                              '(\'b\',array([2,2],dtype=int32))])')
+
+  def test_list_structures_from_element_type_spec_with_no_values(self):
+    self._test_list_structure(tf.int32, [], '[]')
+
+  def test_list_structures_from_element_type_spec_with_int_values(self):
+    self._test_list_structure(tf.int32, [1, 2, 3], '[1 2 3]')
+
+  def test_list_structures_from_element_type_spec_with_empty_dict_values(self):
+    self._test_list_structure(
+        computation_types.NamedTupleType([]), [{}, {}, {}], 'OrderedDict()')
+
+  def test_list_structures_from_element_type_spec_with_anonymous_tuples(self):
+    self._test_list_structure(
+        computation_types.NamedTupleType([('a', tf.int32)]), [
+            anonymous_tuple.AnonymousTuple([('a', 1)]),
+            anonymous_tuple.AnonymousTuple([('a', 2)])
+        ], 'OrderedDict([(\'a\', array([1,2],dtype=int32))])')
+
+  def test_list_structures_from_element_type_spec_with_empty_anon_tuples(self):
+    self._test_list_structure(
+        computation_types.NamedTupleType([]), [
+            anonymous_tuple.AnonymousTuple([]),
+            anonymous_tuple.AnonymousTuple([])
+        ], 'OrderedDict()')
+
+  def test_list_structures_from_element_type_spec_w_list_of_anon_tuples(self):
+    self._test_list_structure(
+        computation_types.NamedTupleType([
+            computation_types.NamedTupleType([('a', tf.int32)])
+        ]), [[anonymous_tuple.AnonymousTuple([('a', 1)])],
+             [anonymous_tuple.AnonymousTuple([('a', 2)])]],
+        '(OrderedDict([(\'a\', array([1,2],dtype=int32))]),)')
+
+  def test_make_data_set_from_elements_with_wrong_elements(self):
+    with self.assertRaises(TypeError):
+      graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+          'a': 1
+      }, {
+          'a': 2
+      }], tf.int32)
 
 
 if __name__ == '__main__':
