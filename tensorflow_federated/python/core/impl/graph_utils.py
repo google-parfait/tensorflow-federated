@@ -152,6 +152,10 @@ def capture_result_from_graph(result, graph):
     with graph.as_default():
       result = tf.constant(result)
   if tf.contrib.framework.is_tensor(result):
+    if hasattr(result, 'read_value'):
+      # We have a tf.Variable-like result, get a proper tensor to fetch.
+      with graph.as_default():
+        result = result.read_value()
     return (computation_types.TensorType(result.dtype.base_dtype, result.shape),
             pb.TensorFlow.Binding(
                 tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
@@ -486,14 +490,15 @@ def make_data_set_from_elements(graph, elements, element_type):
   return tf.data.Dataset.from_tensor_slices(elements)
 
 
-def fetch_value_in_session(value, session):
+def fetch_value_in_session(sess, value):
   """Fetches `value` in `session`.
 
   Args:
+    sess: The session in which to perform the fetch (as a single run).
     value: A Python object of a form analogous to that constructed by the
       function `assemble_result_from_graph`, made of tensors and anononymous
       tuples, or a `tf.data.Dataset`.
-    session: The session in which to perform the fetch (as a single run).
+
 
   Returns:
     A Python object with structure similar to `value`, but with tensors
@@ -504,18 +509,18 @@ def fetch_value_in_session(value, session):
     ValueError: If `value` is not a `tf.data.Dataset` or not a structure of
       tensors and anonoymous tuples.
   """
-  py_typecheck.check_type(session, tf.Session)
+  py_typecheck.check_type(sess, tf.Session)
   # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
   # `tf.data.Dataset`s and what the API would look like to support this.
   if isinstance(value, tf.data.Dataset):
-    with session.graph.as_default():
+    with sess.graph.as_default():
       iterator = value.make_initializable_iterator()
       next_element = iterator.get_next()
-    session.run(iterator.initializer)
+    sess.run(iterator.initializer)
     elements = []
     while True:
       try:
-        elements.append(session.run(next_element))
+        elements.append(sess.run(next_element))
       except tf.errors.OutOfRangeError:
         break
     return elements
@@ -524,5 +529,5 @@ def fetch_value_in_session(value, session):
     for v in flattened_value:
       if not tf.contrib.framework.is_tensor(v):
         raise ValueError('Unsupported value type {}.'.format(str(v)))
-    flattened_results = session.run(flattened_value)
+    flattened_results = sess.run(flattened_value)
     return anonymous_tuple.pack_sequence_as(value, flattened_results)

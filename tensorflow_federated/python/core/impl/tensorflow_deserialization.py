@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl import type_utils
 
 
 def deserialize_and_call_tf_computation(computation_proto, arg, graph):
-  """Deserializes and invokes a serialized TF computation with a given argument.
+  """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
   what `tensorflow_serialization.serialize_py_func_as_tf_computation` does. At
@@ -55,10 +55,12 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     graph: The graph to stamp into.
 
   Returns:
-    The result of calling the computation in the current context. Depending on
-    the type of the result, this can be `tf.Tensor` or `tf.data.Dataset`
-    instances, or a nested structure (such as an
-    `anonymous_tuple.AnonymousTuple`).
+    A tuple (init_op, result) where:
+       init_op:  String name of an op to initialize the graph.
+       result: The results to be fetched from TensorFlow. Depending on
+           the type of the result, this can be `tf.Tensor` or `tf.data.Dataset`
+           instances, or a nested structure (such as an
+           `anonymous_tuple.AnonymousTuple`).
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -98,11 +100,28 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
         }
     return_elements = graph_utils.extract_tensor_names_from_binding(
         computation_proto.tensorflow.result)
+    orig_init_op_name = computation_proto.tensorflow.initialize_op
+    if orig_init_op_name:
+      return_elements.append(orig_init_op_name)
+    # N. B. Unlike MetaGraphDef, the GraphDef alone contains no information
+    # about collections, and hence, when we import a graph with Variables,
+    # those Variables are not added to global collections, and hence
+    # functions like tf.global_variables_initializers() will not
+    # contain their initialization ops.
     output_tensors = tf.import_graph_def(
         computation_proto.tensorflow.graph_def,
         input_map,
         return_elements,
-        name='')
+        # N. B. It is very important not to return any names from the original
+        # computation_proto.tensorflow.graph_def, those names might or might not
+        # be valid in the current graph. Using a different scope makes the graph
+        # somewhat more readable, since _N style de-duplication of graph
+        # node names is less likely to be needed.
+        name='subcomputation')
+
     output_map = {k: v for k, v in zip(return_elements, output_tensors)}
-    return graph_utils.assemble_result_from_graph(
-        type_spec.result, computation_proto.tensorflow.result, output_map)
+    new_init_op_name = output_map.pop(orig_init_op_name, None)
+    return (new_init_op_name,
+            graph_utils.assemble_result_from_graph(
+                type_spec.result, computation_proto.tensorflow.result,
+                output_map))

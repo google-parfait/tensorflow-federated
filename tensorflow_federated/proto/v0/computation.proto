@@ -515,6 +515,11 @@ message TensorFlow {
   // additional complexity.
   .tensorflow.GraphDef graph_def = 1;
 
+  // String name of an initialization op to run on the graph before fetching
+  // results. This op is intended only to be used for running tf.Variable
+  // initializers.
+  string initialize_op = 4;
+
   // A pair of bindings for the parameter and the result. The parameter binding
   // can be omitted if the computation does not declare a parameter. The result
   // binding is mandatory, as all TensorFlow computations must declare results.

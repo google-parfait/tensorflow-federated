@@ -31,10 +31,13 @@ class TensorFlowDeserializationTest(test.TestCase):
     ctx_stack = context_stack_impl.context_stack
     add_one = tensorflow_serialization.serialize_py_func_as_tf_computation(
         lambda x: tf.add(x, 1, name='the_add'), tf.int32, ctx_stack)
-    result = tensorflow_deserialization.deserialize_and_call_tf_computation(
-        add_one, tf.constant(10, name='the_ten'), tf.get_default_graph())
+    init_op, result = (
+        tensorflow_deserialization.deserialize_and_call_tf_computation(
+            add_one, tf.constant(10, name='the_ten'), tf.get_default_graph()))
     self.assertTrue(tf.contrib.framework.is_tensor(result))
     with tf.Session() as sess:
+      if init_op:
+        sess.run(init_op)
       result_val = sess.run(result)
     self.assertEqual(result_val, 11)
 

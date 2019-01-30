@@ -89,6 +89,32 @@ def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
       result = target(*args)
+
+      # TODO(b/122081673): This needs to change for TF 2.0. We may also
+      # want to allow the person creating a tff.tf_computation to specify
+      # a different initializer; e.g., if it is known that certain
+      # variables will be assigned immediately to arguments of the function,
+      # then it is wasteful to initialize them before this.
+      all_variables = tf.global_variables() + tf.local_variables()
+      if all_variables:
+        # Use a readable but not-too-long name for the init_op.
+        name = 'init_op_for_' + '_'.join(
+            [v.name.replace(':0', '') for v in all_variables])
+        if len(name) > 50:
+          name = 'init_op_for_{}_variables'.format(len(all_variables))
+        with tf.control_dependencies(context.init_ops):
+          # Before running the main new init op, run any initializers for sub-
+          # computations from context.init_ops. Variables from import_graph_def
+          # will not make it into the global collections, and so will not be
+          # initialized without this code path.
+          init_op_name = tf.initializers.variables(
+              all_variables, name=name).name
+      elif context.init_ops:
+        init_op_name = tf.group(
+            *context.init_ops, name='subcomputation_init_ops').name
+      else:
+        init_op_name = None
+
     result_type, result_binding = graph_utils.capture_result_from_graph(
         result, graph)
 
@@ -100,4 +126,5 @@ def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
       tensorflow=pb.TensorFlow(
           graph_def=graph.as_graph_def(),
           parameter=parameter_binding,
-          result=result_binding))
+          result=result_binding,
+          initialize_op=init_op_name))

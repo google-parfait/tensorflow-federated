@@ -17,18 +17,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tf_computation_context
 
 
-class TensorFlowComputationContextTest(absltest.TestCase):
+class TensorFlowComputationContextTest(test.TestCase):
 
   def test_invoke_federated_computation_fails(self):
 
@@ -48,17 +47,27 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     add_one = computations.tf_computation(lambda x: tf.add(x, 1), tf.int32)
 
     @computations.tf_computation
+    def add_one_with_v1(x):
+      v1 = tf.Variable(1, name='v1')
+      return x + v1
+
+    @computations.tf_computation
+    def add_one_with_v2(x):
+      v2 = tf.Variable(1, name='v2')
+      return x + v2
+
+    @computations.tf_computation
     def foo():
-      return add_one(add_one(add_one(make_10())))
+      # Test invoking one tf_computation inside
+      # another.
+      zero = tf.Variable(0, name='zero')
+      ten = tf.Variable(make_10())
+      return (add_one_with_v2(add_one_with_v1(add_one(make_10())))
+              + zero + ten - ten)
 
     self.assertEqual(str(foo.type_signature), '( -> int32)')
-    with tf.Graph().as_default() as graph:
-      context = tf_computation_context.TensorFlowComputationContext(
-          tf.get_default_graph())
-      with context_stack_impl.context_stack.install(context):
-        with tf.Session(graph=graph) as sess:
-          self.assertEqual(sess.run(foo()), 13)
+    self.assertEqual(foo(), 13)
 
 
 if __name__ == '__main__':
-  absltest.main()
+  test.main()

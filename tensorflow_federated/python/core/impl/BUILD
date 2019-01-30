@@ -497,6 +497,7 @@ py_test(
         ":reference_executor",
         ":type_constructors",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -583,6 +584,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":tf_computation_context",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
