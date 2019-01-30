@@ -150,6 +150,8 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   # the Python types recognized by that helper function.
 
   if isinstance(type_spec, computation_types.TensorType):
+    if tf.executing_eagerly() and isinstance(value, tf.Tensor):
+      value = value.numpy()
     py_typecheck.check_type(value, dtype_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_utils.infer_type(value)
     if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
@@ -180,6 +182,17 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       result_elements.append((type_elem_name, converted_value_elem))
     return anonymous_tuple.AnonymousTuple(result_elements)
   elif isinstance(type_spec, computation_types.SequenceType):
+    if isinstance(value, tf.data.Dataset):
+      if tf.executing_eagerly():
+        return [
+            to_representation_for_type(v, type_spec.element, callable_handler)
+            for v in value
+        ]
+      else:
+        raise ValueError(
+            'Processing `tf.data.Datasets` outside of eager mode is not '
+            'currently supported.'
+        )
     return [
         to_representation_for_type(v, type_spec.element, callable_handler)
         for v in value
