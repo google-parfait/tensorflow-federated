@@ -2,14 +2,15 @@ workspace(name = "org_tensorflow_federated")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# A recent green build also used by the tensorflow_serving project:
+# Commit hash found from git tag `v1.13.0-rc0`:
+#  https://github.com/tensorflow/tensorflow/tree/v1.13.0-rc0
 http_archive(
     name = "org_tensorflow",
-    sha256 = "968e37c83efcc43726e1ed505c6d9ba1e7b86895d7998486c328f960494a12dc",
-    strip_prefix = "tensorflow-b04ef3615ebd6cd641ce80cbe0e438c9767c83b0",
+    sha256 = "1677e8e5bf9d5a9041aa5fc12ea6ff82eecc8603f6fd1292f0759b90e7096c21",
+    strip_prefix = "tensorflow-a8e5c41c5bbe684a88b9285e07bd9838c089e83b",
     urls = [
-        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/b04ef3615ebd6cd641ce80cbe0e438c9767c83b0.tar.gz",
-        "https://github.com/tensorflow/tensorflow/archive/b04ef3615ebd6cd641ce80cbe0e438c9767c83b0.tar.gz",
+        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/a8e5c41c5bbe684a88b9285e07bd9838c089e83b.tar.gz",
+        "https://github.com/tensorflow/tensorflow/archive/a8e5c41c5bbe684a88b9285e07bd9838c089e83b.tar.gz",
     ],
 )
 
