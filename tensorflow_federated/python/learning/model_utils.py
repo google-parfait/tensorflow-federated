@@ -221,6 +221,8 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
   """Wrapper class for `tf.keras.Model`s that can be trained."""
 
   def __init__(self, inner_model, dummy_batch):
+    if hasattr(dummy_batch, '_asdict'):
+      dummy_batch = dummy_batch._asdict()
     # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
     # until the model has been called on input. The work-around is to call
     # Model.test_on_batch() once before asking for metrics.
