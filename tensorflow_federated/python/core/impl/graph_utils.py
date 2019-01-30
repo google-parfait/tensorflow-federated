@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import itertools
 
+import numpy as np
 import six
 from six.moves import zip
 import tensorflow as tf
@@ -392,11 +393,7 @@ def to_nested_structure(value):
       ordered_dict[name] = to_nested_structure(element)
     return ordered_dict
   elif isinstance(value, (tuple, list)):
-    if not value:
-      return []
-    value = [to_nested_structure(e) for e in value]
-    if isinstance(value[0], dict):
-      return to_parallel_lists(value)
+    return [to_nested_structure(e) for e in value]
   return value
 
 
@@ -461,6 +458,9 @@ def to_parallel_lists(value):
       raise ValueError(
           'Expected list \'{}\' to contain dicts with the same keys.'.format(
               value))
+  for element_key, element_value in six.iteritems(ordered_dict):
+    if element_value and isinstance(element_value[0], np.ndarray):
+      ordered_dict[element_key] = np.array(element_value)
   return ordered_dict
 
 
@@ -476,14 +476,26 @@ def make_data_set_from_elements(graph, elements, element_type):
     The constructed `tf.data.Dataset` instance.
 
   Raises:
-    TypeError: If element types do not match `element_type`.
+    TypeError: If element types do not match `element_type` or if the
+    `output_types` or `output_shapes` of the constructed `tf.data.Dataset`
+    instance do not match the `element_type`.
   """
   py_typecheck.check_type(graph, tf.Graph)
   py_typecheck.check_type(elements, list)
   element_type = computation_types.to_type(element_type)
   py_typecheck.check_type(element_type, computation_types.Type)
   elements = to_nested_structure(elements)
-  return tf.data.Dataset.from_tensor_slices(elements)
+
+  if elements and isinstance(elements[0], dict):
+    elements = to_parallel_lists(elements)
+
+  ds = tf.data.Dataset.from_tensor_slices(elements)
+  ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
+      ds.output_types, ds.output_shapes)
+  if not type_utils.is_assignable_from(element_type, ds_element_type):
+    raise TypeError('Expected elements of type {}, found {}.'.format(
+        str(element_type), str(ds_element_type)))
+  return ds
 
 
 def fetch_value_in_session(value, session):

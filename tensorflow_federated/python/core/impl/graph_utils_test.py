@@ -407,7 +407,10 @@ class GraphUtilsTest(test.TestCase):
 
   def test_to_nested_strucutre_with_list_of_empty_dicts(self):
     self.assertEqual(
-        graph_utils.to_nested_structure([{}, {}]), collections.OrderedDict())
+        graph_utils.to_nested_structure([{}, {}]), [
+            collections.OrderedDict(),
+            collections.OrderedDict(),
+        ])
 
   def test_to_nested_strucutre_with_list_of_dicts(self):
     self.assertEqual(
@@ -417,17 +420,21 @@ class GraphUtilsTest(test.TestCase):
         }, {
             'a': 10,
             'b': True,
-        }]), collections.OrderedDict([
-            ('a', [1, 10]),
-            ('b', [0.1, True]),
-        ]))
+        }]), [{
+            'a': 1,
+            'b': 0.1,
+        }, {
+            'a': 10,
+            'b': True,
+        }])
 
   def test_to_nested_strucutre_with_list_of_empty_anonymous_tuples(self):
     self.assertEqual(
         graph_utils.to_nested_structure([
             anonymous_tuple.AnonymousTuple([]),
             anonymous_tuple.AnonymousTuple([]),
-        ]), collections.OrderedDict())
+        ]), [collections.OrderedDict(),
+             collections.OrderedDict()])
 
   def test_to_nested_strucutre_with_list_of_anonymous_tuples(self):
     self.assertEqual(
@@ -440,10 +447,16 @@ class GraphUtilsTest(test.TestCase):
                 ('a', 10),
                 ('b', True),
             ]),
-        ]), collections.OrderedDict([
-            ('a', [1, 10]),
-            ('b', [0.1, True]),
-        ]))
+        ]), [
+            collections.OrderedDict([
+                ('a', 1),
+                ('b', 0.1),
+            ]),
+            collections.OrderedDict([
+                ('a', 10),
+                ('b', True),
+            ]),
+        ])
 
   def test_to_nested_strucutre_with_empty_anonymous_tuple(self):
     self.assertEqual(
@@ -560,6 +573,37 @@ class GraphUtilsTest(test.TestCase):
             ('b', [0.1, True]),
         ]))
 
+  def test_to_parallel_lists_with_list_of_dicts_with_lists(self):
+    self.assertEqual(
+        graph_utils.to_parallel_lists([{
+            'a': [1],
+            'b': [0.1],
+        }, {
+            'a': [10],
+            'b': [True],
+        }]),
+        collections.OrderedDict([
+            ('a', [[1], [10]]),
+            ('b', [[0.1], [True]]),
+        ]))
+
+  def test_to_parallel_lists_with_list_of_dicts_with_np_array(self):
+    structure = graph_utils.to_parallel_lists([
+        {
+            'a': np.array([1], dtype=np.int32),
+            'b': np.array([True], dtype=np.bool),
+        },
+        {
+            'a': np.array([10], dtype=np.int32),
+            'b': np.array([True], dtype=np.bool),
+        },
+    ])
+    self.assertTrue(structure.keys(), ['a', 'b'])
+    self.assertEqual(structure['a'].dtype, np.int32)
+    self.assertTrue(np.array_equal(structure['a'], [[1], [10]]))
+    self.assertEqual(structure['b'].dtype, np.bool)
+    self.assertTrue(np.array_equal(structure['b'], [[True], [True]]))
+
   def test_to_parallel_lists_with_list_of_dicts_raises_type_error(self):
     with self.assertRaises(ValueError):
       graph_utils.to_parallel_lists([{
@@ -632,6 +676,36 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(ds, tf.data.Dataset)
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
+
+  def test_make_data_set_from_elements_with_list_of_dicts_with_lists(self):
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'a': [1],
+        'b': [2],
+    }, {
+        'a': [3],
+        'b': [4],
+    }], [('a', [tf.int32]), ('b', [tf.int32])])
+    self.assertIsInstance(ds, tf.data.Dataset)
+
+    def reduce_func(x, y):
+      return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
+
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+
+  def test_make_data_set_from_elements_with_list_of_dicts_with_np_array(self):
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'a': np.array([1], dtype=np.int32),
+        'b': np.array([2], dtype=np.int32),
+    }, {
+        'a': np.array([3], dtype=np.int32),
+        'b': np.array([4], dtype=np.int32),
+    }], [('a', [tf.int32]), ('b', [tf.int32])])
+    self.assertIsInstance(ds, tf.data.Dataset)
+
+    def reduce_func(x, y):
+      return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
+
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
 
   def test_fetch_value_in_session_without_data_sets(self):
     x = anonymous_tuple.AnonymousTuple([
