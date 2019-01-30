@@ -30,6 +30,7 @@ from six.moves import range
 import tensorflow as tf
 
 # TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras import metrics as keras_metrics
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
@@ -38,7 +39,42 @@ from tensorflow_federated.python.learning import model_utils
 nest = tf.contrib.framework.nest
 
 
-class NumBatchesCounter(tf.keras.metrics.Sum):
+# TODO(b/123578208): Remove this local Sum implementation once TFF's TF version
+# is moved back to HEAD. This can be replaced with tf.keras.metrics.Sum.
+class Sum(keras_metrics.Metric):
+  """Encapsulates metrics that perform a sum operation on the values."""
+
+  def __init__(self, name='sum', dtype=None):
+    """Creates a `Sum` instance.
+
+    Args:
+      name: string name of the metric instance.
+      dtype: (Optional) data type of the metric result.
+    """
+    super(Sum, self).__init__(name=name, dtype=dtype)
+    self.total = self.add_weight('total', initializer=tf.zeros_initializer)
+
+  def update_state(self, values, sample_weight=None):
+    """Accumulates statistics for computing the reduction metric.
+
+    Args:
+      values: Per-example value.
+      sample_weight: (Ignored) weighting of each example. Defaults to 1.
+
+    Returns:
+      Update op.
+    """
+    del sample_weight
+    values = tf.cast(values, self._dtype)
+    value_sum = tf.reduce_sum(values)
+    with tf.control_dependencies([value_sum]):
+      return self.total.assign_add(value_sum)
+
+  def result(self):
+    return tf.identity(self.total)
+
+
+class NumBatchesCounter(Sum):
   """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
 
   def __init__(self):
@@ -48,7 +84,7 @@ class NumBatchesCounter(tf.keras.metrics.Sum):
     return super(NumBatchesCounter, self).update_state(1, sample_weight)
 
 
-class NumExamplesCounter(tf.keras.metrics.Sum):
+class NumExamplesCounter(Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
   def __init__(self):
