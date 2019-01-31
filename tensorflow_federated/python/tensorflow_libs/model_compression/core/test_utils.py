@@ -96,7 +96,6 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     This property is used to determine whether to perform additional checks in
     the test methods.
     """
-    pass
 
   @abc.abstractmethod
   def default_encoding_stage(self):
@@ -108,7 +107,6 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     Returns:
       An instance of a concrete `EncodingStageInterface` to be tested.
     """
-    pass
 
   @abc.abstractmethod
   def default_input(self):
@@ -122,7 +120,6 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     Returns:
       A `Tensor` object to be used as default testing input for encoding.
     """
-    pass
 
   @abc.abstractmethod
   def common_asserts_for_test_data(self, data):
@@ -136,7 +133,6 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
       data: A `TestData` tuple containing numpy values with results to be
         evaluated.
     """
-    pass
 
   # -------------
   # Test methods
@@ -147,6 +143,9 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(stage,
                           (encoding_stage.EncodingStageInterface,
                            encoding_stage.AdaptiveEncodingStageInterface))
+    # Calling the method again should create a new instance.
+    new_stage = self.default_encoding_stage()
+    self.assertIsNot(stage, new_stage)
 
   def test_encoding_stage_constructor_does_not_modify_graph(self):
     """Tests that the constructor of encoding stage does not modify graph."""
@@ -154,6 +153,11 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     self.default_encoding_stage()
     new_graph_def = tf.get_default_graph().as_graph_def()
     tf.test.assert_equal_graph_def(graph_def, new_graph_def)
+
+  def test_encoding_stage_name(self):
+    """Tests that the `name` property returns a string."""
+    stage = self.default_encoding_stage()
+    self.assertIsInstance(stage.name, str)
 
   def test_default_input_is_tensor_with_fully_defined_shape(self):
     """Tests that `default_input` returns a `Tesnor` of fully defined shape."""
@@ -579,6 +583,18 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
     # statically known. If not statically known, both should be unknown.
     self.assertEqual(test_data.x.shape, test_data.decoded_x.shape)
 
+    # The encoded and decoded Tensors should have appropriate substrings in
+    # their names, as long as the encode or decode methods are not identities.
+    # If they are identities, encoded_x must be a dictionaty with a single key,
+    # mapping to the same Tensor as x or decoded_x, respectively.
+    if (len(test_data.encoded_x) > 1 or
+        test_data.x is not list(test_data.encoded_x.values())[0]):
+      for t in six.itervalues(test_data.encoded_x):
+        self.assertIn('_encode', t.name)
+    if (len(test_data.encoded_x) > 1 or
+        test_data.decoded_x is not list(test_data.encoded_x.values())[0]):
+      self.assertIn('_decode', test_data.decoded_x.name)
+
     if is_adaptive_stage(stage):
       # The property should have keys matching those of state_update_tensors.
       self.assertSameElements(stage.state_update_aggregation_modes.keys(),
@@ -590,6 +606,15 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
         self.assertTrue(tf.contrib.framework.is_tensor(tensor))
       for tensor in six.itervalues(test_data.updated_state):
         self.assertTrue(tf.contrib.framework.is_tensor(tensor))
+
+      # The state related Tensors should have appropriate substrings in their
+      # names.
+      for tensor in six.itervalues(test_data.initial_state):
+        self.assertIn('_initial_state', tensor.name)
+      for tensor in six.itervalues(test_data.updated_state):
+        self.assertIn('_update_state', tensor.name)
+      for tensor in six.itervalues(test_data.state_update_tensors):
+        self.assertIn('_encode', tensor.name)
 
   def asserts_for_test_many_to_one_encode_decode(self, data):
     """Additional asserts for `test_many_to_one_encode_decode` method.
@@ -644,6 +669,7 @@ class BaseEncodingStageTest(tf.test.TestCase, parameterized.TestCase):
         atol=DEFAULT_ATOL)
 
 
+@encoding_stage.tf_style_encoding_stage
 class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, adding 1.
 
@@ -654,6 +680,11 @@ class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
 
   ENCODED_VALUES_KEY = 'p1_values'
   ADD_PARAM_KEY = 'p1_add'
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'plus_one'
 
   @property
   def compressible_tensors_keys(self):
@@ -672,16 +703,13 @@ class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    with tf.name_scope(name, 'plus_one_get_params'):
-      params = {self.ADD_PARAM_KEY: tf.constant(1.0)}
-      return params, params
+    params = {self.ADD_PARAM_KEY: tf.constant(1.0)}
+    return params, params
 
-  @encoding_stage.tf_style_encode('plus_one_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     return {self.ENCODED_VALUES_KEY: x + encode_params[self.ADD_PARAM_KEY]}
 
-  @encoding_stage.tf_style_decode('plus_one_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     decoded_x = (
@@ -690,6 +718,7 @@ class PlusOneEncodingStage(encoding_stage.EncodingStageInterface):
     return decoded_x
 
 
+@encoding_stage.tf_style_encoding_stage
 class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, multiplying by 2.
 
@@ -699,6 +728,11 @@ class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
 
   ENCODED_VALUES_KEY = 't2_values'
   FACTOR_PARAM_KEY = 't2_factor'
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'times_two'
 
   @property
   def compressible_tensors_keys(self):
@@ -717,16 +751,13 @@ class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    with tf.name_scope(name, 'times_two_get_params'):
-      params = {self.FACTOR_PARAM_KEY: tf.constant(2.0)}
-      return params, params
+    params = {self.FACTOR_PARAM_KEY: tf.constant(2.0)}
+    return params, params
 
-  @encoding_stage.tf_style_encode('times_two_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     return {self.ENCODED_VALUES_KEY: x * encode_params[self.FACTOR_PARAM_KEY]}
 
-  @encoding_stage.tf_style_decode('times_two_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     decoded_x = (
@@ -735,6 +766,7 @@ class TimesTwoEncodingStage(encoding_stage.EncodingStageInterface):
     return decoded_x
 
 
+@encoding_stage.tf_style_encoding_stage
 class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, computing a simple linear transformation.
 
@@ -750,6 +782,11 @@ class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
   def __init__(self, a, b):
     self._a = a
     self._b = b
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'simple_linear'
 
   @property
   def compressible_tensors_keys(self):
@@ -771,19 +808,18 @@ class SimpleLinearEncodingStage(encoding_stage.EncodingStageInterface):
     params = {self.A_PARAM_KEY: self._a, self.B_PARAM_KEY: self._b}
     return params, params
 
-  @encoding_stage.tf_style_encode('simple_linear_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     a, b = encode_params[self.A_PARAM_KEY], encode_params[self.B_PARAM_KEY]
     return {self.ENCODED_VALUES_KEY: a * x + b}
 
-  @encoding_stage.tf_style_decode('simple_linear_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     a, b = decode_params[self.A_PARAM_KEY], decode_params[self.B_PARAM_KEY]
     return (encoded_tensors[self.ENCODED_VALUES_KEY] - b) / a
 
 
+@encoding_stage.tf_style_encoding_stage
 class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, computing a mean and remembering original shape.
 
@@ -796,6 +832,11 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
   """
 
   ENCODED_VALUES_KEY = 'rm_values'
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'reduce_mean'
 
   @property
   def compressible_tensors_keys(self):
@@ -816,19 +857,18 @@ class ReduceMeanEncodingStage(encoding_stage.EncodingStageInterface):
     """See base class."""
     return {}, {}
 
-  @encoding_stage.tf_style_encode('reduce_mean_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     del encode_params  # Unused.
     return {self.ENCODED_VALUES_KEY: tf.reduce_mean(x, keepdims=True)}
 
-  @encoding_stage.tf_style_decode('reduce_mean_decode')
   def decode(self, encoded_tensors, decode_params, shape, name=None):
     """See base class."""
     del decode_params  # Unused.
     return tf.tile(encoded_tensors[self.ENCODED_VALUES_KEY], shape)
 
 
+@encoding_stage.tf_style_encoding_stage
 class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, randomly adding or subtracting 1.
 
@@ -839,6 +879,11 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
   """
 
   ENCODED_VALUES_KEY = 'ras_values'
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'random_add_subtract'
 
   @property
   def compressible_tensors_keys(self):
@@ -859,19 +904,18 @@ class RandomAddSubtractOneEncodingStage(encoding_stage.EncodingStageInterface):
     """See base class."""
     return {}, {}
 
-  @encoding_stage.tf_style_encode('add_subtract_one_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     del encode_params  # Unused.
     return {self.ENCODED_VALUES_KEY: x + tf.sign(tf.random.normal(tf.shape(x)))}
 
-  @encoding_stage.tf_style_decode('add_subtract_one_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     del decode_params  # Unused.
     return encoded_tensors[self.ENCODED_VALUES_KEY]
 
 
+@encoding_stage.tf_style_encoding_stage
 class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, encoding input into multiple outputs.
 
@@ -883,6 +927,11 @@ class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
   ENCODED_SIGNS_KEY = 'sif_signs'
   ENCODED_INTS_KEY = 'sif_ints'
   ENCODED_FLOATS_KEY = 'sif_floats'
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'sign_int_float'
 
   @property
   def compressible_tensors_keys(self):
@@ -905,7 +954,6 @@ class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
     """See base class."""
     return {}, {}
 
-  @encoding_stage.tf_style_encode('sign_int_float_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     del encode_params  # Unused.
@@ -919,7 +967,6 @@ class SignIntFloatEncodingStage(encoding_stage.EncodingStageInterface):
         self.ENCODED_FLOATS_KEY: floats
     }
 
-  @encoding_stage.tf_style_decode('sign_int_float_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     del decode_params  # Unused.
@@ -957,6 +1004,7 @@ def dummy_rng_source(seed, num_elements):
   return tf.to_float(result)
 
 
+@encoding_stage.tf_style_encoding_stage
 class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
   """[Example] encoding stage, adding random values given a random seed.
 
@@ -969,6 +1017,11 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
 
   ENCODED_VALUES_KEY = 'prn_values'
   SEED_PARAM_KEY = 'prn_seed'
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'plus_random_num'
 
   @property
   def compressible_tensors_keys(self):
@@ -987,14 +1040,12 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
 
   def get_params(self, name=None):
     """See base class."""
-    with tf.name_scope(name, 'plus_random_num_get_params'):
-      params = {
-          self.SEED_PARAM_KEY:
-              tf.random.uniform((), maxval=tf.int32.max, dtype=tf.int32)
-      }
-      return params, params
+    params = {
+        self.SEED_PARAM_KEY:
+            tf.random.uniform((), maxval=tf.int32.max, dtype=tf.int32)
+    }
+    return params, params
 
-  @encoding_stage.tf_style_encode('plus_random_num_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     addend = dummy_rng_source(encode_params[self.SEED_PARAM_KEY],
@@ -1002,7 +1053,6 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
     addend = tf.reshape(addend, x.shape)
     return {self.ENCODED_VALUES_KEY: x + addend}
 
-  @encoding_stage.tf_style_decode('plus_random_num_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     x = encoded_tensors[self.ENCODED_VALUES_KEY]
@@ -1012,6 +1062,7 @@ class PlusRandomNumEncodingStage(encoding_stage.EncodingStageInterface):
     return x - addend
 
 
+@encoding_stage.tf_style_adaptive_encoding_stage
 class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
   """[Example] adaptive encoding stage, adding N*N in N-th iteration.
 
@@ -1028,6 +1079,11 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
 
   def __init__(self):
     self._stage = PlusOneEncodingStage()
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'plus_n_squared'
 
   @property
   def compressible_tensors_keys(self):
@@ -1051,38 +1107,34 @@ class PlusNSquaredEncodingStage(encoding_stage.AdaptiveEncodingStageInterface):
 
   def initial_state(self, name=None):
     """See base class."""
-    with tf.name_scope(name, 'plus_n_squared_initial_state'):
-      return {self.ITERATION_STATE_KEY: tf.constant(1.0)}
+    return {self.ITERATION_STATE_KEY: tf.constant(1.0)}
 
   def update_state(self, state, state_update_tensors, name=None):
     """See base class."""
     del state_update_tensors  # Unused.
-    with tf.name_scope(name, 'plus_n_squared_update_state'):
-      return {
-          self.ITERATION_STATE_KEY:
-              state[self.ITERATION_STATE_KEY] + tf.constant(1.0)
-      }
+    return {
+        self.ITERATION_STATE_KEY:
+            state[self.ITERATION_STATE_KEY] + tf.constant(1.0)
+    }
 
   def get_params(self, state, name=None):
     """See base class."""
-    with tf.name_scope(name, 'plus_n_squared_get_params'):
-      params = {
-          self.ADD_PARAM_KEY:
-              state[self.ITERATION_STATE_KEY] * state[self.ITERATION_STATE_KEY]
-      }
-      return params, params
+    params = {
+        self.ADD_PARAM_KEY:
+            state[self.ITERATION_STATE_KEY] * state[self.ITERATION_STATE_KEY]
+    }
+    return params, params
 
-  @encoding_stage.tf_style_encode('plus_n_squared_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     return self._stage.encode(x, encode_params, name), {}
 
-  @encoding_stage.tf_style_decode('plus_n_squared_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     return self._stage.decode(encoded_tensors, decode_params, shape, name)
 
 
+@encoding_stage.tf_style_adaptive_encoding_stage
 class AdaptiveNormalizeEncodingStage(
     encoding_stage.AdaptiveEncodingStageInterface):
   """[Example] encoding stage, adaptively normalizing data.
@@ -1104,6 +1156,11 @@ class AdaptiveNormalizeEncodingStage(
 
   def __init__(self):
     self._stage = TimesTwoEncodingStage()
+
+  @property
+  def name(self):
+    """See base class."""
+    return 'adaptive_normalize'
 
   @property
   def compressible_tensors_keys(self):
@@ -1129,8 +1186,7 @@ class AdaptiveNormalizeEncodingStage(
 
   def initial_state(self, name=None):
     """See base class."""
-    with tf.name_scope(name, 'adaptive_normalize_initial_state'):
-      return {self.FACTOR_STATE_KEY: tf.constant(1.0)}
+    return {self.FACTOR_STATE_KEY: tf.constant(1.0)}
 
   # pylint: disable=g-doc-args,g-doc-return-or-yield
   def update_state(self, state, state_update_tensors, name=None):
@@ -1152,32 +1208,25 @@ class AdaptiveNormalizeEncodingStage(
     received. Note that the specific implementation is not necessarily useful or
     efficient; it rather serves as an illustration of what can be done.
     """
-    with tf.name_scope(name, 'adaptive_normalize_update_state'):
-      # This can be either a Tensor or a numpy value. Number of elements can be
-      # computed for both as product of the elements of the shape vector.
-      num_updates = np.prod(
-          state_update_tensors[self.NORM_STATE_UPDATE_KEY].shape)
-      norm_mean = tf.reduce_mean(
-          state_update_tensors[self.NORM_STATE_UPDATE_KEY])
-      weight = 0.9**num_updates  # Use a stronger weight for more updates.
-      new_factor = (
-          weight * state[self.FACTOR_STATE_KEY] + (1 - weight) / norm_mean)
-      return {self.FACTOR_STATE_KEY: new_factor}
+    num_updates = state_update_tensors[
+        self.NORM_STATE_UPDATE_KEY].shape.num_elements()
+    norm_mean = tf.reduce_mean(state_update_tensors[self.NORM_STATE_UPDATE_KEY])
+    weight = 0.9**num_updates  # Use a stronger weight for more updates.
+    new_factor = (
+        weight * state[self.FACTOR_STATE_KEY] + (1 - weight) / norm_mean)
+    return {self.FACTOR_STATE_KEY: new_factor}
 
   def get_params(self, state, name=None):
     """See base class."""
-    with tf.name_scope(name, 'adaptive_normalize_get_params'):
-      params = {self.FACTOR_PARAM_KEY: state[self.FACTOR_STATE_KEY]}
-      return params, params
+    params = {self.FACTOR_PARAM_KEY: state[self.FACTOR_STATE_KEY]}
+    return params, params
 
-  @encoding_stage.tf_style_encode('times_n_encode')
   def encode(self, x, encode_params, name=None):
     """See base class."""
     return (self._stage.encode(x, encode_params, name), {
         self.NORM_STATE_UPDATE_KEY: tf.norm(x)
     })
 
-  @encoding_stage.tf_style_decode('times_n_decode')
   def decode(self, encoded_tensors, decode_params, shape=None, name=None):
     """See base class."""
     return self._stage.decode(encoded_tensors, decode_params, shape, name)

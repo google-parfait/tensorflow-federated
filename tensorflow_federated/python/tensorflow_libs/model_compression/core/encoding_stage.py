@@ -39,6 +39,9 @@ import six
 import tensorflow as tf
 
 
+nest = tf.contrib.framework.nest
+
+
 class StateAggregationMode(enum.Enum):
   """Enum of available modes of aggregation for state.
 
@@ -95,6 +98,15 @@ class EncodingStageInterface(object):
   """
 
   @abc.abstractproperty
+  def name(self):
+    """Name of the encoding stage.
+
+    This is a general name for the implementation of this interface, which is
+    used mainly by the `Encoder` class to create appropriate TensorFlow name
+    scopes when composing individual encoding stages.
+    """
+
+  @abc.abstractproperty
   def compressible_tensors_keys(self):
     """Keys of encoded tensors allowed to be further encoded.
 
@@ -103,6 +115,9 @@ class EncodingStageInterface(object):
 
     This property does not directly impact the functionality, but is used by the
     `Encoder` class to validate composition.
+
+    Returns:
+      A list of `string` values.
     """
 
   @abc.abstractproperty
@@ -240,6 +255,15 @@ class AdaptiveEncodingStageInterface(object):
   """
 
   @abc.abstractproperty
+  def name(self):
+    """Name of the encoding stage.
+
+    This is a general name for the implementation of this interface, which is
+    used mainly by the `Encoder` class to create appropriate TensorFlow name
+    scopes when composing individual encoding stages.
+    """
+
+  @abc.abstractproperty
   def compressible_tensors_keys(self):
     """Keys of encoded tensors allowed to be further encoded.
 
@@ -248,6 +272,9 @@ class AdaptiveEncodingStageInterface(object):
 
     This property does not directly impact the functionality, but is used by the
     `Encoder` class to validate composition.
+
+    Returns:
+      A list of `string` values.
     """
 
   @abc.abstractproperty
@@ -402,78 +429,193 @@ class AdaptiveEncodingStageInterface(object):
     """
 
 
-def tf_style_encode(default_name):
-  """Decorator for the `encode` method of `(Adaptive)EncodingStageInterface`.
+def tf_style_encoding_stage(cls):
+  """Decorator for implementations of `EncodingStageInterface`.
 
-  This decorator ensures adherence the TensorFlow style guide, and should be
-  used to decorate the `encode` method of every implementation of
-  `EncodingStageInterface` and `AdaptiveEncodingStageInterface`. In particular,
-  it captures the `encode` method in a variable scope, and calls
-  `convert_to_tensor` on appropriate inputs.
-
-  Args:
-    default_name: The default name to use for the enclosing `variable_scope`.
-
-  Returns:
-    A decorator for the `encode` method.
-  """
-
-  def actual_decorator(encode_fn):
-    """Actual decorator for the `encode` method."""
-
-    def actual_encode_fn(self, x, encode_params, name=None):
-      """Modified `encode` method."""
-      values = list(encode_params.values()) + [x]
-      with tf.variable_scope(name, default_name, values):
-        x = tf.convert_to_tensor(x)
-        encode_params = tf.contrib.framework.nest.map_structure(
-            tf.convert_to_tensor, encode_params)
-        return encode_fn(self, x, encode_params, name=name)
-
-    return actual_encode_fn
-
-  return actual_decorator
-
-
-def tf_style_decode(default_name):
-  """Decorator for the `decode` method of `(Adaptive)EncodingStageInterface`.
-
-  This decorator ensures adherence the TensorFlow style guide, and should be
-  used to decorate the `encode` method of every implementation of
-  `EncodingStageInterface` and `AdaptiveEncodingStageInterface`. In particular,
-  it captures the `decode` method in a variable scope, and calls
-  `convert_to_tensor` on appropriate inputs.
+  This decorator ensures adherence to the TensorFlow style guide, and should be
+  used to decorate every implementation of `EncodingStageInterface`. In
+  particular, it captures the methods of the interface in appropriate name
+  scopes or variable scopes, and calls `tf.convert_to_tensor` on the provided
+  inputs.
 
   Args:
-    default_name: The default name to use for the enclosing `variable_scope`.
+    cls: The class to be decorated. Must be an `EncodingStageInterface`.
 
   Returns:
-    A decorator for the `decode` method.
+    Decorated class.
+
+  Raises:
+    TypeError: If `cls` is not an `EncodingStageInterface`.
   """
 
-  def actual_decorator(decode_fn):
-    """Actual decorator for the `decode` method."""
+  if not issubclass(cls, EncodingStageInterface):
+    raise TypeError('Unable to decorate %s. Provided class must be a subclass '
+                    'of EncodingStageInterface.' % cls)
 
-    def actual_decode_fn(self,
-                         encoded_tensors,
-                         decode_params,
-                         shape=None,
-                         name=None):
-      """Modified `decode` method."""
-      values = list(encoded_tensors.values()) + list(decode_params.values())
-      with tf.name_scope(name, default_name, values):
-        encoded_tensors = tf.contrib.framework.nest.map_structure(
-            tf.convert_to_tensor, encoded_tensors)
-        decode_params = tf.contrib.framework.nest.map_structure(
-            tf.convert_to_tensor, decode_params)
-        if shape is not None:
-          shape = tf.convert_to_tensor(shape)
-        return decode_fn(
-            self, encoded_tensors, decode_params, shape=shape, name=name)
+  class TFStyleEncodingStage(cls):
+    """The decorated encoding stage."""
 
-    return actual_decode_fn
+    def __init__(self, *args, **kwargs):
+      self._wrapped_class = cls(*args, **kwargs)
 
-  return actual_decorator
+    def __getattr__(self, attr):
+      return self._wrapped_class.__getattribute__(attr)
+
+    @_tf_style_get_params
+    def get_params(self, name=None):
+      return self._wrapped_class.get_params(name)
+
+    @_tf_style_encode
+    def encode(self, x, encode_params, name=None):
+      return self._wrapped_class.encode(x, encode_params, name)
+
+    @_tf_style_decode
+    def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+      return self._wrapped_class.decode(encoded_tensors, decode_params, shape,
+                                        name)
+
+  return TFStyleEncodingStage
+
+
+def tf_style_adaptive_encoding_stage(cls):
+  """Decorator for implementations of `AdaptiveEncodingStageInterface`.
+
+  This decorator ensures adherence to the TensorFlow style guide, and should be
+  used to decorate every implementation of `AdaptiveEncodingStageInterface`. In
+  particular, it captures the methods of the interface in appropriate name
+  scopes or variable scopes, and calls `tf.convert_to_tensor` on the provided
+  inputs.
+
+  Args:
+    cls: The class to be decorated. Must be an `AdaptiveEncodingStageInterface`.
+
+  Returns:
+    Decorated class.
+
+  Raises:
+    TypeError: If `cls` is not an `AdaptiveEncodingStageInterface`.
+  """
+
+  if not issubclass(cls, AdaptiveEncodingStageInterface):
+    raise TypeError('Unable to decorate %s. Provided class must be a subclass '
+                    'of AdaptiveEncodingStageInterface.' % cls)
+
+  class TFStyleAdaptiveEncodingStage(cls):
+    """The decorated adaptive encoding stage."""
+
+    def __init__(self, *args, **kwargs):
+      self._wrapped_class = cls(*args, **kwargs)
+
+    def __getattr__(self, attr):
+      return self._wrapped_class.__getattribute__(attr)
+
+    @_tf_style_initial_state
+    def initial_state(self, name=None):
+      return self._wrapped_class.initial_state(name)
+
+    @_tf_style_update_state
+    def update_state(self, state, state_update_tensors, name=None):
+      return self._wrapped_class.update_state(state, state_update_tensors, name)
+
+    @_tf_style_adaptive_get_params
+    def get_params(self, state, name=None):
+      return self._wrapped_class.get_params(state, name)
+
+    @_tf_style_encode
+    def encode(self, x, encode_params, name=None):
+      return self._wrapped_class.encode(x, encode_params, name)
+
+    @_tf_style_decode
+    def decode(self, encoded_tensors, decode_params, shape=None, name=None):
+      return self._wrapped_class.decode(encoded_tensors, decode_params, shape,
+                                        name)
+
+  return TFStyleAdaptiveEncodingStage
+
+
+def _tf_style_initial_state(initial_state_fn):
+  """Method decorator for `tf_style_adaptive_encoding_stage`."""
+
+  def actual_initial_state_fn(self, name=None):
+    """Modified `initial_state` method."""
+    with tf.name_scope(name, self.name + '_initial_state'):
+      return initial_state_fn(self, name=name)
+
+  return actual_initial_state_fn
+
+
+def _tf_style_update_state(update_state_fn):
+  """Method decorator for `tf_style_adaptive_encoding_stage`."""
+
+  def actual_initial_state_fn(self, state, state_update_tensors, name=None):
+    """Modified `update_state` method."""
+    values = list(state.values()) + list(state_update_tensors.values())
+    with tf.name_scope(name, self.name + '_update_state', values):
+      state = nest.map_structure(tf.convert_to_tensor, state)
+      state_update_tensors = nest.map_structure(tf.convert_to_tensor,
+                                                state_update_tensors)
+      return update_state_fn(self, state, state_update_tensors, name=name)
+
+  return actual_initial_state_fn
+
+
+def _tf_style_get_params(get_params_fn):
+  """Method decorator for `tf_style_encoding_stage`."""
+
+  def actual_get_params_fn(self, name=None):
+    """Modified `get_params` method."""
+    with tf.name_scope(name, self.name + '_get_params'):
+      return get_params_fn(self, name=name)
+
+  return actual_get_params_fn
+
+
+def _tf_style_adaptive_get_params(get_params_fn):
+  """Method decorator for `tf_style_adaptive_encoding_stage`."""
+
+  def actual_get_params_fn(self, state, name=None):
+    """Modified `get_params` method."""
+    with tf.name_scope(name, self.name + '_get_params', state.values()):
+      state = nest.map_structure(tf.convert_to_tensor, state)
+      return get_params_fn(self, state, name=name)
+
+  return actual_get_params_fn
+
+
+def _tf_style_encode(encode_fn):
+  """Method decorator for `tf_style(_adaptive)_encoding_stage`."""
+
+  def actual_encode_fn(self, x, encode_params, name=None):
+    """Modified `encode` method."""
+    values = list(encode_params.values()) + [x]
+    with tf.variable_scope(name, self.name + '_encode', values):
+      x = tf.convert_to_tensor(x)
+      encode_params = nest.map_structure(tf.convert_to_tensor, encode_params)
+      return encode_fn(self, x, encode_params, name=name)
+
+  return actual_encode_fn
+
+
+def _tf_style_decode(decode_fn):
+  """Method decorator for `tf_style(_adaptive)_encoding_stage`."""
+
+  def actual_decode_fn(self,
+                       encoded_tensors,
+                       decode_params,
+                       shape=None,
+                       name=None):
+    """Modified `decode` method."""
+    values = list(encoded_tensors.values()) + list(decode_params.values())
+    with tf.variable_scope(name, self.name + '_decode', values):
+      encoded_tensors = nest.map_structure(tf.convert_to_tensor,
+                                           encoded_tensors)
+      decode_params = nest.map_structure(tf.convert_to_tensor, decode_params)
+      if shape is not None:
+        shape = tf.convert_to_tensor(shape)
+      return decode_fn(
+          self, encoded_tensors, decode_params, shape=shape, name=name)
+
+  return actual_decode_fn
 
 
 def as_adaptive_encoding_stage(stage):
@@ -514,7 +656,11 @@ class NoneStateAdaptiveEncodingStage(AdaptiveEncodingStageInterface):
     self._wrapped_stage = wrapped_stage
 
   def __getattr__(self, attr):
-    return self._wrapped_stage.__getattribute__(attr)
+    return self._wrapped_stage.__getattr__(attr)
+
+  @property
+  def name(self):
+    return self._wrapped_stage.name
 
   @property
   def compressible_tensors_keys(self):

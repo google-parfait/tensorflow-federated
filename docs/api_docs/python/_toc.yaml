@@ -96,6 +96,16 @@ toc:
       path: /federated/api_docs/python/tff/simulation/ClientData
     - title: FilePerUserClientData
       path: /federated/api_docs/python/tff/simulation/FilePerUserClientData
+    - title: datasets
+      section:
+      - title: Overview
+        path: /federated/api_docs/python/tff/simulation/datasets
+      - title: shakespeare
+        section:
+        - title: Overview
+          path: /federated/api_docs/python/tff/simulation/datasets/shakespeare
+        - title: load_data
+          path: /federated/api_docs/python/tff/simulation/datasets/shakespeare/load_data
   - title: tff.utils
     section:
     - title: Overview
