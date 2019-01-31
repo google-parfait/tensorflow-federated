@@ -60,6 +60,7 @@ RUN ${PIP} --no-cache-dir install \
     enum34 \
     keras_applications \
     keras_preprocessing \
+    h5py \
     mock \
     numpy \
     six \
