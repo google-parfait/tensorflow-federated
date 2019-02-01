@@ -86,7 +86,7 @@ py_library(
     srcs = ["model_examples.py"],
     deps = [
         ":model",
-        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -98,7 +98,7 @@ py_test(
     deps = [
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
@@ -110,7 +110,9 @@ py_library(
     srcs = ["model_utils.py"],
     deps = [
         ":model",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/tensorflow_libs:graph_keys",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",

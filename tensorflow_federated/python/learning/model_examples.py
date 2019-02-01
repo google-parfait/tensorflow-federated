@@ -21,7 +21,7 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.learning import model
 
 
