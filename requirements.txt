@@ -7,4 +7,3 @@ mock
 numpy
 six
 tensorflow_estimator
-wheel
