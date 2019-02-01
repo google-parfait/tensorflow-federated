@@ -100,6 +100,12 @@ toc:
       section:
       - title: Overview
         path: /federated/api_docs/python/tff/simulation/datasets
+      - title: emnist
+        section:
+        - title: Overview
+          path: /federated/api_docs/python/tff/simulation/datasets/emnist
+        - title: load_data
+          path: /federated/api_docs/python/tff/simulation/datasets/emnist/load_data
       - title: shakespeare
         section:
         - title: Overview

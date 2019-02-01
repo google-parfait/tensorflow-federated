@@ -12,5 +12,8 @@ Datasets for running Federated Learning experiments in simulation.
 
 ## Modules
 
+[`emnist`](../../tff/simulation/datasets/emnist.md) module: Module for the
+federated EMNIST experimental dataset.
+
 [`shakespeare`](../../tff/simulation/datasets/shakespeare.md) module: Module for
 the Shakespeare federated experimental dataset.
