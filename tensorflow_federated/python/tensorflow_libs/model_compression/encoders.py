@@ -96,7 +96,8 @@ class Encoder(object):
     """Implementation for the `initial_state` method."""
     children_state = {}
     for key, encoder in six.iteritems(self.children):
-      children_state[key] = encoder._initial_state_impl()  # pylint: disable=protected-access
+      with tf.name_scope(None, '/'.join([self.stage.name, key])):
+        children_state[key] = encoder._initial_state_impl()  # pylint: disable=protected-access
     return {
         EncoderKeys.STATE: self.stage.initial_state(),
         EncoderKeys.CHILDREN: children_state
@@ -130,9 +131,10 @@ class Encoder(object):
     """Implementation for the `update_state` method."""
     children_states = {}
     for key, encoder in six.iteritems(self.children):
-      children_states[key] = encoder._update_state_impl(  # pylint: disable=protected-access
-          state[EncoderKeys.CHILDREN][key],
-          state_update_tensors[EncoderKeys.CHILDREN][key])
+      with tf.name_scope(None, '/'.join([self.stage.name, key])):
+        children_states[key] = encoder._update_state_impl(  # pylint: disable=protected-access
+            state[EncoderKeys.CHILDREN][key],
+            state_update_tensors[EncoderKeys.CHILDREN][key])
     return {
         EncoderKeys.CHILDREN:
             children_states,
@@ -171,8 +173,9 @@ class Encoder(object):
     children_encode_params = {}
     children_decode_params = {}
     for key, encoder in six.iteritems(self.children):
-      children_encode_params[key], children_decode_params[key] = (
-          encoder._get_params_impl(state[EncoderKeys.CHILDREN][key]))  # pylint: disable=protected-access
+      with tf.name_scope(None, '/'.join([self.stage.name, key])):
+        children_encode_params[key], children_decode_params[key] = (
+            encoder._get_params_impl(state[EncoderKeys.CHILDREN][key]))  # pylint: disable=protected-access
     encode_params[EncoderKeys.CHILDREN] = children_encode_params
     decode_params[EncoderKeys.CHILDREN] = children_decode_params
     return encode_params, decode_params
@@ -226,9 +229,10 @@ class Encoder(object):
     children_state_update_tensors = {}
     children_shapes = {}
     for key, encoder in six.iteritems(self.children):
-      (encoded_tensors[key], children_state_update_tensors[key],
-       children_shapes[key]) = encoder._encode_impl(  # pylint: disable=protected-access
-           encoded_tensors[key], encode_params[EncoderKeys.CHILDREN][key])
+      with tf.name_scope(None, '/'.join([self.stage.name, key])):
+        (encoded_tensors[key], children_state_update_tensors[key],
+         children_shapes[key]) = encoder._encode_impl(  # pylint: disable=protected-access
+             encoded_tensors[key], encode_params[EncoderKeys.CHILDREN][key])
     state_update_tensors[EncoderKeys.CHILDREN] = children_state_update_tensors
     input_shapes[EncoderKeys.CHILDREN] = children_shapes
     return encoded_tensors, state_update_tensors, input_shapes
@@ -318,11 +322,13 @@ class Encoder(object):
     force_decode |= not self.stage.commutes_with_sum
     for key, value in six.iteritems(encoded_tensors):
       if key in self.children:
-        temp_encoded_tensors[key] = self.children[key]._decode_before_sum_impl(  # pylint: disable=protected-access
-            value,
-            decode_params[EncoderKeys.CHILDREN][key],
-            shape[EncoderKeys.CHILDREN][key],
-            force_decode=force_decode)
+        with tf.name_scope(None, '/'.join([self.stage.name, key])):
+          temp_encoded_tensors[key] = (
+              self.children[key]._decode_before_sum_impl(  # pylint: disable=protected-access
+                  value,
+                  decode_params[EncoderKeys.CHILDREN][key],
+                  shape[EncoderKeys.CHILDREN][key],
+                  force_decode=force_decode))
       else:
         temp_encoded_tensors[key] = value
     if force_decode:
@@ -370,9 +376,10 @@ class Encoder(object):
     temp_encoded_tensors = {}
     for key, value in six.iteritems(encoded_tensors):
       if key in self.children:
-        temp_encoded_tensors[key] = self.children[key]._decode_after_sum_impl(  # pylint: disable=protected-access
-            value, decode_params[EncoderKeys.CHILDREN][key],
-            shape[EncoderKeys.CHILDREN][key])
+        with tf.name_scope(None, '/'.join([self.stage.name, key])):
+          temp_encoded_tensors[key] = self.children[key]._decode_after_sum_impl(  # pylint: disable=protected-access
+              value, decode_params[EncoderKeys.CHILDREN][key],
+              shape[EncoderKeys.CHILDREN][key])
       else:
         temp_encoded_tensors[key] = value
     return self.stage.decode(temp_encoded_tensors,
