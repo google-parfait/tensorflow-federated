@@ -272,19 +272,85 @@ class ReferenceExecutorTest(test.TestCase):
       value2 = z.b.reduce(0, lambda x, y: x + y)
       return value1 + value2
 
-    @computations.tf_computation
-    def bar1():
-      return tf.data.Dataset.from_tensor_slices([10, 20])
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
+    ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
 
-    @computations.tf_computation
-    def bar2():
-      return tf.data.Dataset.from_tensor_slices([30, 40])
+    # pylint: disable=too-many-function-args
+    self.assertEqual(foo(ds1, ds2), 100)
+    # pylint: enable=too-many-function-args
+    self.assertEqual(foo([ds1, ds2]), 100)
+    self.assertEqual(foo((ds1, ds2)), 100)
 
-    @computations.federated_computation
-    def baz():
-      return foo((bar1(), bar2()))
+  def test_computation_with_federated_int_sequence(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    federated_type = computation_types.FederatedType(sequence_type,
+                                                     placements.CLIENTS)
 
-    self.assertEqual(baz(), 100)
+    @computations.tf_computation(sequence_type)
+    def foo(z):
+      value1 = z.reduce(0, lambda x, y: x + y)
+      return value1
+
+    @computations.federated_computation(federated_type)
+    def bar(x):
+      return intrinsics.federated_map(foo, x)
+
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
+    ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
+
+    self.assertEqual(bar([ds1, ds2]), [30, 70])
+
+  def test_helpful_failure_federated_int_sequence(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    federated_type = computation_types.FederatedType(sequence_type,
+                                                     placements.CLIENTS)
+
+    @computations.tf_computation(sequence_type)
+    def foo(z):
+      value1 = z.reduce(0, lambda x, y: x + y)
+      return value1
+
+    @computations.federated_computation(federated_type)
+    def bar(x):
+      return intrinsics.federated_map(foo, x)
+
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
+    ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
+
+    with self.assertRaisesRegexp(TypeError,
+                                 'only with a single positional argument'):
+      # pylint: disable=too-many-function-args
+      _ = bar(ds1, ds2)
+      # pylint: enable=too-many-function-args
+
+    with self.assertRaisesRegexp(TypeError,
+                                 'argument should be placed at SERVER'):
+
+      @computations.federated_computation(federated_type)
+      def _(x):
+        return intrinsics.federated_apply(foo, x)
+
+  def test_graph_mode_dataset_fails_well(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    federated_type = computation_types.FederatedType(sequence_type,
+                                                     placements.CLIENTS)
+
+    with tf.Graph().as_default():
+
+      @computations.tf_computation(sequence_type)
+      def foo(z):
+        value1 = z.reduce(0, lambda x, y: x + y)
+        return value1
+
+      @computations.federated_computation(federated_type)
+      def bar(x):
+        return intrinsics.federated_map(foo, x)
+
+      ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
+      ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
+      with self.assertRaisesRegexp(
+          ValueError, 'outside of eager mode is not currently supported.'):
+        bar([ds1, ds2])
 
   def test_tensorflow_computation_with_tuples_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
@@ -307,15 +373,8 @@ class ReferenceExecutorTest(test.TestCase):
       del ds  # unused
       return 1
 
-    @computations.tf_computation
-    def bar():
-      return tf.data.Dataset.from_tensor_slices([])
-
-    @computations.federated_computation
-    def baz():
-      return foo(bar())
-
-    self.assertEqual(baz(), 1)
+    ds = tf.data.Dataset.from_tensor_slices([])
+    self.assertEqual(foo(ds), 1)
 
   def test_tensorflow_computation_with_sequence_of_one_constant(self):
     sequence_type = computation_types.SequenceType(tf.int32)
@@ -324,15 +383,9 @@ class ReferenceExecutorTest(test.TestCase):
     def foo(ds):
       return ds.reduce(1, lambda x, y: x + y)
 
-    @computations.tf_computation
-    def bar():
-      return tf.data.Dataset.from_tensor_slices([10])
+    ds = tf.data.Dataset.from_tensor_slices([10])
 
-    @computations.federated_computation
-    def baz():
-      return foo(bar())
-
-    self.assertEqual(baz(), 11)
+    self.assertEqual(foo(ds), 11)
 
   def test_tensorflow_computation_with_sequence_of_constants(self):
     sequence_type = computation_types.SequenceType(tf.int32)
@@ -341,15 +394,8 @@ class ReferenceExecutorTest(test.TestCase):
     def foo(ds):
       return ds.reduce(0, lambda x, y: x + y)
 
-    @computations.tf_computation
-    def bar():
-      return tf.data.Dataset.from_tensor_slices([10, 20])
-
-    @computations.federated_computation
-    def baz():
-      return foo(bar())
-
-    self.assertEqual(baz(), 30)
+    ds = tf.data.Dataset.from_tensor_slices([10, 20])
+    self.assertEqual(foo(ds), 30)
 
   def test_tensorflow_computation_with_sequence_of_tuples(self):
     tuple_type = computation_types.NamedTupleType([
@@ -362,19 +408,13 @@ class ReferenceExecutorTest(test.TestCase):
     def foo(ds):
       return ds.reduce(0, lambda x, y: x + y['x'] + y['y'])
 
-    @computations.tf_computation
-    def bar():
-      return tf.data.Dataset.from_tensor_slices(
-          collections.OrderedDict([
-              ('x', [10, 30]),
-              ('y', [20, 40]),
-          ]))
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [10, 30]),
+            ('y', [20, 40]),
+        ]))
 
-    @computations.federated_computation
-    def baz():
-      return foo(bar())
-
-    self.assertEqual(baz(), 100)
+    self.assertEqual(foo(ds), 100)
 
   def test_tensorflow_computation_with_sequences_of_constants(self):
     sequence_type = computation_types.SequenceType(tf.int32)
@@ -385,19 +425,10 @@ class ReferenceExecutorTest(test.TestCase):
       value2 = ds2.reduce(0, lambda x, y: x + y)
       return value1 + value2
 
-    @computations.tf_computation
-    def bar1():
-      return tf.data.Dataset.from_tensor_slices([10, 20])
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
+    ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
 
-    @computations.tf_computation
-    def bar2():
-      return tf.data.Dataset.from_tensor_slices([30, 40])
-
-    @computations.federated_computation
-    def baz():
-      return foo(bar1(), bar2())
-
-    self.assertEqual(baz(), 100)
+    self.assertEqual(foo(ds1, ds2), 100)
 
   def test_tensorflow_computation_with_simple_lambda(self):
 
@@ -597,6 +628,28 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(str(bar.type_signature), '(int32@SERVER -> int32@SERVER)')
     self.assertEqual(bar(10), 11)
+
+  def test_federated_apply_with_int_sequence(self):
+
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+      return x + 1
+
+    @computations.federated_computation(
+        computation_types.SequenceType(tf.int32))
+    def bar(z):
+      return intrinsics.sequence_map(foo, z)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            computation_types.SequenceType(tf.int32), placements.SERVER, True))
+    def baz(x):
+      return intrinsics.federated_apply(bar, x)
+
+    self.assertEqual(
+        str(baz.type_signature), '(int32*@SERVER -> int32*@SERVER)')
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
+    self.assertEqual(bar(ds1), [11, 21])
 
   def test_federated_sum_with_list_of_integers(self):
 
@@ -907,5 +960,8 @@ if __name__ == '__main__':
   # to compare against, it is the compiler pipeline that should get tested
   # against this implementation, not the other way round.
   executor_without_compiler = reference_executor.ReferenceExecutor()
+  # We must enable eager behavior as we cannot currently process Datasets in
+  # graph mode.
+  tf.compat.v1.enable_v2_behavior()
   with context_stack_impl.context_stack.install(executor_without_compiler):
     test.main()
