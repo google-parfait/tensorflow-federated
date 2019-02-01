@@ -42,6 +42,8 @@
 *   <a href="./tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
 *   <a href="./tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>
 *   <a href="./tff/simulation/datasets.md"><code>tff.simulation.datasets</code></a>
+*   <a href="./tff/simulation/datasets/emnist.md"><code>tff.simulation.datasets.emnist</code></a>
+*   <a href="./tff/simulation/datasets/emnist/load_data.md"><code>tff.simulation.datasets.emnist.load_data</code></a>
 *   <a href="./tff/simulation/datasets/shakespeare.md"><code>tff.simulation.datasets.shakespeare</code></a>
 *   <a href="./tff/simulation/datasets/shakespeare/load_data.md"><code>tff.simulation.datasets.shakespeare.load_data</code></a>
 *   <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>

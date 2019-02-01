@@ -31,7 +31,7 @@ for round in range(num_rounds):
 ```
 
 The iteration step can accept arguments in addition to `state` (which must be
-the first argument):
+the first argument), and return additional arguments:
 
 ```python
 def next(state, item):
@@ -40,7 +40,7 @@ def next(state, item):
 iterative_process = ...
 state = iterative_process.initialize()
 for round in range(num_rounds):
-  state = iterative_process.next(state, round)
+  state, output = iterative_process.next(state, round)
 ```
 
 <h2 id="__init__"><code>__init__</code></h2>
@@ -61,9 +61,10 @@ Creates a `tff.IterativeProcess`.
     creates the initial state of the chained computation.
 *   <b>`next_fn`</b>: a
     <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that
-    defines an iterated function. If `initialize_fn` returns a type `T`, then
-    `next_fn` must also return type `T` and accept either a single argument of
-    type `T` or a named tuple whose first argument is of type `T`.
+    defines an iterated function. If `initialize_fn` returns a type _T_, then
+    `next_fn` must also return type _T_ or multiple values where the first is of
+    type _T_, and accept either a single argument of type _T_ or multiple
+    arguments where the first argument must be of type _T_.
 
 #### Raises:
 
@@ -83,7 +84,8 @@ A <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that
 produces the next state.
 
 The first argument of should always be the current state (originally produced by
-`tff.IterativeProcess.initialize`), and the return value is the updated state.
+`tff.IterativeProcess.initialize`), and the first (or only) returned value is
+the updated state.
 
 #### Returns:
 
