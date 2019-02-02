@@ -323,5 +323,5 @@ def from_container(value):
     return AnonymousTuple([(None, v) for v in value])
   else:
     raise TypeError('Unable to convert a Python object of type {} into '
-                    'an `AnoymousTuple`.'.format(
+                    'an `AnonymousTuple`.'.format(
                         py_typecheck.type_string(type(value))))
