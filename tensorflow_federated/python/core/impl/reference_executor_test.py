@@ -282,7 +282,9 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(foo((ds1, ds2)), 100)
 
   def test_computation_with_federated_int_sequence(self):
-    sequence_type = computation_types.SequenceType(tf.int32)
+    ds1_shape = tf.TensorShape([None])
+    sequence_type = computation_types.SequenceType(
+        computation_types.TensorType(tf.int32, ds1_shape))
     federated_type = computation_types.FederatedType(sequence_type,
                                                      placements.CLIENTS)
 
@@ -295,10 +297,37 @@ class ReferenceExecutorTest(test.TestCase):
     def bar(x):
       return intrinsics.federated_map(foo, x)
 
-    ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
-    ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20]).batch(1)
+    ds2 = tf.data.Dataset.from_tensor_slices([30, 40]).batch(1)
 
     self.assertEqual(bar([ds1, ds2]), [30, 70])
+
+  def test_batching_namedtuple_dataset(self):
+    Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
+    federated_sequence_type = computation_types.FederatedType(
+        computation_types.SequenceType(
+            Batch(
+                x=computation_types.TensorType(tf.float32, [None, 2]),
+                y=computation_types.TensorType(tf.float32, [None, 1]))),
+        placements.CLIENTS,
+        all_equal=False)
+
+    @computations.tf_computation(federated_sequence_type.member)
+    def test_batch_select_and_reduce(z):
+      # namedtuple is converted to OrderedDict under the hood
+      i = z.map(lambda x: x['y'])
+      return i.reduce(0., lambda x, y: x + y)
+
+    @computations.federated_computation(federated_sequence_type)
+    def map_y_sum(x):
+      return intrinsics.federated_map(test_batch_select_and_reduce, x)
+
+    ds = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.], [3., 4.]],
+        'y': [[5.], [6.]]
+    }).batch(1)
+
+    self.assertEqual(map_y_sum([ds] * 5), [np.array([[11.]])] * 5)
 
   def test_helpful_failure_federated_int_sequence(self):
     sequence_type = computation_types.SequenceType(tf.int32)

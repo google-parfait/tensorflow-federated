@@ -84,6 +84,14 @@ class TensorType(Type):
     """
     py_typecheck.check_type(dtype, tf.DType)
     self._dtype = dtype
+    # TODO(b/123764922): If we are passed a shape of `TensorShape(None)`, which
+    # does happen along some codepaths, we have slightly violated the
+    # assumptions of `TensorType` (see the special casing in `repr` and `str`
+    # below. This is related to compatibility checking,
+    # and there are a few options. For now, simply adding a case in
+    # `impl/type_utils.is_assignable_from` to catch. We could alternatively
+    # treat this case the same as if we have been passed a shape of `None` in
+    # this constructor.
     if shape is None:
       self._shape = tf.TensorShape([])
     elif isinstance(shape, tf.TensorShape):
@@ -100,14 +108,18 @@ class TensorType(Type):
     return self._shape
 
   def __repr__(self):
-    if self._shape.ndims > 0:
+    if self._shape.ndims is None:
+      return 'TensorType({}, {})'.format(repr(self._dtype), None)
+    elif self._shape.ndims > 0:
       values = repr([dim.value for dim in self._shape.dims])
       return 'TensorType({}, {})'.format(repr(self._dtype), values)
     else:
       return 'TensorType({})'.format(repr(self._dtype))
 
   def __str__(self):
-    if self._shape.ndims > 0:
+    if self._shape.ndims is None:
+      return '{}[{}]'.format(repr(self._dtype), None)
+    elif self._shape.ndims > 0:
       values = [
           str(dim.value) if dim.value is not None else '?'
           for dim in self._shape.dims
