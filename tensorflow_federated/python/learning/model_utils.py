@@ -83,9 +83,10 @@ def from_keras_model(keras_model,
 
   Args:
     keras_model: a `tf.keras.Model` object that is not compiled.
-    dummy_batch: a nested structure of *batched* tensors with the same shapes
-      and types as would be input to `keras_model`. The values of the tensors
-      are not important and can be filled with any reasonable input value.
+    dummy_batch: a nested structure of values that are convertible to *batched*
+      tensors with the same shapes and types as would be input to `keras_model`.
+      The values of the tensors are not important and can be filled with any
+      reasonable input value.
     loss: a callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss.
     metrics: (optional) a list of `tf.keras.metrics.Metric` objects. The value
@@ -116,9 +117,10 @@ def from_compiled_keras_model(keras_model, dummy_batch):
 
   Args:
     keras_model: a `tf.keras.Model` object that was compiled.
-    dummy_batch: a nested structure of batched tensors with the same shapes and
-      types as expected by `forward_pass()`. The values of the tensors are not
-      important and can be filled with any reasonable input value.
+    dummy_batch: a nested structure of values that are convertible to *batched*
+      tensors with the same shapes and types as expected by `forward_pass()`.
+      The values of the tensors are not important and can be filled with any
+      reasonable input value.
 
   Returns:
     A `tff.learning.Model`.
@@ -144,6 +146,7 @@ class _KerasModel(model_lib.Model):
     self._metrics = metrics
 
     def _tensor_spec_with_undefined_batch_dim(tensor):
+      tensor = tf.convert_to_tensor_or_sparse_tensor(tensor)
       # Remove the batch dimension and leave it unspecified.
       spec = tf.TensorSpec(
           shape=[None] + tensor.shape.dims[1:],

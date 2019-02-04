@@ -183,6 +183,29 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
           dummy_batch=_create_dummy_batch(1),
           loss=tf.keras.losses.MeanSquaredError())
 
+  # Test class for batches using namedtuple.
+  _make_test_batch = collections.namedtuple('TestBatch', ['x', 'y'])
+
+  @parameterized.parameters(
+      {
+          'dummy_batch':
+              collections.OrderedDict([('x', np.ones([1, 1])),
+                                       ('y', np.zeros([1, 1]))])
+      },
+      {
+          'dummy_batch':
+              collections.OrderedDict([('x', [[1.0]]), ('y', [[0.0]])])
+      },
+      {'dummy_batch': _make_test_batch(x=[[1.0]], y=[[0.0]])},
+  )
+  def test_dummy_batch_types(self, dummy_batch):
+    keras_model = build_linear_regresion_keras_functional_model(1)
+    tff_model = model_utils.from_keras_model(
+        keras_model=keras_model,
+        dummy_batch=dummy_batch,
+        loss=tf.keras.losses.MeanSquaredError())
+    self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+
   @parameterized.parameters(
       # Test cases for the cartesian product of all parameter values.
       itertools.product(
