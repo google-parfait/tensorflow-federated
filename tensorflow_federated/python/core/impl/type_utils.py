@@ -337,7 +337,7 @@ def check_well_formed(type_spec):
   type_signature = computation_types.to_type(type_spec)
 
   def _check_for_disallowed_type(type_to_check, disallowed_types):
-    """Checks subtree of `type_to_check` for nonlocal `disallowed_types`."""
+    """Checks subtree of `type_to_check` for `disallowed_types`."""
     if isinstance(type_to_check, tuple(disallowed_types)):
       raise TypeError('A {} has been encountered in the given type signature, '
                       ' but {} is disallowed.'.format(type_to_check,
@@ -355,6 +355,86 @@ def check_well_formed(type_spec):
 
   preorder_call(type_signature, _check_for_disallowed_type, set())
   return True
+
+
+def check_whitelisted(type_spec, whitelisted_types):
+  """Checks whether `type_spec` contains only instances of `whitelisted_types`.
+
+  Args:
+    type_spec: The type specification to check, either an instance of
+      `computation_types.Type` or something convertible to it by
+      `computation_types.to_type()`.
+    whitelisted_types: The singleton or tuple of types for which we wish to
+      check `type_spec`. Contains subclasses of `computation_types.Type`. Uses
+      similar syntax to `isinstance`; allows for single argument or `tuple` of
+      multiple arguments.
+
+  Returns:
+    True if `type_spec` contains only types in `whitelisted_types`, and
+    `False` otherwise.
+  """
+  type_signature = computation_types.to_type(type_spec)
+
+  class WhitelistTracker(object):
+    """Simple callable to track Boolean through nested structure."""
+
+    def __init__(self):
+      self.whitelisted = True
+
+    def __call__(self, type_to_check, whitelist):
+      """Checks subtree of `type_to_check` for `whitelist`."""
+      if not isinstance(type_to_check, whitelist):
+        self.whitelisted = False
+      return whitelist
+
+  tracker = WhitelistTracker()
+  preorder_call(type_signature, tracker, whitelisted_types)
+  return tracker.whitelisted
+
+
+def check_tf_comp_whitelisted(type_spec):
+  """Checks `type_spec` against an explicit whitelist for `tf_computation`."""
+  if type_spec is None:
+    return True
+  tf_comp_whitelist = (computation_types.TensorType,
+                       computation_types.SequenceType,
+                       computation_types.NamedTupleType)
+  return check_whitelisted(type_spec, tf_comp_whitelist)
+
+
+def check_blacklisted(type_spec, blacklisted_types):
+  """Checks whether `type_spec` contains any instances of `blacklisted_types`.
+
+  Args:
+    type_spec: The type specification to check, either an instance of
+      `computation_types.Type` or something convertible to it by
+      `computation_types.to_type()`.
+    blacklisted_types: The singleton or tuple of types for which we wish to
+      check in `type_spec`. Contains subclasses of `computation_types.Type`.
+      Uses similar syntax to `isinstance`; allows for single argument or `tuple`
+      of multiple arguments.
+
+  Returns:
+    True if `type_spec` contains any types in `blacklisted_types`, and
+    `False` otherwise.
+  """
+  type_signature = computation_types.to_type(type_spec)
+
+  class BlacklistTracker(object):
+    """Simple callable to track Boolean through nested structure."""
+
+    def __init__(self):
+      self.blacklisted = False
+
+    def __call__(self, type_to_check, blacklist):
+      """Checks subtree of `type_to_check` for `blacklist`."""
+      if isinstance(type_to_check, blacklist):
+        self.blacklisted = True
+      return blacklist
+
+  tracker = BlacklistTracker()
+  preorder_call(type_signature, tracker, blacklisted_types)
+  return tracker.blacklisted
 
 
 def check_all_abstract_types_are_bound(type_spec):

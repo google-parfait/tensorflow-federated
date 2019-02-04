@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
+from tensorflow_federated.python.core.impl import placement_literals
 
 
 class ComputationWrapperInstancesTest(test.TestCase):
@@ -92,6 +93,54 @@ class ComputationWrapperInstancesTest(test.TestCase):
     building_block = (
         computation_building_blocks.ComputationBuildingBlock.from_proto(comp))
     self.assertEqual(str(building_block), '(arg -> arg[0](arg[0](arg[1])))')
+
+  def test_tf_wrapper_fails_bad_types(self):
+    function = computation_types.FunctionType(
+        None, computation_types.TensorType(tf.int32))
+    federated = computation_types.FederatedType(tf.int32,
+                                                placement_literals.CLIENTS)
+    tuple_on_function = computation_types.NamedTupleType([federated, function])
+
+    with self.assertRaisesRegexp(
+        TypeError,
+        r'you have attempted to create one with the type {int32}@CLIENTS'):
+
+      @computation_wrapper_instances.tensorflow_wrapper(federated)
+      def _(x):
+        del x
+
+    # pylint: disable=anomalous-backslash-in-string
+    with self.assertRaisesRegexp(
+        TypeError,
+        r'you have attempted to create one with the type \( -> int32\)'):
+
+      @computation_wrapper_instances.tensorflow_wrapper(function)
+      def _(x):
+        del x
+
+    with self.assertRaisesRegexp(
+        TypeError, r'you have attempted to create one with the type placement'):
+
+      @computation_wrapper_instances.tensorflow_wrapper(
+          computation_types.PlacementType())
+      def _(x):
+        del x
+
+    with self.assertRaisesRegexp(
+        TypeError, r'you have attempted to create one with the type T'):
+
+      @computation_wrapper_instances.tensorflow_wrapper(
+          computation_types.AbstractType('T'))
+      def _(x):
+        del x
+
+    with self.assertRaisesRegexp(
+        TypeError, r'you have attempted to create one with the type '
+        '<{int32}@CLIENTS,\( -> int32\)>'):
+
+      @computation_wrapper_instances.tensorflow_wrapper(tuple_on_function)
+      def _(x):
+        del x
 
 
 if __name__ == '__main__':
