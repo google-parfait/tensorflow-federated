@@ -25,9 +25,10 @@ example mini batch.
 #### Args:
 
 *   <b>`keras_model`</b>: a `tf.keras.Model` object that is not compiled.
-*   <b>`dummy_batch`</b>: a nested structure of *batched* tensors with the same
-    shapes and types as would be input to `keras_model`. The values of the
-    tensors are not important and can be filled with any reasonable input value.
+*   <b>`dummy_batch`</b>: a nested structure of values that are convertible to
+    *batched* tensors with the same shapes and types as would be input to
+    `keras_model`. The values of the tensors are not important and can be filled
+    with any reasonable input value.
 *   <b>`loss`</b>: a callable that takes two batched tensor parameters, `y_true`
     and `y_pred`, and returns the loss.
 *   <b>`metrics`</b>: (optional) a list of `tf.keras.metrics.Metric` objects.
