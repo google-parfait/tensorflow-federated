@@ -8,6 +8,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
     ],
 )
 

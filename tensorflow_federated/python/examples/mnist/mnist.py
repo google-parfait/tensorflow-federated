@@ -20,6 +20,8 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated import python as tff
 
 
@@ -83,6 +85,6 @@ def model_fn():
   keras_model = create_keras_model()
   dummy_batch = create_random_batch()
   loss = tf.keras.losses.CategoricalCrossentropy()
-  optimizer = tf.keras.optimizers.SGD(lr=0.01)
+  optimizer = gradient_descent.SGD(learning_rate=0.01)
   return tff.learning.from_keras_model(
       keras_model, dummy_batch, loss, optimizer=optimizer)
