@@ -22,3 +22,8 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "graph_keys",
+    srcs = ["graph_keys.py"],
+)
