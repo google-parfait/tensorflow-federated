@@ -222,16 +222,11 @@ class ReferenceExecutorTest(test.TestCase):
         (None, tf.int32),
     ])
 
-    with self.assertRaisesRegexp(
-        TypeError,
-        r'The supplied function .* could accept a value of type .* '
-        r'leaving ambiguity in how to handle the mapping.'):
+    @computations.tf_computation(tuple_type)
+    def foo(z):
+      return z[0] + 1
 
-      @computations.tf_computation(tuple_type)
-      def foo(z):
-        return z.x + 1
-
-      self.assertEqual(foo((10,)), 11)
+    self.assertEqual(foo((10,)), 11)
 
   def test_tensorflow_computation_with_tuple_of_constants(self):
     tuple_type = computation_types.NamedTupleType([

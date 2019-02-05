@@ -154,19 +154,19 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
     if isinstance(elements, collections.OrderedDict):
       elements = list(elements.items())
 
-    def _is_named_element(e):
+    def _is_full_element_spec(e):
       return (isinstance(e, tuple) and (len(e) == 2) and
-              isinstance(e[0], six.string_types))
+              (e[0] is None or isinstance(e[0], six.string_types)))
 
     def _map_element(e):
       if isinstance(e, Type):
         return (None, e)
-      elif _is_named_element(e):
+      elif _is_full_element_spec(e):
         return (e[0], to_type(e[1]))
       else:
         return (None, to_type(e))
 
-    if _is_named_element(elements):
+    if _is_full_element_spec(elements):
       self._elements = [(elements[0], to_type(elements[1]))]
     else:
       self._elements = [_map_element(e) for e in elements]

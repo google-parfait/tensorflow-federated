@@ -491,12 +491,12 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
           'type {} as either a single argument or multiple positional and/or '
           'keyword arguments.'.format(str(argspec), str(parameter_type)))
     if not unpack_required and unpack_possible and unpack is None:
-      raise TypeError(
-          'The supplied function with argspec {} could accept a value of '
-          'type {} as either a single argument or multiple positional and/or '
-          'keyword arguments, and the caller did not specify any preference, '
-          'leaving ambiguity in how to handle the mapping.'.format(
-              str(argspec), str(parameter_type)))
+      # The supplied function could accept a value as either a single argument,
+      # or as multiple positional and/or keyword arguments, and the caller did
+      # not specify any preference, leaving ambiguity in how to handle the
+      # mapping. We resolve the ambiguity by defaulting to capturing the entire
+      # argument, as that's the behavior suggested as expected by the users.
+      unpack = False
     if unpack is None:
       # Any ambiguity at this point has been resolved, so the following
       # condition holds and need only be verified in tests.

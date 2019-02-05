@@ -320,6 +320,10 @@ class TypesTest(absltest.TestCase):
     self.assertNotEqual(t1, t4)
     self.assertNotEqual(t1, t5)
 
+  def test_named_tuple_type_with_none_keys(self):
+    self.assertEqual(
+        str(computation_types.NamedTupleType([(None, tf.int32)])), '<int32>')
+
 
 if __name__ == '__main__':
   absltest.main()
