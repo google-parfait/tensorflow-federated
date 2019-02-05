@@ -471,7 +471,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
     if unpack_required and unpack is False:  # pylint: disable=g-bool-id-comparison
       raise TypeError(
           'The supplied function with argspec {} cannot accept a value of '
-          'type {} as a single arghument.'.format(
+          'type {} as a single argument.'.format(
               str(argspec), str(parameter_type)))
     if is_argument_tuple(parameter_type):
       arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
