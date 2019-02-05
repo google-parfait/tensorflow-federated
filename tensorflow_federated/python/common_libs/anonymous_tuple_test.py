@@ -105,6 +105,37 @@ class AnonymousTupleTest(absltest.TestCase):
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
 
+  def test_immutable(self):
+    v = [('foo', 'a string'), ('bar', 1), ('baz', [1.0, 2.0, 3.0])]
+    t = anonymous_tuple.AnonymousTuple(v)
+
+    # Expect that we can read by name the values.
+    self.assertEqual(t.foo, 'a string')
+    self.assertEqual(t[0], 'a string')
+    self.assertEqual(t.bar, 1)
+    self.assertEqual(t[1], 1)
+    self.assertEqual(t.baz, [1.0, 2.0, 3.0])
+    self.assertEqual(t[2], [1.0, 2.0, 3.0])
+
+    # But trying to set an attribute fails.
+
+    # These raise "AttributeError" saying that the particular attribute is
+    # unknown. This can look strange because the attribute was "known" above.
+    with self.assertRaises(AttributeError):
+      t.foo = 'a different string'
+    with self.assertRaises(AttributeError):
+      t.bar = 5
+    with self.assertRaises(AttributeError):
+      t.baz = [1, 2, 3]
+
+    # These raise "TypeError" saying that tuples are immutable.
+    with self.assertRaises(TypeError):
+      t[0] = 'a different string'
+    with self.assertRaises(TypeError):
+      t[1] = 5
+    with self.assertRaises(TypeError):
+      t[2] = [1, 2, 3]
+
   def test_hash(self):
     v1 = [(str(i) if i > 30 else None, i) for i in range(0, 50, 10)]
     x1 = anonymous_tuple.AnonymousTuple(v1)
@@ -124,11 +155,11 @@ class AnonymousTupleTest(absltest.TestCase):
   def test_slicing_behavior(self):
     v = [(None, i) for i in range(0, 50, 10)]
     x = anonymous_tuple.AnonymousTuple(v)
-    self.assertEqual(x[:], list(range(0, 50, 10)))
-    self.assertEqual(x[::-1], list(reversed(range(0, 50, 10))))
-    self.assertEqual(x[:-1], list(range(0, 40, 10)))
-    self.assertEqual(x[1:], list(range(10, 50, 10)))
-    self.assertEqual(x[-1:], [40])
+    self.assertEqual(x[:], tuple(range(0, 50, 10)))
+    self.assertEqual(x[::-1], tuple(reversed(range(0, 50, 10))))
+    self.assertEqual(x[:-1], tuple(range(0, 40, 10)))
+    self.assertEqual(x[1:], tuple(range(10, 50, 10)))
+    self.assertEqual(x[-1:], (40,))
 
   def test_getitem_bad_bounds(self):
     v = [(None, i) for i in range(0, 50, 10)]
