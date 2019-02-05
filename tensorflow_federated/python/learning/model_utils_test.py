@@ -32,8 +32,6 @@ import tensorflow as tf
 # TODO(b/123578208): Remove deep keras imports after updating TF version.
 from tensorflow.python.keras import metrics as keras_metrics
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
-from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -335,39 +333,6 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         'num_batches': num_iterations,
         'num_examples': 2 * num_iterations,
     }, m)
-
-  def test_wrap_tff_model_in_tf_computation(self):
-    feature_dims = 3
-
-    @tff.tf_computation()
-    def _train_loop():
-      keras_model = build_linear_regresion_keras_functional_model(feature_dims)
-      # If the model is intended to be used for training, it must be compiled.
-      keras_model.compile(
-          optimizer=gradient_descent.SGD(learning_rate=0.01),
-          loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[NumBatchesCounter(), NumExamplesCounter()])
-      tff_model = model_utils.from_compiled_keras_model(
-          keras_model=keras_model,
-          dummy_batch=_create_dummy_batch(feature_dims))
-      batch = {
-          'x':
-              np.array([[0.0] * feature_dims, [5.0] * feature_dims],
-                       dtype=np.float32),
-          'y':
-              np.array([[0.0], [5.0 * feature_dims]], dtype=np.float32),
-      }
-      batch_output = tff_model.train_on_batch(batch)
-      with tf.control_dependencies(list(batch_output)):
-        metrics = tff_model.report_local_outputs()
-      return batch_output, metrics
-
-    output, metrics = _train_loop()
-    self.assertGreater(output.loss, 0.0)
-    self.assertCountEqual([
-        ('num_batches', 1),
-        ('num_examples', 2),
-    ], anonymous_tuple.to_elements(metrics))
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.
