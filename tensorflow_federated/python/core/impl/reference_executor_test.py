@@ -176,6 +176,14 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(foo(), 1)
 
+  def test_tensorflow_computation_with_string(self):
+
+    @computations.tf_computation()
+    def foo():
+      return 'abc'
+
+    self.assertEqual(foo(), 'abc')
+
   def test_tensorflow_computation_with_constant(self):
 
     @computations.tf_computation(tf.int32)
