@@ -316,6 +316,29 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(bar([ds1, ds2]), [30, 70])
 
+  def test_computation_with_int_sequence_raises(self):
+    ds1_shape = tf.TensorShape([None])
+    sequence_type = computation_types.SequenceType(
+        computation_types.TensorType(tf.int32, ds1_shape))
+    federated_type = computation_types.FederatedType(sequence_type,
+                                                     placements.CLIENTS)
+
+    @computations.tf_computation(sequence_type)
+    def foo(z):
+      value1 = z.reduce(0, lambda x, y: x + y)
+      return value1
+
+    @computations.federated_computation(federated_type)
+    def bar(x):
+      return intrinsics.federated_map(foo, x)
+
+    ds1 = tf.data.Dataset.from_tensor_slices([10, 20]).batch(1)
+    ds2 = tf.data.Dataset.from_tensor_slices([30, 40]).batch(1)
+
+    with self.assertRaisesRegexp(ValueError, 'Please pass a list'):
+      bar(ds1)
+      bar(ds2)
+
   def test_batching_namedtuple_dataset(self):
     Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
     federated_sequence_type = computation_types.FederatedType(

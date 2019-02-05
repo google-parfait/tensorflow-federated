@@ -219,8 +219,12 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     elif type_spec.placement is not placements.CLIENTS:
       raise TypeError(
           'Unable to determine a valid value representation for a federated '
-          'type with non-equal memebrs placed at {}.'.format(
+          'type with non-equal members placed at {}.'.format(
               str(type_spec.placement)))
+    elif not isinstance(value, (list, tuple)):
+      raise ValueError('Please pass a list or tuple to any function that'
+                       ' expects a federated type placed at {};'
+                       ' you passed {}'.format(type_spec.placement, value))
     else:
       return [
           to_representation_for_type(v, type_spec.member, callable_handler)
