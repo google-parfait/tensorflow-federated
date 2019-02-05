@@ -24,6 +24,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import six
 from six.moves import range
 import tensorflow as tf
@@ -327,6 +328,36 @@ def run_tensorflow(comp, arg):
                                            comp.type_signature.result)
 
 
+def numpy_cast(value, dtype, shape):
+  """Returns a Numpy representation of `value` for given `dtype` and `shape`.
+
+  Args:
+    value: A tensor value (such as a numpy or a raw Python type).
+    dtype: An instance of tf.DType.
+    shape: An instance of tf.TensorShape.
+
+  Returns:
+    The Numpy represantation of `value` that matches `dtype` and `shape`.
+
+  Raises:
+    TypeError: If the `value` cannot be converted to the given `dtype` and the
+      desired `shape`.
+  """
+  py_typecheck.check_type(dtype, tf.DType)
+  py_typecheck.check_type(shape, tf.TensorShape)
+  value_as_numpy_array = np.array(value, dtype=dtype.as_numpy_dtype)
+  if list(value_as_numpy_array.shape) != shape.dims:
+    raise TypeError('Expected shape {}, found {}.'.format(
+        str(shape.dims), str(value_as_numpy_array.shape)))
+  # NOTE: We don't want to make things more complicated than necessary by
+  # returning the result as an array if it's just a plain scalar, so we
+  # special-case this by pulling the singleton `np.ndarray`'s element out.
+  if len(value_as_numpy_array.shape) > 0:  # pylint: disable=g-explicit-length-test
+    return value_as_numpy_array
+  else:
+    return value_as_numpy_array.flatten()[0]
+
+
 def multiply_by_scalar(value, multiplier):
   """Multiplies an instance of `ComputedValue` by a given scalar.
 
@@ -338,17 +369,11 @@ def multiply_by_scalar(value, multiplier):
     An instance of `ComputedValue` that represents the result of multiplication.
   """
   py_typecheck.check_type(value, ComputedValue)
-  py_typecheck.check_type(multiplier, (float))
+  py_typecheck.check_type(multiplier, (float, np.float32))
   if isinstance(value.type_signature, computation_types.TensorType):
-    result_val = value.value * multiplier
-    if not isinstance(result_val, type(value.value)):
-      raise TypeError(
-          'Multiplying value {} of type {} by scalar {} of type {} has yielded '
-          '{} of type {}, which is not the same as the type of the value being '
-          'multipled.'.format(
-              str(value.value), py_typecheck.type_string(type(value.value)),
-              str(multiplier), py_typecheck.type_string(type(multiplier)),
-              str(result_val), py_typecheck.type_string(type(result_val))))
+    result_val = numpy_cast(value.value * multiplier,
+                            value.type_signature.dtype,
+                            value.type_signature.shape)
     return ComputedValue(result_val, value.type_signature)
   elif isinstance(value.type_signature, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(value.value)
