@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.tensorflow_libs import graph_keys
 
 
 def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
@@ -95,7 +96,16 @@ def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
       # a different initializer; e.g., if it is known that certain
       # variables will be assigned immediately to arguments of the function,
       # then it is wasteful to initialize them before this.
-      all_variables = tf.global_variables() + tf.local_variables()
+      #
+      # The following is a bit of a work around: the collections below may
+      # contain variables more than once, hence we throw into a set. TFF needs
+      # to ensure all variables are initialized, but not all variables are
+      # always in the collections we expect. tff.learning._KerasModel tries to
+      # pull Keras variables (that may or may not be in GLOBAL_VARIABLES) into
+      # TFF_MODEL_VARIABLES for now.
+      all_variables = set(
+          tf.global_variables() + tf.local_variables() + tf.get_collection(
+              graph_keys.GraphKeys.TFF_MODEL_VARIABLES))
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
         name = 'init_op_for_' + '_'.join(

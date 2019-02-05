@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//tensorflow_federated/python:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -21,4 +21,9 @@ py_test(
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
+)
+
+py_library(
+    name = "graph_keys",
+    srcs = ["graph_keys.py"],
 )

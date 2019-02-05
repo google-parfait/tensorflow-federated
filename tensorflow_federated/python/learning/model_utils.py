@@ -18,11 +18,13 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import itertools
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.tensorflow_libs import graph_keys
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 nest = tf.contrib.framework.nest
@@ -143,7 +145,7 @@ class _KerasModel(model_lib.Model):
   def __init__(self, inner_model, dummy_batch, loss_func, metrics):
     self._keras_model = inner_model
     self._loss_fn = loss_func
-    self._metrics = metrics
+    self._metrics = metrics if metrics is not None else []
 
     def _tensor_spec_with_undefined_batch_dim(tensor):
       tensor = tf.convert_to_tensor_or_sparse_tensor(tensor)
@@ -155,6 +157,16 @@ class _KerasModel(model_lib.Model):
 
     self._input_spec = nest.map_structure(_tensor_spec_with_undefined_batch_dim,
                                           dummy_batch)
+
+    # Keras creates variables that are not added to any collection, making it
+    # impossible for TFF to extract them and create the appropriate initializer
+    # before call a tff.Computation. Here we store them in a TFF specific
+    # collection so that they can be retrieved later.
+    # TODO(b/122081673): this likely goes away in TF2.0
+    for variable in itertools.chain(self.trainable_variables,
+                                    self.non_trainable_variables,
+                                    self.local_variables):
+      tf.add_to_collection(graph_keys.GraphKeys.TFF_MODEL_VARIABLES, variable)
 
   @property
   def trainable_variables(self):
