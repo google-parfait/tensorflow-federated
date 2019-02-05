@@ -111,7 +111,7 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/tensorflow_libs:graph_keys",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -124,11 +124,10 @@ py_test(
     # TODO(b/123578208): Remove deep keras.optimizer_v2 and keras.engine
     # imports after updating TF version.
     deps = [
+        ":model",
         ":model_examples",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/python/keras:engine",
