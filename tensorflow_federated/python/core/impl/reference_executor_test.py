@@ -214,6 +214,25 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(foo((10,)), 11)
 
+  # This is the same as test_tensorflow_computation_with_tuple_of_one_constant
+  # above, but does not have a name on the types. This behavior may change in
+  # the future, this unittest
+  def test_tensorflow_computation_with_tuple_of_one_unnamed_constant(self):
+    tuple_type = computation_types.NamedTupleType([
+        (None, tf.int32),
+    ])
+
+    with self.assertRaisesRegexp(
+        TypeError,
+        r'The supplied function .* could accept a value of type .* '
+        r'leaving ambiguity in how to handle the mapping.'):
+
+      @computations.tf_computation(tuple_type)
+      def foo(z):
+        return z.x + 1
+
+      self.assertEqual(foo((10,)), 11)
+
   def test_tensorflow_computation_with_tuple_of_constants(self):
     tuple_type = computation_types.NamedTupleType([
         ('x', tf.int32),
