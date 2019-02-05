@@ -195,6 +195,7 @@ py_library(
         ":context_stack_impl",
         ":federated_computation_utils",
         ":tensorflow_serialization",
+        ":type_utils",
     ],
 )
 
@@ -206,6 +207,7 @@ py_test(
         ":computation_building_blocks",
         ":computation_impl",
         ":computation_wrapper_instances",
+        ":placement_literals",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",

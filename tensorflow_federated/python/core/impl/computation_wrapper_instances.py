@@ -16,14 +16,22 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl import type_utils
 
 
 def _tf_wrapper_fn(target_fn, parameter_type):
+  """Wrapper function to plug Tensorflow logic in to TFF framework."""
+  if not type_utils.check_tf_comp_whitelisted(parameter_type):
+    raise TypeError('`tf_computation`s can accept only parameter types with '
+                    'constituents `SequenceType`, `NamedTupleType` '
+                    'and `TensorType`; you have attempted to create one '
+                    'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack
   comp_pb = tensorflow_serialization.serialize_py_func_as_tf_computation(
       target_fn, parameter_type, ctx_stack)
@@ -34,6 +42,7 @@ tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
 def _federated_computation_wrapper_fn(target_fn, parameter_type):
+  """Wrapper function to plug orchestration logic in to TFF framework."""
   ctx_stack = context_stack_impl.context_stack
   target_lambda = (
       federated_computation_utils.zero_or_one_arg_func_to_building_block(
