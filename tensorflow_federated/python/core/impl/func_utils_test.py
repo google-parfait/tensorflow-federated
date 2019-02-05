@@ -286,7 +286,9 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
        anonymous_tuple.AnonymousTuple([(None, 5), (None, 6)]), '(5, 6)'),
       (6, lambda *args: str(args), [('x', tf.int32), ('y', tf.int32)], False,
        anonymous_tuple.AnonymousTuple([('x', 5), ('y', 6)]),
-       '(AnonymousTuple([(x, 5), (y, 6)]),)'))
+       '(AnonymousTuple([(x, 5), (y, 6)]),)'),
+      (7, lambda x: str(x),  # pylint: disable=unnecessary-lambda
+       [tf.int32], None, anonymous_tuple.AnonymousTuple([(None, 10)]), '<10>'))
   # pyformat: enable
   def test_wrap_as_zero_or_one_arg_callable(
       self, unused_index, func, parameter_type, unpack, arg, expected_result):
