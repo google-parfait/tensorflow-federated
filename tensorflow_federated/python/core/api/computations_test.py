@@ -68,6 +68,10 @@ class ComputationsTest(test.TestCase):
 
     self.assertEqual(str(foo.type_signature), '(int32 -> bool)')
 
+    self.assertEqual(foo(9), False)
+    self.assertEqual(foo(10), False)
+    self.assertEqual(foo(11), True)
+
     # Decorating a no-parameter Python function.
     @computations.tf_computation
     def bar():
@@ -75,19 +79,34 @@ class ComputationsTest(test.TestCase):
 
     self.assertEqual(str(bar.type_signature), '( -> int32)')
 
+    self.assertEqual(bar(), 10)
+
+  def test_tf_comp_with_sequence_inputs_and_outputs_fails(self):
+    # This fails right now due to our handling of creation and passing
+    # around of tf.data.Datasets; we should be able to define a function
+    # like this, but currently it is a limitation.
+    with self.assertRaises(ValueError):
+
+      @computations.tf_computation(computation_types.SequenceType(tf.int32))
+      def _(x):
+        return x
+
   def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(self):
     # Wrapping a lambda.
-    _ = computations.tf_computation(lambda x: x > 0)
+    foo = computations.tf_computation(lambda x: x > 0)
+
+    self.assertEqual(foo(-1), False)
+    self.assertEqual(foo(0), False)
+    self.assertEqual(foo(1), True)
 
     # Decorating a Python function.
     @computations.tf_computation
-    def bar(x, y):  # pylint: disable=unused-variable
+    def bar(x, y):
       return x > y
 
-    # TODO(b/113112108): Include invocations of these polymorphic callables.
-    # Currently polymorphic callables, even though already fully supported,
-    # cannot be easily tested, since little happens under the hood until they
-    # are actually invoked.
+    self.assertEqual(bar(0, 1), False)
+    self.assertEqual(bar(1, 0), True)
+    self.assertEqual(bar(0, 0), False)
 
   def test_fed_comp_typical_usage_as_decorator_with_unlabeled_type(self):
 
@@ -103,10 +122,15 @@ class ComputationsTest(test.TestCase):
       assert str(result_value.type_signature) == 'int32'
       return result_value
 
-    # TODO(b/113112108): Add an invocation to make the test more meaningful.
-
     self.assertEqual(
         str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
+
+    @computations.tf_computation(tf.int32)
+    def third_power(x):
+      return x ** 3
+
+    self.assertEqual(foo(third_power, 10), int(1e9))
+    self.assertEqual(foo(third_power, 1), 1)
 
   def test_fed_comp_typical_usage_as_decorator_with_labeled_type(self):
 
@@ -117,10 +141,23 @@ class ComputationsTest(test.TestCase):
     def foo(f, x):
       return f(f(x))
 
-    # TODO(b/113112108): Add an invocation to make the test more meaningful.
+    @computations.tf_computation(tf.int32)
+    def square(x):
+      return x ** 2
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def square_drop_y(x, y):  # pylint: disable=unused-argument
+      return x * x
 
     self.assertEqual(
         str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
+
+    self.assertEqual(foo(square, 10), int(1e4))
+    self.assertEqual(square_drop_y(square_drop_y(10, 5), 100), int(1e4))
+    self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
+    with self.assertRaisesRegexp(TypeError,
+                                 'is not assignable from source type'):
+      self.assertEqual(foo(square_drop_y, 10), 100)
 
   def test_with_tf_datasets(self):
 
@@ -136,6 +173,8 @@ class ComputationsTest(test.TestCase):
 
     self.assertEqual(str(bar.type_signature), '( -> int64*)')
 
+    self.assertEqual(foo(bar()), 45)
+
   def test_no_argument_fed_comp(self):
 
     @computations.federated_computation
@@ -143,6 +182,7 @@ class ComputationsTest(test.TestCase):
       return 10
 
     self.assertEqual(str(foo.type_signature), '( -> int32)')
+    self.assertEqual(foo(), 10)
 
 
 if __name__ == '__main__':

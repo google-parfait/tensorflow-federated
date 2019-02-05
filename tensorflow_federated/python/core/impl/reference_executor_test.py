@@ -715,7 +715,7 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(
         str(baz.type_signature), '(int32*@SERVER -> int32*@SERVER)')
     ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
-    self.assertEqual(bar(ds1), [11, 21])
+    self.assertEqual(baz(ds1), [11, 21])
 
   def test_federated_sum_with_list_of_integers(self):
 
