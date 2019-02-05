@@ -133,7 +133,7 @@ class TensorType(Type):
             tensor_utils.same_shape(self._shape, other.shape))
 
 
-class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
+class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
   """An implementation of `tff.Type` representing named tuple types in TFF."""
 
   def __init__(self, elements):
@@ -167,11 +167,11 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
         return (None, to_type(e))
 
     if _is_full_element_spec(elements):
-      self._elements = [(elements[0], to_type(elements[1]))]
+      elements = [(elements[0], to_type(elements[1]))]
     else:
-      self._elements = [_map_element(e) for e in elements]
+      elements = [_map_element(e) for e in elements]
 
-    anonymous_tuple.AnonymousTuple.__init__(self, self._elements)
+    anonymous_tuple.AnonymousTuple.__init__(self, elements)
 
   def __repr__(self):
 
@@ -182,21 +182,21 @@ class NamedTupleType(Type, anonymous_tuple.AnonymousTuple):
         return repr(e[1])
 
     return 'NamedTupleType([{}])'.format(', '.join(
-        [_element_repr(e) for e in self._elements]))
+        [_element_repr(e) for e in anonymous_tuple.to_elements(self)]))
 
   def __str__(self):
 
     def _element_str(name, value):
       return '{}={}'.format(name, str(value)) if name else str(value)
 
-    return ('<{}>'.format(','.join(
-        [_element_str(name, value) for name, value in self._elements])))
+    return ('<{}>'.format(','.join([
+        _element_str(name, value)
+        for name, value in anonymous_tuple.to_elements(self)
+    ])))
 
   def __eq__(self, other):
-    # pylint: disable=protected-access
     return (isinstance(other, NamedTupleType) and
-            self._elements == other._elements)
-    # pylint: enable=protected-access
+            super(NamedTupleType, self).__eq__(other))
 
 
 class SequenceType(Type):
