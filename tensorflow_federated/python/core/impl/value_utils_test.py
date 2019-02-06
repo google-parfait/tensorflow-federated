@@ -49,6 +49,20 @@ class ValueUtilsTest(parameterized.TestCase):
         value_impl.to_value(test_ref, None, _context_stack), _context_stack)
     self.assertEqual(str(zipped.type_signature), '{<int32,bool>}@CLIENTS')
 
+  def test_two_tuple_zip_named_client_non_all_equal_int_and_bool(self):
+    test_ref = computation_building_blocks.Reference(
+        'test',
+        computation_types.NamedTupleType([('x',
+                                           computation_types.FederatedType(
+                                               tf.int32, placements.CLIENTS)),
+                                          ('y',
+                                           computation_types.FederatedType(
+                                               tf.bool, placements.CLIENTS,
+                                               True))]))
+    zipped = value_utils.zip_two_tuple(
+        value_impl.to_value(test_ref, None, _context_stack), _context_stack)
+    self.assertEqual(str(zipped.type_signature), '{<x=int32,y=bool>}@CLIENTS')
+
   def test_two_tuple_zip_with_client_all_equal_int_and_bool(self):
     test_ref = computation_building_blocks.Reference(
         'test',
@@ -59,6 +73,21 @@ class ValueUtilsTest(parameterized.TestCase):
     zipped = value_utils.zip_two_tuple(
         value_impl.to_value(test_ref, None, _context_stack), _context_stack)
     self.assertEqual(str(zipped.type_signature), '{<int32,bool>}@CLIENTS')
+
+  def test_two_tuple_zip_with_named_client_all_equal_int_and_bool(self):
+    test_ref = computation_building_blocks.Reference(
+        'test',
+        computation_types.NamedTupleType([('a',
+                                           computation_types.FederatedType(
+                                               tf.int32, placements.CLIENTS,
+                                               True)),
+                                          ('b',
+                                           computation_types.FederatedType(
+                                               tf.bool, placements.CLIENTS,
+                                               True))]))
+    zipped = value_utils.zip_two_tuple(
+        value_impl.to_value(test_ref, None, _context_stack), _context_stack)
+    self.assertEqual(str(zipped.type_signature), '{<a=int32,b=bool>}@CLIENTS')
 
   def test_two_tuple_zip_fails_bad_args(self):
     server_test_ref = computation_building_blocks.Reference(
