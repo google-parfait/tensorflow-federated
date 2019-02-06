@@ -493,6 +493,12 @@ class GraphUtilsTest(test.TestCase):
 
     self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
 
+  def test_fetch_value_in_session_with_string(self):
+    x = tf.constant('abc')
+    with self.session() as sess:
+      y = graph_utils.fetch_value_in_session(sess, x)
+    self.assertEqual(str(y), 'abc')
+
   def test_fetch_value_in_session_without_data_sets(self):
     x = anonymous_tuple.AnonymousTuple([
         ('a', anonymous_tuple.AnonymousTuple([

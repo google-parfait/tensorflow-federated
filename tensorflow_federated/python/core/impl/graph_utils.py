@@ -614,4 +614,12 @@ def fetch_value_in_session(sess, value):
       if not tf.contrib.framework.is_tensor(v):
         raise ValueError('Unsupported value type {}.'.format(str(v)))
     flattened_results = sess.run(flattened_value)
+
+    def _to_unicode(v):
+      if six.PY3 and isinstance(v, bytes):
+        return v.decode('utf-8')
+      return v
+
+    if tf.contrib.framework.is_tensor(value) and value.dtype == tf.string:
+      flattened_results = [_to_unicode(result) for result in flattened_results]
     return anonymous_tuple.pack_sequence_as(value, flattened_results)
