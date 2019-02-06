@@ -137,6 +137,14 @@ class FederatedAveragingTffTest(test.TestCase):
         tff.CLIENTS,
         all_equal=False)
 
+    expected_model_output_types = tff.FederatedType(
+        collections.OrderedDict([
+            ('loss', tff.TensorType(tf.float32, [])),
+            ('num_examples', tff.TensorType(tf.int32, [])),
+        ]),
+        tff.SERVER,
+        all_equal=True)
+
     # `initialize` is expected to be a funcion of no arguments to a ServerState.
     self.assertEqual(
         tff.FunctionType(
@@ -151,7 +159,8 @@ class FederatedAveragingTffTest(test.TestCase):
                 expected_federated_server_state_type,
                 expected_federated_dataset_type
             ],
-            result=expected_federated_server_state_type),
+            result=(expected_federated_server_state_type,
+                    expected_model_output_types)),
         iterative_process.next.type_signature)
 
 

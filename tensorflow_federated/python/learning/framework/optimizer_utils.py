@@ -312,11 +312,17 @@ def build_model_delta_optimizer_process(model_fn,
     server_state = tff.federated_apply(server_update_model_tf,
                                        (server_state, round_model_delta))
 
-    # TODO(b/120147094): Compute aggregate metrics based on
-    # model.federated_output_computation(). Requires first updating
-    # IterativeProcess.next() from (<U, ...> -> U) to (<U, ...> -> <U, ...>).
+    aggregated_outputs = model.federated_output_computation(
+        client_outputs.model_output)
+    # Promote the FederatedType outside the NamedTupleType, or return the
+    # singluar federated value.
+    num_outputs = len(aggregated_outputs)
+    if num_outputs == 1:
+      aggregated_outputs = aggregated_outputs[0]
+    elif num_outputs >= 2:
+      aggregated_outputs = tff.federated_zip(aggregated_outputs)
 
-    return server_state
+    return server_state, aggregated_outputs
 
   return tff.utils.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round_tff)

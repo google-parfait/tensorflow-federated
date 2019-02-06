@@ -100,10 +100,11 @@ class LinearRegression(model.Model):
 
   @tf.contrib.eager.defun(autograph=False)
   def report_local_outputs(self):
-    return collections.OrderedDict(
-        [('num_examples', self._num_examples), ('num_batches',
-                                                self._num_batches),
-         ('loss', self._loss_sum / tf.cast(self._num_examples, tf.float32))])
+    return collections.OrderedDict([
+        ('num_examples', self._num_examples),
+        ('num_batches', self._num_batches),
+        ('loss', self._loss_sum / tf.cast(self._num_examples, tf.float32)),
+    ])
 
   @property
   def federated_output_computation(self):
@@ -112,10 +113,10 @@ class LinearRegression(model.Model):
     def fed_output(local_outputs):
       return {
           'num_examples':
-              tff.federated_sum(local_outputs['num_examples']),
+              tff.federated_sum(local_outputs.num_examples),
           'loss':
               tff.federated_average(
-                  local_outputs['loss'], weight=local_outputs['num_examples'])
+                  local_outputs.loss, weight=local_outputs.num_examples),
       }
 
     return fed_output
