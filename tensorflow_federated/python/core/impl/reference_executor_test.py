@@ -532,6 +532,12 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(
         reference_executor.multiply_by_scalar(
             reference_executor.ComputedValue(10.0, tf.float32), 0.5).value, 5.0)
+    self.assertAlmostEqual(
+        reference_executor.multiply_by_scalar(
+            reference_executor.ComputedValue(np.float32(1.0), tf.float32),
+            0.333333333333).value,
+        0.3333333,
+        places=3)
 
   def test_multiply_by_scalar_with_tuple_and_float(self):
     self.assertEqual(
@@ -1025,6 +1031,23 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertIsInstance(foo_result, list)
     foo_result_str = ','.join(str(x) for x in foo_result).replace(' ', '')
     self.assertEqual(foo_result_str, '[10.],[10.],[10.],[10.],[10.]')
+
+  def test_numpy_cast(self):
+    self.assertEqual(
+        reference_executor.numpy_cast(True, tf.bool, tf.TensorShape([])),
+        np.bool_(True))
+    self.assertEqual(
+        reference_executor.numpy_cast(10, tf.int32, tf.TensorShape([])),
+        np.int32(10))
+    self.assertEqual(
+        reference_executor.numpy_cast(0.3333333333333333333333333, tf.float32,
+                                      tf.TensorShape([])),
+        np.float32(0.3333333333333333333333333))
+    self.assertTrue(
+        np.array_equal(
+            reference_executor.numpy_cast([[1, 2], [3, 4]], tf.int32,
+                                          tf.TensorShape([2, 2])),
+            np.array([[1, 2], [3, 4]])))
 
 
 if __name__ == '__main__':
