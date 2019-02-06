@@ -250,8 +250,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       output = sess.run(
           fetches=output_op,
           feed_dict={
-              batch['x']: [np.zeros(feature_dims),
-                           np.ones(feature_dims)],
+              batch['x']: [np.zeros(feature_dims), np.ones(feature_dims)],
               batch['y']: [[0.0], [1.0]],
           })
       # Since the model initializes all weights and biases to zero, we expect
@@ -270,8 +269,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       self.assertEqual(output.loss, 0.5)
       self.assertDictEqual(
           sess.run(metrics), {
-              'num_batches': 1,
-              'num_examples': 2
+              'num_batches': collections.OrderedDict([('total', 1)]),
+              'num_examples': collections.OrderedDict([('total_1', 2)]),
           })
 
   @parameterized.parameters(
@@ -332,8 +331,10 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       m = sess.run(metrics)
 
     self.assertDictEqual({
-        'num_batches': num_iterations,
-        'num_examples': 2 * num_iterations,
+        'num_batches':
+            collections.OrderedDict([('total', num_iterations)]),
+        'num_examples':
+            collections.OrderedDict([('total_1', 2 * num_iterations)]),
     }, m)
 
   def test_wrap_tff_model_in_tf_computation(self):
@@ -364,10 +365,51 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
     output, metrics = _train_loop()
     self.assertGreater(output.loss, 0.0)
-    self.assertCountEqual([
-        ('num_batches', 1),
-        ('num_examples', 2),
-    ], anonymous_tuple.to_elements(metrics))
+    self.assertCountEqual(
+        [('num_batches', anonymous_tuple.AnonymousTuple([('total', 1)])),
+         ('num_examples', anonymous_tuple.AnonymousTuple([('total_1', 2)]))],
+        anonymous_tuple.to_elements(metrics))
+
+  def test_keras_model_federated_output_computation(self):
+    feature_dims = 3
+
+    def _model_fn():
+      keras_model = build_linear_regresion_keras_functional_model(feature_dims)
+      keras_model.compile(
+          optimizer=gradient_descent.SGD(learning_rate=0.01),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[NumBatchesCounter(), NumExamplesCounter()])
+      return model_utils.from_compiled_keras_model(
+          keras_model=keras_model,
+          dummy_batch=_create_dummy_batch(feature_dims))
+
+    @tff.tf_computation()
+    def _train_loop():
+      tff_model = _model_fn()
+      ops = []
+      for _ in range(5):
+        with tf.control_dependencies(ops):
+          batch_output = tff_model.train_on_batch({
+              'x': np.ones([2, feature_dims], dtype=np.float32),
+              'y': np.ones([2, 1], dtype=np.float32)
+          })
+          ops = list(batch_output)
+      with tf.control_dependencies(ops):
+        return tff_model.report_local_outputs()
+
+    client_local_outputs = _train_loop()
+
+    # Simulate entering the 'SERVER' context with a new graph.
+    tf.keras.backend.clear_session()
+    aggregated_outputs = _model_fn().federated_output_computation(
+        [client_local_outputs])
+    aggregated_outputs = collections.OrderedDict(
+        anonymous_tuple.to_elements(aggregated_outputs))
+
+    self.assertDictEqual(aggregated_outputs, {
+        'num_batches': 5,
+        'num_examples': 10,
+    })
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.

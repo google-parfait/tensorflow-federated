@@ -165,15 +165,16 @@ class ValueImpl(value_base.Value):
       return to_value([self[k] for k in index_range], None, self._context_stack)
 
   def __iter__(self):
-    if not isinstance(self._comp.type_signature,
-                      computation_types.NamedTupleType):
+    type_signature = self._comp.type_signature
+    if isinstance(type_signature, computation_types.FederatedType):
+      type_signature = type_signature.member
+    if not isinstance(type_signature, computation_types.NamedTupleType):
       raise TypeError(
-          'Operator iter() is only supported for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+          'Operator iter() is only supported for (possibly federated) named '
+          'tuples, but the object on which it has been invoked is of type '
+          '{}.'.format(str(self._comp.type_signature)))
     else:
-      for index in range(
-          len(anonymous_tuple.to_elements(self._comp.type_signature))):
+      for index in range(len(type_signature)):
         yield self[index]
 
   def __call__(self, *args, **kwargs):

@@ -22,6 +22,8 @@ import itertools
 
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import graph_keys
@@ -91,9 +93,7 @@ def from_keras_model(keras_model,
       reasonable input value.
     loss: a callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss.
-    metrics: (optional) a list of `tf.keras.metrics.Metric` objects. The value
-      of `Metric.result` for each metric is included in the list of tensors
-      returned in `aggregated_outputs`.
+    metrics: (optional) a list of `tf.keras.metrics.Metric` objects.
     optimizer: (optional) a `tf.keras.optimizer.Optimizer`. If None, returned
       model cannot be used for training.
 
@@ -137,6 +137,55 @@ def from_compiled_keras_model(keras_model, dummy_batch):
     raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
                      'instead.')
   return enhance(_TrainableKerasModel(keras_model, dummy_batch))
+
+
+def federated_aggregate_keras_metric(metric_type, federated_variables):
+  """Aggregates variables a keras metric placed at CLIENTS to SERVER.
+
+  Args:
+    metric_type: a type object (type should inherit from
+      `tf.keras.metrics.Metric`).
+    federated_variables: a federated value place on clients that is the value
+      returned by `tf.keras.metrics.Metric.variables`.
+
+  Returns:
+    The result of calling `result()` on a `tf.keras.metrics.Metric` of type
+  `metric_type`, after aggregation all CLIENTS places `variables`.
+  """
+  member_type = federated_variables.type_signature.member
+
+  @tff.tf_computation
+  def zeros_fn():
+    return anonymous_tuple.map_structure(
+        lambda v: tf.zeros(v.shape, dtype=v.dtype), member_type)
+
+  zeros = zeros_fn()
+
+  # TODO(b/123995628): as of 2019-02-01 all variables created in a
+  # `tf.keras.metrics.Metric` use the argument
+  # `aggregation=tf.VariableAggregation.SUM`, hence below only uses `tf.add`.
+  # This may change in the future (and the `tf.Variable.aggregation` property
+  # will be exposed in a future TF version). Need to handle non-SUM variables.
+
+  @tff.tf_computation(member_type, member_type)
+  def accumulate(accumulators, variables):
+    return anonymous_tuple.map_structure(tf.add, accumulators, variables)
+
+  @tff.tf_computation(member_type, member_type)
+  def merge(a, b):
+    return anonymous_tuple.map_structure(tf.add, a, b)
+
+  @tff.tf_computation(member_type)
+  def report(accumulators):
+    metric = metric_type()
+    assignments = []
+    for v, a in zip(metric.variables, accumulators):
+      assignments.append(tf.assign(v, a))
+    with tf.control_dependencies(assignments):
+      return metric.result()
+
+  return tff.federated_aggregate(federated_variables, zeros, accumulate, merge,
+                                 report)
 
 
 class _KerasModel(model_lib.Model):
@@ -219,14 +268,35 @@ class _KerasModel(model_lib.Model):
 
   @tf.contrib.eager.function(autograph=False)
   def report_local_outputs(self):
-    return collections.OrderedDict(
-        [(metric.name, metric.result()) for metric in self.get_metrics()])
+    """Reports the variables of the metrics tracked during local training.
 
+    Returns:
+      A `collections.OrderedDict` of metric name keys to lists of metric
+    variables.
+    """
+    outputs = collections.OrderedDict()
+    for metric in self.get_metrics():
+      outputs[metric.name] = collections.OrderedDict(
+          [(v.op.name, v) for v in metric.variables])
+    return outputs
+
+  @property
   def federated_output_computation(self):
-    # TODO(b/122116149): Automatically generate federated_output_computation
-    # for Keras models by appropriately aggregating the keras.Metrics using
-    # the metric's state variables' VariableAggregation properties.
-    return None
+    metric_variable_type_dict = nest.map_structure(tf.TensorSpec.from_tensor,
+                                                   self.report_local_outputs())
+    federated_local_outputs_type = tff.FederatedType(
+        metric_variable_type_dict, tff.CLIENTS, all_equal=False)
+
+    @tff.federated_computation(federated_local_outputs_type)
+    def federated_output(local_outputs):
+      results = collections.OrderedDict()
+      for metric, variables in zip(self.get_metrics(), local_outputs):
+        metric_type = type(metric)
+        results[metric.name] = federated_aggregate_keras_metric(
+            metric_type, variables)
+      return results
+
+    return federated_output
 
   @classmethod
   def make_batch(cls, x, y):
