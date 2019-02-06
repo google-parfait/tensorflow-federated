@@ -22,8 +22,8 @@ load the dataset from cache.
 
 This dataset is derived from the Leaf repository
 (https://github.com/TalwalkarLab/leaf) pre-processing of the Extended MNIST
-dataset, grouping examples by writer. Details about Leaf was published in "LEAF:
-A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
+dataset, grouping examples by writer. Details about Leaf were published in
+"LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
 
 Data set sizes:
 
@@ -55,7 +55,7 @@ following keys and values:
 #### Args:
 
 *   <b>`only_digits`</b>: (Optional) whether to only include examples that are
-    from the digits [0-9] classes. Iff false, includes lower and upper case
+    from the digits [0-9] classes. If `False`, includes lower and upper case
     characters, for a total of 62 class labels.
 *   <b>`cache_dir`</b>: (Optional) directory to cache the downloaded file. If
     `None`, caches in Keras' default cache directory.
