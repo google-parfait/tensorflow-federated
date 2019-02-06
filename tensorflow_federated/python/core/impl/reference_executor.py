@@ -24,6 +24,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 import numpy as np
 import six
 from six.moves import range
@@ -161,9 +163,15 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
           'the type spec {}.'.format(str(inferred_type_spec), str(type_spec)))
     return value
   elif isinstance(type_spec, computation_types.NamedTupleType):
+    type_spec_elements = anonymous_tuple.to_elements(type_spec)
+    # Special-casing unodered dictionaries to allow their elements to be fed in
+    # the order in which they're defined in the named tuple type.
+    if (isinstance(value, dict) and
+        (set(value.keys()) == set(k for k, _ in type_spec_elements))):
+      value = collections.OrderedDict(
+          [(k, value[k]) for k, _ in type_spec_elements])
     value = anonymous_tuple.from_container(value)
     value_elements = anonymous_tuple.to_elements(value)
-    type_spec_elements = anonymous_tuple.to_elements(type_spec)
     if len(value_elements) != len(type_spec_elements):
       raise TypeError(
           'The number of elements {} in the value tuple {} does not match the '

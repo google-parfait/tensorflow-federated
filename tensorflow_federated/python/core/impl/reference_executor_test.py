@@ -76,6 +76,18 @@ class ReferenceExecutorTest(test.TestCase):
     with self.assertRaises(TypeError):
       reference_executor.to_representation_for_type(10, [tf.int32, tf.int32])
 
+    unordered_dict = {'a': 10, 'b': 20}
+    self.assertEqual(
+        str(
+            reference_executor.to_representation_for_type(
+                unordered_dict, [('a', tf.int32), ('b', tf.int32)])),
+        '<a=10,b=20>')
+    self.assertEqual(
+        str(
+            reference_executor.to_representation_for_type(
+                unordered_dict, [('b', tf.int32), ('a', tf.int32)])),
+        '<b=20,a=10>')
+
   def test_to_representation_for_type_with_sequence_type(self):
     foo = [1, 2, 3]
     self.assertEqual(
