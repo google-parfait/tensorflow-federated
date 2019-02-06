@@ -109,7 +109,8 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
   Args:
     apply_func: TFF `Value` of type_signature `FunctionType`, a function taking
       TFF `Value`s to `Value`s of type `NamedTupleType`.
-    type_to_add: Instance of `tff.Type` class, the type expected for arg[1].
+    type_to_add: 2-tuple specifying name and TFF type of arg[1]. Name can be
+      `None` or `string`.
     context_stack: The context stack to use, as in `impl.value_impl.to_value`.
 
   Returns:
@@ -122,6 +123,13 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
                           computation_types.FunctionType)
   py_typecheck.check_type(apply_func.type_signature.result,
                           computation_types.NamedTupleType)
+  py_typecheck.check_type(type_to_add, tuple)
+  if len(type_to_add) != 2:
+    raise ValueError('Please pass a 2-tuple as type_to_add to '
+                     'flatten_first_index, with first index name or None '
+                     'and second index instance of `computation_types.Type` '
+                     'or something convertible to one by '
+                     '`computationtypes.to_type`.')
   prev_param_type = apply_func.type_signature.parameter
   inputs = value_impl.to_value(
       computation_building_blocks.Reference(
@@ -129,11 +137,14 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
           computation_types.NamedTupleType([prev_param_type, type_to_add])),
       None, context_stack)
   intermediate = apply_func(inputs[0])
+  full_type_spec = anonymous_tuple.to_elements(
+      apply_func.type_signature.result) + [type_to_add]
+  named_values = [
+      (full_type_spec[k][0], intermediate[k]) for k in range(len(intermediate))
+  ] + [(full_type_spec[-1][0], inputs[1])]
   new_elements = value_impl.to_value(
-      list(iter(intermediate)) + [inputs[1]],
-      type_spec=computation_types.NamedTupleType(
-          [x.type_signature for x in iter(intermediate)] +
-          [inputs[1].type_signature]),
+      anonymous_tuple.AnonymousTuple(named_values),
+      type_spec=full_type_spec,
       context_stack=context_stack)
   return value_impl.to_value(
       computation_building_blocks.Lambda(

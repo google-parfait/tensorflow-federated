@@ -25,6 +25,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -135,6 +136,20 @@ class IntrinsicsTest(parameterized.TestCase):
         str(foo.type_signature),
         '(<{int32}@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
+  def test_federated_zip_with_names_client_non_all_equal_int_and_bool(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(tf.int32, placements.CLIENTS),
+        computation_types.FederatedType(tf.bool, placements.CLIENTS, True)
+    ])
+    def foo(x, y):
+      a = {'x': x, 'y': y}
+      return intrinsics.federated_zip(a)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<{int32}@CLIENTS,bool@CLIENTS> -> {<x=int32,y=bool>}@CLIENTS)')
+
   def test_federated_zip_with_client_all_equal_int_and_bool(self):
 
     @computations.federated_computation([
@@ -148,6 +163,20 @@ class IntrinsicsTest(parameterized.TestCase):
         str(foo.type_signature),
         '(<int32@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
+  def test_federated_zip_with_names_client_all_equal_int_and_bool(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(tf.int32, placements.CLIENTS, True),
+        computation_types.FederatedType(tf.bool, placements.CLIENTS, True)
+    ])
+    def foo(arg):
+      a = {'x': arg[0], 'y': arg[1]}
+      return intrinsics.federated_zip(a)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<int32@CLIENTS,bool@CLIENTS> -> {<x=int32,y=bool>}@CLIENTS)')
+
   def test_federated_zip_with_server_int_and_bool(self):
 
     @computations.federated_computation([
@@ -160,6 +189,23 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature),
         '(<int32@SERVER,bool@SERVER> -> <int32,bool>@SERVER)')
+
+  def test_federated_zip_with_names_server_int_and_bool(self):
+
+    @computations.federated_computation([('a',
+                                          computation_types.FederatedType(
+                                              tf.int32, placements.SERVER,
+                                              True)),
+                                         ('b',
+                                          computation_types.FederatedType(
+                                              tf.bool, placements.SERVER,
+                                              True))])
+    def foo(arg):
+      return intrinsics.federated_zip(arg)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<a=int32@SERVER,b=bool@SERVER> -> <a=int32,b=bool>@SERVER)')
 
   def test_federated_collect_with_client_int(self):
 
@@ -305,27 +351,50 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(str(foo.type_signature), type_string)
 
-  @parameterized.named_parameters(('test_n_2', 2), ('test_n_3', 3),
-                                  ('test_n_5', 5))
-  def test_n_tuple_federated_zip_namedtuple_args(self, n):
-    fed_type = computation_types.FederatedType([tf.int32, tf.int32],
-                                               placements.CLIENTS)
+  @parameterized.named_parameters(
+      ('test_n_2_int', 2,
+       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+      ('test_n_3_int', 3,
+       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+      ('test_n_5_int', 5,
+       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+      ('test_n_2_tuple', 2,
+       computation_types.FederatedType([tf.int32, tf.int32],
+                                       placements.CLIENTS)),
+      ('test_n_3_tuple', 3,
+       computation_types.FederatedType([tf.int32, tf.int32],
+                                       placements.CLIENTS)),
+      ('test_n_5_tuple', 5,
+       computation_types.FederatedType([tf.int32, tf.int32],
+                                       placements.CLIENTS)))
+  def test_named_n_tuple_federated_zip(self, n, fed_type):
     initial_tuple_type = computation_types.NamedTupleType([fed_type] * n)
-    final_fed_type = computation_types.FederatedType([[tf.int32, tf.int32]] * n,
-                                                     placements.CLIENTS)
-    function_type = computation_types.FunctionType(initial_tuple_type,
-                                                   final_fed_type)
-    type_string = str(function_type)
+    named_fed_type = computation_types.FederatedType(
+        [(str(k), fed_type.member) for k in range(n)], placements.CLIENTS)
+    mixed_fed_type = computation_types.FederatedType(
+        [(str(k), fed_type.member) if k % 2 == 0 else fed_type.member
+         for k in range(n)], placements.CLIENTS)
+    named_function_type = computation_types.FunctionType(
+        initial_tuple_type, named_fed_type)
+    mixed_function_type = computation_types.FunctionType(
+        initial_tuple_type, mixed_fed_type)
+    named_type_string = str(named_function_type)
+    mixed_type_string = str(mixed_function_type)
 
-    @computations.federated_computation([
-        computation_types.FederatedType(
-            computation_types.NamedTupleType([tf.int32, tf.int32]),
-            placements.CLIENTS)
-    ] * n)
+    @computations.federated_computation([fed_type] * n)
+    def foo(x):
+      arg = {str(k): x[k] for k in range(n)}
+      return intrinsics.federated_zip(arg)
+
+    self.assertEqual(str(foo.type_signature), named_type_string)
+
+    @computations.federated_computation([fed_type] * n)
     def bar(x):
-      return intrinsics.federated_zip(x)
+      arg = anonymous_tuple.AnonymousTuple(
+          [(str(k), x[k]) if k % 2 == 0 else (None, x[k]) for k in range(n)])
+      return intrinsics.federated_zip(arg)
 
-    self.assertEqual(str(bar.type_signature), type_string)
+    self.assertEqual(str(bar.type_signature), mixed_type_string)
 
   @parameterized.named_parameters(
       [('test_n_' + str(n) + '_m_' + str(m), n, m)

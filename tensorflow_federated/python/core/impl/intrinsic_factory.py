@@ -472,7 +472,6 @@ class IntrinsicFactory(object):
     # here fixed at 2. There are other potential approaches to getting around
     # this problem (e.g. having the operator act on sequences and thereby
     # sidestepping the issue) which we may want to explore.
-
     value = value_impl.to_value(value, None, self._context_stack)
     py_typecheck.check_type(value, value_base.Value)
     py_typecheck.check_type(value.type_signature,
@@ -499,8 +498,13 @@ class IntrinsicFactory(object):
         raise TypeError(
             'The elements of the named tuple to zip must be placed at {}.'
             .format(output_placement))
+    named_comps = [(elements_to_zip[k][0],
+                    value_impl.ValueImpl.get_comp(value[k]))
+                   for k in range(len(value))]
+    tuple_to_zip = anonymous_tuple.AnonymousTuple(
+        [named_comps[0], named_comps[1]])
     zipped = value_utils.zip_two_tuple(
-        value_impl.to_value([value[0], value[1]], None, self._context_stack),
+        value_impl.to_value(tuple_to_zip, None, self._context_stack),
         self._context_stack)
     inputs = value_impl.to_value(
         computation_building_blocks.Reference(
@@ -511,13 +515,12 @@ class IntrinsicFactory(object):
             value_impl.ValueImpl.get_comp(inputs)), None, self._context_stack)
     for k in range(2, num_elements):
       zipped = value_utils.zip_two_tuple(
-          value_impl.to_value([zipped, value[k]], None, self._context_stack),
-          self._context_stack)
-      # elements returns list of 2-tuples of the form (name, type)--the [-1][1]
-      # grabs the type from the last element
-      new_type = computation_types.to_type(
-          anonymous_tuple.to_elements(zipped.type_signature.member)[-1][1])
-      flatten_func = value_utils.flatten_first_index(flatten_func, new_type,
+          value_impl.to_value(
+              computation_building_blocks.Tuple(
+                  [value_impl.ValueImpl.get_comp(zipped), named_comps[k]]),
+              None, self._context_stack), self._context_stack)
+      last_zipped = (named_comps[k][0], named_comps[k][1].type_signature.member)
+      flatten_func = value_utils.flatten_first_index(flatten_func, last_zipped,
                                                      self._context_stack)
     return zip_apply_fn[output_placement](flatten_func, zipped)
 
