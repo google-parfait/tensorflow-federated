@@ -65,3 +65,25 @@ py_test(
         "@six_archive//:six",
     ],
 )
+
+py_library(
+    name = "transforming_client_data",
+    srcs = ["transforming_client_data.py"],
+    deps = [
+        ":client_data",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "transforming_client_data_test",
+    size = "small",
+    srcs = ["transforming_client_data_test.py"],
+    deps = [
+        ":hdf5_client_data",
+        ":transforming_client_data",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
