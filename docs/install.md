@@ -30,10 +30,22 @@ source "venv/bin/activate"
 pip install --upgrade pip
 ```
 
-#### 3. Install the TensorFlow Federated pip package
+#### 3. Install the TensorFlow Federated package
 
 ```bash
-pip install --upgrade tensorflow_federated
+pip install tensorflow_federated
+```
+
+#### 4. Test Tensorflow Federated
+
+```bash
+python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: tff.tf_computation(lambda: 'Hello World'))())"
+```
+
+#### 5. Exit the virtual environment
+
+```bash
+deactivate
 ```
 
 ## Build from source
@@ -65,7 +77,7 @@ sudo pip3 install --upgrade virtualenv  # system-wide install
 [Install Bazel](https://docs.bazel.build/versions/master/install.html), the
 build tool used to compile Tensorflow Federated.
 
-#### 3. Clone the latest Tensorflow Federated source
+#### 3. Clone the Tensorflow Federated repository
 
 ```bash
 git clone https://github.com/tensorflow/federated.git
@@ -80,7 +92,7 @@ source "venv/bin/activate"
 pip install --upgrade pip
 ```
 
-#### 5. Install the Tensorflow Federated package dependencies
+#### 5. Install the Tensorflow Federated dependencies
 
 ```bash
 pip install --requirement requirements.txt

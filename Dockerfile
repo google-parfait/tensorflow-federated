@@ -64,5 +64,4 @@ RUN ${PIP} --no-cache-dir install \
     mock \
     numpy \
     six \
-    tensorflow_estimator \
-    wheel
+    tensorflow_estimator
