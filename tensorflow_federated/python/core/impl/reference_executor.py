@@ -267,11 +267,19 @@ def stamp_computed_value_into_graph(value, graph):
         value.type_signature)
     py_typecheck.check_type(graph, tf.Graph)
     if isinstance(value.type_signature, computation_types.TensorType):
-      with graph.as_default():
-        return tf.constant(
-            value.value,
-            dtype=value.type_signature.dtype,
-            shape=value.type_signature.shape)
+      if isinstance(value.value, np.ndarray):
+        value_type = computation_types.TensorType(
+            tf.dtypes.as_dtype(value.value.dtype),
+            tf.TensorShape(value.value.shape))
+        type_utils.check_assignable_from(value.type_signature, value_type)
+        with graph.as_default():
+          return tf.constant(value.value)
+      else:
+        with graph.as_default():
+          return tf.constant(
+              value.value,
+              dtype=value.type_signature.dtype,
+              shape=value.type_signature.shape)
     elif isinstance(value.type_signature, computation_types.NamedTupleType):
       elements = anonymous_tuple.to_elements(value.value)
       type_elements = anonymous_tuple.to_elements(value.type_signature)

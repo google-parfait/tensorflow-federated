@@ -137,6 +137,16 @@ class ReferenceExecutorTest(test.TestCase):
             computation_types.FederatedType(
                 tf.int32, placements.CLIENTS, all_equal=False)), x)
 
+  def test_stamp_computed_value_into_graph_with_undefined_tensor_dims(self):
+    v_type = computation_types.TensorType(tf.int32, [None])
+    v_value = np.array([1, 2, 3], dtype=np.int32)
+    v = reference_executor.ComputedValue(v_value, v_type)
+    with tf.Graph().as_default() as graph:
+      stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
+      with tf.Session(graph=graph) as sess:
+        v_result = graph_utils.fetch_value_in_session(sess, stamped_v)
+    self.assertTrue(np.array_equal(v_result, np.array([1, 2, 3])))
+
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
     v_val = anonymous_tuple.AnonymousTuple([('x', 10),
                                             ('y',
