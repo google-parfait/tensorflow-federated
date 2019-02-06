@@ -32,7 +32,6 @@ RUN ${PIP} --no-cache-dir install --upgrade \
     pip \
     setuptools
 
-RUN ln -s -f $(which ${PYTHON}) /usr/local/bin/python
 
 RUN apt update && apt install -y \
     build-essential \
