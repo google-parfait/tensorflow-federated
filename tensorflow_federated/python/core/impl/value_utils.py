@@ -66,9 +66,10 @@ def zip_two_tuple(input_val, context_stack):
   if num_elements != 2:
     raise ValueError('The argument of zip_two_tuple must be a 2-tuple, '
                      'not an {}-tuple'.format(num_elements))
-  result_type = computation_types.FederatedType([
-      e.member for _, e in anonymous_tuple.to_elements(input_val.type_signature)
-  ], output_placement, output_all_equal_bit)
+  result_type = computation_types.FederatedType(
+      [(name, e.member)
+       for name, e in anonymous_tuple.to_elements(input_val.type_signature)],
+      output_placement, output_all_equal_bit)
 
   def _adjust_all_equal_bit(x):
     return computation_types.FederatedType(x.member, x.placement,
