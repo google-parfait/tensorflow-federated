@@ -22,5 +22,11 @@ includes an initialization and iterated computation.
 
 ## Functions
 
+[`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target`
+from `source`.
+
 [`get_variables(...)`](../tff/utils/get_variables.md): Creates a set of
 variables that matches the given `type_spec`.
+
+[`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to
+`source`.
