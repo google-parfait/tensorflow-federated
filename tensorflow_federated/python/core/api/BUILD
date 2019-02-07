@@ -94,6 +94,7 @@ py_test(
         ":computations",
         ":intrinsics",
         ":placements",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:federated_computation_context",
         "@absl_py//absl/testing:absltest",
