@@ -52,7 +52,7 @@ deactivate
 
 ### Using *pip* on Ubuntu and macOS
 
-#### 1. Install the python developement environment
+#### 1. Install the python development environment
 
 ##### Ubuntu
 
