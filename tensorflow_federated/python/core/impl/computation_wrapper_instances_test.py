@@ -71,9 +71,11 @@ class ComputationWrapperInstancesTest(test.TestCase):
             comp.tensorflow.parameter.tuple.element[1].tensor.tensor_name: y
         }, [comp.tensorflow.result.tensor.tensor_name])
     with self.session() as sess:
-      results = [
-          sess.run(result, feed_dict={x: n, y: 3}) for n in [1, 20, 5, 10, 30]
-      ]
+
+      def _run(n):
+        return sess.run(result, feed_dict={x: n, y: 3})
+
+      results = [_run(n) for n in [1, 20, 5, 10, 30]]
       self.assertEqual(results, [[4], [23], [8], [13], [33]])
 
   def test_federated_computation_wrapper(self):

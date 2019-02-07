@@ -250,7 +250,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       output = sess.run(
           fetches=output_op,
           feed_dict={
-              batch['x']: [np.zeros(feature_dims), np.ones(feature_dims)],
+              batch['x']: [np.zeros(feature_dims),
+                           np.ones(feature_dims)],
               batch['y']: [[0.0], [1.0]],
           })
       # Since the model initializes all weights and biases to zero, we expect
@@ -347,7 +348,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       keras_model.compile(
           optimizer=gradient_descent.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[NumBatchesCounter(), NumExamplesCounter()])
+          metrics=[NumBatchesCounter(),
+                   NumExamplesCounter()])
       tff_model = model_utils.from_compiled_keras_model(
           keras_model=keras_model,
           dummy_batch=_create_dummy_batch(feature_dims))
@@ -378,7 +380,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       keras_model.compile(
           optimizer=gradient_descent.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[NumBatchesCounter(), NumExamplesCounter()])
+          metrics=[NumBatchesCounter(),
+                   NumExamplesCounter()])
       return model_utils.from_compiled_keras_model(
           keras_model=keras_model,
           dummy_batch=_create_dummy_batch(feature_dims))

@@ -28,4 +28,3 @@ class GraphKeys(object):
      `tf.GraphKeys.MODEL_VARIABLES`.
   """
   VARS_FOR_TFF_TO_INITIALIZE = 'vars_for_tff'
-

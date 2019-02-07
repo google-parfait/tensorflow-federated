@@ -31,7 +31,6 @@ from tensorflow_federated.python.learning import model_utils
 
 nest = tf.contrib.framework.nest
 
-
 # TODO(b/117226648): Make this a proper class for better documentation.
 ClientOutput = collections.namedtuple(
     'ClientOutput',
@@ -291,8 +290,7 @@ def build_model_delta_optimizer_process(model_fn,
 
     client_outputs = tff.federated_map(
         client_delta_tf,
-        (federated_dataset,
-         tff.federated_broadcast(server_state.model)))
+        (federated_dataset, tff.federated_broadcast(server_state.model)))
 
     @tff.tf_computation(server_state_type, model_weights_type.trainable)
     def server_update_model_tf(server_state, model_delta):

@@ -80,12 +80,10 @@ class LinearRegression(model.Model):
       batch = self.make_batch(**batch)
     if not self._input_spec.y.is_compatible_with(batch.y):
       raise ValueError('Expected batch.y to be compatible with '
-                       '{} but found {}'.format(self._input_spec.y,
-                                                batch.y))
+                       '{} but found {}'.format(self._input_spec.y, batch.y))
     if not self._input_spec.x.is_compatible_with(batch.x):
       raise ValueError('Expected batch.x to be compatible with '
-                       '{} but found {}'.format(self._input_spec.x,
-                                                batch.x))
+                       '{} but found {}'.format(self._input_spec.x, batch.x))
     predictions = self._predict(batch.x)
     residuals = predictions - batch.y
     num_examples = tf.gather(tf.shape(predictions), 0)

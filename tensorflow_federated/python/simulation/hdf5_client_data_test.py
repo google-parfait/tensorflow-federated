@@ -28,7 +28,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
 
-
 TEST_DATA = {
     'CLIENT A': {
         'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
@@ -105,9 +104,8 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
       expected_examples = []
       for i in range(len(expected_data['x'])):
-        expected_examples.append({
-            k: v[i] for k, v in six.iteritems(expected_data)
-        })
+        expected_examples.append(
+            {k: v[i] for k, v in six.iteritems(expected_data)})
       for actual in tf_dataset:
         expected = expected_examples.pop(0)
         actual = tf.contrib.framework.nest.map_structure(

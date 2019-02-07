@@ -583,7 +583,6 @@ def fetch_value_in_session(sess, value):
       function `assemble_result_from_graph`, made of tensors and anononymous
       tuples, or a `tf.data.Dataset`.
 
-
   Returns:
     A Python object with structure similar to `value`, but with tensors
     replaced with their values, and data sets replaced with lists of their

@@ -200,8 +200,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       else:
         raise ValueError(
             'Processing `tf.data.Datasets` outside of eager mode is not '
-            'currently supported.'
-        )
+            'currently supported.')
     return [
         to_representation_for_type(v, type_spec.element, callable_handler)
         for v in value
