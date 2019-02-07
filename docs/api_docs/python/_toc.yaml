@@ -96,6 +96,8 @@ toc:
       path: /federated/api_docs/python/tff/simulation/ClientData
     - title: FilePerUserClientData
       path: /federated/api_docs/python/tff/simulation/FilePerUserClientData
+    - title: HDF5ClientData
+      path: /federated/api_docs/python/tff/simulation/HDF5ClientData
     - title: datasets
       section:
       - title: Overview

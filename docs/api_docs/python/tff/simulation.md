@@ -22,3 +22,6 @@ and a mapping of clients to examples.
 
 [`class FilePerUserClientData`](../tff/simulation/FilePerUserClientData.md): A
 `tf.simulation.ClientData` that maps a set of files to a dataset.
+
+[`class HDF5ClientData`](../tff/simulation/HDF5ClientData.md): A
+`tf.simulation.ClientData` backed by an HDF5 file.

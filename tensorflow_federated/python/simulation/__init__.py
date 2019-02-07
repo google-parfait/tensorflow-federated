@@ -20,10 +20,12 @@ from __future__ import print_function
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation.client_data import ClientData
 from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData
+from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
 
 # Used by doc generation script.
 _allowed_symbols = [
     "ClientData",
     "FilePerUserClientData",
+    "HDF5ClientData",
     "datasets",
 ]

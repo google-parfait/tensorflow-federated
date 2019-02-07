@@ -9,6 +9,7 @@ py_library(
     deps = [
         ":client_data",
         ":file_per_user_client_data",
+        ":hdf5_client_data",
         "//tensorflow_federated/python/simulation/datasets",
     ],
 )
