@@ -13,7 +13,7 @@
 # limitations under the License.
 FROM ubuntu:18.04
 
-# Install the python developement environment
+# Install the python development environment
 ARG USE_PYTHON_3=True
 ARG _PY_SUFFIX=${USE_PYTHON_3:+3}
 ARG PYTHON=python${_PY_SUFFIX}
