@@ -24,10 +24,14 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.core.utils.computation_utils import IterativeProcess
+from tensorflow_federated.python.core.utils.tf_computation_utils import assign
 from tensorflow_federated.python.core.utils.tf_computation_utils import get_variables
+from tensorflow_federated.python.core.utils.tf_computation_utils import identity
 
 # Used by doc generation script.
 _allowed_symbols = [
     "IterativeProcess",
+    "assign",
     "get_variables",
+    "identity",
 ]

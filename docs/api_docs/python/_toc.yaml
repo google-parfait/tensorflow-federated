@@ -118,7 +118,11 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff/utils
+    - title: assign
+      path: /federated/api_docs/python/tff/utils/assign
     - title: get_variables
       path: /federated/api_docs/python/tff/utils/get_variables
+    - title: identity
+      path: /federated/api_docs/python/tff/utils/identity
     - title: IterativeProcess
       path: /federated/api_docs/python/tff/utils/IterativeProcess
