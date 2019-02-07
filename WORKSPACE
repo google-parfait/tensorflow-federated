@@ -26,12 +26,15 @@ http_archive(
     ],
 )
 
-# Please add all new TensorFlow Federated dependencies in workspace.bzl.
-load("//tensorflow_federated:workspace.bzl", "tf_federated_workspace")
-
-tf_federated_workspace()
-
-# Specify the minimum required bazel version.
 load("@org_tensorflow//tensorflow:version_check.bzl", "check_bazel_version_at_least")
-
 check_bazel_version_at_least("0.19.2")
+
+load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
+tf_workspace(path_prefix = "", tf_repo_name = "org_tensorflow")
+
+# gRPC wants the existence of a cares dependence but its contents are not
+# actually important since we have set GRPC_ARES=0 in .bazelrc
+bind(
+    name = "cares",
+    actual = "@grpc//third_party/nanopb:nanopb",
+)
