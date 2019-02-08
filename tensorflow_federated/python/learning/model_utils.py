@@ -19,10 +19,13 @@ from __future__ import print_function
 
 import collections
 import itertools
+import sys
 
 from six.moves import zip
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras import metrics as keras_metrics
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -140,12 +143,16 @@ def from_compiled_keras_model(keras_model, dummy_batch):
   return enhance(_TrainableKerasModel(keras_model, dummy_batch))
 
 
-def federated_aggregate_keras_metric(metric_type, federated_variables):
+def federated_aggregate_keras_metric(metric_type, metric_config,
+                                     federated_variables):
   """Aggregates variables a keras metric placed at CLIENTS to SERVER.
 
   Args:
-    metric_type: a type object (type should inherit from
+    metric_type: a type object (type must inherit from
       `tf.keras.metrics.Metric`).
+    metric_config: the result of calling `get_config()` on a metric object,
+      used with `metric_type.from_config()` to locally construct a new metric
+      object.
     federated_variables: a federated value place on clients that is the value
       returned by `tf.keras.metrics.Metric.variables`.
 
@@ -178,12 +185,29 @@ def federated_aggregate_keras_metric(metric_type, federated_variables):
 
   @tff.tf_computation(member_type)
   def report(accumulators):
-    metric = metric_type()
+    """Insert `accumulators` back into the kera metric to obtain result."""
+    # NOTE: the following call requires that `metric_type` have a no argument
+    # __init__ method, which will restrict the types of metrics that can be
+    # used. This is somewhat limiting, but the pattern to use default arguments
+    # and export the values in `get_config()` (see
+    # `tf.keras.metrics.TopKCategoricalAccuracy`) works well.
+    keras_metric = None
+    try:
+      keras_metric = metric_type.from_config(metric_config)
+    except TypeError as e:
+      # Re-raise the error with a more helpful message, but the previous stack
+      # trace.
+      raise (TypeError,
+             TypeError(
+                 'Caught expection trying to call `{t}.from_config()` with '
+                 'config {c}. Confirm that {t}.__init__() has an argument for '
+                 'each member of the config.\nException: {e}'.format(
+                     t=metric_type, c=metric_config, e=e)), sys.exc_info()[2])
     assignments = []
-    for v, a in zip(metric.variables, accumulators):
+    for v, a in zip(keras_metric.variables, accumulators):
       assignments.append(tf.assign(v, a))
     with tf.control_dependencies(assignments):
-      return metric.result()
+      return keras_metric.result()
 
   return tff.federated_aggregate(federated_variables, zeros, accumulate, merge,
                                  report)
@@ -196,6 +220,35 @@ class _KerasModel(model_lib.Model):
     self._keras_model = inner_model
     self._loss_fn = loss_func
     self._metrics = metrics if metrics is not None else []
+
+    # This is defined here so that it closes over the `loss_func`.
+    class _WeightedMeanLossMetric(keras_metrics.Metric):
+      """A `tf.keras.metrics.Metric` wrapper for the loss function."""
+
+      def __init__(self, name='loss', dtype=tf.float32):
+        super(_WeightedMeanLossMetric, self).__init__(name, dtype)
+        self._total_loss = self.add_weight('total_loss', initializer='zeros')
+        self._total_weight = self.add_weight(
+            'total_weight', initializer='zeros')
+        self._loss_fn = loss_func
+
+      def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true = tf.cast(y_true, self._dtype)
+        y_pred = tf.cast(y_pred, self._dtype)
+
+        # _loss_fn is expected to return the scalar mean loss, so we multiply by
+        # the batch_size to get back to total loss.
+        batch_size = tf.cast(tf.shape(y_pred)[0], self._dtype)
+        batch_total_loss = self._loss_fn(y_true, y_pred) * batch_size
+
+        op = self._total_loss.assign_add(batch_total_loss)
+        with tf.control_dependencies([op]):
+          return self._total_weight.assign_add(batch_size)
+
+      def result(self):
+        return tf.div_no_nan(self._total_loss, self._total_weight)
+
+    self._loss_metric = _WeightedMeanLossMetric()
 
     def _tensor_spec_with_undefined_batch_dim(tensor):
       tensor = tf.convert_to_tensor_or_sparse_tensor(tensor)
@@ -235,9 +288,9 @@ class _KerasModel(model_lib.Model):
 
   def get_metrics(self):
     if not self._keras_model._is_compiled:  # pylint: disable=protected-access
-      return self._metrics
+      return self._metrics + [self._loss_metric]
     else:
-      return self._keras_model.metrics
+      return self._keras_model.metrics + [self._loss_metric]
 
   @property
   def input_spec(self):
@@ -277,7 +330,7 @@ class _KerasModel(model_lib.Model):
     outputs = collections.OrderedDict()
     for metric in self.get_metrics():
       outputs[metric.name] = collections.OrderedDict(
-          [(v.op.name, v) for v in metric.variables])
+          [(v.op.name, v.read_value()) for v in metric.variables])
     return outputs
 
   @property
@@ -291,9 +344,8 @@ class _KerasModel(model_lib.Model):
     def federated_output(local_outputs):
       results = collections.OrderedDict()
       for metric, variables in zip(self.get_metrics(), local_outputs):
-        metric_type = type(metric)
         results[metric.name] = federated_aggregate_keras_metric(
-            metric_type, variables)
+            type(metric), metric.get_config(), variables)
       return results
 
     return federated_output

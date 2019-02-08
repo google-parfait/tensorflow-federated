@@ -78,8 +78,8 @@ class Sum(keras_metrics.Metric):
 class NumBatchesCounter(Sum):
   """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
 
-  def __init__(self):
-    super(NumBatchesCounter, self).__init__('num_batches', tf.int64)
+  def __init__(self, name='num_batches', dtype=tf.int64):
+    super(NumBatchesCounter, self).__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
     return super(NumBatchesCounter, self).update_state(1, sample_weight)
@@ -88,8 +88,8 @@ class NumBatchesCounter(Sum):
 class NumExamplesCounter(Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
-  def __init__(self):
-    super(NumExamplesCounter, self).__init__('num_examples', tf.int64)
+  def __init__(self, name='num_examples', dtype=tf.int64):
+    super(NumExamplesCounter, self).__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
     return super(NumExamplesCounter, self).update_state(
@@ -212,11 +212,12 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       # Total loss: 1.0
       # Batch average loss:  0.5
       self.assertEqual(output.loss, 0.5)
-      self.assertDictEqual(
-          sess.run(metrics), {
-              'num_batches': collections.OrderedDict([('total', 1)]),
-              'num_examples': collections.OrderedDict([('total_1', 2)]),
-          })
+      m = sess.run(metrics)
+      self.assertEqual(m['num_batches']['total'], 1)
+      self.assertEqual(m['num_examples']['total_1'], 2)
+      # mean loss is tracked as sum weighted loss / weight.
+      self.assertGreater(m['loss']['total_loss'], 0.0)
+      self.assertEqual(m['loss']['total_weight'], 2)
 
   @parameterized.parameters(
       itertools.product(
@@ -275,12 +276,11 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         prior_loss = r.loss
       m = sess.run(metrics)
 
-    self.assertDictEqual({
-        'num_batches':
-            collections.OrderedDict([('total', num_iterations)]),
-        'num_examples':
-            collections.OrderedDict([('total_1', 2 * num_iterations)]),
-    }, m)
+    self.assertEqual(m['num_batches']['total'], num_iterations)
+    self.assertEqual(m['num_examples']['total_1'], 2 * num_iterations)
+    # mean loss is tracked as sum weight loss / weight.
+    self.assertGreater(m['loss']['total_loss'], 0.0)
+    self.assertEqual(m['loss']['total_weight'], 2 * num_iterations)
 
   def test_wrap_tff_model_in_tf_computation(self):
     feature_dims = 3
@@ -310,12 +310,13 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         metrics = tff_model.report_local_outputs()
       return batch_output, metrics
 
-    output, metrics = _train_loop()
-    self.assertGreater(output.loss, 0.0)
-    self.assertCountEqual(
-        [('num_batches', anonymous_tuple.AnonymousTuple([('total', 1)])),
-         ('num_examples', anonymous_tuple.AnonymousTuple([('total_1', 2)]))],
-        anonymous_tuple.to_elements(metrics))
+    _, metrics = _train_loop()
+    # `metrics` is an AnonymousTuple.
+    self.assertEqual(metrics.num_batches.total, 1)
+    self.assertEqual(metrics.num_examples.total_1, 2)
+    # mean loss is tracked as sum weighted loss / weight.
+    self.assertGreater(metrics.loss.total_loss, 0.0)
+    self.assertEqual(metrics.loss.total_weight, 2)
 
   def test_keras_model_federated_output_computation(self):
     feature_dims = 3
@@ -354,11 +355,9 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         [client_local_outputs])
     aggregated_outputs = collections.OrderedDict(
         anonymous_tuple.to_elements(aggregated_outputs))
-
-    self.assertDictEqual(aggregated_outputs, {
-        'num_batches': 5,
-        'num_examples': 10,
-    })
+    self.assertEqual(aggregated_outputs['num_batches'], 5)
+    self.assertEqual(aggregated_outputs['num_examples'], 10)
+    self.assertGreater(aggregated_outputs['loss'], 0.0)
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.
