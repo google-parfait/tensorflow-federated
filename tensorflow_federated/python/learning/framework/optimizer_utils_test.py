@@ -37,8 +37,8 @@ nest = tf.contrib.framework.nest
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 
-  def __init__(self, unused_model_fn):
-    del unused_model_fn
+  def __init__(self, model_fn):
+    self._model = model_fn()
 
   @property
   def variables(self):
@@ -52,7 +52,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
     return optimizer_utils.ClientOutput(
         trainable_weights_delta,
         weights_delta_weight=client_weight,
-        model_output={},
+        model_output=self._model.report_local_outputs(),
         optimizer_output={'client_weight': client_weight})
 
 
@@ -156,6 +156,14 @@ class ServerTest(test.TestCase, parameterized.TestCase):
         tff.CLIENTS,
         all_equal=False)
 
+    expected_model_output_types = tff.FederatedType(
+        collections.OrderedDict([
+            ('loss', tff.TensorType(tf.float32, [])),
+            ('num_examples', tff.TensorType(tf.int32, [])),
+        ]),
+        tff.SERVER,
+        all_equal=True)
+
     # `initialize` is expected to be a funcion of no arguments to a ServerState.
     self.assertEqual(
         tff.FunctionType(
@@ -170,7 +178,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
                 expected_federated_server_state_type,
                 expected_federated_dataset_type
             ],
-            result=expected_federated_server_state_type),
+            result=(expected_federated_server_state_type,
+                    expected_model_output_types)),
         iterative_process.next.type_signature)
 
 
