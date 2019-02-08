@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import itertools
 
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff

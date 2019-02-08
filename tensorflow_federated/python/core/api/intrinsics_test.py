@@ -23,6 +23,7 @@ import itertools
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
