@@ -21,7 +21,6 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import functools
 import itertools
 
 from absl.testing import parameterized
@@ -97,62 +96,6 @@ class NumExamplesCounter(Sum):
         tf.shape(y_pred)[0], sample_weight)
 
 
-def dense_all_zeros_layer(feature_dims=None):
-  """Create a layer that can be used in isolation for linear regression.
-
-  Constructs a Keras dense layer with a single output, using biases and weights
-  that are initialized to zero. No activation function is applied. When this is
-  the only layer in a model, the model is effectively a linear regression model.
-
-  Args:
-    feature_dims: the integer length of the input to this layers. Maybe None if
-      the layer input size does not need to be specified.
-
-  Returns:
-    a `tf.keras.layers.Dense` object.
-  """
-  build_keras_dense_layer = functools.partial(
-      tf.keras.layers.Dense,
-      units=1,
-      use_bias=True,
-      kernel_initializer='zeros',
-      bias_initializer='zeros',
-      activation=None)
-  if feature_dims is not None:
-    return build_keras_dense_layer(input_shape=(feature_dims,))
-  return build_keras_dense_layer()
-
-
-def build_linear_regresion_keras_sequential_model(feature_dims):
-  """Build a linear regression `tf.keras.Model` using the Sequential API."""
-  model = tf.keras.models.Sequential()
-  model.add(dense_all_zeros_layer(feature_dims))
-  return model
-
-
-def build_linear_regresion_keras_functional_model(feature_dims):
-  """Build a linear regression `tf.keras.Model` using the functional API."""
-  a = tf.keras.layers.Input(shape=(feature_dims,))
-  b = dense_all_zeros_layer()(a)
-  return tf.keras.Model(inputs=a, outputs=b)
-
-
-def build_linear_regresion_keras_subclass_model(feature_dims):
-  """Build a linear regression model by sub-classing `tf.keras.Model`."""
-  del feature_dims  # unused.
-
-  class KerasLinearRegression(tf.keras.Model):
-
-    def __init__(self):
-      super(KerasLinearRegression, self).__init__()
-      self._weights = dense_all_zeros_layer()
-
-    def call(self, inputs, training=True):
-      return self._weights(inputs)
-
-  return KerasLinearRegression()
-
-
 def _create_dummy_batch(feature_dims):
   """Creates a dummy batch of zeros."""
   return collections.OrderedDict([('x', tf.zeros([1, feature_dims])),
@@ -201,7 +144,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       {'dummy_batch': _make_test_batch(x=[[1.0]], y=[[0.0]])},
   )
   def test_dummy_batch_types(self, dummy_batch):
-    keras_model = build_linear_regresion_keras_functional_model(1)
+    keras_model = model_examples.build_linear_regresion_keras_functional_model(
+        feature_dims=1)
     tff_model = model_utils.from_keras_model(
         keras_model=keras_model,
         dummy_batch=dummy_batch,
@@ -213,9 +157,9 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       itertools.product(
           [1, 3],
           [
-              build_linear_regresion_keras_functional_model,
-              build_linear_regresion_keras_sequential_model,
-              build_linear_regresion_keras_subclass_model,
+              model_examples.build_linear_regresion_keras_functional_model,
+              model_examples.build_linear_regresion_keras_sequential_model,
+              model_examples.build_linear_regresion_keras_subclass_model,
           ],
       ))
   def test_tff_model_from_keras_model(self, feature_dims, model_fn):
@@ -278,9 +222,9 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       itertools.product(
           [1, 3],
           [
-              build_linear_regresion_keras_functional_model,
-              build_linear_regresion_keras_sequential_model,
-              build_linear_regresion_keras_subclass_model,
+              model_examples.build_linear_regresion_keras_functional_model,
+              model_examples.build_linear_regresion_keras_sequential_model,
+              model_examples.build_linear_regresion_keras_subclass_model,
           ],
       ))
   def test_tff_model_from_compiled_keras_model(self, feature_dims, model_fn):
@@ -343,7 +287,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
     @tff.tf_computation()
     def _train_loop():
-      keras_model = build_linear_regresion_keras_functional_model(feature_dims)
+      keras_model = model_examples.build_linear_regresion_keras_functional_model(
+          feature_dims)
       # If the model is intended to be used for training, it must be compiled.
       keras_model.compile(
           optimizer=gradient_descent.SGD(learning_rate=0.01),
@@ -376,7 +321,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     feature_dims = 3
 
     def _model_fn():
-      keras_model = build_linear_regresion_keras_functional_model(feature_dims)
+      keras_model = model_examples.build_linear_regresion_keras_functional_model(
+          feature_dims)
       keras_model.compile(
           optimizer=gradient_descent.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
@@ -416,7 +362,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.
-    keras_model = build_linear_regresion_keras_functional_model(feature_dims=1)
+    keras_model = model_examples.build_linear_regresion_keras_functional_model(
+        feature_dims=1)
     tff_model = model_utils.from_keras_model(
         keras_model=keras_model,
         dummy_batch=_create_dummy_batch(1),

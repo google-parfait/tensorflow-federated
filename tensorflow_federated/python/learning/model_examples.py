@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import functools
 
 import tensorflow as tf
 
@@ -135,3 +136,61 @@ class TrainableLinearRegression(LinearRegression, model.TrainableModel):
     optimizer = tf.train.GradientDescentOptimizer(0.1)
     optimizer.minimize(fp.loss, var_list=self.trainable_variables)
     return fp
+
+
+def _dense_all_zeros_layer(input_dims=None, output_dim=1):
+  """Create a layer that can be used in isolation for linear regression.
+
+  Constructs a Keras dense layer with a single output, using biases and weights
+  that are initialized to zero. No activation function is applied. When this is
+  the only layer in a model, the model is effectively a linear regression model.
+
+  Args:
+    input_dims: the integer length of the input to this layers. Maybe None if
+      the layer input size does not need to be specified.
+    output_dim: the integer length of the flattened output tensor. Defaults to
+      one, effectively making the layer perform linear regression.
+
+  Returns:
+    a `tf.keras.layers.Dense` object.
+  """
+  build_keras_dense_layer = functools.partial(
+      tf.keras.layers.Dense,
+      units=output_dim,
+      use_bias=True,
+      kernel_initializer='zeros',
+      bias_initializer='zeros',
+      activation=None)
+  if input_dims is not None:
+    return build_keras_dense_layer(input_shape=(input_dims,))
+  return build_keras_dense_layer()
+
+
+def build_linear_regresion_keras_sequential_model(feature_dims):
+  """Build a linear regression `tf.keras.Model` using the Sequential API."""
+  keras_model = tf.keras.models.Sequential()
+  keras_model.add(_dense_all_zeros_layer(feature_dims))
+  return keras_model
+
+
+def build_linear_regresion_keras_functional_model(feature_dims):
+  """Build a linear regression `tf.keras.Model` using the functional API."""
+  a = tf.keras.layers.Input(shape=(feature_dims,))
+  b = _dense_all_zeros_layer()(a)
+  return tf.keras.Model(inputs=a, outputs=b)
+
+
+def build_linear_regresion_keras_subclass_model(feature_dims):
+  """Build a linear regression model by sub-classing `tf.keras.Model`."""
+  del feature_dims  # unused.
+
+  class _KerasLinearRegression(tf.keras.Model):
+
+    def __init__(self):
+      super(_KerasLinearRegression, self).__init__()
+      self._weights = _dense_all_zeros_layer()
+
+    def call(self, inputs, training=True):
+      return self._weights(inputs)
+
+  return _KerasLinearRegression()
