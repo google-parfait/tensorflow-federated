@@ -1,145 +1,188 @@
-# Installation
+# Install TensorFlow Federated
 
-## Install from package
+The easiest way to learn and use TensorFlow Federated requires no installation!
+You can get started by running the TensorFlow Federated [tutorials](tutorials/)
+directly in a brownser using
+[Colaboratory](https://colab.research.google.com/notebooks/welcome.ipynb).
 
-#### 1. Install the python development environment
+If you want to use TensorFlow Federated locally on your machine you can
+[install TensorFlow Federated](#install-tensorFlow-federated-using-pip) using
+Python's pip package manager.
 
-##### Ubuntu
+If you have a unique machine configuration you can
+[build TensorFlow Federated](#build-the-tensorflow-federated-pip-package) from
+source.
 
-```bash
-sudo apt update
-sudo apt install python3-dev python3-pip  # Python 3
-sudo pip3 install --upgrade virtualenv  # system-wide install
-```
+## Install TensorFlow Federated using pip
 
-##### macOS
+Install TensorFlow Federated using Python's pip package manager on Ubuntu or
+macOS.
 
-```bash
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
-brew update
-brew install python  # Python 3
-sudo pip3 install --upgrade virtualenv  # system-wide install
-```
+1.  Install the python development environment
 
-#### 2. Create a virtual environment
+    Ubuntu
 
-```bash
-virtualenv --python python3 "venv"
-source "venv/bin/activate"
-pip install --upgrade pip
-```
+    ```bash
+    sudo apt update
+    sudo apt install python3-dev python3-pip  # Python 3
+    sudo pip3 install --upgrade virtualenv  # system-wide install
+    ```
 
-#### 3. Install the TensorFlow Federated package
+    macOS
 
-```bash
-pip install tensorflow_federated
-```
+    ```bash
+    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+    export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+    brew update
+    brew install python  # Python 3
+    sudo pip3 install --upgrade virtualenv  # system-wide install
+    ```
 
-#### 4. Test Tensorflow Federated
+1.  Create a virtual environment
 
-```bash
-python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: tff.tf_computation(lambda: 'Hello World'))())"
-```
+    ```bash
+    virtualenv --python python3 "venv"
+    source "venv/bin/activate"
+    pip install --upgrade pip
+    ```
 
-#### 5. Exit the virtual environment
+    NOTE: To exit the virtual environment run `deactivate`.
 
-```bash
-deactivate
-```
+1.  Install the pip package
 
-## Build from source
+    ```bash
+    pip install --upgrade tensorflow_federated
+    ```
 
-### Using *pip* on Ubuntu and macOS
+1.  Test Tensorflow Federated
 
-#### 1. Install the python development environment
+    ```bash
+    python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: tff.tf_computation(lambda: 'Hello World'))())"
+    ```
 
-##### Ubuntu
+## Build the TensorFlow Federated pip package
 
-```bash
-sudo apt update
-sudo apt install python3-dev python3-pip  # Python 3
-sudo pip3 install --upgrade virtualenv  # system-wide install
-```
+Build the TensorFlow Federated pip package and install it on Ubuntu or macOS.
 
-##### macOS
+1.  Create a development environment [using virtualenv](#using-virtualenv) or
+    [using Docker](#using_docker).
+1.  [Build the pip package](#build-the-pip-package).
 
-```bash
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
-brew update
-brew install python  # Python 3
-sudo pip3 install --upgrade virtualenv  # system-wide install
-```
+### Using `virtualenv`
 
-#### 2. Install Bazel
+Create a Tensorflow Federated development environment using `virtualenv` on
+Ubuntu or macOS.
 
-[Install Bazel](https://docs.bazel.build/versions/master/install.html), the
-build tool used to compile Tensorflow Federated.
+1.  Install the Python development environment
 
-NOTE: Bazel version `0.19.2` or greater is required by TensorFlow Federated.
+    Ubuntu
 
-#### 3. Clone the Tensorflow Federated repository
+    ```bash
+    sudo apt update
+    sudo apt install python3-dev python3-pip  # Python 3
+    sudo pip3 install --upgrade virtualenv  # system-wide install
+    ```
 
-```bash
-git clone https://github.com/tensorflow/federated.git
-cd "federated"
-```
+    macOS
 
-#### 4. Create a virtual environment
+    ```bash
+    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+    export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+    brew update
+    brew install python  # Python 3
+    sudo pip3 install --upgrade virtualenv  # system-wide install
+    ```
 
-```bash
-virtualenv --python python3 "venv"
-source "venv/bin/activate"
-pip install --upgrade pip
-```
+1.  Install Bazel
 
-#### 5. Install the Tensorflow Federated dependencies
+    [Install Bazel](https://docs.bazel.build/versions/master/install.html), the
+    build tool used to compile Tensorflow Federated.
 
-```bash
-pip install --requirement requirements.txt
-```
+    NOTE: Bazel version `0.19.2` or greater is required by TensorFlow Federated.
 
-#### 6. Test Tensorflow Federated
+1.  Clone the Tensorflow Federated repository
 
-```bash
-bazel test \
-    --incompatible_remove_native_http_archive=false \
-    -- //tensorflow_federated/...
-```
+    ```bash
+    git clone https://github.com/tensorflow/federated.git
+    cd "federated"
+    ```
 
-#### 7. Exit the virtual environment
+1.  Create a virtual environment
 
-```bash
-deactivate
-```
+    ```bash
+    virtualenv --python python3 "venv"
+    source "venv/bin/activate"
+    pip install --upgrade pip
+    ```
+
+    NOTE: To exit the virtual environment run `deactivate`.
+
+1.  Install Tensorflow Federated dependencies
+
+    ```bash
+    pip install --requirement requirements.txt
+    ```
+
+1.  Test Tensorflow Federated
+
+    ```bash
+    bazel test \
+        --incompatible_remove_native_http_archive=false \
+        -- //tensorflow_federated/...
+    ```
 
 ### Using Docker
 
-#### 1. Install Docker
+Create a Tensorflow Federated development environment using Docker on Ubuntu or
+macOS.
 
-[Install Docker](https://docs.docker.com/install/) on your local machine.
+1.  Install Docker
 
-#### 2. Clone the latest Tensorflow Federated source
+    [Install Docker](https://docs.docker.com/install/) on your local machine.
 
-```bash
-git clone https://github.com/tensorflow/federated.git
-```
+1.  Clone the latest Tensorflow Federated source
 
-#### 3. Start a Docker container
+    ```bash
+    git clone https://github.com/tensorflow/federated.git
+    ```
 
-```bash
-docker run -it \
-    --workdir /federated
-    --volume ./federated:/federated \
-    tensorflow_federated/tensorflow_federated \
-    bash
-```
+1.  Start a Docker container
 
-#### 4. Test Tensorflow Federated
+    ```bash
+    docker run -it \
+        --workdir /federated
+        --volume ./federated:/federated \
+        tensorflow_federated/tensorflow_federated \
+        bash
+    ```
 
-```bash
-bazel test \
-    --incompatible_remove_native_http_archive=false \
-    -- //tensorflow_federated/...
-```
+1.  Test Tensorflow Federated
+
+    ```bash
+    bazel test \
+        --incompatible_remove_native_http_archive=false \
+        -- //tensorflow_federated/...
+    ```
+
+### Build the pip package
+
+Build the TensorFlow Federated pip package and install it on Ubuntu or macOS.
+
+1.  Build the pip package
+
+    ```bash
+    bazel build //tensorflow_federated/tools:build_pip_package
+    bazel-bin/tensorflow_federated/tools/build_pip_package "/tmp/tensorflow_federated"
+    ```
+
+1.  Install the pip package
+
+    ```bash
+    pip install --upgrade "/tmp/tensorflow_federated/tensorflow_federated-"*".whl"
+    ```
+
+1.  Test Tensorflow Federated
+
+    ```bash
+    python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: tff.tf_computation(lambda: 'Hello World'))())"
+    ```
