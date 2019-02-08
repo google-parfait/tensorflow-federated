@@ -87,14 +87,7 @@ class ValueImpl(value_base.Value):
           'Operator dir() is only suppored for named tuples, but the object '
           'on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    else:
-      # Not pre-creating or memoizing the list, as we do not expect this to be
-      # a common enough operation to warrant doing so.
-      return [
-          e[0]
-          for e in anonymous_tuple.to_elements(self._comp.type_signature)
-          if e[0]
-      ]
+    return dir(self._comp.type_signature)
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, six.string_types)
@@ -110,27 +103,25 @@ class ValueImpl(value_base.Value):
           'Operator getattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    if name not in [
-        x for x, _ in anonymous_tuple.to_elements(self._comp.type_signature)
-    ]:
+    if name not in dir(self._comp.type_signature):
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
     if isinstance(self._comp, computation_building_blocks.Tuple):
       return ValueImpl(getattr(self._comp, name), self._context_stack)
-    else:
-      return ValueImpl(
-          computation_building_blocks.Selection(self._comp, name=name),
-          self._context_stack)
+    return ValueImpl(
+        computation_building_blocks.Selection(self._comp, name=name),
+        self._context_stack)
 
   def __len__(self):
-    if not isinstance(self._comp.type_signature,
-                      computation_types.NamedTupleType):
+    type_signature = self._comp.type_signature
+    if isinstance(type_signature, computation_types.FederatedType):
+      type_signature = type_signature.member
+    if not isinstance(type_signature, computation_types.NamedTupleType):
       raise TypeError(
-          'Operator len() is only supported for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
-    else:
-      return len(anonymous_tuple.to_elements(self._comp.type_signature))
+          'Operator len() is only supported for (possibly federated) named '
+          'tuples, but the object on which it has been invoked is of type '
+          '{}.'.format(str(self._comp.type_signature)))
+    return len(type_signature)
 
   def __getitem__(self, key):
     py_typecheck.check_type(key, (int, slice))
@@ -146,7 +137,7 @@ class ValueImpl(value_base.Value):
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    elem_length = len(anonymous_tuple.to_elements(self._comp.type_signature))
+    elem_length = len(self._comp.type_signature)
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
@@ -173,9 +164,8 @@ class ValueImpl(value_base.Value):
           'Operator iter() is only supported for (possibly federated) named '
           'tuples, but the object on which it has been invoked is of type '
           '{}.'.format(str(self._comp.type_signature)))
-    else:
-      for index in range(len(type_signature)):
-        yield self[index]
+    for index in range(len(type_signature)):
+      yield self[index]
 
   def __call__(self, *args, **kwargs):
     if not isinstance(self._comp.type_signature,
@@ -185,21 +175,19 @@ class ValueImpl(value_base.Value):
           'functional types, but the value being invoked is of type '
           '{} that does not support invocation.'.format(
               str(self._comp.type_signature)))
+    if args or kwargs:
+      args = [to_value(x, None, self._context_stack) for x in args]
+      kwargs = {
+          k: to_value(v, None, self._context_stack)
+          for k, v in six.iteritems(kwargs)
+      }
+      arg = func_utils.pack_args(self._comp.type_signature.parameter, args,
+                                 kwargs, self._context_stack.current)
+      arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
     else:
-      if args or kwargs:
-        args = [to_value(x, None, self._context_stack) for x in args]
-        kwargs = {
-            k: to_value(v, None, self._context_stack)
-            for k, v in six.iteritems(kwargs)
-        }
-        arg = func_utils.pack_args(self._comp.type_signature.parameter, args,
-                                   kwargs, self._context_stack.current)
-        arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
-      else:
-        arg = None
-      return ValueImpl(
-          computation_building_blocks.Call(self._comp, arg),
-          self._context_stack)
+      arg = None
+    return ValueImpl(
+        computation_building_blocks.Call(self._comp, arg), self._context_stack)
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
