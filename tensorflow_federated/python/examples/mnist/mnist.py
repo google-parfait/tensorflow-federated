@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+
 import tensorflow as tf
 
 # TODO(b/123578208): Remove deep keras imports after updating TF version.

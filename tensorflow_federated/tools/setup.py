@@ -20,6 +20,7 @@ TODO(b/112658581): Add TFF high level overview.
 """
 
 import sys
+
 import setuptools
 
 DOCLINES = __doc__.split('\n')
