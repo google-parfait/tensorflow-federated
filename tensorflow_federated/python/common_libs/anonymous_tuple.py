@@ -61,11 +61,11 @@ class AnonymousTuple(object):
   Also note that the user will not be creating such tuples. They are a hidden
   part of the impementation designed to work together with function decorators.
   """
+  __slots__ = ('_hash', '_element_array', '_name_to_index')
 
   # TODO(b/113112108): Define more magic methods for convenience in handling
   # anonymous tuples. Possibly move out to a more generic location or replace
   # with pre-existing type if a sufficiently widely used one can be found.
-
   def __init__(self, elements):
     """Constructs a new anonymous named tuple with the given elements.
 
@@ -85,9 +85,12 @@ class AnonymousTuple(object):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {}.'.format(repr(e)))
-    self._element_array = [e[1] for e in elements]
-    self._name_to_index = collections.OrderedDict(
-        [(e[0], idx) for idx, e in enumerate(elements) if e[0] is not None])
+
+    self._element_array = tuple(e[1] for e in elements)
+    self._name_to_index = {
+        e[0]: idx for idx, e in enumerate(elements) if e[0] is not None
+    }
+    self._hash = None
 
   def __len__(self):
     return len(self._element_array)
@@ -135,11 +138,12 @@ class AnonymousTuple(object):
         for e in to_elements(self)))
 
   def __hash__(self):
-    # TODO(b/123041122): memoize this call
-    return hash((
-        'anonymous_tuple',  # salting to avoid type mismatch.
-        tuple(self._element_array),
-        tuple(self._name_to_index.items())))
+    if self._hash is None:
+      self._hash = hash((
+          'anonymous_tuple',  # salting to avoid type mismatch.
+          self._element_array,
+          tuple(self._name_to_index.items())))
+    return self._hash
 
 
 def to_elements(an_anonymous_tuple):
