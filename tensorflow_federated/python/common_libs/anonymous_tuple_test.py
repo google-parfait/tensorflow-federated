@@ -214,10 +214,9 @@ class AnonymousTupleTest(absltest.TestCase):
                 'y': 6
             })])))
     with self.assertRaises(TypeError):
-      self.assertTrue(
-          anonymous_tuple.is_same_structure(
-              {'x': 5.0},  # not an AnonymousTuple
-              anonymous_tuple.AnonymousTuple([('x', 5.0)])))
+      anonymous_tuple.is_same_structure(
+          {'x': 5.0},  # not an AnonymousTuple
+          anonymous_tuple.AnonymousTuple([('x', 5.0)]))
 
   def test_map_structure(self):
     x = anonymous_tuple.AnonymousTuple([

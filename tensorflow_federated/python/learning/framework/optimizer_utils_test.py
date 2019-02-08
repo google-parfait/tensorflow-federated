@@ -151,8 +151,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
         all_equal=True)
 
     expected_federated_dataset_type = tff.FederatedType(
-        tff.SequenceType(
-            model_examples.TrainableLinearRegression().input_spec),
+        tff.SequenceType(model_examples.TrainableLinearRegression().input_spec),
         tff.CLIENTS,
         all_equal=False)
 

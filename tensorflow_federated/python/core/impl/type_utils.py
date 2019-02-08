@@ -680,6 +680,7 @@ def is_assignable_from(target_type, source_type):
 
       def _dimension_is_assignable_from(x, y):
         return (x.value is None) or (x.value == y.value)
+
       # TODO(b/123764922): See if we can pass to TensorShape's
       # `is_compatible_with`.
       return ((x.ndims == y.ndims) and ((x.dims is None) or all(

@@ -53,6 +53,7 @@ class ComputationsTest(test.TestCase):
     self.assertEqual(bak(), 10)
 
   def test_tf_fn_with_variable(self):
+
     @computations.tf_computation
     def read_var():
       v = tf.Variable(10, name='test_var')
@@ -127,7 +128,7 @@ class ComputationsTest(test.TestCase):
 
     @computations.tf_computation(tf.int32)
     def third_power(x):
-      return x ** 3
+      return x**3
 
     self.assertEqual(foo(third_power, 10), int(1e9))
     self.assertEqual(foo(third_power, 1), 1)
@@ -143,7 +144,7 @@ class ComputationsTest(test.TestCase):
 
     @computations.tf_computation(tf.int32)
     def square(x):
-      return x ** 2
+      return x**2
 
     @computations.tf_computation(tf.int32, tf.int32)
     def square_drop_y(x, y):  # pylint: disable=unused-argument

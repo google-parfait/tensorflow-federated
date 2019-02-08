@@ -200,8 +200,7 @@ class _KerasModel(model_lib.Model):
       tensor = tf.convert_to_tensor_or_sparse_tensor(tensor)
       # Remove the batch dimension and leave it unspecified.
       spec = tf.TensorSpec(
-          shape=[None] + tensor.shape.dims[1:],
-          dtype=tensor.dtype)
+          shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
       return spec
 
     self._input_spec = nest.map_structure(_tensor_spec_with_undefined_batch_dim,

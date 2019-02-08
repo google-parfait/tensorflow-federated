@@ -14,9 +14,8 @@
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
-
-
-Defined in [`simulation/hdf5_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py).
+Defined in
+[`simulation/hdf5_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py).
 
 A `tf.simulation.ClientData` backed by an HDF5 file.
 
@@ -30,7 +29,7 @@ fashoin to `tf.data.Dataset.from_tensor_slices()`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-``` python
+```python
 __init__(hdf5_filepath)
 ```
 
@@ -38,35 +37,20 @@ Constructs a `tf.simulation.ClientData` object.
 
 #### Args:
 
-* <b>`hdf5_filepath`</b>: String path to the hdf5 file.
-
-
+*   <b>`hdf5_filepath`</b>: String path to the hdf5 file.
 
 ## Properties
 
 <h3 id="client_ids"><code>client_ids</code></h3>
 
-
-
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
-
-
 <h3 id="output_types"><code>output_types</code></h3>
-
-
-
-
 
 ## Methods
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-``` python
+```python
 create_tf_dataset_for_client(client_id)
 ```
-
-
-
-
-
