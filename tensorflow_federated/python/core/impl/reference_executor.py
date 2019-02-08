@@ -1136,8 +1136,9 @@ class ReferenceExecutor(context_base.Context):
     for _, v in anonymous_tuple.to_elements(arg.type_signature):
       type_utils.check_federated_type(v, None, placements.CLIENTS, False)
       if not type_utils.is_average_compatible(v.member):
-        raise TypeError('Expected average-compatible args, got {}.'.format(
-            str(v.member)))
+        raise TypeError('Expected average-compatible args,'
+                        ' got {} from argument of type {}.'.format(
+                            str(v.member), arg.type_signature))
     v_type = arg.type_signature[0].member
     w_type = arg.type_signature[1].member
     py_typecheck.check_type(w_type, computation_types.TensorType)
