@@ -77,6 +77,8 @@ sudo pip3 install --upgrade virtualenv  # system-wide install
 [Install Bazel](https://docs.bazel.build/versions/master/install.html), the
 build tool used to compile Tensorflow Federated.
 
+NOTE: Bazel version `0.19.2` or greater is required by TensorFlow Federated.
+
 #### 3. Clone the Tensorflow Federated repository
 
 ```bash
