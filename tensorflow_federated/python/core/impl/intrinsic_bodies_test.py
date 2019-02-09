@@ -51,7 +51,7 @@ class IntrinsicBodiesTest(absltest.TestCase):
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(
         _body_str(foo),
-        '(arg -> federated_reduce(<arg,generic_zero,generic_plus>))')
+        '(foo_arg -> federated_reduce(<foo_arg,generic_zero,generic_plus>))')
 
 
 if __name__ == '__main__':

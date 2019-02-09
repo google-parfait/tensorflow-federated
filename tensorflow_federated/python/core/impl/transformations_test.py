@@ -58,7 +58,7 @@ class TransformationsTest(absltest.TestCase):
       return f(x)
 
     comp = _to_building_block(foo)
-    self.assertEqual(str(comp), '(arg -> arg[0](arg[1]))')
+    self.assertEqual(str(comp), '(foo_arg -> foo_arg[0](foo_arg[1]))')
 
     def _transformation_func_generator():
       n = 0
@@ -80,7 +80,8 @@ class TransformationsTest(absltest.TestCase):
     # pylint: enable=unnecessary-lambda
     transfomed_comp = transformations.transform_postorder(comp, tx_func)
     self.assertEqual(
-        str(transfomed_comp), 'F6((arg -> F5(F2(F1(arg)[0])(F4(F3(arg)[1])))))')
+        str(transfomed_comp),
+        'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
 
@@ -93,7 +94,9 @@ class TransformationsTest(absltest.TestCase):
 
     comp = _to_building_block(add_one)
     transformed_comp = transformations.name_compiled_computations(comp)
-    self.assertEqual(str(transformed_comp), '(arg -> comp#1(<arg,comp#2()>))')
+    self.assertEqual(
+        str(transformed_comp),
+        '(add_one_arg -> comp#1(<add_one_arg,comp#2()>))')
 
   def test_replace_intrinsic(self):
 
@@ -104,7 +107,7 @@ class TransformationsTest(absltest.TestCase):
 
     comp = _to_building_block(foo)
     self.assertEqual(
-        str(comp), '(arg -> federated_sum(federated_broadcast(arg)))')
+        str(comp), '(foo_arg -> federated_sum(federated_broadcast(foo_arg)))')
 
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -117,8 +120,10 @@ class TransformationsTest(absltest.TestCase):
     # simplify this test.
 
     self.assertEqual(
-        str(transformed_comp), '(arg -> (arg -> federated_reduce('
-        '<arg,generic_zero,generic_plus>))(federated_broadcast(arg)))')
+        str(transformed_comp),
+        '(foo_arg -> (federated_sum_arg -> federated_reduce('
+        '<federated_sum_arg,generic_zero,generic_plus>))'
+        '(federated_broadcast(foo_arg)))')
 
   def test_replace_intrinsic_plus_reduce_lambdas(self):
 
@@ -130,7 +135,7 @@ class TransformationsTest(absltest.TestCase):
     comp = _to_building_block(foo)
 
     self.assertEqual(
-        str(comp), '(arg -> federated_sum(federated_broadcast(arg)))')
+        str(comp), '(foo_arg -> federated_sum(federated_broadcast(foo_arg)))')
 
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -140,16 +145,18 @@ class TransformationsTest(absltest.TestCase):
         context_stack_impl.context_stack)
 
     self.assertEqual(
-        str(transformed_comp), '(arg -> (arg -> federated_reduce('
-        '<arg,generic_zero,generic_plus>))(federated_broadcast(arg)))')
+        str(transformed_comp),
+        '(foo_arg -> (federated_sum_arg -> federated_reduce('
+        '<federated_sum_arg,generic_zero,generic_plus>))'
+        '(federated_broadcast(foo_arg)))')
 
     reduced_lambda_comp = transformations.replace_called_lambdas_with_block(
         transformed_comp)
 
     self.assertEqual(
         str(reduced_lambda_comp),
-        '(arg -> (let arg=federated_broadcast(arg) in '
-        'federated_reduce(<arg,generic_zero,generic_plus>)))')
+        '(foo_arg -> (let federated_sum_arg=federated_broadcast(foo_arg) in '
+        'federated_reduce(<federated_sum_arg,generic_zero,generic_plus>)))')
 
   def test_simple_reduce_lambda(self):
     x = computation_building_blocks.Reference('x', [tf.int32])
@@ -194,7 +201,7 @@ class TransformationsTest(absltest.TestCase):
     py_typecheck.check_type(comp, computation_building_blocks.Lambda)
     lambda_reduced_comp = transformations.replace_called_lambdas_with_block(
         comp)
-    self.assertEqual(str(comp), '(arg -> arg)')
+    self.assertEqual(str(comp), '(foo_arg -> foo_arg)')
     self.assertEqual(str(comp), str(lambda_reduced_comp))
 
   def test_no_reduce_separated_lambda_and_call(self):
@@ -210,7 +217,7 @@ class TransformationsTest(absltest.TestCase):
                                                     test_arg)
     lambda_reduced_comp = transformations.replace_called_lambdas_with_block(
         called_block)
-    self.assertEqual(str(called_block), '(let  in (arg -> arg))(test)')
+    self.assertEqual(str(called_block), '(let  in (foo_arg -> foo_arg))(test)')
     self.assertEqual(str(called_block), str(lambda_reduced_comp))
 
   def test_simple_block_snapshot(self):

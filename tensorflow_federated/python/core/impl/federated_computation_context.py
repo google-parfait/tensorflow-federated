@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
@@ -28,14 +30,46 @@ from tensorflow_federated.python.core.impl import value_impl
 class FederatedComputationContext(context_base.Context):
   """The context for building federated computations."""
 
-  def __init__(self, context_stack):
+  def __init__(self, context_stack, suggested_name=None, parent=None):
     """Creates this context.
 
     Args:
       context_stack: The context stack to use.
+      suggested_name: The optional suggested name of the context, a string. It
+        may be modified to make it different from the names of any of the
+        ancestors on the context stack.
+      parent: The optional parent context. If not `None`, it must be an
+        instance of `FederatedComputationContext`.
     """
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+    if suggested_name:
+      py_typecheck.check_type(suggested_name, six.string_types)
+      suggested_name = str(suggested_name)
+    else:
+      suggested_name = 'FEDERATED'
+    if parent is not None:
+      py_typecheck.check_type(parent, FederatedComputationContext)
+    ancestor = parent
+    ancestor_names = set()
+    while ancestor is not None:
+      ancestor_names.add(ancestor.name)
+      ancestor = ancestor.parent
+    name = suggested_name
+    name_count = 0
+    while name in ancestor_names:
+      name_count = name_count + 1
+      name = '{}_{}'.format(suggested_name, str(name_count))
     self._context_stack = context_stack
+    self._parent = parent
+    self._name = name
+
+  @property
+  def name(self):
+    return self._name
+
+  @property
+  def parent(self):
+    return self._parent
 
   def ingest(self, val, type_spec):
     val = value_impl.to_value(val, type_spec, self._context_stack)

@@ -72,34 +72,6 @@ py_test(
 )
 
 py_library(
-    name = "federated_computation_utils",
-    srcs = ["federated_computation_utils.py"],
-    deps = [
-        ":computation_building_blocks",
-        ":context_stack_base",
-        ":federated_computation_context",
-        ":value_impl",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-    ],
-)
-
-py_test(
-    name = "federated_computation_utils_test",
-    size = "small",
-    srcs = ["federated_computation_utils_test.py"],
-    deps = [
-        ":context_stack_impl",
-        ":federated_computation_utils",
-        ":func_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
     name = "computation_constructing_utils",
     srcs = ["computation_constructing_utils.py"],
     deps = [
@@ -265,6 +237,7 @@ py_library(
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "@six_archive//:six",
     ],
 )
 
@@ -278,6 +251,35 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:value_base",
         "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "federated_computation_utils",
+    srcs = ["federated_computation_utils.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":context_stack_base",
+        ":federated_computation_context",
+        ":value_impl",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "federated_computation_utils_test",
+    size = "small",
+    srcs = ["federated_computation_utils_test.py"],
+    deps = [
+        ":context_stack_impl",
+        ":federated_computation_utils",
+        ":func_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

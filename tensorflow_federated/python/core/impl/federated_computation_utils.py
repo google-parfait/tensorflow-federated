@@ -16,6 +16,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -24,8 +26,11 @@ from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import value_impl
 
 
-def zero_or_one_arg_func_to_building_block(func, parameter_name, parameter_type,
-                                           context_stack):
+def zero_or_one_arg_func_to_building_block(func,
+                                           parameter_name,
+                                           parameter_type,
+                                           context_stack,
+                                           suggested_name=None):
   """Converts a zero- or one-argument `func` into a computation building block.
 
   Args:
@@ -35,6 +40,10 @@ def zero_or_one_arg_func_to_building_block(func, parameter_name, parameter_type,
     parameter_name: The name of the parameter, or `None` if there is't any.
     parameter_type: The TFF type of the parameter, or `None` if there's none.
     context_stack: The context stack to use.
+    suggested_name: The optional suggested name to use for the federated context
+      that will be used to serialize this function's body (ideally the name of
+      the underlying Python function). It might be modified to avoid conflicts.
+      If not `None`, it must be a string.
 
   Returns:
     An instance of `computation_building_blocks.ComputationBuildingBlock` that
@@ -45,9 +54,19 @@ def zero_or_one_arg_func_to_building_block(func, parameter_name, parameter_type,
   """
   py_typecheck.check_callable(func)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+  if suggested_name is not None:
+    py_typecheck.check_type(suggested_name, six.string_types)
   parameter_type = computation_types.to_type(parameter_type)
+  if isinstance(context_stack.current,
+                federated_computation_context.FederatedComputationContext):
+    parent_context = context_stack.current
+  else:
+    parent_context = None
   context = federated_computation_context.FederatedComputationContext(
-      context_stack)
+      context_stack, suggested_name=suggested_name, parent=parent_context)
+  if parameter_name is not None:
+    py_typecheck.check_type(parameter_name, six.string_types)
+    parameter_name = '{}_{}'.format(context.name, str(parameter_name))
   with context_stack.install(context):
     if parameter_type is not None:
       result = func(
