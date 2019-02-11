@@ -1072,6 +1072,24 @@ class ReferenceExecutorTest(test.TestCase):
                                           tf.TensorShape([2, 2])),
             np.array([[1, 2], [3, 4]])))
 
+  def test_sum_of_squares(self):
+    int32_sequence = computation_types.SequenceType(tf.int32)
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def square_error(x, y):
+      return tf.pow(x - y, 2)
+
+    @computations.federated_computation(tf.int32, int32_sequence)
+    def sum_of_square_errors(x, y):
+
+      @computations.federated_computation(tf.int32)
+      def mapping_func(v):
+        return square_error(x, v)
+
+      return intrinsics.sequence_sum(intrinsics.sequence_map(mapping_func, y))
+
+    self.assertEqual(sum_of_square_errors(10, [11, 8, 13]), 14)
+
 
 if __name__ == '__main__':
   # We need to be able to individually test all components of the executor, and

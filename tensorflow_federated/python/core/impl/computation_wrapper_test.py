@@ -35,7 +35,8 @@ class WrappedForTest(func_utils.ConcreteFunction):
   result, all converted into strings via str().
   """
 
-  def __init__(self, func, parameter_type):
+  def __init__(self, func, parameter_type, name=None):
+    del name
     self._func = func
     super(WrappedForTest, self).__init__(
         computation_types.FunctionType(parameter_type, tf.string),

@@ -169,7 +169,11 @@ def replace_intrinsic(comp, uri, body, context_stack):
       # We need 'wrapped_body' to accept exactly one argument.
       wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
       return federated_computation_utils.zero_or_one_arg_func_to_building_block(
-          wrapped_body, 'arg', comp.type_signature.parameter, context_stack)
+          wrapped_body,
+          'arg',
+          comp.type_signature.parameter,
+          context_stack,
+          suggested_name=uri)
 
   return transform_postorder(comp, lambda x: _transformation_func(x, uri, body))
 

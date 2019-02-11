@@ -35,6 +35,16 @@ class FederatedComputationContextTest(absltest.TestCase):
     result = context.invoke(comp, None)
     self.assertIsInstance(result, value_base.Value)
     self.assertEqual(str(result.type_signature), 'int32')
+    self.assertEqual(context.name, 'FEDERATED')
+    context2 = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack, suggested_name='FOO', parent=context)
+    self.assertEqual(context2.name, 'FOO')
+    context3 = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack, suggested_name='FOO', parent=context2)
+    self.assertEqual(context3.name, 'FOO_1')
+    context4 = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack, suggested_name='FOO', parent=context3)
+    self.assertEqual(context4.name, 'FOO_2')
 
 
 if __name__ == '__main__':
