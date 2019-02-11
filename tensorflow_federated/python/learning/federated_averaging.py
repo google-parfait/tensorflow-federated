@@ -62,7 +62,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return [self._num_examples]
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def __call__(self, dataset, initial_weights):
     # N.B. When not in eager mode, this code must be wrapped as a defun
     # as it uses program-order semantics to avoid adding many explicit
@@ -76,7 +76,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 
     nest.map_structure(tf.assign, model.weights, initial_weights)
 
-    @tf.contrib.eager.function(autograph=False)
+    @tf.contrib.eager.function()
     def reduce_fn(dummy_state, batch):
       """Runs `tff.learning.Model.train_on_batch` on local client batch."""
       output = model.train_on_batch(batch)

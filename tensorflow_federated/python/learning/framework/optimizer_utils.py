@@ -102,7 +102,7 @@ def _create_optimizer_and_server_state(model, optimizer):
          those variables.
   """
 
-  @tf.contrib.eager.defun(autograph=False)
+  @tf.contrib.eager.defun()
   def apply_delta(delta):
     """Applies `delta` to `model.weights`."""
     nest.assert_same_structure(delta, model.weights.trainable)
@@ -189,7 +189,7 @@ def server_update_model(current_server_state, weights_delta, model_fn,
 
   # TODO(b/109733734): Does this really need to be wrapped, since its
   # immediately called below?
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def update_model_inner():
     # TODO(b/123092620): Mixing AnonymousTuple with other nested types is a bit
     # cumbersome. Make this easier with better support.
