@@ -194,3 +194,11 @@ def build_linear_regresion_keras_subclass_model(feature_dims):
       return self._weights(inputs)
 
   return _KerasLinearRegression()
+
+
+def build_embedding_keras_model(vocab_size=10):
+  """Builds a test model with an embedding initialized to one-hot vectors."""
+  keras_model = tf.keras.models.Sequential()
+  keras_model.add(tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=5))
+  keras_model.add(tf.keras.layers.Softmax())
+  return keras_model

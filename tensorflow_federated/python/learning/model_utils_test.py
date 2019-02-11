@@ -30,6 +30,7 @@ import tensorflow as tf
 
 # TODO(b/123578208): Remove deep keras imports after updating TF version.
 from tensorflow.python.keras import metrics as keras_metrics
+from tensorflow.python.keras.optimizer_v2 import adam
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -281,6 +282,75 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     # mean loss is tracked as sum weight loss / weight.
     self.assertGreater(m['loss']['total_loss'], 0.0)
     self.assertEqual(m['loss']['total_weight'], 2 * num_iterations)
+
+  def test_keras_model_using_embeddings(self):
+    model = model_examples.build_embedding_keras_model()
+
+    def loss_fn(y_true, y_pred):
+      loss_per_example = tf.keras.losses.sparse_categorical_crossentropy(
+          y_true=y_true, y_pred=y_pred)
+      return tf.reduce_mean(loss_per_example)
+
+    model.compile(
+        optimizer=adam.Adam(),
+        loss=loss_fn,
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+
+    dummy_batch = collections.OrderedDict([
+        ('x', np.zeros([1])),
+        ('y', np.zeros([1])),
+    ])
+    tff_model = model_utils.from_compiled_keras_model(
+        keras_model=model, dummy_batch=dummy_batch)
+
+    x_placeholder = tf.placeholder(
+        shape=(None, 1), dtype=tf.int64, name='x')
+    y_placeholder = tf.placeholder(
+        shape=(None, 1), dtype=tf.int64, name='y')
+    batch = {'x': x_placeholder, 'y': y_placeholder}
+
+    train_op = tff_model.train_on_batch(batch)
+    metrics = tff_model.report_local_outputs()
+
+    init_ops = [
+        tf.variables_initializer(tff_model.trainable_variables +
+                                 tff_model.non_trainable_variables +
+                                 tff_model.local_variables),
+        tf.global_variables_initializer()
+    ]
+
+    # Create a batch with the size of the vocab. These examples will attempt to
+    # train the embedding so that the model produces
+    #   i -> (i / output_size) + 5
+    input_vocab_size = 10
+    output_vocab_size = 5
+    xs = []
+    ys = []
+    for input_id in range(input_vocab_size):
+      xs.append(input_id)
+      ys.append((input_id / output_vocab_size + 5) % output_vocab_size)
+    train_feed_dict = {
+        batch['x']: np.expand_dims(np.array(xs, dtype=np.int64), axis=-1),
+        batch['y']: np.expand_dims(np.array(ys, dtype=np.int64), axis=-1),
+    }
+    prior_loss = float('inf')
+
+    tf.get_default_graph().finalize()
+    with self.session() as sess:
+      sess.run(init_ops)
+      num_iterations = 10
+      for _ in range(num_iterations):
+        r = sess.run(train_op, feed_dict=train_feed_dict)
+        self.assertLess(r.loss, prior_loss)
+        prior_loss = r.loss
+      m = sess.run(metrics)
+
+    self.assertEqual(m['num_batches']['total'], num_iterations)
+    self.assertEqual(m['num_examples']['total_1'],
+                     input_vocab_size * num_iterations)
+    self.assertGreater(m['loss']['total_loss'], 0.0)
+    self.assertEqual(m['loss']['total_weight'],
+                     input_vocab_size * num_iterations)
 
   def test_wrap_tff_model_in_tf_computation(self):
     feature_dims = 3
