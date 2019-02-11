@@ -45,7 +45,7 @@ class FilePerUserClientData(client_data.ClientData):
     if not client_ids:
       raise ValueError('`cliet_ids` must have at least one client ID')
     py_typecheck.check_callable(create_tf_dataset_fn)
-    self._client_ids = client_ids
+    self._client_ids = sorted(client_ids)
     self._create_tf_dataset_fn = create_tf_dataset_fn
 
     g = tf.Graph()
