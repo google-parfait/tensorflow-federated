@@ -296,8 +296,7 @@ class _KerasModel(model_lib.Model):
   def input_spec(self):
     return self._input_spec
 
-  @tf.contrib.eager.function(autograph=False)
-  def forward_pass(self, batch_input, training=True):
+  def _forward_pass(self, batch_input, training=True):
     # forward_pass requires batch_input be a dictionary that can be passed to
     # tf.keras.Model.__call__, namely it has keys `x`, and optionally `y`.
     if hasattr(batch_input, '_asdict'):
@@ -318,6 +317,10 @@ class _KerasModel(model_lib.Model):
       batch_loss = None
 
     return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
+
+  @tf.contrib.eager.function(autograph=False)
+  def forward_pass(self, batch_input, training=True):
+    return self._forward_pass(batch_input, training=training)
 
   @tf.contrib.eager.function(autograph=False)
   def report_local_outputs(self):
@@ -375,7 +378,7 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
 
   @tf.contrib.eager.function(autograph=False)
   def train_on_batch(self, batch_input):
-    batch_output = self.forward_pass(batch_input)
+    batch_output = self._forward_pass(batch_input)
     _ = self._keras_model.optimizer.get_updates(
         loss=batch_output.loss, params=self.trainable_variables)
     return batch_output
