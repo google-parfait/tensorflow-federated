@@ -366,11 +366,11 @@ class _KerasModel(model_lib.Model):
 
     return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def forward_pass(self, batch_input, training=True):
     return self._forward_pass(batch_input, training=training)
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def report_local_outputs(self):
     """Reports the variables of the metrics tracked during local training.
 
@@ -427,7 +427,7 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
     return (super(_TrainableKerasModel, self).non_trainable_variables +
             self._keras_model.optimizer.variables())
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def train_on_batch(self, batch_input):
     batch_output = self._forward_pass(batch_input)
     _ = self._keras_model.optimizer.get_updates(

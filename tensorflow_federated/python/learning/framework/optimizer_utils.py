@@ -104,7 +104,7 @@ def _create_optimizer_and_server_state(model, optimizer):
          those variables.
   """
 
-  @tf.contrib.eager.defun(autograph=False)
+  @tf.contrib.eager.defun()
   def apply_delta(delta):
     """Applies `delta` to `model.weights`."""
     nest.assert_same_structure(delta, model.weights.trainable)
@@ -239,7 +239,7 @@ def server_update_model(current_server_state, weights_delta, model_fn,
   # TODO(b/124538167): We should increment a server counter to
   # track the fact a non-finite weiths_delta was encountered.
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def update_model_inner():
     """Applies the update."""
     nest.map_structure(tf.assign, server_state_vars, current_server_state)

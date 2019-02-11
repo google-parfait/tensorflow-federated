@@ -100,7 +100,7 @@ def to_odict(d):
 # TODO(b/122081673): autograph was explicitly disabled here to work with TF
 # v1.13. Once TFF moves past 1.13, autograh should be able to be renabled and
 # the tf.cond() statement replaced with python control flow.
-@tf.contrib.eager.function(autograph=False)
+@tf.contrib.eager.function()
 def zero_all_if_any_non_finite(structure):
   """Zeroes out all entries in input if any are not finite.
 

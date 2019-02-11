@@ -55,7 +55,7 @@ class TestModel(model.Model):
     return collections.OrderedDict([('temp', tf.TensorSpec([None],
                                                            tf.float32))])
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def forward_pass(self, batch, training=True):
     assert not training
     num_over = tf.reduce_sum(
@@ -65,7 +65,7 @@ class TestModel(model.Model):
     predictions = tf.zeros_like(batch['temp'])
     return model.BatchOutput(loss=loss, predictions=predictions)
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def report_local_outputs(self):
     return collections.OrderedDict([('num_over', self._variables.num_over)])
 

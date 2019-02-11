@@ -57,7 +57,7 @@ def build_federated_evaluation(model_fn):
     model = model_utils.enhance(model_fn())
 
     # TODO(b/124477598): Remove dummy when b/121400757 has been fixed.
-    @tf.contrib.eager.function(autograph=False)
+    @tf.contrib.eager.function()
     def reduce_fn(dummy, batch):
       model_output = model.forward_pass(batch, training=False)
       return dummy + tf.cast(model_output.loss, tf.float64)

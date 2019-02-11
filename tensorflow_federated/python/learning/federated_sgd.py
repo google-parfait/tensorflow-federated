@@ -74,7 +74,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return [self._batch_weight_sum] + nest.flatten(self._grad_sum_vars)
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def __call__(self, dataset, initial_weights):
     # N.B. When not in eager mode, this code must be wrapped as a defun
     # as it uses program-order semantics to avoid adding many explicit
@@ -84,7 +84,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
     nest.map_structure(tf.assign, model.weights, initial_weights)
 
-    @tf.contrib.eager.function(autograph=False)
+    @tf.contrib.eager.function()
     def reduce_fn(dummy_state, batch):
       """Runs forward_pass on batch."""
       with tf.contrib.eager.GradientTape() as tape:

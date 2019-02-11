@@ -45,7 +45,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return []
 
-  @tf.contrib.eager.function(autograph=False)
+  @tf.contrib.eager.function()
   def __call__(self, dataset, initial_weights):
     trainable_weights_delta = nest.map_structure(lambda x: -1.0 * x,
                                                  initial_weights.trainable)

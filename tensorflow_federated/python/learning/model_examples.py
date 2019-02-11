@@ -73,11 +73,11 @@ class LinearRegression(model.Model):
     # Model expects batched input, but the batch dimension is unspecified.
     return self._input_spec
 
-  @tf.contrib.eager.defun(autograph=False)
+  @tf.contrib.eager.defun()
   def _predict(self, x):
     return tf.matmul(x, self._a) + self._b + self._c
 
-  @tf.contrib.eager.defun(autograph=False)
+  @tf.contrib.eager.defun()
   def forward_pass(self, batch, training=True):
     del training  # Unused
     if isinstance(batch, dict):
@@ -100,7 +100,7 @@ class LinearRegression(model.Model):
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model.BatchOutput(loss=average_loss, predictions=predictions)
 
-  @tf.contrib.eager.defun(autograph=False)
+  @tf.contrib.eager.defun()
   def report_local_outputs(self):
     return collections.OrderedDict([
         ('num_examples', self._num_examples),
@@ -134,7 +134,7 @@ class LinearRegression(model.Model):
 class TrainableLinearRegression(LinearRegression, model.TrainableModel):
   """A LinearRegression with trivial SGD training."""
 
-  @tf.contrib.eager.defun(autograph=False)
+  @tf.contrib.eager.defun()
   def train_on_batch(self, batch):
     # Most users won't implement this, and let us provide the optimizer.
     fp = self.forward_pass(batch)
