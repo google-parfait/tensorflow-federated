@@ -29,6 +29,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import type_utils
 
@@ -103,6 +104,46 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
         'graph.'.format(repr(parameter_type)))
 
 
+class OneShotDataset(typed_object.TypedObject):
+  """A factory of `tf.data.Dataset`-like objects based on a no-argument lambda.
+
+  This factory supports the same methods as the data sets constructed by the
+  lambda. Upon invocation, it constructs a new data set by invoking the lambda,
+  then forwards the call to that data set. A new data set is created per call.
+  """
+
+  # TODO(b/113112108): It would be preferable if we could simply subclass here
+  # `tf.data.Dataset`, but that unfortunately causes things to break (possibly
+  # more overloads than those in `DatasetV1Adapter` needed). We need to find a
+  # way to make it work, so that the users can get an instance of the standard
+  # data set type.
+
+  def __init__(self, func, element_type):
+    """Constructs this factory from `func`.
+
+    Args:
+      func: A no-argument callable that creates instances of `tf.data.Dataset`.
+      element_type: The type of elements.
+    """
+    py_typecheck.check_type(element_type, computation_types.Type)
+    self._type_signature = computation_types.SequenceType(element_type)
+    self._func = func
+
+  @property
+  def type_signature(self):
+    """Returns the TFF type of this object (an instance of `tff.Type`)."""
+    return self._type_signature
+
+  def __getattr__(self, name):
+    return getattr(self._func(), name)
+
+
+# We cannot currently subclass `tf.data.Dataset`, so we have to resort to
+# adding this symbol as a level of indirection to limit the scope of future
+# changes in how the support for data sets is implemented.
+DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, OneShotDataset)
+
+
 def make_dataset_from_string_handle(handle, type_spec):
   """Constructs a `tf.data.Dataset` from a string handle tensor and type spec.
 
@@ -116,16 +157,35 @@ def make_dataset_from_string_handle(handle, type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   tf_dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
-  with handle.graph.as_default():
-    it = tf.data.Iterator.from_string_handle(handle, tf_dtypes, shapes)
-    # In order to convert an iterator into something that looks like a data
-    # set, we create a dummy data set that consists of an infinite sequence
-    # of zeroes, and filter it through a map function that invokes
-    # 'it.get_next()' for each of those zeroes.
-    # TODO(b/113112108): Possibly replace this with something more canonical
-    # if and when we can find adequate support for abstractly defined data
-    # sets (at the moment of this writing it does not appear to exist yet).
-    return tf.data.Dataset.range(1).repeat().map(lambda _: it.get_next())
+
+  def make(handle=handle, tf_dtypes=tf_dtypes, shapes=shapes):
+    """An embedded no-argument function that constructs the data set on-demand.
+
+    This is invoked by `OneShotDataset` on each access to the data set argument
+    passed to the body of the TF computation to ensure that the iterators and
+    tje map are constructed in the appropriate context (e.g., in a defun).
+
+    Args:
+      handle: Captured from the local (above).
+      tf_dtypes: Captured from the local (above).
+      shapes: Captured from the local (above).
+
+    Returns:
+      An instance of `tf.data.Dataset`.
+    """
+    with handle.graph.as_default():
+      it = tf.data.Iterator.from_string_handle(handle, tf_dtypes, shapes)
+      # In order to convert an iterator into something that looks like a data
+      # set, we create a dummy data set that consists of an infinite sequence
+      # of zeroes, and filter it through a map function that invokes
+      # 'it.get_next()' for each of those zeroes.
+      # TODO(b/113112108): Possibly replace this with something more canonical
+      # if and when we can find adequate support for abstractly defined data
+      # sets (at the moment of this writing it does not appear to exist yet).
+      return tf.data.Dataset.range(1).repeat().map(lambda _: it.get_next())
+
+  # NOTE: To revert to the old behavior, simply invoke `make()` here directly.
+  return OneShotDataset(make, type_spec)
 
 
 def capture_result_from_graph(result, graph):
@@ -194,7 +254,7 @@ def capture_result_from_graph(result, graph):
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
-  elif isinstance(result, tf.data.Dataset):
+  elif isinstance(result, DATASET_REPRESENTATION_TYPES):
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
         result.output_types, result.output_shapes)
     handle_name = result.make_one_shot_iterator().string_handle().name
@@ -595,7 +655,7 @@ def fetch_value_in_session(sess, value):
   py_typecheck.check_type(sess, tf.Session)
   # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
   # `tf.data.Dataset`s and what the API would look like to support this.
-  if isinstance(value, tf.data.Dataset):
+  if isinstance(value, DATASET_REPRESENTATION_TYPES):
     with sess.graph.as_default():
       iterator = value.make_initializable_iterator()
       next_element = iterator.get_next()

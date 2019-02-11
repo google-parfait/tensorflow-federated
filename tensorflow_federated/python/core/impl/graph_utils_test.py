@@ -49,7 +49,7 @@ class GraphUtilsTest(test.TestCase):
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
       self.assertEqual(repr(type_spec.shape), repr(val.shape))
     elif binding_oneof == 'sequence':
-      self.assertIsInstance(val, tf.data.Dataset)
+      self.assertIsInstance(val, graph_utils.DATASET_REPRESENTATION_TYPES)
       handle = graph.get_tensor_by_name(
           binding.sequence.iterator_string_handle_name)
       self.assertIn(
@@ -135,17 +135,17 @@ class GraphUtilsTest(test.TestCase):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter('foo',
                                         computation_types.SequenceType(tf.bool))
-    self.assertIsInstance(x, tf.data.Dataset)
-    test.assert_nested_struct_eq(x.output_types, tf.bool)
-    test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
+      self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
+      test.assert_nested_struct_eq(x.output_types, tf.bool)
+      test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo', computation_types.SequenceType((tf.int32, [50])))
-    self.assertIsInstance(x, tf.data.Dataset)
-    test.assert_nested_struct_eq(x.output_types, tf.int32)
-    test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
+      self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
+      test.assert_nested_struct_eq(x.output_types, tf.int32)
+      test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
 
   def test_stamp_parameter_in_graph_with_tensor_pair_sequence(self):
     with tf.Graph().as_default():
@@ -153,15 +153,15 @@ class GraphUtilsTest(test.TestCase):
           'foo',
           computation_types.SequenceType([('A', (tf.float32, [3, 4, 5])),
                                           ('B', (tf.int32, [1]))]))
-    self.assertIsInstance(x, tf.data.Dataset)
-    test.assert_nested_struct_eq(x.output_types, {
-        'A': tf.float32,
-        'B': tf.int32
-    })
-    test.assert_nested_struct_eq(x.output_shapes, {
-        'A': tf.TensorShape([3, 4, 5]),
-        'B': tf.TensorShape([1])
-    })
+      self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
+      test.assert_nested_struct_eq(x.output_types, {
+          'A': tf.float32,
+          'B': tf.int32
+      })
+      test.assert_nested_struct_eq(x.output_shapes, {
+          'A': tf.TensorShape([3, 4, 5]),
+          'B': tf.TensorShape([1])
+      })
 
   def test_capture_result_with_string(self):
     with tf.Graph().as_default() as graph:
@@ -371,7 +371,7 @@ class GraphUtilsTest(test.TestCase):
     output_map = {'foo': it.string_handle()}
     result = graph_utils.assemble_result_from_graph(type_spec, binding,
                                                     output_map)
-    self.assertIsInstance(result, tf.data.Dataset)
+    self.assertIsInstance(result, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         str(result.output_types),
         'OrderedDict([(\'X\', tf.int32), (\'Y\', tf.int32)])')
@@ -386,13 +386,13 @@ class GraphUtilsTest(test.TestCase):
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [],
                                                  tf.float32)
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
   def test_make_data_set_from_elements_with_list_of_ints(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(),
                                                  [1, 2, 3, 4], tf.int32)
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.Session().run(ds.reduce(0, lambda x, y: x + y)), 10)
 
   def test_make_data_set_from_elements_with_list_of_dicts(self):
@@ -403,7 +403,7 @@ class GraphUtilsTest(test.TestCase):
         'a': 3,
         'b': 4,
     }], [('a', tf.int32), ('b', tf.int32)])
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
@@ -418,7 +418,7 @@ class GraphUtilsTest(test.TestCase):
             ('b', 4),
         ]),
     ], [('a', tf.int32), ('b', tf.int32)])
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
@@ -427,7 +427,7 @@ class GraphUtilsTest(test.TestCase):
         [[1], [2]],
         [[3], [4]],
     ], [[tf.int32], [tf.int32]])
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + tf.reduce_sum(y))), 10)
 
@@ -442,7 +442,7 @@ class GraphUtilsTest(test.TestCase):
             ('b', 4),
         ]),
     ], [('a', tf.int32), ('b', tf.int32)])
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
@@ -455,7 +455,7 @@ class GraphUtilsTest(test.TestCase):
         'b': [4],
     }], [('a', [tf.int32]), ('b', [tf.int32])])
 
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
     def reduce_func(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
@@ -471,7 +471,7 @@ class GraphUtilsTest(test.TestCase):
         'b': 4,
     }], [('a', tf.int32), ('b', tf.int32)])
 
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
     def reduce_func(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
@@ -486,7 +486,7 @@ class GraphUtilsTest(test.TestCase):
         'a': np.array([3], dtype=np.int32),
         'b': np.array([4], dtype=np.int32),
     }], [('a', (tf.int32, [1])), ('b', (tf.int32, [1]))])
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
     def reduce_func(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
@@ -661,6 +661,31 @@ class GraphUtilsTest(test.TestCase):
       }, {
           'a': 2
       }], tf.int32)
+
+  def test_one_shot_dataset_with_defuns(self):
+    with tf.Graph().as_default() as graph:
+      ds1 = tf.data.Dataset.from_tensor_slices([1, 1])
+      it1 = ds1.make_one_shot_iterator()
+      sh1 = it1.string_handle()
+
+      dtype = tf.int32
+      shape = tf.TensorShape([])
+
+      def make():
+        it2 = tf.data.Iterator.from_string_handle(sh1, dtype, shape)
+        return tf.data.Dataset.range(1).repeat().map(lambda _: it2.get_next())
+
+      ds2 = graph_utils.OneShotDataset(
+          make, computation_types.TensorType(dtype, shape))
+
+      @tf.contrib.eager.defun
+      def foo():
+        return ds2.reduce(np.int32(0), lambda x, y: x + y)
+
+      result = foo()
+
+    with tf.Session(graph=graph) as sess:
+      self.assertEqual(sess.run(result), 2)
 
 
 if __name__ == '__main__':

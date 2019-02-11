@@ -68,7 +68,13 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     # as it uses program-order semantics to avoid adding many explicit
     # control dependencies.
     model = self._model
-    py_typecheck.check_type(dataset, tf.data.Dataset)
+
+    # TODO(b/113112108): Remove this temporary workaround and restore check for
+    # `tf.data.Dataset` after subclassing the currently used custom data set
+    # representation from it.
+    if 'Dataset' not in str(type(dataset)):
+      raise TypeError('EXpected a data set, found {}.'.format(
+          py_typecheck.type_string(type(dataset))))
 
     # TODO(b/120801384): We should initialize model.local_variables here.
     # Or, we may just need a convention that TFF initializes all variables
