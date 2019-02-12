@@ -231,11 +231,11 @@ def build_model_delta_optimizer_process(model_fn,
   if server_optimizer_fn is None:
     server_optimizer_fn = lambda: gradient_descent.SGD(learning_rate=1.0)
 
-  # TODO(b/109733734): would be nice not to have the construct a throwaway model
-  # here just to get the types.
-  # Wrap in a new Graph to prevent pollution.
-  with tf.Graph().as_default():
-    model = model_utils.enhance(model_fn())
+  # TODO(b/122081673): would be nice not to have the construct a throwaway model
+  # here just to get the types. After fully moving to TF2.0 and eager-mode, we
+  # should re-evaluate what happens here and where `g` is used below.
+  with tf.Graph().as_default() as g:
+    dummy_model_for_metadata = model_utils.enhance(model_fn())
 
   @tff.federated_computation
   def server_init_tff():
@@ -247,7 +247,7 @@ def build_model_delta_optimizer_process(model_fn,
   federated_server_state_type = server_init_tff.type_signature.result
   server_state_type = federated_server_state_type.member
 
-  tf_dataset_type = tff.SequenceType(model.input_spec)
+  tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
   federated_dataset_type = tff.FederatedType(
       tf_dataset_type, tff.CLIENTS, all_equal=False)
 
@@ -285,8 +285,8 @@ def build_model_delta_optimizer_process(model_fn,
       # anonymous_tuple module.
       if isinstance(initial_model_weights, anonymous_tuple.AnonymousTuple):
         initial_model_weights = anonymous_tuple.flatten(initial_model_weights)
-        initial_model_weights = nest.pack_sequence_as(model.weights,
-                                                      initial_model_weights)
+        initial_model_weights = nest.pack_sequence_as(
+            dummy_model_for_metadata.weights, initial_model_weights)
 
       client_output = client_delta_fn(tf_dataset, initial_model_weights)
       return client_output
@@ -327,8 +327,13 @@ def build_model_delta_optimizer_process(model_fn,
     server_state = tff.federated_apply(server_update_model_tf,
                                        (server_state, round_model_delta))
 
-    aggregated_outputs = model.federated_output_computation(
-        client_outputs.model_output)
+    # Re-use graph used to construct `model`, since it has the variables, which
+    # need to be read in federated_output_computation to get the correct shapes
+    # and types for the federated aggregation.
+    with g.as_default():
+      aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
+          client_outputs.model_output)
+
     # Promote the FederatedType outside the NamedTupleType, or return the
     # singluar federated value.
     num_outputs = len(aggregated_outputs)
