@@ -184,9 +184,9 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       value_elem_name, value_elem = value_elements[index]
       if value_elem_name not in [type_elem_name, None]:
         raise TypeError(
-            'Found element named {} where {} was expected at position {} '
-            'in the value tuple.'.format(value_elem_name, type_elem_name,
-                                         index))
+            'Found element named `{}` where `{}` was expected at position {} '
+            'in the value tuple. Value: {}. Type: {}'.format(
+                value_elem_name, type_elem_name, index, value, type_spec))
       converted_value_elem = to_representation_for_type(value_elem, type_elem,
                                                         callable_handler)
       result_elements.append((type_elem_name, converted_value_elem))
