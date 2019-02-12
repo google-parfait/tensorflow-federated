@@ -36,6 +36,9 @@ class LinearRegression(model.Model):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
     self._feature_dim = feature_dim
+    # TODO(b/124070381): Support for integers in num_examples, etc., is handled
+    # here in learning, by adding an explicit cast to a float where necessary in
+    # order to pass typechecking in the reference executor.
     self._num_examples = tf.Variable(0, name='num_examples', trainable=False)
     self._num_batches = tf.Variable(0, name='num_batches', trainable=False)
     self._loss_sum = tf.Variable(0.0, name='loss_sum', trainable=False)
@@ -101,6 +104,7 @@ class LinearRegression(model.Model):
   def report_local_outputs(self):
     return collections.OrderedDict([
         ('num_examples', self._num_examples),
+        ('num_examples_float', tf.cast(self._num_examples, tf.float32)),
         ('num_batches', self._num_batches),
         ('loss', self._loss_sum / tf.cast(self._num_examples, tf.float32)),
     ])
@@ -110,12 +114,13 @@ class LinearRegression(model.Model):
 
     @tff.federated_computation
     def fed_output(local_outputs):
+      # TODO(b/124070381): Remove need for using num_examples_float here.
       return {
           'num_examples':
               tff.federated_sum(local_outputs.num_examples),
           'loss':
               tff.federated_average(
-                  local_outputs.loss, weight=local_outputs.num_examples),
+                  local_outputs.loss, weight=local_outputs.num_examples_float),
       }
 
     return fed_output

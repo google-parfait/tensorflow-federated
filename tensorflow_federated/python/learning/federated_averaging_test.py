@@ -112,7 +112,7 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
 
 class FederatedAveragingTffTest(test.TestCase):
 
-  def test_orchestration(self):
+  def test_orchestration_typecheck(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.TrainableLinearRegression)
 
@@ -162,6 +162,29 @@ class FederatedAveragingTffTest(test.TestCase):
             result=(expected_federated_server_state_type,
                     expected_model_output_types)),
         iterative_process.next.type_signature)
+
+  def test_orchestration_execute(self):
+    iterative_process = federated_averaging.build_federated_averaging_process(
+        model_fn=model_examples.TrainableLinearRegression)
+
+    ds = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.], [3., 4.]],
+        'y': [[5.], [6.]]
+    }).batch(1)
+
+    federated_ds = [ds] * 3
+
+    server_state = iterative_process.initialize()
+
+    next_state, metric_outputs = iterative_process.next(server_state,
+                                                        federated_ds)
+    running_loss_avg = 0.0
+    for k in range(3):
+      running_loss_avg = (running_loss_avg * k + metric_outputs.loss) / (k + 1)
+      next_state, metric_outputs = iterative_process.next(
+          next_state, federated_ds)
+      self.assertEqual(metric_outputs.num_examples, 2 * len(federated_ds))
+      self.assertLess(metric_outputs.loss, running_loss_avg)
 
 
 if __name__ == '__main__':

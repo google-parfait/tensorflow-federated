@@ -14,7 +14,7 @@ py_library(
 
 py_test(
     name = "mnist_test",
-    size = "medium",
+    size = "large",
     srcs = ["mnist_test.py"],
     deps = [
         ":mnist",

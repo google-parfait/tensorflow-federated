@@ -28,6 +28,7 @@ import tensorflow as tf
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
 
 nest = tf.contrib.framework.nest
@@ -295,16 +296,30 @@ def build_model_delta_optimizer_process(model_fn,
 
     @tff.tf_computation(server_state_type, model_weights_type.trainable)
     def server_update_model_tf(server_state, model_delta):
-      server_update_model(
+      return server_update_model(
           server_state,
           model_delta,
           model_fn=model_fn,
           optimizer_fn=server_optimizer_fn)
-      return server_state
 
+    # TODO(b/124070381): We hope to remove this explicit cast once we have a
+    # full solution for type analysis in multiplications and divisions
+    # inside TFF
+    fed_weight_type = client_outputs.weights_delta_weight.type_signature.member
+    py_typecheck.check_type(fed_weight_type, tff.TensorType)
+    if fed_weight_type.dtype.is_integer:
+
+      @tff.tf_computation(fed_weight_type)
+      def _cast_to_float(x):
+        return tf.cast(x, tf.float32)
+
+      weight_denom = tff.federated_map(_cast_to_float,
+                                       client_outputs.weights_delta_weight)
+    else:
+      weight_denom = client_outputs.weights_delta_weight
     round_model_delta = tff.federated_average(
-        client_outputs.weights_delta,
-        weight=client_outputs.weights_delta_weight)
+        client_outputs.weights_delta, weight=weight_denom)
+
     # TODO(b/123408447): remove tff.federated_apply and call
     # server_update_model_tf directly once T <-> T@SERVER isomorphism is
     # supported.
