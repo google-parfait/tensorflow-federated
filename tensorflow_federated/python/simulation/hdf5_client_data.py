@@ -51,8 +51,8 @@ class HDF5ClientData(client_data.ClientData):
     self._filepath = hdf5_filepath
 
     self._h5_file = h5py.File(self._filepath, "r")
-    self._client_ids = list(
-        self._h5_file[HDF5ClientData._EXAMPLES_GROUP].keys())
+    self._client_ids = sorted(list(
+        self._h5_file[HDF5ClientData._EXAMPLES_GROUP].keys()))
 
     # Get the types and shapes from the first client. We do it once during
     # initialization so we can get both properties in one go.

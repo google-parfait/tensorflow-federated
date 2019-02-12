@@ -161,8 +161,8 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_client_ids_property(self):
     data = self._create_fake_client_data()
-    expected_client_ids = set(example[0] for example in FAKE_TEST_DATA)
-    self.assertCountEqual(data.client_ids, expected_client_ids)
+    expected_client_ids = sorted(set(example[0] for example in FAKE_TEST_DATA))
+    self.assertEqual(data.client_ids, expected_client_ids)
 
   def test_output_shapes_property(self):
     expected_shapes = (
