@@ -261,7 +261,8 @@ def build_model_delta_optimizer_process(model_fn,
       federated_dataset: a federated `tf.Dataset` with placement tff.CLIENTS.
 
     Returns:
-      An updated `tff.learning.framework.ServerState`.
+      A tuple of updated `tff.learning.framework.ServerState` and the result of
+    `tff.learning.Model.federated_output_computation`.
     """
     model_weights_type = federated_server_state_type.member.model
 
