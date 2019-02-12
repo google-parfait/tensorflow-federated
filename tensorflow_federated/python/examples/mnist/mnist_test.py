@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import collections
 
-from absl.testing import absltest
+
 import numpy as np
 import tensorflow as tf
 
@@ -28,7 +28,7 @@ from tensorflow_federated import python as tff
 from tensorflow_federated.python.examples.mnist import mnist
 
 
-class MnistTest(absltest.TestCase):
+class MnistTest(tf.test.TestCase):
 
   def test_something(self):
     it_process = tff.learning.build_federated_averaging_process(mnist.model_fn)
@@ -48,15 +48,16 @@ class MnistTest(absltest.TestCase):
           y=np.ones([1, 1], dtype=np.int64))
 
     batch = tff.tf_computation(deterministic_batch)()
-    federated_data = [[batch], [batch]]
+    federated_data = [[batch]]
 
     next_state, orig_loss = it_process.next(server_state, federated_data)
-    for _ in range(1):
+    loss_list = []
+    for _ in range(2):
       next_state, loss = it_process.next(next_state, federated_data)
-    self.assertLess(loss, orig_loss)
+      loss_list.append(loss)
+    self.assertLess(np.mean(loss_list), orig_loss)
 
 
 if __name__ == '__main__':
   tf.enable_resource_variables()
-  np.random.seed(0)
-  absltest.main()
+  tf.test.main()

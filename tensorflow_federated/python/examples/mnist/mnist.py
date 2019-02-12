@@ -38,29 +38,31 @@ def create_keras_model():
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
   l = tf.keras.layers
+  initializer = tf.keras.initializers.RandomNormal(seed=0)
   max_pool = l.MaxPooling2D((2, 2), (2, 2),
                             padding='same',
                             data_format=data_format)
-  return tf.keras.Sequential(
-      [
-          l.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
-          l.Conv2D(
-              32,
-              5,
-              padding='same',
-              data_format=data_format,
-              activation=tf.nn.relu), max_pool,
-          l.Conv2D(
-              64,
-              5,
-              padding='same',
-              data_format=data_format,
-              activation=tf.nn.relu), max_pool,
-          l.Flatten(),
-          l.Dense(1024, activation=tf.nn.relu),
-          l.Dropout(0.4),
-          l.Dense(10)
-      ])
+  return tf.keras.Sequential([
+      l.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
+      l.Conv2D(
+          32,
+          5,
+          padding='same',
+          data_format=data_format,
+          activation=tf.nn.relu,
+          kernel_initializer=initializer), max_pool,
+      l.Conv2D(
+          64,
+          5,
+          padding='same',
+          data_format=data_format,
+          activation=tf.nn.relu,
+          kernel_initializer=initializer), max_pool,
+      l.Flatten(),
+      l.Dense(1024, activation=tf.nn.relu, kernel_initializer=initializer),
+      l.Dropout(0.4, seed=1),
+      l.Dense(10, kernel_initializer=initializer)
+  ])
 
 
 Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
