@@ -28,6 +28,18 @@ py_library(
 )
 
 py_test(
+    name = "federated_averaging_benchmark",
+    size = "medium",
+    srcs = ["federated_averaging_benchmark.py"],
+    deps = [
+        ":federated_averaging",
+        ":model_examples",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
     name = "federated_averaging_test",
     size = "large",
     srcs = ["federated_averaging_test.py"],
