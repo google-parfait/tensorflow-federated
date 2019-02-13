@@ -22,6 +22,7 @@ import itertools
 
 import numpy as np
 import six
+from six.moves import range
 from six.moves import zip
 import tensorflow as tf
 
@@ -603,6 +604,17 @@ def to_tensor_slices_from_list_structure_for_element_type_spec(
 def make_data_set_from_elements(graph, elements, element_type):
   """Creates a `tf.data.Dataset` in `graph` from explicitly listed `elements`.
 
+  NOTE: The underlying implementation attempts to use the
+  `tf.data.Dataset.from_tensor_slices() method to build the data set quickly,
+  but this doesn't always work. The typical scenario where it breaks is one
+  with data set being composed of unequal batches. Typically, only the last
+  batch is odd, so on the first attempt, we try to construct two data sets,
+  one from all elements but the last one, and one from the last element, then
+  concatenate the two. In the unlikely case that this fails (e.g., because
+  all data set elements are batches of unequal sizes), we revert to the slow,
+  but reliable method of constructing data sets from singleton elements, and
+  then concatenating them all.
+
   Args:
     graph: The graph in which to construct the `tf.data.Dataset`.
     elements: A list of elements.
@@ -613,17 +625,41 @@ def make_data_set_from_elements(graph, elements, element_type):
 
   Raises:
     TypeError: If element types do not match `element_type`.
+    ValueError: If the elements are of incompatible types and shapes.
   """
   py_typecheck.check_type(graph, tf.Graph)
   py_typecheck.check_type(elements, list)
   element_type = computation_types.to_type(element_type)
   py_typecheck.check_type(element_type, computation_types.Type)
-  structure = make_empty_list_structure_for_element_type_spec(element_type)
-  for el in elements:
-    append_to_list_structure_for_element_type_spec(structure, el, element_type)
-  tensor_slices = to_tensor_slices_from_list_structure_for_element_type_spec(
-      structure, element_type)
-  ds = tf.data.Dataset.from_tensor_slices(tensor_slices)
+
+  def _make(element_subset):
+    structure = make_empty_list_structure_for_element_type_spec(element_type)
+    for el in element_subset:
+      append_to_list_structure_for_element_type_spec(structure, el,
+                                                     element_type)
+    tensor_slices = to_tensor_slices_from_list_structure_for_element_type_spec(
+        structure, element_type)
+    return tf.data.Dataset.from_tensor_slices(tensor_slices)
+
+  if len(elements) < 2:
+    # Explicitly handling the singleton case contains the fallout from dealing
+    # with empty data sets, which produce unknown shapes.
+    ds = _make(elements)
+  else:
+    try:
+      # It is common for the last element to be a batch of a size different from
+      # all the preceding batches. With this in mind, we proactively single out
+      # the last element (optimizing for the common case).
+      ds = _make(elements[0:-1]).concatenate(_make(elements[-1:]))
+    except ValueError:
+      # In case elements beyond just the last one are of unequal shapes, we may
+      # have failed (the most likely cause), so fall back onto the slow process
+      # of constructing and joining data sets from singletons. Not optimizing
+      # this for now, as it's very unlikely in scenarios we're targeting.
+      ds = None
+      for i in range(len(elements)):
+        singleton_ds = _make(elements[i:i + 1])
+        ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
   ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
       ds.output_types, ds.output_shapes)
   if not type_utils.is_assignable_from(element_type, ds_element_type):

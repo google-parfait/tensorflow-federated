@@ -662,6 +662,43 @@ class GraphUtilsTest(test.TestCase):
           'a': 2
       }], tf.int32)
 
+  def test_make_data_set_from_elements_with_odd_last_batch(self):
+    graph_utils.make_data_set_from_elements(
+        tf.get_default_graph(),
+        [np.array([1, 2]), np.array([3])],
+        computation_types.TensorType(tf.int32, tf.TensorShape([None])))
+    graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'x': np.array([1, 2])
+    }, {
+        'x': np.array([3])
+    }], [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))])
+
+  def test_make_data_set_from_elements_with_odd_all_batches(self):
+    graph_utils.make_data_set_from_elements(
+        tf.get_default_graph(), [
+            np.array([1, 2]),
+            np.array([3]),
+            np.array([4, 5, 6]),
+            np.array([7, 8])
+        ], computation_types.TensorType(tf.int32, tf.TensorShape([None])))
+    graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'x': np.array([1, 2])
+    }, {
+        'x': np.array([3])
+    }, {
+        'x': np.array([4, 5, 6])
+    }, {
+        'x': np.array([7, 8])
+    }], [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))])
+
+  def test_make_data_set_from_elements_with_just_one_batch(self):
+    graph_utils.make_data_set_from_elements(
+        tf.get_default_graph(), [np.array([1])],
+        computation_types.TensorType(tf.int32, tf.TensorShape([None])))
+    graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+        'x': np.array([1])
+    }], [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))])
+
   def test_one_shot_dataset_with_defuns(self):
     with tf.Graph().as_default() as graph:
       ds1 = tf.data.Dataset.from_tensor_slices([1, 1])
