@@ -332,8 +332,7 @@ class _KerasModel(model_lib.Model):
     """
     outputs = collections.OrderedDict()
     for metric in self.get_metrics():
-      outputs[metric.name] = collections.OrderedDict(
-          [(v.op.name, v.read_value()) for v in metric.variables])
+      outputs[metric.name] = [v.read_value() for v in metric.variables]
     return outputs
 
   @property

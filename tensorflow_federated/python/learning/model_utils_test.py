@@ -110,17 +110,18 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     super(ModelUtilsTest, self).setUp()
 
   def test_model_initializer(self):
-    model = model_utils.enhance(model_examples.LinearRegression(2))
-    init = model_utils.model_initializer(model)
-    with self.session() as sess:
-      sess.run(init)
-      # Make sure we can read all the variables
-      try:
-        sess.run(model.local_variables)
-        sess.run(model.weights)
-      except tf.errors.FailedPreconditionError:
-        self.fail('Expected variables to be initialized, but got '
-                  'tf.errors.FailedPreconditionError')
+    with tf.Graph().as_default() as g:
+      model = model_utils.enhance(model_examples.LinearRegression(2))
+      init = model_utils.model_initializer(model)
+      with self.session(graph=g) as sess:
+        sess.run(init)
+        # Make sure we can read all the variables
+        try:
+          sess.run(model.local_variables)
+          sess.run(model.weights)
+        except tf.errors.FailedPreconditionError:
+          self.fail('Expected variables to be initialized, but got '
+                    'tf.errors.FailedPreconditionError')
 
   def test_non_keras_model(self):
     with self.assertRaisesRegexp(TypeError, r'keras\..*\.Model'):
@@ -171,54 +172,41 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
-    x_placeholder = tf.placeholder(
-        tf.float32, shape=(None, feature_dims), name='x')
-    y_placeholder = tf.placeholder(tf.float32, shape=(None, 1), name='y')
-    batch = {'x': x_placeholder, 'y': y_placeholder}
 
-    output_op = tff_model.forward_pass(batch)
-    metrics = tff_model.report_local_outputs()
-
-    init_op = tf.variables_initializer(tff_model.trainable_variables +
-                                       tff_model.non_trainable_variables +
-                                       tff_model.local_variables)
-
+    batch = {
+        'x':
+            np.stack([
+                np.zeros(feature_dims, np.float32),
+                np.ones(feature_dims, np.float32)
+            ]),
+        'y': [[0.0], [1.0]],
+    }
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegexp(AttributeError,
                                  'no attribute \'train_on_batch\''):
       tff_model.train_on_batch(batch)
 
-    tf.get_default_graph().finalize()
-    with self.session() as sess:
-      sess.run(init_op)
-      output = sess.run(
-          fetches=output_op,
-          feed_dict={
-              batch['x']: [np.zeros(feature_dims),
-                           np.ones(feature_dims)],
-              batch['y']: [[0.0], [1.0]],
-          })
-      # Since the model initializes all weights and biases to zero, we expect
-      # all predictions to be zero:
-      #    0*x1 + 0*x2 + ... + 0 = 0
-      self.assertAllEqual(output.predictions, [[0.0], [0.0]])
-      # For the single batch:
-      #
-      # Example | Prediction | Label | Residual | Loss
-      # --------+------------+-------+----------+ -----
-      #    1    |    0.0     |  0.0  |    0.0   |  0.0
-      #    2    |    0.0     |  1.0  |    1.0   |  1.0
-      #
-      # Total loss: 1.0
-      # Batch average loss:  0.5
-      self.assertEqual(output.loss, 0.5)
-      m = sess.run(metrics)
-      self.assertEqual(m['num_batches']['total'], 1)
-      self.assertEqual(m['num_examples']['total_1'], 2)
-      # mean loss is tracked as sum weighted loss / weight.
-      self.assertGreater(m['loss']['total_loss'], 0.0)
-      self.assertEqual(m['loss']['total_weight'], 2)
+    output = tff_model.forward_pass(batch)
+    # Since the model initializes all weights and biases to zero, we expect
+    # all predictions to be zero:
+    #    0*x1 + 0*x2 + ... + 0 = 0
+    self.assertAllEqual(output.predictions, [[0.0], [0.0]])
+    # For the single batch:
+    #
+    # Example | Prediction | Label | Residual | Loss
+    # --------+------------+-------+----------+ -----
+    #    1    |    0.0     |  0.0  |    0.0   |  0.0
+    #    2    |    0.0     |  1.0  |    1.0   |  1.0
+    #
+    # Total loss: 1.0
+    # Batch average loss:  0.5
+    self.assertEqual(self.evaluate(output.loss), 0.5)
+    metrics = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(metrics['num_batches'], [1])
+    self.assertEqual(metrics['num_examples'], [2])
+    self.assertGreater(metrics['loss'][0], 0)
+    self.assertEqual(metrics['loss'][1], 2)
 
   @parameterized.parameters(
       itertools.product(
@@ -239,49 +227,25 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     tff_model = model_utils.from_compiled_keras_model(
         keras_model=keras_model, dummy_batch=_create_dummy_batch(feature_dims))
 
-    x_placeholder = tf.placeholder(
-        shape=(None, feature_dims), dtype=tf.float32, name='x')
-    y_placeholder = tf.placeholder(shape=(None, 1), dtype=tf.float32, name='y')
-    batch = {'x': x_placeholder, 'y': y_placeholder}
-
-    train_op = tff_model.train_on_batch(batch)
-    metrics = tff_model.report_local_outputs()
-
-    # NOTE: this must occur after the model setup above. Otherwise some
-    # variables may not have been created yet and the following list will not be
-    # complete.
-    #
-    # Specifically, Keras creates variables under the hood in the
-    # Optimizer.get_updates() call, so we need to initialize all global
-    # variables (not only the model variables as we do in the test above).
-    init_ops = [
-        tf.variables_initializer(tff_model.trainable_variables +
-                                 tff_model.non_trainable_variables +
-                                 tff_model.local_variables),
-        tf.global_variables_initializer()
-    ]
-
-    train_feed_dict = {
-        batch['x']: [[0.0] * feature_dims, [5.0] * feature_dims],
-        batch['y']: [[0.0], [5.0 * feature_dims]]
+    batch = {
+        'x':
+            np.stack([np.zeros(feature_dims, np.float32),
+                      np.full(feature_dims, 5.0, np.float32)]),
+        'y': [[0.0], [5.0 * feature_dims]],
     }
+
     prior_loss = float('inf')
+    num_iterations = 3
+    for _ in range(num_iterations):
+      output = self.evaluate(tff_model.train_on_batch(batch))
+      self.assertLess(output.loss, prior_loss)
+      prior_loss = output.loss
 
-    tf.get_default_graph().finalize()
-    with self.session() as sess:
-      sess.run(init_ops)
-      num_iterations = 10
-      for _ in range(num_iterations):
-        r = sess.run(train_op, feed_dict=train_feed_dict)
-        self.assertLess(r.loss, prior_loss)
-        prior_loss = r.loss
-      m = sess.run(metrics)
-
-    self.assertEqual(m['num_batches']['total'], num_iterations)
-    self.assertEqual(m['num_examples']['total_1'], 2 * num_iterations)
-    # mean loss is tracked as sum weight loss / weight.
-    self.assertGreater(m['loss']['total_loss'], 0.0)
-    self.assertEqual(m['loss']['total_weight'], 2 * num_iterations)
+    metrics = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(metrics['num_batches'], [num_iterations])
+    self.assertEqual(metrics['num_examples'], [2 * num_iterations])
+    self.assertGreater(metrics['loss'][0], 0)
+    self.assertEqual(metrics['loss'][1], 2 * num_iterations)
 
   def test_keras_model_using_embeddings(self):
     model = model_examples.build_embedding_keras_model()
@@ -303,22 +267,6 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     tff_model = model_utils.from_compiled_keras_model(
         keras_model=model, dummy_batch=dummy_batch)
 
-    x_placeholder = tf.placeholder(
-        shape=(None, 1), dtype=tf.int64, name='x')
-    y_placeholder = tf.placeholder(
-        shape=(None, 1), dtype=tf.int64, name='y')
-    batch = {'x': x_placeholder, 'y': y_placeholder}
-
-    train_op = tff_model.train_on_batch(batch)
-    metrics = tff_model.report_local_outputs()
-
-    init_ops = [
-        tf.variables_initializer(tff_model.trainable_variables +
-                                 tff_model.non_trainable_variables +
-                                 tff_model.local_variables),
-        tf.global_variables_initializer()
-    ]
-
     # Create a batch with the size of the vocab. These examples will attempt to
     # train the embedding so that the model produces
     #   i -> (i / output_size) + 5
@@ -329,28 +277,23 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     for input_id in range(input_vocab_size):
       xs.append(input_id)
       ys.append((input_id / output_vocab_size + 5) % output_vocab_size)
-    train_feed_dict = {
-        batch['x']: np.expand_dims(np.array(xs, dtype=np.int64), axis=-1),
-        batch['y']: np.expand_dims(np.array(ys, dtype=np.int64), axis=-1),
+    batch = {
+        'x': np.expand_dims(np.array(xs, dtype=np.int64), axis=-1),
+        'y': np.expand_dims(np.array(ys, dtype=np.int64), axis=-1),
     }
     prior_loss = float('inf')
 
-    tf.get_default_graph().finalize()
-    with self.session() as sess:
-      sess.run(init_ops)
-      num_iterations = 10
-      for _ in range(num_iterations):
-        r = sess.run(train_op, feed_dict=train_feed_dict)
-        self.assertLess(r.loss, prior_loss)
-        prior_loss = r.loss
-      m = sess.run(metrics)
+    num_iterations = 3
+    for _ in range(num_iterations):
+      r = self.evaluate(tff_model.train_on_batch(batch))
+      self.assertLess(r.loss, prior_loss)
+      prior_loss = r.loss
 
-    self.assertEqual(m['num_batches']['total'], num_iterations)
-    self.assertEqual(m['num_examples']['total_1'],
-                     input_vocab_size * num_iterations)
-    self.assertGreater(m['loss']['total_loss'], 0.0)
-    self.assertEqual(m['loss']['total_weight'],
-                     input_vocab_size * num_iterations)
+    m = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(m['num_batches'], [num_iterations])
+    self.assertEqual(m['num_examples'], [input_vocab_size * num_iterations])
+    self.assertGreater(m['loss'][0], 0.0)
+    self.assertEqual(m['loss'][1], input_vocab_size * num_iterations)
 
   def test_wrap_tff_model_in_tf_computation(self):
     feature_dims = 3
@@ -380,13 +323,12 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         metrics = tff_model.report_local_outputs()
       return batch_output, metrics
 
-    _, metrics = _train_loop()
-    # `metrics` is an AnonymousTuple.
-    self.assertEqual(metrics.num_batches.total, 1)
-    self.assertEqual(metrics.num_examples.total_1, 2)
-    # mean loss is tracked as sum weighted loss / weight.
-    self.assertGreater(metrics.loss.total_loss, 0.0)
-    self.assertEqual(metrics.loss.total_weight, 2)
+    output, metrics = _train_loop()
+    self.assertGreater(output.loss, 0.0)
+    self.assertEqual(metrics.num_batches[0], 1)
+    self.assertEqual(metrics.num_examples[0], 2)
+    self.assertGreater(metrics.loss[0], 0.0)
+    self.assertEqual(metrics.loss[1], 2)
 
   def test_keras_model_federated_output_computation(self):
     feature_dims = 3
@@ -480,4 +422,5 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
+  tf.enable_eager_execution()
   test.main()
