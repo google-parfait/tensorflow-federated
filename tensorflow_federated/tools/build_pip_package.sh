@@ -12,15 +12,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -ex
+#
+# Tool to build the TensorFlow Federated pip package.
+#
+# How to run:
+#   bazel build //tensorflow_federated/tools:build_pip_package
+#   bazel-bin/tensorflow_federated/tools/build_pip_package "/tmp/tensorflow_federated"
+#
+# Arguments:
+#   output_dir: An output directory directory.
+#   project_name: A project name, defaults to `tensorflow_federated`.
+set -e
+
+die() {
+  echo >&2 "$@"
+  exit 1
+}
 
 function main() {
   local output_dir="$1"
   local project_name="$2"
 
   if [[ ! -d "${output_dir}" ]]; then
-    echo "`${output_dir}` does not exist."
-    exit 1
+    die "The output directory '${output_dir}' does not exist."
   fi
 
   if [[ -z "${project_name}" ]]; then
@@ -28,8 +42,7 @@ function main() {
   fi
 
   if [[ ! -d "bazel-bin/tensorflow_federated" ]]; then
-    echo "Could not find bazel-bin. Did you run from the root of the build tree?"
-    exit 1
+    die "Could not find bazel-bin. Did you run from the root of the build tree?"
   fi
 
   local temp_dir="$(mktemp --directory)"
@@ -38,7 +51,8 @@ function main() {
   cp --dereference --recursive \
       "${runfiles}/org_tensorflow_federated/tensorflow_federated" \
       "${temp_dir}"
-  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/setup.py" "${temp_dir}"
+  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/setup.py" \
+      "${temp_dir}"
 
   pushd "${temp_dir}" > /dev/null
   virtualenv --python=python3 "venv"
