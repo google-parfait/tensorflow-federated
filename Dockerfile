@@ -20,7 +20,6 @@ ARG PYTHON=python${_PY_SUFFIX}
 ARG PIP=pip${_PY_SUFFIX}
 
 RUN echo "** Using [${PYTHON}]"
-
 # See http://bugs.python.org/issue19846
 ENV LANG C.UTF-8
 
