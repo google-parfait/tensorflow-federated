@@ -57,11 +57,9 @@ RUN mkdir /bazel && \
 
 # Install the Tensorflow Federated package dependencies
 RUN ${PIP} --no-cache-dir install \
-    enum34 \
     keras_applications \
     keras_preprocessing \
     h5py \
-    mock \
     numpy \
     six \
     tensorflow_estimator

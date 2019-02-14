@@ -39,7 +39,6 @@ if '--project_name' in sys.argv:
 
 REQUIRED_PACKAGES = [
     'h5py',
-    'mock',
     'numpy',
     'six',
     'tensorflow>=1.13.0rc0',
@@ -51,6 +50,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=('tools')),
     description=DOCLINES[0],
     long_description='\n'.join(DOCLINES[2:]),
+    long_description_content_type='text/plain',
     author='Google Inc.',
     author_email='packages@tensorflow.org',
     url='http://tensorflow.org/federated',

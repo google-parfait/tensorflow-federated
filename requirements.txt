@@ -1,9 +1,7 @@
 # Required to build Tensorflow from source.
-enum34
 keras_applications
 keras_preprocessing
 h5py
-mock
 numpy
 six
 tensorflow_estimator
