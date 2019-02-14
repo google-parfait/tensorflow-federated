@@ -34,6 +34,8 @@ py_test(
     deps = [
         ":federated_averaging",
         ":model_examples",
+        ":model_utils",
+        "//tensorflow_federated/python/core",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
