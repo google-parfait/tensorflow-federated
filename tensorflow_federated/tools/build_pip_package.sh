@@ -29,7 +29,7 @@ die() {
   exit 1
 }
 
-function main() {
+main() {
   local output_dir="$1"
   local project_name="$2"
 
