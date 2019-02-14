@@ -75,10 +75,10 @@ def load_data(only_digits=True, cache_dir=None):
   """
   if only_digits:
     fileprefix = 'fed_emnist_digitsonly'
-    sha256 = '55416488f9440cef8298795d457776f603a75ec7dc25f5b036e76592d51d35b0'
+    sha256 = '55333deb8546765427c385710ca5e7301e16f4ed8b60c1dc5ae224b42bd5b14b'
   else:
     fileprefix = 'fed_emnist'
-    sha256 = '12b5004bf8006c12f65ab8ce61c088abe38def2b26fc8f8c9eb643bd4125ef75'
+    sha256 = 'fe1ed5a502cea3a952eb105920bff8cffb32836b5173cb18a57a32c3606f3ea0'
 
   filename = fileprefix + '.tar.bz2'
   path = tf.keras.utils.get_file(
