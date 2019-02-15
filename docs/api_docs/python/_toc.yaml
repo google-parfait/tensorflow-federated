@@ -98,6 +98,8 @@ toc:
       path: /federated/api_docs/python/tff/simulation/FilePerUserClientData
     - title: HDF5ClientData
       path: /federated/api_docs/python/tff/simulation/HDF5ClientData
+    - title: TransformingClientData
+      path: /federated/api_docs/python/tff/simulation/TransformingClientData
     - title: datasets
       section:
       - title: Overview

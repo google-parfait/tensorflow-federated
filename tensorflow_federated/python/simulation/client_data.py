@@ -35,12 +35,7 @@ class ClientData(object):
 
   @abc.abstractproperty
   def client_ids(self):
-    """The list of identifiers for clients in this dataset.
-
-    A client identifier can be any type understood by the
-    `tff.simulation.ClientData.create_tf_dataset_for_client` method, determined
-    by the implementation.
-    """
+    """The list of string identifiers for clients in this dataset."""
     pass
 
   @abc.abstractmethod
@@ -48,7 +43,7 @@ class ClientData(object):
     """Creates a new `tf.data.Dataset` containing the client training examples.
 
     Args:
-      client_id: The identifier for the desired client.
+      client_id: The string client_id for the desired client.
 
     Returns:
       A `tf.data.Dataset` object.

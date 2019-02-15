@@ -20,11 +20,7 @@ Object to hold a dataset and a mapping of clients to examples.
 
 <h3 id="client_ids"><code>client_ids</code></h3>
 
-The list of identifiers for clients in this dataset.
-
-A client identifier can be any type understood by the
-<a href="../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a>
-method, determined by the implementation.
+The list of string identifiers for clients in this dataset.
 
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
@@ -62,7 +58,7 @@ Creates a new `tf.data.Dataset` containing the client training examples.
 
 #### Args:
 
-*   <b>`client_id`</b>: The identifier for the desired client.
+*   <b>`client_id`</b>: The string client_id for the desired client.
 
 #### Returns:
 

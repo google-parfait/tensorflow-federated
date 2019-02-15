@@ -42,6 +42,7 @@
 *   <a href="./tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
 *   <a href="./tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>
 *   <a href="./tff/simulation/HDF5ClientData.md"><code>tff.simulation.HDF5ClientData</code></a>
+*   <a href="./tff/simulation/TransformingClientData.md"><code>tff.simulation.TransformingClientData</code></a>
 *   <a href="./tff/simulation/datasets.md"><code>tff.simulation.datasets</code></a>
 *   <a href="./tff/simulation/datasets/emnist.md"><code>tff.simulation.datasets.emnist</code></a>
 *   <a href="./tff/simulation/datasets/emnist/load_data.md"><code>tff.simulation.datasets.emnist.load_data</code></a>

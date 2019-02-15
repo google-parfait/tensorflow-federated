@@ -10,6 +10,7 @@ py_library(
         ":client_data",
         ":file_per_user_client_data",
         ":hdf5_client_data",
+        ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
     ],
 )
@@ -60,6 +61,29 @@ py_test(
     srcs = ["hdf5_client_data_test.py"],
     deps = [
         ":hdf5_client_data",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_library(
+    name = "transforming_client_data",
+    srcs = ["transforming_client_data.py"],
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "transforming_client_data_test",
+    size = "small",
+    srcs = ["transforming_client_data_test.py"],
+    deps = [
+        ":hdf5_client_data",
+        ":transforming_client_data",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
