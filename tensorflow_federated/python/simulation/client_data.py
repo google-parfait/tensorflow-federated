@@ -27,6 +27,7 @@ from __future__ import print_function
 import abc
 
 import six
+import tensorflow as tf
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -49,6 +50,26 @@ class ClientData(object):
       A `tf.data.Dataset` object.
     """
     pass
+
+  def create_tf_dataset_from_all_clients(self):
+    """Creates a new `tf.data.Dataset` containing _all_ client examples.
+
+    NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
+    other devices, as it uses `tf.py_func` internally.
+
+    Returns:
+      A `tf.data.Dataset` object.
+    """
+
+    # NOTE: simply calling Dataset.concatenate() will result in too deep
+    # recursion depth.
+    def _generator():
+      for client_id in self.client_ids:
+        for example in self.create_tf_dataset_for_client(client_id):
+          yield example
+
+    return tf.data.Dataset.from_generator(_generator, self.output_types,
+                                          self.output_shapes)
 
   @abc.abstractproperty
   def output_types(self):

@@ -18,7 +18,10 @@ py_library(
 py_library(
     name = "client_data",
     srcs = ["client_data.py"],
-    deps = ["@six_archive//:six"],
+    deps = [
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
 )
 
 py_library(

@@ -6,6 +6,7 @@
 <meta itemprop="property" content="output_types"/>
 <meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="create_tf_dataset_for_client"/>
+<meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
 </div>
 
 # tff.simulation.TransformingClientData
@@ -62,3 +63,18 @@ Initializes the TransformingClientData.
 ```python
 create_tf_dataset_for_client(client_id)
 ```
+
+<h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
+
+```python
+create_tf_dataset_from_all_clients()
+```
+
+Creates a new `tf.data.Dataset` containing _all_ client examples.
+
+NOTE: the returned `tf.data.Dataset` is not serializable and runnable on other
+devices, as it uses `tf.py_func` internally.
+
+#### Returns:
+
+A `tf.data.Dataset` object.

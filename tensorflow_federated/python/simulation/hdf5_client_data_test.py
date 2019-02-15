@@ -115,6 +115,25 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
         self.assertCountEqual(actual, expected)
       self.assertEmpty(expected_examples)
 
+  def test_create_tf_dataset_from_all_clients(self):
+    client_data = hdf5_client_data.HDF5ClientData(
+        HDF5ClientDataTest.test_data_filepath)
+    tf_dataset = client_data.create_tf_dataset_from_all_clients()
+    self.assertIsInstance(tf_dataset, tf.data.Dataset)
+
+    expected_examples = []
+    for expected_data in six.itervalues(TEST_DATA):
+      for i in range(len(expected_data['x'])):
+        expected_examples.append(
+            {k: v[i] for k, v in six.iteritems(expected_data)})
+
+    for actual in tf_dataset:
+      expected = expected_examples.pop(0)
+      actual = tf.contrib.framework.nest.map_structure(lambda t: t.numpy(),
+                                                       actual)
+      self.assertCountEqual(actual, expected)
+    self.assertEmpty(expected_examples)
+
 
 if __name__ == '__main__':
   # Need eager_mode to iterate over tf.data.Dataset.

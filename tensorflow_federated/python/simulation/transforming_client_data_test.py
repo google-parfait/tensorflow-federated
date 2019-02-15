@@ -88,13 +88,13 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     client_data = hdf5_client_data.HDF5ClientData(
         TransformingClientDataTest.test_data_filepath)
 
-    expansion_factor = 3
-    def transform(data, index):
+    def _test_transform(data, index):
       data['x'] = data['x'] + 10 * index
       return data
 
+    expansion_factor = 3
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, transform, expansion_factor)
+        client_data, _test_transform, expansion_factor)
 
     for client_id in transformed_client_data.client_ids:
       tf_dataset = transformed_client_data.create_tf_dataset_for_client(
@@ -113,6 +113,36 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
         self.assertCountEqual(actual, expected)
         for k, v in six.iteritems(actual):
           self.assertAllEqual(v.numpy(), expected[k])
+
+  def test_create_tf_dataset_from_all_clients(self):
+    client_data = hdf5_client_data.HDF5ClientData(
+        TransformingClientDataTest.test_data_filepath)
+
+    def _test_transform(data, index):
+      data['x'] = data['x'] + 10 * index
+      return data
+
+    expansion_factor = 3
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        client_data, _test_transform, expansion_factor)
+
+    tf_dataset = transformed_client_data.create_tf_dataset_from_all_clients()
+    self.assertIsInstance(tf_dataset, tf.data.Dataset)
+
+    expected_examples = []
+    for expected_data in six.itervalues(TEST_DATA):
+      for index in range(expansion_factor):
+        for i in range(len(expected_data['x'])):
+          example = {k: v[i] for k, v in six.iteritems(expected_data)}
+          example['x'] += 10 * index
+          expected_examples.append(example)
+
+    for actual in tf_dataset:
+      expected = expected_examples.pop(0)
+      actual = tf.contrib.framework.nest.map_structure(lambda t: t.numpy(),
+                                                       actual)
+      self.assertCountEqual(actual, expected)
+    self.assertEmpty(expected_examples)
 
 
 if __name__ == '__main__':
