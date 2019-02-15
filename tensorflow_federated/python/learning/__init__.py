@@ -20,6 +20,7 @@ from __future__ import print_function
 from tensorflow_federated.python.learning import framework
 
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process
+from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model import TrainableModel
@@ -32,6 +33,7 @@ _allowed_symbols = [
     "Model",
     "TrainableModel",
     "build_federated_averaging_process",
+    "build_federated_evaluation",
     "framework",
     "from_compiled_keras_model",
     "from_keras_model",

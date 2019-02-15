@@ -9,6 +9,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":federated_averaging",
+        ":federated_evaluation",
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/learning/framework",
@@ -53,6 +54,30 @@ py_test(
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "federated_evaluation",
+    srcs = ["federated_evaluation.py"],
+    deps = [
+        ":model_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "federated_evaluation_test",
+    size = "medium",
+    srcs = ["federated_evaluation_test.py"],
+    deps = [
+        ":federated_evaluation",
+        ":model",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

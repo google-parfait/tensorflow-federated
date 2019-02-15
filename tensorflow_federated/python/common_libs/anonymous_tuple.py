@@ -299,15 +299,16 @@ def map_structure(func, *structure):
   return pack_sequence_as(structure[0], s)
 
 
-def from_container(value):
+def from_container(value, recursive=False):
   """Creates an instance of `AnonymousTuple` from a Python container.
 
-  This conversion is only performed at the top level for Python dictionaries,
-  `collections.OrderedDict`s, `namedtuple`s, `list`s and `tuple`s. Elements
-  of these structures are not recursively converted.
+  By default, this conversion is only performed at the top level for Python
+  dictionaries, `collections.OrderedDict`s, `namedtuple`s, `list`s and
+  `tuple`s. Elements of these structures are not recursively converted.
 
   Args:
     value: The Python container to convert.
+    recursive: Whether to convert elements recursively (`False` by default).
 
   Returns:
     The corresponding instance of `AnonymousTuple`.
@@ -315,17 +316,53 @@ def from_container(value):
   Raises:
     TypeError: If the `value` is not of one of the supported container types.
   """
-  if isinstance(value, AnonymousTuple):
-    return value
-  elif '_asdict' in vars(type(value)):
-    return from_container(value._asdict())
-  elif isinstance(value, collections.OrderedDict):
-    return AnonymousTuple(list(six.iteritems(value)))
-  elif isinstance(value, dict):
-    return AnonymousTuple(sorted(list(six.iteritems(value))))
-  elif isinstance(value, (tuple, list)):
-    return AnonymousTuple([(None, v) for v in value])
-  else:
-    raise TypeError('Unable to convert a Python object of type {} into '
-                    'an `AnonymousTuple`.'.format(
-                        py_typecheck.type_string(type(value))))
+
+  def _convert(value, recursive, must_be_container=False):
+    """The actual conversion function.
+
+    Args:
+      value: Same as in `from_container`.
+      recursive: Same as in `from_container`.
+      must_be_container: When set to `True`, causes an exception to be raised if
+        `value` is not a container.
+
+    Returns:
+      The result of conversion.
+
+    Raises:
+      TypeError: If `value` is not a container and `must_be_container` has
+        been set to `True`.
+    """
+    if isinstance(value, AnonymousTuple):
+      if recursive:
+        return AnonymousTuple(
+            [(k, _convert(v, True)) for k, v in to_elements(value)])
+      else:
+        return value
+    elif py_typecheck.is_named_tuple(value):
+      return _convert(value._asdict(), recursive, must_be_container)
+    elif isinstance(value, collections.OrderedDict):
+      items = six.iteritems(value)
+      if recursive:
+        return AnonymousTuple([(k, _convert(v, True)) for k, v in items])
+      else:
+        return AnonymousTuple(list(items))
+    elif isinstance(value, dict):
+      items = sorted(list(six.iteritems(value)))
+      if recursive:
+        return AnonymousTuple([(k, _convert(v, True)) for k, v in items])
+      else:
+        return AnonymousTuple(items)
+    elif isinstance(value, (tuple, list)):
+      if recursive:
+        return AnonymousTuple([(None, _convert(v, True)) for v in value])
+      else:
+        return AnonymousTuple([(None, v) for v in value])
+    elif must_be_container:
+      raise TypeError('Unable to convert a Python object of type {} into '
+                      'an `AnonymousTuple`.'.format(
+                          py_typecheck.type_string(type(value))))
+    else:
+      return value
+
+  return _convert(value, recursive, must_be_container=True)

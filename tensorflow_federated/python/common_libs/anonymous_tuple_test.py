@@ -292,6 +292,16 @@ class AnonymousTupleTest(absltest.TestCase):
         anonymous_tuple.AnonymousTuple([('a', 10), ('b', 20)]))
     self.assertIs(x, x)
 
+  def test_from_container_with_namedtuple_of_odict_recursive(self):
+    x = anonymous_tuple.from_container(
+        collections.namedtuple('_', 'x y')(collections.OrderedDict([('a', 10),
+                                                                    ('b', 20)]),
+                                           collections.OrderedDict([('c', 30),
+                                                                    ('d',
+                                                                     40)])),
+        recursive=True)
+    self.assertEqual(str(x), '<x=<a=10,b=20>,y=<c=30,d=40>>')
+
 
 if __name__ == '__main__':
   absltest.main()

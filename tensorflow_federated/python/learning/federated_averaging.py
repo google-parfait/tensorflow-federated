@@ -91,7 +91,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         tf.assign_add(self._num_examples, tf.shape(output.predictions)[0])
         return dummy_state
 
-      # TODO(b/121400757): Remove dummy_output when bug fixed.
+      # TODO(b/124477598): Remove dummy_output when b/121400757 fixed.
       dummy_output = dataset.reduce(
           initial_state=tf.constant(0.0), reduce_func=reduce_fn)
 
@@ -130,10 +130,10 @@ def build_federated_averaging_process(model_fn,
       to the server model. The default returns a `tf.train.GradientDescent` with
       a learning rate of 1.0, which simply adds the average client delta to the
       server's model.
-      client_weight_fn: Optional function that takes the output of
-        `model.report_local_outputs` and returns a tensor that provides the
-        weight in the federated average of model deltas. If not provided, the
-        default is the total number of examples processed on device.
+    client_weight_fn: Optional function that takes the output of
+      `model.report_local_outputs` and returns a tensor that provides the
+      weight in the federated average of model deltas. If not provided, the
+      default is the total number of examples processed on device.
 
   Returns:
     A `tff.utils.IterativeProcess`.

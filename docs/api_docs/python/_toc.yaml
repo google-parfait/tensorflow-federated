@@ -64,6 +64,8 @@ toc:
       path: /federated/api_docs/python/tff/learning/BatchOutput
     - title: build_federated_averaging_process
       path: /federated/api_docs/python/tff/learning/build_federated_averaging_process
+    - title: build_federated_evaluation
+      path: /federated/api_docs/python/tff/learning/build_federated_evaluation
     - title: from_compiled_keras_model
       path: /federated/api_docs/python/tff/learning/from_compiled_keras_model
     - title: from_keras_model

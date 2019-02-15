@@ -19,7 +19,7 @@ Defined in
 
 Expands client data by performing transformations.
 
-Each client of the raw_client_data is "expanded" into some number of new
+Each client of the raw_client_data is "expanded" into some number of
 pseudo-clients. Each client ID is a tuple containing the original client ID plus
 an integer index. A function f(x, i) maps datapoints x with index i to new
 datapoint. For example if x is an image, and i has values 0 or 1, f(x, 0) might
