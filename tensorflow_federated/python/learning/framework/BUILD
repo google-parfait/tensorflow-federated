@@ -23,6 +23,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
         "@six_archive//:six",

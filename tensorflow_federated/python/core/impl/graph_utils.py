@@ -641,32 +641,41 @@ def make_data_set_from_elements(graph, elements, element_type):
         structure, element_type)
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
 
-  if len(elements) < 2:
-    # Explicitly handling the singleton case contains the fallout from dealing
-    # with empty data sets, which produce unknown shapes.
-    ds = _make(elements)
-  else:
-    try:
-      # It is common for the last element to be a batch of a size different from
-      # all the preceding batches. With this in mind, we proactively single out
-      # the last element (optimizing for the common case).
-      ds = _make(elements[0:-1]).concatenate(_make(elements[-1:]))
-    except ValueError:
-      # In case elements beyond just the last one are of unequal shapes, we may
-      # have failed (the most likely cause), so fall back onto the slow process
-      # of constructing and joining data sets from singletons. Not optimizing
-      # this for now, as it's very unlikely in scenarios we're targeting.
-      ds = None
-      for i in range(len(elements)):
-        singleton_ds = _make(elements[i:i + 1])
-        ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
-  ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
-      ds.output_types, ds.output_shapes)
-  if not type_utils.is_assignable_from(element_type, ds_element_type):
-    raise TypeError(
-        'Failure during data set construction, expected elements of type {}, '
-        'but the constructed data set has elements of type {}.'.format(
-            str(element_type), str(ds_element_type)))
+  output_types, output_shapes = (
+      type_utils.type_to_tf_dtypes_and_shapes(element_type))
+  with graph.as_default():
+    if not elements:
+      # Just return an empty data set.
+      # TODO(b/124517334): Remove from_generator when the best option for
+      # creating empty dataset with specific type signature is identified.
+      ds = tf.data.Dataset.from_generator((lambda: ()),
+                                          output_types=output_types,
+                                          output_shapes=output_shapes)
+    elif len(elements) == 1:
+      ds = _make(elements)
+    else:
+      try:
+        # It is common for the last element to be a batch of a size different
+        # from all the preceding batches. With this in mind, we proactively
+        # single out the last element (optimizing for the common case).
+        ds = _make(elements[0:-1]).concatenate(_make(elements[-1:]))
+      except ValueError:
+        # In case elements beyond just the last one are of unequal shapes, we
+        # may have failed (the most likely cause), so fall back onto the slow
+        # process of constructing and joining data sets from singletons. Not
+        # optimizing this for now, as it's very unlikely in scenarios
+        # we're targeting.
+        ds = None
+        for i in range(len(elements)):
+          singleton_ds = _make(elements[i:i + 1])
+          ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
+    ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
+        ds.output_types, ds.output_shapes)
+    if not type_utils.is_assignable_from(element_type, ds_element_type):
+      raise TypeError(
+          'Failure during data set construction, expected elements of type {}, '
+          'but the constructed data set has elements of type {}.'.format(
+              str(element_type), str(ds_element_type)))
   return ds
 
 

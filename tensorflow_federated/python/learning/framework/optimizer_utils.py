@@ -30,6 +30,7 @@ from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 nest = tf.contrib.framework.nest
 
@@ -188,6 +189,10 @@ def server_update_model(current_server_state, weights_delta, model_fn,
     flat_delta = anonymous_tuple.flatten(weights_delta)
     weights_delta = nest.pack_sequence_as(model.weights.trainable, flat_delta)
 
+  no_nan_func = lambda x: tensor_utils.zero_all_if_any_non_finite(x)[0]
+  no_nan_weights_delta = nest.map_structure(
+      no_nan_func, weights_delta)
+
   # TODO(b/109733734): Does this really need to be wrapped, since its
   # immediately called below?
   @tf.contrib.eager.function(autograph=False)
@@ -198,7 +203,7 @@ def server_update_model(current_server_state, weights_delta, model_fn,
         nest.flatten(new_server_state),
         anonymous_tuple.flatten(current_server_state)):
       tf.assign(x, y)
-    apply_delta_fn(weights_delta)
+    apply_delta_fn(no_nan_weights_delta)
     return new_server_state
 
   return update_model_inner()

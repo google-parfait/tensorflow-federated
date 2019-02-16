@@ -72,7 +72,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     # `tf.data.Dataset` after subclassing the currently used custom data set
     # representation from it.
     if 'Dataset' not in str(type(dataset)):
-      raise TypeError('EXpected a data set, found {}.'.format(
+      raise TypeError('Expected a data set, found {}.'.format(
           py_typecheck.type_string(type(dataset))))
 
     # TODO(b/120801384): We should initialize model.local_variables here.

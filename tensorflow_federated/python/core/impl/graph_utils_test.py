@@ -389,6 +389,15 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
+  def test_make_data_set_from_elements_with_empty_list_definite_shape(self):
+    ds = graph_utils.make_data_set_from_elements(
+        tf.get_default_graph(), [],
+        computation_types.TensorType(tf.float32, [None, 10]))
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertEqual(ds.output_shapes.as_list(),
+                     tf.TensorShape([None, 10]).as_list())
+    self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
+
   def test_make_data_set_from_elements_with_list_of_ints(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(),
                                                  [1, 2, 3, 4], tf.int32)

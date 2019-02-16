@@ -186,6 +186,29 @@ class FederatedAveragingTffTest(test.TestCase):
       self.assertEqual(metric_outputs.num_examples, 2 * len(federated_ds))
       self.assertLess(metric_outputs.loss, running_loss_avg)
 
+  def test_execute_empty_data(self):
+    iterative_process = federated_averaging.build_federated_averaging_process(
+        model_fn=model_examples.TrainableLinearRegression)
+
+    # Results in empty dataset with correct types and shapes
+    ds = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.]],
+        'y': [[5.]]
+    }).batch(
+        5, drop_remainder=True)
+
+    federated_ds = [ds] * 2
+
+    server_state = iterative_process.initialize()
+
+    first_state, metric_outputs = iterative_process.next(
+        server_state, federated_ds)
+    self.assertEqual(
+        tf.reduce_sum(first_state.model.trainable.a).numpy() +
+        tf.reduce_sum(first_state.model.trainable.b).numpy(), 0)
+    self.assertEqual(metric_outputs.num_examples, 0)
+    self.assertTrue(tf.is_nan(metric_outputs.loss))
+
 
 if __name__ == '__main__':
   # We default to TF 2.0 behavior, including eager execution, and use the

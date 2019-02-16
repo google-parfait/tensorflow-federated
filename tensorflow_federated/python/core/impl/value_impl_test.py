@@ -311,6 +311,13 @@ class ValueImplTest(absltest.TestCase):
     self.assertIsInstance(value, value_base.Value)
     self.assertEqual(str(value.type_signature), 'int32*')
 
+  def test_to_value_with_empty_list_of_ints(self):
+    value = value_impl.to_value([],
+                                computation_types.SequenceType(tf.int32),
+                                context_stack_impl.context_stack)
+    self.assertIsInstance(value, value_base.Value)
+    self.assertEqual(str(value.type_signature), 'int32*')
+
   def test_to_value_raises_type_error(self):
     with self.assertRaises(TypeError):
       value_impl.to_value(10, tf.bool, context_stack_impl.context_stack)
