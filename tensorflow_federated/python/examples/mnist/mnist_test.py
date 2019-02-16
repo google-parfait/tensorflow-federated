@@ -21,10 +21,10 @@ import collections
 
 
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated import python as tff
-
 from tensorflow_federated.python.examples.mnist import mnist
 
 

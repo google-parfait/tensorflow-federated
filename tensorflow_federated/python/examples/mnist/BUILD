@@ -21,5 +21,6 @@ py_test(
         "//tensorflow_federated/python",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )

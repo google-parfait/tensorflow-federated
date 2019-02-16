@@ -55,6 +55,7 @@ py_test(
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 

@@ -24,6 +24,7 @@ from absl.testing import absltest
 import h5py
 import numpy as np
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data

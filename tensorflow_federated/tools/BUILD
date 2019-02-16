@@ -6,8 +6,8 @@ sh_binary(
     name = "build_pip_package",
     srcs = ["build_pip_package.sh"],
     data = [
+        ":pip_package_files",
         "//tensorflow_federated",
-        "//tensorflow_federated/tools:pip_package_files",
     ],
 )
 

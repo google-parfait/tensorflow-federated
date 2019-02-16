@@ -5,7 +5,6 @@ package tensorflow_federated.v0;
 import "tensorflow/core/framework/graph.proto";
 import "tensorflow/core/framework/tensor_shape.proto";
 import "tensorflow/core/framework/types.proto";
-
 import "tensorflow/core/protobuf/meta_graph.proto";
 
 // A core data structure that contains a serialized representation of a unit of

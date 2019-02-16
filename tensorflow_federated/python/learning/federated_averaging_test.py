@@ -21,6 +21,7 @@ import collections
 
 from absl.testing import parameterized
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff

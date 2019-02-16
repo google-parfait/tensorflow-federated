@@ -21,6 +21,7 @@ import math
 import re
 
 import numpy as np
+from six.moves import range
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data
