@@ -24,25 +24,29 @@ from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated import python as tff
-from tensorflow_federated.python.examples.mnist import mnist
+from tensorflow_federated.python.examples.mnist import models
 
 
 class MnistTest(tf.test.TestCase):
 
+  def setUp(self):
+    tf.keras.backend.clear_session()
+    super(MnistTest, self).setUp()
+
   def test_something(self):
-    it_process = tff.learning.build_federated_averaging_process(mnist.model_fn)
+    it_process = tff.learning.build_federated_averaging_process(models.model_fn)
     self.assertIsInstance(it_process, tff.utils.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type), '{<x=float32[?,784],y=int64[?,1]>*}@CLIENTS')
 
   def test_simple_training(self):
-    it_process = tff.learning.build_federated_averaging_process(mnist.model_fn)
+    it_process = tff.learning.build_federated_averaging_process(models.model_fn)
     server_state = it_process.initialize()
     Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
     # Test out manually setting weights:
-    keras_model = mnist.create_keras_model(compile_model=True)
+    keras_model = models.create_keras_model(compile_model=True)
     server_state = tff.learning.state_with_new_model_weights(
         server_state,
         trainable_weights=[v.numpy() for v in keras_model.trainable_weights],
@@ -73,6 +77,41 @@ class MnistTest(tf.test.TestCase):
     keras_evaluate(server_state)
 
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
+
+  def test_self_contained_example(self):
+    emnist_batch = collections.OrderedDict([
+        ('label', 5), ('pixels', np.random.rand(28, 28))])
+
+    output_types = collections.OrderedDict([
+        ('label', tf.int32), ('pixels', tf.float32)])
+
+    output_shapes = collections.OrderedDict([
+        ('label', tf.TensorShape([])), ('pixels', tf.TensorShape([28, 28]))])
+
+    def generate_one_emnist_batch():
+      yield emnist_batch
+
+    dataset = tf.data.Dataset.from_generator(
+        generate_one_emnist_batch, output_types, output_shapes)
+
+    def client_data():
+      return models.keras_dataset_from_emnist(dataset).repeat(10).batch(20)
+
+    train_data = [client_data()]
+    sample_batch = tf.contrib.framework.nest.map_structure(
+        lambda x: x.numpy(), iter(train_data[0]).next())
+
+    def model_fn():
+      return tff.learning.from_compiled_keras_model(
+          models.create_simple_keras_model(), sample_batch)
+
+    trainer = tff.learning.build_federated_averaging_process(model_fn)
+    state = trainer.initialize()
+    losses = []
+    for _ in range(2):
+      state, loss = trainer.next(state, train_data)
+      losses.append(loss)
+    self.assertLess(losses[1], losses[0])
 
 
 if __name__ == '__main__':

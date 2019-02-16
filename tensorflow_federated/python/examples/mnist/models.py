@@ -26,6 +26,48 @@ from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated import python as tff
 
 
+def create_simple_keras_model(learning_rate=0.1):
+  """Returns an instance of `tf.Keras.Model` with just one dense layer.
+
+  Args:
+    learning_rate: The learning rate to use with the SGD optimizer.
+
+  Returns:
+    An instance of `tf.Keras.Model`.
+  """
+  model = tf.keras.models.Sequential([
+      tf.keras.layers.Flatten(input_shape=(784,)),
+      tf.keras.layers.Dense(10, tf.nn.softmax, kernel_initializer='zeros')
+  ])
+  def loss_fn(y_true, y_pred):
+    return tf.reduce_mean(tf.keras.metrics.sparse_categorical_crossentropy(
+        y_true, y_pred))
+  model.compile(
+      loss=loss_fn,
+      optimizer=gradient_descent.SGD(learning_rate),
+      # TODO(b/124563513): Readd tf.keras.metrics.SparseCategoricalAccuracy()
+      # after upgrading to a version of TF that has this fixed.
+      metrics=[])
+  return model
+
+
+def keras_dataset_from_emnist(dataset):
+  """Converts `dataset` for use with the output of `create_simple_keras_model`.
+
+  Args:
+    dataset: An instance of `tf.data.Dataset` to read from.
+
+  Returns:
+    An instance of `tf.data.Dataset` after conversion.
+  """
+
+  def map_fn(example):
+    return collections.OrderedDict([('x', tf.reshape(example['pixels'], [-1])),
+                                    ('y', example['label'])])
+
+  return dataset.map(map_fn)
+
+
 def create_keras_model(compile_model=False):
   """Returns an instance of `tf.keras.Model` for use with the MNIST example.
 

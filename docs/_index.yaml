@@ -4,42 +4,69 @@ description: <!--no description-->
 landing_page:
   custom_css_path: /site-assets/css/style.css
   rows:
-  - heading: Collaborative machine learning without centralized training data
+  - heading: Collaborative Machine Learning Without Centralized Training Data
     items:
     - classname: devsite-landing-row-50
       description: >
-        <p>Federated Learning (FL) is the approach of training a shared global
-        model under the coordination of a central server, from a federation of
-        participating devices which maintain control of their own data.</p>
-        <p>Federated Learning enables mobile phones to collaboratively learn a
-        shared prediction model while keeping all the training data on device,
-        decoupling the ability to do machine learning from the need to store the
-        data in the cloud. This goes beyond the use of local models that make
-        predictions on mobile devices by bringing model training to the device as well.</p>
-
+        <p>TensorFlow Federated (TFF) is an open-source framework for collaborative computations
+        on distributed data that does not require collecting data at a centralized location. The
+        platform consists of two layers.</p>
+      list:
+      - heading: Federated Learning (FL)
+        description: >
+          Aaa.... something about FL
+        path: /federated/federated_learning
+        icon:
+          icon_name: chevron_right
+          foreground: theme
+          background: grey
+      - heading: Federated Core (FC)
+        description: >
+          Aaa.... something about FC
+        path: /federated/federated_core
+        icon:
+          icon_name: chevron_right
+          foreground: theme
+          background: grey
       code_block: |
         <pre class = "prettyprint">
+        from six.moves import range
         import tensorflow as tf
         import tensorflow_federated as tff
+        from tensorflow_federated.python.examples import mnist
+        tf.compat.v1.enable_v2_behavior()
 
-        @tff.tf_computation([BATCH_TYPE, MODEL_TYPE])
-        def forward_pass(features, model):
-          ...
-          loss = tf.reduce_mean(
-            -tf.reduce_sum(encoded_y * tf.log(softmax_y), reduction_indices=1))
-          prediction = tf.cast(tf.argmax(softmax_y, 1), tf.int32)
-          is_correct = tf.equal(prediction, features.Y)
-          accuracy = tf.reduce_mean(tf.cast(is_correct, tf.float32))
-          count = tf.size(features.X)
-          return collections.OrderedDict([
-            ('loss', loss),
-            ('accuracy', accuracy),
-            ('count', count),
-          ])
+        # Load simulation data.
+        source, _ = tff.simulation.datasets.emnist.load_data()
+        def client_data(n):
+          dataset = source.create_tf_dataset_for_client(source.client_ids[n])
+          return mnist.keras_dataset_from_emnist(dataset).repeat(10).batch(20)
+
+        # Pick a subset of client devices to participate in training.
+        train_data = [client_data(n) for n in range(3)]
+
+        # Grab a single batch of data so that TFF knows what data looks like.
+        sample_batch = tf.contrib.framework.nest.map_structure(
+            lambda x: x.numpy(), iter(train_data[0]).next())
+
+        # Wrap a Keras model for use with TFF.
+        def model_fn():
+          return tff.learning.from_compiled_keras_model(
+              mnist.create_simple_keras_model(), sample_batch)
+
+        # Simulate a few rounds of training with the selected client devices.
+        trainer = tff.learning.build_federated_averaging_process(model_fn)
+        state = trainer.initialize()
+        for _ in range(5):
+          state, metrics = trainer.next(state, train_data)
+          print (metrics.loss)
+
+        # 26.4884
+        # ...
+        # 15.9183
+        #
+        # The average loss across the client group is decreasing... it works!
         </pre>
-        {% dynamic if request.tld != 'cn' %}
-        <a class="colab-button" target="_blank" href="https://colab.research.google.com/github/tensorflow/docs/blob/master/site/en/tutorials/_index.ipynb">Run in a <span>Notebook</span></a>
-        {% dynamic endif %}
 
   - classname: devsite-landing-row-cards
     items:

@@ -4,7 +4,15 @@ licenses(["notice"])  # Apache 2.0
 
 py_library(
     name = "mnist",
-    srcs = ["mnist.py"],
+    srcs = ["__init__.py"],
+    deps = [
+        ":models",
+    ],
+)
+
+py_library(
+    name = "models",
+    srcs = ["models.py"],
     deps = [
         "//tensorflow_federated/python",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -13,11 +21,11 @@ py_library(
 )
 
 py_test(
-    name = "mnist_test",
+    name = "models_test",
     size = "large",
-    srcs = ["mnist_test.py"],
+    srcs = ["models_test.py"],
     deps = [
-        ":mnist",
+        ":models",
         "//tensorflow_federated/python",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",

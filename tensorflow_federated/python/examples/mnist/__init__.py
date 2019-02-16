@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Federated Authors.
+# Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,3 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Example code for use with variants of the MNIST data set."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from tensorflow_federated.python.examples.mnist.models import create_simple_keras_model
+from tensorflow_federated.python.examples.mnist.models import keras_dataset_from_emnist
