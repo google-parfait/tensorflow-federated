@@ -38,8 +38,8 @@ class FederatedComputationContext(context_base.Context):
       suggested_name: The optional suggested name of the context, a string. It
         may be modified to make it different from the names of any of the
         ancestors on the context stack.
-      parent: The optional parent context. If not `None`, it must be an
-        instance of `FederatedComputationContext`.
+      parent: The optional parent context. If not `None`, it must be an instance
+        of `FederatedComputationContext`.
     """
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     if suggested_name:

@@ -48,12 +48,12 @@ def _wrap(func, parameter_type, wrapper_fn):
       accept two arguments, and optional third `name`. The first argument will
       be a Python function that takes either zero parameters if the computation
       is to be a no-parameter computation, or exactly one parameter if the
-      computation does have a parameter. The second argument will be either
-      None for a no-parameter computation, or the type of the computation's
-      parameter (an instance of types.Type) if the computation has one. The
-      third, optional parameter `name` is the optional name of the function that
-      is being wrapped (only for debugging purposes). The object to be returned
-      by this function should be an instance of a ConcreteFunction.
+      computation does have a parameter. The second argument will be either None
+      for a no-parameter computation, or the type of the computation's parameter
+      (an instance of types.Type) if the computation has one. The third,
+      optional parameter `name` is the optional name of the function that is
+      being wrapped (only for debugging purposes). The object to be returned by
+      this function should be an instance of a ConcreteFunction.
 
   Returns:
     Either the result of wrapping (an object that represents the computation),

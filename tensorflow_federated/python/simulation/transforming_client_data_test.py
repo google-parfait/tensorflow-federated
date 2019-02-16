@@ -30,7 +30,6 @@ import tensorflow as tf
 from tensorflow_federated.python.simulation import hdf5_client_data
 from tensorflow_federated.python.simulation import transforming_client_data
 
-
 TEST_DATA = {
     'CLIENT A': {
         'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
@@ -81,9 +80,8 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     expansion_factor = 2.5
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, lambda: 0, expansion_factor)
-    self.assertLen(
-        transformed_client_data.client_ids,
-        int(len(TEST_DATA) * expansion_factor))
+    self.assertLen(transformed_client_data.client_ids,
+                   int(len(TEST_DATA) * expansion_factor))
 
   def test_create_tf_dataset_for_client(self):
     client_data = hdf5_client_data.HDF5ClientData(
@@ -107,9 +105,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       client = match.group(1)
       index = int(match.group(2))
       for i, actual in enumerate(tf_dataset):
-        expected = {
-            k: v[i] for k, v in six.iteritems(TEST_DATA[client])
-        }
+        expected = {k: v[i] for k, v in six.iteritems(TEST_DATA[client])}
         expected['x'] = expected['x'] + 10 * index
         self.assertCountEqual(actual, expected)
         for k, v in six.iteritems(actual):

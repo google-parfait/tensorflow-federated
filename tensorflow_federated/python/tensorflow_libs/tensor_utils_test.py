@@ -25,7 +25,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-
 nest = tf.contrib.framework.nest
 
 

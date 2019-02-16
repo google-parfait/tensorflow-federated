@@ -83,8 +83,7 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(anonymous_tuple.to_elements(x), v)
     self.assertEqual(repr(x), 'AnonymousTuple([(foo, 20)])')
     self.assertEqual(str(x), '<foo=20>')
-    self.assertEqual(anonymous_tuple.to_odict(x),
-                     collections.OrderedDict(v))
+    self.assertEqual(anonymous_tuple.to_odict(x), collections.OrderedDict(v))
 
   def test_multiple_named_and_unnamed(self):
     v = [(None, 10), ('foo', 20), ('bar', 30)]

@@ -62,8 +62,8 @@ class TensorFlowComputationContextTest(test.TestCase):
       # another.
       zero = tf.Variable(0, name='zero')
       ten = tf.Variable(make_10())
-      return (add_one_with_v2(add_one_with_v1(add_one(make_10()))) + zero + ten
-              - ten)
+      return (add_one_with_v2(add_one_with_v1(add_one(make_10()))) + zero +
+              ten - ten)
 
     self.assertEqual(str(foo.type_signature), '( -> int32)')
     self.assertEqual(foo(), 13)

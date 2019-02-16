@@ -73,11 +73,11 @@ def create_keras_model(compile_model=False):
     # TODO(b/124534248): Currently we need the extra reduce_mean to ensure
     # the loss is a scalar.
     def loss_fn(y_true, y_pred):
-      return tf.reduce_mean(tf.keras.metrics.sparse_categorical_crossentropy(
-          y_true, y_pred))
+      return tf.reduce_mean(
+          tf.keras.metrics.sparse_categorical_crossentropy(y_true, y_pred))
+
     model.compile(
-        loss=loss_fn,
-        optimizer=gradient_descent.SGD(learning_rate=0.1))
+        loss=loss_fn, optimizer=gradient_descent.SGD(learning_rate=0.1))
   return model
 
 
@@ -103,5 +103,4 @@ def model_fn():
   """
   keras_model = create_keras_model(compile_model=True)
   dummy_batch = create_random_batch()
-  return tff.learning.from_compiled_keras_model(
-      keras_model, dummy_batch)
+  return tff.learning.from_compiled_keras_model(keras_model, dummy_batch)

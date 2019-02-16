@@ -69,8 +69,8 @@ class TransformingClientData(client_data.ClientData):
       extra_client_ids = np.random.choice(
           raw_client_ids, num_extra_client_ids, replace=False)
       for raw_client_id in extra_client_ids:
-        self._client_ids.append(
-            '{}_{}'.format(raw_client_id, num_entire_client_ids))
+        self._client_ids.append('{}_{}'.format(raw_client_id,
+                                               num_entire_client_ids))
     self._client_ids = sorted(self._client_ids)
 
   @property

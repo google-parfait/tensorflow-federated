@@ -29,17 +29,10 @@ from tensorflow_federated.python.learning.model_utils import from_compiled_keras
 from tensorflow_federated.python.learning.model_utils import from_keras_model
 from tensorflow_federated.python.learning.model_utils import keras_weights_from_tff_weights
 
-
 # Used by doc generation script.
 _allowed_symbols = [
-    "BatchOutput",
-    "Model",
-    "TrainableModel",
-    "build_federated_averaging_process",
-    "build_federated_evaluation",
-    "framework",
-    "from_compiled_keras_model",
-    "from_keras_model",
-    "keras_weights_from_tff_weights",
-    "state_with_new_model_weights"
+    "BatchOutput", "Model", "TrainableModel",
+    "build_federated_averaging_process", "build_federated_evaluation",
+    "framework", "from_compiled_keras_model", "from_keras_model",
+    "keras_weights_from_tff_weights", "state_with_new_model_weights"
 ]

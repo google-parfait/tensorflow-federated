@@ -172,8 +172,8 @@ class ValueUtilsTest(parameterized.TestCase):
     named_type_to_add = ('new', tf.int32)
     named_input_type = computation_types.NamedTupleType(
         [input_reference.type_signature, named_type_to_add])
-    named_desired_output_type = computation_types.to_type(
-        [(str(k), tf.int32) for k in range(n)] + [('new', tf.int32)])
+    named_types = [(str(k), tf.int32) for k in range(n)] + [('new', tf.int32)]
+    named_desired_output_type = computation_types.to_type(named_types)
     named_desired_function_type = computation_types.FunctionType(
         named_input_type, named_desired_output_type)
     new_named_func = value_utils.flatten_first_index(

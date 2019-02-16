@@ -123,8 +123,8 @@ def keras_weights_from_tff_weights(tff_weights):
     A list of tensors suitable for passing to `tf.keras.Model.set_weights`.
   """
   # TODO(b/123092620): Simplify this.
-  py_typecheck.check_type(tff_weights, (anonymous_tuple.AnonymousTuple,
-                                        ModelWeights))
+  py_typecheck.check_type(tff_weights,
+                          (anonymous_tuple.AnonymousTuple, ModelWeights))
   if isinstance(tff_weights, anonymous_tuple.AnonymousTuple):
     return list(tff_weights.trainable) + list(tff_weights.non_trainable)
   else:
@@ -199,9 +199,8 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
   Args:
     metric_type: a type object (type must inherit from
       `tf.keras.metrics.Metric`).
-    metric_config: the result of calling `get_config()` on a metric object,
-      used with `metric_type.from_config()` to locally construct a new metric
-      object.
+    metric_config: the result of calling `get_config()` on a metric object, used
+      with `metric_type.from_config()` to locally construct a new metric object.
     federated_variables: a federated value place on clients that is the value
       returned by `tf.keras.metrics.Metric.variables`.
 

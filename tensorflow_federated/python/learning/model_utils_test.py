@@ -221,8 +221,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
               'mean_squared_error',
               # TODO(b/124534248): enable after designign weighted losses.
               # tf.keras.losses.mean_squared_error,
-          ]
-      ))
+          ]))
   def test_tff_model_from_compiled_keras_model(self, feature_dims, model_fn,
                                                loss_fn):
     keras_model = model_fn(feature_dims)
@@ -236,8 +235,10 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
     batch = {
         'x':
-            np.stack([np.zeros(feature_dims, np.float32),
-                      np.full(feature_dims, 5.0, np.float32)]),
+            np.stack([
+                np.zeros(feature_dims, np.float32),
+                np.full(feature_dims, 5.0, np.float32),
+            ]),
         'y': [[0.0], [5.0 * feature_dims]],
     }
 
@@ -357,7 +358,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
     # TODO(b/122081673): This should be a @tf.function and the control
     # dependencies can go away (probably nothing blocking this, but it
-      # just needs to be done and tested).
+    # just needs to be done and tested).
     @tff.tf_computation()
     def _train_loop():
       tff_model = _model_fn()

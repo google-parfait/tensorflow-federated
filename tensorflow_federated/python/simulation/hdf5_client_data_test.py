@@ -76,8 +76,7 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
   def test_client_ids_property(self):
     client_data = hdf5_client_data.HDF5ClientData(
         HDF5ClientDataTest.test_data_filepath)
-    self.assertEqual(client_data.client_ids,
-                     sorted(TEST_DATA.keys()))
+    self.assertEqual(client_data.client_ids, sorted(TEST_DATA.keys()))
 
   def test_output_shapes_property(self):
     expected_shapes = {
