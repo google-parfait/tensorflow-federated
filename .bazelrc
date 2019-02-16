@@ -4,23 +4,23 @@
 # details on the various configuration options.
 
 # Build with modular op registration support by default.
-build --define=framework_shared_object=true
+common --define=framework_shared_object=true
 
 # Bazel workaround to compile gRPC with the new 'cares' package.
-build --define=grpc_no_ares=true
+common --define=grpc_no_ares=true
 
-# Build with optimization enabled.
-build -c opt
+# Build and test with optimization enabled.
+common -c opt
 
 # Processor native optimizations (depends on build host capabilities).
-build --copt=-march=native
-build --host_copt=-march=native
-build --copt=-O3
+common --copt=-march=native
+common --host_copt=-march=native
+common --copt=-O3
 
 # Disable Tensorflow extensions that are not needed for Tensorflow Federated.
-build --define=no_aws_support=true
-build --define=no_hdfs_support=true
-build --define=no_kafka_support=true
-build --define=no_ignite_support=true
-build --define=no_nccl_support=true
+common --define=no_aws_support=true
+common --define=no_hdfs_support=true
+common --define=no_kafka_support=true
+common --define=no_ignite_support=true
+common --define=no_nccl_support=true
 # TODO(b/121151810): uncomment: build --define=no_gcp_support=true
