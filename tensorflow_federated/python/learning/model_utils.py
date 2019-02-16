@@ -367,8 +367,12 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
     # until the model has been called on input. The work-around is to call
     # Model.test_on_batch() once before asking for metrics.
     inner_model.test_on_batch(**dummy_batch)
-    super(_TrainableKerasModel, self).__init__(
-        inner_model, dummy_batch, inner_model.loss, inner_model.metrics)
+    # This must occur after test_on_batch()
+    if len(inner_model.loss_functions) != 1:
+      raise NotImplementedError('only a single loss functions is supported')
+    super(_TrainableKerasModel,
+          self).__init__(inner_model, dummy_batch,
+                         inner_model.loss_functions[0], inner_model.metrics)
 
   @property
   def non_trainable_variables(self):

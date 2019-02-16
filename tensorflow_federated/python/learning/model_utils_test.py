@@ -216,13 +216,20 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
               model_examples.build_linear_regresion_keras_sequential_model,
               model_examples.build_linear_regresion_keras_subclass_model,
           ],
+          [
+              tf.keras.losses.MeanSquaredError(),
+              'mean_squared_error',
+              # TODO(b/124534248): enable after designign weighted losses.
+              # tf.keras.losses.mean_squared_error,
+          ]
       ))
-  def test_tff_model_from_compiled_keras_model(self, feature_dims, model_fn):
+  def test_tff_model_from_compiled_keras_model(self, feature_dims, model_fn,
+                                               loss_fn):
     keras_model = model_fn(feature_dims)
     # If the model is intended to be used for training, it must be compiled.
     keras_model.compile(
         optimizer=gradient_descent.SGD(learning_rate=0.01),
-        loss=tf.keras.losses.MeanSquaredError(),
+        loss=loss_fn,
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     tff_model = model_utils.from_compiled_keras_model(
         keras_model=keras_model, dummy_batch=_create_dummy_batch(feature_dims))
