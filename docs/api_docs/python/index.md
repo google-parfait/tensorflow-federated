@@ -36,6 +36,8 @@
 *   <a href="./tff/learning/framework/build_model_delta_optimizer_process.md"><code>tff.learning.framework.build_model_delta_optimizer_process</code></a>
 *   <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
 *   <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
+*   <a href="./tff/learning/keras_weights_from_tff_weights.md"><code>tff.learning.keras_weights_from_tff_weights</code></a>
+*   <a href="./tff/learning/state_with_new_model_weights.md"><code>tff.learning.state_with_new_model_weights</code></a>
 *   <a href="./tff/sequence_map.md"><code>tff.sequence_map</code></a>
 *   <a href="./tff/sequence_reduce.md"><code>tff.sequence_reduce</code></a>
 *   <a href="./tff/sequence_sum.md"><code>tff.sequence_sum</code></a>

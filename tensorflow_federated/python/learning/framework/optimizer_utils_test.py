@@ -26,6 +26,7 @@ import tensorflow as tf
 # TODO(b/123578208): Remove deep keras imports after updating TF version.
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -54,6 +55,51 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
         weights_delta_weight=client_weight,
         model_output=self._model.report_local_outputs(),
         optimizer_output={'client_weight': client_weight})
+
+
+class UtilsTest(test.TestCase):
+
+  def test_state_with_new_model_weights(self):
+    trainable = [('b', np.array([1.0, 2.0])), ('a', np.array([[1.0]]))]
+    non_trainable = [('c', np.array(1))]
+    state = anonymous_tuple.from_container(
+        optimizer_utils.ServerState(
+            model=model_utils.ModelWeights(
+                trainable=collections.OrderedDict(trainable),
+                non_trainable=collections.OrderedDict(non_trainable)),
+            optimizer_state=[]),
+        recursive=True)
+
+    new_state = optimizer_utils.state_with_new_model_weights(
+        state,
+        trainable_weights=[np.array([3.0, 3.0]),
+                           np.array([[3.0]])],
+        non_trainable_weights=[np.array(3)])
+    self.assertEqual(list(new_state.model.trainable.keys()), ['b', 'a'])
+    self.assertEqual(list(new_state.model.non_trainable.keys()), ['c'])
+    self.assertAllClose(new_state.model.trainable['b'], [3.0, 3.0])
+    self.assertAllClose(new_state.model.trainable['a'], [[3.0]])
+    self.assertAllClose(new_state.model.non_trainable['c'], 3)
+
+    with self.assertRaisesRegexp(ValueError, 'dtype'):
+      optimizer_utils.state_with_new_model_weights(
+          state,
+          trainable_weights=[np.array([3.0, 3.0]),
+                             np.array([[3]])],
+          non_trainable_weights=[np.array(3.0)])
+
+    with self.assertRaisesRegexp(ValueError, 'shape'):
+      optimizer_utils.state_with_new_model_weights(
+          state,
+          trainable_weights=[np.array([3.0, 3.0]),
+                             np.array([3.0])],
+          non_trainable_weights=[np.array(3)])
+
+    with self.assertRaisesRegexp(ValueError, 'Lengths differ'):
+      optimizer_utils.state_with_new_model_weights(
+          state,
+          trainable_weights=[np.array([3.0, 3.0])],
+          non_trainable_weights=[np.array(3)])
 
 
 class ServerTest(test.TestCase, parameterized.TestCase):
@@ -131,7 +177,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(server_state.model.non_trainable['c'], 0.0)
 
   # TODO(b/109733734): update these tests to actually execute the iterative
-  # process, instead of only checkign the type signatures.
+  # process, instead of only checkign the type signatures. Test
+  # state_with_new_model_weights at the same time.
   def test_orchestration(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.TrainableLinearRegression,

@@ -21,7 +21,6 @@ import abc
 import collections
 
 import six
-from six.moves import zip
 import tensorflow as tf
 
 # TODO(b/123578208): Remove deep keras imports after updating TF version.
@@ -145,6 +144,53 @@ ServerState = collections.namedtuple(
     ])
 
 
+def state_with_new_model_weights(server_state, trainable_weights,
+                                 non_trainable_weights):
+  """Returns a `ServerState` with updated model weights.
+
+  Args:
+    server_state: A server state object returned by an iterative training
+      process like `tff.learning.build_federated_averaging_process`.
+    trainable_weights: A list of numpy arrays in the order of the original
+      model's `trainable_variables`.
+    non_trainable_weights: A list of numpy arrays in the order of the original
+      model's `non_trainable_variables`.
+
+  Returns:
+    A new server state object which can be passed to the `next` method of
+    the iterative process.
+  """
+  # TODO(b/123092620): Simplify this.
+  py_typecheck.check_type(server_state, anonymous_tuple.AnonymousTuple)
+
+  def pack_values(old, new_values, name):
+    """Packs new_values in an OrderedDict matching old."""
+    if len(old) != len(new_values):
+      raise ValueError('Lengths differ for {} weights: {} vs {}'.format(
+          name, len(old), len(new_values)))
+    tuples = []
+    for (key, old_value), new_value in zip(
+        anonymous_tuple.to_elements(old), new_values):
+      if (old_value.dtype != new_value.dtype or
+          old_value.shape != new_value.shape):
+        raise ValueError('The shapes or dtypes do not match for {} weight {}:\n'
+                         'current weights: shape {} dtype {}\n'
+                         '    new weights: shape {} dtype {}'.format(
+                             name, key, old_value.shape, old_value.dtype,
+                             new_value.shape, new_value.dtype))
+
+      tuples.append((key, new_value))
+    return collections.OrderedDict(tuples)
+
+  renamed_new_weights = model_utils.ModelWeights(
+      trainable=pack_values(server_state.model.trainable, trainable_weights,
+                            'trainable'),
+      non_trainable=pack_values(server_state.model.non_trainable,
+                                non_trainable_weights, 'non_trainable'))
+  return ServerState(
+      model=renamed_new_weights, optimizer_state=server_state.optimizer_state)
+
+
 def server_init(model_fn, optimizer_fn):
   """Returns initial `tff.learning.framework.ServerState`.
 
@@ -177,36 +223,36 @@ def server_update_model(current_server_state, weights_delta, model_fn,
   Returns:
     An updated `tff.learning.framework.ServerState`.
   """
+  py_typecheck.check_type(current_server_state, ServerState)
+  py_typecheck.check_type(weights_delta, collections.OrderedDict)
   model = model_utils.enhance(model_fn())
   optimizer = optimizer_fn()
-  apply_delta_fn, new_server_state = _create_optimizer_and_server_state(
+  apply_delta_fn, server_state_vars = _create_optimizer_and_server_state(
       model, optimizer)
 
-  # TODO(b/123092620): Mixing AnonymousTuple with other nested types is not
-  # pretty, fold this into anonymous_tuple module or get working with
-  # tf.contrib.framework.nest.
-  if isinstance(weights_delta, anonymous_tuple.AnonymousTuple):
-    flat_delta = anonymous_tuple.flatten(weights_delta)
-    weights_delta = nest.pack_sequence_as(model.weights.trainable, flat_delta)
+  # We might have a NaN value e.g. if all of the clients processed
+  # had no data, so the denominator in the federated_average is zero.
+  # If we see any NaNs, zero out the whole update.
+  no_nan_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
+      weights_delta)
+  # TODO(b/124538167): We should increment a server counter to
+  # track the fact a non-finite weiths_delta was encountered.
 
-  no_nan_func = lambda x: tensor_utils.zero_all_if_any_non_finite(x)[0]
-  no_nan_weights_delta = nest.map_structure(
-      no_nan_func, weights_delta)
-
-  # TODO(b/109733734): Does this really need to be wrapped, since its
-  # immediately called below?
   @tf.contrib.eager.function(autograph=False)
   def update_model_inner():
-    # TODO(b/123092620): Mixing AnonymousTuple with other nested types is a bit
-    # cumbersome. Make this easier with better support.
-    for x, y in zip(
-        nest.flatten(new_server_state),
-        anonymous_tuple.flatten(current_server_state)):
-      tf.assign(x, y)
+    """Applies the update."""
+    nest.map_structure(tf.assign, server_state_vars, current_server_state)
     apply_delta_fn(no_nan_weights_delta)
-    return new_server_state
+    return server_state_vars
 
   return update_model_inner()
+
+
+#
+# N. B. All functions above this should be standard TensorFlow, in
+# the remainder of this file we use TFF specific concepts to bind
+# the TensorFlow building blocks into a federated computation.
+#
 
 
 def build_model_delta_optimizer_process(model_fn,
@@ -289,9 +335,8 @@ def build_model_delta_optimizer_process(model_fn,
       # tf.contrib.framework.nest, or the following behavior is moved to
       # anonymous_tuple module.
       if isinstance(initial_model_weights, anonymous_tuple.AnonymousTuple):
-        initial_model_weights = anonymous_tuple.flatten(initial_model_weights)
-        initial_model_weights = nest.pack_sequence_as(
-            dummy_model_for_metadata.weights, initial_model_weights)
+        initial_model_weights = model_utils.ModelWeights.from_tff_value(
+            initial_model_weights)
 
       client_output = client_delta_fn(tf_dataset, initial_model_weights)
       return client_output
@@ -302,6 +347,18 @@ def build_model_delta_optimizer_process(model_fn,
 
     @tff.tf_computation(server_state_type, model_weights_type.trainable)
     def server_update_model_tf(server_state, model_delta):
+      """Converts args to correct python types and calls server_update_model."""
+      # We need to convert TFF types to the types server_update_model expects.
+      # TODO(b/123092620): Mixing AnonymousTuple with other nested types is not
+      # pretty, fold this into anonymous_tuple module or get working with
+      # tf.contrib.framework.nest.
+      py_typecheck.check_type(model_delta, anonymous_tuple.AnonymousTuple)
+      model_delta = anonymous_tuple.to_odict(model_delta)
+      py_typecheck.check_type(server_state, anonymous_tuple.AnonymousTuple)
+      server_state = ServerState(
+          model=model_utils.ModelWeights.from_tff_value(server_state.model),
+          optimizer_state=list(server_state.optimizer_state))
+
       return server_update_model(
           server_state,
           model_delta,

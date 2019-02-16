@@ -18,6 +18,7 @@ py_test(
     srcs = ["tensor_utils_test.py"],
     deps = [
         ":tensor_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

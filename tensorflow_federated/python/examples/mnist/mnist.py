@@ -26,13 +26,19 @@ from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated import python as tff
 
 
-def create_keras_model():
+def create_keras_model(compile_model=False):
   """Returns an instance of `tf.keras.Model` for use with the MNIST example.
 
   This code is based on the following target, which unfortunately cannot be
   imported as it is a Python binary, not a library:
 
   https://github.com/tensorflow/models/blob/master/official/mnist/mnist.py
+
+  Args:
+    compile_model: If True, compile the model with a basic optimizer and loss.
+
+  Returns:
+    A `tf.keras.Model`.
   """
   # TODO(b/120157713): Find a way to import this code.
   data_format = 'channels_last'
@@ -42,7 +48,7 @@ def create_keras_model():
   max_pool = l.MaxPooling2D((2, 2), (2, 2),
                             padding='same',
                             data_format=data_format)
-  return tf.keras.Sequential([
+  model = tf.keras.Sequential([
       l.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
       l.Conv2D(
           32,
@@ -63,6 +69,16 @@ def create_keras_model():
       l.Dropout(0.4, seed=1),
       l.Dense(10, kernel_initializer=initializer)
   ])
+  if compile_model:
+    # TODO(b/124534248): Currently we need the extra reduce_mean to ensure
+    # the loss is a scalar.
+    def loss_fn(y_true, y_pred):
+      return tf.reduce_mean(tf.keras.metrics.sparse_categorical_crossentropy(
+          y_true, y_pred))
+    model.compile(
+        loss=loss_fn,
+        optimizer=gradient_descent.SGD(learning_rate=0.1))
+  return model
 
 
 Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
@@ -85,9 +101,7 @@ def model_fn():
   Returns:
     An instance of `tff.learning.Model` that represents a trainable model.
   """
-  keras_model = create_keras_model()
+  keras_model = create_keras_model(compile_model=True)
   dummy_batch = create_random_batch()
-  loss = tf.keras.losses.CategoricalCrossentropy()
-  optimizer = gradient_descent.SGD(learning_rate=0.01)
-  return tff.learning.from_keras_model(
-      keras_model, dummy_batch, loss, optimizer=optimizer)
+  return tff.learning.from_compiled_keras_model(
+      keras_model, dummy_batch)

@@ -19,16 +19,17 @@ from __future__ import print_function
 
 import collections
 
-from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
+
 
 nest = tf.contrib.framework.nest
 
 
-class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
+class TensorUtilsTest(test.TestCase):
 
   def test_check_nested_equal(self):
     nested_dict = {
@@ -47,8 +48,10 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
         'y': tf.float32,
     }
     nested_shapes = {
-        'x': [tf.TensorShape([1]), tf.TensorShape([None])],
-        'y': tf.TensorShape([1]),
+        # N.B. tf.TensorShape([None]) == tf.TensorShape([None])
+        # returns False, so we can't use a None shape here.
+        'x': [[1], [3, 5]],
+        'y': [1],
     }
 
     # Should not raise an exception.
@@ -85,18 +88,14 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
     with self.assertRaises(ValueError):
       tensor_utils.check_nested_equal(nested_dict, nested_dict_different_value)
 
-    tensor_utils.check_nested_equal([tf.TensorShape(None)],
-                                    [tf.TensorShape(None)])
+    tensor_utils.check_nested_equal([None], [None])
 
-    # Pretend unknown shape tensors cannot be equal.
-    def eq_if_defined(x, y):
-      if x.rank is None or y.rank is None:
-        return False
-      return x.value == y.value
+    def always_neq(x, y):
+      del x, y
+      return False
 
     with self.assertRaises(ValueError):
-      tensor_utils.check_nested_equal([tf.TensorShape(None)],
-                                      [tf.TensorShape(None)], eq_if_defined)
+      tensor_utils.check_nested_equal([1], [1], always_neq)
 
   def test_to_var_dict(self):
     v1 = tf.Variable(0, name='v1')
@@ -123,6 +122,20 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
     with self.assertRaises(TypeError):
       tensor_utils.to_var_dict([tf.constant(1)])
 
+  def test_to_var_dict_preserves_order(self):
+    a = tf.Variable(0, name='a')
+    b = tf.Variable(0, name='b')
+    c = tf.Variable(0, name='c')
+    var_dict = tensor_utils.to_var_dict([c, a, b])
+    self.assertEqual(['c', 'a', 'b'], list(var_dict.keys()))
+
+  def test_to_var_dict_duplicate_names(self):
+    v1 = tf.Variable(0, name='foo')
+    v2 = tf.Variable(0, name='foo')
+    assert v1.name == v2.name
+    with self.assertRaisesRegexp(ValueError, 'multiple.*foo'):
+      tensor_utils.to_var_dict([v1, v2])
+
   def test_to_odict(self):
     d1 = {'b': 2, 'a': 1}
     odict1 = tensor_utils.to_odict(d1)
@@ -138,16 +151,16 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
   def test_zero_all_if_any_non_finite(self):
 
     def expect_ok(structure):
-      tf.reset_default_graph()
-      result, error = tensor_utils.zero_all_if_any_non_finite(structure)
-      with self.session() as sess:
-        result, error = sess.run((result, error))
-      try:
-        nest.map_structure(np.testing.assert_allclose, result, structure)
-      except AssertionError:
-        self.fail('Expected to get input {} back, but instead got {}'.format(
-            structure, result))
-      self.assertEqual(error, 0)
+      with tf.Graph().as_default():
+        result, error = tensor_utils.zero_all_if_any_non_finite(structure)
+        with self.session() as sess:
+          result, error = sess.run((result, error))
+        try:
+          nest.map_structure(np.testing.assert_allclose, result, structure)
+        except AssertionError:
+          self.fail('Expected to get input {} back, but instead got {}'.format(
+              structure, result))
+        self.assertEqual(error, 0)
 
     expect_ok([])
     expect_ok([(), {}])
@@ -156,15 +169,15 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
     expect_ok([1.0, 2.0, {'a': 0.0, 'b': -3.0}])
 
     def expect_zeros(structure, expected):
-      tf.reset_default_graph()
-      result, error = tensor_utils.zero_all_if_any_non_finite(structure)
-      with self.session() as sess:
-        result, error = sess.run((result, error))
-      try:
-        nest.map_structure(np.testing.assert_allclose, result, expected)
-      except AssertionError:
-        self.fail('Expected to get zeros, but instead got {}'.format(result))
-      self.assertEqual(error, 1)
+      with tf.Graph().as_default():
+        result, error = tensor_utils.zero_all_if_any_non_finite(structure)
+        with self.session() as sess:
+          result, error = sess.run((result, error))
+        try:
+          nest.map_structure(np.testing.assert_allclose, result, expected)
+        except AssertionError:
+          self.fail('Expected to get zeros, but instead got {}'.format(result))
+        self.assertEqual(error, 1)
 
     expect_zeros(np.inf, 0.0)
     expect_zeros((1.0, (2.0, np.nan)), (0.0, (0.0, 0.0)))
@@ -192,8 +205,9 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
     self.assertFalse(
         tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar')))
 
+  @test.graph_mode_test
   def test_metrics_sum(self):
-    with self.test_session() as sess:
+    with self.session() as sess:
       v = tf.placeholder(tf.float32)
       sum_tensor, update_op = tensor_utils.metrics_sum(v)
       sess.run(tf.local_variables_initializer())
@@ -242,4 +256,5 @@ class TensorUtilsTest(tf.test.TestCase, absltest.TestCase):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

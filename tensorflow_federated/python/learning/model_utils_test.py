@@ -340,7 +340,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
   def test_keras_model_federated_output_computation(self):
     feature_dims = 3
 
-    def _model_fn():
+    def _make_keras_model():
       keras_model = model_examples.build_linear_regresion_keras_functional_model(
           feature_dims)
       keras_model.compile(
@@ -348,10 +348,16 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
+      return keras_model
+
+    def _model_fn():
       return model_utils.from_compiled_keras_model(
-          keras_model=keras_model,
+          keras_model=_make_keras_model(),
           dummy_batch=_create_dummy_batch(feature_dims))
 
+    # TODO(b/122081673): This should be a @tf.function and the control
+    # dependencies can go away (probably nothing blocking this, but it
+      # just needs to be done and tested).
     @tff.tf_computation()
     def _train_loop():
       tff_model = _model_fn()
@@ -364,9 +370,9 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
           })
           ops = list(batch_output)
       with tf.control_dependencies(ops):
-        return tff_model.report_local_outputs()
+        return (tff_model.report_local_outputs(), tff_model.weights)
 
-    client_local_outputs = _train_loop()
+    client_local_outputs, tff_weights = _train_loop()
 
     # Simulate entering the 'SERVER' context with a new graph.
     tf.keras.backend.clear_session()
@@ -377,6 +383,10 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(aggregated_outputs['num_batches'], 5)
     self.assertEqual(aggregated_outputs['num_examples'], 10)
     self.assertGreater(aggregated_outputs['loss'], 0.0)
+
+    keras_model = _make_keras_model()
+    keras_model.set_weights(
+        model_utils.keras_weights_from_tff_weights(tff_weights))
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.

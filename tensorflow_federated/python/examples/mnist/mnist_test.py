@@ -42,6 +42,15 @@ class MnistTest(tf.test.TestCase):
     server_state = it_process.initialize()
     Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
+    # Test out manually setting weights:
+    keras_model = mnist.create_keras_model(compile_model=True)
+    server_state = tff.learning.state_with_new_model_weights(
+        server_state,
+        trainable_weights=[v.numpy() for v in keras_model.trainable_weights],
+        non_trainable_weights=[
+            v.numpy() for v in keras_model.non_trainable_weights
+        ])
+
     def deterministic_batch():
       return Batch(
           x=np.ones([1, 784], dtype=np.float32),
@@ -50,14 +59,23 @@ class MnistTest(tf.test.TestCase):
     batch = tff.tf_computation(deterministic_batch)()
     federated_data = [[batch]]
 
-    next_state, orig_loss = it_process.next(server_state, federated_data)
+    def keras_evaluate(state):
+      keras_model.set_weights(
+          tff.learning.keras_weights_from_tff_weights(state.model))
+      # N.B. The loss computed here won't match the
+      # loss computed by TFF because of the Dropout layer.
+      keras_model.test_on_batch(batch.x, batch.y)
+
     loss_list = []
-    for _ in range(2):
-      next_state, loss = it_process.next(next_state, federated_data)
+    for _ in range(3):
+      keras_evaluate(server_state)
+      server_state, loss = it_process.next(server_state, federated_data)
       loss_list.append(loss)
-    self.assertLess(np.mean(loss_list), orig_loss)
+    keras_evaluate(server_state)
+
+    self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
 
 if __name__ == '__main__':
-  tf.enable_resource_variables()
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

@@ -87,9 +87,15 @@ class AnonymousTuple(object):
             'element is a string, found {}.'.format(repr(e)))
 
     self._element_array = tuple(e[1] for e in elements)
-    self._name_to_index = {
-        e[0]: idx for idx, e in enumerate(elements) if e[0] is not None
-    }
+    self._name_to_index = {}
+    for idx, e in enumerate(elements):
+      name = e[0]
+      if name is None:
+        continue
+      if name in self._name_to_index:
+        raise ValueError('AnonymousTuple does not support duplicated '
+                         'names, but found ' + str([e[0] for e in elements]))
+      self._name_to_index[name] = idx
     self._hash = None
 
   def __len__(self):
@@ -174,8 +180,32 @@ def to_elements(an_anonymous_tuple):
   # pylint: enable=protected-access
 
 
+def to_odict(anon_tuple):
+  """Returns anon_tuple as an `OrderedDict`, if possible.
+
+  Args:
+    anon_tuple: An `AnonymousTuple`.
+
+  Raises:
+    ValueError: If the anonymous tuple contains unnamed elements.
+
+  Returns:
+    An `OrderedDict`.
+  """
+  py_typecheck.check_type(anon_tuple, AnonymousTuple)
+  elements = to_elements(anon_tuple)
+  for name, _ in elements:
+    if name is None:
+      raise ValueError('Can\'t convert an AnonymousTuple with unnamed '
+                       'entries to an OrderedDict')
+  return collections.OrderedDict(elements)
+
+
 def flatten(structure):
   """Returns a list of values in a possibly recursively nested tuple.
+
+  N.B. This implementation is not compatible with the approach of
+  `tf.contrib.nest.flatten`, which enforces lexical order for `OrderedDict`s.
 
   Args:
     structure: An anonymous tuple, possibly recursively nested, or a non-tuple

@@ -70,8 +70,12 @@ toc:
       path: /federated/api_docs/python/tff/learning/from_compiled_keras_model
     - title: from_keras_model
       path: /federated/api_docs/python/tff/learning/from_keras_model
+    - title: keras_weights_from_tff_weights
+      path: /federated/api_docs/python/tff/learning/keras_weights_from_tff_weights
     - title: Model
       path: /federated/api_docs/python/tff/learning/Model
+    - title: state_with_new_model_weights
+      path: /federated/api_docs/python/tff/learning/state_with_new_model_weights
     - title: TrainableModel
       path: /federated/api_docs/python/tff/learning/TrainableModel
     - title: framework

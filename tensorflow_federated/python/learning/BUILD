@@ -13,6 +13,7 @@ py_library(
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/learning/framework",
+        "//tensorflow_federated/python/learning/framework:optimizer_utils",
     ],
 )
 

@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import collections
 import itertools
-import sys
 
 from six.moves import zip
 import tensorflow as tf
@@ -76,10 +75,60 @@ class ModelWeights(
 
   @classmethod
   def from_model(cls, model):
-    py_typecheck.check_type(model, model_lib.Model)
+    py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
+    # N.B. to_var_dict preserves the order of the variables, which
+    # is critical so we can re-use the list of values e.g. when doing
+    # keras_model.set_weights
     return cls(
         tensor_utils.to_var_dict(model.trainable_variables),
         tensor_utils.to_var_dict(model.non_trainable_variables))
+
+  @classmethod
+  def from_tff_value(cls, anon_tuple):
+    py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
+    return cls(
+        anonymous_tuple.to_odict(anon_tuple.trainable),
+        anonymous_tuple.to_odict(anon_tuple.non_trainable))
+
+  @property
+  def keras_weights(self):
+    """Returns a list of weights in the same order as `tf.keras.Model.weights`.
+
+    (Assuming that this ModelWeights object corresponds to the weights of
+    a keras model).
+    """
+    return list(self.trainable.values()) + list(self.non_trainable.values())
+
+
+def keras_weights_from_tff_weights(tff_weights):
+  """Converts TFF's nested weights structure to flat weights.
+
+  This function may be used, for example, to retrieve the model parameters
+  trained by the federated averaging process for use in an existing
+  keras model, e.g.:
+
+  ```
+  fed_avg = tff.learning.build_federated_averaging_process(...)
+  state = fed_avg.initialize()
+  state = fed_avg.next(state, ...)
+  ...
+  keras_model.set_weights(
+      tff.learning.keras_weights_from_tff_weights(state.model))
+  ```
+
+  Args:
+    tff_weights: A TFF value representing the weights of a model.
+
+  Returns:
+    A list of tensors suitable for passing to `tf.keras.Model.set_weights`.
+  """
+  # TODO(b/123092620): Simplify this.
+  py_typecheck.check_type(tff_weights, (anonymous_tuple.AnonymousTuple,
+                                        ModelWeights))
+  if isinstance(tff_weights, anonymous_tuple.AnonymousTuple):
+    return list(tff_weights.trainable) + list(tff_weights.non_trainable)
+  else:
+    return tff_weights.keras_weights
 
 
 def from_keras_model(keras_model,
@@ -197,12 +246,12 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
     except TypeError as e:
       # Re-raise the error with a more helpful message, but the previous stack
       # trace.
-      raise (TypeError,
-             TypeError(
-                 'Caught expection trying to call `{t}.from_config()` with '
-                 'config {c}. Confirm that {t}.__init__() has an argument for '
-                 'each member of the config.\nException: {e}'.format(
-                     t=metric_type, c=metric_config, e=e)), sys.exc_info()[2])
+      raise TypeError(
+          'Caught expection trying to call `{t}.from_config()` with '
+          'config {c}. Confirm that {t}.__init__() has an argument for '
+          'each member of the config.\nException: {e}'.format(
+              t=metric_type, c=metric_config, e=e))
+
     assignments = []
     for v, a in zip(keras_metric.variables, accumulators):
       assignments.append(tf.assign(v, a))

@@ -37,6 +37,7 @@ py_test(
     # TODO(b/123578208): Remove deep keras/optimizer_v2 imports after updating TF version.
     deps = [
         ":optimizer_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_examples",

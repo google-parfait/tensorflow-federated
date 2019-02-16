@@ -40,6 +40,7 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(x, anonymous_tuple.AnonymousTuple([]))
     self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([('foo', 10)]))
     self.assertEqual(anonymous_tuple.to_elements(x), v)
+    self.assertEqual(anonymous_tuple.to_odict(x), collections.OrderedDict())
     self.assertEqual(repr(x), 'AnonymousTuple([])')
     self.assertEqual(str(x), '<>')
 
@@ -60,6 +61,8 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(anonymous_tuple.to_elements(x), v)
     self.assertEqual(repr(x), 'AnonymousTuple([(None, 10)])')
     self.assertEqual(str(x), '<10>')
+    with self.assertRaisesRegexp(ValueError, 'unnamed'):
+      anonymous_tuple.to_odict(x)
 
   def test_single_named(self):
     v = [('foo', 20)]
@@ -80,6 +83,8 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(anonymous_tuple.to_elements(x), v)
     self.assertEqual(repr(x), 'AnonymousTuple([(foo, 20)])')
     self.assertEqual(str(x), '<foo=20>')
+    self.assertEqual(anonymous_tuple.to_odict(x),
+                     collections.OrderedDict(v))
 
   def test_multiple_named_and_unnamed(self):
     v = [(None, 10), ('foo', 20), ('bar', 30)]
@@ -104,6 +109,13 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
+    with self.assertRaisesRegexp(ValueError, 'unnamed'):
+      anonymous_tuple.to_odict(x)
+
+  def test_duplicated_names(self):
+    v = [('foo', 20), ('foo', 30)]
+    with self.assertRaisesRegexp(ValueError, 'duplicated.*foo'):
+      anonymous_tuple.AnonymousTuple(v)
 
   def test_immutable(self):
     v = [('foo', 'a string'), ('bar', 1), ('baz', [1.0, 2.0, 3.0])]
