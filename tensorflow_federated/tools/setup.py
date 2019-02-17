@@ -41,7 +41,7 @@ REQUIRED_PACKAGES = [
     'h5py',
     'numpy',
     'six',
-    'tensorflow>=1.13.0rc0',
+    'tensorflow>=1.13.0rc2',
 ]
 
 setuptools.setup(
