@@ -756,3 +756,30 @@ def are_equivalent_types(type1, type2):
   else:
     return type2 is not None and (is_assignable_from(type1, type2) and
                                   is_assignable_from(type2, type1))
+
+
+def get_more_general_type(type1, type2):
+  """Returns the more general of the two types.
+
+  Args:
+    type1: One type.
+    type2: Another type.
+
+  Returns:
+    The one of the two types that is assignable from the other.
+
+  Raises:
+    TypeError: If neither type is assignable from the other, or if either of
+      them is `None`.
+  """
+  type1 = computation_types.to_type(type1)
+  type2 = computation_types.to_type(type2)
+  if type1 is None or type2 is None:
+    raise TypeError('The two types bneing compared must be defined.')
+  if is_assignable_from(type1, type2):
+    return type1
+  elif is_assignable_from(type2, type1):
+    return type2
+  else:
+    raise TypeError('Neither of the two types {} and {} is assignable from '
+                    'the other.'.format(str(type1), str(type2)))

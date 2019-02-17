@@ -644,6 +644,8 @@ class ReferenceExecutor(context_base.Context):
             self._federated_zip_at_clients,
         intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri:
             self._federated_zip_at_server,
+        intrinsic_defs.GENERIC_MINUS.uri:
+            self._generic_minus,
         intrinsic_defs.GENERIC_PLUS.uri:
             self._generic_plus,
         intrinsic_defs.GENERIC_ZERO.uri:
@@ -985,36 +987,93 @@ class ReferenceExecutor(context_base.Context):
           'Generic zero support for {} is not implemented yet.'.format(
               str(type_spec)))
 
+  def _generic_minus(self, arg):
+    return self._generic_pointwise_binary_operator(arg, lambda x, y: x - y,
+                                                   'minus')
+
   def _generic_plus(self, arg):
+    return self._generic_pointwise_binary_operator(arg, lambda x, y: x + y,
+                                                   'plus')
+
+  def _generic_pointwise_binary_operator(self, arg, op, op_name):
+    """Implements binary operators to apply pointwise at the tensor level.
+
+    The pointwise application is currently only supported for types that are
+    composed of tensor, named tuple, and federated type definition constituents.
+
+    Args:
+      arg: The argument 2-tuple.
+      op: A callable to be applied to tensor-level values that takes a pair of
+        unwrapped arguments and returns a single result of the same type, such
+        as `lambda x, y: x + y`.
+      op_name: The name of the operator to use in error reporting.
+
+    Returns:
+      The result of pointwise application of `op` on `arg`.
+
+    Raises:
+      TypeError: If the arguments are of the wrong types.
+      RuntimeError: If the arguments cannot be combined even though they appear
+        to be of compatible types.
+    """
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
     if len(arg.type_signature) != 2:
-      raise TypeError('Generic plus is undefined for tuples of size {}.'.format(
-          str(len(arg.type_signature))))
+      raise TypeError('Generic {} is undefined for tuples of size {}.'.format(
+          op_name, str(len(arg.type_signature))))
     element_type = arg.type_signature[0]
     if arg.type_signature[1] != element_type:
-      raise TypeError('Generic plus is undefined for two-tuples of different '
-                      'types ({} vs. {}).'.format(
-                          str(element_type), str(arg.type_signature[1])))
+      raise TypeError('Generic {} is undefined for two-tuples of different '
+                      'types ({} vs. {}).'.format(op_name, str(element_type),
+                                                  str(arg.type_signature[1])))
     if isinstance(element_type, computation_types.TensorType):
-      return ComputedValue(arg.value[0] + arg.value[1], element_type)
+      return ComputedValue(op(arg.value[0], arg.value[1]), element_type)
     elif isinstance(element_type, computation_types.NamedTupleType):
       py_typecheck.check_type(arg.value[0], anonymous_tuple.AnonymousTuple)
       py_typecheck.check_type(arg.value[1], anonymous_tuple.AnonymousTuple)
       result_val_elements = []
       for idx, (name, elem_type) in enumerate(
           anonymous_tuple.to_elements(element_type)):
-        to_add = ComputedValue(
+        to_combine = ComputedValue(
             anonymous_tuple.AnonymousTuple([(None, arg.value[0][idx]),
                                             (None, arg.value[1][idx])]),
             [elem_type, elem_type])
-        add_result = self._generic_plus(to_add)
-        result_val_elements.append((name, add_result.value))
+        combine_result = self._generic_pointwise_binary_operator(
+            to_combine, op, op_name)
+        result_val_elements.append((name, combine_result.value))
       return ComputedValue(
           anonymous_tuple.AnonymousTuple(result_val_elements), element_type)
+    elif isinstance(element_type, computation_types.FederatedType):
+      if element_type.all_equal:
+        to_combine = ComputedValue(
+            anonymous_tuple.AnonymousTuple([(None, arg.value[0]),
+                                            (None, arg.value[1])]),
+            [element_type.member, element_type.member])
+        combine_result = self._generic_pointwise_binary_operator(
+            to_combine, op, op_name)
+        return ComputedValue(combine_result.value, element_type)
+      else:
+        py_typecheck.check_type(arg.value[0], list)
+        py_typecheck.check_type(arg.value[1], list)
+        if len(arg.value[0]) != len(arg.value[1]):
+          raise RuntimeError(
+              'Two values of the same federated type but different cardinality '
+              'encountered: {} vs. {}.'.format(
+                  str(arg.value[0]), str(arg.value[1])))
+        result_val = []
+        member_tuple = computation_types.to_type(
+            [element_type.member, element_type.member])
+        for x, y in zip(arg.value[0], arg.value[1]):
+          to_combine = ComputedValue(
+              anonymous_tuple.AnonymousTuple([(None, x), (None, y)]),
+              member_tuple)
+          combine_result = self._generic_pointwise_binary_operator(
+              to_combine, op, op_name)
+          result_val.append(combine_result.value)
+        return ComputedValue(result_val, element_type)
     else:
-      # TODO(b/113116813): Implement the remaining cases.
-      raise NotImplementedError
+      raise TypeError('Generic {} for elements of type {} is not currently '
+                      'supported.'.format(op_name, str(element_type)))
 
   def _sequence_map(self, arg):
     mapping_type = arg.type_signature[0]

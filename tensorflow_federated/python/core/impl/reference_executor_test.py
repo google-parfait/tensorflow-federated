@@ -1090,6 +1090,120 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(sum_of_square_errors(10, [11, 8, 13]), 14)
 
+  def test_generic_plus_and_minus_with_int_scalar_tensors(self):
+    element_type = tf.int32
+
+    @computations.federated_computation(element_type, element_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(element_type, element_type)
+    def minus(x, y):
+      return x - y
+
+    self.assertEqual(plus(10, 20), 30)
+    self.assertEqual(minus(10, 20), -10)
+
+  def test_generic_plus_and_minus_with_float_vector_tensors(self):
+    element_type = (tf.float32, [2])
+
+    @computations.federated_computation(element_type, element_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(element_type, element_type)
+    def minus(x, y):
+      return x - y
+
+    np.testing.assert_array_almost_equal(
+        plus(
+            np.array([0.1, 0.2], dtype=np.float32),
+            np.array([0.3, 0.4], dtype=np.float32)),
+        np.array([0.4, 0.6], dtype=np.float32))
+
+    np.testing.assert_array_almost_equal(
+        minus(
+            np.array([0.1, 0.2], dtype=np.float32),
+            np.array([0.3, 0.4], dtype=np.float32)),
+        np.array([-0.2, -0.2], dtype=np.float32))
+
+  def test_generic_plus_and_minus_with_named_tuples(self):
+    element_type = [('a', tf.int32), ('b', [('c', tf.float32)])]
+
+    @computations.federated_computation(element_type, element_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(element_type, element_type)
+    def minus(x, y):
+      return x - y
+
+    plus_val = plus({'a': 10, 'b': {'c': 20.0}}, {'a': 30, 'b': {'c': 40.0}})
+    self.assertEqual(str(plus_val), '<a=40,b=<c=60.0>>')
+    minus_val = minus({'a': 10, 'b': {'c': 20.0}}, {'a': 30, 'b': {'c': 40.0}})
+    self.assertEqual(str(minus_val), '<a=-20,b=<c=-20.0>>')
+
+  def test_generic_plus_and_minus_with_federated_int_on_server_types(self):
+    element_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER, all_equal=True)
+
+    @computations.federated_computation(element_type, element_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(element_type, element_type)
+    def minus(x, y):
+      return x - y
+
+    self.assertEqual(plus(10, 20), 30)
+    self.assertEqual(minus(10, 20), -10)
+
+  def test_generic_plus_and_minus_with_federated_int_on_clients_types(self):
+    element_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+
+    @computations.federated_computation(element_type, element_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(element_type, element_type)
+    def minus(x, y):
+      return x - y
+
+    self.assertEqual(plus([1, 2], [3, 4]), [4, 6])
+    self.assertEqual(minus([1, 2], [3, 4]), [-2, -2])
+
+  def test_generic_plus_and_minus_with_int_on_clients_all_equal_on_left(self):
+    left_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    right_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+
+    @computations.federated_computation(left_type, right_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(left_type, right_type)
+    def minus(x, y):
+      return x - y
+
+    self.assertEqual(plus(1, [2, 3]), [3, 4])
+    self.assertEqual(minus(1, [2, 3]), [-1, -2])
+
+  def test_generic_plus_and_minus_with_int_on_clients_all_equal_on_right(self):
+    left_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    right_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+
+    @computations.federated_computation(left_type, right_type)
+    def plus(x, y):
+      return x + y
+
+    @computations.federated_computation(left_type, right_type)
+    def minus(x, y):
+      return x - y
+
+    self.assertEqual(plus([1, 2], 3), [4, 5])
+    self.assertEqual(minus([1, 2], 3), [-2, -1])
+
 
 if __name__ == '__main__':
   # We need to be able to individually test all components of the executor, and

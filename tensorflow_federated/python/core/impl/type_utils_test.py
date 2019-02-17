@@ -843,6 +843,25 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertRaises(TypeError, type_utils.check_federated_type, type_spec,
                       None, None, True)
 
+  def test_get_more_general_type(self):
+    t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    t2 = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    t3 = computation_types.FederatedType(
+        tf.int32, placements.SERVER, all_equal=True)
+    self.assertEqual(
+        str(type_utils.get_more_general_type(t1, t2)), '{int32}@CLIENTS')
+    self.assertEqual(
+        str(type_utils.get_more_general_type(t2, t1)), '{int32}@CLIENTS')
+    with self.assertRaises(TypeError):
+      type_utils.get_more_general_type(t1, t3)
+    with self.assertRaises(TypeError):
+      type_utils.get_more_general_type(t3, t1)
+    with self.assertRaises(TypeError):
+      type_utils.get_more_general_type(t1, None)
+    with self.assertRaises(TypeError):
+      type_utils.get_more_general_type(None, t1)
+
 
 if __name__ == '__main__':
   tf.test.main()

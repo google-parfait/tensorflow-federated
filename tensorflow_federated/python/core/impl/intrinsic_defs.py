@@ -371,6 +371,17 @@ FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
 # to support intrinsic reductions (see the uses in intrinsic_bodies.py for
 # the motivation and usage in support of which we need to define semantics).
 
+# Generic minus operator that accepts a variety of types in federated
+# computation context. The range of types 'T' supported is the same as for the
+# GENERIC_PLUS. It should work in a natural manner for tensors, tuples,
+# federated types, possibly sequences, and maybe even functions (although it's
+# unclear if such generality is desirable).
+#
+# Type signature: <T,T> -> T
+GENERIC_MINUS = IntrinsicDef(
+    'GENERIC_MINUS', 'generic_minus',
+    type_constructors.binary_op(computation_types.AbstractType('T')))
+
 # Generic plus operator that accepts a variety of types in federated computation
 # context. The range of types 'T' supported to be defined. It should work in a
 # natural manner for tensors, tuples, federated types, possibly sequences, and

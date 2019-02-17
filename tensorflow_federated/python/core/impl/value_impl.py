@@ -191,17 +191,28 @@ class ValueImpl(value_base.Value):
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
-    if not type_utils.are_equivalent_types(self.type_signature,
-                                           other.type_signature):
-      raise TypeError('Cannot add {} and {}.'.format(
-          str(self.type_signature), str(other.type_signature)))
+    result_type = type_utils.get_more_general_type(self.type_signature,
+                                                   other.type_signature)
     return ValueImpl(
         computation_building_blocks.Call(
             computation_building_blocks.Intrinsic(
                 intrinsic_defs.GENERIC_PLUS.uri,
-                computation_types.FunctionType(
-                    [self.type_signature, self.type_signature],
-                    self.type_signature)),
+                computation_types.FunctionType([result_type, result_type],
+                                               result_type)),
+            ValueImpl.get_comp(
+                to_value([self, other], None, self._context_stack))),
+        self._context_stack)
+
+  def __sub__(self, other):
+    other = to_value(other, None, self._context_stack)
+    result_type = type_utils.get_more_general_type(self.type_signature,
+                                                   other.type_signature)
+    return ValueImpl(
+        computation_building_blocks.Call(
+            computation_building_blocks.Intrinsic(
+                intrinsic_defs.GENERIC_MINUS.uri,
+                computation_types.FunctionType([result_type, result_type],
+                                               result_type)),
             ValueImpl.get_comp(
                 to_value([self, other], None, self._context_stack))),
         self._context_stack)
