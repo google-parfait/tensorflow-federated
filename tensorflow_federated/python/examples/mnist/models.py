@@ -39,9 +39,11 @@ def create_simple_keras_model(learning_rate=0.1):
       tf.keras.layers.Flatten(input_shape=(784,)),
       tf.keras.layers.Dense(10, tf.nn.softmax, kernel_initializer='zeros')
   ])
+
   def loss_fn(y_true, y_pred):
-    return tf.reduce_mean(tf.keras.metrics.sparse_categorical_crossentropy(
-        y_true, y_pred))
+    return tf.reduce_mean(
+        tf.keras.metrics.sparse_categorical_crossentropy(y_true, y_pred))
+
   model.compile(
       loss=loss_fn,
       optimizer=gradient_descent.SGD(learning_rate),

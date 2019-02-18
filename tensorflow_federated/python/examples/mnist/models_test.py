@@ -79,20 +79,21 @@ class MnistTest(tf.test.TestCase):
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
   def test_self_contained_example(self):
-    emnist_batch = collections.OrderedDict([
-        ('label', 5), ('pixels', np.random.rand(28, 28))])
+    emnist_batch = collections.OrderedDict([('label', 5),
+                                            ('pixels', np.random.rand(28, 28))])
 
-    output_types = collections.OrderedDict([
-        ('label', tf.int32), ('pixels', tf.float32)])
+    output_types = collections.OrderedDict([('label', tf.int32),
+                                            ('pixels', tf.float32)])
 
-    output_shapes = collections.OrderedDict([
-        ('label', tf.TensorShape([])), ('pixels', tf.TensorShape([28, 28]))])
+    output_shapes = collections.OrderedDict([('label', tf.TensorShape([])),
+                                             ('pixels', tf.TensorShape([28,
+                                                                        28]))])
 
     def generate_one_emnist_batch():
       yield emnist_batch
 
-    dataset = tf.data.Dataset.from_generator(
-        generate_one_emnist_batch, output_types, output_shapes)
+    dataset = tf.data.Dataset.from_generator(generate_one_emnist_batch,
+                                             output_types, output_shapes)
 
     def client_data():
       return models.keras_dataset_from_emnist(dataset).repeat(10).batch(20)
