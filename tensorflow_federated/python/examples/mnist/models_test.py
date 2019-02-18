@@ -99,7 +99,7 @@ class MnistTest(tf.test.TestCase):
 
     train_data = [client_data()]
     sample_batch = tf.contrib.framework.nest.map_structure(
-        lambda x: x.numpy(), iter(train_data[0]).next())
+        lambda x: x.numpy(), next(iter(train_data[0])))
 
     def model_fn():
       return tff.learning.from_compiled_keras_model(
