@@ -451,6 +451,19 @@ class TransformationUtilsTest(parameterized.TestCase):
       transformation_utils.transform_postorder_with_symbol_bindings(
           dummy_comp, transform, None)
 
+  def test_transform_postorder_with_symbol_bindings_fails_on_none_locals_filter(
+      self):
+    empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
+    dummy_comp = computation_building_blocks.Reference('x', tf.int32)
+
+    def transform(comp, ctxt_tree):
+      del ctxt_tree
+      return comp
+
+    with self.assertRaises(TypeError):
+      transformation_utils.transform_postorder_with_symbol_bindings(
+          dummy_comp, transform, empty_context_tree, None)
+
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
       [('complex_ast', _construct_nested_tree())])

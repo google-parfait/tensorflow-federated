@@ -541,3 +541,54 @@ def _is_identity_function(comp):
   return (isinstance(comp, computation_building_blocks.Lambda) and
           isinstance(comp.result, computation_building_blocks.Reference) and
           comp.parameter_name == comp.result.name)
+
+
+def inline_locals_referenced_once(comp):
+  """Inlines any local variable in a `Block` which is referenced only once.
+
+  Removes any unreferenced locals in `Block` definitions.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      representing the root of the AST whose block locals we want to check for
+      inlining.
+
+  Returns:
+    Returns a possibly modified version of `comp`.
+  """
+
+  def transform(comp, symbol_tree):
+    """Inlines references and updates block locals declarations.
+
+    Replaces instances of `computation_building_blocks.Reference` with their
+    bound value if referenced once.
+
+    Args:
+      comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+        whose block locals we wish to inline.
+      symbol_tree: Instance of `transformation_utils.SymbolTree` with nodes of
+        class `transformation_utils.ReferenceCounter`, providing counts of all
+        bound variables in the scope available to `comp`.
+
+    Returns:
+      A possibly modified version of `comp`.
+    """
+    if isinstance(comp, computation_building_blocks.Reference):
+      payload = symbol_tree.get_payload_with_name(comp.name)
+      if payload.count <= 1 and payload.value is not None:
+        return payload.value
+    return comp
+
+  def locals_filter(name, symbol_tree):
+    """Discards locals referenced less than twice in the block."""
+    payload = symbol_tree.get_payload_with_name(name)
+    if payload.count <= 1:
+      return False
+    return True
+
+  count_of_references = transformation_utils.get_count_of_references_to_variables(
+      comp)
+  inlined = transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, transform, count_of_references, locals_filter)
+
+  return inlined

@@ -87,6 +87,30 @@ def _create_called_federated_aggregate(value, zero, accumulate, merge, report):
   return computation_building_blocks.Call(intrinsic, arg)
 
 
+def _create_noop_block(type_signature):
+  r"""Creates a block representing a noop on a data node of type `tff_type`.
+
+         Block
+        /     \
+    Data       Ref
+
+  Args:
+    type_signature: Argument convertible to `computation_types.Type` via
+      `computation_types.to_type`.
+
+  Returns:
+    A `computation_building_blocks.Block` representing data object of name
+      `data` and type `tff_type`.
+
+  Raises:
+    TypeError: If `tff_type` is not convertible to `computation_types.Type`.
+  """
+  tff_type = computation_types.to_type(type_signature)
+  data = computation_building_blocks.Data('data', tff_type)
+  ref = computation_building_blocks.Reference('x', tff_type)
+  return computation_building_blocks.Block([('x', data)], ref)
+
+
 def _create_called_federated_apply(fn, arg):
   r"""Creates a to call a federated apply.
 
@@ -1125,32 +1149,89 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.tff_repr, '<dummy(x),dummy(x)>')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_inline_conflicting_lambdas(self):
-    comp = computation_building_blocks.Tuple(
-        [computation_building_blocks.Data('test', tf.int32)])
-    input1 = computation_building_blocks.Reference('input2',
-                                                   comp.type_signature)
-    first_level_call = computation_building_blocks.Call(
-        computation_building_blocks.Lambda('input2', input1.type_signature,
-                                           input1), comp)
-    input2 = computation_building_blocks.Reference(
-        'input2', first_level_call.type_signature)
-    second_level_call = computation_building_blocks.Call(
-        computation_building_blocks.Lambda('input2', input2.type_signature,
-                                           input2), first_level_call)
-    self.assertEqual(
-        str(second_level_call),
-        '(input2 -> input2)((input2 -> input2)(<test>))')
-    lambda_reduced_comp = transformations.replace_called_lambda_with_block(
-        second_level_call)
-    self.assertEqual(
-        str(lambda_reduced_comp),
-        '(let input2=(let input2=<test> in input2) in input2)')
+  def test_inline_locals_referenced_once_inlines_simple_block(self):
+    simple_block = _create_noop_block(tf.int32)
+    self.assertEqual(simple_block.tff_repr, '(let x=data in x)')
     inlined = transformations.inline_blocks_with_n_referenced_locals(
-        lambda_reduced_comp)
-    self.assertEqual(str(inlined), '(let  in (let  in <test>))')
+        simple_block)
+    self.assertEqual(inlined.tff_repr, '(let  in data)')
+    alt_inlined = transformations.inline_locals_referenced_once(simple_block)
+    self.assertEqual(alt_inlined.tff_repr, inlined.tff_repr)
 
-  def test_inline_conflicting_locals(self):
+  def test_inline_locals_referenced_noops_if_referenced_twice(self):
+    simple_block = _create_noop_block(tf.int32)
+    result_tuple = computation_building_blocks.Tuple([simple_block.result] * 2)
+    block_wrapping_tuple = computation_building_blocks.Block(
+        simple_block.locals, result_tuple)
+    self.assertEqual(block_wrapping_tuple.tff_repr, '(let x=data in <x,x>)')
+    inlined = transformations.inline_blocks_with_n_referenced_locals(
+        block_wrapping_tuple)
+    self.assertEqual(inlined.tff_repr, block_wrapping_tuple.tff_repr)
+    alt_inlined = transformations.inline_locals_referenced_once(
+        block_wrapping_tuple)
+    self.assertEqual(alt_inlined.tff_repr, inlined.tff_repr)
+
+  def test_inlining_n_referenced_locals_inlines_variable_referenced_twice_if_asked(
+      self):
+    simple_block = _create_noop_block(tf.int32)
+    result_tuple = computation_building_blocks.Tuple([simple_block.result] * 2)
+    block_wrapping_tuple = computation_building_blocks.Block(
+        simple_block.locals, result_tuple)
+    self.assertEqual(block_wrapping_tuple.tff_repr, '(let x=data in <x,x>)')
+    inlined = transformations.inline_blocks_with_n_referenced_locals(
+        block_wrapping_tuple, 2)
+    self.assertEqual(inlined.tff_repr, '(let  in <data,data>)')
+
+  def test_inline_locals_referenced_once_propogates_name_out_of_locals_block(
+      self):
+    simple_block = _create_noop_block(tf.int32)
+    simple_block_local_name = simple_block.locals[0][0]
+    outer_block_result = computation_building_blocks.Reference(
+        simple_block_local_name, simple_block.type_signature)
+    conflicting_name_outer_block = computation_building_blocks.Block(
+        [(simple_block.locals[0][0], simple_block)], outer_block_result)
+    self.assertEqual(
+        str(conflicting_name_outer_block), '(let x=(let x=data in x) in x)')
+    inlined = transformations.inline_blocks_with_n_referenced_locals(
+        conflicting_name_outer_block)
+    self.assertEqual(str(inlined), '(let  in (let  in data))')
+    alt_inlined = transformations.inline_locals_referenced_once(
+        conflicting_name_outer_block)
+    self.assertEqual(str(alt_inlined), str(inlined))
+
+  def test_inline_locals_referenced_once_propogates_name_into_result_block(
+      self):
+    used_ref = computation_building_blocks.Reference('used_ref', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    ref = computation_building_blocks.Reference('x', used_ref.type_signature)
+    lower_block = computation_building_blocks.Block([('x', used_ref)], ref)
+    higher_block = computation_building_blocks.Block([('used_ref', data)],
+                                                     lower_block)
+    inlined = transformations.inline_blocks_with_n_referenced_locals(
+        higher_block)
+    self.assertEqual(
+        str(higher_block), '(let used_ref=data in (let x=used_ref in x))')
+    self.assertEqual(str(inlined), '(let  in (let  in data))')
+    alt_inlined = transformations.inline_locals_referenced_once(higher_block)
+    self.assertEqual(str(alt_inlined), str(inlined))
+
+  def test_inline_locals_referenced_once_resolves_conflicting_name_in_higher_scope(
+      self):
+    lower_block = _create_noop_block(tf.bool)
+    red_herring_arg = computation_building_blocks.Data(
+        'redherring', lower_block.locals[0][1].type_signature)
+    higher_block = computation_building_blocks.Block([('x', red_herring_arg)],
+                                                     lower_block)
+    self.assertEqual(
+        str(higher_block), '(let x=redherring in (let x=data in x))')
+    inlined = transformations.inline_blocks_with_n_referenced_locals(
+        higher_block)
+    self.assertEqual(str(inlined), '(let  in (let  in data))')
+    alt_inlined = transformations.inline_locals_referenced_once(higher_block)
+    self.assertEqual(str(alt_inlined), str(inlined))
+
+  def test_inline_locals_referenced_once_if_block_local_uses_and_overwrites_bound_variable(
+      self):
     arg_comp = computation_building_blocks.Reference('arg',
                                                      [tf.int32, tf.int32])
     selected = computation_building_blocks.Selection(arg_comp, index=0)
@@ -1161,101 +1242,44 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(str(lam), '(arg -> (let arg=arg[0] in arg))')
     inlined = transformations.inline_blocks_with_n_referenced_locals(lam)
     self.assertEqual(str(inlined), '(arg -> (let  in arg[0]))')
+    alt_inlined = transformations.inline_locals_referenced_once(lam)
+    self.assertEqual(str(alt_inlined), str(inlined))
 
-  def test_simple_block_inlining(self):
-    test_arg = computation_building_blocks.Data('test_data', tf.int32)
-    result = computation_building_blocks.Reference('test_x',
-                                                   test_arg.type_signature)
-    simple_block = computation_building_blocks.Block([('test_x', test_arg)],
-                                                     result)
-    self.assertEqual(str(simple_block), '(let test_x=test_data in test_x)')
-    inlined = transformations.inline_blocks_with_n_referenced_locals(
-        simple_block)
-    self.assertEqual(str(inlined), '(let  in test_data)')
-
-  def test_no_inlining_if_referenced_twice(self):
-    test_arg = computation_building_blocks.Data('test_data', tf.int32)
-    ref1 = computation_building_blocks.Reference('test_x',
-                                                 test_arg.type_signature)
-    ref2 = computation_building_blocks.Reference('test_x',
-                                                 test_arg.type_signature)
-    result = computation_building_blocks.Tuple([ref1, ref2])
-    simple_block = computation_building_blocks.Block([('test_x', test_arg)],
-                                                     result)
-    self.assertEqual(
-        str(simple_block), '(let test_x=test_data in <test_x,test_x>)')
-    inlined = transformations.inline_blocks_with_n_referenced_locals(
-        simple_block)
-    self.assertEqual(str(inlined), str(simple_block))
-
-  def test_inlining_n_2(self):
-    test_arg = computation_building_blocks.Data('test_data', tf.int32)
-    ref1 = computation_building_blocks.Reference('test_x',
-                                                 test_arg.type_signature)
-    ref2 = computation_building_blocks.Reference('test_x',
-                                                 test_arg.type_signature)
-    result = computation_building_blocks.Tuple([ref1, ref2])
-    simple_block = computation_building_blocks.Block([('test_x', test_arg)],
-                                                     result)
-    self.assertEqual(
-        str(simple_block), '(let test_x=test_data in <test_x,test_x>)')
-    inlined = transformations.inline_blocks_with_n_referenced_locals(
-        simple_block, 2)
-    self.assertEqual(str(inlined), '(let  in <test_data,test_data>)')
-
-  def test_conflicting_name_resolved_inlining(self):
-    red_herring_arg = computation_building_blocks.Reference(
-        'redherring', tf.int32)
-    used_arg = computation_building_blocks.Reference('used', tf.int32)
-    ref = computation_building_blocks.Reference('x', used_arg.type_signature)
-    lower_block = computation_building_blocks.Block([('x', used_arg)], ref)
-    higher_block = computation_building_blocks.Block([('x', red_herring_arg)],
-                                                     lower_block)
-    self.assertEqual(
-        str(higher_block), '(let x=redherring in (let x=used in x))')
-    inlined = transformations.inline_blocks_with_n_referenced_locals(
-        higher_block)
-    self.assertEqual(str(inlined), '(let  in (let  in used))')
-
-  def test_multiple_inline_for_nested_block(self):
-    used1 = computation_building_blocks.Reference('used1', tf.int32)
-    used2 = computation_building_blocks.Reference('used2', tf.int32)
-    ref = computation_building_blocks.Reference('x', used1.type_signature)
-    lower_block = computation_building_blocks.Block([('x', used1)], ref)
-    higher_block = computation_building_blocks.Block([('used1', used2)],
-                                                     lower_block)
-    inlined = transformations.inline_blocks_with_n_referenced_locals(
-        higher_block)
-    self.assertEqual(
-        str(higher_block), '(let used1=used2 in (let x=used1 in x))')
-    self.assertEqual(str(inlined), '(let  in (let  in used2))')
-    user_inlined_lower_block = computation_building_blocks.Block([('x', used1)],
-                                                                 used1)
-    user_inlined_higher_block = computation_building_blocks.Block(
-        [('used1', used2)], user_inlined_lower_block)
-    self.assertEqual(
-        str(user_inlined_higher_block),
-        '(let used1=used2 in (let x=used1 in used1))')
-    inlined_noop = transformations.inline_blocks_with_n_referenced_locals(
-        user_inlined_higher_block)
-    self.assertEqual(str(inlined_noop), '(let used1=used2 in (let  in used1))')
-
-  def test_conflicting_nested_name_inlining(self):
-    innermost = computation_building_blocks.Reference('x', tf.int32)
-    intermediate_arg = computation_building_blocks.Reference('y', tf.int32)
-    item2 = computation_building_blocks.Block([('x', intermediate_arg)],
-                                              innermost)
-    item1 = computation_building_blocks.Reference('x', tf.int32)
-    mediate_tuple = computation_building_blocks.Tuple([item1, item2])
-    used = computation_building_blocks.Reference('used', tf.int32)
-    used1 = computation_building_blocks.Reference('used1', tf.int32)
+  def test_inline_locals_referenced_once_inlines_differently_in_different_scopes(
+      self):
+    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    y_ref = computation_building_blocks.Reference('y', tf.int32)
+    lower_block = computation_building_blocks.Block([('x', y_ref)], x_ref)
+    middle_tuple = computation_building_blocks.Tuple([x_ref, lower_block])
+    used = computation_building_blocks.Data('used', tf.int32)
+    used1 = computation_building_blocks.Data('used1', tf.int32)
     outer_block = computation_building_blocks.Block([('x', used), ('y', used1)],
-                                                    mediate_tuple)
+                                                    middle_tuple)
     self.assertEqual(
         str(outer_block), '(let x=used,y=used1 in <x,(let x=y in x)>)')
     inlined = transformations.inline_blocks_with_n_referenced_locals(
         outer_block)
     self.assertEqual(str(inlined), '(let  in <used,(let  in used1)>)')
+    alt_inlined = transformations.inline_locals_referenced_once(outer_block)
+    self.assertEqual(str(alt_inlined), str(inlined))
+
+  def test_inline_locals_referenced_once_resolves_sequential_binding_in_block_locals(
+      self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    data_a = computation_building_blocks.Data('a', tf.int32)
+    data_b = computation_building_blocks.Data('b', tf.int32)
+    tuple_with_b = computation_building_blocks.Tuple([ref_to_x, data_b])
+    redefined_x = computation_building_blocks.Reference(
+        'x', tuple_with_b.type_signature)
+    data_c = computation_building_blocks.Data('c', tf.int32)
+    tuple_with_c = computation_building_blocks.Tuple([redefined_x, data_c])
+    flattened_block = computation_building_blocks.Block([('x', data_a),
+                                                         ('x', tuple_with_b),
+                                                         ('x', tuple_with_c)],
+                                                        ref_to_x)
+    self.assertEqual(flattened_block.tff_repr, '(let x=a,x=<x,b>,x=<x,c> in x)')
+    inlined = transformations.inline_locals_referenced_once(flattened_block)
+    self.assertEqual(inlined.tff_repr, '(let  in <<a,b>,c>)')
 
 
 if __name__ == '__main__':
