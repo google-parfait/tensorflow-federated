@@ -118,7 +118,8 @@ def create_keras_model(compile_model=False):
     # the loss is a scalar.
     def loss_fn(y_true, y_pred):
       return tf.reduce_mean(
-          tf.keras.metrics.sparse_categorical_crossentropy(y_true, y_pred))
+          tf.keras.losses.sparse_categorical_crossentropy(
+              y_true, y_pred, from_logits=True))
 
     model.compile(
         loss=loss_fn, optimizer=gradient_descent.SGD(learning_rate=0.1))
