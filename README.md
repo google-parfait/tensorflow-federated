@@ -8,7 +8,7 @@ centralized location.
 
 The framework has initially been developed to facilitate open research and
 experimentation with
-[Federated Learning] (https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
+[Federated Learning](https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
 a technology that enables devices owned by end users to collaboratively learn a
 shared prediction model while keeping potentially sensitive training data on the
 devices, thus decoupling the ability to do machine learning from the need to
