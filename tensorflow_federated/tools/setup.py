@@ -11,13 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TensorFlow Federated is an open source federated learning framework.
+# pylint: disable=line-too-long
+"""TensorFlow Federated is an open-source federated learning framework.
 
-TensorFlow Federated is a framework for implementing federated learning
-algorithms and other computations on privacy-sensitive decentralized data.
+TensorFlow Federated (TFF) is an open-source framework for collaborative
+computations on distributed data that does not require collecting data at a
+centralized location.
 
-TODO(b/112658581): Add TFF high level overview.
+The framework has initially been developed to facilitate open research and
+experimentation with
+[Federated Learning](https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
+a technology that enables devices owned by end users to collaboratively learn a
+shared prediction model while keeping potentially sensitive training data on the
+devices, thus decoupling the ability to do machine learning from the need to
+collect and store the data in the cloud.
+
+With the interfaces provided by TFF, developers can test existing federated
+learning algorithms on their models and data, or design new experimental
+algorithms and run them on existing models and data, all within the same open
+source environment. The framework has been designed with compositionality in
+mind, and can be used to combine independently-developed techniques and
+components that offer complementary capabilities into larger systems.
 """
+# pylint: enable=line-too-long
+# TODO(b/124800187): Keep in sync with the contents of README.
 
 import sys
 
@@ -25,8 +42,7 @@ import setuptools
 
 DOCLINES = __doc__.split('\n')
 
-# Set when releasing a new version of TensorFlow Federated (e.g. 1.0.0).
-_VERSION = '0.0.0'
+_VERSION = '0.1.0'
 
 project_name = 'tensorflow_federated'
 
