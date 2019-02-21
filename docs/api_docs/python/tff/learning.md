@@ -17,11 +17,11 @@ contributors who develop federated learning algorithms.
 
 ## Classes
 
-[`class BatchOutput`](../tff/learning/BatchOutput.md): A structre that holds the
-output of a
+[`class BatchOutput`](../tff/learning/BatchOutput.md): A structure that holds
+the output of a
 <a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
-[`class Model`](../tff/learning/Model.md): Represents a Model for use in
+[`class Model`](../tff/learning/Model.md): Represents a model for use in
 TensorFlow Federated.
 
 [`class TrainableModel`](../tff/learning/TrainableModel.md): A Model with an

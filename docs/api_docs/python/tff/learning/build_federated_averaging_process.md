@@ -23,7 +23,7 @@ Builds the TFF computations for optimization using federated averaging.
 *   <b>`model_fn`</b>: A no-arg function that returns a
     <a href="../../tff/learning/TrainableModel.md"><code>tff.learning.TrainableModel</code></a>.
 *   <b>`server_optimizer_fn`</b>: A no-arg function that returns a
-    `tf.Optimizer`. The apply_gradients method of this optimizer is used to
+    `tf.Optimizer`. The `apply_gradients` method of this optimizer is used to
     apply client updates to the server model. The default returns a
     `tf.train.GradientDescent` with a learning rate of 1.0, which simply adds
     the average client delta to the server's model.

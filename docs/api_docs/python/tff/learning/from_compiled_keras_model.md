@@ -21,8 +21,8 @@ example mini batch.
 
 #### Args:
 
-*   <b>`keras_model`</b>: a `tf.keras.Model` object that was compiled.
-*   <b>`dummy_batch`</b>: a nested structure of values that are convertible to
+*   <b>`keras_model`</b>: A `tf.keras.Model` object that was compiled.
+*   <b>`dummy_batch`</b>: A nested structure of values that are convertible to
     *batched* tensors with the same shapes and types as expected by
     `forward_pass()`. The values of the tensors are not important and can be
     filled with any reasonable input value.
@@ -33,5 +33,5 @@ A <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
 #### Raises:
 
-*   <b>`TypeError`</b>: if `keras_model` is not an instance of `tf.keras.Model`.
-*   <b>`ValueError`</b>: if `keras_model` was *not* compiled.
+*   <b>`TypeError`</b>: If `keras_model` is not an instance of `tf.keras.Model`.
+*   <b>`ValueError`</b>: If `keras_model` was *not* compiled.

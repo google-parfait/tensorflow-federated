@@ -24,15 +24,15 @@ example mini batch.
 
 #### Args:
 
-*   <b>`keras_model`</b>: a `tf.keras.Model` object that is not compiled.
-*   <b>`dummy_batch`</b>: a nested structure of values that are convertible to
+*   <b>`keras_model`</b>: A `tf.keras.Model` object that is not compiled.
+*   <b>`dummy_batch`</b>: A nested structure of values that are convertible to
     *batched* tensors with the same shapes and types as would be input to
     `keras_model`. The values of the tensors are not important and can be filled
     with any reasonable input value.
-*   <b>`loss`</b>: a callable that takes two batched tensor parameters, `y_true`
+*   <b>`loss`</b>: A callable that takes two batched tensor parameters, `y_true`
     and `y_pred`, and returns the loss.
-*   <b>`metrics`</b>: (optional) a list of `tf.keras.metrics.Metric` objects.
-*   <b>`optimizer`</b>: (optional) a `tf.keras.optimizer.Optimizer`. If None,
+*   <b>`metrics`</b>: (Optional) a list of `tf.keras.metrics.Metric` objects.
+*   <b>`optimizer`</b>: (Optional) a `tf.keras.optimizer.Optimizer`. If None,
     returned model cannot be used for training.
 
 #### Returns:
@@ -42,5 +42,5 @@ object.
 
 #### Raises:
 
-*   <b>`TypeError`</b>: if `keras_model` is not an instance of `tf.keras.Model`.
-*   <b>`ValueError`</b>: if `keras_model` was compiled.
+*   <b>`TypeError`</b>: If `keras_model` is not an instance of `tf.keras.Model`.
+*   <b>`ValueError`</b>: If `keras_model` was compiled.

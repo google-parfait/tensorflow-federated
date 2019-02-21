@@ -126,10 +126,10 @@ def build_federated_averaging_process(model_fn,
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
     server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
-      apply_gradients method of this optimizer is used to apply client updates
-      to the server model. The default returns a `tf.train.GradientDescent` with
-      a learning rate of 1.0, which simply adds the average client delta to the
-      server's model.
+      `apply_gradients` method of this optimizer is used to apply client
+      updates to the server model. The default returns a
+      `tf.train.GradientDescent` with a learning rate of 1.0, which simply adds
+      the average client delta to the server's model.
     client_weight_fn: Optional function that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If not provided, the default is

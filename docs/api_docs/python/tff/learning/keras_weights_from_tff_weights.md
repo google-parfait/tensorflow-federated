@@ -15,7 +15,7 @@ Defined in
 Converts TFF's nested weights structure to flat weights.
 
 This function may be used, for example, to retrieve the model parameters trained
-by the federated averaging process for use in an existing keras model, e.g.:
+by the federated averaging process for use in an existing `keras` model, e.g.:
 
 ```
 fed_avg = tff.learning.build_federated_averaging_process(...)

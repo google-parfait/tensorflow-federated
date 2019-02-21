@@ -23,9 +23,9 @@ Returns a `ServerState` with updated model weights.
 *   <b>`server_state`</b>: A server state object returned by an iterative
     training process like
     <a href="../../tff/learning/build_federated_averaging_process.md"><code>tff.learning.build_federated_averaging_process</code></a>.
-*   <b>`trainable_weights`</b>: A list of numpy arrays in the order of the
+*   <b>`trainable_weights`</b>: A list of `numpy` arrays in the order of the
     original model's `trainable_variables`.
-*   <b>`non_trainable_weights`</b>: A list of numpy arrays in the order of the
+*   <b>`non_trainable_weights`</b>: A list of `numpy` arrays in the order of the
     original model's `non_trainable_variables`.
 
 #### Returns:

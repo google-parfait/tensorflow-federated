@@ -37,7 +37,7 @@ def build_federated_evaluation(model_fn):
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
     model parameters and federated data, and returns the evaluation metrics
-    as aggregated by model.federated_output_computation.
+    as aggregated by `tff.learning.Model.federated_output_computation`.
   """
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.

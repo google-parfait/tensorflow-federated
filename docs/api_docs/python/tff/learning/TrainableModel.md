@@ -22,14 +22,14 @@ Defined in
 
 A Model with an additional method for (local) training.
 
-This class is primarily intended to be used in the implementation of
-FederatedAveraging.
+This class is primarily intended to be used in the implementation of federated
+averaging.
 
 ## Properties
 
 <h3 id="federated_output_computation"><code>federated_output_computation</code></h3>
 
-Performs federated aggregation of the a a Model's local_outputs.
+Performs federated aggregation of the `Model's` `local_outputs`.
 
 This is typically used to aggregate metrics across many clients, e.g. the body
 of the computation might be:
@@ -106,11 +106,11 @@ forward_pass; the final values of such metrics can be accessed via
 Uses in TFF:
 
 *   To implement model evaluation.
-*   To implement federated gradient descent and other non-FederatedAvgeraging
+*   To implement federated gradient descent and other non-federated-averaging
     algorithms, where we want the model to run the forward pass and update
     metrics, but there is no optimizer (we might only compute gradients on the
     returned loss).
-*   To implement FederatedAveraging, when augmented as a `TrainableModel`.
+*   To implement federated averaging, when augmented as a `TrainableModel`.
 
 #### Args:
 
@@ -118,8 +118,8 @@ Uses in TFF:
     `Model.input_spec` and each tensor in `batch_input` satisfies
     `tf.TensorSpec.is_compatible_with()` for the corresponding `tf.TensorSpec`
     in `Model.input_spec`.
-*   <b>`training`</b>: If True, run the training forward pass, otherwise, run in
-    evaluation mode. The semantics are generally the same as the `training`
+*   <b>`training`</b>: If `True`, run the training forward pass, otherwise, run
+    in evaluation mode. The semantics are generally the same as the `training`
     argument to `keras.Model.__call__`; this might e.g. influence how dropout or
     batch normalization is handled.
 
@@ -134,18 +134,18 @@ will be trained via a gradient-based algorithm.
 report_local_outputs()
 ```
 
-Returns tensors representing values aggregated over forward_pass calls.
+Returns tensors representing values aggregated over `forward_pass` calls.
 
 In federated learning, the values returned by this method will typically be
 further aggregated across clients and made available on the server.
 
 This method returns results from aggregating across *all* previous calls to
-`forward_pass`, most typically metrics like Accuracy and Loss. If needed, we may
+`forward_pass`, most typically metrics like accuracy and loss. If needed, we may
 add a `clear_aggregated_outputs` method, which would likely just run the
 initializers on the `local_variables`.
 
 In general, the tensors returned can be an arbitrary function of all the
-Variables of this model, not just the `local_variables`; for example, a this
+`tf.Variables` of this model, not just the `local_variables`; for example, this
 could return tensors measuring the total L2 norm of the model (which might have
 been updated by training).
 

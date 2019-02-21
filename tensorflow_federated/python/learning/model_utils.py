@@ -105,7 +105,7 @@ def keras_weights_from_tff_weights(tff_weights):
 
   This function may be used, for example, to retrieve the model parameters
   trained by the federated averaging process for use in an existing
-  keras model, e.g.:
+  `keras` model, e.g.:
 
   ```
   fed_avg = tff.learning.build_federated_averaging_process(...)
@@ -139,23 +139,23 @@ def from_keras_model(keras_model,
   """Builds a `tff.learning.Model` for an example mini batch.
 
   Args:
-    keras_model: a `tf.keras.Model` object that is not compiled.
-    dummy_batch: a nested structure of values that are convertible to *batched*
+    keras_model: A `tf.keras.Model` object that is not compiled.
+    dummy_batch: A nested structure of values that are convertible to *batched*
       tensors with the same shapes and types as would be input to `keras_model`.
       The values of the tensors are not important and can be filled with any
       reasonable input value.
-    loss: a callable that takes two batched tensor parameters, `y_true` and
+    loss: A callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss.
-    metrics: (optional) a list of `tf.keras.metrics.Metric` objects.
-    optimizer: (optional) a `tf.keras.optimizer.Optimizer`. If None, returned
+    metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
+    optimizer: (Optional) a `tf.keras.optimizer.Optimizer`. If None, returned
       model cannot be used for training.
 
   Returns:
     A `tff.learning.Model` object.
 
   Raises:
-    TypeError: if `keras_model` is not an instance of `tf.keras.Model`.
-    ValueError: if `keras_model` was compiled.
+    TypeError: If `keras_model` is not an instance of `tf.keras.Model`.
+    ValueError: If `keras_model` was compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
   if keras_model._is_compiled:  # pylint: disable=protected-access
@@ -171,8 +171,8 @@ def from_compiled_keras_model(keras_model, dummy_batch):
   """Builds a `tff.learning.Model` for an example mini batch.
 
   Args:
-    keras_model: a `tf.keras.Model` object that was compiled.
-    dummy_batch: a nested structure of values that are convertible to *batched*
+    keras_model: A `tf.keras.Model` object that was compiled.
+    dummy_batch: A nested structure of values that are convertible to *batched*
       tensors with the same shapes and types as expected by `forward_pass()`.
       The values of the tensors are not important and can be filled with any
       reasonable input value.
@@ -181,8 +181,8 @@ def from_compiled_keras_model(keras_model, dummy_batch):
     A `tff.learning.Model`.
 
   Raises:
-    TypeError: if `keras_model` is not an instance of `tf.keras.Model`.
-    ValueError: if `keras_model` was *not* compiled.
+    TypeError: If `keras_model` is not an instance of `tf.keras.Model`.
+    ValueError: If `keras_model` was *not* compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
   # Optimizer attribute is only set after calling tf.keras.Model.compile().

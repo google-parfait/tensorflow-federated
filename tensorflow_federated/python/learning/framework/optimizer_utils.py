@@ -152,10 +152,10 @@ def state_with_new_model_weights(server_state, trainable_weights,
   Args:
     server_state: A server state object returned by an iterative training
       process like `tff.learning.build_federated_averaging_process`.
-    trainable_weights: A list of numpy arrays in the order of the original
+    trainable_weights: A list of `numpy` arrays in the order of the original
       model's `trainable_variables`.
-    non_trainable_weights: A list of numpy arrays in the order of the original
-      model's `non_trainable_variables`.
+    non_trainable_weights: A list of `numpy` arrays in the order of the
+    original model's `non_trainable_variables`.
 
   Returns:
     A new server state object which can be passed to the `next` method of

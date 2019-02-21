@@ -24,4 +24,5 @@ Builds the TFF computation for federated evaluation of the given model.
 A federated computation (an instance of
 <a href="../../tff/Computation.md"><code>tff.Computation</code></a>) that
 accepts model parameters and federated data, and returns the evaluation metrics
-as aggregated by model.federated_output_computation.
+as aggregated by
+<a href="../../tff/learning/Model.md#federated_output_computation"><code>tff.learning.Model.federated_output_computation</code></a>.
