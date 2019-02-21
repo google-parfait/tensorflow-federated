@@ -30,7 +30,10 @@ with TFF.
     further demonstrates how to use TFF's FL API to refine a serialized
     pre-trained model for a language modeling task.
 
-*   [Custom Federated Algorithms with the Federated Core API](tutorials/custom_federated_algorithms.ipynb)
-    introduces the key concepts and interfaces offered by the Federated Core API
-    (FC API), and demonstrates how to implement a simple federated averating
+*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core]
+    (tutorials/custom_federated_algorithms_1.ipynb) and
+    [Custom Federated Algorithms, Part 2: Implementing Federated Averaging]
+    (tutorials/custom_federated_algorithms_2.ipynb)
+    introduce the key concepts and interfaces offered by the Federated Core API
+    (FC API), and demonstrate how to implement a simple federated averating
     training algorithm as well as how to perform federated evaluation.

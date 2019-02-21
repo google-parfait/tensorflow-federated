@@ -17,8 +17,10 @@ upper_tabs:
         path: /federated/tutorials/federated_learning_for_image_classification
       - title: Federated Learning for Text Generation
         path: /federated/tutorials/federated_learning_for_text_generation
-      - title: Custom Federated Algorithms with the TFF Core API
-        path: /federated/tutorials/custom_federated_algorithms
+      - title: Custom Federated Algorithms Part 1 - Introduction to the Federated Core
+        path: /federated/tutorials/custom_federated_algorithms_1
+      - title: Custom Federated Algorithms Part 2 - Implementing Federated Averaging
+        path: /federated/tutorials/custom_federated_algorithms_2
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining

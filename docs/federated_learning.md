@@ -43,7 +43,7 @@ Before proceeding, we recommend that you first review the tutorials on
 and [text generation](tutorials/federated_learning_for_text_generation.ipynb),
 as they introduce most of the concepts described here using concrete examples.
 If you're interested in learning more about how TFF works, you may want to skim
-over the [custom algorithms](tutorials/custom_federated_algorithms.ipynb)
+over the [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb)
 tutorial as an introduction to the lower-level interfaces we use to express the
 logic of federated computations, and to study the existing implementation of the
 `tff.learning` interfaces.
@@ -144,7 +144,7 @@ on-device aggregation, and cross-device (or federated) aggregation:
         This logic is expressed in a declarative manner using TFF's own
         *federated computation* language (not in TensorFlow), in the Model's
         `federated_output_computation.` See the
-        [custom algorithms](tutorials/custom_federated_algorithms.ipynb)
+        [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb)
         tutorial for more on the aggregation API.
 
 ### Abstract interfaces
