@@ -116,10 +116,10 @@ class Model(object):
 
       * To implement model evaluation.
       * To implement federated gradient descent and other
-        non-federated-averaging algorithms, where we want the model to run the
+        non-Federated-Averaging algorithms, where we want the model to run the
         forward pass and update metrics, but there is no optimizer
         (we might only compute gradients on the returned loss).
-      * To implement federated averaging, when augmented as a `TrainableModel`.
+      * To implement Federated Averaging, when augmented as a `TrainableModel`.
 
     Args:
       batch_input: a nested structure that matches the structure of
@@ -201,7 +201,7 @@ class TrainableModel(Model):
   """A Model with an additional method for (local) training.
 
   This class is primarily intended to be used in the implementation of
-  federated averaging.
+  Federated Averaging.
   """
 
   @abc.abstractmethod

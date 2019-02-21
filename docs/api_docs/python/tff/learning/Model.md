@@ -130,11 +130,11 @@ forward_pass; the final values of such metrics can be accessed via
 Uses in TFF:
 
 *   To implement model evaluation.
-*   To implement federated gradient descent and other non-federated-averaging
+*   To implement federated gradient descent and other non-Federated-Averaging
     algorithms, where we want the model to run the forward pass and update
     metrics, but there is no optimizer (we might only compute gradients on the
     returned loss).
-*   To implement federated averaging, when augmented as a `TrainableModel`.
+*   To implement Federated Averaging, when augmented as a `TrainableModel`.
 
 #### Args:
 
