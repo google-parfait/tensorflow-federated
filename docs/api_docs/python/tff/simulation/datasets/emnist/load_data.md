@@ -44,7 +44,7 @@ the data set.
 
 The `tf.data.Datasets` returned by
 <a href="../../../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a>
-will yield `colletions.OrderedDict` objects at each iteration, with the
+will yield `collections.OrderedDict` objects at each iteration, with the
 following keys and values:
 
 -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],

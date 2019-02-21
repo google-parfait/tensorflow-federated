@@ -23,8 +23,8 @@ Shakespeare, which is published in "LEAF: A Benchmark for Federated Settings"
 https://arxiv.org/abs/1812.01097.
 
 The data set consists of 715 users (characters of Shakespeare plays), where each
-example corresponds to a contiguous set lines spoken by the character in a given
-play.
+example corresponds to a contiguous set of lines spoken by the character in a
+given play.
 
 Data set sizes:
 
@@ -38,7 +38,7 @@ from the data set.
 
 The `tf.data.Datasets` returned by
 <a href="../../../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a>
-will yield `colletions.OrderedDict` objects at each iteration, with the
+will yield `collections.OrderedDict` objects at each iteration, with the
 following keys and values:
 
 -   `'snippets'`: a `tf.Tensor` with `dtype=tf.string`, the snippet of

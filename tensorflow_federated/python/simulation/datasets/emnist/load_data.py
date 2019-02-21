@@ -54,7 +54,7 @@ def load_data(only_digits=True, cache_dir=None):
 
   The `tf.data.Datasets` returned by
   `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
-  `colletions.OrderedDict` objects at each iteration, with the following keys
+  `collections.OrderedDict` objects at each iteration, with the following keys
   and values:
 
     -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],

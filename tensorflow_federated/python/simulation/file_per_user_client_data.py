@@ -43,7 +43,7 @@ class FilePerUserClientData(client_data.ClientData):
     """
     py_typecheck.check_type(client_ids, list)
     if not client_ids:
-      raise ValueError('`cliet_ids` must have at least one client ID')
+      raise ValueError('`client_ids` must have at least one client ID')
     py_typecheck.check_callable(create_tf_dataset_fn)
     self._client_ids = sorted(client_ids)
     self._create_tf_dataset_fn = create_tf_dataset_fn

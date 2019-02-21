@@ -80,7 +80,7 @@ class ClientData(object):
 
     Returns:
       A nested structure of `tf.DType` objects corresponding to each component
-    of an element of the client datasets.
+      of an element of the client datasets.
     """
     pass
 
@@ -93,6 +93,6 @@ class ClientData(object):
 
     Returns:
       A nested structure of `tf.TensorShape` objects corresponding to each
-    component of an element of the client datasets.
+      component of an element of the client datasets.
     """
     pass

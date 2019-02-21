@@ -26,7 +26,7 @@ contains further subgroups, one per user, named by the user ID.
 The `tf.data.Dataset` returned by
 `HDF5ClientData.create_tf_dataset_for_client(client_id)` yields tuples from
 zipping all datasets that were found at `/data/client_id` group, in a similar
-fashoin to `tf.data.Dataset.from_tensor_slices()`.
+fashion to `tf.data.Dataset.from_tensor_slices()`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 

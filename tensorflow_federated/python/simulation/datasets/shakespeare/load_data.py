@@ -37,9 +37,8 @@ def load_data(cache_dir=None):
 
   The data set consists of 715 users (characters of Shakespeare plays), where
   each
-  example corresponds to a contiguous set lines spoken by the character in a
-  given
-  play.
+  example corresponds to a contiguous set of lines spoken by the character in a
+  given play.
 
   Data set sizes:
 
@@ -53,7 +52,7 @@ def load_data(cache_dir=None):
 
   The `tf.data.Datasets` returned by
   `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
-  `colletions.OrderedDict` objects at each iteration, with the following keys
+  `collections.OrderedDict` objects at each iteration, with the following keys
   and values:
 
     -   `'snippets'`: a `tf.Tensor` with `dtype=tf.string`, the snippet of

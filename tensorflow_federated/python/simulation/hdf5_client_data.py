@@ -36,7 +36,7 @@ class HDF5ClientData(client_data.ClientData):
   The `tf.data.Dataset` returned by
   `HDF5ClientData.create_tf_dataset_for_client(client_id)` yields tuples from
   zipping all datasets that were found at `/data/client_id` group, in a similar
-  fashoin to `tf.data.Dataset.from_tensor_slices()`.
+  fashion to `tf.data.Dataset.from_tensor_slices()`.
   """
 
   _EXAMPLES_GROUP = "examples"
