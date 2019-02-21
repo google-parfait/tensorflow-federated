@@ -4,7 +4,7 @@ description: <!--no description-->
 landing_page:
   custom_css_path: /site-assets/css/style.css
   rows:
-  - heading: Collaborative Machine Learning Without Centralized Training Data
+  - heading: Collaborative machine learning without centralized training data
     items:
     - classname: devsite-landing-row-50
       description: >
@@ -13,7 +13,7 @@ landing_page:
         on distributed data that does not require collecting data at a centralized location.</p>
         <p>The framework has initially been developed to facilitate open research and
         experimentation with
-        <a href="https://ai.googleblog.com/2017/04/federated-learning-collaborative.html">
+        <a href="https://ai.googleblog.com/2017/04/federated-learning-collaborative.html" class="external">
         Federated Learning</a>, a technology that enables devices owned by end users to
         collaboratively learn a shared prediction model while keeping potentially sensitive
         training data on the devices, thus decoupling the ability to do machine learning from the
@@ -26,8 +26,7 @@ landing_page:
         larger systems.</p>
         <p>Beyond this, TFF also provides a set of building blocks that can be used to implement a
         variety of custom non-learning algorithms, such as analytics over sensitive distributed
-        on-device data.</p>
-        <p>The platform consists of two layers:</p>
+        on-device data. The platform consists of two layers:</p>
       list:
       - heading: Federated Learning (FL)
         description: >
@@ -45,7 +44,7 @@ landing_page:
           This layer offers a set of lower-level interfaces that allow users to concisely express
           their own custom federated algorithms by combining TensorFlow with distributed
           communication operators within a strongly-typed functional programming environment. This
-          layer also serves as a foundation upon which we've built the Federated Learning layer.
+          layer also serves as a foundation for the Federated Learning layer.
         path: /federated/federated_core
         icon:
           icon_name: chevron_right

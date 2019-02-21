@@ -186,7 +186,7 @@ as in the example models we use for testing in [`model_examples.py`](https://git
 ### Converters for Keras {#converters-for-keras}
 
 Nearly all the information that's required by TFF can be derived by calling
-Keras interfaces, so if you have a Keras model, you can rely on either of the
+`tf.keras` interfaces, so if you have a Keras model, you can rely on either of the
 two methods below to construct a `tff.learning.TrainableModel` instance for you:
 
 * `tff.learning.from_keras_model`
