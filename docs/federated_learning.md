@@ -54,7 +54,7 @@ logic of federated computations, and to study the existing implementation of the
 
 #### Serialization {#serialization}
 
-TFF aims at supporting a variety distributed learning scenarios in which the
+TFF aims at supporting a variety of distributed learning scenarios in which the
 machine learning model code you write might be executing on a large number of
 heterogeneous clients with diverse capabilities. While at one end of the
 spectrum, in some applications those clients might be powerful database
