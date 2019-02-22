@@ -6,7 +6,7 @@ There are a few ways to set up your environment to use TensorFlow Federated (TFF
 TensorFlow Federated tutorials directly in your browser using
 [Google Colaboratory](https://colab.research.google.com/notebooks/welcome.ipynb).
 * To use TensorFlow Federated on a local machine, install the
-[TFF package](#install-tensorFlow-federated-using-pip) with Python's `pip`
+[TFF package](#install-tensorflow-federated-using-pip) with Python's `pip`
 package manager.
 * If you have a unique machine configuration,
 [build TensorFlow Federated](#build-the-tensorflow-federated-pip-package) from
