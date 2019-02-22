@@ -2,28 +2,39 @@
 
 # TensorFlow Federated
 
-TensorFlow Federated (TFF) is an open-source framework for collaborative
-computations on distributed data that does not require collecting data at a
-centralized location.
+TensorFlow Federated (TFF) is an open-source framework for machine learning and
+other computations on decentralized data. TFF has been developed to facilitate
+open research and experimentation with
+[Federated Learning (FL)](https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
+an approach to machine learning where a shared global model is trained across
+many participating clients that keep their training data locally. For example,
+FL has been used to train
+[prediction models for mobile keyboards](https://arxiv.org/abs/1811.03604)
+without uploading sensitive typing data to servers.
 
-The framework has initially been developed to facilitate open research and
-experimentation with
-[Federated Learning](https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
-a technology that enables devices owned by end users to collaboratively learn a
-shared prediction model while keeping potentially sensitive training data on the
-devices, thus decoupling the ability to do machine learning from the need to
-collect and store the data in the cloud.
+TFF enables developers to use the included federated learning algorithms with
+their models and data, as well as to experiment with novel algorithms. The
+building blocks provided by TFF can also be used to implement non-learning
+computations, such as aggregated analytics over decentralized data.
 
-With the interfaces provided by TFF, developers can test existing federated
-learning algorithms on their models and data, or design new experimental
-algorithms and run them on existing models and data, all within the same open
-source environment. The framework has been designed with compositionality in
-mind, and can be used to combine independently-developed techniques and
-components that offer complementary capabilities into larger systems.
+TFF's interfaces are organized in two layers:
 
-Beyond this, TFF also provides a set of building blocks that can be used to
-implement a variety of custom non-learning algorithms, such as analytics over
-sensitive distributed on-device data.
+* [Federated Learning (FL) API](federated_learning.md)
+  The `tff.learning` layer offers a set of high-level interfaces that allow
+  developers to apply the included implementations of federated training and
+  evaluation to their existing TensorFlow models.
+
+* [Federated Core (FC) API](federated_core.md)
+  At the core of the system is a set of lower-level interfaces for concisely
+  expressing novel federated algorithms by combining TensorFlow with distributed
+  communication operators within a strongly-typed functional programming
+  environment. This layer also serves as the foundation upon which we've built
+  `tff.learning`.
+
+TFF enables developers to declaratively express federated computations, so they
+could be deployed to diverse runtime environments. Included with TFF is a
+single-machine simulation runtime for experiments. Please visit the
+tutorials and try it out yourself!
 
 ## Installation
 
