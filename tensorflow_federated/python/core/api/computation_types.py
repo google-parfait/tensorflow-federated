@@ -49,7 +49,7 @@ class Type(object):
 
     Note that this notion of equality is stronger than equivalence. Two types
     with equivalent definitions may not be identical, e.g., if they represent
-    templates with differently named type veriables in their definitions.
+    templates with differently named type variables in their definitions.
 
     Args:
       other: The other type to compare against.
@@ -398,7 +398,7 @@ def to_type(spec):
 
   Args:
     spec: Either an instance of `tff.Type`, or an argument convertible to
-      `tff.Type`. Assorted examples of type specifications are included below.
+      `tff.Type`.
 
   Returns:
     An instance of `tff.Type` corresponding to the given `spec`.

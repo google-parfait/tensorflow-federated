@@ -34,7 +34,7 @@ At the moment, the supported types include:
 
 *   Dictionaries (`collections.OrderedDict` and unordered `dict`), `list`s,
     `tuple`s, `namedtuple`s, and `tff.AnonymousTuple`s, all of which are mapped
-    to TTF tuple type.
+    to TFF tuple type.
 
 *   Computations (constructed with either the
     <a href="../tff/tf_computation.md"><code>tff.tf_computation</code></a> or

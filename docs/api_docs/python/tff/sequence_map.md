@@ -20,7 +20,7 @@ Maps a TFF sequence `value` pointwise using a given function `mapping_fn`.
 This function supports two modes of usage:
 
 *   When applied to a non-federated sequence, it maps individual elements of the
-    sequence pointwise. If the supplied `mapping_fn` if of type `T->U` and the
+    sequence pointwise. If the supplied `mapping_fn` is of type `T->U` and the
     sequence `value` is of type `T*` (a seqeunce of `T`-typed elements), the
     result is a sequence of type `U*` (a sequence of `U`-typed elements), with
     each element of the input sequence individually mapped by `mapping_fn`. In

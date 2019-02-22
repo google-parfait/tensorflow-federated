@@ -45,8 +45,8 @@ def federated_aggregate(value, zero, accumulate, merge, report):
     This can be interpreted as a `tff.federated_reduce` using `merge` as the
     reduction operator, and the same `zero` in the algebra. The result of this
     stage is a single top-level `U` that emerges at the root of the hierarchy at
-    the `tff.SERVER`. Actual implementations may structure this step as cascade
-    of multiple layers.
+    the `tff.SERVER`. Actual implementations may structure this step as a
+    cascade of multiple layers.
 
   * Finally, the `U`-typed result of the reduction performed in the preceding
     stage is projected into the result value using `report` as the mapping
@@ -62,7 +62,7 @@ def federated_aggregate(value, zero, accumulate, merge, report):
     merge: The reduction operator to employ in the second stage of the process.
       Must be of type `(<U,U> -> U)`, where `U` is as defined above.
     report: The projection operator to use at the final stage of the process to
-      compute the final resulrt of aggregation. If the indended result to be
+      compute the final result of aggregation. If the intended result to be
       returned by `tff.federated_aggregate` is of type `R@SERVER`, this operator
       must be of type `(U -> R)`.
 
@@ -283,7 +283,7 @@ def sequence_map(mapping_fn, value):
   This function supports two modes of usage:
 
   * When applied to a non-federated sequence, it maps individual elements of
-    the sequence pointwise. If the supplied `mapping_fn` if of type `T->U` and
+    the sequence pointwise. If the supplied `mapping_fn` is of type `T->U` and
     the sequence `value` is of type `T*` (a seqeunce of `T`-typed elements),
     the result is a sequence of type `U*` (a sequence of `U`-typed elements),
     with each element of the input sequence individually mapped by `mapping_fn`.
@@ -332,10 +332,11 @@ def sequence_reduce(value, zero, op):
   yields the same `U`-typed result, regardless of the order in which elements
   of `T` are processed in the course of the reduction.
 
-  One can also invoke `sequence` on a federated sequence, in which case the
-  reductions are performed pointwise; under the hood, we construct an expression
-  of the form `federated_map(a -> sequence_reduce(x, zero, op), value)`. See
-  also the discussion on `sequence_map`.
+  One can also invoke `sequence_reduce` on a federated sequence, in which case
+  the reductions are performed pointwise; under the hood, we construct an
+  expression  of the form
+  `federated_map(a -> sequence_reduce(x, zero, op), value)`. See also the
+  discussion on `sequence_map`.
 
   Args:
     value: A value that is either a TFF sequence, or a federated sequence.

@@ -47,7 +47,7 @@ The multi-stage aggregation process is defined as follows:
     The result of this stage is a single top-level `U` that emerges at the root
     of the hierarchy at the
     <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>. Actual
-    implementations may structure this step as cascade of multiple layers.
+    implementations may structure this step as a cascade of multiple layers.
 
 *   Finally, the `U`-typed result of the reduction performed in the preceding
     stage is projected into the result value using `report` as the mapping
@@ -66,7 +66,7 @@ The multi-stage aggregation process is defined as follows:
 *   <b>`merge`</b>: The reduction operator to employ in the second stage of the
     process. Must be of type `(<U,U> -> U)`, where `U` is as defined above.
 *   <b>`report`</b>: The projection operator to use at the final stage of the
-    process to compute the final resulrt of aggregation. If the indended result
+    process to compute the final result of aggregation. If the intended result
     to be returned by
     <a href="../tff/federated_aggregate.md"><code>tff.federated_aggregate</code></a>
     is of type `R@SERVER`, this operator must be of type `(U -> R)`.

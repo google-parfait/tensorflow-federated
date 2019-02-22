@@ -26,7 +26,7 @@ Determines whether two type definitions are identical.
 
 Note that this notion of equality is stronger than equivalence. Two types with
 equivalent definitions may not be identical, e.g., if they represent templates
-with differently named type veriables in their definitions.
+with differently named type variables in their definitions.
 
 #### Args:
 

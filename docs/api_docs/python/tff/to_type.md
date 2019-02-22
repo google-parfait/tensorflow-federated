@@ -45,8 +45,7 @@ Examples of arguments convertible to nested named tuple types:
 
 *   <b>`spec`</b>: Either an instance of
     <a href="../tff/Type.md"><code>tff.Type</code></a>, or an argument
-    convertible to <a href="../tff/Type.md"><code>tff.Type</code></a>. Assorted
-    examples of type specifications are included below.
+    convertible to <a href="../tff/Type.md"><code>tff.Type</code></a>.
 
 #### Returns:
 

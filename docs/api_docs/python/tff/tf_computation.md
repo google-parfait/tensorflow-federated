@@ -30,8 +30,8 @@ follows:
     ```
 
     After executing the above code snippet, `foo` becomes an instance of the
-    abstract base class `Computation` (defined in computation_base). Like all
-    computations, it has the `type_signature` property:
+    abstract base class `Computation`. Like all computations, it has the
+    `type_signature` property:
 
     ```python
     str(foo.type_signature) == '(int32 -> bool)'
@@ -89,7 +89,7 @@ follows:
       return tf.constant(10)
     ```
 
-    Again, this is merely a syntactic sugar for the example given earlier:
+    Again, this is merely syntactic sugar for the example given earlier:
 
     ```python
     foo = tff.tf_computation(lambda: tf.constant(10))
@@ -142,7 +142,7 @@ follows:
 
 #### Returns:
 
-If invoked with a function as an argument, returns a an instance of a TFF
+If invoked with a function as an argument, returns an instance of a TFF
 computation constructed based on this function. If called without one, as in the
 typical decorator style of usage, returns a callable that expects to be called
 with the function definition supplied as a parameter; see the patterns and

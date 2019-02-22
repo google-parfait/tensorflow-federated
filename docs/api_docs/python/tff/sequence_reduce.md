@@ -29,7 +29,7 @@ that repeated application of `op` to reduce a set of `T` always yields the same
 `U`-typed result, regardless of the order in which elements of `T` are processed
 in the course of the reduction.
 
-One can also invoke `sequence` on a federated sequence, in which case the
+One can also invoke `sequence_reduce` on a federated sequence, in which case the
 reductions are performed pointwise; under the hood, we construct an expression
 of the form `federated_map(a -> sequence_reduce(x, zero, op), value)`. See also
 the discussion on `sequence_map`.

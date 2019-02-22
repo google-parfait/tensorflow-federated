@@ -42,7 +42,7 @@ def to_value(val, type_spec=None):
 
   * Dictionaries (`collections.OrderedDict` and unordered `dict`), `list`s,
     `tuple`s, `namedtuple`s, and `tff.AnonymousTuple`s, all of which are mapped
-    to TTF tuple type.
+    to TFF tuple type.
 
   * Computations (constructed with either the `tff.tf_computation` or with the
     `tff.federated_computation` decorator), typically mapped to TFF functions.
