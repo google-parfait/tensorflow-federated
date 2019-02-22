@@ -25,9 +25,9 @@ landing_page:
           analytics over decentralized data. TFF’s interfaces are organized in two layers:</p>
       - heading: Federated Learning (FL) API
         description: >
-          The <a href="/federated/api_docs/python/tff/learning"><code>tff.learning</code></a> layer
-          offers a set of high-level interfaces that allow developers to apply the included
-          implementations of federated training and evaluation to their existing TensorFlow models.
+          This layer offers a set of high-level interfaces that allow developers to apply the
+          included implementations of federated training and evaluation to their existing
+          TensorFlow models.
         path: /federated/federated_learning
         icon:
           icon_name: chevron_right
@@ -38,7 +38,7 @@ landing_page:
           At the core of the system is a set of lower-level interfaces for concisely expressing
           novel federated algorithms by combining TensorFlow with distributed communication
           operators within a strongly-typed functional programming environment. This layer also
-          serves as the foundation upon which we've built `tff.learning`.
+          serves as the foundation upon which we've built Federated Learning.
         path: /federated/federated_core
         icon:
           icon_name: chevron_right
