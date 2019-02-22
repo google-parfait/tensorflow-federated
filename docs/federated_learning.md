@@ -57,13 +57,13 @@ logic of federated computations, and to study the existing implementation of the
 TFF aims at supporting a variety of distributed learning scenarios in which the
 machine learning model code you write might be executing on a large number of
 heterogeneous clients with diverse capabilities. While at one end of the
-spectrum, in some applications those clients might be powerful database
-servers, many important uses our platform intends to support involve mobile
-and embedded devices with limited resources. We cannot assume that these
-devices are capable of hosting Python runtimes; the only thing we can assume
-at this point is that they are capable of hosting a local TensorFlow runtime.
-Thus, a fundamental architectural assumption we make in TFF is that your model
-code must be serializable as a TensorFlow graph.
+spectrum, in some applications those clients might be powerful database servers,
+many important uses our platform intends to support involve mobile and embedded
+devices with limited resources. We cannot assume that these devices are capable
+of hosting Python runtimes; the only thing we can assume at this point is that
+they are capable of hosting a local TensorFlow runtime. Thus, a fundamental
+architectural assumption we make in TFF is that your model code must be
+serializable as a TensorFlow graph.
 
 You can (and should) still develop your TF code following the latest best
 practices like using eager mode. However, the final code must be serializable

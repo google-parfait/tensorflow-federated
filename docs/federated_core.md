@@ -9,20 +9,16 @@ tutorials, as they introduce some of the fundamental concepts by example and
 demonstrate step-by-step the construction of a simple federated averaging
 algorithm.
 
-* [Custom Federated Algorithms, Part 1: Introduction to the Federated Core]
-  (tutorials/custom_federated_algorithms_1.ipynb).
+*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](tutorials/custom_federated_algorithms_1.ipynb).
 
-* [Custom Federated Algorithms, Part 2: Implementing Federated Averaging]
-  (tutorials/custom_federated_algorithms_2.ipynb).
+*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](tutorials/custom_federated_algorithms_2.ipynb).
 
 We would also encourage you to familiarize yourself with
 [Federated Learning](federated_learning.md) and the associated tutorials on
-[image classification]
-(tutorials/federated_learning_for_image_classification.ipynb) and
-[text generation]
-(tutorials/federated_learning_for_text_generation.ipynb), as the uses of the
-Federated Core API (FC API) for federated learning provide important context
-for some of the choices we've made in designing this layer.
+[image classification](tutorials/federated_learning_for_image_classification.ipynb)
+and [text generation](tutorials/federated_learning_for_text_generation.ipynb),
+as the uses of the Federated Core API (FC API) for federated learning provide
+important context for some of the choices we've made in designing this layer.
 
 ## Overview
 
@@ -41,9 +37,9 @@ expressed in this framework.
 
 While defining the term *federated computation* in a fully formal manner is
 outside the scope of this document, think of the types of algorithms you might
-see expressed in pseudocode in a [research publication]
-(https://arxiv.org/pdf/1602.05629.pdf) that describes a new distributed
-learning algorithm.
+see expressed in pseudocode in a
+[research publication](https://arxiv.org/pdf/1602.05629.pdf) that describes a
+new distributed learning algorithm.
 
 The goal of FC, in a nusthell, is to enable similarly compact representation,
 at a similar pseudocode-like level of abstraction, of program logic that is
@@ -83,8 +79,9 @@ blocks such as `tff.federated_sum`, `tff.federated_reduce`, or
 
 ### Python Interface
 
-TFF uses an internal language to represent federated computations, the syntax
-of which is defined by the serializable representation in [computation.proto](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0/computation.proto).
+TFF uses an internal language to represent federated computations, the syntax of
+which is defined by the serializable representation in
+[computation.proto](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0/computation.proto).
 Users of FC API generally won't need to interact with this language directly,
 though. Rather, we provide a Python API (the `tff` namespace) that wraps arounds
 it as a way to define computations.
@@ -92,11 +89,12 @@ it as a way to define computations.
 Specifically, TFF provides Python function decorators such as
 `tff.federated_computation` that trace the bodies of the decorated functions,
 and produce serialized representations of the federated computation logic in
-TFF's language. A function decorated with `tff.federated_computation` acts as
-a carrier of such serialized representation, and can embed it as a building
-block in the body of another computation, or execute it on deman when invoked.
+TFF's language. A function decorated with `tff.federated_computation` acts as a
+carrier of such serialized representation, and can embed it as a building block
+in the body of another computation, or execute it on demand when invoked.
 
-Here's just one example; more examples can be found in the [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorials.
+Here's just one example; more examples can be found in the
+[custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorials.
 
 ```
 @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
@@ -180,52 +178,58 @@ As these concepts are somewhat unique to TFF, we encourage you to refer to the
 [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorial for
 additional commentary and examples.
 
-* **Placement type**. This type is not yet exposed in the public API other than
-  in the form of 2 literals `tff.SERVER` and `tff.CLIENTS` that you can think
-  of as constants of this type. It is used internally, however, and will be
-  introduced in the public API in future releases. The compact representation
-  of this type is `placement`.
+*   **Placement type**. This type is not yet exposed in the public API other
+    than in the form of 2 literals `tff.SERVER` and `tff.CLIENTS` that you can
+    think of as constants of this type. It is used internally, however, and will
+    be introduced in the public API in future releases. The compact
+    representation of this type is `placement`.
 
-  A *placement* represents a collective of system participants that play a
-  particular role. The initial release is targeting client-server computations,
-  in which there are 2 groups of participants: *clients* and a *server* (you
-  can think of the latter as a singleton group). However, in more elaborate
-  architectures, there could be other roles, such as intermediate aggregators in
-  a multi-tiered system, who might be performing different types of aggregation,
-  or use different types of data compression/decompression than those used by
-  either the server or the clients.
+    A *placement* represents a collective of system participants that play a
+    particular role. The initial release is targeting client-server
+    computations, in which there are 2 groups of participants: *clients* and a
+    *server* (you can think of the latter as a singleton group). However, in
+    more elaborate architectures, there could be other roles, such as
+    intermediate aggregators in a multi-tiered system, who might be performing
+    different types of aggregation, or use different types of data
+    compression/decompression than those used by either the server or the
+    clients.
 
-  The primary purpose of defining the notion of placements is as a basis for
-  defining *federated types*.
+    The primary purpose of defining the notion of placements is as a basis for
+    defining *federated types*.
 
-* **Federated types** (`tff.FederatedType`). A value of a federated type is one
-  that is hosted by a group of system participants defined by a specific
-  placement (such as `tff.SERVER` or `tff.CLIENTS`). A federated type is
-  defined by the *placement* value (thus, it is a
-  [dependent type](https://en.wikipedia.org/wiki/Dependent_type)), the type of
-  *member constituents* (what kind of content each of the participants is
-  locally hosting), and the additional bit `all_equal` that specifies whether
-  all participants are locally hosting the same item.
+*   **Federated types** (`tff.FederatedType`). A value of a federated type is
+    one that is hosted by a group of system participants defined by a specific
+    placement (such as `tff.SERVER` or `tff.CLIENTS`). A federated type is
+    defined by the *placement* value (thus, it is a
+    [dependent type](https://en.wikipedia.org/wiki/Dependent_type)), the type of
+    *member constituents* (what kind of content each of the participants is
+    locally hosting), and the additional bit `all_equal` that specifies whether
+    all participants are locally hosting the same item.
 
-  The compact notation for federated type of values that include items (member
-  constituents) of type `T`, each hosted by group (placement) `G` is `T@G` or
-  `{T}@G` with the `all_equal` bit set or not set, respectively.
+    The compact notation for federated type of values that include items (member
+    constituents) of type `T`, each hosted by group (placement) `G` is `T@G` or
+    `{T}@G` with the `all_equal` bit set or not set, respectively.
 
-  For example:
+    For example:
 
-  * `{int32}@CLIENTS` represents a *federated value* that consists of
-    a set of potentially distinct integers, one on per client device. Note that
-    we are talking about a single *federated value* as encompassing multiple
-    items of data that appear in multiple locations across the network. One way
-    to think about it is as a kind of tensor with a "network" dimension,
-    although the analogy is not perfect.
+    *   `{int32}@CLIENTS` represents a *federated value* that consists of a set
+        of potentially distinct integers, one per client device. Note that we
+        are talking about a single *federated value* as encompassing multiple
+        items of data that appear in multiple locations across the network. One
+        way to think about it is as a kind of tensor with a "network" dimension,
+        although this analogy is not perfect because TFF does
+        not permit [random access](https://en.wikipedia.org/wiki/Random_access)
+        to member constituents of a federated value.
 
-  * `{<X=float32,Y=float32>*}@CLIENTS` represents a *federated data set*, a
-    value that consists of multiple sequences of `XY` coordinates, one sequence
-    per client device.
+    *   `{<X=float32,Y=float32>*}@CLIENTS` represents a *federated data set*, a
+        value that consists of multiple sequences of `XY` coordinates, one
+        sequence per client device.
 
-  * `<weights=float32[10,5],bias[5]>@SERVER` represents a named tuple of weight
-    and bias tensors at the server.
+    *   `<weights=float32[10,5],bias[5]>@SERVER` represents a named tuple of
+        weight and bias tensors at the server. Since we've dropped the curly
+        braces, this indicates the `all_equal` bit is set, i.e., there's only a
+        single tuple (regardless of how many server replicas there might be in a
+        cluster hosting this value).
 
 ### Building Blocks
 
@@ -236,67 +240,72 @@ additional elements.
 It provides the following programing abstractions currently exposed in the
 public API:
 
-* **TensorFlow** computations. These are sections of TensorFlow code wrapped as
-  reusable components in TFF using the `tff.tf_computation` decorator. They
-  always have functional types, and unlike functions in TensorFlow, they can
-  take structured parameters or return structured results of a sequence type.
+*   **TensorFlow** computations (`tff.tf_computation`). These are sections of
+    TensorFlow code wrapped as reusable components in TFF using the
+    `tff.tf_computation` decorator. They always have functional types, and
+    unlike functions in TensorFlow, they can take structured parameters or
+    return structured results of a sequence type.
 
-  Here's one example, a TF computation of type `(int32* -> int)` that uses the
-  `tf.data.Dataset.reduce` operator to compute a sum of integers:
+    Here's one example, a TF computation of type `(int32* -> int)` that uses the
+    `tf.data.Dataset.reduce` operator to compute a sum of integers:
 
-  ```
-  @tff.tf_computation(tff.SequenceType(tf.int32))
-  def add_up_integeres(x):
-    return x.reduce(np.int32(0), lambda x, y: x + y)
-  ```
+    ```
+    @tff.tf_computation(tff.SequenceType(tf.int32))
+    def add_up_integeres(x):
+      return x.reduce(np.int32(0), lambda x, y: x + y)
+    ```
 
-* **Intrinsics** (federated operators). This is a library of functions such as
-  `tff.federated_sum` or `tff.federated_broadcast` that constitute the bulk of
-  FC API, most of which represent distributed communication operators for use
-  with TFF.
+*   **Intrinsics** or *federated operators* (`tff.federated_...`). This is a
+    library of functions such as `tff.federated_sum` or
+    `tff.federated_broadcast` that constitute the bulk of FC API, most of which
+    represent distributed communication operators for use with TFF.
 
-  We refer to these as *intrinsics* because, somewhat like
-  [intrinsic functions](https://en.wikipedia.org/wiki/Intrinsic_function),
-  they are an open-ended, extensible set of operators that are understood by
-  TFF, and compiled down into lower-level code.
+    We refer to these as *intrinsics* because, somewhat like
+    [intrinsic functions](https://en.wikipedia.org/wiki/Intrinsic_function),
+    they are an open-ended, extensible set of operators that are understood by
+    TFF, and compiled down into lower-level code.
 
-  Most of these operators have parameters and results of federated types, and
-  most are templates that can be applied to various kinds of data. For example,
-  `tff.federated_broadcast` can be thought of as a template operator of a
-  functional type `T@SERVER -> T@CLIENTS`.
+    Most of these operators have parameters and results of federated types, and
+    most are templates that can be applied to various kinds of data.
 
-* **Lambda expressions**. A lambda is simply the TFF equivalent of a lambda in
-  Python; it consists of the parameter name, and an expression that contains
-  references to this parameter.
+    For example, `tff.federated_broadcast` can be thought of as a template
+    operator of a functional type `T@SERVER -> T@CLIENTS`.
 
-  In Python code, Python functions decorated with `tff.federated_computation`
-  that accept an argument represent lambda expressions.
+*   **Lambda expressions** (`tff.federated_computation`). A lambda expression in
+    TFF is the equivalent of a `lambda` or `def` in Python; it consists of the
+    parameter name, and a body (expression) that contains references to this
+    parameter.
 
-  Here's an example of a lambda expression we've already mentioned earlier:
+    In Python code, these can be created by decorating Python functions with
+    `tff.federated_computation` and defining an argument.
 
-  ```
-  @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
-  def get_average_temperature(sensor_readings):
-    return tff.federated_average(sensor_readings)
-  ```
+    Here's an example of a lambda expression we've already mentioned earlier:
 
-* **Placement literals**. For now, only `tff.SERVER` and `tff.CLIENTS` to allow
-  for defining simple client-server computations.
+    ```
+    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    def get_average_temperature(sensor_readings):
+      return tff.federated_average(sensor_readings)
+    ```
 
-* **Function invocations**. Anything that has a functional type can be invoked
-  using the standard Python `__call__` syntax. The invocation is an expression,
-  the type of which is the same as the type of the result of the function being
-  invoked.
+*   **Placement literals**. For now, only `tff.SERVER` and `tff.CLIENTS` to
+    allow for defining simple client-server computations.
 
-  For example:
+*   **Function invocations** (`__call__`). Anything that has a functional type
+    can be invoked using the standard Python `__call__` syntax. The invocation
+    is an expression, the type of which is the same as the type of the result of
+    the function being invoked.
 
-  * `add_up_integeres(x)` represents an invocation of the TensorFlow computation
-    defined earlier on an argument `x`. The type od this expression is `int32`.
+    For example:
 
-  * `tff.federated_broadcast(model)` represents an invocation of the broadcast
-    operator on the server-side model. The type of this expression is
-    `float32@CLIENTS`.
+    *   `add_up_integeres(x)` represents an invocation of the TensorFlow
+        computation defined earlier on an argument `x`. The type od this
+        expression is `int32`.
 
-* Forming **tuples** and **selecting** their elements. Python expressions of
-  the form `[x, y]`, `x[y]`, or `x.y` that appear in the bodies of functions
-  decorated with `tff.federated_computation`.
+    *   `tff.federated_average(sensor_readings)` represents an invocation of the
+        federated averaging operator on `sensor_readings`. The type of this
+        expression is `float32@SERVER` (assuming context from the example
+        above).
+
+*   Forming **tuples** and **selecting** their elements. Python expressions of
+    the form `[x, y]`, `x[y]`, or `x.y` that appear in the bodies of functions
+    decorated with `tff.federated_computation`.
