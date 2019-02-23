@@ -12,7 +12,7 @@ package manager.
 [build TensorFlow Federated](#build-the-tensorflow-federated-pip-package) from
 source.
 
-## Install TensorFlow Federated using pip {#install-tensorflow-federated-using-pip}
+## Install TensorFlow Federated using pip
 
 See the [TensorFlow pip install guide](https://www.tensorflow.org/install/pip)
 to set up your system for Python development and to create a `virtualenv`
