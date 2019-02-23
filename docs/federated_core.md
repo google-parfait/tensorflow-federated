@@ -148,7 +148,7 @@ found in existing mainstream languages:
   of elements. For example `int32*` represents an integer sequence.
 
 * **Named tuple types** (`tff.NamedTupleType`). These are TFF's way of
-  constructing tuples and dictionary-liked structures that have a predefined
+  constructing tuples and dictionary-like structures that have a predefined
   number of *elements* with specific types, named or unnamed. Importantly, TFF's
   named tuple concept encompasses the abstract equivalent of Python's argument
   tuples, i.e., collections of elements of which some, but not all are named,
@@ -158,15 +158,16 @@ found in existing mainstream languages:
   `n_k` are optional element names, and `T_k` are element types. For example,
   `<int32,int32>` is a compact notation for a pair of unnamed integers, and
   `<X=float32,Y=float32>` is a compact notation for a pair of floats named `X`
-  and `Y` that may repredent a point on a plane. Tuples can be nested as well
+  and `Y` that may represent a point on a plane. Tuples can be nested as well
   as mixed with other types, e.g., `<X=float32,Y=float32>*` would be a compact
   notation for a sequence of points.
 
 * **Function types** (`tff.FunctionType`). TFF is a functional programming
-  framework, with functions treated as first-class values. Functions have at
-  most one argument, and exactly one result.
+  framework, with functions treated as
+  [first-class values](https://en.wikipedia.org/wiki/First-class_citizen).
+  Functions have at most one argument, and exactly one result.
 
-  The compact notations for functions is `(T -> U)`, where `T` is the type of
+  The compact notation for functions is `(T -> U)`, where `T` is the type of
   an argument, and `U` is the type of the result, or `( -> U)` if there's no
   argument (although no-argument functions are a degenerate concept that
   exists mostly just at the Python level). For example `(int32* -> int32)` is a
