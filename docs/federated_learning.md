@@ -52,7 +52,7 @@ logic of federated computations, and to study the existing implementation of the
 
 ### Architectural assumptions
 
-#### Serialization {#serialization}
+#### Serialization
 
 TFF aims at supporting a variety of distributed learning scenarios in which the
 machine learning model code you write might be executing on a large number of
@@ -183,7 +183,7 @@ the second part of our [image classification]
 (tutorials/federated_learning_for_image_classification.ipynb) tutorial, as well
 as in the example models we use for testing in [`model_examples.py`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/model_examples.py).
 
-### Converters for Keras {#converters-for-keras}
+### Converters for Keras
 
 Nearly all the information that's required by TFF can be derived by calling
 `tf.keras` interfaces, so if you have a Keras model, you can rely on either of the
