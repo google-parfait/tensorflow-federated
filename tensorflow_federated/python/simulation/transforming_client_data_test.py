@@ -62,6 +62,11 @@ def create_fake_hdf5():
   return filepath
 
 
+def _test_transform(data, index):
+  data['x'] = data['x'] + 10 * index
+  return data
+
+
 class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   @classmethod
@@ -77,23 +82,48 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
   def test_client_ids_property(self):
     client_data = hdf5_client_data.HDF5ClientData(
         TransformingClientDataTest.test_data_filepath)
-    expansion_factor = 2.5
+    num_transformed_clients = 7
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, lambda: 0, expansion_factor)
-    self.assertLen(transformed_client_data.client_ids,
-                   int(len(TEST_DATA) * expansion_factor))
+        client_data, _test_transform, num_transformed_clients)
+    client_ids = transformed_client_data.client_ids
+
+    # Check length of client_ids.
+    self.assertLen(client_ids, 7)
+
+    # Check that they are all strings.
+    for client_id in client_ids:
+      self.assertIsInstance(client_id, str)
+
+    # Check ids are sorted.
+    self.assertListEqual(client_ids, sorted(client_ids))
+
+  def test_fail_on_bad_client_id(self):
+    client_data = hdf5_client_data.HDF5ClientData(
+        TransformingClientDataTest.test_data_filepath)
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        client_data, _test_transform, 7)
+
+    # The following three should be valid.
+    transformed_client_data.create_tf_dataset_for_client('CLIENT A_1')
+    transformed_client_data.create_tf_dataset_for_client('CLIENT B_1')
+    transformed_client_data.create_tf_dataset_for_client('CLIENT A_2')
+
+    # This should not be valid: no corresponding client.
+    with self.assertRaisesRegex(
+        ValueError, 'client_id must be a valid string from client_ids.'):
+      transformed_client_data.create_tf_dataset_for_client('CLIENT D_0')
+
+    # This should not be valid: index out of range.
+    with self.assertRaisesRegex(
+        ValueError, 'client_id must be a valid string from client_ids.'):
+      transformed_client_data.create_tf_dataset_for_client('CLIENT B_2')
 
   def test_create_tf_dataset_for_client(self):
     client_data = hdf5_client_data.HDF5ClientData(
         TransformingClientDataTest.test_data_filepath)
 
-    def _test_transform(data, index):
-      data['x'] = data['x'] + 10 * index
-      return data
-
-    expansion_factor = 3
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform, expansion_factor)
+        client_data, _test_transform, 9)
 
     for client_id in transformed_client_data.client_ids:
       tf_dataset = transformed_client_data.create_tf_dataset_for_client(
@@ -115,13 +145,10 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     client_data = hdf5_client_data.HDF5ClientData(
         TransformingClientDataTest.test_data_filepath)
 
-    def _test_transform(data, index):
-      data['x'] = data['x'] + 10 * index
-      return data
-
-    expansion_factor = 3
+    num_transformed_clients = 9
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform, expansion_factor)
+        client_data, _test_transform, num_transformed_clients)
+    expansion_factor = num_transformed_clients // len(TEST_DATA)
 
     tf_dataset = transformed_client_data.create_tf_dataset_from_all_clients()
     self.assertIsInstance(tf_dataset, tf.data.Dataset)
