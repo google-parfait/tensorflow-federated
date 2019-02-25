@@ -17,10 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
+import bisect
 import re
 
-import numpy as np
 from six.moves import range
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -37,40 +36,45 @@ class TransformingClientData(client_data.ClientData):
   might be the identity, while f(x, 1) could be the reflection of the image.
   """
 
-  def __init__(self, raw_client_data, transform, expansion_factor):
+  def __init__(self, raw_client_data, transform_fn, num_transformed_clients):
     """Initializes the TransformingClientData.
 
     Args:
       raw_client_data: A ClientData to expand.
-      transform: A function f(x, i) mapping datapoint x to a new datapoint
-        parameterized by i.
-      expansion_factor: The (expected) number of transformed clients per raw
-        client. If not an integer, each client is mapped to at least
-        int(expansion_factor) new clients, and some fraction of clients are
-        mapped to one more.
+      transform_fn: A function f(x, i) parameterized by i, mapping datapoint x
+        to a new datapoint. x is a datapoint from the raw_client_data, while i
+        is an integer index in the range 0...k (see 'num_transformed_clients'
+        for definition of k). Typically by convention the index 0 corresponds to
+        the identity function if the identity is supported.
+      num_transformed_clients: The total number of transformed clients to
+        produce. If it is an integer multiple k of the number of real clients,
+        there will be exactly k pseudo-clients per real client, with indices
+        0...k-1. Any remainder g will be generated from the first g real clients
+        and will be given index k.
     """
     py_typecheck.check_type(raw_client_data, client_data.ClientData)
-    py_typecheck.check_callable(transform)
+    py_typecheck.check_callable(transform_fn)
+    py_typecheck.check_type(num_transformed_clients, int)
 
-    if expansion_factor <= 0 or math.isinf(expansion_factor):
-      raise ValueError('expansion_factor must be positive and finite.')
+    if num_transformed_clients <= 0:
+      raise ValueError('num_transformed_clients must be positive and finite.')
     self._raw_client_data = raw_client_data
-    self._transform = transform
+    self._transform_fn = transform_fn
+
+    num_digits = len(str(num_transformed_clients))
+    format_str = '{}_{:0' + str(num_digits) + '}'
 
     raw_client_ids = raw_client_data.client_ids
-    num_entire_client_ids = int(expansion_factor)
+    k = num_transformed_clients // len(raw_client_ids)
     self._client_ids = []
     for raw_client_id in raw_client_ids:
-      for i in range(num_entire_client_ids):
-        self._client_ids.append('{}_{}'.format(raw_client_id, i))
-    num_extra_client_ids = int(
-        len(raw_client_ids) * (expansion_factor - num_entire_client_ids))
-    if num_extra_client_ids > 0:
-      extra_client_ids = np.random.choice(
-          raw_client_ids, num_extra_client_ids, replace=False)
-      for raw_client_id in extra_client_ids:
-        self._client_ids.append('{}_{}'.format(raw_client_id,
-                                               num_entire_client_ids))
+      for i in range(k):
+        self._client_ids.append(format_str.format(raw_client_id, i))
+    num_extra_client_ids = num_transformed_clients - k * len(raw_client_ids)
+    for c in range(num_extra_client_ids):
+      self._client_ids.append(format_str.format(raw_client_ids[c], k))
+
+    # Already sorted if raw_client_data.client_ids are, but just to be sure...
     self._client_ids = sorted(self._client_ids)
 
   @property
@@ -79,15 +83,20 @@ class TransformingClientData(client_data.ClientData):
 
   def create_tf_dataset_for_client(self, client_id):
     py_typecheck.check_type(client_id, str)
+    i = bisect.bisect_left(self._client_ids, client_id)
+    if i == len(self._client_ids) or self._client_ids[i] != client_id:
+      raise ValueError('client_id must be a valid string from client_ids.')
     pattern = r'^(.*)_(\d*)$'
     match = re.search(pattern, client_id)
     if not match:
+      # This should be impossible if client_id is in self._client_ids.
       raise ValueError('client_id must be a valid string from client_ids.')
     raw_client_id = match.group(1)
     expansion_id = int(match.group(2))
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
         raw_client_id)
-    return raw_dataset.map(lambda x: self._transform(x, expansion_id))
+    return raw_dataset.map(
+        lambda example: self._transform_fn(example, expansion_id))
 
   @property
   def output_types(self):
