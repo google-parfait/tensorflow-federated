@@ -34,6 +34,8 @@ from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import type_utils
 
+nest = tf.contrib.framework.nest
+
 
 def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   """Stamps a parameter of a given type in the given tf.Graph instance.
@@ -426,11 +428,10 @@ def nested_structures_equal(x, y):
     `True` iff `x` and `y` are equal, `False` otherwise.
   """
   try:
-    tf.contrib.framework.nest.assert_same_structure(x, y)
+    nest.assert_same_structure(x, y)
   except ValueError:
     return False
-  return tf.contrib.framework.nest.flatten(
-      x) == tf.contrib.framework.nest.flatten(y)
+  return nest.flatten(x) == nest.flatten(y)
 
 
 def make_empty_list_structure_for_element_type_spec(type_spec):
@@ -472,6 +473,46 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
       raise TypeError(
           'Expected a named tuple type with either all elements named '
           'or all unnamed, got {}.'.format(str(type_spec)))
+  else:
+    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
+        str(type_spec)))
+
+
+def _make_dummy_element_for_type_spec(type_spec):
+  """Creates ndarray of zeros corresponding to `type_spec`.
+
+  Returns a list containing this ndarray, whose type is *compatible* with, not
+  necessarily equal to, `type_spec`. This is due to the fact that some
+  dimensions of `type_spec` may be indeterminate, representing compatibility
+  of `type_spec` with any number (e.g. leaving a batch dimension indeterminate
+  to signify compatibility with batches of any size). However a concrete
+  structure (like the ndarray) must have specified sizes for its dimensions.
+  So we construct a dummy element where any `None` dimensions of the shape
+  of `type_spec` are replaced with the value 1. This function therefore
+  returns a dummy element of minimal nonzero size which matches `type_spec`.
+
+  Args:
+    type_spec: Instance of `computation_types.Type`, or something convertible to
+      one by `computation_types.to_type`.
+
+  Returns:
+    Returns possibly nested `numpy ndarray`s containing all zeros: a single
+    `ndarray` if `type_spec` is a `computation_types.TensorType` and a list
+    of such arrays if  `type_spec` is `computation_types.NamedTupleType`.
+    This data structure is of the minimal nonzero size necessary in order to be
+    compatible with `type_spec`.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if isinstance(type_spec, computation_types.TensorType):
+    dummy_shape = [x if x is not None else 1 for x in type_spec.shape]
+    return np.zeros(dummy_shape, type_spec.dtype.as_numpy_dtype)
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    elements = anonymous_tuple.to_elements(type_spec)
+    elem_list = []
+    for _, elem_type in elements:
+      elem_list.append(_make_dummy_element_for_type_spec(elem_type))
+    return elem_list
   else:
     raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
         str(type_spec)))
@@ -641,16 +682,11 @@ def make_data_set_from_elements(graph, elements, element_type):
         structure, element_type)
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
 
-  output_types, output_shapes = (
-      type_utils.type_to_tf_dtypes_and_shapes(element_type))
   with graph.as_default():
     if not elements:
-      # Just return an empty data set.
-      # TODO(b/124517334): Remove from_generator when the best option for
-      # creating empty dataset with specific type signature is identified.
-      ds = tf.data.Dataset.from_generator((lambda: ()),
-                                          output_types=output_types,
-                                          output_shapes=output_shapes)
+      # Just return an empty data set with the appropriate types.
+      dummy_element = _make_dummy_element_for_type_spec(element_type)
+      ds = _make([dummy_element]).take(0)
     elif len(elements) == 1:
       ds = _make(elements)
     else:
