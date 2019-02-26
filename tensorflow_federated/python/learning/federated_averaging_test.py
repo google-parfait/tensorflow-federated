@@ -171,7 +171,7 @@ class FederatedAveragingTffTest(test.TestCase):
     ds = tf.data.Dataset.from_tensor_slices({
         'x': [[1., 2.], [3., 4.]],
         'y': [[5.], [6.]]
-    }).batch(1)
+    }).batch(2)
 
     federated_ds = [ds] * 3
 
@@ -179,13 +179,13 @@ class FederatedAveragingTffTest(test.TestCase):
 
     next_state, metric_outputs = iterative_process.next(server_state,
                                                         federated_ds)
-    running_loss_avg = 0.0
-    for k in range(3):
-      running_loss_avg = (running_loss_avg * k + metric_outputs.loss) / (k + 1)
+    prev_loss = np.inf
+    for _ in range(3):
       next_state, metric_outputs = iterative_process.next(
           next_state, federated_ds)
       self.assertEqual(metric_outputs.num_examples, 2 * len(federated_ds))
-      self.assertLess(metric_outputs.loss, running_loss_avg)
+      self.assertLess(metric_outputs.loss, prev_loss)
+      prev_loss = metric_outputs.loss
 
   def test_execute_empty_data(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
