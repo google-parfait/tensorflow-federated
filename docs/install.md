@@ -128,17 +128,24 @@ macOS.
 <code class="devsite-terminal">git clone https://github.com/tensorflow/federated.git</code>
 </pre>
 
-#### 3. Start a Docker container.
+#### 3. Build a Docker image.
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">cd federated</code>
+<code class="devsite-terminal">docker build . --tag tensorflow_federated:latest</code>
+</pre>
+
+#### 4. Start a Docker container.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">docker run -it \
-    --workdir /federated
-    --volume ./federated:/federated \
-    tensorflow_federated/tensorflow_federated \
+    --workdir /federated \
+    --volume $(pwd):/federated \
+    tensorflow_federated:latest \
     bash</code>
 </pre>
 
-#### 4. (Optional) Test Tensorflow Federated.
+#### 5. (Optional) Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">bazel test //tensorflow_federated/...</code>
