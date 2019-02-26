@@ -21,6 +21,7 @@ import collections
 
 import numpy as np
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -379,6 +380,33 @@ class GraphUtilsTest(test.TestCase):
         str(result.output_shapes),
         'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
 
+  def test_make_dummy_element_TensorType(self):
+    type_spec = computation_types.TensorType(tf.float32,
+                                             [None, 10, None, 10, 10])
+    elem = graph_utils._make_dummy_element_for_type_spec(type_spec)
+    correct_elem = np.zeros([1, 10, 1, 10, 10], np.float32)
+    self.assertEqual(elem.tolist(), correct_elem.tolist())
+
+  def test_make_dummy_element_NamedTupleType(self):
+    tensor1 = computation_types.TensorType(tf.float32, [None, 10, None, 10, 10])
+    tensor2 = computation_types.TensorType(tf.int32, [10, None, 10])
+    namedtuple = computation_types.NamedTupleType([('x', tensor1), ('y',
+                                                                    tensor2)])
+    unnamedtuple = computation_types.NamedTupleType([('x', tensor1),
+                                                     ('y', tensor2)])
+    elem = graph_utils._make_dummy_element_for_type_spec(namedtuple)
+    correct_list = [
+        np.zeros([1, 10, 1, 10, 10], np.float32),
+        np.zeros([10, 1, 10], np.int32)
+    ]
+    self.assertEqual(len(elem), len(correct_list))
+    for k in range(len(elem)):
+      self.assertEqual(elem[k].tolist(), correct_list[k].tolist())
+    unnamed_elem = graph_utils._make_dummy_element_for_type_spec(unnamedtuple)
+    self.assertEqual(len(unnamed_elem), len(correct_list))
+    for k in range(len(unnamed_elem)):
+      self.assertEqual(unnamed_elem[k].tolist(), correct_list[k].tolist())
+
   def test_nested_structures_equal(self):
     self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
     self.assertFalse(graph_utils.nested_structures_equal([10, 20], ['x']))
@@ -389,14 +417,22 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
-  def test_make_data_set_from_elements_with_empty_list_definite_shape(self):
+  def test_make_data_set_from_elements_with_empty_list_definite_tensor(self):
     ds = graph_utils.make_data_set_from_elements(
         tf.get_default_graph(), [],
         computation_types.TensorType(tf.float32, [None, 10]))
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(ds.output_shapes.as_list(),
-                     tf.TensorShape([None, 10]).as_list())
+                     tf.TensorShape([1, 10]).as_list())
     self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
+
+  def test_make_data_set_from_elements_with_empty_list_definite_tuple(self):
+    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [], [
+        computation_types.TensorType(tf.float32, [None, 10]),
+        computation_types.TensorType(tf.float32, [None, 5])
+    ])
+    self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertEqual(ds.output_shapes, ([1, 10], [1, 5]))
 
   def test_make_data_set_from_elements_with_list_of_ints(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(),
