@@ -28,6 +28,10 @@ from tensorflow_federated.python.core.api import computation_types
 class TestCase(tf.test.TestCase, absltest.TestCase):
   """Base class for TensroFlow Federated tests."""
 
+  def setUp(self):
+    super(TestCase, self).setUp()
+    tf.keras.backend.clear_session()
+
 
 def main():
   """Runs all unit tests with select TF 2.0 features enabled.

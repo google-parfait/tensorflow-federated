@@ -24,6 +24,8 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
@@ -111,7 +113,7 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
 
 
-class FederatedAveragingTffTest(test.TestCase):
+class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
 
   def test_orchestration_typecheck(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
@@ -177,21 +179,55 @@ class FederatedAveragingTffTest(test.TestCase):
 
     server_state = iterative_process.initialize()
 
-    next_state, metric_outputs = iterative_process.next(server_state,
-                                                        federated_ds)
     prev_loss = np.inf
     for _ in range(3):
-      next_state, metric_outputs = iterative_process.next(
-          next_state, federated_ds)
+      server_state, metric_outputs = iterative_process.next(
+          server_state, federated_ds)
       self.assertEqual(metric_outputs.num_examples, 2 * len(federated_ds))
       self.assertLess(metric_outputs.loss, prev_loss)
       prev_loss = metric_outputs.loss
+
+  @parameterized.parameters([
+      model_examples.build_linear_regresion_keras_functional_model,
+      model_examples.build_linear_regresion_keras_sequential_model,
+      model_examples.build_linear_regresion_keras_subclass_model,
+  ])
+  def test_orchestration_execute_from_keras(self, build_keras_model_fn):
+    dummy_batch = collections.OrderedDict([
+        ('x', np.zeros([1, 2], np.float32)),
+        ('y', np.zeros([1, 1], np.float32)),
+    ])
+
+    def model_fn():
+      keras_model = build_keras_model_fn(feature_dims=2)
+      keras_model.compile(
+          optimizer=gradient_descent.SGD(learning_rate=0.01),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[])
+      return model_utils.from_compiled_keras_model(keras_model, dummy_batch)
+
+    iterative_process = federated_averaging.build_federated_averaging_process(
+        model_fn=model_fn)
+
+    ds = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.], [3., 4.]],
+        'y': [[5.], [6.]]
+    }).batch(2)
+    federated_ds = [ds] * 3
+
+    server_state = iterative_process.initialize()
+
+    prev_loss = np.inf
+    for _ in range(3):
+      server_state, loss = iterative_process.next(server_state, federated_ds)
+      self.assertLess(loss, prev_loss)
+      prev_loss = loss
 
   def test_execute_empty_data(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.TrainableLinearRegression)
 
-    # Results in empty dataset with correct types and shapes
+    # Results in empty dataset with correct types and shapes.
     ds = tf.data.Dataset.from_tensor_slices({
         'x': [[1., 2.]],
         'y': [[5.]]
