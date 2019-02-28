@@ -45,16 +45,29 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return []
 
-  @tf.contrib.eager.function(autograph=False)
+  # TODO(b/123898430): The control dependencies below have been inserted as a
+  # temporary workaround that annotating this with @tf.contrib.eager.function is
+  # not supported.
   def __call__(self, dataset, initial_weights):
-    trainable_weights_delta = nest.map_structure(lambda x: -1.0 * x,
+    # Iterate over the dataset to get new metric values.
+    def reduce_fn(dummy, batch):
+      self._model.train_on_batch(batch)
+      return dummy
+
+    dummy_output = dataset.reduce(tf.constant(0.0), reduce_fn)
+
+    # Create some fake weight deltas to send back.
+    trainable_weights_delta = nest.map_structure(lambda x: -tf.ones_like(x),
                                                  initial_weights.trainable)
-    client_weight = tf.constant(3.0)
-    return optimizer_utils.ClientOutput(
-        trainable_weights_delta,
-        weights_delta_weight=client_weight,
-        model_output=self._model.report_local_outputs(),
-        optimizer_output={'client_weight': client_weight})
+    with tf.control_dependencies([dummy_output]):
+      client_weight = tf.constant(1.0)
+      return optimizer_utils.ClientOutput(
+          trainable_weights_delta,
+          weights_delta_weight=client_weight,
+          model_output=self._model.report_local_outputs(),
+          optimizer_output={
+              'client_weight': client_weight,
+              'workaround for b/121400757': dummy_output})
 
 
 class UtilsTest(test.TestCase):
@@ -176,10 +189,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertAllClose(train_vars['b'], 0.2)
     self.assertEqual(server_state.model.non_trainable['c'], 0.0)
 
-  # TODO(b/109733734): update these tests to actually execute the iterative
-  # process, instead of only checkign the type signatures. Test
-  # state_with_new_model_weights at the same time.
-  def test_orchestration(self):
+  def test_orchestration_type_signature(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.TrainableLinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn)
@@ -228,6 +238,34 @@ class ServerTest(test.TestCase, parameterized.TestCase):
                     expected_model_output_types)),
         iterative_process.next.type_signature)
 
+  def test_orchestration_execute(self):
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.TrainableLinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn)
+
+    ds = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.], [3., 4.]],
+        'y': [[5.], [6.]]
+    }).batch(2)
+    federated_ds = [ds] * 3
+
+    state = iterative_process.initialize()
+    self.assertSequenceAlmostEqual(state.model.trainable.a,
+                                   np.zeros([2, 1], np.float32))
+    self.assertAlmostEqual(state.model.trainable.b, 0.0)
+    self.assertAlmostEqual(state.model.non_trainable.c, 0.0)
+
+    state, outputs = iterative_process.next(state, federated_ds)
+    self.assertSequenceAlmostEqual(state.model.trainable.a,
+                                   -np.ones([2, 1], np.float32))
+    self.assertAlmostEqual(state.model.trainable.b, -1.0)
+    self.assertAlmostEqual(state.model.non_trainable.c, 0.0)
+
+    # Since all predictions are 0, loss is:
+    #    (0.5 * (0-5)^2 + (0-6)^2) / 2 = 15.25
+    self.assertAlmostEqual(outputs.loss, 15.25, places=4)
+    # 3 clients * 2 examples per client = 6 examples.
+    self.assertAlmostEqual(outputs.num_examples, 6.0, places=8)
 
 if __name__ == '__main__':
   # We default to TF 2.0 behavior, including eager execution, and use the
