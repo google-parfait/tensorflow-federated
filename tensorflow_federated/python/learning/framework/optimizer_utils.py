@@ -24,8 +24,6 @@ import six
 from six.moves import zip
 import tensorflow as tf
 
-# TODO(b/123578208): Remove deep keras imports after updating TF version.
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -258,7 +256,7 @@ def server_update_model(current_server_state, weights_delta, model_fn,
 
 def build_model_delta_optimizer_process(model_fn,
                                         model_to_client_delta_fn,
-                                        server_optimizer_fn=None):
+                                        server_optimizer_fn):
   """Constructs `tff.utils.IterativeProcess` for Federated Averaging or SGD.
 
   This provides the TFF orchestration logic connecting the common server logic
@@ -272,16 +270,15 @@ def build_model_delta_optimizer_process(model_fn,
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     model_to_client_delta_fn: A function from a model_fn to a `ClientDeltaFn`.
     server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
-      apply_gradients method of this optimizer is used to apply client updates
-      to the server model. The default returns a `tf.train.GradientDescent` with
-      a learning_rate of 1.0, which simply adds the average client delta to the
-      server's model.
+      `apply_gradients` method of this optimizer is used to apply client updates
+      to the server model.
 
   Returns:
     A `tff.utils.IterativeProcess`.
   """
-  if server_optimizer_fn is None:
-    server_optimizer_fn = lambda: gradient_descent.SGD(learning_rate=1.0)
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_callable(model_to_client_delta_fn)
+  py_typecheck.check_callable(server_optimizer_fn)
 
   # TODO(b/122081673): would be nice not to have the construct a throwaway model
   # here just to get the types. After fully moving to TF2.0 and eager-mode, we

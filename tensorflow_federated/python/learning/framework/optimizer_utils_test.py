@@ -192,7 +192,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
   def test_orchestration_type_signature(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.TrainableLinearRegression,
-        model_to_client_delta_fn=DummyClientDeltaFn)
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0))
 
     expected_model_weights_type = model_utils.ModelWeights(
         collections.OrderedDict([('a', tff.TensorType(tf.float32, [2, 1])),
@@ -241,7 +242,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
   def test_orchestration_execute(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.TrainableLinearRegression,
-        model_to_client_delta_fn=DummyClientDeltaFn)
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0))
 
     ds = tf.data.Dataset.from_tensor_slices({
         'x': [[1., 2.], [3., 4.]],
