@@ -136,8 +136,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
   @parameterized.parameters(
       {
           'dummy_batch':
-              collections.OrderedDict([('x', np.ones([1, 1])),
-                                       ('y', np.zeros([1, 1]))])
+              collections.OrderedDict([('x', np.ones([1, 1], np.float32)),
+                                       ('y', np.zeros([1, 1], np.float32))])
       },
       {
           'dummy_batch':
@@ -172,6 +172,11 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+
+    # Metrics should be zero, though the model wrapper internally executes the
+    # forward pass once.
+    self.assertSequenceEqual(
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
 
     batch = {
         'x':
@@ -232,6 +237,11 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     tff_model = model_utils.from_compiled_keras_model(
         keras_model=keras_model, dummy_batch=_create_dummy_batch(feature_dims))
+
+    # Metrics should be zero, though the model wrapper internally executes the
+    # forward pass once.
+    self.assertSequenceEqual(
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
 
     batch = {
         'x':
@@ -356,6 +366,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
           keras_model=_make_keras_model(),
           dummy_batch=_create_dummy_batch(feature_dims))
 
+    num_iterations = 3
     # TODO(b/122081673): This should be a @tf.function and the control
     # dependencies can go away (probably nothing blocking this, but it
     # just needs to be done and tested).
@@ -363,7 +374,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     def _train_loop():
       tff_model = _model_fn()
       ops = []
-      for _ in range(5):
+      for _ in range(num_iterations):
         with tf.control_dependencies(ops):
           batch_output = tff_model.train_on_batch({
               'x': np.ones([2, feature_dims], dtype=np.float32),
@@ -381,8 +392,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         [client_local_outputs])
     aggregated_outputs = collections.OrderedDict(
         anonymous_tuple.to_elements(aggregated_outputs))
-    self.assertEqual(aggregated_outputs['num_batches'], 5)
-    self.assertEqual(aggregated_outputs['num_examples'], 10)
+    self.assertEqual(aggregated_outputs['num_batches'], num_iterations)
+    self.assertEqual(aggregated_outputs['num_examples'], 2 * num_iterations)
     self.assertGreater(aggregated_outputs['loss'], 0.0)
 
     keras_model = _make_keras_model()
