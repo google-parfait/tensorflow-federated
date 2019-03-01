@@ -81,9 +81,11 @@ def load_data(only_digits=True, cache_dir=None):
     sha256 = 'fe1ed5a502cea3a952eb105920bff8cffb32836b5173cb18a57a32c3606f3ea0'
 
   filename = fileprefix + '.tar.bz2'
+  url = ('https://storage.googleapis.com/tff-datasets-public/' +
+         filename)
   path = tf.keras.utils.get_file(
       filename,
-      origin='https://storage.googleapis.com/tff-datasets-public/' + filename,
+      origin=url,
       file_hash=sha256,
       hash_algorithm='sha256',
       extract=True,
