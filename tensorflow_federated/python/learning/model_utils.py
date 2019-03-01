@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import itertools
 
+import six
 from six.moves import zip
 import tensorflow as tf
 
@@ -265,6 +266,26 @@ class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
   def __init__(self, inner_model, dummy_batch, loss_func, metrics):
+    if hasattr(dummy_batch, '_asdict'):
+      dummy_batch = dummy_batch._asdict()
+    # Convert input to tensors, possibly from nested lists that need to be
+    # converted to a single top-level tensor.
+    dummy_tensors = collections.OrderedDict(
+        [(k, tf.convert_to_tensor_or_sparse_tensor(v))
+         for k, v in six.iteritems(dummy_batch)])
+    # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
+    # variables until they are called on input. We forced that here.
+    inner_model(dummy_tensors['x'])
+
+    def _tensor_spec_with_undefined_batch_dim(tensor):
+      # Remove the batch dimension and leave it unspecified.
+      spec = tf.TensorSpec(
+          shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
+      return spec
+
+    self._input_spec = nest.map_structure(_tensor_spec_with_undefined_batch_dim,
+                                          dummy_tensors)
+
     self._keras_model = inner_model
     self._loss_fn = loss_func
     self._metrics = metrics if metrics is not None else []
@@ -297,16 +318,6 @@ class _KerasModel(model_lib.Model):
         return tf.div_no_nan(self._total_loss, self._total_weight)
 
     self._loss_metric = _WeightedMeanLossMetric()
-
-    def _tensor_spec_with_undefined_batch_dim(tensor):
-      tensor = tf.convert_to_tensor_or_sparse_tensor(tensor)
-      # Remove the batch dimension and leave it unspecified.
-      spec = tf.TensorSpec(
-          shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
-      return spec
-
-    self._input_spec = nest.map_structure(_tensor_spec_with_undefined_batch_dim,
-                                          dummy_batch)
 
     # Keras creates variables that are not added to any collection, making it
     # impossible for TFF to extract them and create the appropriate initializer
