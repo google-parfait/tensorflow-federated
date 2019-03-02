@@ -27,6 +27,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+# TODO(b/123578208): Remove deep keras imports after updating TF version.
+from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
@@ -54,7 +56,6 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     self._batch_weight_fn = batch_weight_fn
 
     self._model = model_utils.enhance(model)
-    del model
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
     if isinstance(self._model, model_lib.TrainableModel):
       raise ValueError(
@@ -74,59 +75,87 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return [self._batch_weight_sum] + nest.flatten(self._grad_sum_vars)
 
-  @tf.contrib.eager.function(autograph=False)
+  # TODO(b/123898430): The control dependencies below have been inserted as a
+  # temporary workaround. These control dependencies need to be removed and
+  # the methods re-annotated with tf.contrib.eager.function().
   def __call__(self, dataset, initial_weights):
-    # N.B. When not in eager mode, this code must be wrapped as a defun
-    # as it uses program-order semantics to avoid adding many explicit
-    # control dependencies.
+    # TODO(b/113112108): Remove this temporary workaround and restore check for
+    # `tf.data.Dataset` after subclassing the currently used custom data set
+    # representation from it.
+    if 'Dataset' not in str(type(dataset)):
+      raise TypeError('Expected a data set, found {}.'.format(
+          py_typecheck.type_string(type(dataset))))
+
     model = self._model
-    py_typecheck.check_type(dataset, tf.data.Dataset)
+    dummy_weights = nest.map_structure(tf.assign, model.weights,
+                                       initial_weights)
 
-    nest.map_structure(tf.assign, model.weights, initial_weights)
-
-    @tf.contrib.eager.function(autograph=False)
-    def reduce_fn(dummy_state, batch):
+    def reduce_fn(accumulated_grads, batch):
       """Runs forward_pass on batch."""
       with tf.contrib.eager.GradientTape() as tape:
         output = model.forward_pass(batch)
 
-      flat_vars = nest.flatten(model.weights.trainable)
-      grads = nest.pack_sequence_as(self._grad_sum_vars,
-                                    tape.gradient(output.loss, flat_vars))
+      with tf.control_dependencies(list(output)):
+        flat_vars = nest.flatten(model.weights.trainable)
+        grads = nest.pack_sequence_as(accumulated_grads,
+                                      tape.gradient(output.loss, flat_vars))
 
-      if self._batch_weight_fn is not None:
-        batch_weight = self._batch_weight_fn(batch)
-      else:
-        batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
+        if self._batch_weight_fn is not None:
+          batch_weight = self._batch_weight_fn(batch)
+        else:
+          batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
 
       tf.assign_add(self._batch_weight_sum, batch_weight)
-      nest.map_structure(
-          lambda v, g:  # pylint:disable=g-long-lambda
-          tf.assign_add(v, batch_weight * g),
-          self._grad_sum_vars,
-          grads)
+      return nest.map_structure(
+          lambda accumulator, grad: accumulator + batch_weight * grad,
+          accumulated_grads, grads)
 
-      return dummy_state
+    with tf.control_dependencies(list(dummy_weights.trainable.values())):
+      self._grad_sum_vars = dataset.reduce(
+          initial_state=self._grad_sum_vars, reduce_func=reduce_fn)
 
-    # TODO(b/121400757): Remove dummy_output when bug fixed.
-    dummy_output = dataset.reduce(
-        initial_state=tf.constant(0.0), reduce_func=reduce_fn)
+    with tf.control_dependencies(
+        [tf.identity(v) for v in self._grad_sum_vars.values()]):
+      # For SGD, the delta is just the negative of the average gradient:
+      weights_delta = nest.map_structure(
+          lambda gradient: -1.0 * gradient / self._batch_weight_sum,
+          self._grad_sum_vars)
+      weights_delta, has_non_finite_delta = (
+          tensor_utils.zero_all_if_any_non_finite(weights_delta))
+      weights_delta_weight = tf.cond(
+          tf.equal(has_non_finite_delta,
+                   0), lambda: self._batch_weight_sum, lambda: tf.constant(0.0))
 
-    # For SGD, the delta is just the negative of the average gradient:
-    # TODO(b/109733734): Might be better to send the weighted grad sums
-    # and the denominator separately?
-    weights_delta = nest.map_structure(
-        lambda g: -1.0 * g / self._batch_weight_sum, self._grad_sum_vars)
-    weights_delta, has_non_finite_delta = (
-        tensor_utils.zero_all_if_any_non_finite(weights_delta))
-    weights_delta_weight = tf.cond(
-        tf.equal(has_non_finite_delta,
-                 0), lambda: self._batch_weight_sum, lambda: tf.constant(0.0))
+      return optimizer_utils.ClientOutput(
+          weights_delta, weights_delta_weight, model.report_local_outputs(),
+          tensor_utils.to_odict({
+              'client_weight': weights_delta_weight,
+              'has_non_finite_delta': has_non_finite_delta,
+          }))
 
-    return optimizer_utils.ClientOutput(
-        weights_delta, weights_delta_weight, model.report_local_outputs(),
-        tensor_utils.to_odict({
-            'client_weight': weights_delta_weight,
-            'has_non_finite_delta': has_non_finite_delta,
-            'workaround for b/121400757': dummy_output,
-        }))
+
+def build_federated_sgd_process(
+    model_fn,
+    server_optimizer_fn=lambda: gradient_descent.SGD(learning_rate=0.1),
+    client_weight_fn=None):
+  """Builds the TFF computations for optimization using federated SGD.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
+      `apply_gradients` method of this optimizer is used to apply client updates
+      to the server model.
+    client_weight_fn: Optional function that takes the output of
+      `model.report_local_outputs` and returns a tensor that provides the weight
+      in the federated average of model deltas. If not provided, the default is
+      the total number of examples processed on device.
+
+  Returns:
+    A `tff.utils.IterativeProcess`.
+  """
+
+  def client_sgd_avg(model_fn):
+    return ClientSgd(model_fn(), client_weight_fn)
+
+  return optimizer_utils.build_model_delta_optimizer_process(
+      model_fn, client_sgd_avg, server_optimizer_fn)

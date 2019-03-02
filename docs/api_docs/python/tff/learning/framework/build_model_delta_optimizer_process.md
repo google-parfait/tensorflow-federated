@@ -9,7 +9,7 @@
 tff.learning.framework.build_model_delta_optimizer_process(
     model_fn,
     model_to_client_delta_fn,
-    server_optimizer_fn=None
+    server_optimizer_fn
 )
 ```
 
@@ -34,10 +34,8 @@ variables or ops created in constructors are placed in the correct graph.
 *   <b>`model_to_client_delta_fn`</b>: A function from a model_fn to a
     `ClientDeltaFn`.
 *   <b>`server_optimizer_fn`</b>: A no-arg function that returns a
-    `tf.Optimizer`. The apply_gradients method of this optimizer is used to
-    apply client updates to the server model. The default returns a
-    `tf.train.GradientDescent` with a learning_rate of 1.0, which simply adds
-    the average client delta to the server's model.
+    `tf.Optimizer`. The `apply_gradients` method of this optimizer is used to
+    apply client updates to the server model.
 
 #### Returns:
 
