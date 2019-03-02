@@ -10,6 +10,7 @@ py_library(
     deps = [
         ":federated_averaging",
         ":federated_evaluation",
+        ":federated_sgd",
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/learning/framework",
@@ -96,6 +97,7 @@ py_library(
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
     ],
 )
 
@@ -108,8 +110,11 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 

@@ -35,6 +35,9 @@ Builds the TFF computations for optimization using federated averaging.
 [`build_federated_evaluation(...)`](../tff/learning/build_federated_evaluation.md):
 Builds the TFF computation for federated evaluation of the given model.
 
+[`build_federated_sgd_process(...)`](../tff/learning/build_federated_sgd_process.md):
+Builds the TFF computations for optimization using federated SGD.
+
 [`from_compiled_keras_model(...)`](../tff/learning/from_compiled_keras_model.md):
 Builds a <a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a>
 for an example mini batch.

@@ -11,20 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for learning.federated_averaging."""
+"""Tests for learning.federated_sgd."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from absl.testing import parameterized
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import optimizer_utils
 
 nest = tf.contrib.framework.nest
 
@@ -97,6 +102,148 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
                                                                   [0.0]]))
     self.assertAllClose(out.weights_delta['b'].numpy(), 0.0)
     self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
+
+
+class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
+
+  def test_orchestration_typecheck(self):
+    iterative_process = federated_sgd.build_federated_sgd_process(
+        model_fn=model_examples.LinearRegression)
+
+    expected_model_weights_type = model_utils.ModelWeights(
+        collections.OrderedDict([('a', tff.TensorType(tf.float32, [2, 1])),
+                                 ('b', tf.float32)]),
+        collections.OrderedDict([('c', tf.float32)]))
+
+    # ServerState consists of a model and optimizer_state. The optimizer_state
+    # is provided by TensorFlow, TFF doesn't care what the actual value is.
+    expected_federated_server_state_type = tff.FederatedType(
+        optimizer_utils.ServerState(expected_model_weights_type,
+                                    test.AnyType()),
+        placement=tff.SERVER,
+        all_equal=True)
+
+    expected_federated_dataset_type = tff.FederatedType(
+        tff.SequenceType(
+            model_examples.LinearRegression.make_batch(
+                tff.TensorType(tf.float32, [None, 2]),
+                tff.TensorType(tf.float32, [None, 1]))),
+        tff.CLIENTS,
+        all_equal=False)
+
+    expected_model_output_types = tff.FederatedType(
+        collections.OrderedDict([
+            ('loss', tff.TensorType(tf.float32, [])),
+            ('num_examples', tff.TensorType(tf.int32, [])),
+        ]),
+        tff.SERVER,
+        all_equal=True)
+
+    # `initialize` is expected to be a funcion of no arguments to a ServerState.
+    self.assertEqual(
+        tff.FunctionType(
+            parameter=None, result=expected_federated_server_state_type),
+        iterative_process.initialize.type_signature)
+
+    # `next` is expected be a function of (ServerState, Datasets) to
+    # ServerState.
+    self.assertEqual(
+        tff.FunctionType(
+            parameter=[
+                expected_federated_server_state_type,
+                expected_federated_dataset_type
+            ],
+            result=(expected_federated_server_state_type,
+                    expected_model_output_types)),
+        iterative_process.next.type_signature)
+
+  def test_orchestration_execute(self):
+    iterative_process = federated_sgd.build_federated_sgd_process(
+        model_fn=model_examples.LinearRegression)
+
+    # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
+    # kernel = [1, 2], bias = [3].
+    ds1 = tf.data.Dataset.from_tensor_slices({
+        'x': [[0., 0.], [0., 1.]],
+        'y': [[3.], [5.]]
+    }).batch(2)
+    ds2 = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.], [3., 4.], [1., 0.], [-1., -1.]],
+        'y': [[8.], [14.], [4.0], [0.]]
+    }).batch(2)
+    federated_ds = [ds1, ds2]
+
+    server_state = iterative_process.initialize()
+
+    prev_loss = np.inf
+    num_iterations = 3
+    for _ in range(num_iterations):
+      server_state, metric_outputs = iterative_process.next(
+          server_state, federated_ds)
+      self.assertEqual(metric_outputs.num_examples,
+                       num_iterations * len(federated_ds))
+      self.assertLess(metric_outputs.loss, prev_loss)
+      prev_loss = metric_outputs.loss
+
+  @parameterized.parameters([
+      model_examples.build_linear_regresion_keras_functional_model,
+      model_examples.build_linear_regresion_keras_sequential_model,
+      model_examples.build_linear_regresion_keras_subclass_model,
+  ])
+  def test_orchestration_execute_from_keras(self, build_keras_model_fn):
+    dummy_batch = collections.OrderedDict([
+        ('x', np.zeros([1, 2], np.float32)),
+        ('y', np.zeros([1, 1], np.float32)),
+    ])
+
+    def model_fn():
+      # Note: we don't compile with an optimizer here; FedSGD does not use it.
+      keras_model = build_keras_model_fn(feature_dims=2)
+      return model_utils.from_keras_model(
+          keras_model, dummy_batch, loss=tf.keras.losses.MeanSquaredError())
+
+    iterative_process = federated_sgd.build_federated_sgd_process(
+        model_fn=model_fn)
+
+    # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
+    # kernel = [1, 2], bias = [3].
+    ds1 = tf.data.Dataset.from_tensor_slices({
+        'x': [[0., 0.], [0., 1.]],
+        'y': [[3.], [5.]]
+    }).batch(2)
+    ds2 = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.], [3., 4.], [1., 0.], [-1., -1.]],
+        'y': [[8.], [14.], [4.0], [0.]]
+    }).batch(2)
+    federated_ds = [ds1, ds2]
+
+    server_state = iterative_process.initialize()
+    prev_loss = np.inf
+    for _ in range(3):
+      server_state, loss = iterative_process.next(server_state, federated_ds)
+      self.assertLess(loss, prev_loss)
+      prev_loss = loss
+
+  def test_execute_empty_data(self):
+    iterative_process = federated_sgd.build_federated_sgd_process(
+        model_fn=model_examples.LinearRegression)
+
+    # Results in empty dataset with correct types and shapes.
+    ds = tf.data.Dataset.from_tensor_slices({
+        'x': [[1., 2.]],
+        'y': [[5.]]
+    }).batch(
+        5, drop_remainder=True)  # No batches of size 5 can be created.
+    federated_ds = [ds] * 2
+
+    server_state = iterative_process.initialize()
+    first_state, metric_outputs = iterative_process.next(
+        server_state, federated_ds)
+    self.assertEqual(
+        tf.reduce_sum(first_state.model.trainable.a).numpy() +
+        tf.reduce_sum(first_state.model.trainable.b).numpy(), 0)
+    self.assertEqual(metric_outputs.num_examples, 0)
+    self.assertTrue(tf.is_nan(metric_outputs.loss))
 
 
 if __name__ == '__main__':

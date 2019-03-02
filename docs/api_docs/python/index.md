@@ -27,6 +27,7 @@
 *   <a href="./tff/learning/TrainableModel.md"><code>tff.learning.TrainableModel</code></a>
 *   <a href="./tff/learning/build_federated_averaging_process.md"><code>tff.learning.build_federated_averaging_process</code></a>
 *   <a href="./tff/learning/build_federated_evaluation.md"><code>tff.learning.build_federated_evaluation</code></a>
+*   <a href="./tff/learning/build_federated_sgd_process.md"><code>tff.learning.build_federated_sgd_process</code></a>
 *   <a href="./tff/learning/framework.md"><code>tff.learning.framework</code></a>
 *   <a href="./tff/learning/framework/ClientDeltaFn.md"><code>tff.learning.framework.ClientDeltaFn</code></a>
 *   <a href="./tff/learning/framework/ClientOutput.md"><code>tff.learning.framework.ClientOutput</code></a>
