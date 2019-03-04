@@ -42,14 +42,12 @@ def create_simple_keras_model(learning_rate=0.1):
 
   def loss_fn(y_true, y_pred):
     return tf.reduce_mean(
-        tf.keras.metrics.sparse_categorical_crossentropy(y_true, y_pred))
+        tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
 
   model.compile(
       loss=loss_fn,
       optimizer=gradient_descent.SGD(learning_rate),
-      # TODO(b/124563513): Readd tf.keras.metrics.SparseCategoricalAccuracy()
-      # after upgrading to a version of TF that has this fixed.
-      metrics=[])
+      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
   return model
 
 
