@@ -5,9 +5,7 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "mnist",
     srcs = ["__init__.py"],
-    deps = [
-        ":models",
-    ],
+    deps = [":models"],
 )
 
 py_library(

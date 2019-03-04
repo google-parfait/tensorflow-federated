@@ -79,15 +79,16 @@ class MnistTest(tf.test.TestCase):
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
   def test_self_contained_example(self):
-    emnist_batch = collections.OrderedDict([('label', 5),
+    emnist_batch = collections.OrderedDict([('label', [5]),
                                             ('pixels', np.random.rand(28, 28))])
 
     output_types = collections.OrderedDict([('label', tf.int32),
                                             ('pixels', tf.float32)])
 
-    output_shapes = collections.OrderedDict([('label', tf.TensorShape([])),
-                                             ('pixels', tf.TensorShape([28,
-                                                                        28]))])
+    output_shapes = collections.OrderedDict([
+        ('label', tf.TensorShape([1])),
+        ('pixels', tf.TensorShape([28, 28])),
+    ])
 
     def generate_one_emnist_batch():
       yield emnist_batch
@@ -96,7 +97,7 @@ class MnistTest(tf.test.TestCase):
                                              output_types, output_shapes)
 
     def client_data():
-      return models.keras_dataset_from_emnist(dataset).repeat(10).batch(20)
+      return models.keras_dataset_from_emnist(dataset).repeat(2).batch(2)
 
     train_data = [client_data()]
     sample_batch = tf.contrib.framework.nest.map_structure(
@@ -110,8 +111,9 @@ class MnistTest(tf.test.TestCase):
     state = trainer.initialize()
     losses = []
     for _ in range(2):
-      state, loss = trainer.next(state, train_data)
-      losses.append(loss)
+      state, outputs = trainer.next(state, train_data)
+      # Track the loss.
+      losses.append(outputs.loss)
     self.assertLess(losses[1], losses[0])
 
 
