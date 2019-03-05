@@ -219,9 +219,9 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
 
     prev_loss = np.inf
     for _ in range(3):
-      server_state, loss = iterative_process.next(server_state, federated_ds)
-      self.assertLess(loss, prev_loss)
-      prev_loss = loss
+      server_state, metrics = iterative_process.next(server_state, federated_ds)
+      self.assertLess(metrics.loss, prev_loss)
+      prev_loss = metrics.loss
 
   def test_execute_empty_data(self):
     iterative_process = federated_averaging.build_federated_averaging_process(

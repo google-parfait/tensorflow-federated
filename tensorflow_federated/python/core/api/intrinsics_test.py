@@ -137,6 +137,53 @@ class IntrinsicsTest(parameterized.TestCase):
         str(foo.type_signature),
         '(<{int32}@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
+  def test_federated_zip_with_single_unnamed_int_client(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(tf.int32, placements.CLIENTS),
+    ])
+    def foo(x):
+      return intrinsics.federated_zip(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(<{int32}@CLIENTS> -> {<int32>}@CLIENTS)')
+
+  def test_federated_zip_with_single_unnamed_int_server(self):
+
+    @computations.federated_computation([
+        computation_types.FederatedType(
+            tf.int32, placements.SERVER, all_equal=True),
+    ])
+    def foo(x):
+      return intrinsics.federated_zip(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(<int32@SERVER> -> <int32>@SERVER)')
+
+  def test_federated_zip_with_single_named_bool_clients(self):
+
+    @computations.federated_computation([
+        ('a', computation_types.FederatedType(tf.bool, placements.CLIENTS)),
+    ])
+    def foo(x):
+      return intrinsics.federated_zip(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(<a={bool}@CLIENTS> -> {<a=bool>}@CLIENTS)')
+
+  def test_federated_zip_with_single_named_bool_server(self):
+
+    @computations.federated_computation([
+        ('a',
+         computation_types.FederatedType(
+             tf.bool, placements.SERVER, all_equal=True)),
+    ])
+    def foo(x):
+      return intrinsics.federated_zip(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(<a=bool@SERVER> -> <a=bool>@SERVER)')
+
   def test_federated_zip_with_names_client_non_all_equal_int_and_bool(self):
 
     @computations.federated_computation([
