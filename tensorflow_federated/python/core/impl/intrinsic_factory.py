@@ -463,8 +463,6 @@ class IntrinsicFactory(object):
     """
     # TODO(b/113112108): Extend this to accept *args.
 
-    # TODO(b/113112108): Allow for auto-extraction of NamedTuples of length 1.
-
     # TODO(b/113112108): We use the iterate/unwrap approach below because
     # our type system is not powerful enough to express the concept of
     # "an operation that takes tuples of T of arbitrary length", and therefore
@@ -476,13 +474,10 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(value, value_base.Value)
     py_typecheck.check_type(value.type_signature,
                             computation_types.NamedTupleType)
-    num_elements = len(anonymous_tuple.to_elements(value.type_signature))
-    if num_elements < 2:
-      raise TypeError(
-          'The federated zip operator zips tuples of at least two elements, '
-          'but the tuple given as argument has {} '
-          'elements.'.format(num_elements))
     elements_to_zip = anonymous_tuple.to_elements(value.type_signature)
+    num_elements = len(elements_to_zip)
+    py_typecheck.check_type(elements_to_zip[0][1],
+                            computation_types.FederatedType)
     output_placement = elements_to_zip[0][1].placement
     zip_apply_fn = {
         placements.CLIENTS: self.federated_map,
@@ -492,6 +487,16 @@ class IntrinsicFactory(object):
       raise TypeError(
           'federated_zip only supports components with CLIENTS or '
           'SERVER placement, [{}] is unsupported'.format(output_placement))
+    if num_elements == 0:
+      raise ValueError('federated_zip is only supported on nonempty tuples.')
+    if num_elements == 1:
+      input_ref = computation_building_blocks.Reference(
+          'value_in', elements_to_zip[0][1].member)
+      output_tuple = computation_building_blocks.Tuple([(elements_to_zip[0][0],
+                                                         input_ref)])
+      lam = computation_building_blocks.Lambda(
+          'value_in', input_ref.type_signature, output_tuple)
+      return zip_apply_fn[output_placement](lam, value[0])
     for _, elem in elements_to_zip:
       py_typecheck.check_type(elem, computation_types.FederatedType)
       if elem.placement is not output_placement:
