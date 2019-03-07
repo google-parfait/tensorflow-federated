@@ -1,4 +1,3 @@
-# Required to build Tensorflow from source.
 keras_applications
 keras_preprocessing
 h5py

@@ -19,7 +19,6 @@ ARG _PY_SUFFIX=${USE_PYTHON_3:+3}
 ARG PYTHON=python${_PY_SUFFIX}
 ARG PIP=pip${_PY_SUFFIX}
 
-RUN echo "** Using [${PYTHON}]"
 # See http://bugs.python.org/issue19846
 ENV LANG C.UTF-8
 
@@ -32,6 +31,7 @@ RUN ${PIP} --no-cache-dir install --upgrade \
     setuptools
 
 RUN ln -s -f $(which ${PYTHON}) /usr/local/bin/python
+RUN ${PYTHON} --version
 
 RUN apt update && apt install -y \
     build-essential \
@@ -53,12 +53,15 @@ RUN mkdir /bazel && \
     chmod +x /bazel/installer.sh && \
     /bazel/installer.sh && \
     rm -f /bazel/installer.sh
+RUN bazel version
 
-# Install the Tensorflow Federated package dependencies
+# Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} --no-cache-dir install \
     keras_applications \
     keras_preprocessing \
     h5py \
+    matplotlib \
     numpy \
     six \
     tensorflow_estimator
+RUN pip freeze
