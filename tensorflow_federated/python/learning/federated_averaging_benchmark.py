@@ -208,14 +208,15 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     def model_fn():
       model = tf.keras.models.Sequential([
           tf.keras.layers.Flatten(input_shape=(784,)),
-          tf.keras.layers.Dense(512, activation=tf.nn.relu),
-          tf.keras.layers.Dense(10, activation=tf.nn.softmax)
+          tf.keras.layers.Dense(10,
+                                kernel_intializer="zeros",
+                                bias_initializer="zeros",
+                                activation=tf.nn.softmax)
       ])
 
       model.compile(
           loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-          optimizer=tf.keras.optimizers.SGD(0.1),
-          metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+          optimizer=tf.keras.optimizers.SGD(0.1))
 
       return model_utils.from_compiled_keras_model(model,
                                                    federated_train_data[0][0])
