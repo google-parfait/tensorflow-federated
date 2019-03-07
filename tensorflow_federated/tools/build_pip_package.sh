@@ -15,7 +15,7 @@
 #
 # Tool to build the TensorFlow Federated pip package.
 #
-# How to run:
+# Usage:
 #   bazel build //tensorflow_federated/tools:build_pip_package
 #   bazel-bin/tensorflow_federated/tools/build_pip_package "/tmp/tensorflow_federated"
 #
@@ -55,10 +55,14 @@ main() {
       "${temp_dir}"
 
   pushd "${temp_dir}" > /dev/null
+
+  # Create a virtual environment
   virtualenv --python=python3 "venv"
   source "venv/bin/activate"
+  pip install --upgrade pip
 
-  pip install --upgrade pip setuptools wheel
+  # Build pip package
+  pip install --upgrade setuptools wheel
   python setup.py bdist_wheel \
       --universal \
       --project_name "${project_name}"
