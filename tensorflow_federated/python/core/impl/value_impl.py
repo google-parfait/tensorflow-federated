@@ -200,7 +200,7 @@ class ValueImpl(value_base.Value):
             computation_building_blocks.Intrinsic(
                 intrinsic_defs.GENERIC_PLUS.uri,
                 computation_types.FunctionType(
-                    [self.type_signature, self.type_signature],
+                    [self.type_signature, other.type_signature],
                     self.type_signature)),
             ValueImpl.get_comp(
                 to_value([self, other], None, self._context_stack))),
