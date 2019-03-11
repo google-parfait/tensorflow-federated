@@ -86,6 +86,17 @@ landing_page:
 
   - classname: devsite-landing-row-cards
     items:
+    - heading: "TensorFlow Federated (TFF): Machine Learning on Decentralized Data"
+      youtube_id: 1YbPmkChcbo
+      buttons:
+      - label: Watch the video
+        path: https://www.youtube.com/watch?v=1YbPmkChcbo
+    - heading: "Introducing TensorFlow Federated"
+      image_path: /resources/images/tf-logo-card-16x9.png
+      path: https://medium.com/tensorflow/introducing-tensorflow-federated-a4147aa20041
+      buttons:
+      - label: "Read on TensorFlow blog"
+        path: https://medium.com/tensorflow/introducing-tensorflow-federated-a4147aa20041
     - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
       image_path: /resources/images/google-research-card-16x9.png
       path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
