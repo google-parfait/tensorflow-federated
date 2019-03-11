@@ -56,6 +56,16 @@ for developers may also be useful to review.
 If you want to contribute to TensorFlow Federated, be sure to review the
 [contribution guidelines](CONTRIBUTING.md).
 
+## Compatibility
+
+The following table describes the compatibility between TFF and TensorFlow
+versions.
+
+| TensorFlow Federated                                          | TensorFlow                                                   |
+|---------------------------------------------------------------|--------------------------------------------------------------|
+| [master](https://github.com/tensorflow/federated)             | [tf-nightly (v1.x)](https://pypi.org/project/tf-nightly/)    |
+| [v0.1.0](https://github.com/tensorflow/federated/tree/v0.1.0) | [v1.13.0rc2](https://pypi.org/project/tensorflow/1.13.0rc0/) |
+
 ## Issues
 
 Use [GitHub issues](https://github.com/tensorflow/federated/issues) for tracking

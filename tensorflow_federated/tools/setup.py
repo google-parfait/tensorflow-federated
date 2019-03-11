@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=line-too-long
 """TensorFlow Federated is an open-source federated learning framework.
 
 TensorFlow Federated (TFF) is an open-source framework for machine learning and
@@ -48,7 +47,6 @@ could be deployed to diverse runtime environments. Included with TFF is a
 single-machine simulation runtime for experiments. Please visit the
 tutorials and try it out yourself!
 """
-# pylint: enable=line-too-long
 # TODO(b/124800187): Keep in sync with the contents of README.
 
 import sys
@@ -61,7 +59,6 @@ _VERSION = '0.1.0'
 
 project_name = 'tensorflow_federated'
 
-# Set when building the pip package
 if '--project_name' in sys.argv:
   project_name_idx = sys.argv.index('--project_name')
   project_name = sys.argv[project_name_idx + 1]
@@ -69,10 +66,10 @@ if '--project_name' in sys.argv:
   sys.argv.pop(project_name_idx)
 
 REQUIRED_PACKAGES = [
-    'h5py',
-    'numpy',
-    'six',
-    'tensorflow>=1.13.0rc2',
+    'h5py~=2.6.0',
+    'numpy~=1.14',
+    'six~=1.10',
+    'tensorflow~=1.13',
 ]
 
 setuptools.setup(
