@@ -7,10 +7,10 @@ The TensorFlow Federated (TFF) platform consists of two layers:
     framework. You can perform basic tasks, such as federated training or
     evaluation, without having to study the details of federated learning
     algorithms.
-*   [Federated Core (FC)](federated_core.md), lower-level interfaces to concisely
-    express custom federated algorithms by combining TensorFlow with distributed
-    communication operators within a strongly-typed functional programming
-    environment.
+*   [Federated Core (FC)](federated_core.md), lower-level interfaces to
+    concisely express custom federated algorithms by combining TensorFlow with
+    distributed communication operators within a strongly-typed functional
+    programming environment.
 
 Start by reading the following tutorials that walk you through the main TFF
 concepts and APIs using practical examples. Make sure to follow the

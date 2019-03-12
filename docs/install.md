@@ -1,16 +1,17 @@
 # Install TensorFlow Federated
 
-There are a few ways to set up your environment to use TensorFlow Federated (TFF):
+There are a few ways to set up your environment to use TensorFlow Federated
+(TFF):
 
-* The easiest way to learn and use TFF requires no installation—run the
-TensorFlow Federated tutorials directly in your browser using
-[Google Colaboratory](https://colab.research.google.com/notebooks/welcome.ipynb).
-* To use TensorFlow Federated on a local machine, install the
-[TFF package](#install-tensorflow-federated-using-pip) with Python's `pip`
-package manager.
-* If you have a unique machine configuration,
-[build TensorFlow Federated](#build-the-tensorflow-federated-pip-package) from
-source.
+*   The easiest way to learn and use TFF requires no installation—run the
+    TensorFlow Federated tutorials directly in your browser using
+    [Google Colaboratory](https://colab.research.google.com/notebooks/welcome.ipynb).
+*   To use TensorFlow Federated on a local machine, install the
+    [TFF package](#install-tensorflow-federated-using-pip) with Python's `pip`
+    package manager.
+*   If you have a unique machine configuration,
+    [build TensorFlow Federated](#build-the-tensorflow-federated-pip-package)
+    from source.
 
 ## Install TensorFlow Federated using pip
 
@@ -93,8 +94,8 @@ On macOS:
 
 #### 2. Install Bazel.
 
-[Install Bazel](https://docs.bazel.build/versions/master/install.html), the build
-tool used to compile Tensorflow Federated.
+[Install Bazel](https://docs.bazel.build/versions/master/install.html), the
+build tool used to compile Tensorflow Federated.
 
 Note: Bazel version `0.19.2` or greater is required by TensorFlow Federated.
 

@@ -95,8 +95,11 @@ class TransformingClientData(client_data.ClientData):
     expansion_id = int(match.group(2))
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
         raw_client_id)
-    return raw_dataset.map(
-        lambda example: self._transform_fn(example, expansion_id))
+
+    def _transform_fn_wrapper(example):
+      return self._transform_fn(example, expansion_id)
+
+    return raw_dataset.map(_transform_fn_wrapper)
 
   @property
   def output_types(self):

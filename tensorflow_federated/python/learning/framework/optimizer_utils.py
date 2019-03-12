@@ -152,8 +152,8 @@ def state_with_new_model_weights(server_state, trainable_weights,
       process like `tff.learning.build_federated_averaging_process`.
     trainable_weights: A list of `numpy` arrays in the order of the original
       model's `trainable_variables`.
-    non_trainable_weights: A list of `numpy` arrays in the order of the
-    original model's `non_trainable_variables`.
+    non_trainable_weights: A list of `numpy` arrays in the order of the original
+      model's `non_trainable_variables`.
 
   Returns:
     A new server state object which can be passed to the `next` method of
@@ -254,8 +254,7 @@ def server_update_model(current_server_state, weights_delta, model_fn,
 #
 
 
-def build_model_delta_optimizer_process(model_fn,
-                                        model_to_client_delta_fn,
+def build_model_delta_optimizer_process(model_fn, model_to_client_delta_fn,
                                         server_optimizer_fn):
   """Constructs `tff.utils.IterativeProcess` for Federated Averaging or SGD.
 
