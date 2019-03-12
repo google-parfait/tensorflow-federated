@@ -33,5 +33,5 @@ Builds the TFF computations for optimization using federated SGD.
 
 #### Returns:
 
-A <a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>.
-
+A
+<a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>.
