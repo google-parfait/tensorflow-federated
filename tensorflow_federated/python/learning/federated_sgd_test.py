@@ -68,7 +68,7 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
 
     # Both trainable parameters should have gradients,
     # and we don't return the non-trainable 'c'.
-    self.assertCountEqual(['a', 'b'], out.weights_delta.keys())
+    self.assertCountEqual(['a', 'b'], list(out.weights_delta.keys()))
     # Model deltas for squared error.
     self.assertAllClose(out.weights_delta['a'], [[1.0], [0.0]])
     self.assertAllClose(out.weights_delta['b'], 1.0)

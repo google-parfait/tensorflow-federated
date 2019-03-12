@@ -78,7 +78,7 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
 
       # Both trainable parameters should have been updated,
       # and we don't return the non-trainable 'c'.
-      self.assertCountEqual(['a', 'b'], out.weights_delta.keys())
+      self.assertCountEqual(['a', 'b'], list(out.weights_delta.keys()))
       self.assertGreater(np.linalg.norm(out.weights_delta['a']), 0.1)
       self.assertGreater(np.linalg.norm(out.weights_delta['b']), 0.1)
       self.assertEqual(out.weights_delta_weight, 20.0)

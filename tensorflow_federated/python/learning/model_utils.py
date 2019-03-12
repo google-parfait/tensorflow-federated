@@ -373,7 +373,7 @@ class _KerasModel(model_lib.Model):
     inputs = batch_input.get('x')
     if inputs is None:
       raise KeyError('Received a batch_input that is missing required key `x`. '
-                     'Instead have keys {}'.format(batch_input.keys()))
+                     'Instead have keys {}'.format(list(batch_input.keys())))
     predictions = self._keras_model(inputs=inputs, training=training)
 
     y_true = batch_input.get('y')
