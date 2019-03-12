@@ -67,7 +67,8 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
           model_output=self._model.report_local_outputs(),
           optimizer_output={
               'client_weight': client_weight,
-              'workaround for b/121400757': dummy_output})
+              'workaround for b/121400757': dummy_output
+          })
 
 
 class UtilsTest(test.TestCase):
@@ -268,6 +269,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(outputs.loss, 15.25, places=4)
     # 3 clients * 2 examples per client = 6 examples.
     self.assertAlmostEqual(outputs.num_examples, 6.0, places=8)
+
 
 if __name__ == '__main__':
   # We default to TF 2.0 behavior, including eager execution, and use the

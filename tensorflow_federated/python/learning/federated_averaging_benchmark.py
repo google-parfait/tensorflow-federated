@@ -208,10 +208,11 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     def model_fn():
       model = tf.keras.models.Sequential([
           tf.keras.layers.Flatten(input_shape=(784,)),
-          tf.keras.layers.Dense(10,
-                                kernel_intializer="zeros",
-                                bias_initializer="zeros",
-                                activation=tf.nn.softmax)
+          tf.keras.layers.Dense(
+              10,
+              kernel_intializer="zeros",
+              bias_initializer="zeros",
+              activation=tf.nn.softmax)
       ])
 
       model.compile(

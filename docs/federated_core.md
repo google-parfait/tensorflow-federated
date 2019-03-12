@@ -41,33 +41,32 @@ see expressed in pseudocode in a
 [research publication](https://arxiv.org/pdf/1602.05629.pdf) that describes a
 new distributed learning algorithm.
 
-The goal of FC, in a nusthell, is to enable similarly compact representation,
-at a similar pseudocode-like level of abstraction, of program logic that is
-*not* pseudocode, but rather, that's executable in a variety of target
-environments.
+The goal of FC, in a nusthell, is to enable similarly compact representation, at
+a similar pseudocode-like level of abstraction, of program logic that is *not*
+pseudocode, but rather, that's executable in a variety of target environments.
 
 The key defining characteristic of the kinds of algorithms that FC is designed
 to express is that actions of system participants are described in a collective
-manner. Thus, we tend to talk about *each device* locally transforming data,
-and the devices coordinating work by a centralized coordinator *broadcasting*,
+manner. Thus, we tend to talk about *each device* locally transforming data, and
+the devices coordinating work by a centralized coordinator *broadcasting*,
 *collecting*, or *aggregating* their results.
 
 While TFF has been designed to be able to go beyond simple *client-server*
-architectures, the notion of collective processing is fundamental. This is
-due to the origins of TFF in federated learning, a technology originally
-designed to support computations on potentially sensitive data that remains
-under control of client devices, and that may not be simply downloaded to a
-centralized location for privacy reasons. While each client in such systems
-contributes data and processing power towards computing a result by the
-system (a result that we would generally expect to be of value to all the
-participants), we also strive at preserving each client's privacy and anonymity.
+architectures, the notion of collective processing is fundamental. This is due
+to the origins of TFF in federated learning, a technology originally designed to
+support computations on potentially sensitive data that remains under control of
+client devices, and that may not be simply downloaded to a centralized location
+for privacy reasons. While each client in such systems contributes data and
+processing power towards computing a result by the system (a result that we
+would generally expect to be of value to all the participants), we also strive
+at preserving each client's privacy and anonymity.
 
 Thus, while most frameworks for distributed computing are designed to express
 processing from the perspective of individual participants - that is, at the
-level of individual point-to-point message exchanges, and the interdependence
-of the participant's local state transitions with incoming and outgoing
-messages, TFF's Federated Core is designed to describe the behavior of the
-system from the *global* system-wide perspective (similarly to, e.g.,
+level of individual point-to-point message exchanges, and the interdependence of
+the participant's local state transitions with incoming and outgoing messages,
+TFF's Federated Core is designed to describe the behavior of the system from the
+*global* system-wide perspective (similarly to, e.g.,
 [MapReduce](https://ai.google/research/pubs/pub62.pdf)).
 
 Consequently, while distributed frameworks for general purposes may offer
@@ -102,17 +101,17 @@ def get_average_temperature(sensor_readings):
   return tff.federated_average(sensor_readings)
 ```
 
-Readers familiar with non-eager TensorFlow will find this approach analogous
-to writing Python code that uses functions such as `tf.add` or `tf.reduce_sum`
-in a section of Python code that defines a TensorFlow graph. Albeit the code
-is technically expressed in Python, its purpose is to construct a serializable
+Readers familiar with non-eager TensorFlow will find this approach analogous to
+writing Python code that uses functions such as `tf.add` or `tf.reduce_sum` in a
+section of Python code that defines a TensorFlow graph. Albeit the code is
+technically expressed in Python, its purpose is to construct a serializable
 representation of a `tf.Graph` underneath, and it is the graph, not the Python
 code, that is internally executed by the TensorFlow runtime. Likewise, one can
 think of `tff.federated_average` as inserting a *federated op* into a federated
 computation represented by `get_average_temperature`.
 
-A part of the reason for FC defining a language has to do with the fact that,
-as noted above, federated computations specify distributed collective behaviors,
+A part of the reason for FC defining a language has to do with the fact that, as
+noted above, federated computations specify distributed collective behaviors,
 and as such, their logic is non-local. For example, TFF provides operators,
 inputs and outputs of which may exist in different places in the network.
 
@@ -128,51 +127,52 @@ notation, as it's a handy way or describing types of computations and operators.
 First, here are the categories of types that are conceptually similar to those
 found in existing mainstream languages:
 
-* **Tensor types** (`tff.TensorType`). Just as in TensorFlow, these have `dtype`
-  and `shape`. The only difference is that objects of this type are not limited
-  to `tf.Tensor` instances in Python that represent outputs of TensorFlow ops in
-  a TensorFlow graph, but may also include units of data that can be produced,
-  e.g., as an output of a distributed aggregation protocol. Thus, the TFF tensor
-  type is simply an abstract version of a concrete physical representation of
-  such type in Python or TensorFlow.
+*   **Tensor types** (`tff.TensorType`). Just as in TensorFlow, these have
+    `dtype` and `shape`. The only difference is that objects of this type are
+    not limited to `tf.Tensor` instances in Python that represent outputs of
+    TensorFlow ops in a TensorFlow graph, but may also include units of data
+    that can be produced, e.g., as an output of a distributed aggregation
+    protocol. Thus, the TFF tensor type is simply an abstract version of a
+    concrete physical representation of such type in Python or TensorFlow.
 
-  The compact notation for tensor types is `dtype` or `dtype[shape]`. For
-  example, `int32` and `int32[10]` are the types of integers and int vectors,
-  respectively.
+    The compact notation for tensor types is `dtype` or `dtype[shape]`. For
+    example, `int32` and `int32[10]` are the types of integers and int vectors,
+    respectively.
 
-* **Sequence types** (`tff.SequenceType`). These are TFF's abstract equivalent
-  of TensorFlow's concrete concept of `tf.data.Dataset`s. Elements of sequences
-  can be consumed in a sequential manner, and can include complex types.
+*   **Sequence types** (`tff.SequenceType`). These are TFF's abstract equivalent
+    of TensorFlow's concrete concept of `tf.data.Dataset`s. Elements of
+    sequences can be consumed in a sequential manner, and can include complex
+    types.
 
-  The compact representation of sequence types is `T*`, where `T` is the type
-  of elements. For example `int32*` represents an integer sequence.
+    The compact representation of sequence types is `T*`, where `T` is the type
+    of elements. For example `int32*` represents an integer sequence.
 
-* **Named tuple types** (`tff.NamedTupleType`). These are TFF's way of
-  constructing tuples and dictionary-like structures that have a predefined
-  number of *elements* with specific types, named or unnamed. Importantly, TFF's
-  named tuple concept encompasses the abstract equivalent of Python's argument
-  tuples, i.e., collections of elements of which some, but not all are named,
-  and some are positional.
+*   **Named tuple types** (`tff.NamedTupleType`). These are TFF's way of
+    constructing tuples and dictionary-like structures that have a predefined
+    number of *elements* with specific types, named or unnamed. Importantly,
+    TFF's named tuple concept encompasses the abstract equivalent of Python's
+    argument tuples, i.e., collections of elements of which some, but not all
+    are named, and some are positional.
 
-  The compact notation for named tuples is `<n_1=T_1, ..., n_k=T_k>`, where
-  `n_k` are optional element names, and `T_k` are element types. For example,
-  `<int32,int32>` is a compact notation for a pair of unnamed integers, and
-  `<X=float32,Y=float32>` is a compact notation for a pair of floats named `X`
-  and `Y` that may represent a point on a plane. Tuples can be nested as well
-  as mixed with other types, e.g., `<X=float32,Y=float32>*` would be a compact
-  notation for a sequence of points.
+    The compact notation for named tuples is `<n_1=T_1, ..., n_k=T_k>`, where
+    `n_k` are optional element names, and `T_k` are element types. For example,
+    `<int32,int32>` is a compact notation for a pair of unnamed integers, and
+    `<X=float32,Y=float32>` is a compact notation for a pair of floats named `X`
+    and `Y` that may represent a point on a plane. Tuples can be nested as well
+    as mixed with other types, e.g., `<X=float32,Y=float32>*` would be a compact
+    notation for a sequence of points.
 
-* **Function types** (`tff.FunctionType`). TFF is a functional programming
-  framework, with functions treated as
-  [first-class values](https://en.wikipedia.org/wiki/First-class_citizen).
-  Functions have at most one argument, and exactly one result.
+*   **Function types** (`tff.FunctionType`). TFF is a functional programming
+    framework, with functions treated as
+    [first-class values](https://en.wikipedia.org/wiki/First-class_citizen).
+    Functions have at most one argument, and exactly one result.
 
-  The compact notation for functions is `(T -> U)`, where `T` is the type of
-  an argument, and `U` is the type of the result, or `( -> U)` if there's no
-  argument (although no-argument functions are a degenerate concept that
-  exists mostly just at the Python level). For example `(int32* -> int32)` is a
-  notation for a type of functions that reduce an integer sequence to a single
-  integer value.
+    The compact notation for functions is `(T -> U)`, where `T` is the type of
+    an argument, and `U` is the type of the result, or `( -> U)` if there's no
+    argument (although no-argument functions are a degenerate concept that
+    exists mostly just at the Python level). For example `(int32* -> int32)` is
+    a notation for a type of functions that reduce an integer sequence to a
+    single integer value.
 
 The following types address the distributed systems aspect of TFF computations.
 As these concepts are somewhat unique to TFF, we encourage you to refer to the
@@ -218,9 +218,9 @@ additional commentary and examples.
         are talking about a single *federated value* as encompassing multiple
         items of data that appear in multiple locations across the network. One
         way to think about it is as a kind of tensor with a "network" dimension,
-        although this analogy is not perfect because TFF does
-        not permit [random access](https://en.wikipedia.org/wiki/Random_access)
-        to member constituents of a federated value.
+        although this analogy is not perfect because TFF does not permit
+        [random access](https://en.wikipedia.org/wiki/Random_access) to member
+        constituents of a federated value.
 
     *   `{<X=float32,Y=float32>*}@CLIENTS` represents a *federated data set*, a
         value that consists of multiple sequences of `XY` coordinates, one
