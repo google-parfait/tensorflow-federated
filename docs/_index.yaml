@@ -103,6 +103,9 @@ landing_page:
       buttons:
       - label: "Read on Google AI blog"
         path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
+
+  - classname: devsite-landing-row-cards
+    items:
     - heading: "Making every phone smarter with Federated Learning"
       youtube_id: gbRJPa9d-VU
       buttons:
