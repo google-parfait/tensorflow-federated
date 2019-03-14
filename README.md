@@ -2,7 +2,8 @@
 
 # TensorFlow Federated
 
-TensorFlow Federated (TFF) is an open-source framework for machine learning and
+
+erated (TFF) is an open-source framework for machine learning and
 other computations on decentralized data. TFF has been developed to facilitate
 open research and experimentation with
 [Federated Learning (FL)](https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
