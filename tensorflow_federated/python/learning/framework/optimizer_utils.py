@@ -32,20 +32,26 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 nest = tf.contrib.framework.nest
 
-# TODO(b/117226648): Make this a proper class for better documentation.
-ClientOutput = collections.namedtuple(
-    'ClientOutput',
-    [
-        # A dictionary of updates to the model's trainable variables.
-        'weights_delta',
-        # Weight to use in a weighted mean when aggregating weights_delta.
-        'weights_delta_weight',
-        # A structure matching model.report_local_outputs,
-        # reflecting the results of training on the input dataset.
-        'model_output',
-        # Additional metrics or other outputs defined by the optimizer.
+
+class ClientOutput(
+    collections.namedtuple('ClientOutput', [
+        'weights_delta', 'weights_delta_weight', 'model_output',
         'optimizer_output'
-    ])
+    ])):
+  """Structure for outputs returned from clients during federated optimization.
+
+  Fields:
+  -   `weights_delta`: a dictionary of updates to the model's trainable
+      variables.
+  -   `weights_delta_weight`: weight to use in a weighted mean when aggregating
+      `weights_delta`.
+  -   `model_output`: a structure matching
+      `tff.learning.Model.report_local_outputs`, reflecting the results of
+      training on the input dataset.
+  -   `optimizer_output`: additional metrics or other outputs defined by the
+      optimizer.
+  """
+  __slots__ = ()
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -72,7 +78,7 @@ class ClientDeltaFn(object):
 
     Args:
       dataset: A `tf.data.Dataset` producing batches than can be fed to
-        `model.forward_pass`.
+        `tff.learning.Model.forward_pass`.
       initial_weights: A dictionary of initial values for all trainable and
         non-trainable model variables, keyed by name. This will be supplied by
         the server in Federated Averaging.
