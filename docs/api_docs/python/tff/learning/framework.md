@@ -15,9 +15,8 @@ The public API for contributors who develop federated learning algorithms.
 [`class ClientDeltaFn`](../../tff/learning/framework/ClientDeltaFn.md):
 Represents a client computation that produces an update to a model.
 
-[`class ClientOutput`](../../tff/learning/framework/ClientOutput.md):
-ClientOutput(weights_delta, weights_delta_weight, model_output,
-optimizer_output)
+[`class ClientOutput`](../../tff/learning/framework/ClientOutput.md): Structure
+for outputs returned from clients during federated optimization.
 
 [`class EnhancedModel`](../../tff/learning/framework/EnhancedModel.md): A
 wrapper around a Model that adds sanity checking and metadata helpers.

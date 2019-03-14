@@ -15,13 +15,22 @@
 Defined in
 [`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
 
-ClientOutput(weights_delta, weights_delta_weight, model_output,
-optimizer_output)
+Structure for outputs returned from clients during federated optimization.
+
+#### Fields:
+
+-   `weights_delta`: a dictionary of updates to the model's trainable variables.
+-   `weights_delta_weight`: weight to use in a weighted mean when aggregating
+    `weights_delta`.
+-   `model_output`: a structure matching
+    <a href="../../../tff/learning/Model.md#report_local_outputs"><code>tff.learning.Model.report_local_outputs</code></a>,
+    reflecting the results of training on the input dataset.
+-   `optimizer_output`: additional metrics or other outputs defined by the
+    optimizer.
 
 <h2 id="__new__"><code>__new__</code></h2>
 
 ```python
-@staticmethod
 __new__(
     _cls,
     weights_delta,
