@@ -100,6 +100,326 @@ def transform_postorder(comp, fn):
         'Unrecognized computation building block: {}'.format(str(comp)))
 
 
+def transform_postorder_with_hooks(comp, transformer):
+  """Uses pretransform hooks to execute stateful transformations.
+
+  `transform_postorder_with_hooks` uses the `StatefulTransformer` interface to
+  visit all nodes in the AST twice--once before any transformation is
+  executed and once to execute a transformation.
+  `transform_postorder_with_hooks` walks down
+  the AST preorder to the leaves, executing its pretransform hooks on the way
+  down, and then executes its transformations in a
+  postorder fashion on the way back up. Therefore the following relationships
+  are respected among these visits:
+
+    * `transformer.pretransform_hook` is called on `comp` after
+      `pretransform_hook` has been
+      called on all nodes which strictly precede `comp` in a preorder traversal
+      of the AST.
+      * `transformer.transform` is called on `comp` after
+      `pretransform_hook` has been called on `comp`. This
+      implies that `pretransform_hook` has been called for all antecedents of
+      `comp` in a preorder traversal of the AST, and `transform` has been
+      called on all antecedents of `comp` in a postorder traversal of the AST.
+
+
+  This hooking into different portions of the tree traversal allows for
+  flexible combination of information that can be useful in processing an
+  abstract syntax tree. For example, scope information is most easily
+  read in a preorder manner (as a computation's parent or left sibling in the
+  AST determines the variables available), but this same information
+  should be removed in a postorder manner as we move to a different part
+  of the AST. Combining pretransform hooks in preorder and transformations
+  in postorder can allow for relatively simple and efficient implementations
+  of a priori complex behavior.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      read information from or transform.
+    transformer: Instance of `StatefulTransformer` defining transformations and
+      hooks to be called on `comp`. Also holds pointer to a context tree which
+      may be mutated during the processing of `comp`.
+
+  Returns:
+    Returns a possibly modified version of `comp`, an instance
+    of `computation_building_blocks.ComputationBuildingBlock`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(transformer, StatefulTransformer)
+  comp_id = six.next(transformer.identifier_seq)
+  transformer.pretransform_hook(comp, comp_id)
+  if isinstance(
+      comp,
+      (computation_building_blocks.CompiledComputation,
+       computation_building_blocks.Data, computation_building_blocks.Intrinsic,
+       computation_building_blocks.Placement,
+       computation_building_blocks.Reference)):
+    transformed_comp = transformer.transform(comp, comp_id)
+  elif isinstance(comp, computation_building_blocks.Selection):
+    transformed_comp = transformer.transform(
+        computation_building_blocks.Selection(
+            transform_postorder_with_hooks(comp.source, transformer), comp.name,
+            comp.index), comp_id)
+  elif isinstance(comp, computation_building_blocks.Tuple):
+    transformed_comp = transformer.transform(
+        computation_building_blocks.Tuple(
+            [(k, transform_postorder_with_hooks(v, transformer))
+             for k, v in anonymous_tuple.to_elements(comp)]), comp_id)
+  elif isinstance(comp, computation_building_blocks.Call):
+    transformed_func = transform_postorder_with_hooks(comp.function,
+                                                      transformer)
+    if comp.argument is not None:
+      transformed_arg = transform_postorder_with_hooks(comp.argument,
+                                                       transformer)
+    else:
+      transformed_arg = None
+    transformed_comp = transformer.transform(
+        computation_building_blocks.Call(transformed_func, transformed_arg),
+        comp_id)
+  elif isinstance(comp, computation_building_blocks.Lambda):
+    transformer.mutate_context_tree(
+        name=comp.parameter_name, value=None, mode='child', comp_id=comp_id)
+    transformed_result = transform_postorder_with_hooks(comp.result,
+                                                        transformer)
+    transformed_comp = transformer.transform(
+        computation_building_blocks.Lambda(
+            comp.parameter_name, comp.parameter_type, transformed_result),
+        comp_id)
+    transformer.context_tree.move_to_parent()
+  elif isinstance(comp, computation_building_blocks.Block):
+    transformed_locals = []
+    if comp.locals:
+      transformed_locals.append((comp.locals[0][0],
+                                 transform_postorder_with_hooks(
+                                     comp.locals[0][1], transformer)))
+      transformer.mutate_context_tree(
+          name=transformed_locals[0][0],
+          value=transformed_locals[0][1],
+          mode='child',
+          comp_id=comp_id)
+    for k in range(1, len(comp.locals)):
+      transformed_locals.append((comp.locals[k][0],
+                                 transform_postorder_with_hooks(
+                                     comp.locals[k][1], transformer)))
+      transformer.mutate_context_tree(
+          name=transformed_locals[k][0],
+          value=transformed_locals[k][1],
+          mode='sibling')
+    transformed_result = transform_postorder_with_hooks(comp.result,
+                                                        transformer)
+    transformed_comp = transformer.transform(
+        computation_building_blocks.Block(transformed_locals,
+                                          transformed_result), comp_id)
+    if comp.locals:
+      transformer.context_tree.move_to_parent()
+  else:
+    raise NotImplementedError(
+        'Unrecognized computation building block: {}'.format(str(comp)))
+  return transformed_comp
+
+
+@six.add_metaclass(abc.ABCMeta)
+class StatefulTransformer(object):
+  """Implements pre- and post-visit hooks plus context track for transforms.
+
+  `StatefulTransformer` is an abstract base class, the subclasses of which
+  implement the actual logic for the updates to and manipulations of the
+  globally shared `ContextTree` to which `StatefulTransformer` holds a pointer.
+
+  `StatefulTransformer` asks its subclasses to implement
+  `pretransform_hook` and `transform`. Subclasses of
+  `StatefulTransformer` should take care to implement these functions
+   so that:
+    * After `pretransform_hook` has been called on `comp`,
+      `context_tree` has been populated with any information
+      `transform` relies upon to determine transformations to
+      computations which follow `comp` in a preorder traversal of its AST, and
+      that the active node of the context tree represents the currently active
+      context.
+
+      It is easiest to think about this as adding information to the current
+      node of a tree data structure. Walking this data structure, adding nodes,
+      etc., is taken care of in the `transform_postorder_with_hooks` and
+      `StatefulTransformer` interaction.
+
+    * `transform` takes current `comp` and `comp_id`, reading
+      appropriate information from `context_tree` and returning a
+      transformed version of `comp`.
+  """
+
+  def __init__(self, context_tree=None):
+    """Initializes with ContextTree and naming sequence for computations.
+
+    Args:
+      context_tree: Instance of `ContextTree`. Can contain previously read
+        (e.g., global) context information. Defaults to an empty `ContextTree`,
+        that is, a `ContextTree` with initial computation holding a sentinel
+        value. For now, we are leaving `ContextTree` as a placeholder, with
+        nothing implemented.
+    """
+    if context_tree is None:
+      context_tree = ContextTree()
+    py_typecheck.check_type(context_tree, ContextTree)
+    self._context_tree = context_tree
+    self.identifier_seq = self._identifier_seq()
+
+  @property
+  def context_tree(self):
+    return self._context_tree
+
+  def _identifier_seq(self):
+    """Generator sequence to yield unique ids for computations in fixed AST."""
+    n = 0
+    while True:
+      n = n + 1
+      yield n
+
+  def mutate_context_tree(self, name, value, mode, comp_id=None):
+    """Constructs or updates node in context tree as AST is walked.
+
+    Passes `name` and `value` onto the context tree's node constructor, with
+    `mode` determining how the node being constructed or updated
+    relates to the context tree's `active_node`, which is held as a pointer
+    to a node inside the `ContextTree` instance. Manipulating this
+    `active_node` is taken care of in `transform_postorder_with_hooks`.
+
+    If there is no preexisting node in the context tree bearing the
+    requested relationship to the active node, a new one will be constructed and
+    initialized. If there is an existing node, `mutate_context_tree` checks
+    that this node has the correct name, and updates its `value`.
+
+    Args:
+      name: The name of the `CompTracker` instance we are constructing or
+        updating.
+      value: Instance of `computation_building_blocks.ComputationBuildingBlock`,
+        the `value` to pass to context tree's node constructor.
+      mode: String indicating the relationship the desired node should bear
+        to the context tree's active node. Can be either 'child' or
+        'sibling'.
+      comp_id: Integer `comp_id` generated by walking the tree, used to address
+        children of nodes in the context tree. Only necessary if `mode` is
+        'child'.
+
+    Raises:
+      Raises ValueError if we are passed a name-mode pair such that a
+        preexisting node in the context tree bears this relationship with
+        the active node, but has a different name. This is an indication
+        that either a transformation has failed to happen in the context tree
+        or that we have a context tree instance that does not match the
+        computation we are currently processing.
+    """
+    if mode not in ['sibling', 'child']:
+      raise ValueError
+    if mode == 'child':
+      py_typecheck.check_type(comp_id, int)
+    ref = self.context_tree.construct_node(name=name, value=value)
+    if mode == 'sibling':
+      if not self.context_tree.active_comp_has_younger_sibling():
+        self.context_tree.add_younger_sibling(ref)
+        self.context_tree.move_to_younger_sibling()
+      else:
+        self.context_tree.move_to_younger_sibling()
+        if self.context_tree.active_comp.name != name:
+          raise ValueError('You have a mismatch between your '
+                           'context tree and the computation you are'
+                           'trying to process;'
+                           'your context tree is '
+                           '' + str(self) + ''
+                           'and you are looking for a CompTracker'
+                           'with name ' + name + ' and value ' + str(value))
+        self.context_tree.active_comp.value = value
+    else:
+      if not self.context_tree.active_comp_has_child(comp_id):
+        self.context_tree.add_child(comp_id, ref)
+        self.context_tree.move_to_child(comp_id)
+      else:
+        self.context_tree.move_to_child(comp_id)
+        if self.context_tree.active_comp.name != name:
+          raise ValueError('You have a mismatch between your '
+                           'context tree and the computation you are'
+                           'trying to process;'
+                           'your context tree is '
+                           '' + str(self) + ''
+                           'and you are looking for a CompTracker'
+                           'with name ' + name + ' and value ' + str(value))
+        self.context_tree.active_comp.value = value
+
+  @abc.abstractmethod
+  def pretransform_hook(self, comp, comp_id):
+    """Function to be executed before transforming `comp`.
+
+    Upon calling this function on `comp`, `pretransform_hook` has been called
+    for all antecedents of `comp` in a preorder traversal of the AST.
+
+    Returns nothing (its return value is ignored), but can manipulate the
+    `context_tree` arbitrarily. In the most common case, `pretransform_hook`
+    should simply implement some logic to update preexisting nodes in the
+    context tree to reflect the information present in `comp`.
+
+    Args:
+      comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+        that we are currently visiting in the AST.
+      comp_id: Integer generated by `StatefulTransformer` to track and index
+        nodes of the AST where necessary.
+    """
+    pass
+
+  @abc.abstractmethod
+  def transform(self, comp, comp_id):
+    """Transformation function using state to transform `comp`.
+
+    To reason about invariants, it may be worthwhile to consider what has
+    been executed by the time we enter `transform`: all `pretransform_hook`s
+    for antecedents of `comp` in a preorder traversal of its AST will have
+    been executed, along with the `pretransform_hook` of `comp` itself.
+    Further, the `transform` for all computations preceding `comp` in a
+    postorder traversal of its AST will have been executed.
+
+    Args:
+      comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+        representing current computation to transform.
+      comp_id: Integer generated by `StatefulTransformer` class and bound to
+        `comp` by `transform_postorder_with_hooks`. Used to address `comp`
+        within context of walking syntax tree.
+
+    Returns:
+      A modified version of `comp`.
+    """
+    pass
+
+
+class ContextTree(object):
+  """Pure placeholder class for upcoming data structure implementation."""
+
+  def __init__(self):
+    pass
+
+  def construct_node(self, name, value):
+    pass
+
+  def active_comp_has_child(self, comp_id):
+    pass
+
+  def add_child(self, comp_id, ref):
+    pass
+
+  def move_to_parent(self):
+    pass
+
+  def move_to_child(self, comp_id):
+    pass
+
+  def add_younger_sibling(self, ref):
+    pass
+
+  def active_comp_has_younger_sibling(self):
+    pass
+
+  def move_to_younger_sibling(self):
+    pass
+
+
 def name_compiled_computations(comp):
   """Labels all compiled computations with names that are unique within `comp`.
 

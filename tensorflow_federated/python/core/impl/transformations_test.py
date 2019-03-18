@@ -48,6 +48,49 @@ def _to_building_block(comp):
   return computation_building_blocks.ComputationBuildingBlock.from_proto(proto)
 
 
+def _construct_nested_tree():
+  """Constructs computation with explicit ordering for testing traversals.
+
+  The goal of this computation is to exercise each switch
+  in transform_postorder_with_hooks, at least all those that recurse.
+
+  If we are reading Block local names and Reference names, results of a
+  preorder traversal should be:
+  [7, 8, 6, 10, 0, 1, 2, 3, 4, 5, 9]
+  And those of a postorder traversal should be:
+  [6, 10, 1, 2, 0, 4, 5, 3, 7, 8, 9]
+
+  Returns:
+    Returns an instance of `computation_building_blocks.Block` satisfying the
+    description above.
+  """
+
+  # TODO(b/128910744): Make this test easier to grok when we have implemented
+  # the capability to visualize TFF's ASTs as proper trees.
+
+  noop = computation_building_blocks.Data('Noop', tf.float32)
+  left_most_leaf = computation_building_blocks.Block([('1', noop)], noop)
+  center_leaf = computation_building_blocks.Block([('2', noop)], noop)
+  inner_tuple = computation_building_blocks.Tuple([left_most_leaf, center_leaf])
+  selected = computation_building_blocks.Selection(inner_tuple, index=0)
+  left_child = computation_building_blocks.Block([('0', selected)], noop)
+  right_leaf = computation_building_blocks.Block([('4', noop)], noop)
+  right_most_endpoint = computation_building_blocks.Block([('5', noop)], noop)
+  right_child = computation_building_blocks.Block([('3', right_leaf)],
+                                                  right_most_endpoint)
+  result = computation_building_blocks.Tuple([left_child, right_child])
+  ref1 = computation_building_blocks.Reference('6', tf.float32)
+  ref2 = computation_building_blocks.Reference('10', tf.float32)
+  dummy_outer_block = computation_building_blocks.Block([('7', ref1),
+                                                         ('8', ref2)], result)
+  dummy_lambda = computation_building_blocks.Lambda('6', tf.float32,
+                                                    dummy_outer_block)
+  dummy_arg = computation_building_blocks.Reference('9', tf.float32)
+  called_lambda = computation_building_blocks.Call(dummy_lambda, dummy_arg)
+
+  return called_lambda
+
+
 class TransformationsTest(absltest.TestCase):
 
   def test_transform_postorder_with_lambda_call_selection_and_reference(self):
@@ -84,6 +127,53 @@ class TransformationsTest(absltest.TestCase):
         'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
+
+  def test_transform_postorder_hooks_walks_claimed_order_pretransform(self):
+
+    pretransform_var_array = []
+    outer_comp = _construct_nested_tree()
+
+    class PreTransformWalker(transformations.StatefulTransformer):
+
+      def transform(self, comp, comp_id):
+        return comp
+
+      def pretransform_hook(self, comp, comp_id):
+        if isinstance(comp, computation_building_blocks.Block):
+          for k, _ in comp.locals:
+            pretransform_var_array.append(k)
+        elif isinstance(comp, computation_building_blocks.Reference):
+          pretransform_var_array.append(comp.name)
+
+    previsit_var_reader = PreTransformWalker()
+    transformations.transform_postorder_with_hooks(outer_comp,
+                                                   previsit_var_reader)
+    self.assertEqual(pretransform_var_array,
+                     ['7', '8', '6', '10', '0', '1', '2', '3', '4', '5', '9'])
+
+  def test_transform_postorder_hooks_walks_claimed_order_intransform(self):
+
+    transform_var_array = []
+    outer_comp = _construct_nested_tree()
+
+    class TransformWalker(transformations.StatefulTransformer):
+
+      def pretransform_hook(self, comp, comp_id):
+        pass
+
+      def transform(self, comp, comp_id):
+        if isinstance(comp, computation_building_blocks.Block):
+          for k, _ in comp.locals:
+            transform_var_array.append(k)
+        elif isinstance(comp, computation_building_blocks.Reference):
+          transform_var_array.append(comp.name)
+        return comp
+
+    in_transform_var_reader = TransformWalker()
+    transformations.transform_postorder_with_hooks(outer_comp,
+                                                   in_transform_var_reader)
+    self.assertEqual(transform_var_array,
+                     ['6', '10', '1', '2', '0', '4', '5', '3', '7', '8', '9'])
 
   def test_name_compiled_computations(self):
     plus = computations.tf_computation(lambda x, y: x + y, [tf.int32, tf.int32])
