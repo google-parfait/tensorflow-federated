@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import collections
 
 import six
 
@@ -98,6 +99,526 @@ def transform_postorder(comp, fn):
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
+
+
+def transform_postorder_with_hooks(comp, transform_fn, ctxt_tree,
+                                   identifier_sequence):
+  """Uses pretransform hooks to execute stateful transformations.
+
+  In this case, 'stateful' means that a transformation executed on
+  a given node in general depends on not only the node itself;
+  `transform_postorder_with_hooks` is functional 'from tree to tree'
+  but not 'from node to node'.
+
+  `transform_postorder_with_hooks` hooks into the preorder traversal
+  that is defined by walking down the tree to its leaves, using
+  the information encountered along this path to push context onto
+  the given `ContextTree`. Once we hit the leaves, we walk back up the
+  tree in a postorder fashion, calling `transform_fn` as we go.
+
+  One important fact to note--there are recursion invariants that the
+  `transform_postorder_with_hooks` and `_mutate_context_tree` pipeline
+  enforce. In particular, within a `transform_fn` call, the following
+  invariants hold, for `context_tree` the ContextTree argument to
+  `transform_fn`:
+    * `context_tree.resolve_and_update_reference` with an argument `ref` of
+      type `Reference` will call `update` on the `CompTracker` in
+      `context_tree` which tracks the value of `ref` active in the current
+      lexical scope.
+    * `context_tree.resolve_and_read_name` with an argument `name` of
+      type `Reference` will return the `CompTracker` instance from
+      `context_tree` which corresponds to the computation bound to
+      the variable `name` in the current lexical scope, or `None` if
+      none exists.
+  These recursion invariants are enforced by the framework, and should be
+  relied on when designing new transformations that depend on variable
+  bindings.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      read information from or transform.
+    transform_fn: Python function accepting `comp` and `context_tree` arguments
+      and returning `transformed_comp`, updated `ctxt_tree`.
+    ctxt_tree: Instance of `ContextTree`, the data structure into which we may
+      read information about variable bindings, and from which we may read.
+    identifier_sequence: Generator allowing computations to be addressed by
+      their position in a preorder traversal. Taken as a parameter in order to
+      make `transform_postorder_with_hooks` purely functional.
+
+  Returns:
+    Returns a possibly modified version of `comp`, an instance
+    of `computation_building_blocks.ComputationBuildingBlock`, along with
+    the `ctxt_tree` that has collected variable bindings all the way down the
+    tree.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(ctxt_tree, ContextTree)
+  comp_id = six.next(identifier_sequence)
+  if isinstance(
+      comp,
+      (computation_building_blocks.CompiledComputation,
+       computation_building_blocks.Data, computation_building_blocks.Intrinsic,
+       computation_building_blocks.Placement,
+       computation_building_blocks.Reference)):
+    transformed_comp, ctxt_tree = transform_fn(comp, ctxt_tree)
+  elif isinstance(comp, computation_building_blocks.Selection):
+    transformed_source, ctxt_tree = transform_postorder_with_hooks(
+        comp.source, transform_fn, ctxt_tree, identifier_sequence)
+    transformed_comp, ctxt_tree = transform_fn(
+        computation_building_blocks.Selection(transformed_source, comp.name,
+                                              comp.index), ctxt_tree)
+  elif isinstance(comp, computation_building_blocks.Tuple):
+    new_elements = []
+    for k, v in anonymous_tuple.to_elements(comp):
+      transformed_elem, ctxt_tree = transform_postorder_with_hooks(
+          v, transform_fn, ctxt_tree, identifier_sequence)
+      new_elements.append((k, transformed_elem))
+    transformed_comp, ctxt_tree = transform_fn(
+        computation_building_blocks.Tuple(new_elements), ctxt_tree)
+  elif isinstance(comp, computation_building_blocks.Call):
+    transformed_func, ctxt_tree = transform_postorder_with_hooks(
+        comp.function, transform_fn, ctxt_tree, identifier_sequence)
+    if comp.argument is not None:
+      transformed_arg, ctxt_tree = transform_postorder_with_hooks(
+          comp.argument, transform_fn, ctxt_tree, identifier_sequence)
+    else:
+      transformed_arg = None
+    transformed_comp, ctxt_tree = transform_fn(
+        computation_building_blocks.Call(transformed_func, transformed_arg),
+        ctxt_tree)
+  elif isinstance(comp, computation_building_blocks.Lambda):
+    ctxt_tree = _mutate_context_tree(
+        ctxt_tree,
+        name=comp.parameter_name,
+        value=None,
+        mode='child',
+        comp_id=comp_id)
+    transformed_result, ctxt_tree = transform_postorder_with_hooks(
+        comp.result, transform_fn, ctxt_tree, identifier_sequence)
+    transformed_comp, ctxt_tree = transform_fn(
+        computation_building_blocks.Lambda(comp.parameter_name,
+                                           comp.parameter_type,
+                                           transformed_result), ctxt_tree)
+    ctxt_tree.move_to_parent()
+  elif isinstance(comp, computation_building_blocks.Block):
+    transformed_locals = []
+    if comp.locals:
+      new_value, ctxt_tree = transform_postorder_with_hooks(
+          comp.locals[0][1], transform_fn, ctxt_tree, identifier_sequence)
+      transformed_locals.append((comp.locals[0][0], new_value))
+      ctxt_tree = _mutate_context_tree(
+          ctxt_tree,
+          name=transformed_locals[0][0],
+          value=transformed_locals[0][1],
+          mode='child',
+          comp_id=comp_id)
+    for k in range(1, len(comp.locals)):
+      new_value, ctxt_tree = transform_postorder_with_hooks(
+          comp.locals[k][1], transform_fn, ctxt_tree, identifier_sequence)
+      transformed_locals.append((comp.locals[k][0], new_value))
+      ctxt_tree = _mutate_context_tree(
+          ctxt_tree,
+          name=transformed_locals[k][0],
+          value=transformed_locals[k][1],
+          mode='sibling')
+    transformed_result, ctxt_tree = transform_postorder_with_hooks(
+        comp.result, transform_fn, ctxt_tree, identifier_sequence)
+    transformed_comp, ctxt_tree = transform_fn(
+        computation_building_blocks.Block(transformed_locals,
+                                          transformed_result), ctxt_tree)
+    if comp.locals:
+      ctxt_tree.move_to_parent()
+  else:
+    raise NotImplementedError(
+        'Unrecognized computation building block: {}'.format(str(comp)))
+  return transformed_comp, ctxt_tree
+
+
+def _mutate_context_tree(context_tree, name, value, mode, comp_id=None):
+  """Constructs or updates node in context tree as AST is walked.
+
+  Passes `name` and `value` onto the context tree's node constructor, with
+  `mode` determining how the node being constructed or updated
+  relates to the context tree's `active_node`, which is held as a pointer
+  to a node inside the `ContextTree` instance. Manipulating this
+  `active_node` is taken care of in `transform_postorder_with_hooks`.
+
+  If there is no preexisting node in the context tree bearing the
+  requested relationship to the active node, a new one will be constructed and
+  initialized. If there is an existing node, `_mutate_context_tree` checks
+  that this node has the correct name, and updates its `value`.
+
+  Args:
+    context_tree: Instance of `ContextTree`, the context tree tracking the AST
+      from whose traversal we are calling `_mutate_context_tree`.
+    name: The name of the `CompTracker` instance we are constructing or
+      updating.
+    value: Instance of `computation_building_blocks.ComputationBuildingBlock`,
+      the `value` to pass to context tree's node constructor.
+    mode: String indicating the relationship the desired node should bear to the
+      context tree's active node. Can be either 'child' or 'sibling'.
+    comp_id: Integer `comp_id` generated by walking the tree, used to address
+      children of nodes in the context tree. Only necessary if `mode` is
+      'child'.
+
+  Returns:
+    Returns a transformed version of `context_tree`.
+
+  Raises:
+    Raises ValueError if we are passed a name-mode pair such that a
+      preexisting node in the context tree bears this relationship with
+      the active node, but has a different name. This is an indication
+      that either a transformation has failed to happen in the context tree
+      or that we have a context tree instance that does not match the
+      computation we are currently processing.
+  """
+  if mode not in ['sibling', 'child']:
+    raise ValueError
+  if mode == 'child':
+    py_typecheck.check_type(comp_id, int)
+  py_typecheck.check_type(context_tree, ContextTree)
+  ref = context_tree.construct_node(name=name, value=value)
+  if mode == 'sibling':
+    if not context_tree.active_node_has_younger_sibling():
+      context_tree.add_younger_sibling(ref)
+      context_tree.move_to_younger_sibling()
+    else:
+      context_tree.move_to_younger_sibling()
+      if context_tree.active_node.name != name:
+        raise ValueError('You have a mismatch between your '
+                         'context tree and the computation you are'
+                         'trying to process;'
+                         'your context tree is '
+                         '' + str(context_tree) + ''
+                         'and you are looking for a CompTracker'
+                         'with name ' + name + ' and value ' + str(value))
+      context_tree.active_node.value = value
+  else:
+    if not context_tree.active_node_has_child(comp_id):
+      context_tree.add_child(comp_id, ref)
+      context_tree.move_to_child(comp_id)
+    else:
+      context_tree.move_to_child(comp_id)
+      if context_tree.active_node.name != name:
+        raise ValueError('You have a mismatch between your '
+                         'context tree and the computation you are'
+                         'trying to process;'
+                         'your context tree is '
+                         '' + str(context_tree) + ''
+                         'and you are looking for a CompTracker'
+                         'with name ' + name + ' and value ' + str(value))
+      context_tree.active_node.value = value
+  return context_tree
+
+
+def identifier_seq():
+  """Generator sequence to yield unique ids for computations in fixed AST."""
+  n = 0
+  while True:
+    n = n + 1
+    yield n
+
+
+class ContextTree(object):
+  """Data structure to hold variable bindings as we walk an AST.
+
+  `ContextTree` is designed to be constructed and mutatated as we traverse an
+  AST. Maintains a pointer to an active node, representing the context
+  that is currently active as we walk the AST. `ContextTree` is meant to provide
+  an interface to reading information from an AST into an appropriate tracking
+  variable, and reading information from that variable when needed.
+  For this purpose `ContextTree` provides two methods,
+  `resolve_and_update_reference` and `resolve_and_read_name`.
+
+  Each instance of the node class can be used at most once in the context tree,
+  as checked by memory location. This disallows circular tree structures that
+  could cause an infinite loop in recursive equality testing or printing.
+  """
+
+  def __init__(self, node_class):
+    """Initializes `ContextTree` with its node class.
+
+    Args:
+      node_class: Class which subclasses CompTracker; the type of nodes to be
+        constructed in this ContextTree.
+    """
+    initial_node = OuterContextPointer()
+    self.active_node = initial_node
+    py_typecheck.check_subclass(node_class, CompTracker)
+    self.node_class = node_class
+    self.node_ids = {id(initial_node): 1}
+
+  def construct_node(self, name, value):
+    """Passes `name` and `value` to the constructor of `node_class`."""
+    return self.node_class(name, value)
+
+  def add_younger_sibling(self, comp_tracker):
+    """Appends comp as younger sibling of current `active_node`."""
+    py_typecheck.check_type(comp_tracker, self.node_class)
+    if self.node_ids.get(id(comp_tracker)):
+      raise ValueError('Each instance of ' + str(self.node_class) + ''
+                       'can only appear once in a given context tree.')
+    if self.active_node.younger_sibling is not None:
+      raise ValueError('Ambiguity in adding a younger sibling')
+    if self.active_node.parent is not None:
+      comp_tracker.set_parent(self.active_node.parent)
+    comp_tracker.set_older_sibling(self.active_node)
+    self.active_node.set_younger_sibling(comp_tracker)
+    self.node_ids[id(comp_tracker)] = 1
+
+  def add_child(self, constructing_comp_id, comp_tracker):
+    """Appends comp as a child of current active node."""
+    py_typecheck.check_type(comp_tracker, self.node_class)
+    if self.node_ids.get(id(comp_tracker)):
+      raise ValueError('Each instance of ' + str(self.node_class) + ''
+                       'can only appear once in a given context tree.')
+    comp_tracker.set_parent(self.active_node)
+    self.active_node.add_child(constructing_comp_id, comp_tracker)
+    self.node_ids[id(comp_tracker)] = 1
+
+  def move_to_parent(self):
+    """Moves `active_node` to the parent of current active node.
+
+    Raises:
+      Raises ValueError if the active node has no parent.
+    """
+    if self.active_node.parent:
+      self.active_node = self.active_node.parent
+    else:
+      raise ValueError('You have tried to move to a nonexistent parent.')
+
+  def move_to_child(self, comp_id):
+    """Moves `active_node` to a child of the current active node.
+
+    Args:
+      comp_id: Integer representing the position of the child we wish to update
+        `active_node` to point to in a preorder traversal of the AST.
+
+    Raises:
+      Raises ValueError if the active node has no child with the correct id.
+    """
+    if self.active_node_has_child(comp_id):
+      self.active_node = self.active_node.get_child(comp_id)
+    else:
+      raise ValueError('You have tried to move to a nonexistent child.')
+
+  def active_node_has_child(self, comp_id):
+    """Checks if `active_node` has a child indexed by `comp_id`."""
+    if self.active_node.get_child(comp_id):
+      return True
+    else:
+      return False
+
+  def active_node_has_younger_sibling(self):
+    """Checks if `active_node` has a younger sibling`."""
+    if self.active_node.younger_sibling:
+      return True
+    else:
+      return False
+
+  def move_to_younger_sibling(self):
+    """Moves `active_node` to the younger sibling of the current active node.
+
+    Raises:
+      Raises ValueError if the active node has no younger sibling.
+    """
+    if self.active_node.younger_sibling:
+      self.active_node = self.active_node.younger_sibling
+    else:
+      raise ValueError('You have tried to move to a '
+                       'nonexistent younger sibling in ' + str(self))
+
+  def move_to_older_sibling(self):
+    """Moves `active_node` to the older sibling of the current active node.
+
+    Raises:
+      Raises ValueError if the active node has no older sibling.
+    """
+    if self.active_node.older_sibling:
+      self.active_node = self.active_node.older_sibling
+    else:
+      raise ValueError('You have tried to move to a '
+                       'nonexistent older sibling in ' + str(self))
+
+  def _equal_under_node(self, self_node, other_node):
+    """Recursive helper function to check equality of `ContextTree`s."""
+    if self_node != other_node:
+      return False
+    children_eq_list = []
+    younger_siblings_equal = True
+    if self_node.children:
+      if len(self_node.children) != len(other_node.children):
+        return False
+      for (key_1, val_1), (key_2, val_2) in zip(
+          six.iteritems(self_node.children),
+          six.iteritems(other_node.children)):
+        if key_1 != key_2:
+          return False
+        children_eq_list.append(self._equal_under_node(val_1, val_2))
+    if self_node.younger_sibling:
+      younger_siblings_equal = (
+          self_node.younger_sibling == other_node.younger_sibling)
+    return all(children_eq_list) and younger_siblings_equal
+
+  def __eq__(self, other):
+    """Recursive equality check.
+
+    Walks to root of `self` and `other` before testing equality of subtrees.
+
+    Args:
+      other: Instance of `ContextTree` to test for equality with `self`.
+
+    Returns:
+      Returns `True` if and only if `self` and `other` are the same
+      structurally (each node has the same number of children and siblings) and
+      each node of `self` compares as equal with the node in the corresponding
+      position of `other`.
+    """
+    if self is other:
+      return True
+    if not isinstance(other, ContextTree):
+      return False
+    self_node = self.active_node
+    while self_node.parent is not None:
+      self_node = self_node.parent
+    while self_node.older_sibling is not None:
+      self_node = self_node.older_sibling
+    other_node = other.active_node
+    while other_node.parent is not None:
+      other_node = other_node.parent
+    while other_node.older_sibling is not None:
+      other_node = other_node.older_sibling
+    return self._equal_under_node(self_node, other_node)
+
+  def __ne__(self, other):
+    return not self == other
+
+  def _string_under_node(self, node):
+    """Rescursive helper function to generate string reps of `ContextTree`s."""
+    py_typecheck.check_type(node, CompTracker)
+    if node is self.active_node:
+      active_node_indicator = '*'
+    else:
+      active_node_indicator = ''
+    context_tree_string = '[' + str(node) + active_node_indicator + ']'
+    if node.children:
+      context_tree_string += '->{'
+      for _, child_node in six.iteritems(node.children):
+        if not child_node.older_sibling:
+          context_tree_string += '('
+          context_tree_string += self._string_under_node(child_node)
+          context_tree_string += '),('
+      context_tree_string = context_tree_string[:-2]
+      context_tree_string += '}'
+    if node.younger_sibling:
+      context_tree_string += '-' + self._string_under_node(node.younger_sibling)
+    return context_tree_string
+
+  def __str__(self):
+    """Generates a string representation of this `ContextTree`.
+
+    First we walk up to the root node, then we walk down
+    the tree generating string rep of this context tree.
+
+    Returns:
+      Returns a string representation of the current `ContextTree`, with
+      current active node identified with a *.
+    """
+    node = self.active_node
+    while node.parent is not None:
+      node = node.parent
+    while node.older_sibling is not None:
+      node = node.older_sibling
+    py_typecheck.check_type(node, OuterContextPointer)
+    return self._string_under_node(node)
+
+  def resolve_and_update_reference(self, ref):
+    """Calls `update` if it finds its Reference arg defined in the stack."""
+    py_typecheck.check_type(ref, computation_building_blocks.Reference)
+    comp = self.active_node
+    while not isinstance(comp, OuterContextPointer):
+      if ref.name == comp.name:
+        comp.update(ref)
+        break
+      if comp.older_sibling is not None:
+        comp = comp.older_sibling
+      elif comp.parent is not None:
+        comp = comp.parent
+
+  def resolve_and_read_name(self, name):
+    """Returns resolved `CompTracker` corresponding to its string argument."""
+    py_typecheck.check_type(name, six.string_types)
+    comp = self.active_node
+    while not isinstance(comp, OuterContextPointer):
+      if name == comp.name:
+        return comp
+      if comp.older_sibling is not None:
+        comp = comp.older_sibling
+      elif comp.parent is not None:
+        comp = comp.parent
+
+
+@six.add_metaclass(abc.ABCMeta)
+class CompTracker(object):
+  """Abstract class representing a node in a `ContextTree`."""
+
+  def __init__(self, name, value):
+    self.name = name
+    self.value = value
+    self.children = collections.OrderedDict()
+    self.parent = None
+    self.older_sibling = None
+    self.younger_sibling = None
+
+  def set_parent(self, comp):
+    py_typecheck.check_type(comp, CompTracker)
+    self.parent = comp
+
+  def set_older_sibling(self, comp):
+    py_typecheck.check_type(comp, CompTracker)
+    self.older_sibling = comp
+
+  def set_younger_sibling(self, comp):
+    py_typecheck.check_type(comp, CompTracker)
+    self.younger_sibling = comp
+
+  def add_child(self, comp_id, comp):
+    py_typecheck.check_type(comp, CompTracker)
+    self.children[comp_id] = comp
+
+  def get_child(self, comp_id):
+    return self.children.get(comp_id)
+
+  def __ne__(self, other):
+    return not self == other
+
+  @abc.abstractmethod
+  def update(self, comp=None):
+    pass
+
+  @abc.abstractmethod
+  def __str__(self):
+    pass
+
+
+class OuterContextPointer(CompTracker):
+  """Sentinel node class for `ContextTree`s."""
+
+  def __init__(self, name=None, value=None):
+    super(OuterContextPointer, self).__init__('OuterContext', None)
+
+  def active_node_has_younger_sibling(self):
+    pass
+
+  def update(self, comp=None):
+    raise ValueError('We shouldn\'t be trying to update the outer context.')
+
+  def __str__(self):
+    return self.name
+
+  def __eq__(self, other):
+    return isinstance(other, OuterContextPointer)
 
 
 def name_compiled_computations(comp):
