@@ -6,13 +6,7 @@ TensorFlow Federated (TFF) is an open-source framework for machine learning and
 other computations on decentralized data. TFF has been developed to facilitate
 open research and experimentation with
 [Federated Learning (FL)](https://ai.googleblog.com/2017/04/federated-learning-collaborative.html),
-an approach to machine learning where a shared global model is trained across
-many participating clients that keep their training data locally. For example,
-FL has been used to train
-[prediction models for mobile keyboards](https://arxiv.org/abs/1811.03604)
-without uploading sensitive typing data to servers.
-
-TFF enables developers to use the included federated learning algorithms with
+an approach to machine led federated learning algorithms with
 their models and data, as well as to experiment with novel algorithms. The
 building blocks provided by TFF can also be used to implement non-learning
 computations, such as aggregated analytics over decentralized data.
