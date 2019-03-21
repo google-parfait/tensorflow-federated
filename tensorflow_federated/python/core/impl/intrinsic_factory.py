@@ -155,8 +155,8 @@ class IntrinsicFactory(object):
         self._context_stack)
     return intrinsic(func, arg)
 
-  def federated_average(self, value, weight):
-    """Implements `federated_average` as defined in `api/intrinsics.py`.
+  def federated_mean(self, value, weight):
+    """Implements `federated_mean` as defined in `api/intrinsics.py`.
 
     Args:
       value: As in `api/intrinsics.py`.
@@ -209,7 +209,7 @@ class IntrinsicFactory(object):
     if weight is not None:
       intrinsic = value_impl.ValueImpl(
           computation_building_blocks.Intrinsic(
-              intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE.uri,
+              intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri,
               computation_types.FunctionType(
                   [value.type_signature, weight.type_signature], result_type)),
           self._context_stack)
@@ -217,7 +217,7 @@ class IntrinsicFactory(object):
     else:
       intrinsic = value_impl.ValueImpl(
           computation_building_blocks.Intrinsic(
-              intrinsic_defs.FEDERATED_AVERAGE.uri,
+              intrinsic_defs.FEDERATED_MEAN.uri,
               computation_types.FunctionType(value.type_signature,
                                              result_type)), self._context_stack)
       return intrinsic(value)

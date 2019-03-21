@@ -167,7 +167,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     @tff.federated_computation(server_model_type, server_float_type,
                                client_data_type)
     def federated_train(model, learning_rate, data):
-      return tff.federated_average(
+      return tff.federated_mean(
           tff.federated_map(local_train, [
               tff.federated_broadcast(model),
               tff.federated_broadcast(learning_rate), data

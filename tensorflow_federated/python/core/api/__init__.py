@@ -32,10 +32,10 @@ from tensorflow_federated.python.core.api.computations import tf_computation
 
 from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_apply
-from tensorflow_federated.python.core.api.intrinsics import federated_average
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
 from tensorflow_federated.python.core.api.intrinsics import federated_map
+from tensorflow_federated.python.core.api.intrinsics import federated_mean
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value

@@ -213,12 +213,12 @@ FEDERATED_APPLY = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('U'))))
 
-# Computes a simple (equally weighted) average of client items. Only supported
+# Computes a simple (equally weighted) mean of client items. Only supported
 # for numeric tensor types, or composite structures made up of numeric types.
 #
 # Type signature: {T}@CLIENTS -> T@SERVER
-FEDERATED_AVERAGE = IntrinsicDef(
-    'FEDERATED_AVERAGE', 'federated_average',
+FEDERATED_MEAN = IntrinsicDef(
+    'FEDERATED_MEAN', 'federated_mean',
     computation_types.FunctionType(
         parameter=type_constructors.at_clients(
             computation_types.AbstractType('T')),
@@ -319,7 +319,7 @@ FEDERATED_VALUE_AT_SERVER = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('T'))))
 
-# Computes a weighted average of client items. Only supported for numeric tensor
+# Computes a weighted mean of client items. Only supported for numeric tensor
 # types, or composite structures made up of numeric types. Weights must be
 # simple scalar numeric (integer or floating point, not complex) tensor types.
 # The types of weights and values must be compatible, i.e., multiplying and
@@ -330,8 +330,8 @@ FEDERATED_VALUE_AT_SERVER = IntrinsicDef(
 # injected, where appropriate, by the compiler before invoking this intrinsic.
 #
 # Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> T@SERVER
-FEDERATED_WEIGHTED_AVERAGE = IntrinsicDef(
-    'FEDERATED_WEIGHTED_AVERAGE', 'federated_weighted_average',
+FEDERATED_WEIGHTED_MEAN = IntrinsicDef(
+    'FEDERATED_WEIGHTED_MEAN', 'federated_weighted_mean',
     computation_types.FunctionType(
         parameter=[
             type_constructors.at_clients(computation_types.AbstractType('T')),

@@ -273,17 +273,17 @@ class IntrinsicsTest(parameterized.TestCase):
       def _(x):
         return intrinsics.federated_collect(x)
 
-  def test_federated_average_with_client_float32_without_weight(self):
+  def test_federated_mean_with_client_float32_without_weight(self):
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def foo(x):
-      return intrinsics.federated_average(x)
+      return intrinsics.federated_mean(x)
 
     self.assertEqual(
         str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
 
-  def test_federated_average_with_client_tuple_with_int32_weight(self):
+  def test_federated_mean_with_client_tuple_with_int32_weight(self):
 
     @computations.federated_computation([
         computation_types.FederatedType([('x', tf.float64), ('y', tf.float64)],
@@ -291,22 +291,22 @@ class IntrinsicsTest(parameterized.TestCase):
         computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ])
     def foo(x, y):
-      return intrinsics.federated_average(x, y)
+      return intrinsics.federated_mean(x, y)
 
     self.assertEqual(
         str(foo.type_signature),
         '(<{<x=float64,y=float64>}@CLIENTS,{int32}@CLIENTS> '
         '-> <x=float64,y=float64>@SERVER)')
 
-  def test_federated_average_with_client_int32_fails(self):
+  def test_federated_mean_with_client_int32_fails(self):
     with self.assertRaises(TypeError):
 
       @computations.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def _(x):
-        return intrinsics.federated_average(x)
+        return intrinsics.federated_mean(x)
 
-  def test_federated_average_with_string_weight_fails(self):
+  def test_federated_mean_with_string_weight_fails(self):
     with self.assertRaises(TypeError):
 
       @computations.federated_computation([
@@ -314,7 +314,7 @@ class IntrinsicsTest(parameterized.TestCase):
           computation_types.FederatedType(tf.string, placements.CLIENTS)
       ])
       def _(x, y):
-        return intrinsics.federated_average(x, y)
+        return intrinsics.federated_mean(x, y)
 
   def test_federated_aggregate_with_client_int(self):
     # The representation used during the aggregation process will be a named

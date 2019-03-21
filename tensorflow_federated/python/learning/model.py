@@ -174,7 +174,7 @@ class Model(object):
     ```python
     return {
         'num_examples': tff.federated_sum(local_outputs.num_examples),
-        'loss': tff.federated_average(local_outputs.loss)
+        'loss': tff.federated_mean(local_outputs.loss)
     }
     ```
 

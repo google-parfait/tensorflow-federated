@@ -236,7 +236,7 @@ def server_update_model(current_server_state, weights_delta, model_fn,
       model, optimizer)
 
   # We might have a NaN value e.g. if all of the clients processed
-  # had no data, so the denominator in the federated_average is zero.
+  # had no data, so the denominator in the federated_mean is zero.
   # If we see any NaNs, zero out the whole update.
   no_nan_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
       weights_delta)
@@ -383,7 +383,7 @@ def build_model_delta_optimizer_process(model_fn, model_to_client_delta_fn,
                                        client_outputs.weights_delta_weight)
     else:
       weight_denom = client_outputs.weights_delta_weight
-    round_model_delta = tff.federated_average(
+    round_model_delta = tff.federated_mean(
         client_outputs.weights_delta, weight=weight_denom)
 
     # TODO(b/123408447): remove tff.federated_apply and call

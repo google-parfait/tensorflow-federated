@@ -119,7 +119,7 @@ class LinearRegression(model.Model):
           'num_examples':
               tff.federated_sum(local_outputs.num_examples),
           'loss':
-              tff.federated_average(
+              tff.federated_mean(
                   local_outputs.loss, weight=local_outputs.num_examples_float),
       }
 

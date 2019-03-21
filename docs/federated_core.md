@@ -98,7 +98,7 @@ Here's just one example; more examples can be found in the
 ```
 @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
 def get_average_temperature(sensor_readings):
-  return tff.federated_average(sensor_readings)
+  return tff.federated_mean(sensor_readings)
 ```
 
 Readers familiar with non-eager TensorFlow will find this approach analogous to
@@ -107,7 +107,7 @@ section of Python code that defines a TensorFlow graph. Albeit the code is
 technically expressed in Python, its purpose is to construct a serializable
 representation of a `tf.Graph` underneath, and it is the graph, not the Python
 code, that is internally executed by the TensorFlow runtime. Likewise, one can
-think of `tff.federated_average` as inserting a *federated op* into a federated
+think of `tff.federated_mean` as inserting a *federated op* into a federated
 computation represented by `get_average_temperature`.
 
 A part of the reason for FC defining a language has to do with the fact that, as
@@ -285,7 +285,7 @@ public API:
     ```
     @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
     def get_average_temperature(sensor_readings):
-      return tff.federated_average(sensor_readings)
+      return tff.federated_mean(sensor_readings)
     ```
 
 *   **Placement literals**. For now, only `tff.SERVER` and `tff.CLIENTS` to
@@ -302,7 +302,7 @@ public API:
         computation defined earlier on an argument `x`. The type od this
         expression is `int32`.
 
-    *   `tff.federated_average(sensor_readings)` represents an invocation of the
+    *   `tff.federated_mean(sensor_readings)` represents an invocation of the
         federated averaging operator on `sensor_readings`. The type of this
         expression is `float32@SERVER` (assuming context from the example
         above).
