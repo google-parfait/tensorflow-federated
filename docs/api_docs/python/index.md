@@ -12,11 +12,11 @@
 *   <a href="./tff/Value.md"><code>tff.Value</code></a>
 *   <a href="./tff/federated_aggregate.md"><code>tff.federated_aggregate</code></a>
 *   <a href="./tff/federated_apply.md"><code>tff.federated_apply</code></a>
-*   <a href="./tff/federated_average.md"><code>tff.federated_average</code></a>
 *   <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>
 *   <a href="./tff/federated_collect.md"><code>tff.federated_collect</code></a>
 *   <a href="./tff/federated_computation.md"><code>tff.federated_computation</code></a>
 *   <a href="./tff/federated_map.md"><code>tff.federated_map</code></a>
+*   <a href="./tff/federated_mean.md"><code>tff.federated_mean</code></a>
 *   <a href="./tff/federated_reduce.md"><code>tff.federated_reduce</code></a>
 *   <a href="./tff/federated_sum.md"><code>tff.federated_sum</code></a>
 *   <a href="./tff/federated_value.md"><code>tff.federated_value</code></a>

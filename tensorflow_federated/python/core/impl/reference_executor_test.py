@@ -910,24 +910,24 @@ class ReferenceExecutorTest(test.TestCase):
         str(bar.type_signature), '({float32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
 
-  def test_federated_average_with_floats(self):
+  def test_federated_mean_with_floats(self):
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def foo(x):
-      return intrinsics.federated_average(x)
+      return intrinsics.federated_mean(x)
 
     self.assertEqual(
         str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
     self.assertEqual(foo([1.0, 2.0, 3.0, 4.0, 5.0]), 3.0)
 
-  def test_federated_average_with_tuples(self):
+  def test_federated_mean_with_tuples(self):
 
     @computations.federated_computation(
         computation_types.FederatedType([('A', tf.float32), ('B', tf.float32)],
                                         placements.CLIENTS))
     def foo(x):
-      return intrinsics.federated_average(x)
+      return intrinsics.federated_mean(x)
 
     self.assertEqual(
         str(foo.type_signature),
@@ -1009,7 +1009,7 @@ class ReferenceExecutorTest(test.TestCase):
         computation_types.FederatedType(tf.float32, placements.CLIENTS),
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def foo(v, w):
-      return intrinsics.federated_average(v, w)
+      return intrinsics.federated_mean(v, w)
 
     self.assertEqual(
         str(foo.type_signature),

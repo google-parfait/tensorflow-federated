@@ -98,24 +98,21 @@ def federated_apply(func, arg):
   return factory.federated_apply(func, arg)
 
 
-# TODO(b/122071074): Consider renaming federated_mean to better match names
-# in TensorFlow, Numpy, and Pandas.
-def federated_average(value, weight=None):
-  """Computes a `tff.SERVER` average of `value` placed on `tff.CLIENTS`.
+def federated_mean(value, weight=None):
+  """Computes a `tff.SERVER` mean of `value` placed on `tff.CLIENTS`.
 
   Args:
-    value: The value to be averaged. Must be of a TFF federated type placed at
-      `tff.CLIENTS`. The value may be structured, e.g., its member constituents
-      can be named tuples. The tensor types that the value is composed of must
-      be floating-point or complex.
+    value: The value of which the mean is to be computed. Must be of a TFF
+      federated type placed at `tff.CLIENTS`. The value may be structured, e.g.,
+      its member constituents can be named tuples. The tensor types that the
+      value is composed of must be floating-point or complex.
     weight: An optional weight, a TFF federated integer or floating-point tensor
       value, also placed at `tff.CLIENTS`.
 
   Returns:
-    A representation at the `tff.SERVER` of an average of the member
-    constituents of `value`, optionally weighted with `weight` if specified
-    (otherwise, the member constituents contributed by all clients are equally
-    weighted).
+    A representation at the `tff.SERVER` of the mean of the member constituents
+    of `value`, optionally weighted with `weight` if specified (otherwise, the
+    member constituents contributed by all clients are equally weighted).
 
   Raises:
     TypeError: if `value` is not a federated TFF value placed at `tff.CLIENTS`,
@@ -123,7 +120,7 @@ def federated_average(value, weight=None):
       the matching placement.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
-  return factory.federated_average(value, weight)
+  return factory.federated_mean(value, weight)
 
 
 def federated_broadcast(value):

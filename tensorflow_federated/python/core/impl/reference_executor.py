@@ -622,8 +622,8 @@ class ReferenceExecutor(context_base.Context):
             self._federated_aggregate,
         intrinsic_defs.FEDERATED_APPLY.uri:
             self._federated_apply,
-        intrinsic_defs.FEDERATED_AVERAGE.uri:
-            self._federated_average,
+        intrinsic_defs.FEDERATED_MEAN.uri:
+            self._federated_mean,
         intrinsic_defs.FEDERATED_BROADCAST.uri:
             self._federated_broadcast,
         intrinsic_defs.FEDERATED_COLLECT.uri:
@@ -638,8 +638,8 @@ class ReferenceExecutor(context_base.Context):
             self._federated_value_at_clients,
         intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri:
             self._federated_value_at_server,
-        intrinsic_defs.FEDERATED_WEIGHTED_AVERAGE.uri:
-            self._federated_weighted_average,
+        intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri:
+            self._federated_weighted_mean,
         intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri:
             self._federated_zip_at_clients,
         intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri:
@@ -1069,7 +1069,7 @@ class ReferenceExecutor(context_base.Context):
               op_type.parameter))
     return self._federated_value_at_server(total)
 
-  def _federated_average(self, arg):
+  def _federated_mean(self, arg):
     type_utils.check_federated_type(arg.type_signature, None,
                                     placements.CLIENTS, False)
     py_typecheck.check_type(arg.value, list)
@@ -1127,7 +1127,7 @@ class ReferenceExecutor(context_base.Context):
         ComputedValue([arg.value[4], root_accumulator.value],
                       [arg.type_signature[4], root_accumulator.type_signature]))
 
-  def _federated_weighted_average(self, arg):
+  def _federated_weighted_mean(self, arg):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
     if len(arg.type_signature) != 2:

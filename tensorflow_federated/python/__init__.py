@@ -45,7 +45,7 @@ _allowed_symbols = [
     "Value",
     "federated_aggregate",
     "federated_apply",
-    "federated_average",
+    "federated_mean",
     "federated_broadcast",
     "federated_collect",
     "federated_computation",

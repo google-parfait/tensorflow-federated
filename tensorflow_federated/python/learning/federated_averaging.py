@@ -104,7 +104,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       weights_delta_weight = self._client_weight_fn(aggregated_outputs)  # pylint:disable=not-callable
 
       # TODO(b/122071074): Consider moving this functionality into
-      # tff.federated_average?
+      # tff.federated_mean?
       weights_delta, has_non_finite_delta = (
           tensor_utils.zero_all_if_any_non_finite(weights_delta))
       weights_delta_weight = tf.cond(

@@ -66,10 +66,6 @@ from <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to
 [`federated_apply(...)`](./tff/federated_apply.md): Applies a given function to
 a federated value on the <a href="./tff.md#SERVER"><code>tff.SERVER</code></a>.
 
-[`federated_average(...)`](./tff/federated_average.md): Computes a
-<a href="./tff.md#SERVER"><code>tff.SERVER</code></a> average of `value` placed
-on <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
-
 [`federated_broadcast(...)`](./tff/federated_broadcast.md): Broadcasts a
 federated value from the <a href="./tff.md#SERVER"><code>tff.SERVER</code></a>
 to the <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
@@ -84,6 +80,10 @@ Python functions as TFF federated/composite computations.
 [`federated_map(...)`](./tff/federated_map.md): Maps a federated value on
 <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> pointwise using a
 mapping function.
+
+[`federated_mean(...)`](./tff/federated_mean.md): Computes a
+<a href="./tff.md#SERVER"><code>tff.SERVER</code></a> mean of `value` placed on
+<a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 [`federated_reduce(...)`](./tff/federated_reduce.md): Reduces `value` from
 <a href="./tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to

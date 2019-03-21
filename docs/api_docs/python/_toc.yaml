@@ -12,8 +12,6 @@ toc:
       path: /federated/api_docs/python/tff/federated_aggregate
     - title: federated_apply
       path: /federated/api_docs/python/tff/federated_apply
-    - title: federated_average
-      path: /federated/api_docs/python/tff/federated_average
     - title: federated_broadcast
       path: /federated/api_docs/python/tff/federated_broadcast
     - title: federated_collect
@@ -22,6 +20,8 @@ toc:
       path: /federated/api_docs/python/tff/federated_computation
     - title: federated_map
       path: /federated/api_docs/python/tff/federated_map
+    - title: federated_mean
+      path: /federated/api_docs/python/tff/federated_mean
     - title: federated_reduce
       path: /federated/api_docs/python/tff/federated_reduce
     - title: federated_sum

@@ -55,7 +55,7 @@ message Computation {
   //
   //   client_model = tff.federated_broadcast(model)
   //   client_metrics = tff.federated_map(local_eval, client_model)
-  //   return tff.federated_average(client_metrics)
+  //   return tff.federated_mean(client_metrics)
   //
   //
   // fed_eval = Computation(lambda=Lambda(
@@ -88,7 +88,7 @@ message Computation {
   //         result=Computation(
   //             call=Call(
   //                 function=Computation(
-  //                     intrinsic=Intrinsic(uri='federated_average')),
+  //                     intrinsic=Intrinsic(uri='federated_mean')),
   //                 argument=Computation(
   //                     reference=Reference(name='client_metrics'))))))))
   //
