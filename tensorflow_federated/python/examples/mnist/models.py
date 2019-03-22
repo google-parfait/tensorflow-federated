@@ -21,7 +21,6 @@ import collections
 
 import tensorflow as tf
 
-# TODO(b/123578208): Remove deep keras imports after updating TF version.
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated import python as tff
 
