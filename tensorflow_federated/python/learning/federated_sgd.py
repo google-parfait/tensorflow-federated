@@ -27,7 +27,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-# TODO(b/123578208): Remove deep keras imports after updating TF version.
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib

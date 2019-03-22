@@ -24,7 +24,6 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
-# TODO(b/123578208): Remove deep keras imports after updating TF version.
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test

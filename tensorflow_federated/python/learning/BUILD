@@ -168,8 +168,6 @@ py_test(
     name = "model_utils_test",
     size = "large",
     srcs = ["model_utils_test.py"],
-    # TODO(b/123578208): Remove deep keras.optimizer_v2 and keras.engine
-    # imports after updating TF version.
     deps = [
         ":model_examples",
         ":model_utils",
