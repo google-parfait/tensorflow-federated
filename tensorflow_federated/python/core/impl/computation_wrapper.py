@@ -370,7 +370,7 @@ class ComputationWrapper(object):
 
     Args:
       *args: Positional arguments (the decorator at this point does not accept
-        keyword arguments, althought that might change in the future).
+        keyword arguments, although that might change in the future).
 
     Returns:
       Either a result of wrapping, or a callable that expects a function or a
