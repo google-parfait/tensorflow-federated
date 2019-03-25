@@ -1,3 +1,14 @@
+# Release 0.3.0
+
+## Breaking Changes
+
+* Rename tff.learning.federated_average to tff.learning.federated_mean.
+* Rename 'func' arguments to 'fn' throughout the API.
+
+## Bug Fixes
+
+* Assorted fixes to typos in documentation and setup scripts.
+
 # Release 0.2.0
 
 ## Major Features and Improvements
@@ -14,7 +25,6 @@
 * Modify setup.py to require TensorFlow 1.x and not upgrade to 2.0 alpha.
 * Stop unpacking single value tuples in `next()` function of objects returned by `build_federated_*_process()`.
 * Clear cached Keras sessions when wrapping Keras models to avoid referencing stale graphs.
-
 
 # Release 0.1.0
 

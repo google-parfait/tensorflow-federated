@@ -55,7 +55,7 @@ import setuptools
 
 DOCLINES = __doc__.split('\n')
 
-_VERSION = '0.2.0'
+_VERSION = '0.3.0'
 
 project_name = 'tensorflow_federated'
 
