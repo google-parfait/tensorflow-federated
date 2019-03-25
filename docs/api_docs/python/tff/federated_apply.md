@@ -7,7 +7,7 @@
 
 ```python
 tff.federated_apply(
-    func,
+    fn,
     arg
 )
 ```
@@ -20,7 +20,7 @@ Applies a given function to a federated value on the
 
 #### Args:
 
-*   <b>`func`</b>: A function to apply to the member content of `arg` on the
+*   <b>`fn`</b>: A function to apply to the member content of `arg` on the
     <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>. The parameter of
     this function must be of the same type as the member constituent of `arg`.
 *   <b>`arg`</b>: A value of a TFF federated type placed at the
@@ -30,8 +30,7 @@ Applies a given function to a federated value on the
 #### Returns:
 
 A federated value on the <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>
-that represents the result of applying `func` to the member constituent of
-`arg`.
+that represents the result of applying `fn` to the member constituent of `arg`.
 
 #### Raises:
 
