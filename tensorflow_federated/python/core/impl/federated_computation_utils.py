@@ -26,15 +26,15 @@ from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import value_impl
 
 
-def zero_or_one_arg_func_to_building_block(func,
-                                           parameter_name,
-                                           parameter_type,
-                                           context_stack,
-                                           suggested_name=None):
-  """Converts a zero- or one-argument `func` into a computation building block.
+def zero_or_one_arg_fn_to_building_block(fn,
+                                         parameter_name,
+                                         parameter_type,
+                                         context_stack,
+                                         suggested_name=None):
+  """Converts a zero- or one-argument `fn` into a computation building block.
 
   Args:
-    func: A function with 0 or 1 arguments that contains orchestration logic,
+    fn: A function with 0 or 1 arguments that contains orchestration logic,
       i.e., that expects zero or one `values_base.Value` and returns a result
       convertible to the same.
     parameter_name: The name of the parameter, or `None` if there is't any.
@@ -47,12 +47,12 @@ def zero_or_one_arg_func_to_building_block(func,
 
   Returns:
     An instance of `computation_building_blocks.ComputationBuildingBlock` that
-    contains the logic from `func`.
+    contains the logic from `fn`.
 
   Raises:
-    ValueError: if `func` is incompatible with `parameter_type`.
+    ValueError: if `fn` is incompatible with `parameter_type`.
   """
-  py_typecheck.check_callable(func)
+  py_typecheck.check_callable(fn)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if suggested_name is not None:
     py_typecheck.check_type(suggested_name, six.string_types)
@@ -69,12 +69,12 @@ def zero_or_one_arg_func_to_building_block(func,
     parameter_name = '{}_{}'.format(context.name, str(parameter_name))
   with context_stack.install(context):
     if parameter_type is not None:
-      result = func(
+      result = fn(
           value_impl.ValueImpl(
               computation_building_blocks.Reference(
                   parameter_name, parameter_type), context_stack))
     else:
-      result = func()
+      result = fn()
     result = value_impl.to_value(result, None, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
     if parameter_type is None:

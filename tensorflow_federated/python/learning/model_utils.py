@@ -264,7 +264,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
-  def __init__(self, inner_model, dummy_batch, loss_func, metrics):
+  def __init__(self, inner_model, dummy_batch, loss_fn, metrics):
     # TODO(b/124477598): the following set_session() should be removed in the
     # future. This is a workaround for Keras' caching sessions in a way that
     # isn't compatible with TFF. This is already fixed in TF master, but not as
@@ -295,10 +295,10 @@ class _KerasModel(model_lib.Model):
                                           dummy_tensors)
 
     self._keras_model = inner_model
-    self._loss_fn = loss_func
+    self._loss_fn = loss_fn
     self._metrics = metrics if metrics is not None else []
 
-    # This is defined here so that it closes over the `loss_func`.
+    # This is defined here so that it closes over the `loss_fn`.
     class _WeightedMeanLossMetric(keras_metrics.Metric):
       """A `tf.keras.metrics.Metric` wrapper for the loss function."""
 
@@ -307,7 +307,7 @@ class _KerasModel(model_lib.Model):
         self._total_loss = self.add_weight('total_loss', initializer='zeros')
         self._total_weight = self.add_weight(
             'total_weight', initializer='zeros')
-        self._loss_fn = loss_func
+        self._loss_fn = loss_fn
 
       def update_state(self, y_true, y_pred, sample_weight=None):
         y_true = tf.cast(y_true, self._dtype)

@@ -77,25 +77,25 @@ def federated_aggregate(value, zero, accumulate, merge, report):
   return factory.federated_aggregate(value, zero, accumulate, merge, report)
 
 
-def federated_apply(func, arg):
+def federated_apply(fn, arg):
   """Applies a given function to a federated value on the `tff.SERVER`.
 
   Args:
-    func: A function to apply to the member content of `arg` on the
-      `tff.SERVER`. The parameter of this function must be of the same type as
-      the member constituent of `arg`.
+    fn: A function to apply to the member content of `arg` on the `tff.SERVER`.
+      The parameter of this function must be of the same type as the member
+      constituent of `arg`.
     arg: A value of a TFF federated type placed at the `tff.SERVER`, and with
       the `all_equal` bit set.
 
   Returns:
     A federated value on the `tff.SERVER` that represents the result of applying
-    `func` to the member constituent of `arg`.
+    `fn` to the member constituent of `arg`.
 
   Raises:
     TypeError: If the arguments are not of the appropriate types.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
-  return factory.federated_apply(func, arg)
+  return factory.federated_apply(fn, arg)
 
 
 def federated_mean(value, weight=None):

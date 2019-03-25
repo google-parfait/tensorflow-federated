@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.tensorflow_libs import graph_keys
 
 
-def serialize_py_func_as_tf_computation(target, parameter_type, context_stack):
+def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   """Serializes the 'target' as a TF computation with a given parameter type.
 
   Args:

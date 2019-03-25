@@ -21,27 +21,27 @@ import types
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def _wrap(func, parameter_type, wrapper_fn):
-  """Wrap a given `func` with a given `parameter_type` using `wrapper_fn`.
+def _wrap(fn, parameter_type, wrapper_fn):
+  """Wrap a given `fn` with a given `parameter_type` using `wrapper_fn`.
 
   This method does not handle the multiple modes of usage as wrapper/decorator,
   as those are handled by ComputationWrapper below. It focused on the simple
   case with a function/defun (always present) and either a valid parameter type
   or an indication that there's no parameter (None).
 
-  The only ambiguity left to resolve is whether `func` should be immediately
+  The only ambiguity left to resolve is whether `fn` should be immediately
   wrapped, or treated as a polymorphic callable to be wrapped upon invocation
   based on actual parameter types. The determination is based on the presence
-  or absence of parameters in the declaration of `func`. In order to be
-  treated as a concrete no-argument computation, `func` shouldn't declare any
+  or absence of parameters in the declaration of `fn`. In order to be
+  treated as a concrete no-argument computation, `fn` shouldn't declare any
   arguments (even with default values).
 
   Args:
-    func: The function or defun to wrap as a computation.
+    fn: The function or defun to wrap as a computation.
     parameter_type: The parameter type accepted by the computation, or None if
       there is no parameter.
     wrapper_fn: The Python callable that performs actual wrapping. It must
@@ -65,36 +65,36 @@ def _wrap(func, parameter_type, wrapper_fn):
       constructs something that isn't a ConcreteFunction.
   """
   try:
-    func_name = func.__name__
+    fn_name = fn.__name__
   except AttributeError:
-    func_name = None
-  argspec = func_utils.get_argspec(func)
+    fn_name = None
+  argspec = function_utils.get_argspec(fn)
   parameter_type = computation_types.to_type(parameter_type)
   if not parameter_type:
     if argspec.args or argspec.varargs or argspec.keywords:
       # There is no TFF type specification, and the function/defun declares
       # parameters. Create a polymorphic template.
-      def _wrap_polymorphic(wrapper_fn, func, parameter_type, name=func_name):
+      def _wrap_polymorphic(wrapper_fn, fn, parameter_type, name=fn_name):
         return wrapper_fn(
-            func_utils.wrap_as_zero_or_one_arg_callable(
-                func, parameter_type, unpack=True),
+            function_utils.wrap_as_zero_or_one_arg_callable(
+                fn, parameter_type, unpack=True),
             parameter_type,
             name=name)
 
-      polymorphic_fn = func_utils.PolymorphicFunction(
-          lambda pt: _wrap_polymorphic(wrapper_fn, func, pt))
+      polymorphic_fn = function_utils.PolymorphicFunction(
+          lambda pt: _wrap_polymorphic(wrapper_fn, fn, pt))
 
       # When applying a decorator, the __doc__ attribute with the documentation
       # in triple-quotes is not automatically transferred from the function on
       # which it was applied to the wrapped object, so we must transfer it here
       # explicitly.
-      polymorphic_fn.__doc__ = getattr(func, '__doc__', None)
+      polymorphic_fn.__doc__ = getattr(fn, '__doc__', None)
       return polymorphic_fn
   concrete_fn = wrapper_fn(
-      func_utils.wrap_as_zero_or_one_arg_callable(func, parameter_type),
+      function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type),
       parameter_type,
-      name=func_name)
-  py_typecheck.check_type(concrete_fn, func_utils.ConcreteFunction,
+      name=fn_name)
+  py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
                           'value returned by the wrapper')
   if not type_utils.are_equivalent_types(concrete_fn.type_signature.parameter,
                                          parameter_type):
@@ -104,7 +104,7 @@ def _wrap(func, parameter_type, wrapper_fn):
             str(parameter_type), str(concrete_fn.type_signature.parameter)))
   # When applying a decorator, the __doc__ attribute with the documentation
   # in triple-quotes is not automatically transferred from the function on
-  concrete_fn.__doc__ = getattr(func, '__doc__', None)
+  concrete_fn.__doc__ = getattr(fn, '__doc__', None)
   return concrete_fn
 
 
@@ -158,10 +158,10 @@ class ComputationWrapper(object):
   explicitly as an argument, as in the example below:
 
   ```python
-  my_comp = xyz(func, ...decorator arguments...)
+  my_comp = xyz(fn, ...decorator arguments...)
   ```
 
-  This mode of invocation can be used, e.g., to transform `func` that's been
+  This mode of invocation can be used, e.g., to transform `fn` that's been
   defined in an external module, or an anonymous lambda that may be more
   convenient to define in-line in the call arguments in case where the lambda
   is short and simple (e.g., a single TF op).
@@ -193,7 +193,7 @@ class ComputationWrapper(object):
   the decorator is used with a defun, the term "Python function" refers to the
   abstract Python function that takes the same arguments (both ordinary Python
   functions and defuns are manipulated using helper functionality defined in
-  func_utils.py).
+  function_utils.py).
 
   1. The decorator is invoked with a single positional decorator argument, as
      in the example below.
@@ -388,7 +388,7 @@ class ComputationWrapper(object):
       # to accidentally specify parameter type as a second argument.
       return lambda fn: _wrap(fn, None, self._wrapper_fn)
     elif (isinstance(args[0], types.FunctionType) or
-          func_utils.is_defun(args[0])):
+          function_utils.is_defun(args[0])):
       # If the first argument on the list is a Python function or a defun, this
       # is the one that's being wrapped. This is the case of either a decorator
       # invocation without arguments as "@xyz" applied to a function definition,

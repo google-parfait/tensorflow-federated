@@ -1083,10 +1083,10 @@ class ReferenceExecutorTest(test.TestCase):
     def sum_of_square_errors(x, y):
 
       @computations.federated_computation(tf.int32)
-      def mapping_func(v):
+      def mapping_fn(v):
         return square_error(x, v)
 
-      return intrinsics.sequence_sum(intrinsics.sequence_map(mapping_func, y))
+      return intrinsics.sequence_sum(intrinsics.sequence_map(mapping_fn, y))
 
     self.assertEqual(sum_of_square_errors(10, [11, 8, 13]), 14)
 

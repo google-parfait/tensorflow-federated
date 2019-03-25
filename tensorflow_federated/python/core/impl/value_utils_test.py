@@ -120,67 +120,65 @@ class ValueUtilsTest(parameterized.TestCase):
           value_impl.to_value(three_tuple_test_ref, None, _context_stack),
           _context_stack)
 
-  def test_flatten_func_comp_raises_typeerror(self):
+  def test_flatten_fn_comp_raises_typeerror(self):
     input_reference = computation_building_blocks.Reference(
         'test', [tf.int32] * 5)
-    input_function = computation_building_blocks.Lambda(
+    input_fn = computation_building_blocks.Lambda(
         'test', input_reference.type_signature, input_reference)
     type_to_add = computation_types.NamedTupleType([tf.int32])
     with self.assertRaisesRegexp(TypeError, '(Expected).*(Value)'):
-      _ = value_utils.flatten_first_index(input_function, type_to_add,
-                                          _context_stack)
+      _ = value_utils.flatten_first_index(input_fn, type_to_add, _context_stack)
 
   @parameterized.named_parameters(
       [('test_n_' + str(x), x) for x in range(2, 10)])
-  def test_flatten_function(self, n):
+  def test_flatten_fn(self, n):
     input_reference = computation_building_blocks.Reference(
         'test', [tf.int32] * n)
-    input_function = computation_building_blocks.Lambda(
+    input_fn = computation_building_blocks.Lambda(
         'test', input_reference.type_signature, input_reference)
     type_to_add = (None, computation_types.to_type(tf.int32))
     input_type = computation_types.NamedTupleType(
         [input_reference.type_signature, type_to_add])
     desired_output_type = computation_types.to_type([tf.int32] * (n + 1))
-    desired_function_type = computation_types.FunctionType(
-        input_type, desired_output_type)
-    new_func = value_utils.flatten_first_index(
-        value_impl.to_value(input_function, None, _context_stack), type_to_add,
+    desired_fn_type = computation_types.FunctionType(input_type,
+                                                     desired_output_type)
+    new_fn = value_utils.flatten_first_index(
+        value_impl.to_value(input_fn, None, _context_stack), type_to_add,
         _context_stack)
-    self.assertEqual(str(new_func.type_signature), str(desired_function_type))
+    self.assertEqual(str(new_fn.type_signature), str(desired_fn_type))
 
   @parameterized.named_parameters(
       [('test_n_' + str(x), x) for x in range(2, 10)])
-  def test_flatten_function_with_names(self, n):
+  def test_flatten_fn_with_names(self, n):
     input_reference = computation_building_blocks.Reference(
         'test', [(str(k), tf.int32) for k in range(n)])
-    input_function = computation_building_blocks.Lambda(
+    input_fn = computation_building_blocks.Lambda(
         'test', input_reference.type_signature, input_reference)
     unnamed_type_to_add = (None, computation_types.to_type(tf.int32))
     unnamed_input_type = computation_types.NamedTupleType(
         [input_reference.type_signature, unnamed_type_to_add])
     unnamed_desired_output_type = computation_types.to_type(
         [(str(k), tf.int32) for k in range(n)] + [tf.int32])
-    unnamed_desired_function_type = computation_types.FunctionType(
+    unnamed_desired_fn_type = computation_types.FunctionType(
         unnamed_input_type, unnamed_desired_output_type)
-    unnamed_new_func = value_utils.flatten_first_index(
-        value_impl.to_value(input_function, None, _context_stack),
+    unnamed_new_fn = value_utils.flatten_first_index(
+        value_impl.to_value(input_fn, None, _context_stack),
         unnamed_type_to_add, _context_stack)
     self.assertEqual(
-        str(unnamed_new_func.type_signature),
-        str(unnamed_desired_function_type))
+        str(unnamed_new_fn.type_signature), str(unnamed_desired_fn_type))
 
     named_type_to_add = ('new', tf.int32)
     named_input_type = computation_types.NamedTupleType(
         [input_reference.type_signature, named_type_to_add])
     named_types = [(str(k), tf.int32) for k in range(n)] + [('new', tf.int32)]
     named_desired_output_type = computation_types.to_type(named_types)
-    named_desired_function_type = computation_types.FunctionType(
+    named_desired_fn_type = computation_types.FunctionType(
         named_input_type, named_desired_output_type)
-    new_named_func = value_utils.flatten_first_index(
-        value_impl.to_value(input_function, None, _context_stack),
-        named_type_to_add, _context_stack)
+    new_named_fn = value_utils.flatten_first_index(
+        value_impl.to_value(input_fn, None, _context_stack), named_type_to_add,
+        _context_stack)
     self.assertEqual(
-        str(new_named_func.type_signature), str(named_desired_function_type))
+        str(new_named_fn.type_signature), str(named_desired_fn_type))
 
   def test_get_curried(self):
     add_numbers = value_impl.ValueImpl(

@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl import placement_literals
 
 class ComputationWrapperInstancesTest(test.TestCase):
 
-  def test_tf_wrapper_with_one_op_py_func(self):
+  def test_tf_wrapper_with_one_op_py_fn(self):
 
     @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
     def foo(x):

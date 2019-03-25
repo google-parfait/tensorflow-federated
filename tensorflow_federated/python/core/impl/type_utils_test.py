@@ -664,16 +664,15 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegexp(TypeError,
                                  r'A <int32>\* has been encountered'):
       type_utils.check_well_formed(sequence_in_sequence)
-    federated_function = computation_types.FederatedType(
+    federated_fn = computation_types.FederatedType(
         computation_types.FunctionType(tf.int32, tf.int32), placements.CLIENTS)
     with self.assertRaisesRegexp(TypeError,
                                  r'A \(int32 -> int32\) has been encountered'):
-      type_utils.check_well_formed(federated_function)
-    tuple_federated_function = computation_types.NamedTupleType(
-        [federated_function])
+      type_utils.check_well_formed(federated_fn)
+    tuple_federated_fn = computation_types.NamedTupleType([federated_fn])
     with self.assertRaisesRegexp(TypeError,
                                  r'A \(int32 -> int32\) has been encountered'):
-      type_utils.check_well_formed(tuple_federated_function)
+      type_utils.check_well_formed(tuple_federated_fn)
 
   def test_extra_well_formed_check_nested_types(self):
     nest_federated = computation_types.FederatedType(
@@ -750,22 +749,22 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                                                  computation_types.SequenceType)
     self.assertFalse(miss_sequence)
 
-    function = computation_types.FunctionType(
-        None, computation_types.TensorType(tf.int32))
-    tuple_on_function = computation_types.NamedTupleType([federated, function])
-    find_function = type_utils.check_blacklisted(tuple_on_function,
-                                                 computation_types.FunctionType)
-    self.assertTrue(find_function)
-    find_federated_in_tuple_with_function = type_utils.check_blacklisted(
-        tuple_on_function, computation_types.FederatedType)
-    self.assertTrue(find_federated_in_tuple_with_function)
+    fn = computation_types.FunctionType(None,
+                                        computation_types.TensorType(tf.int32))
+    tuple_on_fn = computation_types.NamedTupleType([federated, fn])
+    find_fn = type_utils.check_blacklisted(tuple_on_fn,
+                                           computation_types.FunctionType)
+    self.assertTrue(find_fn)
+    find_federated_in_tuple_with_fn = type_utils.check_blacklisted(
+        tuple_on_fn, computation_types.FederatedType)
+    self.assertTrue(find_federated_in_tuple_with_fn)
     find_nested_tensor = type_utils.check_blacklisted(
-        tuple_on_function, computation_types.TensorType)
+        tuple_on_fn, computation_types.TensorType)
     self.assertTrue(find_nested_tensor)
     miss_abstract_type = type_utils.check_blacklisted(
-        tuple_on_function, computation_types.AbstractType)
+        tuple_on_fn, computation_types.AbstractType)
     miss_placement_type = type_utils.check_blacklisted(
-        tuple_on_function, computation_types.PlacementType)
+        tuple_on_fn, computation_types.PlacementType)
     self.assertFalse(miss_abstract_type)
     self.assertFalse(miss_placement_type)
 
@@ -790,9 +789,9 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             placements.CLIENTS), placements.CLIENTS)
     type_utils.preorder_call(federated, _count_hits, None)
     self.assertEqual(Counter.k, 8)
-    function = computation_types.FunctionType(
+    fn = computation_types.FunctionType(
         computation_types.FunctionType(tf.int32, tf.int32), tf.int32)
-    type_utils.preorder_call(function, _count_hits, None)
+    type_utils.preorder_call(fn, _count_hits, None)
     self.assertEqual(Counter.k, 13)
     abstract = computation_types.AbstractType('T')
     type_utils.preorder_call(abstract, _count_hits, None)
@@ -821,8 +820,8 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertTrue(type_utils.check_well_formed(namedtuple))
     sequence = computation_types.SequenceType(tf.int32)
     self.assertTrue(type_utils.check_well_formed(sequence))
-    func = computation_types.FunctionType(tf.int32, tf.int32)
-    self.assertTrue(type_utils.check_well_formed(func))
+    fn = computation_types.FunctionType(tf.int32, tf.int32)
+    self.assertTrue(type_utils.check_well_formed(fn))
     abstract = computation_types.AbstractType('T')
     self.assertTrue(type_utils.check_well_formed(abstract))
     placement = computation_types.PlacementType()

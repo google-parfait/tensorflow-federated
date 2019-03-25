@@ -108,7 +108,7 @@ py_library(
     srcs = ["computation_impl.py"],
     deps = [
         ":context_stack_base",
-        ":func_utils",
+        ":function_utils",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -136,7 +136,7 @@ py_library(
     name = "computation_wrapper",
     srcs = ["computation_wrapper.py"],
     deps = [
-        ":func_utils",
+        ":function_utils",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -151,7 +151,7 @@ py_test(
         ":computation_wrapper",
         ":context_base",
         ":context_stack_impl",
-        ":func_utils",
+        ":function_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -276,7 +276,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":federated_computation_utils",
-        ":func_utils",
+        ":function_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
@@ -285,8 +285,8 @@ py_test(
 )
 
 py_library(
-    name = "func_utils",
-    srcs = ["func_utils.py"],
+    name = "function_utils",
+    srcs = ["function_utils.py"],
     deps = [
         ":context_base",
         ":context_stack_base",
@@ -301,13 +301,13 @@ py_library(
 )
 
 py_test(
-    name = "func_utils_test",
+    name = "function_utils_test",
     size = "small",
-    srcs = ["func_utils_test.py"],
+    srcs = ["function_utils_test.py"],
     deps = [
         ":context_base",
         ":context_stack_impl",
-        ":func_utils",
+        ":function_utils",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
@@ -726,7 +726,7 @@ py_library(
         ":computation_impl",
         ":context_stack_base",
         ":dtype_utils",
-        ":func_utils",
+        ":function_utils",
         ":graph_utils",
         ":intrinsic_defs",
         ":placement_literals",

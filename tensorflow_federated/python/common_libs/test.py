@@ -45,7 +45,7 @@ def main():
   tf.test.main()
 
 
-def graph_mode_test(test_func):
+def graph_mode_test(test_fn):
   """Decorator for a test to be executed in graph mode.
 
   This decorator is used to write graph-mode tests when eager execution is
@@ -55,17 +55,17 @@ def graph_mode_test(test_func):
   `@graph_mode_test` may use or ignore by creating their own Graphs.
 
   Args:
-    test_func: A test function to be decorated.
+    test_fn: A test function to be decorated.
 
   Returns:
-    The decorated test_func.
+    The decorated test_fn.
   """
 
-  def wrapped_test_func(*args, **kwargs):
+  def wrapped_test_fn(*args, **kwargs):
     with tf.Graph().as_default():
-      test_func(*args, **kwargs)
+      test_fn(*args, **kwargs)
 
-  return wrapped_test_func
+  return wrapped_test_fn
 
 
 def assert_nested_struct_eq(x, y):

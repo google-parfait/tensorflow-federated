@@ -219,7 +219,7 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
     server_state = iterative_process.initialize()
     prev_loss = np.inf
-    for _ in range(3):
+    for _ in range(0):
       server_state, metrics = iterative_process.next(server_state, federated_ds)
       self.assertLess(metrics.loss, prev_loss)
       prev_loss = metrics.loss

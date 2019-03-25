@@ -89,27 +89,27 @@ def zip_two_tuple(input_val, context_stack):
   return intrinsic(input_val)
 
 
-def flatten_first_index(apply_func, type_to_add, context_stack):
-  """Returns a value `(arg -> APPEND(apply_func(arg[0]), arg[1]))`.
+def flatten_first_index(apply_fn, type_to_add, context_stack):
+  """Returns a value `(arg -> APPEND(apply_fn(arg[0]), arg[1]))`.
 
   In the above, `APPEND(a,b)` refers to appending element b to tuple a.
 
   Constructs a Value of a TFF functional type that:
 
   1. Takes as argument a 2-element tuple `(x, y)` of TFF type
-     `[apply_func.type_signature.parameter, type_to_add]`.
+     `[apply_fn.type_signature.parameter, type_to_add]`.
 
-  2. Transforms the 1st element `x` of this 2-tuple by applying `apply_func`,
+  2. Transforms the 1st element `x` of this 2-tuple by applying `apply_fn`,
      producing a result `z` that must be a TFF tuple (e.g, as a result of
      flattening `x`).
 
   3. Leaves the 2nd element `y` of the argument 2-tuple unchanged.
 
   4. Returns the result of appending the unchanged `y` at the end of the
-     tuple `z` returned by `apply_func`.
+     tuple `z` returned by `apply_fn`.
 
   Args:
-    apply_func: TFF `Value` of type_signature `FunctionType`, a function taking
+    apply_fn: TFF `Value` of type_signature `FunctionType`, a function taking
       TFF `Value`s to `Value`s of type `NamedTupleType`.
     type_to_add: 2-tuple specifying name and TFF type of arg[1]. Name can be
       `None` or `string`.
@@ -117,13 +117,13 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
 
   Returns:
     TFF `Value` of `FunctionType`, taking 2-tuples to N-tuples, which calls
-      `apply_func` on the first index of its argument, appends the second
+      `apply_fn` on the first index of its argument, appends the second
       index to the resulting (N-1)-tuple, then returns the N-tuple thus created.
   """
-  py_typecheck.check_type(apply_func, value_base.Value)
-  py_typecheck.check_type(apply_func.type_signature,
+  py_typecheck.check_type(apply_fn, value_base.Value)
+  py_typecheck.check_type(apply_fn.type_signature,
                           computation_types.FunctionType)
-  py_typecheck.check_type(apply_func.type_signature.result,
+  py_typecheck.check_type(apply_fn.type_signature.result,
                           computation_types.NamedTupleType)
   py_typecheck.check_type(type_to_add, tuple)
   if len(type_to_add) != 2:
@@ -132,15 +132,15 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
                      'and second index instance of `computation_types.Type` '
                      'or something convertible to one by '
                      '`computationtypes.to_type`.')
-  prev_param_type = apply_func.type_signature.parameter
+  prev_param_type = apply_fn.type_signature.parameter
   inputs = value_impl.to_value(
       computation_building_blocks.Reference(
           'inputs',
           computation_types.NamedTupleType([prev_param_type, type_to_add])),
       None, context_stack)
-  intermediate = apply_func(inputs[0])
+  intermediate = apply_fn(inputs[0])
   full_type_spec = anonymous_tuple.to_elements(
-      apply_func.type_signature.result) + [type_to_add]
+      apply_fn.type_signature.result) + [type_to_add]
   named_values = [
       (full_type_spec[k][0], intermediate[k]) for k in range(len(intermediate))
   ] + [(full_type_spec[-1][0], inputs[1])]
@@ -154,36 +154,36 @@ def flatten_first_index(apply_func, type_to_add, context_stack):
           value_impl.ValueImpl.get_comp(new_elements)), None, context_stack)
 
 
-def get_curried(func):
-  """Returns a curried version of function `func` that takes a parameter tuple.
+def get_curried(fn):
+  """Returns a curried version of function `fn` that takes a parameter tuple.
 
-  For functions `func` of types <T1,T2,....,Tn> -> U, the result is a function
+  For functions `fn` of types <T1,T2,....,Tn> -> U, the result is a function
   of the form T1 -> (T2 -> (T3 -> .... (Tn -> U) ... )).
 
-  NOTE: No attempt is made at avoiding naming conflicts in cases where `func`
+  NOTE: No attempt is made at avoiding naming conflicts in cases where `fn`
   contains references. The arguments of the curriend function are named `argN`
   with `N` starting at 0.
 
   Args:
-    func: A value of a functional TFF type.
+    fn: A value of a functional TFF type.
 
   Returns:
-    A value that represents the curried form of `func`.
+    A value that represents the curried form of `fn`.
   """
-  py_typecheck.check_type(func, value_base.Value)
-  py_typecheck.check_type(func.type_signature, computation_types.FunctionType)
-  py_typecheck.check_type(func.type_signature.parameter,
+  py_typecheck.check_type(fn, value_base.Value)
+  py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
+  py_typecheck.check_type(fn.type_signature.parameter,
                           computation_types.NamedTupleType)
-  param_elements = anonymous_tuple.to_elements(func.type_signature.parameter)
+  param_elements = anonymous_tuple.to_elements(fn.type_signature.parameter)
   references = []
   for idx, (_, elem_type) in enumerate(param_elements):
     references.append(
         computation_building_blocks.Reference('arg{}'.format(idx), elem_type))
   result = computation_building_blocks.Call(
-      value_impl.ValueImpl.get_comp(func),
+      value_impl.ValueImpl.get_comp(fn),
       computation_building_blocks.Tuple(references))
   for ref in references[::-1]:
     result = computation_building_blocks.Lambda(ref.name, ref.type_signature,
                                                 result)
   return value_impl.ValueImpl(result,
-                              value_impl.ValueImpl.get_context_stack(func))
+                              value_impl.ValueImpl.get_context_stack(fn))

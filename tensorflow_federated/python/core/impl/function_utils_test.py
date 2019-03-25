@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for func_utils.py."""
+"""Tests for function_utils.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -31,7 +31,7 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -48,19 +48,19 @@ class NoopIngestContextForTest(context_base.Context):
 class FuncUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_is_defun(self):
-    self.assertTrue(func_utils.is_defun(function.Defun()(lambda x: None)))
+    self.assertTrue(function_utils.is_defun(function.Defun()(lambda x: None)))
     self.assertTrue(
-        func_utils.is_defun(function.Defun(tf.int32)(lambda x: None)))
-    self.assertFalse(func_utils.is_defun(function.Defun))
-    self.assertFalse(func_utils.is_defun(lambda x: None))
-    self.assertFalse(func_utils.is_defun(None))
+        function_utils.is_defun(function.Defun(tf.int32)(lambda x: None)))
+    self.assertFalse(function_utils.is_defun(function.Defun))
+    self.assertFalse(function_utils.is_defun(lambda x: None))
+    self.assertFalse(function_utils.is_defun(None))
 
   def test_get_defun_argspec_with_typed_non_eager_defun(self):
     # In a non-eager defun with a defined input signature, **kwargs or default
     # values are not allowed, but *args are, and the input signature may
     # overlap with *args.
     self.assertEqual(
-        func_utils.get_argspec(
+        function_utils.get_argspec(
             function.Defun(tf.int32, tf.bool, tf.float32,
                            tf.float32)(lambda x, y, *z: None)),
         inspect.ArgSpec(
@@ -70,14 +70,14 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     # In a non-eager defun with no input signature, the same restrictions as in
     # a typed defun apply.
     self.assertEqual(
-        func_utils.get_argspec(function.Defun()(lambda x, y, *z: None)),
+        function_utils.get_argspec(function.Defun()(lambda x, y, *z: None)),
         inspect.ArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
   # pyformat: disable
   @parameterized.parameters(
       itertools.product(
-          # Values of 'func' to test.
+          # Values of 'fn' to test.
           [lambda: None,
            lambda a: None,
            lambda a, b: None,
@@ -99,22 +99,22 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
           # Values of 'kwargs' to test.
           [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
   # pyformat: enable
-  def test_get_callargs_for_argspec(self, func, args, kwargs):
-    argspec = inspect.getargspec(func)
+  def test_get_callargs_for_argspec(self, fn, args, kwargs):
+    argspec = inspect.getargspec(fn)
     expected_error = None
     try:
-      expected_callargs = inspect.getcallargs(func, *args, **kwargs)
+      expected_callargs = inspect.getcallargs(fn, *args, **kwargs)
     except TypeError as e:
       expected_error = e
       expected_callargs = None
     try:
       if expected_error is None:
-        result_callargs = func_utils.get_callargs_for_argspec(
+        result_callargs = function_utils.get_callargs_for_argspec(
             argspec, *args, **kwargs)
         self.assertEqual(result_callargs, expected_callargs)
       else:
         with self.assertRaises(TypeError):
-          result_callargs = func_utils.get_callargs_for_argspec(
+          result_callargs = function_utils.get_callargs_for_argspec(
               argspec, *args, **kwargs)
     except (TypeError, AssertionError) as test_err:
       raise AssertionError(
@@ -139,7 +139,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_is_argspec_compatible_with_types(self, argspec, args, kwargs,
                                             expected_result):
     self.assertEqual(
-        func_utils.is_argspec_compatible_with_types(
+        function_utils.is_argspec_compatible_with_types(
             argspec, *[computation_types.to_type(a) for a in args], **{
                 k: computation_types.to_type(v)
                 for k, v in six.iteritems(kwargs)
@@ -156,7 +156,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
       (anonymous_tuple.AnonymousTuple([('a', 1), (None, 2)]), False))
   # pyformat: enable
   def test_is_argument_tuple(self, arg, expected_result):
-    self.assertEqual(func_utils.is_argument_tuple(arg), expected_result)
+    self.assertEqual(function_utils.is_argument_tuple(arg), expected_result)
 
   # pyformat: disable
   @parameterized.parameters(
@@ -166,7 +166,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_unpack_args_from_anonymous_tuple(self, tuple_with_args,
                                             expected_args, expected_kwargs):
     self.assertEqual(
-        func_utils.unpack_args_from_tuple(tuple_with_args),
+        function_utils.unpack_args_from_tuple(tuple_with_args),
         (expected_args, expected_kwargs))
 
   # pyformat: disable
@@ -179,7 +179,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   # pyformat: enable
   def test_unpack_args_from_tuple_type(self, tuple_with_args, expected_args,
                                        expected_kwargs):
-    args, kwargs = func_utils.unpack_args_from_tuple(tuple_with_args)
+    args, kwargs = function_utils.unpack_args_from_tuple(tuple_with_args)
     self.assertEqual(len(args), len(expected_args))
     for idx, arg in enumerate(args):
       self.assertTrue(
@@ -193,10 +193,10 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(
-        func_utils.pack_args_into_anonymous_tuple([1], {'a': 10}),
+        function_utils.pack_args_into_anonymous_tuple([1], {'a': 10}),
         anonymous_tuple.AnonymousTuple([(None, 1), ('a', 10)]))
     self.assertIn(
-        func_utils.pack_args_into_anonymous_tuple([1, 2], {
+        function_utils.pack_args_into_anonymous_tuple([1, 2], {
             'a': 10,
             'b': 20
         }), [
@@ -214,7 +214,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
             ])
         ])
     self.assertIn(
-        func_utils.pack_args_into_anonymous_tuple([], {
+        function_utils.pack_args_into_anonymous_tuple([], {
             'a': 10,
             'b': 20
         }), [
@@ -222,7 +222,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
             anonymous_tuple.AnonymousTuple([('b', 20), ('a', 10)])
         ])
     self.assertEqual(
-        func_utils.pack_args_into_anonymous_tuple([1], {}),
+        function_utils.pack_args_into_anonymous_tuple([1], {}),
         anonymous_tuple.AnonymousTuple([(None, 1)]))
 
   # pyformat: disable
@@ -242,8 +242,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_pack_args_into_anonymous_tuple_with_type_spec_expect_success(
       self, args, kwargs, type_spec, elements):
     self.assertEqual(
-        func_utils.pack_args_into_anonymous_tuple(args, kwargs, type_spec,
-                                                  NoopIngestContextForTest()),
+        function_utils.pack_args_into_anonymous_tuple(
+            args, kwargs, type_spec, NoopIngestContextForTest()),
         anonymous_tuple.AnonymousTuple(elements))
 
   # pyformat: disable
@@ -254,8 +254,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_pack_args_into_anonymous_tuple_with_type_spec_expect_failure(
       self, args, kwargs, type_spec):
     with self.assertRaises(TypeError):
-      func_utils.pack_args_into_anonymous_tuple(args, kwargs, type_spec,
-                                                NoopIngestContextForTest())
+      function_utils.pack_args_into_anonymous_tuple(args, kwargs, type_spec,
+                                                    NoopIngestContextForTest())
 
   # pyformat: disable
   @parameterized.parameters(
@@ -271,8 +271,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
     self.assertEqual(
         str(
-            func_utils.pack_args(parameter_type, args, kwargs,
-                                 NoopIngestContextForTest())),
+            function_utils.pack_args(parameter_type, args, kwargs,
+                                     NoopIngestContextForTest())),
         expected_value_string)
 
   # pyformat: disable
@@ -291,9 +291,9 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
        [tf.int32], None, anonymous_tuple.AnonymousTuple([(None, 10)]), '<10>'))
   # pyformat: enable
   def test_wrap_as_zero_or_one_arg_callable(
-      self, unused_index, func, parameter_type, unpack, arg, expected_result):
-    wrapped_fn = func_utils.wrap_as_zero_or_one_arg_callable(
-        func, parameter_type, unpack)
+      self, unused_index, fn, parameter_type, unpack, arg, expected_result):
+    wrapped_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+        fn, parameter_type, unpack)
     actual_result = wrapped_fn(arg) if parameter_type else wrapped_fn()
     self.assertEqual(actual_result, expected_result)
 
@@ -308,7 +308,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
         return 'name={},type={},arg={}'.format(
             comp.name, str(comp.type_signature.parameter), str(arg))
 
-    class TestFunction(func_utils.ConcreteFunction):
+    class TestFunction(function_utils.ConcreteFunction):
 
       def __init__(self, name, parameter_type):
         self._name = name
@@ -330,7 +330,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
         return TestFunction(str(self._count), parameter_type)
 
     with context_stack_impl.context_stack.install(ContextForTest()):
-      fn = func_utils.PolymorphicFunction(TestFunctionFactory())
+      fn = function_utils.PolymorphicFunction(TestFunctionFactory())
       self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>')
       self.assertEqual(
           fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>')
@@ -352,17 +352,17 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
         return val
 
       def invoke(self, comp, arg):
-        return comp.invoke_func(arg)
+        return comp.invoke_fn(arg)
 
-    class TestFunction(func_utils.ConcreteFunction):
+    class TestFunction(function_utils.ConcreteFunction):
 
-      def __init__(self, type_signature, invoke_func):
+      def __init__(self, type_signature, invoke_fn):
         super(TestFunction, self).__init__(type_signature,
                                            context_stack_impl.context_stack)
-        self._invoke_func = invoke_func
+        self._invoke_fn = invoke_fn
 
-      def invoke_func(self, arg):
-        return self._invoke_func(arg)
+      def invoke_fn(self, arg):
+        return self._invoke_fn(arg)
 
     with context_stack_impl.context_stack.install(ContextForTest()):
       fn = TestFunction(
