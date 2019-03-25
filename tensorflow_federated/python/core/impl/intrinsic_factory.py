@@ -109,11 +109,11 @@ class IntrinsicFactory(object):
             ], result_type)), self._context_stack)
     return intrinsic(value, zero, accumulate, merge, report)
 
-  def federated_apply(self, func, arg):
+  def federated_apply(self, fn, arg):
     """Implements `federated_apply` as defined in `api/intrinsics.py`.
 
     Args:
-      func: As in `api/intrinsics.py`.
+      fn: As in `api/intrinsics.py`.
       arg: As in `api/intrinsics.py`.
 
     Returns:
@@ -122,9 +122,9 @@ class IntrinsicFactory(object):
     Raises:
       TypeError: As in `api/intrinsics.py`.
     """
-    func = value_impl.to_value(func, None, self._context_stack)
-    py_typecheck.check_type(func, value_base.Value)
-    py_typecheck.check_type(func.type_signature, computation_types.FunctionType)
+    fn = value_impl.to_value(fn, None, self._context_stack)
+    py_typecheck.check_type(fn, value_base.Value)
+    py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
 
     arg = value_impl.to_value(arg, None, self._context_stack)
     if isinstance(arg.type_signature, computation_types.NamedTupleType):
@@ -136,24 +136,23 @@ class IntrinsicFactory(object):
     if not arg.type_signature.all_equal:
       raise TypeError('The argument should be equal at all locations.')
 
-    if not type_utils.is_assignable_from(func.type_signature.parameter,
+    if not type_utils.is_assignable_from(fn.type_signature.parameter,
                                          arg.type_signature.member):
       raise TypeError(
           'The function to apply expects a parameter of type {}, but member '
           'constituents of the argument are of an incompatible type {}.'.format(
-              str(func.type_signature.parameter),
-              str(arg.type_signature.member)))
+              str(fn.type_signature.parameter), str(arg.type_signature.member)))
 
     # TODO(b/113112108): Replace this as noted in `federated_broadcast()`.
-    result_type = computation_types.FederatedType(func.type_signature.result,
+    result_type = computation_types.FederatedType(fn.type_signature.result,
                                                   placements.SERVER, True)
     intrinsic = value_impl.ValueImpl(
         computation_building_blocks.Intrinsic(
             intrinsic_defs.FEDERATED_APPLY.uri,
             computation_types.FunctionType(
-                [func.type_signature, arg.type_signature], result_type)),
+                [fn.type_signature, arg.type_signature], result_type)),
         self._context_stack)
-    return intrinsic(func, arg)
+    return intrinsic(fn, arg)
 
   def federated_mean(self, value, weight):
     """Implements `federated_mean` as defined in `api/intrinsics.py`.
@@ -514,7 +513,7 @@ class IntrinsicFactory(object):
     inputs = value_impl.to_value(
         computation_building_blocks.Reference(
             'inputs', zipped.type_signature.member), None, self._context_stack)
-    flatten_func = value_impl.to_value(
+    flatten_fn = value_impl.to_value(
         computation_building_blocks.Lambda(
             'inputs', zipped.type_signature.member,
             value_impl.ValueImpl.get_comp(inputs)), None, self._context_stack)
@@ -525,9 +524,9 @@ class IntrinsicFactory(object):
                   [value_impl.ValueImpl.get_comp(zipped), named_comps[k]]),
               None, self._context_stack), self._context_stack)
       last_zipped = (named_comps[k][0], named_comps[k][1].type_signature.member)
-      flatten_func = value_utils.flatten_first_index(flatten_func, last_zipped,
-                                                     self._context_stack)
-    return zip_apply_fn[output_placement](flatten_func, zipped)
+      flatten_fn = value_utils.flatten_first_index(flatten_fn, last_zipped,
+                                                   self._context_stack)
+    return zip_apply_fn[output_placement](flatten_fn, zipped)
 
   def sequence_map(self, mapping_fn, value):
     """Implements `sequence_map` as defined in `api/intrinsics.py`.
@@ -558,11 +557,11 @@ class IntrinsicFactory(object):
     if isinstance(value.type_signature, computation_types.SequenceType):
       return sequence_map_intrinsic(mapping_fn, value)
     elif isinstance(value.type_signature, computation_types.FederatedType):
-      local_func = value_utils.get_curried(sequence_map_intrinsic)(mapping_fn)
+      local_fn = value_utils.get_curried(sequence_map_intrinsic)(mapping_fn)
       if value.type_signature.placement is placements.SERVER:
-        return self.federated_apply(local_func, value)
+        return self.federated_apply(local_fn, value)
       elif value.type_signature.placement is placements.CLIENTS:
-        return self.federated_map(local_func, value)
+        return self.federated_map(local_fn, value)
       else:
         raise TypeError('Unsupported placement {}.'.format(
             str(value.type_signature.placement)))

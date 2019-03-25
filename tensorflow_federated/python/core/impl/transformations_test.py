@@ -60,25 +60,25 @@ class TransformationsTest(absltest.TestCase):
     comp = _to_building_block(foo)
     self.assertEqual(str(comp), '(foo_arg -> foo_arg[0](foo_arg[1]))')
 
-    def _transformation_func_generator():
+    def _transformation_fn_generator():
       n = 0
       while True:
         n = n + 1
 
-        def _func(x):
+        def _fn(x):
           return computation_building_blocks.Call(
               computation_building_blocks.Intrinsic(
                   'F{}'.format(n),
                   computation_types.FunctionType(x.type_signature,
                                                  x.type_signature)), x)
 
-        yield _func
+        yield _fn
 
-    transformation_func_sequence = _transformation_func_generator()
+    transformation_fn_sequence = _transformation_fn_generator()
     # pylint: disable=unnecessary-lambda
-    tx_func = lambda x: six.next(transformation_func_sequence)(x)
+    tx_fn = lambda x: six.next(transformation_fn_sequence)(x)
     # pylint: enable=unnecessary-lambda
-    transfomed_comp = transformations.transform_postorder(comp, tx_func)
+    transfomed_comp = transformations.transform_postorder(comp, tx_fn)
     self.assertEqual(
         str(transfomed_comp),
         'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')

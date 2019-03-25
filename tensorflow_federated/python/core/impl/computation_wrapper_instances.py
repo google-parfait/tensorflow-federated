@@ -34,7 +34,7 @@ def _tf_wrapper_fn(target_fn, parameter_type, name=None):
                     'and `TensorType`; you have attempted to create one '
                     'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack
-  comp_pb = tensorflow_serialization.serialize_py_func_as_tf_computation(
+  comp_pb = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       target_fn, parameter_type, ctx_stack)
   return computation_impl.ComputationImpl(comp_pb, ctx_stack)
 
@@ -46,7 +46,7 @@ def _federated_computation_wrapper_fn(target_fn, parameter_type, name=None):
   """Wrapper function to plug orchestration logic in to TFF framework."""
   ctx_stack = context_stack_impl.context_stack
   target_lambda = (
-      federated_computation_utils.zero_or_one_arg_func_to_building_block(
+      federated_computation_utils.zero_or_one_arg_fn_to_building_block(
           target_fn,
           'arg' if parameter_type else None,
           parameter_type,

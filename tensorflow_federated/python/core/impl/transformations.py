@@ -29,12 +29,12 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_utils
 
 
-def transform_postorder(comp, func):
+def transform_postorder(comp, fn):
   """Traverses `comp` recursively postorder and replaces its constituents.
 
   For each element of `comp` viewed as an expression tree, the transformation
-  `func` is applied first to building blocks it is parameterized by, then the
-  element itself. The transformation `func` should act as an identity function
+  `fn` is applied first to building blocks it is parameterized by, then the
+  element itself. The transformation `fn` should act as an identity function
   on the kinds of elements (computation building blocks) it does not care to
   transform. This corresponds to a post-order traversal of the expression tree,
   i.e., parameters are alwaysd transformed left-to-right (in the order in which
@@ -48,13 +48,13 @@ def transform_postorder(comp, func):
 
   Args:
     comp: The computation to traverse and transform bottom-up.
-    func: The transformation to apply locally to each building block in `comp`.
+    fn: The transformation to apply locally to each building block in `comp`.
       It is a Python function that accepts a building block at input, and should
       return either the same, or transformed building block at output. Both the
-      intput and output of `func` are instances of `ComputationBuildingBlock`.
+      intput and output of `fn` are instances of `ComputationBuildingBlock`.
 
   Returns:
-    The result of applying `func` to parts of `comp` in a bottom-up fashion.
+    The result of applying `fn` to parts of `comp` in a bottom-up fashion.
 
   Raises:
     TypeError: If the arguments are of the wrong computation_types.
@@ -69,33 +69,32 @@ def transform_postorder(comp, func):
        computation_building_blocks.Data, computation_building_blocks.Intrinsic,
        computation_building_blocks.Placement,
        computation_building_blocks.Reference)):
-    return func(comp)
+    return fn(comp)
   elif isinstance(comp, computation_building_blocks.Selection):
-    return func(
+    return fn(
         computation_building_blocks.Selection(
-            transform_postorder(comp.source, func), comp.name, comp.index))
+            transform_postorder(comp.source, fn), comp.name, comp.index))
   elif isinstance(comp, computation_building_blocks.Tuple):
-    return func(
+    return fn(
         computation_building_blocks.Tuple([(k, transform_postorder(
-            v, func)) for k, v in anonymous_tuple.to_elements(comp)]))
+            v, fn)) for k, v in anonymous_tuple.to_elements(comp)]))
   elif isinstance(comp, computation_building_blocks.Call):
-    transformed_func = transform_postorder(comp.function, func)
+    transformed_fn = transform_postorder(comp.function, fn)
     if comp.argument is not None:
-      transformed_arg = transform_postorder(comp.argument, func)
+      transformed_arg = transform_postorder(comp.argument, fn)
     else:
       transformed_arg = None
-    return func(
-        computation_building_blocks.Call(transformed_func, transformed_arg))
+    return fn(computation_building_blocks.Call(transformed_fn, transformed_arg))
   elif isinstance(comp, computation_building_blocks.Lambda):
-    transformed_result = transform_postorder(comp.result, func)
-    return func(
+    transformed_result = transform_postorder(comp.result, fn)
+    return fn(
         computation_building_blocks.Lambda(
             comp.parameter_name, comp.parameter_type, transformed_result))
   elif isinstance(comp, computation_building_blocks.Block):
-    return func(
+    return fn(
         computation_building_blocks.Block(
-            [(k, transform_postorder(v, func)) for k, v in comp.locals],
-            transform_postorder(comp.result, func)))
+            [(k, transform_postorder(v, fn)) for k, v in comp.locals],
+            transform_postorder(comp.result, fn)))
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
@@ -118,7 +117,7 @@ def name_compiled_computations(comp):
       n = n + 1
       yield str(n)
 
-  def _transformation_func(x, name_sequence):
+  def _transformation_fn(x, name_sequence):
     if not isinstance(x, computation_building_blocks.CompiledComputation):
       return x
     else:
@@ -127,7 +126,7 @@ def name_compiled_computations(comp):
 
   name_sequence = _name_generator()
   return transform_postorder(
-      comp, lambda x: _transformation_func(x, name_sequence))
+      comp, lambda x: _transformation_fn(x, name_sequence))
 
 
 def replace_intrinsic(comp, uri, body, context_stack):
@@ -157,7 +156,7 @@ def replace_intrinsic(comp, uri, body, context_stack):
   if not callable(body):
     raise TypeError('The body of the intrinsic must be a callable.')
 
-  def _transformation_func(comp, uri, body):
+  def _transformation_fn(comp, uri, body):
     """Internal function to replace occurrences of an intrinsic."""
     if not isinstance(comp, computation_building_blocks.Intrinsic):
       return comp
@@ -168,14 +167,14 @@ def replace_intrinsic(comp, uri, body, context_stack):
                               computation_types.FunctionType)
       # We need 'wrapped_body' to accept exactly one argument.
       wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
-      return federated_computation_utils.zero_or_one_arg_func_to_building_block(
+      return federated_computation_utils.zero_or_one_arg_fn_to_building_block(
           wrapped_body,
           'arg',
           comp.type_signature.parameter,
           context_stack,
           suggested_name=uri)
 
-  return transform_postorder(comp, lambda x: _transformation_func(x, uri, body))
+  return transform_postorder(comp, lambda x: _transformation_fn(x, uri, body))
 
 
 def replace_called_lambdas_with_block(comp):

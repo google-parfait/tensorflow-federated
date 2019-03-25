@@ -29,7 +29,7 @@ class TensorFlowDeserializationTest(test.TestCase):
 
   def test_deserialize_and_call_tf_computation_with_add_one(self):
     ctx_stack = context_stack_impl.context_stack
-    add_one = tensorflow_serialization.serialize_py_func_as_tf_computation(
+    add_one = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         lambda x: tf.add(x, 1, name='the_add'), tf.int32, ctx_stack)
     init_op, result = (
         tensorflow_deserialization.deserialize_and_call_tf_computation(

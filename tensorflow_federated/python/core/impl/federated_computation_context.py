@@ -77,18 +77,18 @@ class FederatedComputationContext(context_base.Context):
     return val
 
   def invoke(self, comp, arg):
-    func = value_impl.to_value(comp, None, self._context_stack)
-    if isinstance(func.type_signature, computation_types.FunctionType):
+    fn = value_impl.to_value(comp, None, self._context_stack)
+    if isinstance(fn.type_signature, computation_types.FunctionType):
       if arg is not None:
-        type_utils.check_type(arg, func.type_signature.parameter)
-        ret_val = func(arg)
+        type_utils.check_type(arg, fn.type_signature.parameter)
+        ret_val = fn(arg)
       else:
-        ret_val = func()
-      type_utils.check_type(ret_val, func.type_signature.result)
+        ret_val = fn()
+      type_utils.check_type(ret_val, fn.type_signature.result)
       return ret_val
     elif arg is not None:
       raise ValueError(
           'A computation of type {} does not expect any arguments, '
-          'but got an argument {}.'.format(str(func.type_signature), str(arg)))
+          'but got an argument {}.'.format(str(fn.type_signature), str(arg)))
     else:
-      return func
+      return fn

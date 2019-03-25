@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import dtype_utils
-from tensorflow_federated.python.core.impl import func_utils
+from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
@@ -181,8 +181,8 @@ class ValueImpl(value_base.Value):
           k: to_value(v, None, self._context_stack)
           for k, v in six.iteritems(kwargs)
       }
-      arg = func_utils.pack_args(self._comp.type_signature.parameter, args,
-                                 kwargs, self._context_stack.current)
+      arg = function_utils.pack_args(self._comp.type_signature.parameter, args,
+                                     kwargs, self._context_stack.current)
       arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
     else:
       arg = None
@@ -219,7 +219,7 @@ def _wrap_constant_as_value(const, context_stack):
     An instance of `value_base.Value`.
   """
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  tf_comp = tensorflow_serialization.serialize_py_func_as_tf_computation(
+  tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       lambda: tf.constant(const), None, context_stack)
   compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
   called_comp = computation_building_blocks.Call(compiled_comp)
@@ -263,7 +263,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   return ValueImpl(
       computation_building_blocks.Call(
           computation_building_blocks.CompiledComputation(
-              tensorflow_serialization.serialize_py_func_as_tf_computation(
+              tensorflow_serialization.serialize_py_fn_as_tf_computation(
                   _create_dataset_from_elements, None, context_stack))),
       context_stack)
 

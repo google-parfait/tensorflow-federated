@@ -91,38 +91,38 @@ def construct_federated_getattr_call(arg, name):
   return call
 
 
-def construct_map_or_apply(func, arg):
-  """Injects intrinsic to allow application of `func` to federated `arg`.
+def construct_map_or_apply(fn, arg):
+  """Injects intrinsic to allow application of `fn` to federated `arg`.
 
   Args:
-    func: `value_base.Value` instance of non-federated type to be wrapped with
+    fn: `value_base.Value` instance of non-federated type to be wrapped with
       intrinsic in order to call on `arg`.
     arg: `computation_building_blocks.ComputationBuildingBlock` instance of
-      federated type for which to construct intrinsic in order to call `func` on
+      federated type for which to construct intrinsic in order to call `fn` on
       `value`.
 
   Returns:
     Returns `value_base.Value` instance wrapping
-      `computation_building_blocks.Intrinsic` which can call `func` on `arg`.
+      `computation_building_blocks.Intrinsic` which can call `fn` on `arg`.
   """
-  py_typecheck.check_type(func,
+  py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-  result_type = computation_types.FederatedType(func.type_signature.result,
+  result_type = computation_types.FederatedType(fn.type_signature.result,
                                                 arg.type_signature.placement,
                                                 arg.type_signature.all_equal)
   if arg.type_signature.placement == placement_literals.SERVER:
     intrinsic = computation_building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_APPLY.uri,
-        computation_types.FunctionType(
-            [func.type_signature, arg.type_signature], result_type))
+        computation_types.FunctionType([fn.type_signature, arg.type_signature],
+                                       result_type))
   elif arg.type_signature.placement == placement_literals.CLIENTS:
     intrinsic = computation_building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MAP.uri,
-        computation_types.FunctionType(
-            [func.type_signature, arg.type_signature], result_type))
+        computation_types.FunctionType([fn.type_signature, arg.type_signature],
+                                       result_type))
   return intrinsic
 
 

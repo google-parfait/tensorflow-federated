@@ -84,10 +84,10 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     arg_ref = computation_building_blocks.Reference('x', [('a', tf.int32),
                                                           ('b', tf.bool)])
     return_val = computation_building_blocks.Selection(arg_ref, name='a')
-    non_federated_func = computation_building_blocks.Lambda(
+    non_federated_fn = computation_building_blocks.Lambda(
         'x', arg_ref.type_signature, return_val)
     intrinsic = computation_constructing_utils.construct_map_or_apply(
-        non_federated_func, federated_comp)
+        non_federated_fn, federated_comp)
     self.assertEqual(str(intrinsic), 'federated_apply')
 
   def test_intrinsic_construction_clients(self):
@@ -98,10 +98,10 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     arg_ref = computation_building_blocks.Reference('x', [('a', tf.int32),
                                                           ('b', tf.bool)])
     return_val = computation_building_blocks.Selection(arg_ref, name='a')
-    non_federated_func = computation_building_blocks.Lambda(
+    non_federated_fn = computation_building_blocks.Lambda(
         'x', arg_ref.type_signature, return_val)
     intrinsic = computation_constructing_utils.construct_map_or_apply(
-        non_federated_func, federated_comp)
+        non_federated_fn, federated_comp)
     self.assertEqual(str(intrinsic), 'federated_map')
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),

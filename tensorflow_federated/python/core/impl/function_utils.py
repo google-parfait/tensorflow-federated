@@ -34,17 +34,17 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def is_defun(func):
-  """Determines whether 'func' is one of the known types of TF defuns.
+def is_defun(fn):
+  """Determines whether `fn` is one of the known types of TF defuns.
 
   Args:
-    func: The object to test for being a supported type of a TensorFlow defun.
+    fn: The object to test for being a supported type of a TensorFlow defun.
 
   Returns:
-    True iff 'func' is a supported type of a TF defun.
+    True iff `fn` is a supported type of a TF defun.
   """
   return isinstance(
-      func,
+      fn,
       (
           # TODO(b/113112885): Add support for tfe Function and
           # PolymorphicFunction,
@@ -63,11 +63,11 @@ def is_defun(func):
       ))
 
 
-def get_argspec(func):
-  """Returns the inspect.ArgSpec structure for the given function/defun 'func'.
+def get_argspec(fn):
+  """Returns the inspect.ArgSpec structure for the given function/defun `fn`.
 
   Args:
-    func: The Python function or defun to analyze.
+    fn: The Python function or defun to analyze.
 
   Returns:
     The corresponding instance of inspect.ArgSpec.
@@ -75,13 +75,13 @@ def get_argspec(func):
   Raises:
     TypeError: if the argument is not of a supported type.
   """
-  if isinstance(func, types.FunctionType):
-    return inspect.getargspec(func)
+  if isinstance(fn, types.FunctionType):
+    return inspect.getargspec(fn)
   # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
   # currently omitted due to issues with visibility, using tf_inspect.getargspec
   # that works in eager mode.
   elif isinstance(
-      func,
+      fn,
       (
           # There does not appear to be a robust way to distinguish between
           # typed and polymorphic defuns, so we refer to private class names
@@ -91,14 +91,14 @@ def get_argspec(func):
       )):
     # On the non-eager defuns, tf_inspect does not appear to work, so we peek
     # inside to extract arguments.
-    return inspect.getargspec(func._func)  # pylint: disable=protected-access
-  elif is_defun(func):
+    return inspect.getargspec(fn._func)  # pylint: disable=protected-access
+  elif is_defun(fn):
     raise TypeError(
         'Support for defuns of type {} has not been implemented yet.'.format(
-            py_typecheck.type_string(type(func))))
+            py_typecheck.type_string(type(fn))))
   else:
     raise TypeError('Expected a Python function or a defun, found {}.'.format(
-        py_typecheck.type_string(type(func))))
+        py_typecheck.type_string(type(fn))))
 
 
 def get_callargs_for_argspec(argspec, *args, **kwargs):
@@ -402,64 +402,64 @@ def pack_args(parameter_type, args, kwargs, context):
       return context.ingest(arg, parameter_type)
 
 
-def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
-  """Wraps around 'func' so it accepts up to one positional TFF-typed argument.
+def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
+  """Wraps around `fn` so it accepts up to one positional TFF-typed argument.
 
   This function helps to simplify dealing with functions and defuns that might
   have diverse and complex signatures, but that represent computations and as
   such, conceptually only accept a single parameter. The returned callable has
   a single positional parameter or no parameters. If it has one parameter, the
-  parameter is expected to contain all arguments required by 'func' and matching
+  parameter is expected to contain all arguments required by `fn` and matching
   the supplied parameter type signature bundled together into an anonymous
   tuple, if needed. The callable unpacks that structure, and passes all of
-  its elements as positional or keyword-based arguments in the call to 'func'.
+  its elements as positional or keyword-based arguments in the call to `fn`.
 
   Example usage:
 
     @tf.contrib.eager.defun
-    def my_func(x, y, z=10, name='bar', *p, **q):
+    def my_fn(x, y, z=10, name='bar', *p, **q):
       return x + y
 
     type_spec = (tf.int32, tf.int32)
 
-    wrapped_fn = wrap_as_zero_or_one_arg_callable(my_func, type_spec)
+    wrapped_fn = wrap_as_zero_or_one_arg_callable(my_fn, type_spec)
 
     arg = AnonymoutTuple([('x', 10), ('y', 20)])
 
     ... = wrapped_fn(arg)
 
   Args:
-    func: The underlying backend function or defun to invoke with the unpacked
+    fn: The underlying backend function or defun to invoke with the unpacked
       arguments.
     parameter_type: The TFF type of the parameter bundle to be accepted by the
       returned callable, if any, or None if there's no parameter.
     unpack: Whether to break the parameter down into constituent parts and feed
-      them as arguments to 'func' (True), leave the parameter as is and pass it
-      to 'func' as a single unit (False), or allow it to be inferred from the
-      signature of 'func' (None). In the latter case (None), if any ambiguity
+      them as arguments to `fn` (True), leave the parameter as is and pass it to
+      `fn` as a single unit (False), or allow it to be inferred from the
+      signature of `fn` (None). In the latter case (None), if any ambiguity
       arises, an exception is thrown. If the parameter_type is None, this value
       has no effect, and is simply ignored.
 
   Returns:
-    The zero- or one-argument callable that invokes 'func' with the unbundled
+    The zero- or one-argument callable that invokes `fn` with the unbundled
     arguments, as described above.
 
   Raises:
     TypeError: if arguments to this call are of the wrong types, or if the
-      supplied 'parameter_type' is not compatible with 'func'.
+      supplied 'parameter_type' is not compatible with `fn`.
   """
   # TODO(b/113112885): Revisit whether the 3-way 'unpack' knob is sufficient
   # for our needs, or more options are needed.
   if unpack not in [True, False, None]:
     raise TypeError('The unpack argument has an unexpected value {}.'.format(
         repr(unpack)))
-  argspec = get_argspec(func)
+  argspec = get_argspec(fn)
   parameter_type = computation_types.to_type(parameter_type)
   if not parameter_type:
     if is_argspec_compatible_with_types(argspec):
-      # Deliberate wrapping to isolate the caller from 'func', e.g., to prevent
-      # the caller from mistakenly specifying args that match func's defaults.
-      return lambda: func()  # pylint: disable=unnecessary-lambda
+      # Deliberate wrapping to isolate the caller from `fn`, e.g., to prevent
+      # the caller from mistakenly specifying args that match fn's defaults.
+      return lambda: fn()  # pylint: disable=unnecessary-lambda
     else:
       raise TypeError(
           'The argspec {} of the supplied function cannot be interpreted as a '
@@ -504,14 +504,14 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
       unpack = unpack_possible
     if unpack:
 
-      def _unpack_and_call(func, arg_types, kwarg_types, arg):
-        """An interceptor function that unpacks 'arg' before calling 'func'.
+      def _unpack_and_call(fn, arg_types, kwarg_types, arg):
+        """An interceptor function that unpacks 'arg' before calling `fn`.
 
         The function verifies the actual parameters before it forwards the
         call as a last-minute check.
 
         Args:
-          func: The function or defun to invoke.
+          fn: The function or defun to invoke.
           arg_types: The list of positional argument types (guaranteed to all be
             instances of computation_types.Types).
           kwarg_types: The dictionary of keyword argument types (guaranteed to
@@ -519,7 +519,7 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
           arg: The argument to unpack.
 
         Returns:
-          The result of invoking 'func' on the unpacked arguments.
+          The result of invoking `fn` on the unpacked arguments.
 
         Raises:
           TypeError: if types don't match.
@@ -544,31 +544,30 @@ def wrap_as_zero_or_one_arg_callable(func, parameter_type=None, unpack=None):
                             'of type {}, found {}.'.format(
                                 name, str(expected_type), str(actual_type)))
           kwargs[name] = element_value
-        return func(*args, **kwargs)
+        return fn(*args, **kwargs)
 
       # Deliberate wrapping to isolate the caller from the underlying function
       # and the interceptor '_call' again, so those cannot be tampered with,
       # and to force any parameter bindings to be resolved now.
       # pylint: disable=unnecessary-lambda,undefined-variable
       return (lambda fn, at, kt: lambda arg: _unpack_and_call(fn, at, kt, arg))(
-          func, arg_types, kwarg_types)
+          fn, arg_types, kwarg_types)
       # pylint: enable=unnecessary-lambda,undefined-variable
     else:
       # An interceptor function that verifies the actual parameter before it
       # forwards the call as a last-minute check.
-      def _call(func, parameter_type, arg):
+      def _call(fn, parameter_type, arg):
         arg_type = type_utils.infer_type(arg)
         if not type_utils.is_assignable_from(parameter_type, arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               str(parameter_type), str(arg_type)))
-        return func(arg)
+        return fn(arg)
 
       # Deliberate wrapping to isolate the caller from the underlying function
       # and the interceptor '_call' again, so those cannot be tampered with,
       # and to force any parameter bindings to be resolved now.
       # pylint: disable=unnecessary-lambda,undefined-variable
-      return (lambda fn, pt: lambda arg: _call(fn, pt, arg))(func,
-                                                             parameter_type)
+      return (lambda fn, pt: lambda arg: _call(fn, pt, arg))(fn, parameter_type)
       # pylint: enable=unnecessary-lambda,undefined-variable
 
 
