@@ -52,6 +52,19 @@ class PyTypeCheckTest(absltest.TestCase):
                             'Expected int, bool, or float, found str.',
                             py_typecheck.check_type, 'a', (int, bool, float))
 
+  def test_check_subclass(self):
+    py_typecheck.check_subclass(PyTypeCheckTest, absltest.TestCase)
+    py_typecheck.check_subclass(PyTypeCheckTest, (absltest.TestCase, int))
+    py_typecheck.check_subclass(int, (int, float))
+    py_typecheck.check_subclass(float, float)
+    with self.assertRaisesRegexp(TypeError, 'Expected .* to subclass '):
+      py_typecheck.check_subclass(int, float)
+      py_typecheck.check_subclass(int, (float, float))
+    with self.assertRaisesRegexp(TypeError, 'Expected a class,'):
+      py_typecheck.check_subclass(0, int)
+      py_typecheck.check_subclass(int, 0)
+      py_typecheck.check_subclass(int, (int, 0))
+
   def test_check_callable(self):
     try:
       f = lambda x: x + 10

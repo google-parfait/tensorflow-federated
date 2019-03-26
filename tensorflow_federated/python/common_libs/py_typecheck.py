@@ -46,6 +46,27 @@ def check_type(target, type_spec, label=None):
   return target
 
 
+def check_subclass(target_class, parent_class):
+  """Tests that `target_class` subclasses `parent_class`, that both are classes.
+
+  Args:
+    target_class: A class to check for inheritence from `parent_class`.
+    parent_class: A python class or tuple of classes.
+
+  Returns:
+    The `target_class`, unchanged.
+
+  Raises:
+    TypeError if the `target_class` doesn't subclass a class in `parent_class`.
+  """
+  _check_is_class(target_class)
+  _check_is_class(parent_class)
+  if not issubclass(target_class, parent_class):
+    raise TypeError('Expected {} to subclass {}, but it does not.'.format(
+        target_class, parent_class))
+  return target_class
+
+
 def check_callable(target, label=None):
   """Checks target is callable and then returns it."""
   if not callable(target):
@@ -103,6 +124,23 @@ def _check_is_type_spec(type_spec):
   raise TypeError(
       'Expected a type, or a tuple or list of types, found {}.'.format(
           type_string(type(type_spec))))
+
+
+def _check_is_class(cls):
+  """Detemines if `cls` is an object representing a Python class.
+
+  Args:
+    cls: Either a Python class, or a tuple of Python classes.
+
+  Raises:
+    TypeError: if `cls` is not as defined above.
+  """
+  if inspect.isclass(cls):
+    return
+  if (isinstance(cls, tuple) and cls and all(inspect.isclass(x) for x in cls)):
+    return
+  raise TypeError('Expected a class, or a tuple or list of classes,'
+                  'found {}.'.format(cls))
 
 
 def is_named_tuple(value):
