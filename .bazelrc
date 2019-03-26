@@ -10,7 +10,7 @@ build --define=framework_shared_object=true
 build --define=grpc_no_ares=true
 
 # Build with optimization enabled.
-build -c opt
+build --compilation_mode=opt
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native
