@@ -210,7 +210,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
           tf.keras.layers.Flatten(input_shape=(784,)),
           tf.keras.layers.Dense(
               10,
-              kernel_intializer="zeros",
+              kernel_initializer="zeros",
               bias_initializer="zeros",
               activation=tf.nn.softmax)
       ])
