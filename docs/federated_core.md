@@ -95,7 +95,7 @@ in the body of another computation, or execute it on demand when invoked.
 Here's just one example; more examples can be found in the
 [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorials.
 
-```
+```python
 @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
 def get_average_temperature(sensor_readings):
   return tff.federated_mean(sensor_readings)
@@ -250,7 +250,7 @@ public API:
     Here's one example, a TF computation of type `(int32* -> int)` that uses the
     `tf.data.Dataset.reduce` operator to compute a sum of integers:
 
-    ```
+    ```python
     @tff.tf_computation(tff.SequenceType(tf.int32))
     def add_up_integeres(x):
       return x.reduce(np.int32(0), lambda x, y: x + y)
@@ -282,7 +282,7 @@ public API:
 
     Here's an example of a lambda expression we've already mentioned earlier:
 
-    ```
+    ```python
     @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
     def get_average_temperature(sensor_readings):
       return tff.federated_mean(sensor_readings)

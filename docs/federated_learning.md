@@ -198,7 +198,7 @@ you:
 Note that TFF still wants you to provide a constructor - a no-argument *model
 function* such as the following:
 
-```
+```python
 def model_fn():
   keras_model = ...
   keras_model.compile(...)
@@ -329,7 +329,7 @@ outside of the computation itself.
 In order to simulate a realistic deployment of your federated learning code, you
 will generally write a training loop that looks like this:
 
-```
+```python
 trainer = tff.learning.build_federated_averaging_process(...)
 state = trainer.initialize()
 federated_training_data = ...
