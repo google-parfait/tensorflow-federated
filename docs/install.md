@@ -54,25 +54,14 @@ Note: To exit the virtual environment, run `deactivate`.
 #### 4. (Optional) Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; tff.federated_computation(lambda: 'Hello, World!')()"</code>
+<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; tff.federated_computation(lambda: 'Hello World')()"</code>
 </pre>
 
 Success: TensorFlow Federated is now installed.
 
 ## Build the TensorFlow Federated pip package
 
-Build the TensorFlow Federated pip package and install it on Ubuntu or macOS.
-
-1.  Create a development environment [using virtualenv](#using-virtualenv) or
-    [using Docker](#using_docker).
-2.  [Build the pip package](#build-the-pip-package).
-
-### Using `virtualenv`
-
-Create a Tensorflow Federated development environment using `virtualenv` on
-Ubuntu or macOS.
-
-#### 1. Install the Python development environment.
+### 1. Install the Python development environment.
 
 On Ubuntu:
 
@@ -92,21 +81,21 @@ On macOS:
 <code class="devsite-terminal">sudo pip3 install --upgrade virtualenv  # system-wide install</code>
 </pre>
 
-#### 2. Install Bazel.
+### 2. Install Bazel.
 
 [Install Bazel](https://docs.bazel.build/versions/master/install.html), the
 build tool used to compile Tensorflow Federated.
 
 Note: Bazel version `0.19.2` or greater is required by TensorFlow Federated.
 
-#### 3. Clone the Tensorflow Federated repository.
+### 3. Clone the Tensorflow Federated repository.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">git clone https://github.com/tensorflow/federated.git</code>
 <code class="devsite-terminal">cd "federated"</code>
 </pre>
 
-#### 4. Create a virtual environment.
+### 4. Create a virtual environment.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">virtualenv --python python3 "venv"</code>
@@ -116,68 +105,19 @@ Note: Bazel version `0.19.2` or greater is required by TensorFlow Federated.
 
 Note: To exit the virtual environment, run `deactivate`.
 
-#### 5. Install Tensorflow Federated dependencies.
+### 5. Install Tensorflow Federated dependencies.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">pip install --requirement "requirements.txt"</code>
 </pre>
 
-#### 6. (Optional) Test Tensorflow Federated.
+### 6. (Optional) Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">bazel test //tensorflow_federated/...</code>
 </pre>
 
-Success: The TensorFlow Federated development environment is ready, now
-[build the pip package](#build-the-pip-package).
-
-### Using Docker
-
-Create a Tensorflow Federated development environment using Docker on Ubuntu or
-macOS.
-
-#### 1. Install Docker.
-
-[Install Docker](https://docs.docker.com/install/) on your local machine.
-
-#### 2. Clone the latest Tensorflow Federated source.
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">git clone https://github.com/tensorflow/federated.git</code>
-<code class="devsite-terminal">cd "federated"</code>
-</pre>
-
-#### 3. Build a Docker image.
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">docker build . \
-    --tag tensorflow_federated:latest</code>
-</pre>
-
-#### 4. Start a Docker container.
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">docker run -it \
-    --workdir /federated \
-    --volume $(pwd):/federated \
-    tensorflow_federated:latest \
-    bash</code>
-</pre>
-
-#### 5. (Optional) Test Tensorflow Federated.
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">bazel test //tensorflow_federated/...</code>
-</pre>
-
-Success: The TensorFlow Federated development environment is ready, now
-[build the pip package](#build-the-pip-package).
-
-### Build the pip package
-
-Build the TensorFlow Federated pip package and install it on Ubuntu or macOS.
-
-#### 1. Build the pip package.
+#### 7. Build the pip package.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">mkdir "/tmp/tensorflow_federated"</code>
@@ -185,7 +125,7 @@ Build the TensorFlow Federated pip package and install it on Ubuntu or macOS.
 <code class="devsite-terminal">bazel-bin/tensorflow_federated/tools/build_pip_package "/tmp/tensorflow_federated"</code>
 </pre>
 
-#### 2. Create a new project.
+#### 8. Create a new project.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">mkdir "/tmp/project"</code>
@@ -198,16 +138,16 @@ Build the TensorFlow Federated pip package and install it on Ubuntu or macOS.
 
 Note: To exit the virtual environment run `deactivate`.
 
-#### 3. Install the pip package.
+#### 9. Install the pip package.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "/tmp/tensorflow_federated/tensorflow_federated-"*".whl"</code>
 </pre>
 
-#### 4. Test Tensorflow Federated.
+#### 10. Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello, World!')())"</code>
+<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"</code>
 </pre>
 
 Success: The TensorFlow Federated package is built.
