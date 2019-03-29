@@ -26,14 +26,39 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data
 
 
+CLIENT_ID_REGEX = re.compile(r'^(.*)_(\d+)$')
+
+
+def split_client_id(client_id):
+  """Splits pseudo-client id into raw client id and index components.
+
+  Args:
+    client_id: The pseudo-client id.
+  Returns:
+    A tuple (raw_client_id, index) where raw_client_id is the string of the raw
+    client_id, and index is the integer index of the pseudo-client.
+  """
+  py_typecheck.check_type(client_id, str)
+  match = CLIENT_ID_REGEX.search(client_id)
+  if not match:
+    raise ValueError('client_id must be a valid string from client_ids.')
+  raw_client_id = match.group(1)
+  index = int(match.group(2))
+  return raw_client_id, index
+
+
 class TransformingClientData(client_data.ClientData):
-  """Expands client data by performing transformations.
+  """Transforms client data, potentially expanding by adding pseudo-clients.
 
   Each client of the raw_client_data is "expanded" into some number of
-  pseudo-clients. Each client ID is a tuple containing the original client ID
-  plus an integer index. A function f(x, i) maps datapoints x with index i to
-  new datapoint. For example if x is an image, and i has values 0 or 1, f(x, 0)
-  might be the identity, while f(x, 1) could be the reflection of the image.
+  pseudo-clients. Each client ID is a string consisting of the original client
+  ID plus a concatenated integer index. For example, the raw client id
+  "client_a" might be expanded into pseudo-client ids "client_a_0", "client_a_1"
+  and "client_a_2". A function f(x, raw_client_id, i) maps datapoint x to a new
+  datapoint, parameterized by the (raw) client_id and index i. For example if x
+  is an image, then f(x, "client_a", 0) might be the identity, while
+  f(x, "client_a", 1) could be a random rotation of the image with the angle
+  determined by a hash of "client_a" and "1".
   """
 
   def __init__(self, raw_client_data, transform_fn, num_transformed_clients):
@@ -41,11 +66,13 @@ class TransformingClientData(client_data.ClientData):
 
     Args:
       raw_client_data: A ClientData to expand.
-      transform_fn: A function f(x, i) parameterized by i, mapping datapoint x
-        to a new datapoint. x is a datapoint from the raw_client_data, while i
-        is an integer index in the range 0...k (see 'num_transformed_clients'
-        for definition of k). Typically by convention the index 0 corresponds to
-        the identity function if the identity is supported.
+      transform_fn: A function f(x, raw_client_id, i) that maps datapoint x to a
+        new datapoint, parameterized by the (raw) client_id and index i. For
+        example if x is an image, then f(x, "client_a", 0) might be the
+        identity, while f(x, "client_a", 1) could be a random rotation of the
+        image with the angle determined by a hash of "client_a" and "1".
+        Typically by convention the index 0 corresponds to the identity function
+        if the identity is supported.
       num_transformed_clients: The total number of transformed clients to
         produce. If it is an integer multiple k of the number of real clients,
         there will be exactly k pseudo-clients per real client, with indices
@@ -61,7 +88,7 @@ class TransformingClientData(client_data.ClientData):
     self._raw_client_data = raw_client_data
     self._transform_fn = transform_fn
 
-    num_digits = len(str(num_transformed_clients))
+    num_digits = len(str(num_transformed_clients-1))
     format_str = '{}_{:0' + str(num_digits) + '}'
 
     raw_client_ids = raw_client_data.client_ids
@@ -86,20 +113,13 @@ class TransformingClientData(client_data.ClientData):
     i = bisect.bisect_left(self._client_ids, client_id)
     if i == len(self._client_ids) or self._client_ids[i] != client_id:
       raise ValueError('client_id must be a valid string from client_ids.')
-    pattern = r'^(.*)_(\d*)$'
-    match = re.search(pattern, client_id)
-    if not match:
-      # This should be impossible if client_id is in self._client_ids.
-      raise ValueError('client_id must be a valid string from client_ids.')
-    raw_client_id = match.group(1)
-    expansion_id = int(match.group(2))
+
+    raw_client_id, index = split_client_id(client_id)
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
         raw_client_id)
 
-    def _transform_fn_wrapper(example):
-      return self._transform_fn(example, expansion_id)
-
-    return raw_dataset.map(_transform_fn_wrapper)
+    return raw_dataset.map(
+        lambda example: self._transform_fn(example, raw_client_id, index))
 
   @property
   def output_types(self):

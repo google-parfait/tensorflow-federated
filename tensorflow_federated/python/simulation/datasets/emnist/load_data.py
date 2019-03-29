@@ -17,11 +17,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os.path
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
+from tensorflow_federated.python.simulation import transforming_client_data
+
+img = tf.contrib.image
 
 
 def load_data(only_digits=True, cache_dir=None):
@@ -97,3 +102,112 @@ def load_data(only_digits=True, cache_dir=None):
       os.path.join(dir_path, fileprefix + '_test.h5'))
 
   return train_client_data, test_client_data
+
+
+def _compile_transform(
+    angle=0,
+    shear=0,
+    scale_x=1,
+    scale_y=1,
+    translation_x=0,
+    translation_y=0):
+  """Compiles affine transform parameters into single projective transform.
+
+  The transformations are performed in the following order: rotation, shearing,
+  scaling, and translation.
+
+  Args:
+    angle: The angle of counter-clockwise rotation, in degrees.
+    shear: The amount of shear. Precisely, shear*x is added to the y coordinate
+      after centering.
+    scale_x: The amount to scale in the x-axis.
+    scale_y: The amount to scale in the y-axis.
+    translation_x: The number of pixels to translate in the x-axis.
+    translation_y: The number of pixels to translate in the y-axis.
+  Returns:
+    A length 8 tensor representing the composed transform.
+  """
+  angle = math.radians(angle)
+  size = 28
+
+  # angles_to_projective_transforms performs rotations around center of image.
+  rotation = img.angles_to_projective_transforms(angle, size, size)
+
+  # shearing and scaling require centering and decentering.
+  half = (size - 1) / 2.0
+  center = img.translations_to_projective_transforms([-half, -half])
+  shear = [1., 0., 0., -shear, 1., 0., 0., 0.]
+  scaling = [1./scale_x, 0., 0., 0., 1./scale_y, 0., 0., 0.]
+  decenter = img.translations_to_projective_transforms([half, half])
+
+  translation = img.translations_to_projective_transforms(
+      [translation_x, translation_y])
+  return img.compose_transforms(
+      rotation,
+      center,
+      shear,
+      scaling,
+      decenter,
+      translation)
+
+
+def _transform(data, raw_client_id, index):
+  """Applies a random affine transform based on the client_id.
+
+  If the index of the client_id is 0, no transform is applied.
+
+  Args:
+    data: The OrderedDict of data to transform.
+    raw_client_id: The raw client_id.
+    index: The index of the pseudo-client.
+  """
+  if index == 0:
+    return
+
+  np.random.seed(hash(raw_client_id) + index)
+  def random_scale(min_val):
+    b = math.log(min_val)
+    return math.exp(np.random.uniform(b, -b))
+  transform = _compile_transform(
+      angle=np.random.uniform(-20, 20),
+      shear=np.random.uniform(-0.2, 0.2),
+      scale_x=random_scale(0.8),
+      scale_y=random_scale(0.8),
+      translation_x=np.random.uniform(-5, 5),
+      translation_y=np.random.uniform(-5, 5))
+  data['pixels'] = img.transform(data['pixels'], transform, 'BILINEAR')
+
+
+def infinite_emnist(emnist_client_data, num_pseudo_clients):
+  """Converts a Federated EMNIST dataset into an Infinite Federated EMNIST set.
+
+  Infinite Federated EMNIST expands each writer from the EMNIST dataset into
+  some number of pseudo-clients each of whose characters are the same but apply
+  a fixed random affine transformation to the original user's characters. The
+  distribution over affine transformation is approximately equivalent to the one
+  described at https://www.cs.toronto.edu/~tijmen/affNIST/. It applies the
+  following transformations in this order:
+
+    1. A random rotation chosen uniformly between -20 and 20 degrees.
+    2. A random shearing adding between -0.2 to 0.2 of the x coordinate to the
+       y coordinate (after centering).
+    3. A random scaling between 0.8 and 1.25 (sampled log uniformly).
+    4. A random translation between -5 and 5 pixels in both the x and y axes.
+
+  Args:
+    emnist_client_data: The `tff.simulation.ClientData` to convert.
+    num_pseudo_clients: How many pseudo-clients to generate for each real
+      client. Each pseudo-client is formed by applying a given random affine
+      transformation to the characters written by a given real user. The first
+      pseudo-client for a given user applies the identity transformation, so the
+      original users are always included.
+
+  Returns:
+    An expanded `tff.simulation.ClientData`.
+  """
+  num_client_ids = len(emnist_client_data.client_ids)
+
+  return transforming_client_data.TransformingClientData(
+      raw_client_data=emnist_client_data,
+      transform_fn=_transform,
+      num_transformed_clients=(num_client_ids * num_pseudo_clients))

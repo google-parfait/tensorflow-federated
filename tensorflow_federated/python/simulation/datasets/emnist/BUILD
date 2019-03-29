@@ -13,6 +13,7 @@ py_library(
     srcs = ["load_data.py"],
     deps = [
         "//tensorflow_federated/python/simulation:hdf5_client_data",
+        "//tensorflow_federated/python/simulation:transforming_client_data",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

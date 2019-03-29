@@ -116,6 +116,8 @@ toc:
         section:
         - title: Overview
           path: /federated/api_docs/python/tff/simulation/datasets/emnist
+        - title: infinite_emnist
+          path: /federated/api_docs/python/tff/simulation/datasets/emnist/infinite_emnist
         - title: load_data
           path: /federated/api_docs/python/tff/simulation/datasets/emnist/load_data
       - title: shakespeare

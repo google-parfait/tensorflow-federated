@@ -18,13 +18,17 @@ Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 Defined in
 [`simulation/transforming_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/transforming_client_data.py).
 
-Expands client data by performing transformations.
+Transforms client data, potentially expanding by adding pseudo-clients.
 
 Each client of the raw_client_data is "expanded" into some number of
-pseudo-clients. Each client ID is a tuple containing the original client ID plus
-an integer index. A function f(x, i) maps datapoints x with index i to new
-datapoint. For example if x is an image, and i has values 0 or 1, f(x, 0) might
-be the identity, while f(x, 1) could be the reflection of the image.
+pseudo-clients. Each client ID is a string consisting of the original client ID
+plus a concatenated integer index. For example, the raw client id "client_a"
+might be expanded into pseudo-client ids "client_a_0", "client_a_1" and
+"client_a_2". A function f(x, raw_client_id, i) maps datapoint x to a new
+datapoint, parameterized by the (raw) client_id and index i. For example if x is
+an image, then f(x, "client_a", 0) might be the identity, while f(x, "client_a",
+1) could be a random rotation of the image with the angle determined by a hash
+of "client_a" and "1".
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -41,11 +45,13 @@ Initializes the TransformingClientData.
 #### Args:
 
 *   <b>`raw_client_data`</b>: A ClientData to expand.
-*   <b>`transform_fn`</b>: A function f(x, i) parameterized by i, mapping
-    datapoint x to a new datapoint. x is a datapoint from the raw_client_data,
-    while i is an integer index in the range 0...k (see
-    'num_transformed_clients' for definition of k). Typically by convention the
-    index 0 corresponds to the identity function if the identity is supported.
+*   <b>`transform_fn`</b>: A function f(x, raw_client_id, i) that maps datapoint
+    x to a new datapoint, parameterized by the (raw) client_id and index i. For
+    example if x is an image, then f(x, "client_a", 0) might be the identity,
+    while f(x, "client_a", 1) could be a random rotation of the image with the
+    angle determined by a hash of "client_a" and "1". Typically by convention
+    the index 0 corresponds to the identity function if the identity is
+    supported.
 *   <b>`num_transformed_clients`</b>: The total number of transformed clients to
     produce. If it is an integer multiple k of the number of real clients, there
     will be exactly k pseudo-clients per real client, with indices 0...k-1. Any
