@@ -27,4 +27,4 @@ and a mapping of clients to examples.
 `tf.simulation.ClientData` backed by an HDF5 file.
 
 [`class TransformingClientData`](../tff/simulation/TransformingClientData.md):
-Expands client data by performing transformations.
+Transforms client data, potentially expanding by adding pseudo-clients.

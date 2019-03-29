@@ -62,7 +62,8 @@ def create_fake_hdf5():
   return filepath
 
 
-def _test_transform(data, index):
+def _test_transform(data, raw_client_id, index):
+  del raw_client_id
   data['x'] = data['x'] + 10 * index
   return data
 

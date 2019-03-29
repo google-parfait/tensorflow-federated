@@ -17,9 +17,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.python.simulation.datasets.emnist.load_data import infinite_emnist
 from tensorflow_federated.python.simulation.datasets.emnist.load_data import load_data
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "infinite_emnist",
     "load_data",
 ]
