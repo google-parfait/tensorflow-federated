@@ -96,8 +96,21 @@ class ModelWeights(
 
     (Assuming that this ModelWeights object corresponds to the weights of
     a keras model).
+
+    IMPORTANT: this is not the same order as `tf.keras.Model.get_weights()`, and
+    hence will not work with `tf.keras.Model.set_weights()`. Instead, use
+    `tff.learning.ModelWeights.assign_weights_to`.
     """
     return list(self.trainable.values()) + list(self.non_trainable.values())
+
+  def assign_weights_to(self, keras_model):
+    """Assign these TFF model weights to the weights of a `tf.keras.Model`.
+
+    Args:
+      keras_model: the `tf.keras.Model` object to assign weights to.
+    """
+    for k, w in zip(keras_model.weights, self.keras_weights):
+      k.assign(w)
 
 
 def keras_weights_from_tff_weights(tff_weights):
@@ -442,8 +455,8 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
                          inner_model.loss_functions[0], inner_model.metrics)
 
   @property
-  def non_trainable_variables(self):
-    return (super(_TrainableKerasModel, self).non_trainable_variables +
+  def local_variables(self):
+    return (super(_TrainableKerasModel, self).local_variables +
             self._keras_model.optimizer.variables())
 
   @tf.contrib.eager.function(autograph=False)

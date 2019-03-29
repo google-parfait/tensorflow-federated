@@ -5,6 +5,7 @@
 <meta itemprop="property" content="non_trainable"/>
 <meta itemprop="property" content="keras_weights"/>
 <meta itemprop="property" content="__new__"/>
+<meta itemprop="property" content="assign_weights_to"/>
 <meta itemprop="property" content="from_model"/>
 <meta itemprop="property" content="from_tff_value"/>
 </div>
@@ -47,7 +48,23 @@ Returns a list of weights in the same order as `tf.keras.Model.weights`.
 (Assuming that this ModelWeights object corresponds to the weights of a keras
 model).
 
+IMPORTANT: this is not the same order as `tf.keras.Model.get_weights()`, and
+hence will not work with `tf.keras.Model.set_weights()`. Instead, use
+`tff.learning.ModelWeights.assign_weights_to`.
+
 ## Methods
+
+<h3 id="assign_weights_to"><code>assign_weights_to</code></h3>
+
+```python
+assign_weights_to(keras_model)
+```
+
+Assign these TFF model weights to the weights of a `tf.keras.Model`.
+
+#### Args:
+
+*   <b>`keras_model`</b>: the `tf.keras.Model` object to assign weights to.
 
 <h3 id="from_model"><code>from_model</code></h3>
 

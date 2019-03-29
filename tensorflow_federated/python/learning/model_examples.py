@@ -171,21 +171,21 @@ def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   return build_keras_dense_layer()
 
 
-def build_linear_regresion_keras_sequential_model(feature_dims):
+def build_linear_regresion_keras_sequential_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the Sequential API."""
   keras_model = tf.keras.models.Sequential()
   keras_model.add(_dense_all_zeros_layer(feature_dims))
   return keras_model
 
 
-def build_linear_regresion_keras_functional_model(feature_dims):
+def build_linear_regresion_keras_functional_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the functional API."""
   a = tf.keras.layers.Input(shape=(feature_dims,))
   b = _dense_all_zeros_layer()(a)
   return tf.keras.Model(inputs=a, outputs=b)
 
 
-def build_linear_regresion_keras_subclass_model(feature_dims):
+def build_linear_regresion_keras_subclass_model(feature_dims=2):
   """Build a linear regression model by sub-classing `tf.keras.Model`."""
   del feature_dims  # unused.
 
@@ -206,4 +206,47 @@ def build_embedding_keras_model(vocab_size=10):
   keras_model = tf.keras.models.Sequential()
   keras_model.add(tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=5))
   keras_model.add(tf.keras.layers.Softmax())
+  return keras_model
+
+
+def build_conv_batch_norm_keras_model():
+  """Builds a test model with convolution and batch normalization."""
+  # This is an example of a model that has trainable and non-trainable
+  # variables.
+  l = tf.keras.layers
+  data_format = 'channels_last'
+  max_pool = l.MaxPooling2D((2, 2), (2, 2),
+                            padding='same',
+                            data_format=data_format)
+  keras_model = tf.keras.models.Sequential([
+      l.Reshape(target_shape=[28, 28, 1], input_shape=(28 * 28,)),
+      l.Conv2D(
+          32,
+          5,
+          padding='same',
+          data_format=data_format,
+          activation=tf.nn.relu,
+          kernel_initializer='zeros',
+          bias_initializer='zeros'),
+      max_pool,
+      l.BatchNormalization(),
+      l.Conv2D(
+          64,
+          5,
+          padding='same',
+          data_format=data_format,
+          activation=tf.nn.relu,
+          kernel_initializer='zeros',
+          bias_initializer='zeros'),
+      max_pool,
+      l.BatchNormalization(),
+      l.Flatten(),
+      l.Dense(
+          1024,
+          activation=tf.nn.relu,
+          kernel_initializer='zeros',
+          bias_initializer='zeros'),
+      l.Dropout(0.4),
+      l.Dense(10, kernel_initializer='zeros', bias_initializer='zeros'),
+  ])
   return keras_model
