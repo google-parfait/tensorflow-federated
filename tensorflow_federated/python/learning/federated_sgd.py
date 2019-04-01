@@ -62,22 +62,15 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
           'built-in local training algorithm would be ignored. '
           'This failure could be made into a warning if this is inconvenient.')
 
-    def _get_grad_var(name, tensor):
-      return tf.Variable(
-          lambda: tf.zeros_like(tensor), name='{}_grad'.format(name))
-
-    self._grad_sum_vars = nest.map_structure_with_paths(
-        _get_grad_var, self._model.weights.trainable)
-    self._batch_weight_sum = tf.Variable(0.0, name='batch_weight_sum')
-
   @property
   def variables(self):
-    return [self._batch_weight_sum] + nest.flatten(self._grad_sum_vars)
+    return []
 
-  # TODO(b/123898430): The control dependencies below have been inserted as a
-  # temporary workaround. These control dependencies need to be removed and
-  # the methods re-annotated with tf.contrib.eager.function().
+  # TODO(b/124777499): Remove `autograph=False` when possible.
+  @tf.contrib.eager.function(autograph=False)
   def __call__(self, dataset, initial_weights):
+    model = self._model
+
     # TODO(b/113112108): Remove this temporary workaround and restore check for
     # `tf.data.Dataset` after subclassing the currently used custom data set
     # representation from it.
@@ -85,52 +78,59 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       raise TypeError('Expected a data set, found {}.'.format(
           py_typecheck.type_string(type(dataset))))
 
-    model = self._model
-    dummy_weights = nest.map_structure(tf.assign, model.weights,
-                                       initial_weights)
+    nest.map_structure(tf.assign, model.weights, initial_weights)
+    flat_trainable_weights = tuple(nest.flatten(model.weights.trainable))
 
-    def reduce_fn(accumulated_grads, batch):
-      """Runs forward_pass on batch."""
+    # TODO(b/124777499): Remove `autograph=False` when possible.
+    @tf.contrib.eager.function(autograph=False)
+    def reduce_fn(state, batch):
+      """Runs forward_pass on batch and sums the weighted gradients."""
+      flat_accumulated_grads, batch_weight_sum = state
+
       with tf.contrib.eager.GradientTape() as tape:
         output = model.forward_pass(batch)
+      flat_grads = tape.gradient(output.loss, flat_trainable_weights)
 
-      with tf.control_dependencies(list(output)):
-        flat_vars = nest.flatten(model.weights.trainable)
-        grads = nest.pack_sequence_as(accumulated_grads,
-                                      tape.gradient(output.loss, flat_vars))
+      if self._batch_weight_fn is not None:
+        batch_weight = self._batch_weight_fn(batch)
+      else:
+        batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
 
-        if self._batch_weight_fn is not None:
-          batch_weight = self._batch_weight_fn(batch)
-        else:
-          batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
+      flat_accumulated_grads = tuple(
+          accumulator + batch_weight * grad for accumulator, grad in
+          zip(flat_accumulated_grads, flat_grads))
 
-      tf.assign_add(self._batch_weight_sum, batch_weight)
-      return nest.map_structure(
-          lambda accumulator, grad: accumulator + batch_weight * grad,
-          accumulated_grads, grads)
+      # The TF team is aware of an optimization in the reduce state to avoid
+      # doubling the number of required variables here (e.g. keeping two copies
+      # of all gradients). If you're looking to optimize memory usage this might
+      # be a place to look.
+      return (flat_accumulated_grads, batch_weight_sum + batch_weight)
 
-    with tf.control_dependencies(list(dummy_weights.trainable.values())):
-      self._grad_sum_vars = dataset.reduce(
-          initial_state=self._grad_sum_vars, reduce_func=reduce_fn)
+    def _zero_initial_state():
+      """Create a tuple of (tuple of gradient accumulators, batch weight sum)."""
+      return (tuple(tf.zeros_like(w) for w in flat_trainable_weights),
+              tf.constant(0.0))
 
-    with tf.control_dependencies(
-        [tf.identity(v) for v in self._grad_sum_vars.values()]):
-      # For SGD, the delta is just the negative of the average gradient:
-      weights_delta = nest.map_structure(
-          lambda gradient: -1.0 * gradient / self._batch_weight_sum,
-          self._grad_sum_vars)
-      weights_delta, has_non_finite_delta = (
-          tensor_utils.zero_all_if_any_non_finite(weights_delta))
-      weights_delta_weight = tf.cond(
-          tf.equal(has_non_finite_delta,
-                   0), lambda: self._batch_weight_sum, lambda: tf.constant(0.0))
+    flat_grad_sums, batch_weight_sum = dataset.reduce(
+        initial_state=_zero_initial_state(), reduce_func=reduce_fn)
+    grad_sums = nest.pack_sequence_as(model.weights.trainable, flat_grad_sums)
 
-      return optimizer_utils.ClientOutput(
-          weights_delta, weights_delta_weight, model.report_local_outputs(),
-          tensor_utils.to_odict({
-              'client_weight': weights_delta_weight,
-              'has_non_finite_delta': has_non_finite_delta,
-          }))
+    # For SGD, the delta is just the negative of the average gradient:
+    weights_delta = nest.map_structure(
+        lambda gradient: -1.0 * gradient / batch_weight_sum, grad_sums)
+    weights_delta, has_non_finite_delta = (
+        tensor_utils.zero_all_if_any_non_finite(weights_delta))
+    weights_delta_weight = tf.cond(
+        tf.equal(has_non_finite_delta, 0),
+        lambda: batch_weight_sum,
+        lambda: tf.constant(0.0))
+
+    return optimizer_utils.ClientOutput(
+        weights_delta, weights_delta_weight, model.report_local_outputs(),
+        tensor_utils.to_odict({
+            'client_weight': weights_delta_weight,
+            'has_non_finite_delta': has_non_finite_delta,
+        }))
 
 
 def build_federated_sgd_process(

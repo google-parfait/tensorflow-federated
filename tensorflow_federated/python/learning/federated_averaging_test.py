@@ -42,11 +42,11 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
         model_examples.TrainableLinearRegression.make_batch(
             x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
             y=[[0.0], [0.0], [1.0], [1.0]]))
-    # Repeat the dataset 5 times with batches of 3 examples,
-    # producing 7 minibatches (the last one with only 2 examples).
-    # Note thta `batch` is required for this dataset to be useable,
+    # Repeat the dataset 2 times with batches of 3 examples,
+    # producing 3 minibatches (the last one with only 2 examples).
+    # Note that `batch` is required for this dataset to be useable,
     # as it adds the batch dimension which is expected by the model.
-    return dataset.repeat(5).batch(3)
+    return dataset.repeat(2).batch(3)
 
   def model(self):
     return model_examples.TrainableLinearRegression(feature_dim=2)
@@ -80,12 +80,12 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
       self.assertCountEqual(['a', 'b'], list(out.weights_delta.keys()))
       self.assertGreater(np.linalg.norm(out.weights_delta['a']), 0.1)
       self.assertGreater(np.linalg.norm(out.weights_delta['b']), 0.1)
-      self.assertEqual(out.weights_delta_weight, 20.0)
-      self.assertEqual(out.optimizer_output['num_examples'], 20)
+      self.assertEqual(out.weights_delta_weight, 8.0)
+      self.assertEqual(out.optimizer_output['num_examples'], 8)
       self.assertEqual(out.optimizer_output['has_non_finite_delta'], 0)
 
-      self.assertEqual(out.model_output['num_examples'], 20)
-      self.assertEqual(out.model_output['num_batches'], 7)
+      self.assertEqual(out.model_output['num_examples'], 8)
+      self.assertEqual(out.model_output['num_batches'], 3)
       self.assertBetween(out.model_output['loss'],
                          np.finfo(np.float32).eps, 10.0)
 
@@ -95,7 +95,7 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
     client_tf = federated_averaging.ClientFedAvg(
         model, client_weight_fn=lambda _: tf.constant(1.5))
     out = client_tf(dataset, self.initial_weights())
-    self.assertEqual(out.weights_delta_weight.numpy(), 1.5)
+    self.assertEqual(self.evaluate(out.weights_delta_weight), 1.5)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -105,11 +105,12 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
     init_weights = self.initial_weights()
     init_weights.trainable['b'] = bad_value
     out = client_tf(dataset, init_weights)
-    self.assertEqual(out.weights_delta_weight.numpy(), 0.0)
-    self.assertAllClose(out.weights_delta['a'].numpy(), np.array([[0.0],
-                                                                  [0.0]]))
-    self.assertAllClose(out.weights_delta['b'].numpy(), 0.0)
-    self.assertEqual(out.optimizer_output['has_non_finite_delta'].numpy(), 1)
+    self.assertEqual(self.evaluate(out.weights_delta_weight), 0.0)
+    self.assertAllClose(
+        self.evaluate(out.weights_delta['a']), np.array([[0.0], [0.0]]))
+    self.assertAllClose(self.evaluate(out.weights_delta['b']), 0.0)
+    self.assertEqual(
+        self.evaluate(out.optimizer_output['has_non_finite_delta']), 1)
 
 
 class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
@@ -240,8 +241,8 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
     first_state, metric_outputs = iterative_process.next(
         server_state, federated_ds)
     self.assertEqual(
-        tf.reduce_sum(first_state.model.trainable.a).numpy() +
-        tf.reduce_sum(first_state.model.trainable.b).numpy(), 0)
+        self.evaluate(tf.reduce_sum(first_state.model.trainable.a)) +
+        self.evaluate(tf.reduce_sum(first_state.model.trainable.b)), 0)
     self.assertEqual(metric_outputs.num_examples, 0)
     self.assertTrue(tf.is_nan(metric_outputs.loss))
 
