@@ -50,6 +50,14 @@ def _to_building_block(comp):
 
 class TransformationsTest(absltest.TestCase):
 
+  def test_transform_postorder_fails_on_none(self):
+
+    def transform(comp):
+      return comp
+
+    with self.assertRaises(TypeError):
+      transformations.transform_postorder(None, transform)
+
   def test_transform_postorder_with_lambda_call_selection_and_reference(self):
 
     @computations.federated_computation(
