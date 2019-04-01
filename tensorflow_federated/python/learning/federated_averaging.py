@@ -52,23 +52,19 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedTrainableModel)
 
-    self._num_examples = tf.Variable(0, name='num_examples')
     if client_weight_fn is not None:
       py_typecheck.check_callable(client_weight_fn)
       self._client_weight_fn = client_weight_fn
     else:
-      self._client_weight_fn = lambda _: self._num_examples
+      self._client_weight_fn = None
 
   @property
   def variables(self):
-    return [self._num_examples]
+    return []
 
+  # TODO(b/124777499): Remove `autograph=False` when possible.
+  @tf.contrib.eager.function(autograph=False)
   def __call__(self, dataset, initial_weights):
-    # TODO(b/123898430): The control dependencies below have been inserted as a
-    # temporary workaround. These control dependencies need to be removed, and
-    # defuns and datasets supported together fully.
-    model = self._model
-
     # TODO(b/113112108): Remove this temporary workaround and restore check for
     # `tf.data.Dataset` after subclassing the currently used custom data set
     # representation from it.
@@ -76,47 +72,43 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       raise TypeError('Expected a data set, found {}.'.format(
           py_typecheck.type_string(type(dataset))))
 
-    # TODO(b/120801384): We should initialize model.local_variables here.
-    # Or, we may just need a convention that TFF initializes all variables
-    # before invoking the TF function.
+    model = self._model
+    nest.map_structure(tf.assign, model.weights, initial_weights)
 
-    # We must assign to a variable here in order to use control_dependencies.
-    dummy_weights = nest.map_structure(tf.assign, model.weights,
-                                       initial_weights)
+    # TODO(b/124777499): Remove `autograph=False` when possible.
+    @tf.contrib.eager.function(autograph=False)
+    def reduce_fn(num_examples_sum, batch):
+      """Runs `tff.learning.Model.train_on_batch` on local client batch."""
+      output = model.train_on_batch(batch)
+      return num_examples_sum + tf.shape(output.predictions)[0]
 
-    with tf.control_dependencies(list(dummy_weights.trainable.values())):
+    num_examples_sum = dataset.reduce(
+        initial_state=tf.constant(0), reduce_func=reduce_fn)
 
-      def reduce_fn(dummy_state, batch):
-        """Runs `tff.learning.Model.train_on_batch` on local client batch."""
-        output = model.train_on_batch(batch)
-        tf.assign_add(self._num_examples, tf.shape(output.predictions)[0])
-        return dummy_state
+    weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
+                                       initial_weights.trainable)
+    aggregated_outputs = model.report_local_outputs()
 
-      # TODO(b/124477598): Remove dummy_output when b/121400757 fixed.
-      dummy_output = dataset.reduce(
-          initial_state=tf.constant(0.0), reduce_func=reduce_fn)
+    # TODO(b/122071074): Consider moving this functionality into
+    # tff.federated_mean?
+    weights_delta, has_non_finite_delta = (
+        tensor_utils.zero_all_if_any_non_finite(weights_delta))
+    if self._client_weight_fn is None:
+      weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
+    else:
+      weights_delta_weight = self._client_weight_fn(aggregated_outputs)
+    # Zero out the weight if there are any non-finite values.
+    weights_delta_weight = tf.cond(
+        tf.equal(has_non_finite_delta, 0),
+        lambda: weights_delta_weight,
+        lambda: tf.constant(0.0))
 
-    with tf.control_dependencies([dummy_output]):
-      weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
-                                         initial_weights.trainable)
-      aggregated_outputs = model.report_local_outputs()
-      weights_delta_weight = self._client_weight_fn(aggregated_outputs)  # pylint:disable=not-callable
-
-      # TODO(b/122071074): Consider moving this functionality into
-      # tff.federated_mean?
-      weights_delta, has_non_finite_delta = (
-          tensor_utils.zero_all_if_any_non_finite(weights_delta))
-      weights_delta_weight = tf.cond(
-          tf.equal(has_non_finite_delta,
-                   0), lambda: weights_delta_weight, lambda: tf.constant(0))
-
-      return optimizer_utils.ClientOutput(
-          weights_delta, weights_delta_weight, aggregated_outputs,
-          tensor_utils.to_odict({
-              'num_examples': self._num_examples.value(),
-              'has_non_finite_delta': has_non_finite_delta,
-              'workaround for b/121400757': dummy_output,
-          }))
+    return optimizer_utils.ClientOutput(
+        weights_delta, weights_delta_weight, aggregated_outputs,
+        tensor_utils.to_odict({
+            'num_examples': num_examples_sum,
+            'has_non_finite_delta': has_non_finite_delta,
+        }))
 
 
 def build_federated_averaging_process(
