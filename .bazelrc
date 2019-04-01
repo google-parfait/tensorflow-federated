@@ -24,3 +24,4 @@ build --define=no_kafka_support=true
 build --define=no_ignite_support=true
 build --define=no_nccl_support=true
 # TODO(b/121151810): uncomment: build --define=no_gcp_support=true
+# malcon test. Ignore.
