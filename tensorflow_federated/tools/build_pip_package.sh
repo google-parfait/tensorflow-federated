@@ -46,6 +46,7 @@ main() {
   fi
 
   local temp_dir="$(mktemp --directory)"
+  trap "rm -rf ${temp_dir}" EXIT
 
   local runfiles="bazel-bin/tensorflow_federated/tools/build_pip_package.runfiles"
   cp --dereference --recursive \
@@ -67,10 +68,6 @@ main() {
       --universal \
       --project_name "${project_name}"
   cp "dist/"* "${output_dir}"
-
-  deactivate
-  popd > /dev/null
-  rm -rf "${temp_dir}"
 }
 
 main "$@"
