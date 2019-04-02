@@ -20,7 +20,6 @@ from __future__ import print_function
 # TensorFlow Federated uses Python imports to manage namespaces in ways that are
 # different from the Google Python Style guide.
 #
-# go/tf-wildcard-import
 # pylint: disable=g-bad-import-order,wildcard-import
 from tensorflow_federated.python.core import *
 
