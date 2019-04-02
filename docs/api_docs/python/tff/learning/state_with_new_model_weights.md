@@ -30,5 +30,5 @@ Returns a `ServerState` with updated model weights.
 
 #### Returns:
 
-A new server state object which can be passed to the `next` method of the
-iterative process.
+A new server `ServerState` object which can be passed to the `next` method of
+the iterative process.

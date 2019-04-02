@@ -138,3 +138,7 @@ toc:
       path: /federated/api_docs/python/tff/utils/identity
     - title: IterativeProcess
       path: /federated/api_docs/python/tff/utils/IterativeProcess
+    - title: StatefulAggregator
+      path: /federated/api_docs/python/tff/utils/StatefulAggregator
+    - title: update_state
+      path: /federated/api_docs/python/tff/utils/update_state

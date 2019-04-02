@@ -1013,8 +1013,12 @@ class ReferenceExecutor(context_base.Context):
       return ComputedValue(
           anonymous_tuple.AnonymousTuple(result_val_elements), element_type)
     else:
-      # TODO(b/113116813): Implement the remaining cases.
-      raise NotImplementedError
+      # TODO(b/113116813): Implement the remaining cases, e.g. federated
+      # types like int32@SERVER.
+      raise NotImplementedError(
+          'Generic plus not supported for elements of type {}, e.g. {}.'
+          'Please file an issue on GitHub if you need this type supported'
+          .format(element_type, arg.value[0]))
 
   def _sequence_map(self, arg):
     mapping_type = arg.type_signature[0]

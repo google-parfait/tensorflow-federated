@@ -21,6 +21,76 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
 
 
+def update_state(state, **kwargs):
+  """Returns a new `state` (a namedtuple) with updated with kwargs."""
+  # TODO(b/129569441): Support AnonymousTuple as well.
+  if not py_typecheck.is_named_tuple(state):
+    raise TypeError('state must be a namedtuple, but found {}'.format(
+        type(state)))
+  d = state._asdict()
+  d.update(kwargs)
+  return type(state)(**d)
+
+
+class StatefulAggregator(object):
+  """A simple container for a stateful aggregation operator."""
+
+  def __init__(self, initialize_fn, next_fn):
+    """Creates a `StatefulAggregator`.
+
+    A typical (though trivial) example would be:
+    ```
+    stateless_federated_mean = tff.utils.StatefulAggregator(
+        initialize_fn=lambda: (),  # The state is an empty tuple.
+        next_fn=lambda state, value, weight=None: (
+            state, tff.federated_mean(value, weight=weight)))
+    ```
+
+    Args:
+      initialize_fn: A no-arg function that returns a Python container which can
+        be converted to a `tff.Value`, placed on the `tff.SERVER`, and
+        passed as the first argument of `__call__`. This may be
+        called in vanilla TensorFlow code, typically wrapped as a
+        `tff.tf_compuatation`, as part of the initialization of a larger
+        state object.
+      next_fn: A function matching the signature of `__call__`, see below.
+    """
+    py_typecheck.check_callable(initialize_fn)
+    py_typecheck.check_callable(next_fn)
+    self._initialize_fn = initialize_fn
+    self._next_fn = next_fn
+
+  def initialize(self):
+    """Returns the initial state."""
+    return self._initialize_fn()
+
+  def __call__(self, state, value, weight=None):
+    """Performs an aggregate of value@CLIENTS, with optional weight@CLIENTS.
+
+    This is a TFF operator intended to (only) be invoked in the context
+    of a `tff.federated_computation`. It shold be compatible with the
+    TFF type signature
+    ```
+    (state@SERVER, value@CLIENTS, weight@CLIENTS) ->
+         (state@SERVER, aggregate@SERVER).
+    ```
+
+    Args:
+      state: A `tff.Value` placed on the `tff.SERVER`.
+      value: A `tff.Value` to be aggregated, placed on the `tff.CLIENTS`.
+      weight: An optional `tff.Value` for weighting values,
+        placed on the `tff.CLIENTS`.
+
+    Returns:
+       A tuple of `tff.Value`s (state@SERVER, aggregate@SERVER) where
+         * state: The updated state.
+         * aggregate: The result of the aggregation of `value` weighted by
+             `weight.
+    """
+    return self._next_fn(tff.to_value(state), tff.to_value(value),
+                         tff.to_value(weight))
+
+
 class IterativeProcess(object):
   """A process that includes an initialization and iterated computation.
 
@@ -71,7 +141,9 @@ class IterativeProcess(object):
     """
     py_typecheck.check_type(initialize_fn, tff.Computation)
     if initialize_fn.type_signature.parameter is not None:
-      raise TypeError('initialize_fn must be a no-arg tff.Computation')
+      raise TypeError('initialize_fn must be a no-arg tff.Computation, '
+                      'but found parameter ' +
+                      str(initialize_fn.type_signature))
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, tff.Computation)
