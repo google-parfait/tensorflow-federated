@@ -201,8 +201,6 @@ def replace_called_lambdas_with_block(comp):
       return comp
     elif not isinstance(comp.function, computation_building_blocks.Lambda):
       return comp
-    py_typecheck.check_type(
-        comp.argument, computation_building_blocks.ComputationBuildingBlock)
     arg = comp.argument
     lam = comp.function
     param_name = lam.parameter_name
