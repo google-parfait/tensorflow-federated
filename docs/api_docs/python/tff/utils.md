@@ -20,6 +20,9 @@ depend on implementation classes. It should be written against the Core API.
 [`class IterativeProcess`](../tff/utils/IterativeProcess.md): A process that
 includes an initialization and iterated computation.
 
+[`class StatefulAggregator`](../tff/utils/StatefulAggregator.md): A simple
+container for a stateful aggregation operator.
+
 ## Functions
 
 [`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target`
@@ -30,3 +33,6 @@ variables that matches the given `type_spec`.
 
 [`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to
 `source`.
+
+[`update_state(...)`](../tff/utils/update_state.md): Returns a new `state` (a
+namedtuple) with updated with kwargs.

@@ -126,7 +126,7 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
     # is provided by TensorFlow, TFF doesn't care what the actual value is.
     expected_federated_server_state_type = tff.FederatedType(
         optimizer_utils.ServerState(expected_model_weights_type,
-                                    test.AnyType()),
+                                    test.AnyType(), test.AnyType()),
         placement=tff.SERVER,
         all_equal=True)
 
