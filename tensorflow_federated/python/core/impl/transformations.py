@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_utils
+from tensorflow_federated.python.core.impl import intrinsic_defs
 
 
 def transform_postorder(comp, fn):
@@ -206,6 +207,46 @@ def replace_called_lambdas_with_block(comp):
     param_name = lam.parameter_name
     result = lam.result
     return computation_building_blocks.Block([(param_name, arg)], result)
+
+  return transform_postorder(comp, _transform)
+
+
+def remove_mapped_or_applied_identity(comp):
+  """Removes nodes representing mapping or applying the identity function.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`, to
+      check for a mapped or applied identity function which can be removed.
+
+  Returns:
+    A possibly transformed version of comp, which is identical except that a
+      mapped or applied identity function is replaced with its argument.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def is_mapped_or_applied_identity(comp):
+    """Helper function to check if `comp` represents a communicated identity."""
+    if isinstance(comp, computation_building_blocks.Call):
+      if isinstance(comp.function, computation_building_blocks.Intrinsic):
+        if comp.function.uri in [
+            intrinsic_defs.FEDERATED_MAP.uri,
+            intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_defs.SEQUENCE_MAP.uri
+        ]:
+          called_function = comp.argument[0]
+          if isinstance(called_function, computation_building_blocks.Lambda):
+            if isinstance(called_function.result,
+                          computation_building_blocks.Reference):
+              if called_function.parameter_name == called_function.result.name:
+                return True
+    return False
+
+  def _transform(comp):
+    """Transform for removal of intrinsics representing the identity."""
+    if is_mapped_or_applied_identity(comp):
+      called_arg = comp.argument[1]
+      return called_arg
+    return comp
 
   return transform_postorder(comp, _transform)
 

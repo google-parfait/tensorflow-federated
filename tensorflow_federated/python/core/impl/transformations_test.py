@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import six
 import tensorflow as tf
 
@@ -48,7 +49,7 @@ def _to_building_block(comp):
   return computation_building_blocks.ComputationBuildingBlock.from_proto(proto)
 
 
-class TransformationsTest(absltest.TestCase):
+class TransformationsTest(parameterized.TestCase):
 
   def test_transform_postorder_fails_on_none(self):
 
@@ -211,6 +212,80 @@ class TransformationsTest(absltest.TestCase):
         comp)
     self.assertEqual(str(comp), '(foo_arg -> foo_arg)')
     self.assertEqual(str(comp), str(lambda_reduced_comp))
+
+  def test_remove_mapped_or_applied_identity_fails_on_none(self):
+    with self.assertRaises(TypeError):
+      transformations.remove_mapped_or_applied_identity(None)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('federated_map', 'federated_map',
+       computation_types.FederatedType(tf.float32, placements.CLIENTS)),
+      ('federated_apply', 'federated_apply',
+       computation_types.FederatedType(tf.float32, placements.SERVER)),
+      ('sequence_map', 'sequence_map', computation_types.SequenceType(
+          tf.float32)))
+  # pyformat: enable
+  def test_remove_identity_at_root(self, uri_string, data_type):
+    data = computation_building_blocks.Data('x', data_type)
+    identity_arg = computation_building_blocks.Reference('arg', tf.float32)
+    identity_lam = computation_building_blocks.Lambda('arg', tf.float32,
+                                                      identity_arg)
+    arg_tuple = computation_building_blocks.Tuple([identity_lam, data])
+    intrinsic = computation_building_blocks.Intrinsic(
+        uri_string,
+        computation_types.FunctionType(
+            [arg_tuple.type_signature[0], arg_tuple.type_signature[1]],
+            arg_tuple.type_signature[1]))
+    call = computation_building_blocks.Call(intrinsic, arg_tuple)
+    self.assertEqual(str(call), uri_string + '(<(arg -> arg),x>)')
+    reduced = transformations.remove_mapped_or_applied_identity(call)
+    self.assertEqual(str(reduced), 'x')
+
+  @parameterized.named_parameters(
+      ('federated_map', 'federated_map',
+       computation_types.FederatedType(tf.float32, placements.CLIENTS)),
+      ('federated_apply', 'federated_apply',
+       computation_types.FederatedType(tf.float32, placements.SERVER)),
+      ('sequence_map', 'sequence_map', computation_types.SequenceType(
+          tf.float32)))
+  def test_identity_removed_deep_in_tree(self, uri_string, data_type):
+    data = computation_building_blocks.Data('x', data_type)
+    identity_arg = computation_building_blocks.Reference('arg', tf.float32)
+    identity_lam = computation_building_blocks.Lambda('arg', tf.float32,
+                                                      identity_arg)
+    arg_tuple = computation_building_blocks.Tuple([identity_lam, data])
+    seq_apply = computation_building_blocks.Intrinsic(
+        uri_string,
+        computation_types.FunctionType(
+            [arg_tuple.type_signature[0], arg_tuple.type_signature[1]],
+            arg_tuple.type_signature[1]))
+    call = computation_building_blocks.Call(seq_apply, arg_tuple)
+    tuple_wrapped_call = computation_building_blocks.Tuple([call])
+    lambda_wrapped_tuple = computation_building_blocks.Lambda(
+        'y', tf.int32, tuple_wrapped_call)
+    self.assertEqual(
+        str(lambda_wrapped_tuple),
+        '(y -> <' + uri_string + '(<(arg -> arg),x>)>)')
+    reduced = transformations.remove_mapped_or_applied_identity(
+        lambda_wrapped_tuple)
+    self.assertEqual(str(reduced), '(y -> <x>)')
+
+  def test_remove_identity_does_not_remove_dummy_intrinsic(self):
+    dummy_intrinsic = computation_building_blocks.Intrinsic('dummy', [])
+    new_dummy = transformations.remove_mapped_or_applied_identity(
+        dummy_intrinsic)
+    self.assertEqual(str(new_dummy), str(dummy_intrinsic))
+
+  def test_remove_identity_does_not_remove_unmapped_lambda(self):
+    x = computation_building_blocks.Reference('x', tf.int32)
+    dummy_lambda = computation_building_blocks.Lambda('x', tf.int32, x)
+    test_arg = computation_building_blocks.Data('test', tf.int32)
+    called = computation_building_blocks.Call(dummy_lambda, test_arg)
+    self.assertEqual(str(called), '(x -> x)(test)')
+    self.assertEqual(
+        str(transformations.remove_mapped_or_applied_identity(called)),
+        '(x -> x)(test)')
 
   def test_no_reduce_separated_lambda_and_call(self):
 
