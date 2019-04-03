@@ -20,6 +20,8 @@ Inherits From: [`Model`](../../tff/learning/Model.md)
 Defined in
 [`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
+<!-- Placeholder for "Used in" -->
+
 A Model with an additional method for (local) training.
 
 This class is primarily intended to be used in the implementation of Federated

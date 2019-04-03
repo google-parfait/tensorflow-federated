@@ -15,6 +15,8 @@ tff.sequence_map(
 Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
+<!-- Placeholder for "Used in" -->
+
 Maps a TFF sequence `value` pointwise using a given function `mapping_fn`.
 
 This function supports two modes of usage:

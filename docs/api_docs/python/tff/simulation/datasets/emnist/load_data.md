@@ -15,6 +15,8 @@ tff.simulation.datasets.emnist.load_data(
 Defined in
 [`simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
 
+<!-- Placeholder for "Used in" -->
+
 Loads the Federated EMNIST dataset.
 
 Downloads and caches the dataset locally. If previously downloaded, tries to

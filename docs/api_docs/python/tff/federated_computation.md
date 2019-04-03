@@ -12,6 +12,8 @@ tff.federated_computation(*args)
 Defined in
 [`core/api/computations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py).
 
+<!-- Placeholder for "Used in" -->
+
 Decorates/wraps Python functions as TFF federated/composite computations.
 
 The term *federated computation* as used here refers to any computation that

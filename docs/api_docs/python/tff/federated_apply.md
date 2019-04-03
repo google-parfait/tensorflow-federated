@@ -15,6 +15,8 @@ tff.federated_apply(
 Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
+<!-- Placeholder for "Used in" -->
+
 Applies a given function to a federated value on the
 <a href="../tff.md#SERVER"><code>tff.SERVER</code></a>.
 

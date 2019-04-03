@@ -16,6 +16,8 @@ tff.federated_reduce(
 Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
+<!-- Placeholder for "Used in" -->
+
 Reduces `value` from <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to
 <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> using a reduction `op`.
 

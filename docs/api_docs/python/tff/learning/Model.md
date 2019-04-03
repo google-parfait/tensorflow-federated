@@ -17,6 +17,8 @@
 Defined in
 [`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
+<!-- Placeholder for "Used in" -->
+
 Represents a model for use in TensorFlow Federated.
 
 Each `Model` will work on a set of `tf.Variables`, and each method should be a

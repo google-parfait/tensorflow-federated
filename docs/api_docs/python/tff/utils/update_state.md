@@ -15,4 +15,6 @@ tff.utils.update_state(
 Defined in
 [`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
+<!-- Placeholder for "Used in" -->
+
 Returns a new `state` (a namedtuple) with updated with kwargs.

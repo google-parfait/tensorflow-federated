@@ -8,6 +8,8 @@
 Defined in
 [`simulation/datasets/emnist/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/__init__.py).
 
+<!-- Placeholder for "Used in" -->
+
 Module for the federated EMNIST experimental dataset.
 
 ## Functions

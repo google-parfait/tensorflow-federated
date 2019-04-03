@@ -12,6 +12,8 @@ tff.learning.build_federated_evaluation(model_fn)
 Defined in
 [`learning/federated_evaluation.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_evaluation.py).
 
+<!-- Placeholder for "Used in" -->
+
 Builds the TFF computation for federated evaluation of the given model.
 
 #### Args:

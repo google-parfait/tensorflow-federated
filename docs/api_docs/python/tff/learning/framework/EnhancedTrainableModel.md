@@ -24,6 +24,8 @@ Inherits From:
 Defined in
 [`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
+<!-- Placeholder for "Used in" -->
+
 <h2 id="__init__"><code>__init__</code></h2>
 
 ```python
