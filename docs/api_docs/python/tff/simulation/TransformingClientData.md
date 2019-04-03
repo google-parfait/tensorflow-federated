@@ -18,6 +18,8 @@ Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 Defined in
 [`simulation/transforming_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/transforming_client_data.py).
 
+<!-- Placeholder for "Used in" -->
+
 Transforms client data, potentially expanding by adding pseudo-clients.
 
 Each client of the raw_client_data is "expanded" into some number of

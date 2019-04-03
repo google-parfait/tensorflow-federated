@@ -15,6 +15,8 @@ tff.simulation.datasets.emnist.infinite_emnist(
 Defined in
 [`simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
 
+<!-- Placeholder for "Used in" -->
+
 Converts a Federated EMNIST dataset into an Infinite Federated EMNIST set.
 
 Infinite Federated EMNIST expands each writer from the EMNIST dataset into some

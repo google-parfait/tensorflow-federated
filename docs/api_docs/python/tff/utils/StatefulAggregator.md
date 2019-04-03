@@ -13,6 +13,8 @@
 Defined in
 [`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
+<!-- Placeholder for "Used in" -->
+
 A simple container for a stateful aggregation operator.
 
 <h2 id="__init__"><code>__init__</code></h2>
@@ -25,6 +27,23 @@ __init__(
 ```
 
 Creates a `StatefulAggregator`.
+
+A typical (though trivial) example would be: `stateless_federated_mean =
+tff.utils.StatefulAggregator( initialize_fn=lambda: (), # The state is an empty
+tuple. next_fn=lambda state, value, weight=None: ( state,
+tff.federated_mean(value, weight=weight)))`
+
+#### Args:
+
+*   <b>`initialize_fn`</b>: A no-arg function that returns a Python container
+    which can be converted to a
+    <a href="../../tff/Value.md"><code>tff.Value</code></a>, placed on the
+    <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>, and passed as the
+    first argument of `__call__`. This may be called in vanilla TensorFlow code,
+    typically wrapped as a `tff.tf_compuatation`, as part of the initialization
+    of a larger state object.
+*   <b>`next_fn`</b>: A function matching the signature of `__call__`, see
+    below.
 
 ## Methods
 

@@ -13,6 +13,8 @@
 Defined in
 [`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
+<!-- Placeholder for "Used in" -->
+
 A process that includes an initialization and iterated computation.
 
 An iterated process will usually be driven by a control loop like:

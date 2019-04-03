@@ -8,6 +8,8 @@
 Defined in
 [`core/utils/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py).
 
+<!-- Placeholder for "Used in" -->
+
 Utility classes/functions built on top of TensorFlow Federated Core API.
 
 All components that depend on utils should import symbols from this file rather

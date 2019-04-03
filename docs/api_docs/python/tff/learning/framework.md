@@ -8,6 +8,8 @@
 Defined in
 [`learning/framework/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/__init__.py).
 
+<!-- Placeholder for "Used in" -->
+
 The public API for contributors who develop federated learning algorithms.
 
 ## Classes
