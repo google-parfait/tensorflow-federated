@@ -55,7 +55,8 @@ def federated_aggregate(value, zero, accumulate, merge, report):
 
   Args:
     value: A value of a TFF federated type placed at `tff.CLIENTS` to aggregate.
-    zero: The zero in the algebra of reduction operators, as described above.
+    zero: The zero of type `U` in the algebra of reduction operators, as
+      described above.
     accumulate: The reduction operator to use in the first stage of the process.
       If `value` is of type `{T}@CLIENTS`, and `zero` is of type `U`, this
       operator should be of type `(<U,T> -> U)`.
