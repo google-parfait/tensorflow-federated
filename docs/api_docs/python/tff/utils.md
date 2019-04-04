@@ -22,8 +22,11 @@ depend on implementation classes. It should be written against the Core API.
 [`class IterativeProcess`](../tff/utils/IterativeProcess.md): A process that
 includes an initialization and iterated computation.
 
-[`class StatefulAggregator`](../tff/utils/StatefulAggregator.md): A simple
-container for a stateful aggregation operator.
+[`class StatefulAggregateFn`](../tff/utils/StatefulAggregateFn.md): A simple
+container for a stateful aggregation function.
+
+[`class StatefulBroadcastFn`](../tff/utils/StatefulBroadcastFn.md): A simple
+container for a stateful broadcast function.
 
 ## Functions
 

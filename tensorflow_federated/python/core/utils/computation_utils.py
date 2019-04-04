@@ -32,19 +32,11 @@ def update_state(state, **kwargs):
   return type(state)(**d)
 
 
-class StatefulAggregator(object):
-  """A simple container for a stateful aggregation operator."""
+class StatefulFn(object):
+  """A base class for stateful functions."""
 
   def __init__(self, initialize_fn, next_fn):
-    """Creates a `StatefulAggregator`.
-
-    A typical (though trivial) example would be:
-    ```
-    stateless_federated_mean = tff.utils.StatefulAggregator(
-        initialize_fn=lambda: (),  # The state is an empty tuple.
-        next_fn=lambda state, value, weight=None: (
-            state, tff.federated_mean(value, weight=weight)))
-    ```
+    """Creates the StatefulFn.
 
     Args:
       initialize_fn: A no-arg function that returns a Python container which can
@@ -64,12 +56,43 @@ class StatefulAggregator(object):
     """Returns the initial state."""
     return self._initialize_fn()
 
+  def __call__(self, state, *args, **kwargs):
+    """Performs the stateful function call.
+
+    Args:
+      state: A `tff.Value` placed on the `tff.SERVER`.
+      *args: Arguments to the function.
+      **kwargs: Arguments to the function.
+
+    Returns:
+       A tuple of `tff.Value`s (state@SERVER, ...) where
+         * state: The updated state, to be passed to the next invocation
+           of call.
+         * ...: The result of the aggregation.
+    """
+    return self._next_fn(tff.to_value(state), *args, **kwargs)
+
+
+class StatefulAggregateFn(StatefulFn):
+  """A simple container for a stateful aggregation function.
+
+  A typical (though trivial) example would be:
+
+  ```
+  stateless_federated_mean = tff.utils.StatefulAggregateFn(
+      initialize_fn=lambda: (),  # The state is an empty tuple.
+      next_fn=lambda state, value, weight=None: (
+          state, tff.federated_mean(value, weight=weight)))
+  ```
+  """
+
   def __call__(self, state, value, weight=None):
     """Performs an aggregate of value@CLIENTS, with optional weight@CLIENTS.
 
-    This is a TFF operator intended to (only) be invoked in the context
+    This is a function intended to (only) be invoked in the context
     of a `tff.federated_computation`. It shold be compatible with the
     TFF type signature
+
     ```
     (state@SERVER, value@CLIENTS, weight@CLIENTS) ->
          (state@SERVER, aggregate@SERVER).
@@ -89,6 +112,41 @@ class StatefulAggregator(object):
     """
     return self._next_fn(tff.to_value(state), tff.to_value(value),
                          tff.to_value(weight))
+
+
+class StatefulBroadcastFn(StatefulFn):
+  """A simple container for a stateful broadcast function.
+
+   A typical (though trivial) example would be:
+
+   ```
+   stateless_federated_broadcast = tff.utils.StatefulBroadcastFn(
+     initialize_fn=lambda: (),
+     next_fn=lambda state, value: (
+         state, tff.federated_broadcast(value)))
+   ```
+  """
+
+  def __call__(self, state, value):
+    """Performs a broadcast of value@SERVER, producing value@CLIENTS.
+
+    This is a function intended to (only) be invoked in the context
+    of a `tff.federated_computation`. It shold be compatible with the
+    TFF type signature
+    `(state@SERVER, value@SERVER) -> (state@SERVER, value@CLIENTS)`.
+
+    Args:
+      state: A `tff.Value` placed on the `tff.SERVER`.
+      value: A `tff.Value` to be broadcast to the `tff.CLIENTS`.
+
+
+    Returns:
+       A tuple of `tff.Value`s (state@SERVER, value@CLIENTS) where
+         * state: The updated state.
+         * aggregate: The `value` now placed (communicated) to the
+           `tff.CLIENTS`.
+    """
+    return self._next_fn(tff.to_value(state), tff.to_value(value))
 
 
 class IterativeProcess(object):

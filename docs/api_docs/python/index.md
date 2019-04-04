@@ -58,7 +58,8 @@
 *   <a href="./tff/to_value.md"><code>tff.to_value</code></a>
 *   <a href="./tff/utils.md"><code>tff.utils</code></a>
 *   <a href="./tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
-*   <a href="./tff/utils/StatefulAggregator.md"><code>tff.utils.StatefulAggregator</code></a>
+*   <a href="./tff/utils/StatefulAggregateFn.md"><code>tff.utils.StatefulAggregateFn</code></a>
+*   <a href="./tff/utils/StatefulBroadcastFn.md"><code>tff.utils.StatefulBroadcastFn</code></a>
 *   <a href="./tff/utils/assign.md"><code>tff.utils.assign</code></a>
 *   <a href="./tff/utils/get_variables.md"><code>tff.utils.get_variables</code></a>
 *   <a href="./tff/utils/identity.md"><code>tff.utils.identity</code></a>
