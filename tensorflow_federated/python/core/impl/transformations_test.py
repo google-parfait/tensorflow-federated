@@ -396,11 +396,11 @@ class TransformationsTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('federated_map', 'federated_map',
+      ('federated_map', intrinsic_defs.FEDERATED_MAP.uri,
        computation_types.FederatedType(tf.float32, placements.CLIENTS)),
-      ('federated_apply', 'federated_apply',
+      ('federated_apply', intrinsic_defs.FEDERATED_APPLY.uri,
        computation_types.FederatedType(tf.float32, placements.SERVER)),
-      ('sequence_map', 'sequence_map', computation_types.SequenceType(
+      ('sequence_map', intrinsic_defs.SEQUENCE_MAP.uri, computation_types.SequenceType(
           tf.float32)))
   # pyformat: enable
   def test_remove_identity_at_root(self, uri_string, data_type):
@@ -419,13 +419,15 @@ class TransformationsTest(parameterized.TestCase):
     reduced = transformations.remove_mapped_or_applied_identity(call)
     self.assertEqual(str(reduced), 'x')
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('federated_map', 'federated_map',
+      ('federated_map', intrinsic_defs.FEDERATED_MAP.uri,
        computation_types.FederatedType(tf.float32, placements.CLIENTS)),
-      ('federated_apply', 'federated_apply',
+      ('federated_apply', intrinsic_defs.FEDERATED_APPLY.uri,
        computation_types.FederatedType(tf.float32, placements.SERVER)),
-      ('sequence_map', 'sequence_map', computation_types.SequenceType(
+      ('sequence_map', intrinsic_defs.SEQUENCE_MAP.uri, computation_types.SequenceType(
           tf.float32)))
+  # pyformat: enable
   def test_identity_removed_deep_in_tree(self, uri_string, data_type):
     data = computation_building_blocks.Data('x', data_type)
     identity_arg = computation_building_blocks.Reference('arg', tf.float32)
