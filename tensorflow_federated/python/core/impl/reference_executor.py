@@ -713,7 +713,7 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(comp, computation_base.Computation)
     if self._compiler is not None:
       comp = self._compiler.compile(comp)
-    return transformations.name_compiled_computations(
+    return transformations.replace_compiled_computations_names_with_unique_names(
         computation_building_blocks.ComputationBuildingBlock.from_proto(
             computation_impl.ComputationImpl.get_proto(comp)))
 

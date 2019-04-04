@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import itertools
 
 import six
 
@@ -101,33 +102,36 @@ def transform_postorder(comp, fn):
         'Unrecognized computation building block: {}'.format(str(comp)))
 
 
-def name_compiled_computations(comp):
-  """Labels all compiled computations with names that are unique within `comp`.
+def replace_compiled_computations_names_with_unique_names(comp):
+  """Replaces all the compiled computations names in `comp` with unique names.
+
+  This transform traverses `comp` postorder and replaces the name of all the
+  comiled computations found in `comp` with a unique name.
 
   Args:
     comp: The computation building block in which to perform the replacements.
 
   Returns:
-    A modified variant of `comp` with all compiled computations given unique
-    names.
+    A new computation.
+
+  Raises:
+    TypeError: If types do not match.
   """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
 
-  def _name_generator():
-    n = 0
-    while True:
-      n = n + 1
-      yield str(n)
+  name_generator = itertools.count(start=1)
 
-  def _transformation_fn(x, name_sequence):
-    if not isinstance(x, computation_building_blocks.CompiledComputation):
-      return x
-    else:
-      return computation_building_blocks.CompiledComputation(
-          x.proto, six.next(name_sequence))
+  def _should_transform(comp):
+    return isinstance(comp, computation_building_blocks.CompiledComputation)
 
-  name_sequence = _name_generator()
-  return transform_postorder(
-      comp, lambda x: _transformation_fn(x, name_sequence))
+  def _transform(comp):
+    if not _should_transform(comp):
+      return comp
+    return computation_building_blocks.CompiledComputation(
+        comp.proto, str(six.next(name_generator)))
+
+  return transform_postorder(comp, _transform)
 
 
 def replace_intrinsic(comp, uri, body, context_stack):
@@ -317,7 +321,6 @@ def replace_chained_federated_maps_with_federated_map(comp):
     return False
 
   def _should_transform(comp):
-    """Internal transform check function."""
     return _is_chained_federated_map_computation(comp)
 
   def _transform(comp):
