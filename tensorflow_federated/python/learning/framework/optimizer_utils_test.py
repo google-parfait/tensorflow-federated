@@ -70,17 +70,24 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
           })
 
 
-def get_state_incrementing_mean():
-  # Note this could be memoized and re-used.
-  @tff.federated_computation()
-  def _state_incrementing_mean_next(server_state, client_value, weight=None):
-    add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
-    new_state = tff.federated_apply(add_one, server_state)
-    return (new_state, tff.federated_mean(client_value, weight=weight))
+def _state_incrementing_mean_next(server_state, client_value, weight=None):
+  add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
+  new_state = tff.federated_apply(add_one, server_state)
+  return (new_state, tff.federated_mean(client_value, weight=weight))
 
-  return tff.utils.StatefulAggregator(
-      lambda: tf.constant(0),
-      _state_incrementing_mean_next)
+
+state_incrementing_mean = tff.utils.StatefulAggregateFn(
+    lambda: tf.constant(0), _state_incrementing_mean_next)
+
+
+def _state_incrementing_broadcast_next(server_state, server_value):
+  add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
+  new_state = tff.federated_apply(add_one, server_state)
+  return (new_state, tff.federated_broadcast(server_value))
+
+
+state_incrementing_broadcaster = tff.utils.StatefulBroadcastFn(
+    lambda: tf.constant(0), _state_incrementing_broadcast_next)
 
 
 class UtilsTest(test.TestCase):
@@ -94,7 +101,8 @@ class UtilsTest(test.TestCase):
                 trainable=collections.OrderedDict(trainable),
                 non_trainable=collections.OrderedDict(non_trainable)),
             optimizer_state=[],
-            delta_aggregator_state=tf.constant(0)),
+            delta_aggregate_state=tf.constant(0),
+            model_broadcast_state=tf.constant(0)),
         recursive=True)
 
     new_state = optimizer_utils.state_with_new_model_weights(
@@ -143,7 +151,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
                              num_optimizer_vars):
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
 
-    server_state = optimizer_utils.server_init(model_fn, optimizer_fn, None)
+    server_state = optimizer_utils.server_init(model_fn, optimizer_fn, (), ())
     train_vars = server_state.model.trainable
     self.assertAllClose(train_vars['a'].numpy(), np.array([[0.0], [0.0]]))
     self.assertEqual(train_vars['b'].numpy(), 0.0)
@@ -170,7 +178,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
     # Explicitly entering a graph as a default enables graph-mode.
     with tf.Graph().as_default() as g:
-      server_state_op = optimizer_utils.server_init(model_fn, optimizer_fn, ())
+      server_state_op = optimizer_utils.server_init(model_fn, optimizer_fn, (),
+                                                    ())
       init_op = tf.group(tf.global_variables_initializer(),
                          tf.local_variables_initializer())
       g.finalize()
@@ -218,7 +227,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     # is provided by TensorFlow, TFF doesn't care what the actual value is.
     expected_federated_server_state_type = tff.FederatedType(
         optimizer_utils.ServerState(expected_model_weights_type, test.AnyType(),
-                                    test.AnyType()),
+                                    test.AnyType(), test.AnyType()),
         placement=tff.SERVER,
         all_equal=True)
 
@@ -262,7 +271,9 @@ class ServerTest(test.TestCase, parameterized.TestCase):
         # number of times the federated_mean has been executed,
         # allowing us to test that a stateful aggregator's state
         # is properly updated.
-        stateful_delta_aggregator=get_state_incrementing_mean())
+        stateful_delta_aggregate_fn=state_incrementing_mean,
+        # Similarly, a broadcast with state that increments:
+        stateful_model_broadcast_fn=state_incrementing_broadcaster)
 
     ds = tf.data.Dataset.from_tensor_slices({
         'x': [[1., 2.], [3., 4.]],
@@ -275,14 +286,16 @@ class ServerTest(test.TestCase, parameterized.TestCase):
                                    np.zeros([2, 1], np.float32))
     self.assertAlmostEqual(state.model.trainable.b, 0.0)
     self.assertAlmostEqual(state.model.non_trainable.c, 0.0)
-    self.assertEqual(state.delta_aggregator_state, 0)
+    self.assertEqual(state.delta_aggregate_state, 0)
+    self.assertEqual(state.model_broadcast_state, 0)
 
     state, outputs = iterative_process.next(state, federated_ds)
     self.assertSequenceAlmostEqual(state.model.trainable.a,
                                    -np.ones([2, 1], np.float32))
     self.assertAlmostEqual(state.model.trainable.b, -1.0)
     self.assertAlmostEqual(state.model.non_trainable.c, 0.0)
-    self.assertEqual(state.delta_aggregator_state, 1)
+    self.assertEqual(state.delta_aggregate_state, 1)
+    self.assertEqual(state.model_broadcast_state, 1)
 
     # Since all predictions are 0, loss is:
     #    (0.5 * (0-5)^2 + (0-6)^2) / 2 = 15.25

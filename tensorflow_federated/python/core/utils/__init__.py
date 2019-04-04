@@ -24,7 +24,8 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.core.utils.computation_utils import IterativeProcess
-from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregator
+from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
+from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_federated.python.core.utils.computation_utils import update_state
 from tensorflow_federated.python.core.utils.tf_computation_utils import assign
 from tensorflow_federated.python.core.utils.tf_computation_utils import get_variables
@@ -32,7 +33,8 @@ from tensorflow_federated.python.core.utils.tf_computation_utils import identity
 
 # Used by doc generation script.
 _allowed_symbols = [
-    "StatefulAggregator",
+    "StatefulAggregateFn",
+    "StatefulBroadcastFn",
     "IterativeProcess",
     "assign",
     "get_variables",

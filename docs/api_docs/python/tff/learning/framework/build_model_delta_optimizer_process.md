@@ -10,7 +10,8 @@ tff.learning.framework.build_model_delta_optimizer_process(
     model_fn,
     model_to_client_delta_fn,
     server_optimizer_fn,
-    stateful_delta_aggregator=build_stateless_mean()
+    stateful_delta_aggregate_fn=build_stateless_mean(),
+    stateful_model_broadcast_fn=build_stateless_broadcaster()
 )
 ```
 
@@ -39,11 +40,16 @@ variables or ops created in constructors are placed in the correct graph.
 *   <b>`server_optimizer_fn`</b>: A no-arg function that returns a
     `tf.Optimizer`. The `apply_gradients` method of this optimizer is used to
     apply client updates to the server model.
-*   <b>`stateful_delta_aggregator`</b>: A
-    <a href="../../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
+*   <b>`stateful_delta_aggregate_fn`</b>: A
+    <a href="../../../tff/utils/StatefulAggregateFn.md"><code>tff.utils.StatefulAggregateFn</code></a>
     where the next_fn performs a federated aggregation and upates state. That
     is, it has TFF type (state@SERVER, value@CLIENTS) -> (state@SERVER,
     aggregate@SERVER).
+*   <b>`stateful_model_broadcast_fn`</b>: A
+    <a href="../../../tff/utils/StatefulBroadcastFn.md"><code>tff.utils.StatefulBroadcastFn</code></a>
+    where the next_fn performs a federated broadcast and upates state. That is,
+    it has TFF type (state@SERVER, value@SERVER) -> (state@SERVER,
+    value@CLIENTS).
 
 #### Returns:
 
