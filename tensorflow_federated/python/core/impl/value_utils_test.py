@@ -192,7 +192,8 @@ class ValueUtilsTest(parameterized.TestCase):
 
     self.assertEqual(
         str(
-            transformations.name_compiled_computations(
+            transformations
+            .replace_compiled_computations_names_with_unique_names(
                 value_impl.ValueImpl.get_comp(curried))),
         '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
 

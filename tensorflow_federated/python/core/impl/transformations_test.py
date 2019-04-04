@@ -233,18 +233,56 @@ class TransformationsTest(parameterized.TestCase):
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
 
-  def test_name_compiled_computations(self):
-    plus = computations.tf_computation(lambda x, y: x + y, [tf.int32, tf.int32])
+  def test_replace_compiled_computations_names_with_none_raises_type_error(
+      self):
+    with self.assertRaises(TypeError):
+      _ = transformations.replace_compiled_computations_names_with_unique_names(
+          None)
 
-    @computations.federated_computation(tf.int32)
-    def add_one(x):
-      return plus(x, 1)
+  def test_replace_compiled_computations_names_with_one_compiled_computation_replaces_name(
+      self):
+    fn = lambda: tf.constant(1)
+    tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+        fn, None, context_stack_impl.context_stack)
+    compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
+    comp = compiled_comp
 
-    comp = _to_building_block(add_one)
-    transformed_comp = transformations.name_compiled_computations(comp)
+    transformed_comp = transformations.replace_compiled_computations_names_with_unique_names(
+        comp)
+
+    self.assertNotEqual(transformed_comp._name, comp._name)
+
+  def test_replace_compiled_computations_names_with_ten_compiled_computations_replaces_name(
+      self):
+    comps = []
+    for _ in range(10):
+      fn = lambda: tf.constant(1)
+      tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+          fn, None, context_stack_impl.context_stack)
+      compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
+      comps.append(compiled_comp)
+    tup = computation_building_blocks.Tuple(comps)
+    comp = tup
+
+    transformed_comp = transformations.replace_compiled_computations_names_with_unique_names(
+        comp)
+
+    comp_names = [element._name for element in comp]
+    transformed_comp_names = [element._name for element in transformed_comp]
+    self.assertNotEqual(transformed_comp_names, comp_names)
     self.assertEqual(
-        str(transformed_comp),
-        '(add_one_arg -> comp#1(<add_one_arg,comp#2()>))')
+        len(transformed_comp_names), len(set(transformed_comp_names)),
+        'The transformed computation names are not unique: {}.'.format(
+            transformed_comp_names))
+
+  def test_replace_compiled_computations_names_with_reference_does_not_replace_name(
+      self):
+    comp = computation_building_blocks.Reference('name', tf.int32)
+
+    transformed_comp = transformations.replace_compiled_computations_names_with_unique_names(
+        comp)
+
+    self.assertEqual(transformed_comp._name, comp._name)
 
   def test_replace_intrinsic(self):
 
