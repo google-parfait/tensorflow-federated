@@ -103,7 +103,7 @@ py_library(
 
 py_test(
     name = "federated_sgd_test",
-    size = "medium",
+    size = "large",
     srcs = ["federated_sgd_test.py"],
     deps = [
         ":federated_sgd",
