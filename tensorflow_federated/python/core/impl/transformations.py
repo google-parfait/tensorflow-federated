@@ -251,6 +251,95 @@ def remove_mapped_or_applied_identity(comp):
   return transform_postorder(comp, _transform)
 
 
+def replace_chained_federated_maps_with_federated_map(comp):
+  r"""Replaces all the chained federated maps in `comp` with one federated map.
+
+  This transform traverses `comp` postorder, matches the following pattern *,
+  and replaces the following computation containing two federated map
+  intrinsics:
+
+            *Call 1
+            /    \
+  *Intrinsic 2   *Tuple 3
+                 /     \
+      Computation 4    *Call 5
+                       /    \
+             *Intrinsic 6   *Tuple 7
+                            /     \
+                 Computation 8     Computation 9
+
+  federated_map(<(x -> foo), federated_map(<(x -> bar), baz>)>)
+
+  with the following computation containing one federated map intrinsic:
+
+            Call
+           /    \
+  Intrinsic 2    Tuple
+                /     \
+          Lambda       Computation 9
+                \
+                 Call
+                /    \
+     Computation 4    Call
+                     /    \
+          Computation 8    Reference
+
+  federated_map(<(z -> (x -> foo)((y -> bar)(z))), baz>)
+
+  The outer federated map intrinsic (2), the functional computations (4, 8), and
+  the argument (9) are retained; the other computations are replaced.
+
+  Args:
+    comp: The computation building block in which to perform the replacements.
+
+  Returns:
+    A new computation.
+
+  Raises:
+    TypeError: If types do not match.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def _is_federated_map_computation(comp):
+    """Returns `True` if `comp` is a federated map computation."""
+    return (isinstance(comp, computation_building_blocks.Call) and
+            isinstance(comp.function, computation_building_blocks.Intrinsic) and
+            comp.function.uri == intrinsic_defs.FEDERATED_MAP.uri and
+            isinstance(comp.argument, computation_building_blocks.Tuple))
+
+  def _is_chained_federated_map_computation(comp):
+    """Returns `True` if `comp` is a chained federated map computation."""
+    if _is_federated_map_computation(comp):
+      outer_arg = comp.argument[1]
+      if _is_federated_map_computation(outer_arg):
+        return True
+    return False
+
+  def _should_transform(comp):
+    """Internal transform check function."""
+    return _is_chained_federated_map_computation(comp)
+
+  def _transform(comp):
+    """Internal transform function."""
+    if not _should_transform(comp):
+      return comp
+    map_arg = comp.argument[1].argument[1]
+    inner_arg = computation_building_blocks.Reference(
+        'inner_arg', map_arg.type_signature.member)
+    inner_fn = comp.argument[1].argument[0]
+    inner_call = computation_building_blocks.Call(inner_fn, inner_arg)
+    outer_fn = comp.argument[0]
+    outer_call = computation_building_blocks.Call(outer_fn, inner_call)
+    map_lambda = computation_building_blocks.Lambda(inner_arg.name,
+                                                    inner_arg.type_signature,
+                                                    outer_call)
+    map_tuple = computation_building_blocks.Tuple([map_lambda, map_arg])
+    return computation_building_blocks.Call(comp.function, map_tuple)
+
+  return transform_postorder(comp, _transform)
+
+
 @six.add_metaclass(abc.ABCMeta)
 class ScopedSnapshot(object):
   """Callable to allow for taking snapshot of scopes (contexts) in an AST.

@@ -625,6 +625,7 @@ py_test(
         ":context_stack_impl",
         ":intrinsic_bodies",
         ":intrinsic_defs",
+        ":tensorflow_serialization",
         ":transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
