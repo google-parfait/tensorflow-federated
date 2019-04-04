@@ -577,6 +577,10 @@ message TensorFlow {
       // of the data set iterator associated with the sequence.
       string iterator_string_handle_name = 1;
 
+      // The name of the variant tensor that represents the data set created
+      // using `tf.data.experimental.from_variant`.
+      string variant_tensor_name = 2;
+
       // NOTE: This structure will likely evolve and get extended with other
       // means of encoding data sets in the serialized graph representation.
     }
