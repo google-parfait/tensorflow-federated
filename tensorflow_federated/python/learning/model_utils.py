@@ -340,6 +340,21 @@ class _KerasModel(model_lib.Model):
 
     self._loss_metric = _WeightedMeanLossMetric()
 
+    metric_variable_type_dict = nest.map_structure(tf.TensorSpec.from_tensor,
+                                                   self.report_local_outputs())
+    federated_local_outputs_type = tff.FederatedType(
+        metric_variable_type_dict, tff.CLIENTS, all_equal=False)
+
+    def federated_output(local_outputs):
+      results = collections.OrderedDict()
+      for metric, variables in zip(self.get_metrics(), local_outputs):
+        results[metric.name] = federated_aggregate_keras_metric(
+            type(metric), metric.get_config(), variables)
+      return results
+
+    self._federated_output_computation = tff.federated_computation(
+        federated_output, federated_local_outputs_type)
+
     # Keras creates variables that are not added to any collection, making it
     # impossible for TFF to extract them and create the appropriate initializer
     # before call a tff.Computation. Here we store them in a TFF specific
@@ -417,20 +432,7 @@ class _KerasModel(model_lib.Model):
 
   @property
   def federated_output_computation(self):
-    metric_variable_type_dict = nest.map_structure(tf.TensorSpec.from_tensor,
-                                                   self.report_local_outputs())
-    federated_local_outputs_type = tff.FederatedType(
-        metric_variable_type_dict, tff.CLIENTS, all_equal=False)
-
-    @tff.federated_computation(federated_local_outputs_type)
-    def federated_output(local_outputs):
-      results = collections.OrderedDict()
-      for metric, variables in zip(self.get_metrics(), local_outputs):
-        results[metric.name] = federated_aggregate_keras_metric(
-            type(metric), metric.get_config(), variables)
-      return results
-
-    return federated_output
+    return self._federated_output_computation
 
   @classmethod
   def make_batch(cls, x, y):

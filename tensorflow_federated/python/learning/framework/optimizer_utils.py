@@ -338,8 +338,8 @@ def build_model_delta_optimizer_process(
 
   # TODO(b/122081673): would be nice not to have the construct a throwaway model
   # here just to get the types. After fully moving to TF2.0 and eager-mode, we
-  # should re-evaluate what happens here and where `g` is used below.
-  with tf.Graph().as_default() as g:
+  # should re-evaluate what happens here.
+  with tf.Graph().as_default():
     dummy_model_for_metadata = model_utils.enhance(model_fn())
 
   @tff.federated_computation
@@ -469,12 +469,8 @@ def build_model_delta_optimizer_process(
     server_state = tff.federated_apply(server_update_model_tf,
                                        (server_state, round_model_delta))
 
-    # Re-use graph used to construct `model`, since it has the variables, which
-    # need to be read in federated_output_computation to get the correct shapes
-    # and types for the federated aggregation.
-    with g.as_default():
-      aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
-          client_outputs.model_output)
+    aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
+        client_outputs.model_output)
 
     # Promote the FederatedType outside the NamedTupleType
     aggregated_outputs = tff.federated_zip(aggregated_outputs)
