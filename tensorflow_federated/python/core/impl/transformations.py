@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import collections
 import itertools
 
 import six
@@ -100,6 +101,215 @@ def transform_postorder(comp, fn):
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
+
+
+class SequentialBindingNode(object):
+  """Represents a node in a context tree with sequential-binding semantics.
+
+  `SequentialBindingNode`s are designed to be constructed and pushed into
+  a context tree as an AST representing a given computation is walked.
+
+  Each `SequentialBindingNode` holds as payload a variable binding in the AST.
+  The node-node relationships encoded by the `SequentialBindingNode` data
+  structure determine how the context tree must be walked in order to resolve
+  variables and track their values in the AST.
+
+  Parent-child relationships represent relationships between levels of the AST,
+  meaning, moving through an AST node which defines a variable scope in preorder
+  corresponds to moving from a `SequentialBindingNode` to one of its children,
+  and moving through such a node postorder corresponds to moving from a
+  `SequentialBindingNode` to its parent.
+
+  Sibling-sibling relationships are particular to sequential binding of
+  variables in `computation_building_blocks.Block` constructs; binding
+  a new variable in such a construct corresponds to moving from a
+  `SequentialBindingNode` to its (unique) younger sibling.
+  """
+
+  def __init__(self, payload):
+    """Initializes `SequentialBindingNode`.
+
+    Args:
+      payload: Instance of BoundVariableTracker representing the payload of this
+        node.
+    """
+    py_typecheck.check_type(payload, BoundVariableTracker)
+    self.payload = payload
+    self._children = collections.OrderedDict()
+    self._parent = None
+    self._older_sibling = None
+    self._younger_sibling = None
+
+  @property
+  def parent(self):
+    return self._parent
+
+  @property
+  def children(self):
+    return self._children
+
+  @property
+  def older_sibling(self):
+    return self._older_sibling
+
+  @property
+  def younger_sibling(self):
+    return self._younger_sibling
+
+  def set_parent(self, node):
+    """Sets the _parent scope of `self` to the binding embodied by `node`.
+
+    This method should not be assumed to be efficient.
+
+    Args:
+      node: Instance of `SequentialBindingNode` to set as parent of `self`.
+    """
+    py_typecheck.check_type(node, SequentialBindingNode)
+    self._parent = node
+
+  def set_older_sibling(self, node):
+    """Sets the older sibling scope of `self` to `node`.
+
+    This method should not be assumed to be efficient.
+
+    Args:
+      node: Instance of `SequentialBindingNode` to set as older sibling of
+        `self`.
+    """
+    py_typecheck.check_type(node, SequentialBindingNode)
+    self._older_sibling = node
+
+  def set_younger_sibling(self, node):
+    """Sets the younger sibling scope of `self` to `node`.
+
+    This corresponds to binding a new variable in a
+    `computation_building_blocks.Block` construct.
+
+    This method should not be assumed to be efficient.
+
+    Args:
+      node: Instance of `SequentialBindingNode` representing this new binding.
+    """
+    py_typecheck.check_type(node, SequentialBindingNode)
+    self._younger_sibling = node
+
+  def add_child(self, comp_id, node):
+    """Sets the child scope of `self` indexed by `comp_id` to `node`.
+
+    This corresponds to encountering a node in a TFF AST which defines a
+    variable scope.
+
+    If a child with this `comp_id` already exists, it is replaced, as in a
+    `dict`.
+
+    Args:
+      comp_id: The identifier of the computation generating this scope.
+      node: Instance of `SequentialBindingNode` representing this new binding.
+    """
+    py_typecheck.check_type(node, SequentialBindingNode)
+    self._children[comp_id] = node
+
+  def get_child(self, comp_id):
+    """Returns the child of `self` identified by `comp_id` if one exists.
+
+    Args:
+      comp_id: Integer used to address child of `self` by position of
+        corresponding AST node in a preorder traversal of the AST.
+
+    Returns:
+      Instance of `SequentialBindingNode` if an appropriate child of `self`
+      exists, or `None`.
+    """
+    return self._children.get(comp_id)
+
+
+@six.add_metaclass(abc.ABCMeta)
+class BoundVariableTracker(object):
+  """Abstract class representing a mutable variable binding."""
+
+  def __init__(self, name, value):
+    """Initializes `BoundVariableTracker`.
+
+    The initializer is likely to be overwritten by subclasses in order to
+    attach more state to the `BoundVariableTracker`. Each of them must
+    satisfy the same interface, however. This is simply because the
+    `BoundVariableTracker` represents a variable binding in a TFF AST;
+    no more information is avaiable to it than the `name`-`value` pair
+    being bound together.
+
+    Args:
+      name: String name of variable to be bound.
+      value: Value to bind to this name. Can be instance of
+        `computation_building_blocks.ComputationBuildingBlock` if this
+        `BoundVariableTracker` represents a concrete binding to a variable (e.g.
+        in a block locals declaration), or `None`, if this
+        `BoundVariableTracker` represents merely a variable declaration (e.g. in
+        a lambda).
+    """
+    py_typecheck.check_type(name, six.string_types)
+    if value is not None:
+      py_typecheck.check_type(
+          value, computation_building_blocks.ComputationBuildingBlock)
+    self.name = name
+    self.value = value
+
+  @abc.abstractmethod
+  def update(self, value=None):
+    """Abstract method defining the way information is read into this node.
+
+    Args:
+      value: Similar to `value` argument in initializer.
+    """
+    pass
+
+  @abc.abstractmethod
+  def __str__(self):
+    """Abstract string method required as context tree will delegate."""
+    pass
+
+  @abc.abstractmethod
+  def __eq__(self, other):
+    """Abstract equality method required as context tree will delegate."""
+    pass
+
+  def __ne__(self, other):
+    """Implementing __ne__ to enforce in Python2 the Python3 standard."""
+    return not self == other
+
+
+class OuterContextPointer(BoundVariableTracker):
+  """Sentinel node class representing the context 'outside' a given AST."""
+
+  def __init__(self, name=None, value=None):
+    if name is not None or value is not None:
+      raise ValueError('Please don\'t pass a name or value to '
+                       'OuterContextPointer; it will simply be ignored.')
+    super(OuterContextPointer, self).__init__('OuterContext', None)
+
+  def update(self, comp=None):
+    del comp
+    raise RuntimeError('We shouldn\'t be trying to update the outer context.')
+
+  def __str__(self):
+    return self.name
+
+  def __eq__(self, other):
+    """Returns `True` iff `other` is also an `OuterContextPointer`.
+
+    OuterContextPointer simply refers to a global notion of 'external',
+    so all instances are identical--"outside" of every building refers
+    to the same location.
+
+    Args:
+      other: Value for equality comparison.
+
+    Returns:
+      Returns true iff `other` is also an instance of `OuterContextPointer`.
+    """
+    # Using explicit type comparisons here to prevent a subclass from passing.
+    # pylint: disable=unidiomatic-typecheck
+    return type(other) is OuterContextPointer
+    # pylint: enable=unidiomatic-typecheck
 
 
 def replace_compiled_computations_names_with_unique_names(comp):
