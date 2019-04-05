@@ -38,9 +38,7 @@ class IntrinsicDef(object):
     Args:
       name: The short human-friendly name of this intrinsic.
       uri: The URI of this intrinsic.
-      type_spec: The type of the intrinsic, which must be functional, either an
-        instance of `computation_types.FunctionType` or something convertible to
-        it.
+      type_spec: The type of the intrinsic.
     """
     py_typecheck.check_type(name, six.string_types)
     py_typecheck.check_type(uri, six.string_types)
