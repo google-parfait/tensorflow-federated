@@ -188,6 +188,18 @@ def _get_number_of_intrinsics(comp, uri=None):
   return _get_number_of_nodes(comp, fn)
 
 
+class TrivialSubclass(transformations.BoundVariableTracker):
+
+  def update(self, comp):
+    pass
+
+  def __str__(self):
+    return 'TrivialSubclass'
+
+  def __eq__(self, other):
+    return id(self) == id(other)
+
+
 class TransformationsTest(parameterized.TestCase):
 
   def test_transform_postorder_fails_on_none(self):
@@ -232,6 +244,113 @@ class TransformationsTest(parameterized.TestCase):
         'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
+
+  def test_trivial_subclass_init_fails_bad_args(self):
+    with self.assertRaises(TypeError):
+      _ = TrivialSubclass()
+    with self.assertRaises(TypeError):
+      _ = TrivialSubclass(0, None)
+    with self.assertRaises(TypeError):
+      _ = TrivialSubclass('x', 0)
+
+  def test_trivial_subclass_init(self):
+    x = TrivialSubclass('x', None)
+    self.assertEqual(x.name, 'x')
+    self.assertIsNone(x.value)
+
+  def test_sequential_binding_node_fails_bad_args(self):
+    with self.assertRaises(TypeError):
+      _ = transformations.SequentialBindingNode(None)
+    with self.assertRaises(TypeError):
+      _ = transformations.SequentialBindingNode(0)
+
+  def test_sequential_binding_node_initialization(self):
+
+    trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('trivial_name', None))
+
+    self.assertEqual(trivial_instance.payload.name, 'trivial_name')
+    self.assertEmpty(trivial_instance.children)
+    self.assertIsNone(trivial_instance.payload.value)
+    self.assertIsNone(trivial_instance.parent)
+    self.assertIsNone(trivial_instance.younger_sibling)
+    self.assertIsNone(trivial_instance.older_sibling)
+
+  def test_comptracker_trivial_subclass_init_bad_args(self):
+    with self.assertRaises(TypeError):
+      _ = TrivialSubclass(0, None)
+    with self.assertRaises(TypeError):
+      _ = TrivialSubclass('x', 0)
+
+  def test_comptracker_trivial_subclass_parent_child_relationship(self):
+    trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('trivial_name', None))
+    second_trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('second_trivial_name', None))
+
+    self.assertNotEqual(trivial_instance, second_trivial_instance)
+    second_trivial_instance.set_parent(trivial_instance)
+    trivial_instance.add_child(0, second_trivial_instance)
+    self.assertEqual(trivial_instance.get_child(0), second_trivial_instance)
+    self.assertIsNone(trivial_instance.get_child(1))
+    self.assertEqual(second_trivial_instance.parent, trivial_instance)
+    with self.assertRaises(TypeError):
+      trivial_instance.set_parent(0)
+    with self.assertRaises(TypeError):
+      second_trivial_instance.add_child(0, 0)
+
+  def test_comptracker_trivial_subclass_sibling_relationship(self):
+    trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('trivial_name', None))
+    second_trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('second_trivial_name', None))
+
+    self.assertNotEqual(trivial_instance, second_trivial_instance)
+    trivial_instance.set_younger_sibling(second_trivial_instance)
+    self.assertEqual(trivial_instance.younger_sibling, second_trivial_instance)
+    second_trivial_instance.set_older_sibling(trivial_instance)
+    self.assertEqual(second_trivial_instance.older_sibling, trivial_instance)
+    with self.assertRaises(TypeError):
+      trivial_instance.set_younger_sibling(0)
+    with self.assertRaises(TypeError):
+      second_trivial_instance.set_older_sibling(0)
+
+  def test_comptracker_trivial_subclass_cousin_relationship(self):
+    trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('trivial_name', None))
+    second_trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('second_trivial_name', None))
+    third_trivial_instance = transformations.SequentialBindingNode(
+        TrivialSubclass('third_trivial_name', None))
+    trivial_instance.add_child(0, second_trivial_instance)
+    trivial_instance.add_child(1, third_trivial_instance)
+    second_trivial_instance.set_parent(trivial_instance)
+    third_trivial_instance.set_parent(trivial_instance)
+    second_trivial_instance_relations = [
+        second_trivial_instance.parent, second_trivial_instance.older_sibling,
+        second_trivial_instance.younger_sibling
+    ] + list(six.itervalues(second_trivial_instance.children))
+
+    third_trivial_instance_relations = [
+        third_trivial_instance.parent, third_trivial_instance.older_sibling,
+        third_trivial_instance.younger_sibling
+    ] + list(six.itervalues(third_trivial_instance.children))
+    self.assertNotIn(second_trivial_instance, third_trivial_instance_relations)
+    self.assertNotIn(third_trivial_instance, second_trivial_instance_relations)
+    self.assertEqual(
+        id(second_trivial_instance.parent), id(third_trivial_instance.parent))
+
+  def test_outer_context_pointer_equality(self):
+    outer_context = transformations.OuterContextPointer()
+    other_outer_context = transformations.OuterContextPointer()
+    self.assertNotEqual(id(outer_context), id(other_outer_context))
+    self.assertEqual(str(outer_context), 'OuterContext')
+    self.assertEqual(outer_context, other_outer_context)
+
+  def test_outer_context_pointer_cant_update(self):
+    outer_context = transformations.OuterContextPointer()
+    with self.assertRaises(RuntimeError):
+      outer_context.update()
 
   def test_replace_compiled_computations_names_with_none_raises_type_error(
       self):
