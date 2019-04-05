@@ -81,8 +81,11 @@ py_test(
     deps = [
         ":federated_evaluation",
         ":model",
+        ":model_examples",
+        ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
