@@ -152,19 +152,22 @@ def _compile_transform(
 
 
 def _transform(data, raw_client_id, index):
-  """Applies a random affine transform based on the client_id.
+  """Applies a random affine transform based on the client_id and index.
 
-  If the index of the client_id is 0, no transform is applied.
+  If the index is 0, no transform is applied.
 
   Args:
     data: The OrderedDict of data to transform.
     raw_client_id: The raw client_id.
     index: The index of the pseudo-client.
+
+  Returns:
+    The transformed data.
   """
   if index == 0:
-    return
+    return data
 
-  np.random.seed(hash(raw_client_id) + index)
+  np.random.seed((hash(raw_client_id) + index) % (2**32))
   def random_scale(min_val):
     b = math.log(min_val)
     return math.exp(np.random.uniform(b, -b))
@@ -176,6 +179,7 @@ def _transform(data, raw_client_id, index):
       translation_x=np.random.uniform(-5, 5),
       translation_y=np.random.uniform(-5, 5))
   data['pixels'] = img.transform(data['pixels'], transform, 'BILINEAR')
+  return data
 
 
 def infinite_emnist(emnist_client_data, num_pseudo_clients):

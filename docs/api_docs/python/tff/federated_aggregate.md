@@ -60,8 +60,8 @@ The multi-stage aggregation process is defined as follows:
 
 *   <b>`value`</b>: A value of a TFF federated type placed at
     <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to aggregate.
-*   <b>`zero`</b>: The zero in the algebra of reduction operators, as described
-    above.
+*   <b>`zero`</b>: The zero of type `U` in the algebra of reduction operators,
+    as described above.
 *   <b>`accumulate`</b>: The reduction operator to use in the first stage of the
     process. If `value` is of type `{T}@CLIENTS`, and `zero` is of type `U`,
     this operator should be of type `(<U,T> -> U)`.
