@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
 from six.moves import range
 import tensorflow as tf
@@ -32,10 +33,11 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_context
+from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 
 
-class ValueImplTest(absltest.TestCase):
+class ValueImplTest(parameterized.TestCase):
 
   def test_value_impl_with_reference(self):
     x_comp = computation_building_blocks.Reference('foo', tf.int32)
@@ -373,36 +375,31 @@ class ValueImplTest(absltest.TestCase):
     with self.assertRaisesRegexp(IndexError, 'slice 0 elements'):
       _ = v[2:4:-1]
 
-  def test_slicing_tuple_values(self):
-    for op in [list, tuple]:
-      t = op(range(0, 50, 10))
-      v = value_impl.to_value(t, None, context_stack_impl.context_stack)
-      self.assertEqual((str(v.type_signature)),
-                       '<int32,int32,int32,int32,int32>')
-      self.assertEqual(
-          str(v[:]),
-          str(value_impl.to_value(t, None, context_stack_impl.context_stack)))
-      sliced = v[:2]
-      self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
-      self.assertEqual(
-          str(sliced),
-          str(
-              value_impl.to_value(t[:2], None,
-                                  context_stack_impl.context_stack)))
-      sliced = v[-3:]
-      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-      self.assertEqual(
-          str(sliced),
-          str(
-              value_impl.to_value(t[-3:], None,
-                                  context_stack_impl.context_stack)))
-      sliced = v[::2]
-      self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-      self.assertEqual(
-          str(sliced),
-          str(
-              value_impl.to_value(t[::2], None,
-                                  context_stack_impl.context_stack)))
+  @parameterized.named_parameters(('list', list), ('tuple', tuple))
+  def test_slicing_tuple_values(self, sequence_type):
+
+    def _to_value(cbb):
+      return value_impl.to_value(cbb, None, context_stack_impl.context_stack)
+
+    t = sequence_type(range(0, 50, 10))
+    v = _to_value(
+        transformations.replace_compiled_computations_names_with_unique_names(
+            value_impl.ValueImpl.get_comp(_to_value(t))))
+
+    self.assertEqual((str(v.type_signature)), '<int32,int32,int32,int32,int32>')
+    self.assertEqual(str(v[:]), str(v))
+
+    sliced = v[:2]
+    self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
+    self.assertEqual(str(sliced), '<comp#1(),comp#2()>')
+
+    sliced = v[-3:]
+    self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
+    self.assertEqual(str(sliced), '<comp#3(),comp#4(),comp#5()>')
+
+    sliced = v[::2]
+    self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
+    self.assertEqual(str(sliced), '<comp#1(),comp#3(),comp#5()>')
 
   def test_getitem_resolution_federated_value_clients(self):
     federated_value = value_impl.to_value(
