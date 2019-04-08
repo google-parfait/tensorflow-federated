@@ -296,6 +296,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:value_base",
+        "@org_tensorflow//tensorflow/python:framework_for_generated_wrappers",
         "@six_archive//:six",
     ],
 )
@@ -314,6 +315,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python:framework_for_generated_wrappers",
         "@six_archive//:six",
     ],
 )
@@ -507,7 +509,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -588,14 +589,12 @@ py_test(
     size = "small",
     srcs = ["tf_computation_context_test.py"],
     deps = [
-        ":context_stack_impl",
         ":tf_computation_context",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

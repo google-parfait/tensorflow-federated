@@ -9,7 +9,6 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":optimizer_utils",
-        "//tensorflow_federated/python/learning:federated_averaging",
         "//tensorflow_federated/python/learning:model_utils",
     ],
 )
