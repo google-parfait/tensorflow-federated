@@ -26,6 +26,7 @@ import itertools
 from absl.testing import parameterized
 import numpy as np
 from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python.keras import metrics as keras_metrics
