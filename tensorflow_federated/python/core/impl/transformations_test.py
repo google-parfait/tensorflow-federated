@@ -670,6 +670,11 @@ class TransformationsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       transformations.replace_chained_federated_maps_with_federated_map(None)
 
+  def test_replace_chained_federated_maps_with_different_arg_types(self):
+    # TODO(b/130043404): Write a minimal test to check that merging federated
+    # maps places correct type signatures on the constructed intrinsic.
+    pass
+
   def test_replace_chained_federated_maps_with_two_federated_maps_replaces_federated_maps(
       self):
     map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
