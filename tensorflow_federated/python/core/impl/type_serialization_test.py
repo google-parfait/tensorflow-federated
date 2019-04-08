@@ -17,8 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
@@ -26,78 +28,110 @@ from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
-class TypeSerializationTest(test.TestCase):
+EMPTY_TENSORSHAPE_PROTO = tf.TensorShape([]).as_proto()
 
-  def test_serialize_type_with_tensor_dtype_without_shape(self):
-    self.assertEqual(
-        _compact_repr(type_serialization.serialize_type(tf.int32)),
-        'tensor { dtype: DT_INT32 shape { } }')
 
-  def test_serialize_type_with_tensor_dtype_with_shape(self):
-    self.assertEqual(
-        _compact_repr(type_serialization.serialize_type((tf.int32, [10, 20]))),
-        'tensor { dtype: DT_INT32 '
-        'shape { dim { size: 10 } dim { size: 20 } } }')
+def _create_scalar_tensor_type(dtype):
+  return pb.Type(
+      tensor=pb.TensorType(
+          dtype=dtype.as_datatype_enum, shape=EMPTY_TENSORSHAPE_PROTO))
 
-  def test_serialize_type_with_tensor_dtype_with_shape_undefined_dim(self):
-    self.assertEqual(
-        _compact_repr(type_serialization.serialize_type((tf.int32, [None]))),
-        'tensor { dtype: DT_INT32 '
-        'shape { dim { size: -1 } } }')
+
+class TypeSerializationTest(test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('scalar_int', tf.int32, []),
+      ('tensor_int', tf.int32, [10, 20]),
+      ('tensor_undefined_dim_int', tf.int32, [None, 10, 20]),
+      ('scalar_string', tf.string, []),
+      ('scalar_boo', tf.bool, []),
+  )
+  def test_serialize_tensor_type(self, dtype, shape):
+    actual_proto = type_serialization.serialize_type((dtype, shape))
+    expected_proto = pb.Type(
+        tensor=pb.TensorType(
+            dtype=dtype.as_datatype_enum,
+            shape=tf.TensorShape(shape).as_proto()))
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_string_sequence(self):
-    self.assertEqual(
-        _compact_repr(
-            type_serialization.serialize_type(
-                computation_types.SequenceType(tf.string))),
-        'sequence { element { tensor { dtype: DT_STRING shape { } } } }')
+    actual_proto = type_serialization.serialize_type(
+        computation_types.SequenceType(tf.string))
+    expected_proto = pb.Type(
+        sequence=pb.SequenceType(element=_create_scalar_tensor_type(tf.string)))
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_tensor_tuple(self):
-    self.assertEqual(
-        _compact_repr(
-            type_serialization.serialize_type([('x', tf.int32),
-                                               ('y', tf.string), tf.float32,
-                                               ('z', tf.bool)])), 'tuple { '
-        'element { name: "x" value { tensor { dtype: DT_INT32 shape { } } } } '
-        'element { name: "y" value { tensor { dtype: DT_STRING shape { } } } } '
-        'element { value { tensor { dtype: DT_FLOAT shape { } } } } '
-        'element { name: "z" value { tensor { dtype: DT_BOOL shape { } } } } }')
+    actual_proto = type_serialization.serialize_type([
+        ('x', tf.int32),
+        ('y', tf.string),
+        tf.float32,
+        ('z', tf.bool),
+    ])
+    expected_proto = pb.Type(
+        tuple=pb.NamedTupleType(element=[
+            pb.NamedTupleType.Element(
+                name='x', value=_create_scalar_tensor_type(tf.int32)),
+            pb.NamedTupleType.Element(
+                name='y', value=_create_scalar_tensor_type(tf.string)),
+            pb.NamedTupleType.Element(
+                value=_create_scalar_tensor_type(tf.float32)),
+            pb.NamedTupleType.Element(
+                name='z', value=_create_scalar_tensor_type(tf.bool)),
+        ]))
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_nested_tuple(self):
-    self.assertEqual(
-        _compact_repr(
-            type_serialization.serialize_type([('x', [('y', [('z',
-                                                              tf.bool)])])])),
-        'tuple { element { name: "x" value { '
-        'tuple { element { name: "y" value { '
-        'tuple { element { name: "z" value { '
-        'tensor { dtype: DT_BOOL shape { } } '
-        '} } } } } } } } }')
+    actual_proto = type_serialization.serialize_type([
+        ('x', [('y', [('z', tf.bool)])]),
+    ])
+
+    def _tuple_type_proto(elements):
+      return pb.Type(tuple=pb.NamedTupleType(element=elements))
+
+    z_proto = pb.NamedTupleType.Element(
+        name='z', value=_create_scalar_tensor_type(tf.bool))
+    expected_proto = _tuple_type_proto([
+        pb.NamedTupleType.Element(
+            name='x',
+            value=_tuple_type_proto([
+                pb.NamedTupleType.Element(
+                    name='y', value=_tuple_type_proto([z_proto]))
+            ]))
+    ])
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_function(self):
-    self.assertEqual(
-        _compact_repr(
-            type_serialization.serialize_type(
-                computation_types.FunctionType((tf.int32, tf.int32), tf.bool))),
-        'function { parameter { tuple { '
-        'element { value { tensor { dtype: DT_INT32 shape { } } } } '
-        'element { value { tensor { dtype: DT_INT32 shape { } } } } '
-        '} } result { tensor { dtype: DT_BOOL shape { } } } }')
+    actual_proto = type_serialization.serialize_type(
+        computation_types.FunctionType((tf.int32, tf.int32), tf.bool))
+    expected_proto = pb.Type(
+        function=pb.FunctionType(
+            parameter=pb.Type(
+                tuple=pb.NamedTupleType(element=[
+                    pb.NamedTupleType.Element(
+                        value=_create_scalar_tensor_type(tf.int32)),
+                    pb.NamedTupleType.Element(
+                        value=_create_scalar_tensor_type(tf.int32))
+                ])),
+            result=_create_scalar_tensor_type(tf.bool)))
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_placement(self):
-    self.assertEqual(
-        _compact_repr(
-            type_serialization.serialize_type(
-                computation_types.PlacementType())), 'placement { }')
+    actual_proto = type_serialization.serialize_type(
+        computation_types.PlacementType())
+    expected_proto = pb.Type(placement=pb.PlacementType())
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_federated_bool(self):
-    self.assertEqual(
-        _compact_repr(
-            type_serialization.serialize_type(
-                computation_types.FederatedType(tf.bool, placements.CLIENTS,
-                                                True))),
-        'federated { placement { value { uri: "clients" } } all_equal: true '
-        'member { tensor { dtype: DT_BOOL shape { } } } }')
+    actual_proto = type_serialization.serialize_type(
+        computation_types.FederatedType(tf.bool, placements.CLIENTS, True))
+    expected_proto = pb.Type(
+        federated=pb.FederatedType(
+            placement=pb.PlacementSpec(
+                value=pb.Placement(uri=placements.CLIENTS.uri)),
+            all_equal=True,
+            member=_create_scalar_tensor_type(tf.bool)))
+    self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_deserialize_tensor_types(self):
     self._serialize_deserialize_roundtrip_test(
@@ -147,22 +181,6 @@ class TypeSerializationTest(test.TestCase):
       self.assertEqual(repr(t1), repr(t2))
       self.assertEqual(repr(p1), repr(p2))
       self.assertTrue(type_utils.are_equivalent_types(t1, t2))
-
-
-def _compact_repr(m):
-  """Returns a compact representation of message 'm'.
-
-  Args:
-    m: A protocol buffer message instance.
-
-  Returns:
-    A compact string representation of 'm' with all newlines replaced with
-    spaces, and stringd multiple spaces replaced with just one.
-  """
-  s = repr(m).replace('\n', ' ')
-  while '  ' in s:
-    s = s.replace('  ', ' ')
-  return s.strip()
 
 
 if __name__ == '__main__':
