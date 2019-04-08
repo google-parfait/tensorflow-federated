@@ -35,12 +35,10 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
                                   ('server', placement_literals.SERVER))
   def test_getitem_comp_construction(self, placement):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placement, True)), None,
-        context_stack_impl.context_stack)
+    federated_value = computation_building_blocks.Reference(
+        'test',
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                        placement, True))
     get_0_comp = computation_constructing_utils.construct_federated_getitem_comp(
         federated_value, 0)
     self.assertEqual(str(get_0_comp), '(x -> x[0])')
@@ -51,24 +49,19 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
                                   ('server', placement_literals.SERVER))
   def test_getattr_comp_construction(self, placement):
-    federated_value = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placement, True)), None,
-        context_stack_impl.context_stack)
+    federated_value = computation_building_blocks.Reference(
+        'test',
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                        placement, True))
     get_a_comp = computation_constructing_utils.construct_federated_getattr_comp(
         federated_value, 'a')
     self.assertEqual(str(get_a_comp), '(x -> x.a)')
     get_b_comp = computation_constructing_utils.construct_federated_getattr_comp(
         federated_value, 'b')
     self.assertEqual(str(get_b_comp), '(x -> x.b)')
-    non_federated_arg = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'test',
-            computation_types.NamedTupleType([('a', tf.int32),
-                                              ('b', tf.bool)])), None,
-        context_stack_impl.context_stack)
+    non_federated_arg = computation_building_blocks.Reference(
+        'test',
+        computation_types.NamedTupleType([('a', tf.int32), ('b', tf.bool)]))
     with self.assertRaises(TypeError):
       _ = computation_constructing_utils.construct_federated_getattr_comp(
           non_federated_arg, 'a')
@@ -103,6 +96,45 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     intrinsic = computation_constructing_utils.construct_map_or_apply(
         non_federated_fn, federated_comp)
     self.assertEqual(str(intrinsic), 'federated_map')
+
+  def test_intrinsic_construction_fails_bad_type(self):
+    x = computation_building_blocks.Reference('x', tf.int32)
+    bad_lambda = computation_building_blocks.Lambda('x', tf.int32, x)
+    x = computation_building_blocks.Reference('x', tf.int32)
+    clients_ref = computation_building_blocks.Reference(
+        'y',
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_map_or_apply(
+          bad_lambda, clients_ref)
+
+  def test_federated_getitem_call_fails_value(self):
+    x = computation_building_blocks.Reference(
+        'x', computation_types.to_type([tf.int32]))
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_federated_getitem_call(
+          value_impl.to_value(x), 0)
+
+  def test_federated_getattr_call_fails_value(self):
+    x = computation_building_blocks.Reference(
+        'x', computation_types.to_type([('x', tf.int32)]))
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_federated_getattr_call(
+          value_impl.to_value(x), 'x')
+
+  def test_federated_getitem_comp_fails_value(self):
+    x = computation_building_blocks.Reference(
+        'x', computation_types.to_type([tf.int32]))
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_federated_getitem_comp(
+          value_impl.to_value(x), 0)
+
+  def test_federated_getattr_comp_fails_value(self):
+    x = computation_building_blocks.Reference(
+        'x', computation_types.to_type([('x', tf.int32)]))
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_federated_getattr_comp(
+          value_impl.to_value(x), 'x')
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
                                   ('server', placement_literals.SERVER))
