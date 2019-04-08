@@ -402,19 +402,16 @@ def build_model_delta_optimizer_process(
 
     new_broadcaster_state, client_model = stateful_model_broadcast_fn(
         server_state.model_broadcast_state, server_state.model)
-    # TODO(b/129569441): Just update model_broadcast_state directly.
-    server_state = tff.federated_zip(
-        ServerState(
-            model=server_state.model,
-            optimizer_state=server_state.optimizer_state,
-            delta_aggregate_state=server_state.delta_aggregate_state,
-            model_broadcast_state=new_broadcaster_state))
 
     client_outputs = tff.federated_map(client_delta_tf,
                                        (federated_dataset, client_model))
 
-    @tff.tf_computation(server_state_type, model_weights_type.trainable)
-    def server_update_model_tf(server_state, model_delta):
+    @tff.tf_computation(
+        server_state_type, model_weights_type.trainable,
+        server_state.delta_aggregate_state.type_signature.member,
+        server_state.model_broadcast_state.type_signature.member)
+    def server_update_tf(server_state, model_delta, new_delta_aggregate_state,
+                         new_broadcaster_state):
       """Converts args to correct python types and calls server_update_model."""
       # We need to convert TFF types to the types server_update_model expects.
       # TODO(b/123092620): Mixing AnonymousTuple with other nested types is not
@@ -426,8 +423,8 @@ def build_model_delta_optimizer_process(
       server_state = ServerState(
           model=model_utils.ModelWeights.from_tff_value(server_state.model),
           optimizer_state=list(server_state.optimizer_state),
-          delta_aggregate_state=server_state.delta_aggregate_state,
-          model_broadcast_state=server_state.model_broadcast_state)
+          delta_aggregate_state=new_delta_aggregate_state,
+          model_broadcast_state=new_broadcaster_state)
 
       return server_update_model(
           server_state,
@@ -455,19 +452,13 @@ def build_model_delta_optimizer_process(
         server_state.delta_aggregate_state,
         client_outputs.weights_delta,
         weight=weight_denom)
-    # TODO(b/129569441): Just update delta_aggregate_state directly.
-    server_state = tff.federated_zip(
-        ServerState(
-            model=server_state.model,
-            optimizer_state=server_state.optimizer_state,
-            delta_aggregate_state=new_delta_aggregate_state,
-            model_broadcast_state=server_state.model_broadcast_state))
 
     # TODO(b/123408447): remove tff.federated_apply and call
-    # server_update_model_tf directly once T <-> T@SERVER isomorphism is
+    # server_update_tf directly once T <-> T@SERVER isomorphism is
     # supported.
-    server_state = tff.federated_apply(server_update_model_tf,
-                                       (server_state, round_model_delta))
+    server_state = tff.federated_apply(
+        server_update_tf, (server_state, round_model_delta,
+                           new_delta_aggregate_state, new_broadcaster_state))
 
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
