@@ -25,6 +25,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python.keras.optimizer_v2 import gradient_descent
