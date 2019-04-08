@@ -121,6 +121,47 @@ def _create_call_for_federated_map(fn, arg):
   return computation_building_blocks.Call(intrinsic, tup)
 
 
+def _create_lambda_to_chained_call(fn, arg, n):
+  r"""Creates a lambda to chain `n` calls.
+
+       Lambda 1
+             \
+              Call 2
+             /    \
+  Computation 3    ... 4
+                  /   \
+               ... 5   Call 6
+                      /    \
+           Computation 7    Computation 8
+
+  The `n` calls are represented by (2, 4, and 6), for each call the function is
+  the functional computation `fn` (3, 5, and 7) and the argument is either the
+  result of the previous call or, if the call is the first call, the argument
+  `arg` (8).
+
+  Args:
+    fn: An instance of a functional
+      `computation_building_blocks.ComputationBuildingBlock` to use as the call
+      function.
+    arg: An instance of `computation_building_blocks.Reference` to use as the
+      call argument.
+    n: The number of calls to chain.
+
+  Returns:
+    An instance of `computation_building_blocks.Lambda` pointing to `n` chained
+    calls.
+  """
+  py_typecheck.check_type(fn,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg, computation_building_blocks.Reference)
+  chained_arg = arg
+  for _ in range(n):
+    chained_call = computation_building_blocks.Call(fn, chained_arg)
+    chained_arg = chained_call
+  return computation_building_blocks.Lambda(arg.name, arg.type_signature,
+                                            chained_call)
+
+
 def _create_lambda_to_add_one(dtype):
   r"""Creates a computation to add one to an argument.
 
@@ -166,7 +207,8 @@ def _get_number_of_nodes(comp, predicate=None):
 
 def _get_number_of_computations(comp, comp_type=None):
   """Returns the number of computations in `comp` with the type `comp_type`."""
-  py_typecheck.check_type(comp, computation_building_blocks.Computation)
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
 
   def fn(node):
     # Using explicit type comparisons here to prevent a subclass from passing.
@@ -357,7 +399,7 @@ class TransformationsTest(parameterized.TestCase):
         '<federated_sum_arg,generic_zero,generic_plus>))'
         '(federated_broadcast(foo_arg)))')
 
-    reduced_lambda_comp = transformations.replace_called_lambdas_with_block(
+    reduced_lambda_comp = transformations.replace_called_lambda_with_block(
         transformed_comp)
 
     self.assertEqual(
@@ -365,51 +407,94 @@ class TransformationsTest(parameterized.TestCase):
         '(foo_arg -> (let federated_sum_arg=federated_broadcast(foo_arg) in '
         'federated_reduce(<federated_sum_arg,generic_zero,generic_plus>)))')
 
-  def test_simple_reduce_lambda(self):
-    x = computation_building_blocks.Reference('x', [tf.int32])
-    l = computation_building_blocks.Lambda('x', [tf.int32], x)
-    input_val = computation_building_blocks.Tuple(
-        [computation_building_blocks.Data('test', tf.int32)])
-    called = computation_building_blocks.Call(l, input_val)
-    self.assertEqual(str(called), '(x -> x)(<test>)')
-    reduced = transformations.replace_called_lambdas_with_block(called)
-    self.assertEqual(str(reduced), '(let x=<test> in x)')
+  def test_replace_called_lambda_with_none_raises_type_error(self):
+    with self.assertRaises(TypeError):
+      transformations.replace_called_lambda_with_block(None)
 
-  def test_nested_reduce_lambda(self):
-    comp = computation_building_blocks.Tuple(
-        [computation_building_blocks.Data('test', tf.int32)])
-    input1 = computation_building_blocks.Reference('input1',
-                                                   comp.type_signature)
-    first_level_call = computation_building_blocks.Call(
-        computation_building_blocks.Lambda('input1', input1.type_signature,
-                                           input1), comp)
-    input2 = computation_building_blocks.Reference(
-        'input2', first_level_call.type_signature)
-    second_level_call = computation_building_blocks.Call(
-        computation_building_blocks.Lambda('input2', input2.type_signature,
-                                           input2), first_level_call)
+  def test_replace_called_lambda_with_one_called_lambda_replaces_called_lambda(
+      self):
+    arg = computation_building_blocks.Reference('arg', tf.int32)
+    lam = _create_lambda_to_add_one(arg.type_signature)
+    call = computation_building_blocks.Call(lam, arg)
+    calling_lambda = computation_building_blocks.Lambda(
+        arg.name, arg.type_signature, call)
+    comp = calling_lambda
 
-    lambda_reduced_comp = transformations.replace_called_lambdas_with_block(
-        second_level_call)
     self.assertEqual(
-        str(second_level_call),
-        '(input2 -> input2)((input1 -> input1)(<test>))')
+        _get_number_of_computations(comp, computation_building_blocks.Block), 0)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl(1), 2)
+
+    transformed_comp = transformations.replace_called_lambda_with_block(comp)
+
     self.assertEqual(
-        str(lambda_reduced_comp),
-        '(let input2=(let input1=<test> in input1) in input2)')
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Call),
+        _get_number_of_computations(comp, computation_building_blocks.Call) - 1)
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Lambda),
+        _get_number_of_computations(comp, computation_building_blocks.Lambda) -
+        1)
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Block), 1)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl(1), 2)
 
-  def test_no_reduce_lambda_without_call(self):
+  def test_replace_called_lambda_with_ten_called_lambda_replaces_called_lambda(
+      self):
+    arg = computation_building_blocks.Reference('arg', tf.int32)
+    lam = _create_lambda_to_add_one(arg.type_signature)
+    calling_lambda = _create_lambda_to_chained_call(lam, arg, 10)
+    comp = calling_lambda
 
-    @computations.federated_computation(tf.int32)
-    def foo(x):
-      return x
+    self.assertEqual(
+        _get_number_of_computations(comp, computation_building_blocks.Block), 0)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl(1), 11)
 
-    comp = _to_building_block(foo)
-    py_typecheck.check_type(comp, computation_building_blocks.Lambda)
-    lambda_reduced_comp = transformations.replace_called_lambdas_with_block(
-        comp)
-    self.assertEqual(str(comp), '(foo_arg -> foo_arg)')
-    self.assertEqual(str(comp), str(lambda_reduced_comp))
+    transformed_comp = transformations.replace_called_lambda_with_block(comp)
+
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Call),
+        _get_number_of_computations(comp, computation_building_blocks.Call) -
+        10)
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Lambda),
+        _get_number_of_computations(comp, computation_building_blocks.Lambda) -
+        10)
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Block), 10)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl(1), 11)
+
+  def test_replace_called_lambda_with_lambda_does_not_replace_lambda(self):
+    comp = _create_lambda_to_add_one(tf.int32)
+
+    self.assertEqual(
+        _get_number_of_computations(comp, computation_building_blocks.Block), 0)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl(1), 2)
+
+    transformed_comp = transformations.replace_called_lambda_with_block(comp)
+
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Call),
+        _get_number_of_computations(comp, computation_building_blocks.Call))
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Lambda),
+        _get_number_of_computations(comp, computation_building_blocks.Lambda))
+    self.assertEqual(
+        _get_number_of_computations(transformed_comp,
+                                    computation_building_blocks.Block), 0)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl(1), 2)
 
   def test_remove_mapped_or_applied_identity_fails_on_none(self):
     with self.assertRaises(TypeError):
@@ -498,7 +583,7 @@ class TransformationsTest(parameterized.TestCase):
     test_arg = computation_building_blocks.Data('test', tf.int32)
     called_block = computation_building_blocks.Call(block_wrapped_comp,
                                                     test_arg)
-    lambda_reduced_comp = transformations.replace_called_lambdas_with_block(
+    lambda_reduced_comp = transformations.replace_called_lambda_with_block(
         called_block)
     self.assertEqual(str(called_block), '(let  in (foo_arg -> foo_arg))(test)')
     self.assertEqual(str(called_block), str(lambda_reduced_comp))
@@ -634,7 +719,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(
         str(second_level_call),
         '(input2 -> input2)((input2 -> input2)(<test>))')
-    lambda_reduced_comp = transformations.replace_called_lambdas_with_block(
+    lambda_reduced_comp = transformations.replace_called_lambda_with_block(
         second_level_call)
     self.assertEqual(
         str(lambda_reduced_comp),

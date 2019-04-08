@@ -40,7 +40,7 @@ def replace_compiled_computations_names_with_unique_names(comp):
     comp: The computation building block in which to perform the replacements.
 
   Returns:
-    A new computation.
+    A new computation with the transformation applied or the original `comp`.
 
   Raises:
     TypeError: If types do not match.
@@ -112,35 +112,54 @@ def replace_intrinsic_with_callable(comp, uri, body, context_stack):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def replace_called_lambdas_with_block(comp):
-  """Replaces occurrences of Call(Lambda(...), ...)) with Block(...).
+def replace_called_lambda_with_block(comp):
+  r"""Replaces all the called lambdas in `comp` with a block.
 
-  This transformation is used to facilitate the merging of TFF orchestration
-  logic, in particular to remove unnecessary lambda expressions and as a
-  stepping stone for merging Blocks together to maximal effect.
+  This transform traverses `comp` postorder, matches the following pattern `*`,
+  and replaces the following computation containing a called lambda:
+
+               *Call
+               /    \
+     *Lambda(x)      z=Computation
+               \
+                y=Computation
+
+  (x -> y)(z)
+
+  with the following computation containing a block:
+
+                      Block
+                     /     \
+   (x, y=Computation)       z=Computation
+
+  let x=z in y
+
+  The functional computation `y` and the argument `z` are retained; the other
+  computations are replaced. This transformation is used to facilitate the
+  merging of TFF orchestration logic, in particular to remove unnecessary lambda
+  expressions and as a stepping stone for merging Blocks together.
 
   Args:
     comp: The computation building block in which to perform the replacements.
 
   Returns:
-    A modified version of `comp` with all occurrences of the pattern Call(
-    Lambda(...), args) replaced with an equivalent Block(...), or the original
-    `comp` if it does not follow the `Call(Lambda(...), args)` pattern.
+    A new computation with the transformation applied or the original `comp`.
+
+  Raises:
+    TypeError: If types do not match.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
+  def _should_transform(comp):
+    return (isinstance(comp, computation_building_blocks.Call) and
+            isinstance(comp.function, computation_building_blocks.Lambda))
+
   def _transform(comp):
-    """Internal function to break down Call-Lambda and build Block."""
-    if not isinstance(comp, computation_building_blocks.Call):
+    if not _should_transform(comp):
       return comp
-    elif not isinstance(comp.function, computation_building_blocks.Lambda):
-      return comp
-    arg = comp.argument
-    lam = comp.function
-    param_name = lam.parameter_name
-    result = lam.result
-    return computation_building_blocks.Block([(param_name, arg)], result)
+    return computation_building_blocks.Block(
+        [(comp.function.parameter_name, comp.argument)], comp.function.result)
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -188,46 +207,46 @@ def remove_mapped_or_applied_identity(comp):
 def replace_chained_federated_maps_with_federated_map(comp):
   r"""Replaces all the chained federated maps in `comp` with one federated map.
 
-  This transform traverses `comp` postorder, matches the following pattern *,
+  This transform traverses `comp` postorder, matches the following pattern `*`,
   and replaces the following computation containing two federated map
   intrinsics:
 
-            *Call 1
+            *Call
             /    \
-  *Intrinsic 2   *Tuple 3
+  *Intrinsic     *Tuple
                  /     \
-      Computation 4    *Call 5
+    x=Computation      *Call
                        /    \
-             *Intrinsic 6   *Tuple 7
+             *Intrinsic     *Tuple
                             /     \
-                 Computation 8     Computation 9
+               y=Computation       z=Computation
 
-  federated_map(<(x -> foo), federated_map(<(x -> bar), baz>)>)
+  federated_map(<x, federated_map(<y, z>)>)
 
   with the following computation containing one federated map intrinsic:
 
             Call
            /    \
-  Intrinsic 2    Tuple
+  Intrinsic      Tuple
                 /     \
-          Lambda       Computation 9
+       Lambda(a)       z=Computation
                 \
                  Call
                 /    \
-     Computation 4    Call
+   x=Computation      Call
                      /    \
-          Computation 8    Reference
+        y=Computation      Reference(a)
 
-  federated_map(<(z -> (x -> foo)((y -> bar)(z))), baz>)
+  federated_map(<(a -> x(y(a))), z>)
 
-  The outer federated map intrinsic (2), the functional computations (4, 8), and
-  the argument (9) are retained; the other computations are replaced.
+  The functional computations `x` and `y`, and the argument `z` are retained;
+  the other computations are replaced.
 
   Args:
     comp: The computation building block in which to perform the replacements.
 
   Returns:
-    A new computation.
+    A new computation with the transformation applied or the original `comp`.
 
   Raises:
     TypeError: If types do not match.
