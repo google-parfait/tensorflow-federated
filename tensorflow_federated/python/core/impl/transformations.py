@@ -550,7 +550,11 @@ def replace_chained_federated_maps_with_federated_map(comp):
                                                     inner_arg.type_signature,
                                                     outer_call)
     map_tuple = computation_building_blocks.Tuple([map_lambda, map_arg])
-    return computation_building_blocks.Call(comp.function, map_tuple)
+    map_intrinsic_type = computation_types.FunctionType(
+        map_tuple.type_signature, comp.function.type_signature.result)
+    map_intrinsic = computation_building_blocks.Intrinsic(
+        comp.function.uri, map_intrinsic_type)
+    return computation_building_blocks.Call(map_intrinsic, map_tuple)
 
   return transform_postorder(comp, _transform)
 
