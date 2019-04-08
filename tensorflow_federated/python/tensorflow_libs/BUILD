@@ -19,7 +19,6 @@ py_test(
     deps = [
         ":tensor_utils",
         "//tensorflow_federated/python/common_libs:test",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
