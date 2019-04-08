@@ -28,7 +28,7 @@ py_test(
         ":computation_impl",
         ":context_stack_impl",
         ":intrinsic_defs",
-        ":transformations",
+        ":transformation_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -601,6 +601,34 @@ py_test(
 )
 
 py_library(
+    name = "transformation_utils",
+    srcs = ["transformation_utils.py"],
+    deps = [
+        ":computation_building_blocks",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "transformation_utils_test",
+    size = "small",
+    srcs = ["transformation_utils_test.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":computation_impl",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_library(
     name = "transformations",
     srcs = ["transformations.py"],
     deps = [
@@ -608,7 +636,7 @@ py_library(
         ":context_stack_base",
         ":federated_computation_utils",
         ":intrinsic_defs",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "@six_archive//:six",
@@ -626,6 +654,7 @@ py_test(
         ":intrinsic_bodies",
         ":intrinsic_defs",
         ":tensorflow_serialization",
+        ":transformation_utils",
         ":transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -635,7 +664,6 @@ py_test(
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
