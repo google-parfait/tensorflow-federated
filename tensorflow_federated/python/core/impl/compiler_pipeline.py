@@ -79,8 +79,8 @@ class CompilerPipeline(object):
     # TODO(b/113123410): Replace this with a more automated implementation that
     # does not rely on manual maintenance.
     for uri, body in six.iteritems(self._intrinsic_bodies):
-      comp = transformations.replace_intrinsic(comp, uri, body,
-                                               self._context_stack)
+      comp = transformations.replace_intrinsic_with_callable(
+          comp, uri, body, self._context_stack)
 
     # TODO(b/113123410): Add more transformations to simplify and optimize the
     # structure, e.g., such as:

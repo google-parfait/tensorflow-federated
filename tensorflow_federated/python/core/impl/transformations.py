@@ -344,25 +344,27 @@ def replace_compiled_computations_names_with_unique_names(comp):
   return transform_postorder(comp, _transform)
 
 
-def replace_intrinsic(comp, uri, body, context_stack):
-  """Replaces all occurrences of an intrinsic.
+def replace_intrinsic_with_callable(comp, uri, body, context_stack):
+  """Replaces all the intrinsics with the given `uri` with a callable.
+
+  This transform traverses `comp` postorder and replaces all the intrinsics with
+  the given `uri` with a polymorphic callable that represents the body of the
+  implementation of the intrinsic; i.e., one that given the parameter of the
+  intrinsic constructs the intended result. This will typically be a Python
+  function decorated with `@federated_computation` to make it into a polymorphic
+  callable.
 
   Args:
     comp: The computation building block in which to perform the replacements.
     uri: The URI of the intrinsic to replace.
-    body: A polymorphic callable that represents the body of the implementation
-      of the intrinsic, i.e., one that given the parameter of the intrinsic
-      constructs the intended result. This will typically be a Python function
-      decorated with `@federated_computation` to make it into a polymorphic
-      callable.
+    body: A polymorphic callable.
     context_stack: The context stack to use.
 
   Returns:
-    A modified variant of `comp` with all occurrences of the intrinsic with
-    the URI equal to `uri` replaced with the logic constructed by `replacement`.
+    A new computation with the transformation applied or the original `comp`.
 
   Raises:
-    TypeError: if types do not match somewhere in the course of replacement.
+    TypeError: If types do not match.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -371,25 +373,25 @@ def replace_intrinsic(comp, uri, body, context_stack):
   if not callable(body):
     raise TypeError('The body of the intrinsic must be a callable.')
 
-  def _transformation_fn(comp, uri, body):
-    """Internal function to replace occurrences of an intrinsic."""
-    if not isinstance(comp, computation_building_blocks.Intrinsic):
-      return comp
-    elif comp.uri != uri:
-      return comp
-    else:
-      py_typecheck.check_type(comp.type_signature,
-                              computation_types.FunctionType)
-      # We need 'wrapped_body' to accept exactly one argument.
-      wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
-      return federated_computation_utils.zero_or_one_arg_fn_to_building_block(
-          wrapped_body,
-          'arg',
-          comp.type_signature.parameter,
-          context_stack,
-          suggested_name=uri)
+  def _should_transform(comp):
+    return (isinstance(comp, computation_building_blocks.Intrinsic) and
+            comp.uri == uri and
+            isinstance(comp.type_signature, computation_types.FunctionType))
 
-  return transform_postorder(comp, lambda x: _transformation_fn(x, uri, body))
+  def _transform(comp):
+    """Internal transform function."""
+    if not _should_transform(comp):
+      return comp
+    # We need 'wrapped_body' to accept exactly one argument.
+    wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
+    return federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+        wrapped_body,
+        'arg',
+        comp.type_signature.parameter,
+        context_stack,
+        suggested_name=uri)
+
+  return transform_postorder(comp, _transform)
 
 
 def replace_called_lambdas_with_block(comp):

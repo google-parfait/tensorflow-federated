@@ -161,7 +161,7 @@ def _get_number_of_nodes(comp, predicate=None):
       count[0] += 1
     return comp
 
-  _ = transformations.transform_postorder(comp, fn)
+  transformations.transform_postorder(comp, fn)
   return count[0]
 
 
@@ -247,11 +247,11 @@ class TransformationsTest(parameterized.TestCase):
 
   def test_trivial_subclass_init_fails_bad_args(self):
     with self.assertRaises(TypeError):
-      _ = TrivialSubclass()
+      TrivialSubclass()
     with self.assertRaises(TypeError):
-      _ = TrivialSubclass(0, None)
+      TrivialSubclass(0, None)
     with self.assertRaises(TypeError):
-      _ = TrivialSubclass('x', 0)
+      TrivialSubclass('x', 0)
 
   def test_trivial_subclass_init(self):
     x = TrivialSubclass('x', None)
@@ -260,9 +260,9 @@ class TransformationsTest(parameterized.TestCase):
 
   def test_sequential_binding_node_fails_bad_args(self):
     with self.assertRaises(TypeError):
-      _ = transformations.SequentialBindingNode(None)
+      transformations.SequentialBindingNode(None)
     with self.assertRaises(TypeError):
-      _ = transformations.SequentialBindingNode(0)
+      transformations.SequentialBindingNode(0)
 
   def test_sequential_binding_node_initialization(self):
 
@@ -278,9 +278,9 @@ class TransformationsTest(parameterized.TestCase):
 
   def test_comptracker_trivial_subclass_init_bad_args(self):
     with self.assertRaises(TypeError):
-      _ = TrivialSubclass(0, None)
+      TrivialSubclass(0, None)
     with self.assertRaises(TypeError):
-      _ = TrivialSubclass('x', 0)
+      TrivialSubclass('x', 0)
 
   def test_comptracker_trivial_subclass_parent_child_relationship(self):
     trivial_instance = transformations.SequentialBindingNode(
@@ -355,7 +355,7 @@ class TransformationsTest(parameterized.TestCase):
   def test_replace_compiled_computations_names_with_none_raises_type_error(
       self):
     with self.assertRaises(TypeError):
-      _ = transformations.replace_compiled_computations_names_with_unique_names(
+      transformations.replace_compiled_computations_names_with_unique_names(
           None)
 
   def test_replace_compiled_computations_names_with_one_compiled_computation_replaces_name(
@@ -403,32 +403,97 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(transformed_comp._name, comp._name)
 
-  def test_replace_intrinsic(self):
+  def test_replace_intrinsic_with_none_comp_raises_type_error(self):
+    uri = intrinsic_defs.GENERIC_PLUS.uri
+    body = lambda x: 100
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER, True))
-    def foo(x):
-      return intrinsics.federated_sum(intrinsics.federated_broadcast(x))
+    with self.assertRaises(TypeError):
+      transformations.replace_intrinsic_with_callable(
+          None, uri, body, context_stack_impl.context_stack)
 
-    comp = _to_building_block(foo)
-    self.assertEqual(
-        str(comp), '(foo_arg -> federated_sum(federated_broadcast(foo_arg)))')
+  def test_replace_intrinsic_with_none_uri_raises_type_error(self):
+    comp = _create_lambda_to_add_one(tf.int32)
+    body = lambda x: 100
 
-    bodies = intrinsic_bodies.get_intrinsic_bodies(
-        context_stack_impl.context_stack)
+    with self.assertRaises(TypeError):
+      transformations.replace_intrinsic_with_callable(
+          comp, None, body, context_stack_impl.context_stack)
 
-    transformed_comp = transformations.replace_intrinsic(
-        comp, intrinsic_defs.FEDERATED_SUM.uri, bodies['federated_sum'],
-        context_stack_impl.context_stack)
+  def test_replace_intrinsic_with_none_body_raises_type_error(self):
+    comp = _create_lambda_to_add_one(tf.int32)
+    uri = intrinsic_defs.GENERIC_PLUS.uri
 
-    # TODO(b/120793862): Add a transform to eliminate unnecessary lambdas, then
-    # simplify this test.
+    with self.assertRaises(TypeError):
+      transformations.replace_intrinsic_with_callable(
+          comp, uri, None, context_stack_impl.context_stack)
 
-    self.assertEqual(
-        str(transformed_comp),
-        '(foo_arg -> (federated_sum_arg -> federated_reduce('
-        '<federated_sum_arg,generic_zero,generic_plus>))'
-        '(federated_broadcast(foo_arg)))')
+  def test_replace_intrinsic_with_none_context_stack_raises_type_error(self):
+    comp = _create_lambda_to_add_one(tf.int32)
+    uri = intrinsic_defs.GENERIC_PLUS.uri
+    body = lambda x: 100
+
+    with self.assertRaises(TypeError):
+      transformations.replace_intrinsic_with_callable(comp, uri, body, None)
+
+  def test_replace_intrinsic_with_one_intrinsic_replaces_intrinsic(self):
+    comp = _create_lambda_to_add_one(tf.int32)
+    uri = intrinsic_defs.GENERIC_PLUS.uri
+    body = lambda x: 100
+
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 1)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl(1), 2)
+
+    transformed_comp = transformations.replace_intrinsic_with_callable(
+        comp, uri, body, context_stack_impl.context_stack)
+
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 0)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl(1), 100)
+
+  def test_replace_intrinsic_with_ten_intrinsic_replaces_intrinsic(self):
+    calling_arg = computation_building_blocks.Reference('arg', tf.int32)
+    arg_type = calling_arg.type_signature
+    arg = calling_arg
+    for _ in range(10):
+      lam = _create_lambda_to_add_one(arg_type)
+      call = computation_building_blocks.Call(lam, arg)
+      arg_type = call.function.type_signature.result
+      arg = call
+    calling_lambda = computation_building_blocks.Lambda(
+        calling_arg.name, calling_arg.type_signature, call)
+    comp = calling_lambda
+    uri = intrinsic_defs.GENERIC_PLUS.uri
+    body = lambda x: 100
+
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 10)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl(1), 11)
+
+    transformed_comp = transformations.replace_intrinsic_with_callable(
+        comp, uri, body, context_stack_impl.context_stack)
+
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 0)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl(1), 100)
+
+  def test_replace_intrinsic_with_different_uri_intrinsic_does_not_replace_intrinsic(
+      self):
+    comp = _create_lambda_to_add_one(tf.int32)
+    uri = intrinsic_defs.GENERIC_PLUS.uri
+    different_uri = intrinsic_defs.FEDERATED_SUM.uri
+    body = lambda x: 100
+
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 1)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl(1), 2)
+
+    transformed_comp = transformations.replace_intrinsic_with_callable(
+        comp, different_uri, body, context_stack_impl.context_stack)
+
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 1)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl(1), 2)
 
   def test_replace_intrinsic_plus_reduce_lambdas(self):
 
@@ -445,7 +510,7 @@ class TransformationsTest(parameterized.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    transformed_comp = transformations.replace_intrinsic(
+    transformed_comp = transformations.replace_intrinsic_with_callable(
         comp, intrinsic_defs.FEDERATED_SUM.uri, bodies['federated_sum'],
         context_stack_impl.context_stack)
 
@@ -603,13 +668,12 @@ class TransformationsTest(parameterized.TestCase):
 
   def test_replace_chained_federated_maps_with_none_raises_type_error(self):
     with self.assertRaises(TypeError):
-      _ = transformations.replace_chained_federated_maps_with_federated_map(
-          None)
+      transformations.replace_chained_federated_maps_with_federated_map(None)
 
-  def test_replace_chained_federated_maps_with_two_federated_maps_removes_federated_maps(
+  def test_replace_chained_federated_maps_with_two_federated_maps_replaces_federated_maps(
       self):
     map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    map_arg = computation_building_blocks.Reference('arg_1', map_arg_type)
+    map_arg = computation_building_blocks.Reference('arg', map_arg_type)
     inner_lambda = _create_lambda_to_add_one(map_arg.type_signature.member)
     inner_call = _create_call_for_federated_map(inner_lambda, map_arg)
     outer_lambda = _create_lambda_to_add_one(
@@ -619,81 +683,74 @@ class TransformationsTest(parameterized.TestCase):
                                                     map_arg.type_signature,
                                                     outer_call)
     comp = map_lambda
+    uri = intrinsic_defs.FEDERATED_MAP.uri
 
-    self.assertEqual(
-        _get_number_of_intrinsics(comp, intrinsic_defs.FEDERATED_MAP.uri), 2)
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 2)
     comp_impl = _to_comp(comp)
     self.assertEqual(comp_impl([(1)]), [3])
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
-    self.assertEqual(
-        _get_number_of_intrinsics(transformed_comp,
-                                  intrinsic_defs.FEDERATED_MAP.uri), 1)
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 1)
     transformed_comp_impl = _to_comp(transformed_comp)
     self.assertEqual(transformed_comp_impl([(1)]), [3])
 
-  def test_replace_chained_federated_maps_with_ten_federated_maps_removes_federated_maps(
+  def test_replace_chained_federated_maps_with_ten_federated_maps_replaces_federated_maps(
       self):
-    map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    map_arg = computation_building_blocks.Reference('arg_1', map_arg_type)
-    internal_arg_type = map_arg.type_signature.member
-    internal_arg = map_arg
+    calling_arg_type = computation_types.FederatedType(tf.int32,
+                                                       placements.CLIENTS)
+    calling_arg = computation_building_blocks.Reference('arg', calling_arg_type)
+    arg_type = calling_arg.type_signature.member
+    arg = calling_arg
     for _ in range(10):
-      internal_lambda = _create_lambda_to_add_one(internal_arg_type)
-      internal_call = _create_call_for_federated_map(internal_lambda,
-                                                     internal_arg)
-      internal_arg_type = internal_call.function.type_signature.result.member
-      internal_arg = internal_call
-    map_lambda = computation_building_blocks.Lambda(map_arg.name,
-                                                    map_arg.type_signature,
-                                                    internal_call)
-    comp = map_lambda
+      lam = _create_lambda_to_add_one(arg_type)
+      call = _create_call_for_federated_map(lam, arg)
+      arg_type = call.function.type_signature.result.member
+      arg = call
+    calling_lambda = computation_building_blocks.Lambda(
+        calling_arg.name, calling_arg.type_signature, call)
+    comp = calling_lambda
+    uri = intrinsic_defs.FEDERATED_MAP.uri
 
-    self.assertEqual(
-        _get_number_of_intrinsics(comp, intrinsic_defs.FEDERATED_MAP.uri), 10)
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 10)
     comp_impl = _to_comp(comp)
     self.assertEqual(comp_impl([(1)]), [11])
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
-    self.assertEqual(
-        _get_number_of_intrinsics(transformed_comp,
-                                  intrinsic_defs.FEDERATED_MAP.uri), 1)
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 1)
     transformed_comp_impl = _to_comp(transformed_comp)
     self.assertEqual(transformed_comp_impl([(1)]), [11])
 
-  def test_replace_chained_federated_maps_with_one_federated_map_does_not_remove_federated_map(
+  def test_replace_chained_federated_maps_with_one_federated_map_does_not_replace_federated_map(
       self):
     map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    map_arg = computation_building_blocks.Reference('arg_1', map_arg_type)
+    map_arg = computation_building_blocks.Reference('arg', map_arg_type)
     inner_lambda = _create_lambda_to_add_one(map_arg.type_signature.member)
     inner_call = _create_call_for_federated_map(inner_lambda, map_arg)
     map_lambda = computation_building_blocks.Lambda(map_arg.name,
                                                     map_arg.type_signature,
                                                     inner_call)
     comp = map_lambda
+    uri = intrinsic_defs.FEDERATED_MAP.uri
 
-    self.assertEqual(
-        _get_number_of_intrinsics(comp, intrinsic_defs.FEDERATED_MAP.uri), 1)
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 1)
     comp_impl = _to_comp(comp)
     self.assertEqual(comp_impl([(1)]), [2])
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
-    self.assertEqual(
-        _get_number_of_intrinsics(transformed_comp,
-                                  intrinsic_defs.FEDERATED_MAP.uri), 1)
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 1)
     transformed_comp_impl = _to_comp(transformed_comp)
     self.assertEqual(transformed_comp_impl([(1)]), [2])
 
-  def test_replace_chained_federated_maps_with_unchained_federated_maps_does_not_remove_federated_map(
+  def test_replace_chained_federated_maps_with_unchained_federated_maps_does_not_replace_federated_maps(
       self):
     map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    map_arg = computation_building_blocks.Reference('arg_1', map_arg_type)
+    map_arg = computation_building_blocks.Reference('arg', map_arg_type)
     inner_lambda = _create_lambda_to_add_one(map_arg.type_signature.member)
     inner_call = _create_call_for_federated_map(inner_lambda, map_arg)
     dummy_tuple = computation_building_blocks.Tuple([inner_call])
@@ -706,18 +763,16 @@ class TransformationsTest(parameterized.TestCase):
                                                     map_arg.type_signature,
                                                     outer_call)
     comp = map_lambda
+    uri = intrinsic_defs.FEDERATED_MAP.uri
 
-    self.assertEqual(
-        _get_number_of_intrinsics(comp, intrinsic_defs.FEDERATED_MAP.uri), 2)
+    self.assertEqual(_get_number_of_intrinsics(comp, uri), 2)
     comp_impl = _to_comp(comp)
     self.assertEqual(comp_impl([(1)]), [3])
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
-    self.assertEqual(
-        _get_number_of_intrinsics(transformed_comp,
-                                  intrinsic_defs.FEDERATED_MAP.uri), 2)
+    self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 2)
     transformed_comp_impl = _to_comp(transformed_comp)
     self.assertEqual(transformed_comp_impl([(1)]), [3])
 
