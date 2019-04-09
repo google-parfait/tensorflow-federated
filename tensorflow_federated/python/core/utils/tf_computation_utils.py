@@ -55,9 +55,10 @@ def get_variables(name, type_spec, **kwargs):
         name, dtype=type_spec.dtype, shape=type_spec.shape, **kwargs)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     with tf.variable_scope(name):
-      return anonymous_tuple.AnonymousTuple(
-          [(k, get_variables(k if k is not None else str(i), v, **kwargs))
-           for i, (k, v) in enumerate(anonymous_tuple.to_elements(type_spec))])
+      return anonymous_tuple.AnonymousTuple([
+          (k, get_variables(k if k is not None else str(i), v, **kwargs))
+          for i, (k, v) in enumerate(anonymous_tuple.to_elements(type_spec))
+      ])
   else:
     raise TypeError(
         'Expected a TFF type signature composed of tensors and named tuples, '

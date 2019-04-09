@@ -40,11 +40,10 @@ class StatefulFn(object):
 
     Args:
       initialize_fn: A no-arg function that returns a Python container which can
-        be converted to a `tff.Value`, placed on the `tff.SERVER`, and
-        passed as the first argument of `__call__`. This may be
-        called in vanilla TensorFlow code, typically wrapped as a
-        `tff.tf_compuatation`, as part of the initialization of a larger
-        state object.
+        be converted to a `tff.Value`, placed on the `tff.SERVER`, and passed as
+        the first argument of `__call__`. This may be called in vanilla
+        TensorFlow code, typically wrapped as a `tff.tf_compuatation`, as part
+        of the initialization of a larger state object.
       next_fn: A function matching the signature of `__call__`, see below.
     """
     py_typecheck.check_callable(initialize_fn)
@@ -101,8 +100,8 @@ class StatefulAggregateFn(StatefulFn):
     Args:
       state: A `tff.Value` placed on the `tff.SERVER`.
       value: A `tff.Value` to be aggregated, placed on the `tff.CLIENTS`.
-      weight: An optional `tff.Value` for weighting values,
-        placed on the `tff.CLIENTS`.
+      weight: An optional `tff.Value` for weighting values, placed on the
+        `tff.CLIENTS`.
 
     Returns:
        A tuple of `tff.Value`s (state@SERVER, aggregate@SERVER) where
@@ -110,8 +109,8 @@ class StatefulAggregateFn(StatefulFn):
          * aggregate: The result of the aggregation of `value` weighted by
              `weight.
     """
-    return self._next_fn(tff.to_value(state), tff.to_value(value),
-                         tff.to_value(weight))
+    return self._next_fn(
+        tff.to_value(state), tff.to_value(value), tff.to_value(weight))
 
 
 class StatefulBroadcastFn(StatefulFn):
@@ -138,7 +137,6 @@ class StatefulBroadcastFn(StatefulFn):
     Args:
       state: A `tff.Value` placed on the `tff.SERVER`.
       value: A `tff.Value` to be broadcast to the `tff.CLIENTS`.
-
 
     Returns:
        A tuple of `tff.Value`s (state@SERVER, value@CLIENTS) where

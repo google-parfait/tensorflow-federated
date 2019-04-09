@@ -302,14 +302,16 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
   def test_tf_dtypes_and_shapes_to_type_with_int(self):
     self.assertEqual(
         str(
-            type_utils.tf_dtypes_and_shapes_to_type(tf.int32, tf.TensorShape(
-                []))), 'int32')
+            type_utils.tf_dtypes_and_shapes_to_type(tf.int32,
+                                                    tf.TensorShape([]))),
+        'int32')
 
   def test_tf_dtypes_and_shapes_to_type_with_int_vector(self):
     self.assertEqual(
         str(
-            type_utils.tf_dtypes_and_shapes_to_type(tf.int32, tf.TensorShape(
-                [2]))), 'int32[2]')
+            type_utils.tf_dtypes_and_shapes_to_type(tf.int32,
+                                                    tf.TensorShape([2]))),
+        'int32[2]')
 
   def test_tf_dtypes_and_shapes_to_type_with_dict(self):
     self.assertEqual(
@@ -407,8 +409,9 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     test.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
 
   def test_type_to_tf_dtypes_and_shapes_with_tensor_triple(self):
-    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(
-        [('a', (tf.int32, [5])), ('b', tf.bool), ('c', (tf.float32, [3]))])
+    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes([
+        ('a', (tf.int32, [5])), ('b', tf.bool), ('c', (tf.float32, [3]))
+    ])
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.int32,
         'b': tf.bool,
@@ -421,8 +424,9 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     })
 
   def test_type_to_tf_dtypes_and_shapes_with_two_level_tuple(self):
-    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(
-        [('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])])
+    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes([
+        ('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])
+    ])
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {

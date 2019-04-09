@@ -120,8 +120,10 @@ def deserialize_type(type_proto):
     return computation_types.SequenceType(
         deserialize_type(type_proto.sequence.element))
   elif type_variant == 'tuple':
-    return computation_types.NamedTupleType([(lambda k, v: (k, v) if k else v)(
-        e.name, deserialize_type(e.value)) for e in type_proto.tuple.element])
+    return computation_types.NamedTupleType([
+        (lambda k, v: (k, v) if k else v)(e.name, deserialize_type(e.value))
+        for e in type_proto.tuple.element
+    ])
   elif type_variant == 'function':
     return computation_types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),

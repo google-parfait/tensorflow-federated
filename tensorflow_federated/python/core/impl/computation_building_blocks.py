@@ -319,9 +319,10 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
     elements = [_map_element(e) for e in elements]
     ComputationBuildingBlock.__init__(
         self,
-        computation_types.NamedTupleType(
-            [((e[0], e[1].type_signature) if e[0] else e[1].type_signature)
-             for e in elements]))
+        computation_types.NamedTupleType([
+            ((e[0], e[1].type_signature) if e[0] else e[1].type_signature)
+            for e in elements
+        ]))
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
 
   @property
@@ -700,8 +701,8 @@ class CompiledComputation(ComputationBuildingBlock):
     py_typecheck.check_type(proto, pb.Computation)
     if name is not None:
       py_typecheck.check_type(name, six.string_types)
-    super(CompiledComputation, self).__init__(
-        type_serialization.deserialize_type(proto.type))
+    super(CompiledComputation,
+          self).__init__(type_serialization.deserialize_type(proto.type))
     self._proto = proto
     if name is not None:
       self._name = name

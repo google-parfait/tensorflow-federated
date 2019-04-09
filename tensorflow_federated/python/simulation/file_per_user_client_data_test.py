@@ -66,8 +66,8 @@ def _create_example(features):
     else:
       # This is hit if the unittest is updated with unknown types, not an error
       # in the object under test. Extend the unittest capabilities to fix.
-      raise NotImplementedError(
-          'Cannot handle feature type [%s]' % type(feature))
+      raise NotImplementedError('Cannot handle feature type [%s]' %
+                                type(feature))
   return tf.train.Example(features=tf.train.Features(
       feature=output_features)).SerializeToString()
 

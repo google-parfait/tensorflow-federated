@@ -240,14 +240,11 @@ class IntrinsicsTest(parameterized.TestCase):
 
   def test_federated_zip_with_names_server_int_and_bool(self):
 
-    @computations.federated_computation([('a',
-                                          computation_types.FederatedType(
-                                              tf.int32, placements.SERVER,
+    @computations.federated_computation([
+        ('a', computation_types.FederatedType(tf.int32, placements.SERVER,
                                               True)),
-                                         ('b',
-                                          computation_types.FederatedType(
-                                              tf.bool, placements.SERVER,
-                                              True))])
+        ('b', computation_types.FederatedType(tf.bool, placements.SERVER, True))
+    ])
     def foo(arg):
       return intrinsics.federated_zip(arg)
 
@@ -438,15 +435,17 @@ class IntrinsicsTest(parameterized.TestCase):
 
     @computations.federated_computation([fed_type] * n)
     def bar(x):
-      arg = anonymous_tuple.AnonymousTuple(
-          [(str(k), x[k]) if k % 2 == 0 else (None, x[k]) for k in range(n)])
+      arg = anonymous_tuple.AnonymousTuple([
+          (str(k), x[k]) if k % 2 == 0 else (None, x[k]) for k in range(n)
+      ])
       return intrinsics.federated_zip(arg)
 
     self.assertEqual(str(bar.type_signature), mixed_type_string)
 
-  @parameterized.named_parameters(
-      [('test_n_' + str(n) + '_m_' + str(m), n, m)
-       for n, m in itertools.product([1, 2, 3], [1, 2, 3])])
+  @parameterized.named_parameters([
+      ('test_n_' + str(n) + '_m_' + str(m), n, m)
+      for n, m in itertools.product([1, 2, 3], [1, 2, 3])
+  ])
   def test_n_tuple_federated_zip_mixed_args(self, n, m):
     tuple_fed_type = computation_types.FederatedType([tf.int32, tf.int32],
                                                      placements.CLIENTS)

@@ -206,8 +206,9 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
   def test_getattr_call_named(self, placement):
     federated_comp_named = computation_building_blocks.Reference(
         'test',
-        computation_types.FederatedType(
-            [('a', tf.int32), ('b', tf.bool), tf.int32], placement, True))
+        computation_types.FederatedType([('a', tf.int32),
+                                         ('b', tf.bool), tf.int32], placement,
+                                        True))
     self.assertEqual(
         str(federated_comp_named.type_signature.member),
         '<a=int32,b=bool,int32>')

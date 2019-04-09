@@ -290,8 +290,9 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
       (7, lambda x: str(x),  # pylint: disable=unnecessary-lambda
        [tf.int32], None, anonymous_tuple.AnonymousTuple([(None, 10)]), '<10>'))
   # pyformat: enable
-  def test_wrap_as_zero_or_one_arg_callable(
-      self, unused_index, fn, parameter_type, unpack, arg, expected_result):
+  def test_wrap_as_zero_or_one_arg_callable(self, unused_index, fn,
+                                            parameter_type, unpack, arg,
+                                            expected_result):
     wrapped_fn = function_utils.wrap_as_zero_or_one_arg_callable(
         fn, parameter_type, unpack)
     actual_result = wrapped_fn(arg) if parameter_type else wrapped_fn()

@@ -71,8 +71,9 @@ def zero_or_one_arg_fn_to_building_block(fn,
     if parameter_type is not None:
       result = fn(
           value_impl.ValueImpl(
-              computation_building_blocks.Reference(
-                  parameter_name, parameter_type), context_stack))
+              computation_building_blocks.Reference(parameter_name,
+                                                    parameter_type),
+              context_stack))
     else:
       result = fn()
     result = value_impl.to_value(result, None, context_stack)

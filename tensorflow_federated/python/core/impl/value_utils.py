@@ -77,9 +77,10 @@ def zip_two_tuple(input_val, context_stack):
     return computation_types.FederatedType(x.member, x.placement,
                                            output_all_equal_bit)
 
-  adjusted_input_type = computation_types.NamedTupleType(
-      [(k, _adjust_all_equal_bit(v)) if k else _adjust_all_equal_bit(v)
-       for k, v in anonymous_tuple.to_elements(input_val.type_signature)])
+  adjusted_input_type = computation_types.NamedTupleType([
+      (k, _adjust_all_equal_bit(v)) if k else _adjust_all_equal_bit(v)
+      for k, v in anonymous_tuple.to_elements(input_val.type_signature)
+  ])
 
   intrinsic = value_impl.ValueImpl(
       computation_building_blocks.Intrinsic(

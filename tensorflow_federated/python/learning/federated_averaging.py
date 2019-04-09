@@ -99,9 +99,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       weights_delta_weight = self._client_weight_fn(aggregated_outputs)
     # Zero out the weight if there are any non-finite values.
     weights_delta_weight = tf.cond(
-        tf.equal(has_non_finite_delta, 0),
-        lambda: weights_delta_weight,
-        lambda: tf.constant(0.0))
+        tf.equal(has_non_finite_delta,
+                 0), lambda: weights_delta_weight, lambda: tf.constant(0.0))
 
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, aggregated_outputs,

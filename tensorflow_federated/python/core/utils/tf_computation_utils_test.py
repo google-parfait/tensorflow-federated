@@ -90,9 +90,9 @@ class TfComputationUtilsTest(test.TestCase):
 
   def test_identity_with_anonymous_tuple(self):
     with tf.Graph().as_default() as graph:
-      c1 = anonymous_tuple.AnonymousTuple([('foo',
-                                            tf.constant(
-                                                10, dtype=tf.int32, shape=[]))])
+      c1 = anonymous_tuple.AnonymousTuple([
+          ('foo', tf.constant(10, dtype=tf.int32, shape=[]))
+      ])
       c2 = tf_computation_utils.identity(c1)
     self.assertIsNot(c2, c1)
     with tf.Session(graph=graph) as sess:

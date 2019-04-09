@@ -25,7 +25,6 @@ from six.moves import range
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data
 
-
 CLIENT_ID_REGEX = re.compile(r'^(.*)_(\d+)$')
 
 
@@ -34,6 +33,7 @@ def split_client_id(client_id):
 
   Args:
     client_id: The pseudo-client id.
+
   Returns:
     A tuple (raw_client_id, index) where raw_client_id is the string of the raw
     client_id, and index is the integer index of the pseudo-client.
@@ -88,7 +88,7 @@ class TransformingClientData(client_data.ClientData):
     self._raw_client_data = raw_client_data
     self._transform_fn = transform_fn
 
-    num_digits = len(str(num_transformed_clients-1))
+    num_digits = len(str(num_transformed_clients - 1))
     format_str = '{}_{:0' + str(num_digits) + '}'
 
     raw_client_ids = raw_client_data.client_ids
@@ -118,8 +118,10 @@ class TransformingClientData(client_data.ClientData):
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
         raw_client_id)
 
-    return raw_dataset.map(
-        lambda example: self._transform_fn(example, raw_client_id, index))
+    def fn(example):
+      return self._transform_fn(example, raw_client_id, index)
+
+    return raw_dataset.map(fn)
 
   @property
   def output_types(self):

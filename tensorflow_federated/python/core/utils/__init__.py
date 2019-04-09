@@ -39,5 +39,5 @@ _allowed_symbols = [
     "assign",
     "get_variables",
     "identity",
-    "update_state"
+    "update_state",
 ]

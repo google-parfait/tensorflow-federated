@@ -92,8 +92,8 @@ def construct_map_or_apply(fn, arg):
   """Injects intrinsic to allow application of `fn` to federated `arg`.
 
   Args:
-    fn: An instance of `computation_building_blocks.ComputationBuildingBlock`
-      of functional type to be wrapped with intrinsic in order to call on `arg`.
+    fn: An instance of `computation_building_blocks.ComputationBuildingBlock` of
+      functional type to be wrapped with intrinsic in order to call on `arg`.
     arg: `computation_building_blocks.ComputationBuildingBlock` instance of
       federated type for which to construct intrinsic in order to call `fn` on
       `arg`. `member` of `type_signature` of `arg` must be assignable to
@@ -159,8 +159,9 @@ def construct_federated_getattr_comp(comp, name):
   apply_input = computation_building_blocks.Reference(
       'x', comp.type_signature.member)
   selected = computation_building_blocks.Selection(apply_input, name=name)
-  apply_lambda = computation_building_blocks.Lambda(
-      'x', apply_input.type_signature, selected)
+  apply_lambda = computation_building_blocks.Lambda('x',
+                                                    apply_input.type_signature,
+                                                    selected)
   return apply_lambda
 
 
@@ -198,10 +199,11 @@ def construct_federated_getitem_comp(comp, key):
     index_range = six.moves.range(*key.indices(len(elems)))
     elem_list = []
     for k in index_range:
-      elem_list.append((elems[k][0],
-                        computation_building_blocks.Selection(
-                            apply_input, index=k)))
+      elem_list.append(
+          (elems[k][0],
+           computation_building_blocks.Selection(apply_input, index=k)))
     selected = computation_building_blocks.Tuple(elem_list)
-  apply_lambda = computation_building_blocks.Lambda(
-      'x', apply_input.type_signature, selected)
+  apply_lambda = computation_building_blocks.Lambda('x',
+                                                    apply_input.type_signature,
+                                                    selected)
   return apply_lambda
