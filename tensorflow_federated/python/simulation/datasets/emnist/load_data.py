@@ -167,6 +167,9 @@ def _transform(data, raw_client_id, index):
   if index == 0:
     return data
 
+  # EMNIST background is 1.0 but img.transform assumes 0.0.
+  pixels = 1.0 - data['pixels']
+
   np.random.seed((hash(raw_client_id) + index) % (2**32))
   def random_scale(min_val):
     b = math.log(min_val)
@@ -178,7 +181,13 @@ def _transform(data, raw_client_id, index):
       scale_y=random_scale(0.8),
       translation_x=np.random.uniform(-5, 5),
       translation_y=np.random.uniform(-5, 5))
-  data['pixels'] = img.transform(data['pixels'], transform, 'BILINEAR')
+  pixels = img.transform(pixels, transform, 'BILINEAR')
+
+  # num_bits=9 actually yields 256 unique values.
+  pixels = tf.quantization.quantize_and_dequantize(
+      pixels, 0.0, 1.0, num_bits=9, range_given=True)
+
+  data['pixels'] = 1.0 - pixels
   return data
 
 
