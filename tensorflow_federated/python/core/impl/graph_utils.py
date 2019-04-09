@@ -242,9 +242,10 @@ def capture_result_from_graph(result, graph):
         ((k,) + capture_result_from_graph(v, graph))
         for k, v in name_value_pairs
     ]
-    return (computation_types.NamedTupleType(
-        [((e[0], e[1]) if e[0] else e[1])
-         for e in element_name_type_binding_triples]),
+    return (computation_types.NamedTupleType([
+        ((e[0], e[1]) if e[0] else e[1])
+        for e in element_name_type_binding_triples
+    ]),
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[2] for e in element_name_type_binding_triples])))
@@ -300,9 +301,10 @@ def compute_map_from_bindings(source, target):
     return collections.OrderedDict([(str(source.tensor.tensor_name),
                                      str(target.tensor.tensor_name))])
   elif source_oneof == 'sequence':
-    return collections.OrderedDict(
-        [(str(source.sequence.iterator_string_handle_name),
-          str(target.sequence.iterator_string_handle_name))])
+    return collections.OrderedDict([
+        (str(source.sequence.iterator_string_handle_name),
+         str(target.sequence.iterator_string_handle_name))
+    ])
   elif source_oneof == 'tuple':
     if len(source.tuple.element) != len(target.tuple.element):
       raise ValueError(
@@ -400,8 +402,9 @@ def assemble_result_from_graph(type_spec, binding, output_map):
             'Mismatching tuple sizes in type ({}) and binding ({}).'.format(
                 len(type_elements), len(binding.tuple.element)))
       result_elements = []
-      for (element_name, element_type), element_binding in zip(
-          type_elements, binding.tuple.element):
+      for (element_name,
+           element_type), element_binding in zip(type_elements,
+                                                 binding.tuple.element):
         element_object = assemble_result_from_graph(element_type,
                                                     element_binding, output_map)
         result_elements.append((element_name, element_object))
@@ -461,9 +464,10 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
     if all(k is not None for k, _ in elements):
-      return collections.OrderedDict(
-          [(k, make_empty_list_structure_for_element_type_spec(v))
-           for k, v in elements])
+      return collections.OrderedDict([
+          (k, make_empty_list_structure_for_element_type_spec(v))
+          for k, v in elements
+      ])
     elif all(k is None for k, _ in elements):
       return tuple([
           make_empty_list_structure_for_element_type_spec(v)

@@ -416,8 +416,9 @@ class TransformationsTest(parameterized.TestCase):
     arg = computation_building_blocks.Reference('arg', tf.int32)
     lam = _create_lambda_to_add_one(arg.type_signature)
     call = computation_building_blocks.Call(lam, arg)
-    calling_lambda = computation_building_blocks.Lambda(
-        arg.name, arg.type_signature, call)
+    calling_lambda = computation_building_blocks.Lambda(arg.name,
+                                                        arg.type_signature,
+                                                        call)
     comp = calling_lambda
 
     self.assertEqual(

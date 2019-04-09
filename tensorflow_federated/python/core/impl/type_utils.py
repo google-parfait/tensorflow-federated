@@ -60,9 +60,10 @@ def infer_type(arg):
     return computation_types.SequenceType(
         tf_dtypes_and_shapes_to_type(arg.output_types, arg.output_shapes))
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    return computation_types.NamedTupleType(
-        [(k, infer_type(v)) if k else infer_type(v)
-         for k, v in anonymous_tuple.to_elements(arg)])
+    return computation_types.NamedTupleType([
+        (k, infer_type(v)) if k else infer_type(v)
+        for k, v in anonymous_tuple.to_elements(arg)
+    ])
   elif py_typecheck.is_named_tuple(arg):
     # Special handling needed for collections.namedtuple.
     return infer_type(arg._asdict())
@@ -71,8 +72,9 @@ def infer_type(arg):
       items = six.iteritems(arg)
     else:
       items = sorted(six.iteritems(arg))
-    return computation_types.NamedTupleType(
-        [(k, infer_type(v)) for k, v in items])
+    return computation_types.NamedTupleType([
+        (k, infer_type(v)) for k, v in items
+    ])
   elif isinstance(arg, (tuple, list)):
     return computation_types.NamedTupleType([infer_type(e) for e in arg])
   elif isinstance(arg, six.string_types):
@@ -115,8 +117,9 @@ def to_canonical_value(value):
       items = six.iteritems(value)
     else:
       items = sorted(six.iteritems(value))
-    return anonymous_tuple.AnonymousTuple(
-        [(k, to_canonical_value(v)) for k, v in items])
+    return anonymous_tuple.AnonymousTuple([
+        (k, to_canonical_value(v)) for k, v in items
+    ])
   elif isinstance(value, (tuple, list)):
     return [to_canonical_value(e) for e in value]
   return value

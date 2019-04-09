@@ -52,13 +52,12 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_two_tuple_zip_named_client_non_all_equal_int_and_bool(self):
     test_ref = computation_building_blocks.Reference(
         'test',
-        computation_types.NamedTupleType([('x',
-                                           computation_types.FederatedType(
-                                               tf.int32, placements.CLIENTS)),
-                                          ('y',
-                                           computation_types.FederatedType(
-                                               tf.bool, placements.CLIENTS,
-                                               True))]))
+        computation_types.NamedTupleType([
+            ('x', computation_types.FederatedType(tf.int32,
+                                                  placements.CLIENTS)),
+            ('y',
+             computation_types.FederatedType(tf.bool, placements.CLIENTS, True))
+        ]))
     zipped = value_utils.zip_two_tuple(
         value_impl.to_value(test_ref, None, _context_stack), _context_stack)
     self.assertEqual(str(zipped.type_signature), '{<x=int32,y=bool>}@CLIENTS')
@@ -77,14 +76,13 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_two_tuple_zip_with_named_client_all_equal_int_and_bool(self):
     test_ref = computation_building_blocks.Reference(
         'test',
-        computation_types.NamedTupleType([('a',
-                                           computation_types.FederatedType(
-                                               tf.int32, placements.CLIENTS,
-                                               True)),
-                                          ('b',
-                                           computation_types.FederatedType(
-                                               tf.bool, placements.CLIENTS,
-                                               True))]))
+        computation_types.NamedTupleType([
+            ('a',
+             computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                             True)),
+            ('b',
+             computation_types.FederatedType(tf.bool, placements.CLIENTS, True))
+        ]))
     zipped = value_utils.zip_two_tuple(
         value_impl.to_value(test_ref, None, _context_stack), _context_stack)
     self.assertEqual(str(zipped.type_signature), '{<a=int32,b=bool>}@CLIENTS')
@@ -129,8 +127,9 @@ class ValueUtilsTest(parameterized.TestCase):
     with self.assertRaisesRegexp(TypeError, '(Expected).*(Value)'):
       _ = value_utils.flatten_first_index(input_fn, type_to_add, _context_stack)
 
-  @parameterized.named_parameters(
-      [('test_n_' + str(x), x) for x in range(2, 10)])
+  @parameterized.named_parameters([
+      ('test_n_' + str(x), x) for x in range(2, 10)
+  ])
   def test_flatten_fn(self, n):
     input_reference = computation_building_blocks.Reference(
         'test', [tf.int32] * n)
@@ -147,8 +146,9 @@ class ValueUtilsTest(parameterized.TestCase):
         _context_stack)
     self.assertEqual(str(new_fn.type_signature), str(desired_fn_type))
 
-  @parameterized.named_parameters(
-      [('test_n_' + str(x), x) for x in range(2, 10)])
+  @parameterized.named_parameters([
+      ('test_n_' + str(x), x) for x in range(2, 10)
+  ])
   def test_flatten_fn_with_names(self, n):
     input_reference = computation_building_blocks.Reference(
         'test', [(str(k), tf.int32) for k in range(n)])

@@ -98,8 +98,8 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
 
       flat_accumulated_grads = tuple(
-          accumulator + batch_weight * grad for accumulator, grad in
-          zip(flat_accumulated_grads, flat_grads))
+          accumulator + batch_weight * grad
+          for accumulator, grad in zip(flat_accumulated_grads, flat_grads))
 
       # The TF team is aware of an optimization in the reduce state to avoid
       # doubling the number of required variables here (e.g. keeping two copies
@@ -122,9 +122,8 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
     weights_delta_weight = tf.cond(
-        tf.equal(has_non_finite_delta, 0),
-        lambda: batch_weight_sum,
-        lambda: tf.constant(0.0))
+        tf.equal(has_non_finite_delta,
+                 0), lambda: batch_weight_sum, lambda: tf.constant(0.0))
 
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, model.report_local_outputs(),

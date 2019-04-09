@@ -125,8 +125,8 @@ class GraphUtilsTest(test.TestCase):
 
   def test_stamp_parameter_in_graph_with_named_tuple(self):
     with tf.Graph().as_default() as my_graph:
-      x = self._checked_stamp_parameter('foo', (('a', tf.int32),
-                                                ('b', tf.bool)))
+      x = self._checked_stamp_parameter('foo',
+                                        (('a', tf.int32), ('b', tf.bool)))
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertTrue(len(x), 2)
     self._assert_is_placeholder(x.a, 'foo_a:0', tf.int32, [], my_graph)
@@ -359,8 +359,8 @@ class GraphUtilsTest(test.TestCase):
         'Y=Tensor("B:0", shape=(), dtype=int32)>')
 
   def test_assemble_result_from_graph_with_sequence(self):
-    type_spec = computation_types.SequenceType([('X', tf.int32), ('Y',
-                                                                  tf.int32)])
+    type_spec = computation_types.SequenceType([('X', tf.int32),
+                                                ('Y', tf.int32)])
     binding = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(
             iterator_string_handle_name='foo'))
@@ -390,8 +390,8 @@ class GraphUtilsTest(test.TestCase):
   def test_make_dummy_element_NamedTupleType(self):
     tensor1 = computation_types.TensorType(tf.float32, [None, 10, None, 10, 10])
     tensor2 = computation_types.TensorType(tf.int32, [10, None, 10])
-    namedtuple = computation_types.NamedTupleType([('x', tensor1), ('y',
-                                                                    tensor2)])
+    namedtuple = computation_types.NamedTupleType([('x', tensor1),
+                                                   ('y', tensor2)])
     unnamedtuple = computation_types.NamedTupleType([('x', tensor1),
                                                      ('y', tensor2)])
     elem = graph_utils._make_dummy_element_for_type_spec(namedtuple)

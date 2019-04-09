@@ -69,10 +69,10 @@ class ReferenceExecutorTest(test.TestCase):
         reference_executor.to_representation_for_type(
             anonymous_tuple.AnonymousTuple([('x', [10, 20]), ('y', 30)]),
             [('x', [tf.int32, tf.int32]), ('y', tf.int32)]),
-        anonymous_tuple.AnonymousTuple([('x',
-                                         anonymous_tuple.AnonymousTuple(
-                                             [(None, 10), (None, 20)])),
-                                        ('y', 30)]))
+        anonymous_tuple.AnonymousTuple([
+            ('x', anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])),
+            ('y', 30)
+        ]))
     with self.assertRaises(TypeError):
       reference_executor.to_representation_for_type(10, [tf.int32, tf.int32])
 
@@ -102,8 +102,9 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertIs(
         reference_executor.to_representation_for_type(
-            foo, computation_types.FunctionType(
-                tf.int32, tf.string), lambda x, t: x), foo)
+            foo, computation_types.FunctionType(tf.int32,
+                                                tf.string), lambda x, t: x),
+        foo)
 
     with self.assertRaises(TypeError):
       reference_executor.to_representation_for_type(
@@ -148,10 +149,9 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertTrue(np.array_equal(v_result, np.array([1, 2, 3])))
 
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
-    v_val = anonymous_tuple.AnonymousTuple([('x', 10),
-                                            ('y',
-                                             anonymous_tuple.AnonymousTuple(
-                                                 [('z', 0.6)]))])
+    v_val = anonymous_tuple.AnonymousTuple([
+        ('x', 10), ('y', anonymous_tuple.AnonymousTuple([('z', 0.6)]))
+    ])
     v_type = [('x', tf.int32), ('y', [('z', tf.float32)])]
     v = reference_executor.ComputedValue(
         reference_executor.to_representation_for_type(v_val, v_type), v_type)
@@ -575,12 +575,13 @@ class ReferenceExecutorTest(test.TestCase):
   def test_get_cardinalities_success(self):
     foo = reference_executor.get_cardinalities(
         reference_executor.ComputedValue(
-            anonymous_tuple.AnonymousTuple(
-                [('A', [1, 2, 3]),
-                 ('B',
-                  anonymous_tuple.AnonymousTuple(
-                      [('C', [[1, 2], [3, 4], [5, 6]]),
-                       ('D', [True, False, True])]))]),
+            anonymous_tuple.AnonymousTuple([
+                ('A', [1, 2, 3]),
+                ('B',
+                 anonymous_tuple.AnonymousTuple([('C', [[1, 2], [3, 4], [5,
+                                                                         6]]),
+                                                 ('D', [True, False, True])]))
+            ]),
             [('A', computation_types.FederatedType(tf.int32,
                                                    placements.CLIENTS)),
              ('B', [('C',
@@ -625,11 +626,11 @@ class ReferenceExecutorTest(test.TestCase):
             'y', tf.int32,
             computation_building_blocks.Call(
                 int32_add,
-                computation_building_blocks.Tuple(
-                    [(None, computation_building_blocks.Reference(
-                        'x', tf.int32)),
-                     (None, computation_building_blocks.Reference(
-                         'y', tf.int32))]))))
+                computation_building_blocks.Tuple([
+                    (None, computation_building_blocks.Reference('x',
+                                                                 tf.int32)),
+                    (None, computation_building_blocks.Reference('y', tf.int32))
+                ]))))
 
     make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(

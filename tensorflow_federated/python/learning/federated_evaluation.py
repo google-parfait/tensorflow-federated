@@ -65,8 +65,8 @@ def build_federated_evaluation(model_fn):
     # TODO(b/123092620): Avoid the need for this manual conversion.
     model_vars = anonymous_tuple.from_container(
         collections.OrderedDict([('trainable', model.weights.trainable),
-                                 ('non_trainable',
-                                  model.weights.non_trainable)]),
+                                 ('non_trainable', model.weights.non_trainable)
+                                ]),
         recursive=True)
 
     # TODO(b/123898430): The control dependencies below have been inserted as a

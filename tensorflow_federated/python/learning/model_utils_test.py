@@ -93,8 +93,8 @@ class NumExamplesCounter(Sum):
     super(NumExamplesCounter, self).__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super(NumExamplesCounter, self).update_state(
-        tf.shape(y_pred)[0], sample_weight)
+    return super(NumExamplesCounter,
+                 self).update_state(tf.shape(y_pred)[0], sample_weight)
 
 
 def _create_dummy_batch(feature_dims):

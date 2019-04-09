@@ -104,13 +104,12 @@ def load_data(only_digits=True, cache_dir=None):
   return train_client_data, test_client_data
 
 
-def _compile_transform(
-    angle=0,
-    shear=0,
-    scale_x=1,
-    scale_y=1,
-    translation_x=0,
-    translation_y=0):
+def _compile_transform(angle=0,
+                       shear=0,
+                       scale_x=1,
+                       scale_y=1,
+                       translation_x=0,
+                       translation_y=0):
   """Compiles affine transform parameters into single projective transform.
 
   The transformations are performed in the following order: rotation, shearing,
@@ -124,6 +123,7 @@ def _compile_transform(
     scale_y: The amount to scale in the y-axis.
     translation_x: The number of pixels to translate in the x-axis.
     translation_y: The number of pixels to translate in the y-axis.
+
   Returns:
     A length 8 tensor representing the composed transform.
   """
@@ -137,18 +137,13 @@ def _compile_transform(
   half = (size - 1) / 2.0
   center = img.translations_to_projective_transforms([-half, -half])
   shear = [1., 0., 0., -shear, 1., 0., 0., 0.]
-  scaling = [1./scale_x, 0., 0., 0., 1./scale_y, 0., 0., 0.]
+  scaling = [1. / scale_x, 0., 0., 0., 1. / scale_y, 0., 0., 0.]
   decenter = img.translations_to_projective_transforms([half, half])
 
   translation = img.translations_to_projective_transforms(
       [translation_x, translation_y])
-  return img.compose_transforms(
-      rotation,
-      center,
-      shear,
-      scaling,
-      decenter,
-      translation)
+  return img.compose_transforms(rotation, center, shear, scaling, decenter,
+                                translation)
 
 
 def _transform(data, raw_client_id, index):
@@ -171,9 +166,11 @@ def _transform(data, raw_client_id, index):
   pixels = 1.0 - data['pixels']
 
   np.random.seed((hash(raw_client_id) + index) % (2**32))
+
   def random_scale(min_val):
     b = math.log(min_val)
     return math.exp(np.random.uniform(b, -b))
+
   transform = _compile_transform(
       angle=np.random.uniform(-20, 20),
       shear=np.random.uniform(-0.2, 0.2),

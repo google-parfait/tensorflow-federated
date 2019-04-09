@@ -365,8 +365,9 @@ def from_container(value, recursive=False):
     """
     if isinstance(value, AnonymousTuple):
       if recursive:
-        return AnonymousTuple(
-            [(k, _convert(v, True)) for k, v in to_elements(value)])
+        return AnonymousTuple([
+            (k, _convert(v, True)) for k, v in to_elements(value)
+        ])
       else:
         return value
     elif py_typecheck.is_named_tuple(value):

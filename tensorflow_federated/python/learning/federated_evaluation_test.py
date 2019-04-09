@@ -107,7 +107,8 @@ class FederatedEvaluationTest(test.TestCase):
               kernel_initializer='ones',
               bias_initializer='zeros',
               activation=None)
-      ], name='my_model')
+      ],
+                                        name='my_model')
       keras_model.compile(
           loss='mean_squared_error',
           optimizer='sgd',

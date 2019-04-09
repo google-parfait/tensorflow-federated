@@ -78,16 +78,17 @@ class TypesTest(absltest.TestCase):
         '<a=int32,float32>')
     self.assertEqual(
         str(
-            computation_types.NamedTupleType(
-                [('a', tf.int32), ('b', tf.float32)])), '<a=int32,b=float32>')
+            computation_types.NamedTupleType([('a', tf.int32),
+                                              ('b', tf.float32)])),
+        '<a=int32,b=float32>')
     self.assertEqual(
         str(
-            computation_types.NamedTupleType([('a', tf.int32),
-                                              ('b',
-                                               computation_types.NamedTupleType(
-                                                   [('x', tf.string),
-                                                    ('y', tf.bool)]))])),
-        '<a=int32,b=<x=string,y=bool>>')
+            computation_types.NamedTupleType([
+                ('a', tf.int32),
+                ('b',
+                 computation_types.NamedTupleType([('x', tf.string),
+                                                   ('y', tf.bool)]))
+            ])), '<a=int32,b=<x=string,y=bool>>')
 
   def test_named_tuple_type_elements(self):
     self.assertEqual(

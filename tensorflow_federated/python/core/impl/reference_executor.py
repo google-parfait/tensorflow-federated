@@ -169,8 +169,9 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     # the order in which they're defined in the named tuple type.
     if (isinstance(value, dict) and
         (set(value.keys()) == set(k for k, _ in type_spec_elements))):
-      value = collections.OrderedDict(
-          [(k, value[k]) for k, _ in type_spec_elements])
+      value = collections.OrderedDict([
+          (k, value[k]) for k, _ in type_spec_elements
+      ])
     value = anonymous_tuple.from_container(value)
     value_elements = anonymous_tuple.to_elements(value)
     if len(value_elements) != len(type_spec_elements):
@@ -551,8 +552,8 @@ def fit_argument(arg, type_spec, context):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     py_typecheck.check_type(arg.value, anonymous_tuple.AnonymousTuple)
     result_elements = []
-    for idx, (elem_name, elem_type) in enumerate(
-        anonymous_tuple.to_elements(type_spec)):
+    for idx, (elem_name,
+              elem_type) in enumerate(anonymous_tuple.to_elements(type_spec)):
       elem_val = ComputedValue(arg.value[idx], arg.type_signature[idx])
       if elem_val != elem_type:
         elem_val = fit_argument(elem_val, elem_type, context)
@@ -688,8 +689,9 @@ class ReferenceExecutor(context_base.Context):
           return computed_func.value
 
         computed_arg = ComputedValue(
-            to_representation_for_type(
-                arg, computed_comp.type_signature.parameter, _handle_callable),
+            to_representation_for_type(arg,
+                                       computed_comp.type_signature.parameter,
+                                       _handle_callable),
             computed_comp.type_signature.parameter)
         cardinalities.update(get_cardinalities(computed_arg))
       else:
@@ -781,8 +783,9 @@ class ReferenceExecutor(context_base.Context):
       computed_arg = self._compute(comp.argument, context)
       type_utils.check_assignable_from(computed_func.type_signature.parameter,
                                        computed_arg.type_signature)
-      computed_arg = fit_argument(
-          computed_arg, computed_func.type_signature.parameter, context)
+      computed_arg = fit_argument(computed_arg,
+                                  computed_func.type_signature.parameter,
+                                  context)
     else:
       computed_arg = None
     result = computed_func.value(computed_arg)
@@ -803,8 +806,9 @@ class ReferenceExecutor(context_base.Context):
       result_type_elements.append((k, computed_v.type_signature))
     return ComputedValue(
         anonymous_tuple.AnonymousTuple(result_elements),
-        computation_types.NamedTupleType(
-            [(k, v) if k else v for k, v in result_type_elements]))
+        computation_types.NamedTupleType([
+            (k, v) if k else v for k, v in result_type_elements
+        ]))
 
   def _compute_selection(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Selection)
@@ -916,8 +920,9 @@ class ReferenceExecutor(context_base.Context):
   def _federated_apply(self, arg):
     mapping_type = arg.type_signature[0]
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
-    type_utils.check_federated_type(
-        arg.type_signature[1], mapping_type.parameter, placements.SERVER, True)
+    type_utils.check_federated_type(arg.type_signature[1],
+                                    mapping_type.parameter, placements.SERVER,
+                                    True)
     fn = arg.value[0]
     result_val = fn(ComputedValue(arg.value[1], mapping_type.parameter)).value
     result_type = computation_types.FederatedType(mapping_type.result,
@@ -928,8 +933,9 @@ class ReferenceExecutor(context_base.Context):
     type_utils.check_federated_type(arg.type_signature, None,
                                     placements.CLIENTS, False)
     collected_val = self._federated_collect(arg)
-    federated_apply_arg = anonymous_tuple.AnonymousTuple(
-        [(None, self._sequence_sum), (None, collected_val.value)])
+    federated_apply_arg = anonymous_tuple.AnonymousTuple([
+        (None, self._sequence_sum), (None, collected_val.value)
+    ])
     apply_fn_type = computation_types.FunctionType(
         computation_types.SequenceType(arg.type_signature.member),
         arg.type_signature.member)
@@ -960,9 +966,10 @@ class ReferenceExecutor(context_base.Context):
       return ComputedValue(zeros_val, type_spec)
     elif isinstance(type_spec, computation_types.NamedTupleType):
       return ComputedValue(
-          anonymous_tuple.AnonymousTuple(
-              [(k, self._generic_zero(v).value)
-               for k, v in anonymous_tuple.to_elements(type_spec)]), type_spec)
+          anonymous_tuple.AnonymousTuple([
+              (k, self._generic_zero(v).value)
+              for k, v in anonymous_tuple.to_elements(type_spec)
+          ]), type_spec)
     elif isinstance(
         type_spec,
         (computation_types.SequenceType, computation_types.FunctionType,
@@ -1094,9 +1101,10 @@ class ReferenceExecutor(context_base.Context):
     return ComputedValue(
         arg.value,
         type_constructors.at_server(
-            computation_types.NamedTupleType(
-                [(k, v.member) if k else v.member
-                 for k, v in anonymous_tuple.to_elements(arg.type_signature)])))
+            computation_types.NamedTupleType([
+                (k, v.member) if k else v.member
+                for k, v in anonymous_tuple.to_elements(arg.type_signature)
+            ])))
 
   def _federated_zip_at_clients(self, arg):
     py_typecheck.check_type(arg.type_signature,

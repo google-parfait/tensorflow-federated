@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
-
 EMPTY_TENSORSHAPE_PROTO = tf.TensorShape([]).as_proto()
 
 

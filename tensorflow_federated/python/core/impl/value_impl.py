@@ -321,9 +321,10 @@ def to_value(arg, type_spec, context_stack):
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(
-        computation_building_blocks.Tuple(
-            [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-             for k, v in anonymous_tuple.to_elements(arg)]), context_stack)
+        computation_building_blocks.Tuple([
+            (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
+            for k, v in anonymous_tuple.to_elements(arg)
+        ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
     result = to_value(arg._asdict(), None, context_stack)
   elif isinstance(arg, dict):
@@ -331,9 +332,10 @@ def to_value(arg, type_spec, context_stack):
       items = six.iteritems(arg)
     else:
       items = sorted(six.iteritems(arg))
-    value = computation_building_blocks.Tuple(
-        [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-         for k, v in items])
+    value = computation_building_blocks.Tuple([
+        (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
+        for k, v in items
+    ])
     result = ValueImpl(value, context_stack)
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(

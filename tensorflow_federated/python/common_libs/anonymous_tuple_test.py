@@ -99,11 +99,11 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(x.bar, 30)
     self.assertRaises(AttributeError, lambda _: x.baz, None)
     self.assertEqual(
-        x, anonymous_tuple.AnonymousTuple([(None, 10), ('foo', 20), ('bar',
-                                                                     30)]))
+        x, anonymous_tuple.AnonymousTuple([(None, 10), ('foo', 20),
+                                           ('bar', 30)]))
     self.assertNotEqual(
-        x, anonymous_tuple.AnonymousTuple([('foo', 10), ('bar', 20), (None,
-                                                                      30)]))
+        x, anonymous_tuple.AnonymousTuple([('foo', 10), ('bar', 20),
+                                           (None, 30)]))
     self.assertEqual(anonymous_tuple.to_elements(x), v)
     self.assertEqual(
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
@@ -305,11 +305,11 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_from_container_with_namedtuple_of_odict_recursive(self):
     x = anonymous_tuple.from_container(
-        collections.namedtuple('_', 'x y')(collections.OrderedDict([('a', 10),
-                                                                    ('b', 20)]),
-                                           collections.OrderedDict([('c', 30),
-                                                                    ('d',
-                                                                     40)])),
+        collections.namedtuple('_',
+                               'x y')(collections.OrderedDict([('a', 10),
+                                                               ('b', 20)]),
+                                      collections.OrderedDict([('c', 30),
+                                                               ('d', 40)])),
         recursive=True)
     self.assertEqual(str(x), '<x=<a=10,b=20>,y=<c=30,d=40>>')
 

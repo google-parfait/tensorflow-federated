@@ -318,8 +318,8 @@ def build_model_delta_optimizer_process(
       `apply_gradients` method of this optimizer is used to apply client updates
       to the server model.
     stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn` where the
-      next_fn performs a federated aggregation and upates state. That is, it
-      has TFF type (state@SERVER, value@CLIENTS) -> (state@SERVER,
+      next_fn performs a federated aggregation and upates state. That is, it has
+      TFF type (state@SERVER, value@CLIENTS) -> (state@SERVER,
       aggregate@SERVER).
     stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn` where the
       next_fn performs a federated broadcast and upates state. That is, it has

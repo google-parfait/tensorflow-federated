@@ -60,8 +60,9 @@ class TensorFlowSerializationTest(test.TestCase):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-        _legacy_dataset_reducer_example, computation_types.SequenceType(
-            tf.int64), context_stack_impl.context_stack)
+        _legacy_dataset_reducer_example,
+        computation_types.SequenceType(tf.int64),
+        context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)),
         '(int64* -> int64)')

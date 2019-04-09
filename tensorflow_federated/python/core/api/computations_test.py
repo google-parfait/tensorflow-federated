@@ -111,8 +111,8 @@ class ComputationsTest(test.TestCase):
 
   def test_fed_comp_typical_usage_as_decorator_with_unlabeled_type(self):
 
-    @computations.federated_computation((computation_types.FunctionType(
-        tf.int32, tf.int32), tf.int32))
+    @computations.federated_computation(
+        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32))
     def foo(f, x):
       assert isinstance(f, value_base.Value)
       assert isinstance(x, value_base.Value)

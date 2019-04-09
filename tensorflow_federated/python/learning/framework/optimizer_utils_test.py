@@ -161,8 +161,9 @@ class ServerTest(test.TestCase, parameterized.TestCase):
         'a': tf.constant([[1.0], [0.0]]),
         'b': tf.constant(1.0)
     })
-    server_state = optimizer_utils.server_update_model(
-        server_state, weights_delta, model_fn, optimizer_fn)
+    server_state = optimizer_utils.server_update_model(server_state,
+                                                       weights_delta, model_fn,
+                                                       optimizer_fn)
 
     train_vars = server_state.model.trainable
     # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
@@ -198,8 +199,9 @@ class ServerTest(test.TestCase, parameterized.TestCase):
           'a': tf.constant([[1.0], [0.0]]),
           'b': tf.constant(2.0)
       })
-      update_op = optimizer_utils.server_update_model(
-          server_state, weights_delta, model_fn, optimizer_fn)
+      update_op = optimizer_utils.server_update_model(server_state,
+                                                      weights_delta, model_fn,
+                                                      optimizer_fn)
       init_op = tf.group(tf.global_variables_initializer(),
                          tf.local_variables_initializer())
       g.finalize()

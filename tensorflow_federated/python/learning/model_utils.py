@@ -69,9 +69,9 @@ class ModelWeights(
   __slots__ = ()
 
   def __new__(cls, trainable, non_trainable):
-    return super(ModelWeights, cls).__new__(
-        cls, tensor_utils.to_odict(trainable),
-        tensor_utils.to_odict(non_trainable))
+    return super(ModelWeights,
+                 cls).__new__(cls, tensor_utils.to_odict(trainable),
+                              tensor_utils.to_odict(non_trainable))
 
   @classmethod
   def from_model(cls, model):
@@ -291,9 +291,10 @@ class _KerasModel(model_lib.Model):
       dummy_batch = dummy_batch._asdict()
     # Convert input to tensors, possibly from nested lists that need to be
     # converted to a single top-level tensor.
-    dummy_tensors = collections.OrderedDict(
-        [(k, tf.convert_to_tensor_or_sparse_tensor(v))
-         for k, v in six.iteritems(dummy_batch)])
+    dummy_tensors = collections.OrderedDict([
+        (k, tf.convert_to_tensor_or_sparse_tensor(v))
+        for k, v in six.iteritems(dummy_batch)
+    ])
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. We forced that here.
     inner_model(dummy_tensors['x'])

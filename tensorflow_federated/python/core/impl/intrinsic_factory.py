@@ -86,11 +86,11 @@ class IntrinsicFactory(object):
         zero.type_signature, zero.type_signature)
     report_type_expected = computation_types.FunctionType(
         zero.type_signature, report.type_signature.result)
-    for op_name, op, type_expected in [('accumulate', accumulate,
-                                        accumulate_type_expected),
-                                       ('merge', merge, merge_type_expected),
-                                       ('report', report,
-                                        report_type_expected)]:
+    for op_name, op, type_expected in [
+        ('accumulate', accumulate, accumulate_type_expected),
+        ('merge', merge, merge_type_expected),
+        ('report', report, report_type_expected)
+    ]:
       if not type_utils.is_assignable_from(type_expected, op.type_signature):
         raise TypeError('Expected parameter `{}` to be of type {}, '
                         'but received {} instead.'.format(
@@ -493,8 +493,9 @@ class IntrinsicFactory(object):
           'value_in', elements_to_zip[0][1].member)
       output_tuple = computation_building_blocks.Tuple([(elements_to_zip[0][0],
                                                          input_ref)])
-      lam = computation_building_blocks.Lambda(
-          'value_in', input_ref.type_signature, output_tuple)
+      lam = computation_building_blocks.Lambda('value_in',
+                                               input_ref.type_signature,
+                                               output_tuple)
       return zip_apply_fn[output_placement](lam, value[0])
     for _, elem in elements_to_zip:
       py_typecheck.check_type(elem, computation_types.FederatedType)
@@ -511,8 +512,9 @@ class IntrinsicFactory(object):
         value_impl.to_value(tuple_to_zip, None, self._context_stack),
         self._context_stack)
     inputs = value_impl.to_value(
-        computation_building_blocks.Reference(
-            'inputs', zipped.type_signature.member), None, self._context_stack)
+        computation_building_blocks.Reference('inputs',
+                                              zipped.type_signature.member),
+        None, self._context_stack)
     flatten_fn = value_impl.to_value(
         computation_building_blocks.Lambda(
             'inputs', zipped.type_signature.member,
