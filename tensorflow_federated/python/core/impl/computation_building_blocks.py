@@ -100,6 +100,11 @@ class ComputationBuildingBlock(typed_object.TypedObject):
     """Returns a serialized form of this object as a pb.Computation instance."""
     raise NotImplementedError
 
+  @abc.abstractproperty
+  def tff_repr(self):
+    """Returns the representation of the instance using TFF syntax."""
+    pass
+
   # TODO(b/113112885): Add memoization after identifying a suitable externally
   # available standard library that works in Python 2/3.
 
@@ -107,9 +112,8 @@ class ComputationBuildingBlock(typed_object.TypedObject):
   def __repr__(self):
     raise NotImplementedError
 
-  @abc.abstractmethod
   def __str__(self):
-    raise NotImplementedError
+    return self.tff_repr
 
 
 class Reference(ComputationBuildingBlock):
@@ -155,16 +159,17 @@ class Reference(ComputationBuildingBlock):
   def context(self):
     return self._context
 
-  def __repr__(self):
-    return 'Reference(\'{}\', {}{})'.format(
-        self._name, repr(self.type_signature),
-        ', {}'.format(repr(self._context)) if self._context is not None else '')
-
-  def __str__(self):
+  @property
+  def tff_repr(self):
     if self._context is not None:
       return '{}@{}'.format(self._name, str(self._context))
     else:
       return self._name
+
+  def __repr__(self):
+    return 'Reference(\'{}\', {}{})'.format(
+        self._name, repr(self.type_signature),
+        ', {}'.format(repr(self._context)) if self._context is not None else '')
 
 
 class Selection(ComputationBuildingBlock):
@@ -261,18 +266,19 @@ class Selection(ComputationBuildingBlock):
   def index(self):
     return self._index
 
+  @property
+  def tff_repr(self):
+    if self._name is not None:
+      return '{}.{}'.format(str(self._source), self._name)
+    else:
+      return '{}[{}]'.format(str(self._source), self._index)
+
   def __repr__(self):
     if self._name is not None:
       return 'Selection({}, name={})'.format(
           repr(self._source), '\'{}\''.format(self._name))
     else:
       return 'Selection({}, index={})'.format(repr(self._source), self._index)
-
-  def __str__(self):
-    if self._name is not None:
-      return '{}.{}'.format(str(self._source), self._name)
-    else:
-      return '{}[{}]'.format(str(self._source), self._index)
 
 
 class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
@@ -338,14 +344,15 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         type=type_serialization.serialize_type(self.type_signature),
         tuple=pb.Tuple(element=elements))
 
+  @property
+  def tff_repr(self):
+    return anonymous_tuple.AnonymousTuple.__str__(self)
+
   def __repr__(self):
     return 'Tuple([{}])'.format(', '.join(
         '({}, {})'.format('\'{}\''.format(e[0]) if e[0] is not None else 'None',
                           repr(e[1]))
         for e in anonymous_tuple.to_elements(self)))
-
-  def __str__(self):
-    return anonymous_tuple.AnonymousTuple.__str__(self)
 
 
 class Call(ComputationBuildingBlock):
@@ -420,17 +427,18 @@ class Call(ComputationBuildingBlock):
   def argument(self):
     return self._argument
 
+  @property
+  def tff_repr(self):
+    if self._argument is not None:
+      return '{}({})'.format(str(self._function), str(self._argument))
+    else:
+      return '{}()'.format(str(self._function))
+
   def __repr__(self):
     if self._argument is not None:
       return 'Call({}, {})'.format(repr(self._function), repr(self._argument))
     else:
       return 'Call({})'.format(repr(self._function))
-
-  def __str__(self):
-    if self._argument is not None:
-      return '{}({})'.format(str(self._function), str(self._argument))
-    else:
-      return '{}()'.format(str(self._function))
 
 
 class Lambda(ComputationBuildingBlock):
@@ -496,13 +504,14 @@ class Lambda(ComputationBuildingBlock):
   def result(self):
     return self._result
 
+  @property
+  def tff_repr(self):
+    return '({} -> {})'.format(self._parameter_name, str(self._result))
+
   def __repr__(self):
     return ('Lambda(\'{}\', {}, {})'.format(self._parameter_name,
                                             repr(self._parameter_type),
                                             repr(self._result)))
-
-  def __str__(self):
-    return '({} -> {})'.format(self._parameter_name, str(self._result))
 
 
 class Block(ComputationBuildingBlock):
@@ -569,15 +578,16 @@ class Block(ComputationBuildingBlock):
   def result(self):
     return self._result
 
+  @property
+  def tff_repr(self):
+    return ('(let {} in {})'.format(
+        ','.join('{}={}'.format(k, str(v)) for k, v in self._locals),
+        str(self._result)))
+
   def __repr__(self):
     return ('Block([{}], {})'.format(
         ', '.join('(\'{}\', {})'.format(k, repr(v)) for k, v in self._locals),
         repr(self._result)))
-
-  def __str__(self):
-    return ('(let {} in {})'.format(
-        ','.join('{}={}'.format(k, str(v)) for k, v in self._locals),
-        str(self._result)))
 
 
 class Intrinsic(ComputationBuildingBlock):
@@ -623,11 +633,12 @@ class Intrinsic(ComputationBuildingBlock):
   def uri(self):
     return self._uri
 
+  @property
+  def tff_repr(self):
+    return self._uri
+
   def __repr__(self):
     return 'Intrinsic(\'{}\', {})'.format(self._uri, repr(self.type_signature))
-
-  def __str__(self):
-    return self._uri
 
 
 class Data(ComputationBuildingBlock):
@@ -676,11 +687,12 @@ class Data(ComputationBuildingBlock):
   def uri(self):
     return self._uri
 
+  @property
+  def tff_repr(self):
+    return self._uri
+
   def __repr__(self):
     return 'Data(\'{}\', {})'.format(self._uri, repr(self.type_signature))
-
-  def __str__(self):
-    return self._uri
 
 
 class CompiledComputation(ComputationBuildingBlock):
@@ -714,12 +726,13 @@ class CompiledComputation(ComputationBuildingBlock):
   def proto(self):
     return self._proto
 
+  @property
+  def tff_repr(self):
+    return 'comp#{}'.format(self._name)
+
   def __repr__(self):
     return 'CompiledComputation({}, {})'.format(self._name,
                                                 repr(self.type_signature))
-
-  def __str__(self):
-    return 'comp#{}'.format(self._name)
 
 
 class Placement(ComputationBuildingBlock):
@@ -758,11 +771,12 @@ class Placement(ComputationBuildingBlock):
   def uri(self):
     return self._literal.uri
 
+  @property
+  def tff_repr(self):
+    return str(self._literal)
+
   def __repr__(self):
     return 'Placement(\'{}\')'.format(self.uri)
-
-  def __str__(self):
-    return str(self._literal)
 
 
 # pylint: disable=protected-access
@@ -776,6 +790,6 @@ ComputationBuildingBlock._deserializer_dict = {
     'intrinsic': Intrinsic.from_proto,
     'data': Data.from_proto,
     'placement': Placement.from_proto,
-    'tensorflow': CompiledComputation
+    'tensorflow': CompiledComputation,
 }
 # pylint: enable=protected-access
