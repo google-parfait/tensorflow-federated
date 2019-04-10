@@ -2,10 +2,7 @@ syntax = "proto3";
 
 package tensorflow_federated.v0;
 
-import "tensorflow/core/framework/graph.proto";
-import "tensorflow/core/framework/tensor_shape.proto";
-import "tensorflow/core/framework/types.proto";
-import "tensorflow/core/protobuf/meta_graph.proto";
+import "google/protobuf/any.proto";
 
 // A core data structure that contains a serialized representation of a unit of
 // processing to perform by the TensorFlow Federated framework. This data
@@ -256,13 +253,50 @@ message SequenceType {
 // Concise syntax for examples of tensor types: "dtype[shape]" or "dtype" for
 // scalars, e.g., "bool[10]".
 message TensorType {
-  // Only simple scalar tensor types are currently supported here, i.e., this
+  // Only simple tensor types are currently supported here, i.e., this
   // specifically excludes types such as DT_VARIANT and DT_RESOURCE.
-  .tensorflow.DataType dtype = 1;
+  //
+  // These values must match the semantics, and be a subset of,
+  // `tensorflow.DataType`.
+  enum DataType {
+    DT_INVALID = 0;
+    DT_FLOAT = 1;
+    DT_DOUBLE = 2;
+    DT_INT32 = 3;
+    DT_UINT8 = 4;
+    DT_INT16 = 5;
+    DT_INT8 = 6;
+    DT_STRING = 7;
+    DT_COMPLEX64 = 8;
+    DT_INT64 = 9;
+    DT_BOOL = 10;
+    DT_QINT8 = 11;
+    DT_QUINT8 = 12;
+    DT_QINT32 = 13;
+    DT_BFLOAT16 = 14;
+    DT_QINT16 = 15;
+    DT_QUINT16 = 16;
+    DT_UINT16 = 17;
+    DT_COMPLEX128 = 18;
+    DT_HALF = 19;
+    DT_UINT32 = 22;
+    DT_UINT64 = 23;
+  }
+  DataType dtype = 1;
 
-  // Undefined dimensions are allowed. Defined and undefined dimensions are to
-  // be considered distinct for type checking purposes.
-  .tensorflow.TensorShapeProto shape = 2;
+  // The sizes of each dimension of the tensor.
+  //
+  // Undefined dimensions are allowed and represented by -1. Defined and
+  // undefined dimensions are to be considered distinct for type checking
+  // purposes.
+  repeated int64 dims = 2;
+
+  // True iff the number of dimensions is unknown.
+  //
+  // If `dims` is unset:
+  // - `unknown_rank` == True corresponds to tf.TensorShape(None)
+  // - `unknown_rank` == False corresponds to tf.TensorShape([])
+  bool unknown_rank = 3;
 }
 
 // A representation of an abstract type identified by a string label (analogous
@@ -503,6 +537,7 @@ message TensorFlow {
 
   // A serialized representation of a TensorFlow graph to execute.
   //
+  // Stores a tensorflow.GraphDef message.
   // NOTE: This representation may evolve, e.g., get replaced with a MetaGraph,
   // SavedModel, or a similar structure. Dependencies on the exact form of the
   // graph encoding used here should be kept to minimum, and proxied by wrapper
@@ -512,7 +547,7 @@ message TensorFlow {
   // serialization standards as needed if/when they meet the constraints of the
   // target production environments, and provided that they don't introduce
   // additional complexity.
-  .tensorflow.GraphDef graph_def = 1;
+  google.protobuf.Any graph_def = 1;
 
   // String name of an initialization op to run on the graph before fetching
   // results. This op is intended only to be used for running tf.Variable

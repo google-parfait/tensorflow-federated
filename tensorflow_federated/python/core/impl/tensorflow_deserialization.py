@@ -29,6 +29,7 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
@@ -109,7 +110,8 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     # functions like tf.global_variables_initializers() will not
     # contain their initialization ops.
     output_tensors = tf.import_graph_def(
-        computation_proto.tensorflow.graph_def,
+        serialization_utils.unpack_graph_def(
+            computation_proto.tensorflow.graph_def),
         input_map,
         return_elements,
         # N. B. It is very important not to return any names from the original

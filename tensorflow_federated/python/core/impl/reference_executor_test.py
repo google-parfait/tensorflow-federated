@@ -325,7 +325,7 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(foo([ds1, ds2]), 100)
     self.assertEqual(foo((ds1, ds2)), 100)
 
-  def test_computation_with_federated_int_sequence(self):
+  def test_computation_with_batched_federated_int_sequence(self):
     ds1_shape = tf.TensorShape([None])
     sequence_type = computation_types.SequenceType(
         computation_types.TensorType(tf.int32, ds1_shape))
@@ -334,7 +334,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.tf_computation(sequence_type)
     def foo(z):
-      value1 = z.reduce(0, lambda x, y: x + y)
+      value1 = z.reduce(0, lambda x, y: x + tf.reduce_sum(y))
       return value1
 
     @computations.federated_computation(federated_type)
@@ -383,7 +383,7 @@ class ReferenceExecutorTest(test.TestCase):
     def test_batch_select_and_reduce(z):
       # namedtuple is converted to OrderedDict under the hood
       i = z.map(lambda x: x['y'])
-      return i.reduce(0., lambda x, y: x + y)
+      return i.reduce(0., lambda x, y: x + tf.reduce_sum(y))
 
     @computations.federated_computation(federated_sequence_type)
     def map_y_sum(x):

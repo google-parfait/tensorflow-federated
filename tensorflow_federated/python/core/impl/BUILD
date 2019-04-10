@@ -181,6 +181,7 @@ py_test(
         ":computation_impl",
         ":computation_wrapper_instances",
         ":placement_literals",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -523,6 +524,7 @@ py_library(
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
@@ -551,6 +553,7 @@ py_library(
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/tensorflow_libs:graph_keys",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -565,6 +568,7 @@ py_test(
         ":context_stack_impl",
         ":tensorflow_serialization",
         ":type_serialization",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -714,6 +718,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
 
@@ -782,6 +787,7 @@ py_test(
     srcs = ["value_impl_test.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_impl",
         ":context_stack_impl",
         ":federated_computation_context",
         ":transformations",

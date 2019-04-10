@@ -20,6 +20,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_impl
@@ -36,8 +37,9 @@ class TensorFlowSerializationTest(test.TestCase):
         str(type_serialization.deserialize_type(comp.type)), '( -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     results = tf.Session().run(
-        tf.import_graph_def(comp.tensorflow.graph_def, None,
-                            [comp.tensorflow.result.tensor.tensor_name]))
+        tf.import_graph_def(
+            serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
+            None, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [99])
 
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
@@ -49,7 +51,7 @@ class TensorFlowSerializationTest(test.TestCase):
     parameter = tf.constant(1000)
     results = tf.Session().run(
         tf.import_graph_def(
-            comp.tensorflow.graph_def,
+            serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
             {comp.tensorflow.parameter.tensor.tensor_name: parameter},
             [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [1003])
@@ -70,7 +72,7 @@ class TensorFlowSerializationTest(test.TestCase):
     parameter = tf.data.Dataset.range(5)
     results = tf.Session().run(
         tf.import_graph_def(
-            comp.tensorflow.graph_def, {
+            serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
                 comp.tensorflow.parameter.sequence.iterator_string_handle_name:
                     (parameter.make_one_shot_iterator().string_handle())
             }, [comp.tensorflow.result.tensor.tensor_name]))
