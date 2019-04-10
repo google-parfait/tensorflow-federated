@@ -27,13 +27,13 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
-EMPTY_TENSORSHAPE_PROTO = tf.TensorShape([]).as_proto()
-
 
 def _create_scalar_tensor_type(dtype):
-  return pb.Type(
-      tensor=pb.TensorType(
-          dtype=dtype.as_datatype_enum, shape=EMPTY_TENSORSHAPE_PROTO))
+  return pb.Type(tensor=pb.TensorType(dtype=dtype.as_datatype_enum))
+
+
+def _shape_to_dims(shape):
+  return [s if s is not None else -1 for s in shape]
 
 
 class TypeSerializationTest(test.TestCase, parameterized.TestCase):
@@ -49,8 +49,7 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     actual_proto = type_serialization.serialize_type((dtype, shape))
     expected_proto = pb.Type(
         tensor=pb.TensorType(
-            dtype=dtype.as_datatype_enum,
-            shape=tf.TensorShape(shape).as_proto()))
+            dtype=dtype.as_datatype_enum, dims=_shape_to_dims(shape)))
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_string_sequence(self):

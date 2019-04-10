@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -46,7 +47,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     x = tf.placeholder(tf.int32)
     result = tf.import_graph_def(
-        comp.tensorflow.graph_def,
+        serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
         {comp.tensorflow.parameter.tensor.tensor_name: x},
         [comp.tensorflow.result.tensor.tensor_name])
     self.assertEqual(
@@ -66,7 +67,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
     x = tf.placeholder(tf.int32)
     y = tf.placeholder(tf.int32)
     result = tf.import_graph_def(
-        comp.tensorflow.graph_def, {
+        serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
             comp.tensorflow.parameter.tuple.element[0].tensor.tensor_name: x,
             comp.tensorflow.parameter.tuple.element[1].tensor.tensor_name: y
         }, [comp.tensorflow.result.tensor.tensor_name])

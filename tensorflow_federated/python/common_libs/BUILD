@@ -63,3 +63,25 @@ py_test(
     srcs = ["test_test.py"],
     deps = [":test"],
 )
+
+py_library(
+    name = "serialization_utils",
+    srcs = ["serialization_utils.py"],
+    deps = [
+        ":py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@protobuf_archive//:protobuf_python",
+    ],
+)
+
+py_test(
+    name = "serialization_utils_test",
+    size = "small",
+    srcs = ["serialization_utils_test.py"],
+    deps = [
+        ":serialization_utils",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@protobuf_archive//:protobuf_python",
+    ],
+)

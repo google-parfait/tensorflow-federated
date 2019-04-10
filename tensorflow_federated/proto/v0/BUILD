@@ -10,8 +10,5 @@ py_proto_library(
     default_runtime = "@protobuf_archive//:protobuf_python",
     protoc = "@protobuf_archive//:protoc",
     srcs_version = "PY2AND3",
-    deps = [
-        "@org_tensorflow//tensorflow/core:protos_all_py",
-        "@protobuf_archive//:protobuf_python",
-    ],
+    deps = ["@protobuf_archive//:protobuf_python"],
 )

@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import graph_utils
@@ -134,7 +135,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
               parameter=type_serialization.serialize_type(parameter_type),
               result=type_serialization.serialize_type(result_type))),
       tensorflow=pb.TensorFlow(
-          graph_def=graph.as_graph_def(),
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
           parameter=parameter_binding,
           result=result_binding,
           initialize_op=init_op_name))

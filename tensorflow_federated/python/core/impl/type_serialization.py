@@ -26,6 +26,30 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import placement_literals
 
 
+def _to_tensor_type_proto(tensor_type):
+  py_typecheck.check_type(tensor_type, computation_types.TensorType)
+  shape = tensor_type.shape
+  if shape.dims is None:
+    dims = None
+  else:
+    dims = [d.value if d.value is not None else -1 for d in shape.dims]
+  return pb.TensorType(
+      dtype=tensor_type.dtype.base_dtype.as_datatype_enum,
+      dims=dims,
+      unknown_rank=dims is None)
+
+
+def _to_tensor_shape(tensor_type_proto):
+  py_typecheck.check_type(tensor_type_proto, pb.TensorType)
+  if not hasattr(tensor_type_proto, 'dims'):
+    if tensor_type_proto.unknown_rank:
+      return tf.TensorShape(None)
+    else:
+      return tf.TensorShape([])
+  dims = [dim if dim >= 0 else None for dim in tensor_type_proto.dims]
+  return tf.TensorShape(dims)
+
+
 def serialize_type(type_spec):
   """Serializes 'type_spec' as a pb.Type.
 
@@ -51,9 +75,7 @@ def serialize_type(type_spec):
   target = computation_types.to_type(type_spec)
   py_typecheck.check_type(target, computation_types.Type)
   if isinstance(target, computation_types.TensorType):
-    return pb.Type(
-        tensor=pb.TensorType(
-            dtype=target.dtype.as_datatype_enum, shape=target.shape.as_proto()))
+    return pb.Type(tensor=_to_tensor_type_proto(target))
   elif isinstance(target, computation_types.SequenceType):
     return pb.Type(
         sequence=pb.SequenceType(element=serialize_type(target.element)))
@@ -113,9 +135,10 @@ def deserialize_type(type_proto):
   if type_variant is None:
     return None
   elif type_variant == 'tensor':
+    tensor_proto = type_proto.tensor
     return computation_types.TensorType(
-        dtype=tf.DType(type_proto.tensor.dtype),
-        shape=tf.TensorShape(type_proto.tensor.shape))
+        dtype=tf.DType(tensor_proto.dtype),
+        shape=_to_tensor_shape(tensor_proto))
   elif type_variant == 'sequence':
     return computation_types.SequenceType(
         deserialize_type(type_proto.sequence.element))
