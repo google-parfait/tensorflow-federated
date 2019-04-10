@@ -165,41 +165,65 @@ def replace_called_lambda_with_block(comp):
 
 
 def remove_mapped_or_applied_identity(comp):
-  """Removes nodes representing mapping or applying the identity function.
+  r"""Removes all the mapped or applied identity functions in `comp`.
+
+  This transform traverses `comp` postorder, matches the follwoing pattern `*`,
+  and removes all the mapped or applied identity fucntions by replacing the
+  following computation:
+
+            *Call
+            /    \
+  *Intrinsic     *Tuple
+                 /     \
+       *Lambda(a)       x=Computation
+                 \
+                 *Reference(a)
+
+  (<(a -> a), x>)
+
+  with its argument:
+
+  x=Computation
+
+  x
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`, to
-      check for a mapped or applied identity function which can be removed.
+    comp: The computation building block in which to perform the replacements.
 
   Returns:
-    A possibly transformed version of comp, which is identical except that a
-      mapped or applied identity function is replaced with its argument.
+    A new computation with the transformation applied or the original `comp`.
+
+  Raises:
+    TypeError: If types do not match.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
-  def is_mapped_or_applied_identity(comp):
-    """Helper function to check if `comp` represents a communicated identity."""
-    if isinstance(comp, computation_building_blocks.Call):
-      if isinstance(comp.function, computation_building_blocks.Intrinsic):
-        if comp.function.uri in [
+  def _is_identity_function(comp):
+    """Returns `True` if `comp` is an identity function."""
+    return (isinstance(comp, computation_building_blocks.Lambda) and
+            isinstance(comp.result, computation_building_blocks.Reference) and
+            comp.parameter_name == comp.result.name)
+
+  def _should_transform(comp):
+    """Returns `True` if `comp` is a mapped or applied identity function."""
+    if (isinstance(comp, computation_building_blocks.Call) and
+        isinstance(comp.function, computation_building_blocks.Intrinsic) and
+        comp.function.uri in (
             intrinsic_defs.FEDERATED_MAP.uri,
-            intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_defs.SEQUENCE_MAP.uri
-        ]:
-          called_function = comp.argument[0]
-          if isinstance(called_function, computation_building_blocks.Lambda):
-            if isinstance(called_function.result,
-                          computation_building_blocks.Reference):
-              if called_function.parameter_name == called_function.result.name:
-                return True
+            intrinsic_defs.FEDERATED_APPLY.uri,
+            intrinsic_defs.SEQUENCE_MAP.uri,
+        )):
+      called_function = comp.argument[0]
+      if _is_identity_function(called_function):
+        return True
     return False
 
   def _transform(comp):
-    """Transform for removal of intrinsics representing the identity."""
-    if is_mapped_or_applied_identity(comp):
-      called_arg = comp.argument[1]
-      return called_arg
-    return comp
+    if not _should_transform(comp):
+      return comp
+    called_arg = comp.argument[1]
+    return called_arg
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -254,23 +278,19 @@ def replace_chained_federated_maps_with_federated_map(comp):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
-  def _is_federated_map_computation(comp):
-    """Returns `True` if `comp` is a federated map computation."""
+  def _is_federated_map(comp):
+    """Returns `True` if `comp` is a federated map."""
     return (isinstance(comp, computation_building_blocks.Call) and
             isinstance(comp.function, computation_building_blocks.Intrinsic) and
-            comp.function.uri == intrinsic_defs.FEDERATED_MAP.uri and
-            isinstance(comp.argument, computation_building_blocks.Tuple))
-
-  def _is_chained_federated_map_computation(comp):
-    """Returns `True` if `comp` is a chained federated map computation."""
-    if _is_federated_map_computation(comp):
-      outer_arg = comp.argument[1]
-      if _is_federated_map_computation(outer_arg):
-        return True
-    return False
+            comp.function.uri == intrinsic_defs.FEDERATED_MAP.uri)
 
   def _should_transform(comp):
-    return _is_chained_federated_map_computation(comp)
+    """Returns `True` if `comp` is a chained federated map."""
+    if _is_federated_map(comp):
+      outer_arg = comp.argument[1]
+      if _is_federated_map(outer_arg):
+        return True
+    return False
 
   def _transform(comp):
     """Internal transform function."""
