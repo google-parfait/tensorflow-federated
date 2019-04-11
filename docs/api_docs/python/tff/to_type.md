@@ -5,17 +5,17 @@
 
 # tff.to_type
 
-```python
+``` python
 tff.to_type(spec)
 ```
 
-Defined in
-[`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+
+
+Defined in [`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
 <!-- Placeholder for "Used in" -->
 
-Converts the argument into an instance of
-<a href="../tff/Type.md"><code>tff.Type</code></a>.
+Converts the argument into an instance of <a href="../tff/Type.md"><code>tff.Type</code></a>.
 
 Examples of arguments convertible to tensor types:
 
@@ -45,11 +45,10 @@ Examples of arguments convertible to nested named tuple types:
 
 #### Args:
 
-*   <b>`spec`</b>: Either an instance of
-    <a href="../tff/Type.md"><code>tff.Type</code></a>, or an argument
-    convertible to <a href="../tff/Type.md"><code>tff.Type</code></a>.
+* <b>`spec`</b>: Either an instance of <a href="../tff/Type.md"><code>tff.Type</code></a>, or an argument convertible to
+    <a href="../tff/Type.md"><code>tff.Type</code></a>.
+
 
 #### Returns:
 
-An instance of <a href="../tff/Type.md"><code>tff.Type</code></a> corresponding
-to the given `spec`.
+An instance of <a href="../tff/Type.md"><code>tff.Type</code></a> corresponding to the given `spec`.

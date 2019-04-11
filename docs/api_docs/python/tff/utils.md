@@ -5,8 +5,9 @@
 
 # Module: tff.utils
 
-Defined in
-[`core/utils/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py).
+
+
+Defined in [`core/utils/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -19,25 +20,19 @@ depend on implementation classes. It should be written against the Core API.
 
 ## Classes
 
-[`class IterativeProcess`](../tff/utils/IterativeProcess.md): A process that
-includes an initialization and iterated computation.
+[`class IterativeProcess`](../tff/utils/IterativeProcess.md): A process that includes an initialization and iterated computation.
 
-[`class StatefulAggregateFn`](../tff/utils/StatefulAggregateFn.md): A simple
-container for a stateful aggregation function.
+[`class StatefulAggregateFn`](../tff/utils/StatefulAggregateFn.md): A simple container for a stateful aggregation function.
 
-[`class StatefulBroadcastFn`](../tff/utils/StatefulBroadcastFn.md): A simple
-container for a stateful broadcast function.
+[`class StatefulBroadcastFn`](../tff/utils/StatefulBroadcastFn.md): A simple container for a stateful broadcast function.
 
 ## Functions
 
-[`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target`
-from `source`.
+[`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target` from `source`.
 
-[`get_variables(...)`](../tff/utils/get_variables.md): Creates a set of
-variables that matches the given `type_spec`.
+[`get_variables(...)`](../tff/utils/get_variables.md): Creates a set of variables that matches the given `type_spec`.
 
-[`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to
-`source`.
+[`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to `source`.
 
-[`update_state(...)`](../tff/utils/update_state.md): Returns a new `state` (a
-namedtuple) with updated with kwargs.
+[`update_state(...)`](../tff/utils/update_state.md): Returns a new `state` (a namedtuple) with updated with kwargs.
+

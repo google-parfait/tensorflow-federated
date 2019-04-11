@@ -5,36 +5,38 @@
 
 # tff.utils.assign
 
-```python
+``` python
 tff.utils.assign(
     target,
     source
 )
 ```
 
-Defined in
-[`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
+
+
+Defined in [`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
 
 Creates an op that assigns `target` from `source`.
 
 This utility function provides the exact same behavior as `tf.assign`, but it
-generalizes to a wider class of objects, including ordinary variables as well as
-various types of nested structures.
+generalizes to a wider class of objects, including ordinary variables as well
+as various types of nested structures.
 
 #### Args:
 
-*   <b>`target`</b>: A nested structure composed of variables embedded in
-    containers that are compatible with `tf.contrib.framework.nest`, or
-    instances of `anonymous_tuple.AnonymousTuple`.
-*   <b>`source`</b>: A nsested structure composed of tensors, matching that of
-    `target`.
+* <b>`target`</b>: A nested structure composed of variables embedded in containers that
+    are compatible with `tf.contrib.framework.nest`, or instances of
+    `anonymous_tuple.AnonymousTuple`.
+* <b>`source`</b>: A nsested structure composed of tensors, matching that of `target`.
+
 
 #### Returns:
 
 A single op that represents the assignment.
 
+
 #### Raises:
 
-*   <b>`TypeError`</b>: If types mismatch.
+* <b>`TypeError`</b>: If types mismatch.

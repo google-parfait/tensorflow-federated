@@ -10,13 +10,15 @@
 
 ## Class `BatchOutput`
 
-Defined in
-[`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
+
+
+
+
+Defined in [`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
 <!-- Placeholder for "Used in" -->
 
-A structure that holds the output of a
-<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
+A structure that holds the output of a <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
 NOTE: All fields are optional (may be None).
 
@@ -26,7 +28,7 @@ NOTE: All fields are optional (may be None).
 
 <h2 id="__new__"><code>__new__</code></h2>
 
-```python
+``` python
 __new__(
     _cls,
     loss,
@@ -36,8 +38,17 @@ __new__(
 
 Create new instance of BatchOutput(loss, predictions)
 
+
+
 ## Properties
 
 <h3 id="loss"><code>loss</code></h3>
 
+
+
 <h3 id="predictions"><code>predictions</code></h3>
+
+
+
+
+

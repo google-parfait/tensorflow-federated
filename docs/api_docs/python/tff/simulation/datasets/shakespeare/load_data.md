@@ -5,12 +5,13 @@
 
 # tff.simulation.datasets.shakespeare.load_data
 
-```python
+``` python
 tff.simulation.datasets.shakespeare.load_data(cache_dir=None)
 ```
 
-Defined in
-[`simulation/datasets/shakespeare/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/load_data.py).
+
+
+Defined in [`simulation/datasets/shakespeare/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/load_data.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -24,7 +25,8 @@ This dataset is derived from the Leaf repository
 Shakespeare, which is published in "LEAF: A Benchmark for Federated Settings"
 https://arxiv.org/abs/1812.01097.
 
-The data set consists of 715 users (characters of Shakespeare plays), where each
+The data set consists of 715 users (characters of Shakespeare plays), where
+each
 example corresponds to a contiguous set of lines spoken by the character in a
 given play.
 
@@ -39,20 +41,20 @@ one example in _test_. Characters that had less than 2 examples are excluded
 from the data set.
 
 The `tf.data.Datasets` returned by
-<a href="../../../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a>
-will yield `collections.OrderedDict` objects at each iteration, with the
-following keys and values:
+<a href="../../../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a> will yield
+`collections.OrderedDict` objects at each iteration, with the following keys
+and values:
 
--   `'snippets'`: a `tf.Tensor` with `dtype=tf.string`, the snippet of
+  -   `'snippets'`: a `tf.Tensor` with `dtype=tf.string`, the snippet of
     contiguous text.
 
 #### Args:
 
-*   <b>`cache_dir`</b>: (Optional) directory to cache the downloaded file. If
-    `None`, caches in Keras' default cache directory.
+* <b>`cache_dir`</b>: (Optional) directory to cache the downloaded file. If `None`,
+    caches in Keras' default cache directory.
+
 
 #### Returns:
 
 Tuple of (train, test) where the tuple elements are
-<a href="../../../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
-objects.
+<a href="../../../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a> objects.

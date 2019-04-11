@@ -5,15 +5,16 @@
 
 # tff.simulation.datasets.emnist.load_data
 
-```python
+``` python
 tff.simulation.datasets.emnist.load_data(
     only_digits=True,
     cache_dir=None
 )
 ```
 
-Defined in
-[`simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
+
+
+Defined in [`simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -45,25 +46,25 @@ one example in _test_. Writers that had less than 2 examples are excluded from
 the data set.
 
 The `tf.data.Datasets` returned by
-<a href="../../../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a>
-will yield `collections.OrderedDict` objects at each iteration, with the
-following keys and values:
+<a href="../../../../tff/simulation/ClientData.md#create_tf_dataset_for_client"><code>tff.simulation.ClientData.create_tf_dataset_for_client</code></a> will yield
+`collections.OrderedDict` objects at each iteration, with the following keys
+and values:
 
--   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],
-    containing the pixels of the handwritten digit.
--   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
-    label of the corresponding pixels.
+  -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],
+      containing the pixels of the handwritten digit.
+  -   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
+      label of the corresponding pixels.
 
 #### Args:
 
-*   <b>`only_digits`</b>: (Optional) whether to only include examples that are
-    from the digits [0-9] classes. If `False`, includes lower and upper case
+* <b>`only_digits`</b>: (Optional) whether to only include examples that are from the
+    digits [0-9] classes. If `False`, includes lower and upper case
     characters, for a total of 62 class labels.
-*   <b>`cache_dir`</b>: (Optional) directory to cache the downloaded file. If
-    `None`, caches in Keras' default cache directory.
+* <b>`cache_dir`</b>: (Optional) directory to cache the downloaded file. If `None`,
+    caches in Keras' default cache directory.
+
 
 #### Returns:
 
 Tuple of (train, test) where the tuple elements are
-<a href="../../../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
-objects.
+<a href="../../../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a> objects.

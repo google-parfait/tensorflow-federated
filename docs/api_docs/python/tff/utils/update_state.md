@@ -5,15 +5,16 @@
 
 # tff.utils.update_state
 
-```python
+``` python
 tff.utils.update_state(
     state,
     **kwargs
 )
 ```
 
-Defined in
-[`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
+
+
+Defined in [`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
 

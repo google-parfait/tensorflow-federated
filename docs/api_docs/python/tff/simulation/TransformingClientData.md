@@ -15,26 +15,27 @@
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
-Defined in
-[`simulation/transforming_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/transforming_client_data.py).
+
+
+Defined in [`simulation/transforming_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/transforming_client_data.py).
 
 <!-- Placeholder for "Used in" -->
 
 Transforms client data, potentially expanding by adding pseudo-clients.
 
 Each client of the raw_client_data is "expanded" into some number of
-pseudo-clients. Each client ID is a string consisting of the original client ID
-plus a concatenated integer index. For example, the raw client id "client_a"
-might be expanded into pseudo-client ids "client_a_0", "client_a_1" and
-"client_a_2". A function f(x, raw_client_id, i) maps datapoint x to a new
-datapoint, parameterized by the (raw) client_id and index i. For example if x is
-an image, then f(x, "client_a", 0) might be the identity, while f(x, "client_a",
-1) could be a random rotation of the image with the angle determined by a hash
-of "client_a" and "1".
+pseudo-clients. Each client ID is a string consisting of the original client
+ID plus a concatenated integer index. For example, the raw client id
+"client_a" might be expanded into pseudo-client ids "client_a_0", "client_a_1"
+and "client_a_2". A function f(x, raw_client_id, i) maps datapoint x to a new
+datapoint, parameterized by the (raw) client_id and index i. For example if x
+is an image, then f(x, "client_a", 0) might be the identity, while
+f(x, "client_a", 1) could be a random rotation of the image with the angle
+determined by a hash of "client_a" and "1".
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-```python
+``` python
 __init__(
     raw_client_data,
     transform_fn,
@@ -46,47 +47,62 @@ Initializes the TransformingClientData.
 
 #### Args:
 
-*   <b>`raw_client_data`</b>: A ClientData to expand.
-*   <b>`transform_fn`</b>: A function f(x, raw_client_id, i) that maps datapoint
-    x to a new datapoint, parameterized by the (raw) client_id and index i. For
-    example if x is an image, then f(x, "client_a", 0) might be the identity,
-    while f(x, "client_a", 1) could be a random rotation of the image with the
-    angle determined by a hash of "client_a" and "1". Typically by convention
-    the index 0 corresponds to the identity function if the identity is
-    supported.
-*   <b>`num_transformed_clients`</b>: The total number of transformed clients to
-    produce. If it is an integer multiple k of the number of real clients, there
-    will be exactly k pseudo-clients per real client, with indices 0...k-1. Any
-    remainder g will be generated from the first g real clients and will be
-    given index k.
+* <b>`raw_client_data`</b>: A ClientData to expand.
+* <b>`transform_fn`</b>: A function f(x, raw_client_id, i) that maps datapoint x to a
+    new datapoint, parameterized by the (raw) client_id and index i. For
+    example if x is an image, then f(x, "client_a", 0) might be the
+    identity, while f(x, "client_a", 1) could be a random rotation of the
+    image with the angle determined by a hash of "client_a" and "1".
+    Typically by convention the index 0 corresponds to the identity function
+    if the identity is supported.
+* <b>`num_transformed_clients`</b>: The total number of transformed clients to
+    produce. If it is an integer multiple k of the number of real clients,
+    there will be exactly k pseudo-clients per real client, with indices
+    0...k-1. Any remainder g will be generated from the first g real clients
+    and will be given index k.
+
+
 
 ## Properties
 
 <h3 id="client_ids"><code>client_ids</code></h3>
 
+
+
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
+
+
 <h3 id="output_types"><code>output_types</code></h3>
+
+
+
+
 
 ## Methods
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-```python
+``` python
 create_tf_dataset_for_client(client_id)
 ```
 
+
+
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
-```python
+``` python
 create_tf_dataset_from_all_clients()
 ```
 
 Creates a new `tf.data.Dataset` containing _all_ client examples.
 
-NOTE: the returned `tf.data.Dataset` is not serializable and runnable on other
-devices, as it uses `tf.py_func` internally.
+NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
+other devices, as it uses `tf.py_func` internally.
 
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+
+

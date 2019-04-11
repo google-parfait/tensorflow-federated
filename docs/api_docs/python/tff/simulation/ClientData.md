@@ -12,8 +12,11 @@
 
 ## Class `ClientData`
 
-Defined in
-[`simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
+
+
+
+
+Defined in [`simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -34,8 +37,8 @@ Any `tf.data.Dataset` constructed by this class is expected to have matching
 
 #### Returns:
 
-A nested structure of `tf.TensorShape` objects corresponding to each component
-of an element of the client datasets.
+A nested structure of `tf.TensorShape` objects corresponding to each
+component of an element of the client datasets.
 
 <h3 id="output_types"><code>output_types</code></h3>
 
@@ -46,14 +49,16 @@ Any `tf.data.Dataset` constructed by this class is expected have matching
 
 #### Returns:
 
-A nested structure of `tf.DType` objects corresponding to each component of an
-element of the client datasets.
+A nested structure of `tf.DType` objects corresponding to each component
+of an element of the client datasets.
+
+
 
 ## Methods
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-```python
+``` python
 create_tf_dataset_for_client(client_id)
 ```
 
@@ -61,7 +66,8 @@ Creates a new `tf.data.Dataset` containing the client training examples.
 
 #### Args:
 
-*   <b>`client_id`</b>: The string client_id for the desired client.
+* <b>`client_id`</b>: The string client_id for the desired client.
+
 
 #### Returns:
 
@@ -69,15 +75,18 @@ A `tf.data.Dataset` object.
 
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
-```python
+``` python
 create_tf_dataset_from_all_clients()
 ```
 
 Creates a new `tf.data.Dataset` containing _all_ client examples.
 
-NOTE: the returned `tf.data.Dataset` is not serializable and runnable on other
-devices, as it uses `tf.py_func` internally.
+NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
+other devices, as it uses `tf.py_func` internally.
 
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+
+

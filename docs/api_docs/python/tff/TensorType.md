@@ -14,17 +14,17 @@
 
 Inherits From: [`Type`](../tff/Type.md)
 
-Defined in
-[`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+
+
+Defined in [`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
 <!-- Placeholder for "Used in" -->
 
-An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
-representing types of tensors in TFF.
+An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a> representing types of tensors in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-```python
+``` python
 __init__(
     dtype,
     shape=None
@@ -35,31 +35,47 @@ Constructs a new instance from the given `dtype` and `shape`.
 
 #### Args:
 
-*   <b>`dtype`</b>: An instance of `tf.DType`.
-*   <b>`shape`</b>: An optional instance of `tf.TensorShape` or an argument that
-    can be passed to its constructor (such as a `list` or a `tuple`), or `None`
-    for the default scalar shape. Unspecified shapes are not supported.
+* <b>`dtype`</b>: An instance of `tf.DType`.
+* <b>`shape`</b>: An optional instance of `tf.TensorShape` or an argument that can be
+    passed to its constructor (such as a `list` or a `tuple`), or `None` for
+    the default scalar shape. Unspecified shapes are not supported.
+
 
 #### Raises:
 
-*   <b>`TypeError`</b>: if arguments are of the wrong types.
+* <b>`TypeError`</b>: if arguments are of the wrong types.
+
+
 
 ## Properties
 
 <h3 id="dtype"><code>dtype</code></h3>
 
+
+
 <h3 id="shape"><code>shape</code></h3>
+
+
+
+
 
 ## Methods
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-```python
+``` python
 __eq__(other)
 ```
 
+
+
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-```python
+``` python
 __ne__(other)
 ```
+
+
+
+
+

@@ -14,42 +14,46 @@
 
 ## Class `Model`
 
-Defined in
-[`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
+
+
+
+
+Defined in [`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
 <!-- Placeholder for "Used in" -->
 
 Represents a model for use in TensorFlow Federated.
 
-Each `Model` will work on a set of `tf.Variables`, and each method should be a
-computation that can be implemented as a `tf.defun`; this implies the class
-should essentially be stateless from a Python perspective, as each method will
-generally only be traced once (per set of arguments) to create the corresponding
-TensorFlow graph functions. Thus, `Model` instances should behave as expected in
-both eager and graph (TF 1.0) usage.
+Each `Model` will work on a set of `tf.Variables`, and each method should be
+a computation that can be implemented as a `tf.defun`; this implies the class
+should essentially be stateless from a Python perspective, as each method
+will generally only be traced once (per set of arguments) to create the
+corresponding TensorFlow graph functions. Thus, `Model` instances should
+behave as expected in both eager and graph (TF 1.0) usage.
 
 In general, `tf.Variables` may be either:
 
-*   Weights, the variables needed to make predictions with the model.
-*   Local variables, e.g. to accumulate aggregated metrics across calls to
-    forward_pass.
+  * Weights, the variables needed to make predictions with the model.
+  * Local variables, e.g. to accumulate aggregated metrics across
+    calls to forward_pass.
 
-The weights can be broken down into trainable variables (variables that can and
-should be trained using gradient-based methods), and non-trainable variables
-(which could include fixed pre-trained layers, or static model data). These
-variables are provided via the `trainable_variables`, `non_trainable_variables`,
-and `local_variables` properties, and must be initialized by the user of the
-`Model`.
+The weights can be broken down into trainable variables (variables
+that can and should be trained using gradient-based methods), and
+non-trainable variables (which could include fixed pre-trained layers,
+or static model data). These variables are provided via the
+`trainable_variables`, `non_trainable_variables`, and `local_variables`
+properties, and must be initialized by the user of the `Model`.
 
-In federated learning, model weights will generally be provided by the server,
-and updates to trainable model variables will be sent back to the server. Local
-variables are not transmitted, and are instead initialized locally on the
-device, and then used to produce `aggregated_outputs` which are sent to the
-server.
+In federated learning, model weights will generally be provided by the
+server, and updates to trainable model variables will be sent back to the
+server. Local variables are not transmitted, and are instead initialized
+locally on the device, and then used to produce `aggregated_outputs` which
+are sent to the server.
 
 All `tf.Variables` should be introduced in `__init__`; this could move to a
 `build` method more inline with Keras (see
-https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in the future.
+https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in
+the future.
 
 ## Properties
 
@@ -57,8 +61,8 @@ https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in the future.
 
 Performs federated aggregation of the `Model's` `local_outputs`.
 
-This is typically used to aggregate metrics across many clients, e.g. the body
-of the computation might be:
+This is typically used to aggregate metrics across many clients, e.g. the
+body of the computation might be:
 
 ```python
 return {
@@ -73,26 +77,24 @@ specify aggregations across clients.
 
 #### Returns:
 
-Either a <a href="../../tff/Computation.md"><code>tff.Computation</code></a>, or
-None if no federated aggregation is needed.
+Either a <a href="../../tff/Computation.md"><code>tff.Computation</code></a>, or None if no federated aggregation is needed.
 
-The <a href="../../tff/Computation.md"><code>tff.Computation</code></a> should
-take as its single input a
-<a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>-placed
-<a href="../../tff/Value.md"><code>tff.Value</code></a> corresponding to the
-return value of `Model.report_local_outputs`, and return a dictionary or other
-structure of <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>-placed
-values; consumers of this method should generally provide these server-placed
-values as outputs of the overall computation consuming the model.
+
+The <a href="../../tff/Computation.md"><code>tff.Computation</code></a> should take as its single input a
+<a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>-placed <a href="../../tff/Value.md"><code>tff.Value</code></a> corresponding to the return value of
+`Model.report_local_outputs`, and return a dictionary or other structure
+of <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>-placed values; consumers of this method should generally
+provide these server-placed values as outputs of the overall computation
+consuming the model.
 
 <h3 id="input_spec"><code>input_spec</code></h3>
 
 The type specification of the `batch_input` parameter for `forward_pass`.
 
 A nested structure of `tf.TensorSpec` objects, that matches the structure of
-arguments that will be passed as the `batch_input` argument of `forward_pass`.
-The tensors must include a batch dimension as the first dimension, but the batch
-dimension may be undefined.
+arguments that will be passed as the `batch_input` argument of
+`forward_pass`. The tensors must include a batch dimension as the first
+dimension, but the batch dimension may be undefined.
 
 Similar in spirit to `tf.keras.models.Model.input_spec`.
 
@@ -108,11 +110,13 @@ An iterable of `tf.Variable` objects, see class comment for details.
 
 An iterable of `tf.Variable` objects, see class comment for details.
 
+
+
 ## Methods
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
-```python
+``` python
 forward_pass(
     batch_input,
     training=True
@@ -121,8 +125,8 @@ forward_pass(
 
 Runs the forward pass and returns results.
 
-This method should not modify any variables that are part of the model, that is,
-variables that influence the predictions; for that, see
+This method should not modify any variables that are part of the model, that
+is, variables that influence the predictions; for that, see
 `TrainableModel.train_on_batch`.
 
 However, this method may update aggregated metrics computed across calls to
@@ -131,55 +135,59 @@ forward_pass; the final values of such metrics can be accessed via
 
 Uses in TFF:
 
-*   To implement model evaluation.
-*   To implement federated gradient descent and other non-Federated-Averaging
-    algorithms, where we want the model to run the forward pass and update
-    metrics, but there is no optimizer (we might only compute gradients on the
-    returned loss).
-*   To implement Federated Averaging, when augmented as a `TrainableModel`.
+  * To implement model evaluation.
+  * To implement federated gradient descent and other
+    non-Federated-Averaging algorithms, where we want the model to run the
+    forward pass and update metrics, but there is no optimizer
+    (we might only compute gradients on the returned loss).
+  * To implement Federated Averaging, when augmented as a `TrainableModel`.
 
 #### Args:
 
-*   <b>`batch_input`</b>: a nested structure that matches the structure of
+* <b>`batch_input`</b>: a nested structure that matches the structure of
     `Model.input_spec` and each tensor in `batch_input` satisfies
-    `tf.TensorSpec.is_compatible_with()` for the corresponding `tf.TensorSpec`
-    in `Model.input_spec`.
-*   <b>`training`</b>: If `True`, run the training forward pass, otherwise, run
-    in evaluation mode. The semantics are generally the same as the `training`
-    argument to `keras.Model.__call__`; this might e.g. influence how dropout or
-    batch normalization is handled.
+    `tf.TensorSpec.is_compatible_with()` for the corresponding
+    `tf.TensorSpec` in `Model.input_spec`.
+* <b>`training`</b>: If `True`, run the training forward pass, otherwise, run in
+    evaluation mode. The semantics are generally the same as the `training`
+    argument to `keras.Model.__call__`; this might e.g. influence how
+    dropout or batch normalization is handled.
+
 
 #### Returns:
 
-A `BatchOutput` object. The object must include the `loss` tensor if the model
-will be trained via a gradient-based algorithm.
+A `BatchOutput` object. The object must include the `loss` tensor if the
+model will be trained via a gradient-based algorithm.
 
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
 
-```python
+``` python
 report_local_outputs()
 ```
 
 Returns tensors representing values aggregated over `forward_pass` calls.
 
-In federated learning, the values returned by this method will typically be
-further aggregated across clients and made available on the server.
+In federated learning, the values returned by this method will typically
+be further aggregated across clients and made available on the server.
 
-This method returns results from aggregating across *all* previous calls to
-`forward_pass`, most typically metrics like accuracy and loss. If needed, we may
-add a `clear_aggregated_outputs` method, which would likely just run the
-initializers on the `local_variables`.
+This method returns results from aggregating across *all* previous calls
+to `forward_pass`, most typically metrics like accuracy and loss. If needed,
+we may add a `clear_aggregated_outputs` method, which would likely just
+run the initializers on the `local_variables`.
 
-In general, the tensors returned can be an arbitrary function of all the
-`tf.Variables` of this model, not just the `local_variables`; for example, this
-could return tensors measuring the total L2 norm of the model (which might have
-been updated by training).
+In general, the tensors returned can be an arbitrary function of all
+the `tf.Variables` of this model, not just the `local_variables`; for
+example, this could return tensors measuring the total L2 norm of the model
+(which might have been updated by training).
 
-This method may return arbitrarily shaped tensors, not just scalar metrics. For
-example, it could return the average feature vector or a count of how many times
-each feature exceed a certain magnitude.
+This method may return arbitrarily shaped tensors, not just scalar metrics.
+For example, it could return the average feature vector or a count of
+how many times each feature exceed a certain magnitude.
 
 #### Returns:
 
-A structure of tensors (as supported by `tf.contrib.framework.nest`) to be
-aggregated across clients.
+A structure of tensors (as supported by `tf.contrib.framework.nest`)
+to be aggregated across clients.
+
+
+

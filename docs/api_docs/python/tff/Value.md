@@ -16,36 +16,37 @@
 
 Inherits From: [`TypedObject`](../tff/TypedObject.md)
 
-Defined in
-[`core/api/value_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py).
+
+
+Defined in [`core/api/value_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py).
 
 <!-- Placeholder for "Used in" -->
 
 An abstract base class for all values in the bodies of TFF computations.
 
 This interface is only relevant in the context of non-TensorFlow computations,
-such as those that represent federated orchestration logic. The bodies of such
-computations will contain a mixture of federated communication operators, and
-calls to TensorFlow computations embedded in them as subcomponents. All values
-that appear in those computations implement this common interface, just like all
-values in TensorFlow computations appear as tensors.
+such as those that represent federated orchestration logic. The bodies of
+such computations will contain a mixture of federated communication operators,
+and calls to TensorFlow computations embedded in them as subcomponents. All
+values that appear in those computations implement this common interface, just
+like all values in TensorFlow computations appear as tensors.
 
 Outside of the bodies of composite non-TensorFlow computations, this interface
-is not used. All fully constructed computations implement
-<a href="../tff/Computation.md"><code>tff.Computation</code></a>.
+is not used. All fully constructed computations implement <a href="../tff/Computation.md"><code>tff.Computation</code></a>.
 
 ## Properties
 
 <h3 id="type_signature"><code>type_signature</code></h3>
 
-Returns the TFF type of this object (an instance of
-<a href="../tff/Type.md"><code>tff.Type</code></a>).
+Returns the TFF type of this object (an instance of <a href="../tff/Type.md"><code>tff.Type</code></a>).
+
+
 
 ## Methods
 
 <h3 id="__call__"><code>__call__</code></h3>
 
-```python
+``` python
 __call__(
     *args,
     **kwargs
@@ -56,7 +57,7 @@ For values of functional types, invokes this value on given arguments.
 
 <h3 id="__dir__"><code>__dir__</code></h3>
 
-```python
+``` python
 __dir__()
 ```
 
@@ -64,7 +65,7 @@ For values of a named tuple type, returns the list of named members.
 
 <h3 id="__getattr__"><code>__getattr__</code></h3>
 
-```python
+``` python
 __getattr__(name)
 ```
 
@@ -72,7 +73,7 @@ For values of a named tuple type, returns the element named `name`.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-```python
+``` python
 __getitem__(index)
 ```
 
@@ -80,7 +81,7 @@ For values of a named tuple type, returns the element at `index`.
 
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-```python
+``` python
 __iter__()
 ```
 
@@ -88,8 +89,11 @@ For values of a named tuple type, iterates over the tuple elements.
 
 <h3 id="__len__"><code>__len__</code></h3>
 
-```python
+``` python
 __len__()
 ```
 
 For values of a named tuple type, returns the number of elements.
+
+
+
