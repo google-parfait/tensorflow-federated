@@ -62,10 +62,14 @@ def create_fake_hdf5():
   return filepath
 
 
-def _test_transform(data, raw_client_id, index):
+def _test_transform_cons(raw_client_id, index):
   del raw_client_id
-  data['x'] = data['x'] + 10 * index
-  return data
+
+  def fn(data):
+    data['x'] = data['x'] + 10 * index
+    return data
+
+  return fn
 
 
 class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
@@ -85,7 +89,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
         TransformingClientDataTest.test_data_filepath)
     num_transformed_clients = 7
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform, num_transformed_clients)
+        client_data, _test_transform_cons, num_transformed_clients)
     client_ids = transformed_client_data.client_ids
 
     # Check length of client_ids.
@@ -102,7 +106,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     client_data = hdf5_client_data.HDF5ClientData(
         TransformingClientDataTest.test_data_filepath)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform, 7)
+        client_data, _test_transform_cons, 7)
 
     # The following three should be valid.
     transformed_client_data.create_tf_dataset_for_client('CLIENT A_1')
@@ -124,7 +128,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
         TransformingClientDataTest.test_data_filepath)
 
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform, 9)
+        client_data, _test_transform_cons, 9)
 
     for client_id in transformed_client_data.client_ids:
       tf_dataset = transformed_client_data.create_tf_dataset_for_client(
@@ -148,7 +152,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
 
     num_transformed_clients = 9
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform, num_transformed_clients)
+        client_data, _test_transform_cons, num_transformed_clients)
     expansion_factor = num_transformed_clients // len(TEST_DATA)
 
     tf_dataset = transformed_client_data.create_tf_dataset_from_all_clients()

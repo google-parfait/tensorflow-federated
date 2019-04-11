@@ -146,13 +146,13 @@ def _compile_transform(angle=0,
                                 translation)
 
 
-def _transform(data, raw_client_id, index):
-  """Applies a random affine transform based on the client_id and index.
+def _transform_fn_cons(raw_client_id, index):
+  """Generates a random affine transform based on the client_id and index.
 
-  If the index is 0, no transform is applied.
+  If the index is 0, `None` is returned so no transform is applied by the
+  transforming_client_data.
 
   Args:
-    data: The OrderedDict of data to transform.
     raw_client_id: The raw client_id.
     index: The index of the pseudo-client.
 
@@ -160,10 +160,7 @@ def _transform(data, raw_client_id, index):
     The transformed data.
   """
   if index == 0:
-    return data
-
-  # EMNIST background is 1.0 but img.transform assumes 0.0.
-  pixels = 1.0 - data['pixels']
+    return None
 
   np.random.seed((hash(raw_client_id) + index) % (2**32))
 
@@ -178,14 +175,22 @@ def _transform(data, raw_client_id, index):
       scale_y=random_scale(0.8),
       translation_x=np.random.uniform(-5, 5),
       translation_y=np.random.uniform(-5, 5))
-  pixels = img.transform(pixels, transform, 'BILINEAR')
 
-  # num_bits=9 actually yields 256 unique values.
-  pixels = tf.quantization.quantize_and_dequantize(
-      pixels, 0.0, 1.0, num_bits=9, range_given=True)
+  def _transform_fn(data):
+    """Applies a random transform to the pixels."""
+    # EMNIST background is 1.0 but img.transform assumes 0.0, so invert.
+    pixels = 1.0 - data['pixels']
 
-  data['pixels'] = 1.0 - pixels
-  return data
+    pixels = img.transform(pixels, transform, 'BILINEAR')
+
+    # num_bits=9 actually yields 256 unique values.
+    pixels = tf.quantization.quantize_and_dequantize(
+        pixels, 0.0, 1.0, num_bits=9, range_given=True)
+
+    data['pixels'] = 1.0 - pixels
+    return data
+
+  return _transform_fn
 
 
 def infinite_emnist(emnist_client_data, num_pseudo_clients):
@@ -219,5 +224,5 @@ def infinite_emnist(emnist_client_data, num_pseudo_clients):
 
   return transforming_client_data.TransformingClientData(
       raw_client_data=emnist_client_data,
-      transform_fn=_transform,
+      transform_fn_cons=_transform_fn_cons,
       num_transformed_clients=(num_client_ids * num_pseudo_clients))

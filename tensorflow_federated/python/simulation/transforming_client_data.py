@@ -22,6 +22,8 @@ import re
 
 from six.moves import range
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data
 
@@ -54,23 +56,29 @@ class TransformingClientData(client_data.ClientData):
   pseudo-clients. Each client ID is a string consisting of the original client
   ID plus a concatenated integer index. For example, the raw client id
   "client_a" might be expanded into pseudo-client ids "client_a_0", "client_a_1"
-  and "client_a_2". A function f(x, raw_client_id, i) maps datapoint x to a new
-  datapoint, parameterized by the (raw) client_id and index i. For example if x
-  is an image, then f(x, "client_a", 0) might be the identity, while
-  f(x, "client_a", 1) could be a random rotation of the image with the angle
-  determined by a hash of "client_a" and "1".
+  and "client_a_2". A function fn(x) maps datapoint x to a new datapoint,
+  where the constructor of fn is parameterized by the (raw) client_id and index
+  i. For example if x is an image, then make_transform_fn("client_a", 0)(x)
+  might be the identity, while make_transform_fn("client_a", 1)(x) could be a
+  random rotation of the image with the angle determined by a hash of "client_a"
+  and "1". Typically by convention the index 0 corresponds to the identity
+  function if the identity is supported.
   """
 
-  def __init__(self, raw_client_data, transform_fn, num_transformed_clients):
+  def __init__(self, raw_client_data, make_transform_fn,
+               num_transformed_clients):
     """Initializes the TransformingClientData.
 
     Args:
       raw_client_data: A ClientData to expand.
-      transform_fn: A function f(x, raw_client_id, i) that maps datapoint x to a
-        new datapoint, parameterized by the (raw) client_id and index i. For
-        example if x is an image, then f(x, "client_a", 0) might be the
-        identity, while f(x, "client_a", 1) could be a random rotation of the
-        image with the angle determined by a hash of "client_a" and "1".
+      make_transform_fn: A function that returns a callable that maps datapoint
+        x to a new datapoint x'. make_transform_fn will be called as
+        make_transform_fn(raw_client_id, i) where i is an integer index, and
+        should return a function fn(x)->x. For example if x is an image, then
+        make_transform_fn("client_a", 0)(x) might be the identity, while
+        make_transform_fn("client_a", 1)(x) could be a random rotation of the
+        image with the angle determined by a hash of "client_a" and "1". If
+        transform_fn_cons returns `None`, no transformation is performed.
         Typically by convention the index 0 corresponds to the identity function
         if the identity is supported.
       num_transformed_clients: The total number of transformed clients to
@@ -80,13 +88,13 @@ class TransformingClientData(client_data.ClientData):
         and will be given index k.
     """
     py_typecheck.check_type(raw_client_data, client_data.ClientData)
-    py_typecheck.check_callable(transform_fn)
+    py_typecheck.check_callable(make_transform_fn)
     py_typecheck.check_type(num_transformed_clients, int)
 
     if num_transformed_clients <= 0:
       raise ValueError('num_transformed_clients must be positive and finite.')
     self._raw_client_data = raw_client_data
-    self._transform_fn = transform_fn
+    self._make_transform_fn = make_transform_fn
 
     num_digits = len(str(num_transformed_clients - 1))
     format_str = '{}_{:0' + str(num_digits) + '}'
@@ -118,10 +126,12 @@ class TransformingClientData(client_data.ClientData):
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
         raw_client_id)
 
-    def fn(example):
-      return self._transform_fn(example, raw_client_id, index)
-
-    return raw_dataset.map(fn)
+    transform_fn = self._make_transform_fn(raw_client_id, index)
+    if not transform_fn:
+      return raw_dataset
+    else:
+      py_typecheck.check_callable(transform_fn)
+      return raw_dataset.map(transform_fn, tf.data.experimental.AUTOTUNE)
 
   @property
   def output_types(self):
