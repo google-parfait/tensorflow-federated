@@ -177,14 +177,56 @@ def _create_lambda_to_add_one(dtype):
     An instance of `computation_building_blocks.Lambda` wrapping a function that
     adds 1 to an argument.
   """
+  if isinstance(dtype, computation_types.TensorType):
+    dtype = dtype.dtype
+  py_typecheck.check_type(dtype, tf.dtypes.DType)
   function_type = computation_types.FunctionType([dtype, dtype], dtype)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.GENERIC_PLUS.uri, function_type)
   arg = computation_building_blocks.Reference('arg', dtype)
-  constant = _create_call_to_py_fn(lambda: tf.constant(1))
+  constant = _create_call_to_py_fn(lambda: tf.cast(tf.constant(1), dtype))
   tup = computation_building_blocks.Tuple([arg, constant])
   call = computation_building_blocks.Call(intrinsic, tup)
   return computation_building_blocks.Lambda(arg.name, arg.type_signature, call)
+
+
+def _create_lambda_to_cast(dtype1, dtype2):
+  r"""Creates a computation to TensorFlow cast from dtype1 to dtype2.
+
+  Lambda
+        \
+         Call
+        /    \
+  Compiled   Reference
+  Computation
+
+  Where `CompiledComputation` is a TensorFlow computation casting
+  from `dtype1` to `dtype2`.
+
+  The `dtype` arguments can be either instances of `tf.dtypes.DType` or
+  `computation_types.TensorType`, but in the latter case the `tf.dtypes.DType`
+  of these tensors will be extracted.
+
+  Args:
+    dtype1: The type of the argument.
+    dtype2: The type to cast the argument to.
+
+  Returns:
+    An instance of `computation_building_blocks.Lambda` wrapping a function that
+    casts TensorFlow dtype1 to dtype2.
+  """
+  if isinstance(dtype1, computation_types.TensorType):
+    dtype1 = dtype1.dtype
+  if isinstance(dtype2, computation_types.TensorType):
+    dtype2 = dtype2.dtype
+  py_typecheck.check_type(dtype1, tf.dtypes.DType)
+  py_typecheck.check_type(dtype2, tf.dtypes.DType)
+  arg = computation_building_blocks.Reference('arg', dtype1)
+  tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+      lambda x: tf.cast(x, dtype2), dtype1, context_stack_impl.context_stack)
+  compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
+  call = computation_building_blocks.Call(compiled_comp, arg)
+  return computation_building_blocks.Lambda(arg.name, dtype1, call)
 
 
 def _create_lambda_to_identity(dtype):
@@ -606,6 +648,31 @@ class TransformationsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       transformations.replace_chained_federated_maps_with_federated_map(None)
 
+  def test_replace_chained_federated_maps_with_different_arg_types(self):
+    map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    map_arg = computation_building_blocks.Reference('arg_1', map_arg_type)
+    inner_lambda = _create_lambda_to_cast(tf.int32, tf.float32)
+    inner_call = _create_call_to_federated_map(inner_lambda, map_arg)
+    outer_lambda = _create_lambda_to_add_one(inner_call.type_signature.member)
+    outer_call = _create_call_to_federated_map(outer_lambda, inner_call)
+    map_lambda = computation_building_blocks.Lambda(map_arg.name,
+                                                    map_arg.type_signature,
+                                                    outer_call)
+    comp = map_lambda
+    self.assertEqual(
+        _get_number_of_intrinsics(comp, intrinsic_defs.FEDERATED_MAP.uri), 2)
+    comp_impl = _to_comp(comp)
+    self.assertEqual(comp_impl([(1)]), [2.0])
+
+    transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
+        comp)
+
+    self.assertEqual(
+        _get_number_of_intrinsics(transformed_comp,
+                                  intrinsic_defs.FEDERATED_MAP.uri), 1)
+    transformed_comp_impl = _to_comp(transformed_comp)
+    self.assertEqual(transformed_comp_impl([(1)]), [2.0])
+
   def test_replace_chained_federated_maps_replaces_federated_maps(self):
     map_arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     map_arg = computation_building_blocks.Reference('arg', map_arg_type)
@@ -630,12 +697,6 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(_get_number_of_intrinsics(transformed_comp, uri), 1)
     transformed_comp_impl = _to_comp(transformed_comp)
     self.assertEqual(transformed_comp_impl([(1)]), [3])
-
-  def test_replace_chained_federated_maps_replaces_federated_maps_different_types(
-      self):
-    # TODO(b/130043404): Write a minimal test to check that merging federated
-    # maps places correct type signatures on the constructed intrinsic.
-    pass
 
   def test_replace_chained_federated_maps_replaces_multiple_federated_maps(
       self):
