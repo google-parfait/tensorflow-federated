@@ -26,18 +26,20 @@ Each client of the raw_client_data is "expanded" into some number of
 pseudo-clients. Each client ID is a string consisting of the original client ID
 plus a concatenated integer index. For example, the raw client id "client_a"
 might be expanded into pseudo-client ids "client_a_0", "client_a_1" and
-"client_a_2". A function f(x, raw_client_id, i) maps datapoint x to a new
-datapoint, parameterized by the (raw) client_id and index i. For example if x is
-an image, then f(x, "client_a", 0) might be the identity, while f(x, "client_a",
-1) could be a random rotation of the image with the angle determined by a hash
-of "client_a" and "1".
+"client_a_2". A function fn(x) maps datapoint x to a new datapoint, where the
+constructor of fn is parameterized by the (raw) client_id and index i. For
+example if x is an image, then make_transform_fn("client_a", 0)(x) might be the
+identity, while make_transform_fn("client_a", 1)(x) could be a random rotation
+of the image with the angle determined by a hash of "client_a" and "1".
+Typically by convention the index 0 corresponds to the identity function if the
+identity is supported.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
 ```python
 __init__(
     raw_client_data,
-    transform_fn,
+    make_transform_fn,
     num_transformed_clients
 )
 ```
@@ -47,13 +49,16 @@ Initializes the TransformingClientData.
 #### Args:
 
 *   <b>`raw_client_data`</b>: A ClientData to expand.
-*   <b>`transform_fn`</b>: A function f(x, raw_client_id, i) that maps datapoint
-    x to a new datapoint, parameterized by the (raw) client_id and index i. For
-    example if x is an image, then f(x, "client_a", 0) might be the identity,
-    while f(x, "client_a", 1) could be a random rotation of the image with the
-    angle determined by a hash of "client_a" and "1". Typically by convention
-    the index 0 corresponds to the identity function if the identity is
-    supported.
+*   <b>`make_transform_fn`</b>: A function that returns a callable that maps
+    datapoint x to a new datapoint x'. make_transform_fn will be called as
+    make_transform_fn(raw_client_id, i) where i is an integer index, and should
+    return a function fn(x)->x. For example if x is an image, then
+    make_transform_fn("client_a", 0)(x) might be the identity, while
+    make_transform_fn("client_a", 1)(x) could be a random rotation of the image
+    with the angle determined by a hash of "client_a" and "1". If
+    transform_fn_cons returns `None`, no transformation is performed. Typically
+    by convention the index 0 corresponds to the identity function if the
+    identity is supported.
 *   <b>`num_transformed_clients`</b>: The total number of transformed clients to
     produce. If it is an integer multiple k of the number of real clients, there
     will be exactly k pseudo-clients per real client, with indices 0...k-1. Any
