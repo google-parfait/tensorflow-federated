@@ -16,6 +16,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import six
 import tensorflow as tf
 
@@ -24,6 +25,9 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
 
 
@@ -109,15 +113,155 @@ class TrivialSubclass(transformation_utils.BoundVariableTracker):
     return id(self) == id(other)
 
 
-class TransformationsTest(absltest.TestCase):
+def _construct_trivial_instance_of_all_computation_building_blocks():
+  cbb_list = []
+  ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+  cbb_list.append(('reference', ref_to_x))
+  lam = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
+  cbb_list.append(('lambda', lam))
+  block = computation_building_blocks.Block([('x', ref_to_x)], lam)
+  cbb_list.append(('block', block))
+  data = computation_building_blocks.Data('x', tf.int32)
+  cbb_list.append(('data', data))
+  function_type = computation_types.FunctionType(tf.int32, tf.int32)
+  intrinsic = computation_building_blocks.Intrinsic('dummy_intrinsic',
+                                                    function_type)
+  cbb_list.append(('intrinsic', intrinsic))
+  tff_tuple = computation_building_blocks.Tuple([ref_to_x])
+  cbb_list.append(('tuple', tff_tuple))
+  selection = computation_building_blocks.Selection(tff_tuple, index=0)
+  cbb_list.append(('selection', selection))
+  call = computation_building_blocks.Call(lam, ref_to_x)
+  cbb_list.append(('call', call))
+  fn = lambda: tf.constant(1)
+  compiled_comp = computation_building_blocks.CompiledComputation(
+      tensorflow_serialization.serialize_py_fn_as_tf_computation(
+          fn, None, context_stack_impl.context_stack))
+  cbb_list.append(('compiled_comp', compiled_comp))
+  placement = computation_building_blocks.Placement(placement_literals.CLIENTS)
+  cbb_list.append(('placement', placement))
+  return cbb_list
 
-  def test_transform_postorder_fails_on_none(self):
+
+def _construct_nested_tree():
+  r"""Constructs computation with explicit ordering for testing traversals.
+
+  The goal of this computation is to exercise each switch
+  in transform_postorder_with_hooks, at least all those that recurse.
+
+  The computation this function constructs can be represented as below.
+
+  Notice that the body of the Lambda *does not depend on the Lambda's
+  parameter*, so that if we were actually executing this call the argument will
+  be thrown away.
+
+                            Call
+                           /    \
+                 Lambda('arg')   Data('k')
+                     |
+                   Block('y','z')-------------
+                  /                          |
+  ['y'=Data('a'),'z'=Data('b')]              |
+                                           Tuple
+                                         /       \
+                                   Block('v')     Block('x')-------
+                                     / \              |            |
+                       ['v'=Selection]   Data('g') ['x'=Data('h']  |
+                             |                                     |
+                             |                                     |
+                             |                                 Block('w')
+                             |                                   /   \
+                           Tuple ------            ['w'=Data('i']     Data('j')
+                         /              \
+                 Block('t')             Block('u')
+                  /     \              /          \
+    ['t'=Data('c')]    Data('d') ['u'=Data('e')]  Data('f')
+
+
+  If we are reading Data URIs, results of a postorder traversal should be:
+  [a, b, c, d, e, f, g, h, i, j, k]
+
+  If we are reading locals declarations, results of a postorder traversal should
+  be:
+  [t, u, v, w, x, y, z]
+
+  And if we are reading both in an interleaved fashion, results of a postorder
+  traversal should be:
+  [a, b, c, d, t, e, f, u, g, v, h, i, j, w, x, y, z, k]
+
+  Since we are also exposing the ability to hook into variable declarations,
+  it is worthwhile considering the order in which variables are assigned in
+  this tree. This would be:
+  [arg, y, z, t, u, v, x, w]
+
+  Returns:
+    An instance of `computation_building_blocks.ComputationBuildingBlock`
+    satisfying the description above.
+  """
+  data_c = computation_building_blocks.Data('c', tf.float32)
+  data_d = computation_building_blocks.Data('d', tf.float32)
+  left_most_leaf = computation_building_blocks.Block([('t', data_c)], data_d)
+
+  data_e = computation_building_blocks.Data('e', tf.float32)
+  data_f = computation_building_blocks.Data('f', tf.float32)
+  center_leaf = computation_building_blocks.Block([('u', data_e)], data_f)
+  inner_tuple = computation_building_blocks.Tuple([left_most_leaf, center_leaf])
+
+  selected = computation_building_blocks.Selection(inner_tuple, index=0)
+  data_g = computation_building_blocks.Data('g', tf.float32)
+  middle_block = computation_building_blocks.Block([('v', selected)], data_g)
+
+  data_i = computation_building_blocks.Data('i', tf.float32)
+  data_j = computation_building_blocks.Data('j', tf.float32)
+  right_most_endpoint = computation_building_blocks.Block([('w', data_i)],
+                                                          data_j)
+
+  data_h = computation_building_blocks.Data('h', tf.int32)
+  right_child = computation_building_blocks.Block([('x', data_h)],
+                                                  right_most_endpoint)
+
+  result = computation_building_blocks.Tuple([middle_block, right_child])
+  data_a = computation_building_blocks.Data('a', tf.float32)
+  data_b = computation_building_blocks.Data('b', tf.float32)
+  dummy_outer_block = computation_building_blocks.Block([('y', data_a),
+                                                         ('z', data_b)], result)
+  dummy_lambda = computation_building_blocks.Lambda('arg', tf.float32,
+                                                    dummy_outer_block)
+  dummy_arg = computation_building_blocks.Data('k', tf.float32)
+  called_lambda = computation_building_blocks.Call(dummy_lambda, dummy_arg)
+
+  return called_lambda
+
+
+def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
+  """Returns the number of nodes in `comp` matching `predicate`."""
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  count = [0]  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility.
+
+  def fn(comp):
+    if predicate is None or predicate(comp):
+      count[0] += 1
+    return comp
+
+  transformation_utils.transform_postorder(comp, fn)
+  return count[0]
+
+
+class TransformationsTest(parameterized.TestCase):
+
+  def test_transform_postorder_fails_on_none_comp(self):
 
     def transform(comp):
       return comp
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder(None, transform)
+
+  def test_transform_postorder_fails_on_none_transform(self):
+    comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaises(TypeError):
+      transformation_utils.transform_postorder(comp, None)
 
   def test_transform_postorder_with_lambda_call_selection_and_reference(self):
 
@@ -151,6 +295,99 @@ class TransformationsTest(absltest.TestCase):
     self.assertEqual(
         str(transfomed_comp),
         'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')
+
+  @parameterized.named_parameters(
+      _construct_trivial_instance_of_all_computation_building_blocks() +
+      [('complex_tree', _construct_nested_tree())])
+  def test_transform_postorder_returns_untransformed(self, comp):
+
+    def transform_noop(internal_comp):
+      return internal_comp
+
+    same_comp = transformation_utils.transform_postorder(comp, transform_noop)
+    self.assertEqual(same_comp.tff_repr, comp.tff_repr)
+
+  @parameterized.named_parameters(
+      _construct_trivial_instance_of_all_computation_building_blocks())
+  def test_transform_postorder_constructs_new_internal(self, comp):
+
+    def transform_noop(comp):
+      return comp
+
+    same_comp = transformation_utils.transform_postorder(comp, transform_noop)
+
+    if not isinstance(comp, (computation_building_blocks.CompiledComputation,
+                             computation_building_blocks.Data,
+                             computation_building_blocks.Intrinsic,
+                             computation_building_blocks.Placement,
+                             computation_building_blocks.Reference)):
+      self.assertNotEqual(id(comp), id(same_comp))
+
+  def test_transform_postorder_hits_all_nodes_once(self):
+    complex_ast = _construct_nested_tree()
+    self.assertEqual(
+        _get_number_of_nodes_via_transform_postorder(complex_ast), 22)
+
+  def test_transform_postorder_walks_to_leaves_in_postorder(self):
+    complex_ast = _construct_nested_tree()
+
+    leaf_name_order = []
+
+    def transform(comp):
+      if isinstance(comp, computation_building_blocks.Data):
+        leaf_name_order.append(comp.uri)
+      return comp
+
+    transformation_utils.transform_postorder(complex_ast, transform)
+
+    self.assertEqual(leaf_name_order,
+                     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
+
+  def test_transform_postorder_walks_block_locals_postorder(self):
+    complex_ast = _construct_nested_tree()
+
+    leaf_name_order = []
+
+    def transform(comp):
+      if isinstance(comp, computation_building_blocks.Block):
+        for name, _ in comp.locals:
+          leaf_name_order.append(name)
+      return comp
+
+    transformation_utils.transform_postorder(complex_ast, transform)
+
+    self.assertEqual(leaf_name_order, ['t', 'u', 'v', 'w', 'x', 'y', 'z'])
+
+  def test_transform_postorder_walks_through_all_internal_nodes_postorder(self):
+    """Checks `transform_postorder` walks correctly through any internal node.
+
+    This test is split from the one above because it tests extra cases
+    in `transform_postorder`; in particular, all instances of
+    `computation_building_blocks.ComputationBuildingBlock` which kick off
+    recursive calls of `transform_postorder` are exercised in this test,
+    while only a subset are exercised in the above. For example, if the
+    logic ingesting a `Call` breaks, this test will fail and the one above
+    may pass.
+    """
+    complex_ast = _construct_nested_tree()
+
+    leaf_name_order = []
+
+    def transform(comp):
+      if isinstance(comp, computation_building_blocks.Block):
+        for name, _ in comp.locals:
+          leaf_name_order.append(name)
+      elif isinstance(comp, computation_building_blocks.Data):
+        leaf_name_order.append(comp.uri)
+      return comp
+
+    transformation_utils.transform_postorder(complex_ast, transform)
+    postorder_nodes = [
+        'a', 'b', 'c', 'd', 't', 'e', 'f', 'u', 'g', 'v', 'h', 'i', 'j', 'w',
+        'x', 'y', 'z', 'k'
+    ]
+
+    self.assertEqual(leaf_name_order, list(postorder_nodes))
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
 
