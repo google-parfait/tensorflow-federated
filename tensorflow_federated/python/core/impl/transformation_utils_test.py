@@ -42,6 +42,61 @@ def _to_building_block(comp):
   return computation_building_blocks.ComputationBuildingBlock.from_proto(proto)
 
 
+def _construct_complex_symbol_tree():
+  """Constructs complex context tree for mutation testing."""
+  symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+  for _ in range(2):
+    symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+    symbol_tree._move_to_younger_sibling()
+  symbol_tree._add_child(0, fake_tracker_node_factory())
+  symbol_tree._move_to_child(0)
+  for _ in range(2):
+    symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+    symbol_tree._move_to_younger_sibling()
+  symbol_tree._add_child(1, fake_tracker_node_factory())
+  symbol_tree._move_to_child(1)
+  for k in range(2):
+    symbol_tree.move_to_parent_context()
+    symbol_tree._move_to_older_sibling()
+    symbol_tree._move_to_older_sibling()
+    symbol_tree._add_child(k + 2, fake_tracker_node_factory())
+  symbol_tree._move_to_child(3)
+  return symbol_tree
+
+
+class UpdatableTracker(transformation_utils.BoundVariableTracker):
+
+  def __init__(self, name, value):
+    super(UpdatableTracker, self).__init__(name, value)
+    self.count = 0
+
+  def update(self, comp):
+    self.count += 1
+
+  def __str__(self):
+    return '{Count: ' + str(self.count) + '}'
+
+  def __eq__(self, other):
+    return id(self) == id(other)
+
+
+class FakeTracker(transformation_utils.BoundVariableTracker):
+
+  def update(self, comp=None):
+    pass
+
+  def __str__(self):
+    return self.name
+
+  def __eq__(self, other):
+    return isinstance(other, FakeTracker)
+
+
+def fake_tracker_node_factory():
+  return transformation_utils.SequentialBindingNode(
+      FakeTracker('FakeTracker', None))
+
+
 class TrivialSubclass(transformation_utils.BoundVariableTracker):
 
   def update(self, comp):
@@ -98,6 +153,540 @@ class TransformationsTest(absltest.TestCase):
         'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')
 
   # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
+
+  def test_symbol_tree_initializes(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    self.assertIsInstance(symbol_tree.active_node.payload,
+                          transformation_utils.OuterContextPointer)
+    self.assertTrue(
+        py_typecheck.check_subclass(symbol_tree.payload_type,
+                                    transformation_utils.BoundVariableTracker))
+
+  def test_symbol_tree_node_reuse_fails(self):
+
+    fake_tracker_node_one = transformation_utils.SequentialBindingNode(
+        FakeTracker('FakeTracker', None))
+    fake_tracker_node_two = transformation_utils.SequentialBindingNode(
+        FakeTracker('FakeTracker', None))
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_child(0, fake_tracker_node_one)
+    symbol_tree._move_to_child(0)
+    symbol_tree._add_younger_sibling(fake_tracker_node_two)
+    symbol_tree._move_to_younger_sibling()
+    with self.assertRaisesRegexp(ValueError, 'can only appear once'):
+      symbol_tree._add_child(1, fake_tracker_node_one)
+    with self.assertRaisesRegexp(ValueError, 'can only appear once'):
+      symbol_tree._add_younger_sibling(fake_tracker_node_one)
+
+  def test_bad_mock_class_fails_symbol_tree(self):
+
+    class BadMock(object):
+      pass
+
+    with self.assertRaisesRegexp(TypeError, 'subclass'):
+      transformation_utils.SymbolTree(BadMock)
+
+  def test_symbol_tree_get_payload_resolves_child_parent_name_conflict(self):
+
+    def _construct_symbol_tree():
+      """Constructs a symbol tree of the form below.
+
+                      Outer Context
+                           |
+                           V
+                       x_tracker
+                           |
+                           V
+                      x_tracker2*
+
+      Returns:
+        Returns this tree and the payloads used to construct it.
+      """
+      symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+      x_tracker = FakeTracker('x', None)
+      symbol_tree._add_child(
+          0, transformation_utils.SequentialBindingNode(x_tracker))
+      symbol_tree._move_to_child(0)
+      x_tracker2 = FakeTracker('x', None)
+      symbol_tree._add_child(
+          1, transformation_utils.SequentialBindingNode(x_tracker2))
+      symbol_tree._move_to_child(1)
+      return symbol_tree, x_tracker, x_tracker2
+
+    symbol_tree, _, x_tracker2 = _construct_symbol_tree()
+    self.assertEqual(id(symbol_tree.get_payload_with_name('x')), id(x_tracker2))
+
+  def test_symbol_tree_get_payload_resolves_sibling_name_conflict(self):
+
+    def _construct_symbol_tree():
+      """Constructs a symbol tree of the form below.
+
+                      Outer Context
+                           |
+                           V
+                       x_tracker
+                           |
+                      x_tracker2*
+
+      Returns:
+        Returns this tree and the payloads used to construct it.
+      """
+      symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+      x_tracker = FakeTracker('x', None)
+      symbol_tree._add_child(
+          0, transformation_utils.SequentialBindingNode(x_tracker))
+      symbol_tree._move_to_child(0)
+      x_tracker2 = FakeTracker('x', None)
+      symbol_tree._add_younger_sibling(
+          transformation_utils.SequentialBindingNode(x_tracker2))
+      symbol_tree._move_to_younger_sibling()
+      return symbol_tree, x_tracker, x_tracker2
+
+    symbol_tree, _, x_tracker2 = _construct_symbol_tree()
+    self.assertEqual(id(symbol_tree.get_payload_with_name('x')), id(x_tracker2))
+
+  def test_symbol_tree_get_payload_addresses_parent(self):
+
+    def _construct_symbol_tree():
+      """Constructs a symbol tree of the form below.
+
+                      Outer Context
+                           |
+                           V
+                       z_tracker
+                           |
+                           V
+                       x_tracker*
+
+      Returns:
+        Returns this tree and the payloads used to construct it.
+      """
+      symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+      z_tracker = FakeTracker('z', None)
+      symbol_tree._add_child(
+          0, transformation_utils.SequentialBindingNode(z_tracker))
+      symbol_tree._move_to_child(0)
+      x_tracker = FakeTracker('x', None)
+      symbol_tree._add_child(
+          1, transformation_utils.SequentialBindingNode(x_tracker))
+      symbol_tree._move_to_child(1)
+      return symbol_tree, z_tracker, x_tracker
+
+    symbol_tree, z_tracker, _ = _construct_symbol_tree()
+    self.assertEqual(id(symbol_tree.get_payload_with_name('z')), id(z_tracker))
+
+  def test_symbol_tree_updates_correct_node_across_siblings(self):
+
+    def _construct_symbol_tree():
+      r"""Builds symbol tree with the structure below.
+
+                      Outer Context
+                           |
+                           V
+                        x_tracker
+                           |
+                        elder_y
+                           |
+                        young_y*
+
+      Returns:
+        Returns this tree and the `SequentialBindingNode`s
+        used to construct it.
+      """
+      x_tracker = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('x', None))
+      elder_y = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('y', None))
+      young_y = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('y', None))
+
+      complex_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
+      complex_symbol_tree._add_child(4, x_tracker)
+      complex_symbol_tree._move_to_child(4)
+      complex_symbol_tree._add_younger_sibling(elder_y)
+      complex_symbol_tree._move_to_younger_sibling()
+      complex_symbol_tree._add_younger_sibling(young_y)
+      complex_symbol_tree._move_to_younger_sibling()
+      return complex_symbol_tree, x_tracker, elder_y, young_y
+
+    (complex_symbol_tree, x_tracker, elder_y,
+     young_y) = _construct_symbol_tree()
+    complex_symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference('x', tf.int32))
+    complex_symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference('y', tf.int32))
+    self.assertEqual(x_tracker.payload.count, 1)
+    self.assertEqual(young_y.payload.count, 1)
+    self.assertEqual(complex_symbol_tree.get_payload_with_name('x').count, 1)
+    self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 1)
+    self.assertEqual(elder_y.payload.count, 0)
+    with self.assertRaises(NameError):
+      complex_symbol_tree.get_payload_with_name('z')
+
+  def test_symbol_tree_updates_correct_node_across_generations(self):
+
+    def _construct_symbol_tree():
+      r"""Builds symbol tree with the structure below.
+
+                      Outer Context
+                           |
+                           V
+                        x_tracker
+                           |
+                        elder_y
+                       /      \
+                      V        V
+                  young_y*   misdirect_z
+
+      Returns:
+        Returns this tree and the `SequentialBindingNode`s
+        used to construct it.
+      """
+      x_tracker = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('x', None))
+      elder_y = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('y', None))
+      young_y = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('y', None))
+      misdirect_z = transformation_utils.SequentialBindingNode(
+          UpdatableTracker('z', None))
+
+      complex_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
+      complex_symbol_tree._add_child(4, x_tracker)
+      complex_symbol_tree._move_to_child(4)
+      complex_symbol_tree._add_younger_sibling(elder_y)
+      complex_symbol_tree._move_to_younger_sibling()
+      complex_symbol_tree._add_child(5, young_y)
+      complex_symbol_tree._move_to_child(5)
+      complex_symbol_tree._add_child(6, misdirect_z)
+      return (complex_symbol_tree, x_tracker, elder_y, young_y, misdirect_z)
+
+    (complex_symbol_tree, x_tracker, elder_y, young_y,
+     misdirect_z) = _construct_symbol_tree()
+    complex_symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference('x', tf.int32))
+    complex_symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference('y', tf.int32))
+    self.assertEqual(x_tracker.payload.count, 1)
+    self.assertEqual(young_y.payload.count, 1)
+    self.assertEqual(elder_y.payload.count, 0)
+    self.assertEqual(complex_symbol_tree.get_payload_with_name('x').count, 1)
+    self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 1)
+    with self.assertRaises(NameError):
+      complex_symbol_tree.get_payload_with_name('z')
+    complex_symbol_tree.move_to_parent_context()
+    complex_symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference('y', tf.int32))
+    complex_symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference('y', tf.int32))
+    self.assertEqual(elder_y.payload.count, 2)
+    self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 2)
+    self.assertEqual(misdirect_z.payload.count, 0)
+    complex_symbol_tree._move_to_older_sibling()
+    with self.assertRaises(NameError):
+      complex_symbol_tree.get_payload_with_name('y')
+
+  def test_typechecking_in_symbol_tree_resolve_methods(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    with self.assertRaises(TypeError):
+      symbol_tree.get_payload_with_name(0)
+    with self.assertRaises(TypeError):
+      symbol_tree.update_payload_tracking_reference(
+          computation_building_blocks.Data('x', tf.bool))
+    with self.assertRaises(TypeError):
+      symbol_tree.update_payload_tracking_reference(0)
+
+  def test_symbol_tree_ingest_variable_binding_bad_enum_fails(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    with self.assertRaises(AttributeError):
+      symbol_tree.ingest_variable_binding(
+          'x', computation_building_blocks.Data('x', tf.int32),
+          transformation_utils.MutationMode.COUSIN)
+
+  def test_symbol_tree_ingest_variable_binding_bad_args_fails(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    with self.assertRaises(TypeError):
+      symbol_tree.ingest_variable_binding(
+          0, computation_building_blocks.Reference('x', tf.int32),
+          transformation_utils.MutationMode.SIBLING)
+    with self.assertRaises(TypeError):
+      symbol_tree.ingest_variable_binding(
+          'x', 0, transformation_utils.MutationMode.SIBLING)
+    with self.assertRaises(TypeError):
+      symbol_tree.ingest_variable_binding(
+          'x', computation_building_blocks.Reference('x', tf.int32),
+          transformation_utils.MutationMode.CHILD)
+    with self.assertRaises(TypeError):
+      symbol_tree.ingest_variable_binding(
+          'x', computation_building_blocks.Reference('x', tf.int32),
+          transformation_utils.MutationMode.CHILD, 'y')
+
+  def test_ingest_variable_binding_child_mode_adds_node_to_empty_tree(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree.ingest_variable_binding(
+        'x', computation_building_blocks.Reference('x', tf.int32),
+        transformation_utils.MutationMode.CHILD, 0)
+    shadow_symbol_tree._add_child(
+        0,
+        transformation_utils.SequentialBindingNode(
+            FakeTracker('FakeTracker',
+                        computation_building_blocks.Reference('x', tf.int32))))
+    self.assertEqual(symbol_tree, shadow_symbol_tree)
+
+  def test_ingest_variable_binding_sibling_mode_adds_node_to_empty_tree(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    payload_to_add = FakeTracker(
+        'x', computation_building_blocks.Data('a', tf.int32))
+    shadow_symbol_tree._add_younger_sibling(
+        transformation_utils.SequentialBindingNode(payload_to_add))
+
+    symbol_tree.ingest_variable_binding(
+        payload_to_add.name, payload_to_add.value,
+        transformation_utils.MutationMode.SIBLING)
+
+    self.assertEqual(symbol_tree, shadow_symbol_tree)
+
+  def test_ingest_variable_binding_sibling_mode_adds_node_to_nonempty_tree(
+      self):
+    symbol_tree = _construct_complex_symbol_tree()
+    shadow_symbol_tree = _construct_complex_symbol_tree()
+    payload_to_add = FakeTracker(
+        'x', computation_building_blocks.Data('a', tf.int32))
+    shadow_symbol_tree._add_younger_sibling(
+        transformation_utils.SequentialBindingNode(payload_to_add))
+
+    symbol_tree.ingest_variable_binding(
+        'x', computation_building_blocks.Data('a', tf.int32),
+        transformation_utils.MutationMode.SIBLING)
+
+    self.assertEqual(symbol_tree, shadow_symbol_tree)
+
+  def test_ingest_child_mode_overwrites_existing_node_with_same_name(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('b', tf.int32),
+        transformation_utils.MutationMode.CHILD, 1)
+    resolved_y = symbol_tree.get_payload_with_name('y')
+    self.assertEqual(resolved_y.value.uri, 'b')
+    self.assertEqual(str(resolved_y.value.type_signature), 'int32')
+    symbol_tree.move_to_parent_context()
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('d', tf.bool),
+        transformation_utils.MutationMode.CHILD, 1)
+    changed_y = symbol_tree.get_payload_with_name('y')
+    self.assertEqual(changed_y.value.uri, 'd')
+    self.assertEqual(str(changed_y.value.type_signature), 'bool')
+
+  def test_ingest_child_mode_overwrite_leaves_unrelated_node_alone(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree.ingest_variable_binding(
+        'x', computation_building_blocks.Data('a', tf.bool),
+        transformation_utils.MutationMode.CHILD, 0)
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('b', tf.int32),
+        transformation_utils.MutationMode.CHILD, 1)
+    resolved_x = symbol_tree.get_payload_with_name('x')
+    self.assertEqual(resolved_x.value.uri, 'a')
+    self.assertEqual(str(resolved_x.value.type_signature), 'bool')
+    symbol_tree.move_to_parent_context()
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('d', tf.bool),
+        transformation_utils.MutationMode.CHILD, 1)
+    same_x = symbol_tree.get_payload_with_name('x')
+    self.assertEqual(same_x.value, resolved_x.value)
+
+  def test_ingest_child_mode_raises_error_on_name_conflict(self):
+    symbol_tree = _construct_complex_symbol_tree()
+    symbol_tree.ingest_variable_binding(
+        'x', computation_building_blocks.Data('a', tf.bool),
+        transformation_utils.MutationMode.CHILD, 0)
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('b', tf.int32),
+        transformation_utils.MutationMode.CHILD, 1)
+    symbol_tree.move_to_parent_context()
+    with self.assertRaises(ValueError):
+      symbol_tree.ingest_variable_binding(
+          'z', computation_building_blocks.Data('c', tf.int32),
+          transformation_utils.MutationMode.CHILD, 1)
+
+  def test_ingest_sibling_mode_overwrites_existing_node_with_same_name(self):
+    symbol_tree = _construct_complex_symbol_tree()
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('b', tf.int32),
+        transformation_utils.MutationMode.SIBLING)
+    resolved_y = symbol_tree.get_payload_with_name('y')
+    self.assertEqual(resolved_y.value.uri, 'b')
+    self.assertEqual(str(resolved_y.value.type_signature), 'int32')
+    symbol_tree._move_to_older_sibling()
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('d', tf.float32),
+        transformation_utils.MutationMode.SIBLING)
+    updated_y = symbol_tree.get_payload_with_name('y')
+    self.assertEqual(updated_y.value.uri, 'd')
+    self.assertEqual(str(updated_y.value.type_signature), 'float32')
+
+  def test_ingest_sibling_mode_overwrite_leaves_unrelated_node_alone(self):
+    symbol_tree = _construct_complex_symbol_tree()
+    symbol_tree.ingest_variable_binding(
+        'x', computation_building_blocks.Data('a', tf.bool),
+        transformation_utils.MutationMode.SIBLING)
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('b', tf.int32),
+        transformation_utils.MutationMode.SIBLING)
+    resolved_x = symbol_tree.get_payload_with_name('x')
+    self.assertEqual(resolved_x.value.uri, 'a')
+    self.assertEqual(str(resolved_x.value.type_signature), 'bool')
+    symbol_tree._move_to_older_sibling()
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('d', tf.float32),
+        transformation_utils.MutationMode.SIBLING)
+    same_x = symbol_tree.get_payload_with_name('x')
+    self.assertEqual(same_x.value, resolved_x.value)
+
+  def test_ingest_sibling_mode_raises_error_on_name_conflict(self):
+    symbol_tree = _construct_complex_symbol_tree()
+    symbol_tree.ingest_variable_binding(
+        'x', computation_building_blocks.Data('a', tf.bool),
+        transformation_utils.MutationMode.SIBLING)
+    symbol_tree.ingest_variable_binding(
+        'y', computation_building_blocks.Data('b', tf.int32),
+        transformation_utils.MutationMode.SIBLING)
+    symbol_tree._move_to_older_sibling()
+    with self.assertRaises(ValueError):
+      symbol_tree.ingest_variable_binding(
+          'z', computation_building_blocks.Data('c', tf.float32),
+          transformation_utils.MutationMode.SIBLING)
+
+  def test_symbol_tree_move_to_bad_parent_fails(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_child(
+        0,
+        transformation_utils.SequentialBindingNode(
+            FakeTracker('FakeTracker', None)))
+    with self.assertRaisesRegexp(ValueError, 'nonexistent parent'):
+      symbol_tree.move_to_parent_context()
+
+  def test_symbol_tree_move_to_good_parent_succeeds(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_child(
+        0,
+        transformation_utils.SequentialBindingNode(
+            FakeTracker('FakeTracker', None)))
+    symbol_tree._move_to_child(0)
+    symbol_tree.move_to_parent_context()
+    self.assertEqual(symbol_tree.active_node.payload,
+                     transformation_utils.OuterContextPointer())
+
+  def test_symbol_tree_add_sibling(self):
+    fake_node = transformation_utils.SequentialBindingNode(
+        FakeTracker('FakeTracker', None))
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_younger_sibling(fake_node)
+    symbol_tree._move_to_younger_sibling()
+    self.assertEqual(id(symbol_tree.active_node), id(fake_node))
+    self.assertIsNone(symbol_tree.active_node.children.get(0))
+    self.assertIsNone(symbol_tree.active_node.younger_sibling)
+    symbol_tree._move_to_older_sibling()
+    self.assertEqual(symbol_tree.active_node.payload,
+                     transformation_utils.OuterContextPointer())
+    self.assertIsNotNone(symbol_tree.active_node.younger_sibling)
+    self.assertIsNone(symbol_tree.active_node.children.get(0))
+
+  def test_symbol_tree_move_to_bad_older_sibling_fails(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+    with self.assertRaisesRegexp(ValueError, 'nonexistent older sibling'):
+      symbol_tree._move_to_older_sibling()
+
+  def test_symbol_tree_has_younger_sibling(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+    self.assertIsNotNone(symbol_tree.active_node.younger_sibling)
+
+  def test_symbol_tree_move_to_bad_younger_sibling_fails(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+    symbol_tree._move_to_younger_sibling()
+    with self.assertRaisesRegexp(ValueError, 'nonexistent younger sibling'):
+      symbol_tree._move_to_younger_sibling()
+    symbol_tree._move_to_older_sibling()
+
+  def test_symbol_tree_add_child(self):
+    fake_node = transformation_utils.SequentialBindingNode(
+        FakeTracker('FakeTracker', None))
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_child(0, fake_node)
+    symbol_tree._move_to_child(0)
+    self.assertEqual(id(symbol_tree.active_node), id(fake_node))
+    symbol_tree.move_to_parent_context()
+    self.assertEqual(symbol_tree.active_node.payload,
+                     transformation_utils.OuterContextPointer())
+
+  def test_symbol_tree_move_to_bad_child_fails(self):
+    fake_node = transformation_utils.SequentialBindingNode(
+        FakeTracker('FakeTracker', None))
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    symbol_tree._add_child(0, fake_node)
+    with self.assertRaises(ValueError):
+      symbol_tree._move_to_child(1)
+
+  def test_complicated_symbol_tree_equality(self):
+    first_tree = _construct_complex_symbol_tree()
+    second_tree = _construct_complex_symbol_tree()
+    self.assertEqual(first_tree, second_tree)
+    second_tree._add_child(
+        10,
+        transformation_utils.SequentialBindingNode(FakeTracker('alpha', None)))
+    self.assertNotEqual(first_tree, second_tree)
+    self.assertNotEqual(second_tree, first_tree)
+
+  def test_complicated_symbol_tree_equality_independent_of_active_node(self):
+    first_tree = _construct_complex_symbol_tree()
+    second_tree = _construct_complex_symbol_tree()
+    second_tree.move_to_parent_context()
+    second_tree._move_to_younger_sibling()
+    second_tree._move_to_younger_sibling()
+    self.assertEqual(first_tree, second_tree)
+
+  def test_complicated_symbol_tree_resolves_string_correctly(self):
+    symbol_tree = transformation_utils.SymbolTree(FakeTracker)
+    for _ in range(2):
+      symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+      symbol_tree._move_to_younger_sibling()
+    symbol_tree._add_child(0, fake_tracker_node_factory())
+    symbol_tree._move_to_child(0)
+    for _ in range(2):
+      symbol_tree._add_younger_sibling(fake_tracker_node_factory())
+      symbol_tree._move_to_younger_sibling()
+    symbol_tree._add_child(1, fake_tracker_node_factory())
+    symbol_tree._move_to_child(1)
+    for k in range(2):
+      symbol_tree.move_to_parent_context()
+      symbol_tree._move_to_older_sibling()
+      symbol_tree._move_to_older_sibling()
+      symbol_tree._add_child(k + 2, fake_tracker_node_factory())
+    symbol_tree._move_to_child(3)
+
+    self.assertEqual(
+        str(symbol_tree),
+        '[OuterContext]->{([FakeTracker*])}-[FakeTracker]-[FakeTracker]->{('
+        '[FakeTracker]->{([FakeTracker])}-[FakeTracker]-[FakeTracker]->{([FakeTracker])})}'
+    )
+    symbol_tree.move_to_parent_context()
+    self.assertEqual(
+        str(symbol_tree),
+        '[OuterContext*]->{([FakeTracker])}-[FakeTracker]-[FakeTracker]->{('
+        '[FakeTracker]->{([FakeTracker])}-[FakeTracker]-[FakeTracker]->{([FakeTracker])})}'
+    )
+    symbol_tree._move_to_younger_sibling()
+    symbol_tree._move_to_younger_sibling()
+    self.assertEqual(
+        str(symbol_tree),
+        '[OuterContext]->{([FakeTracker])}-[FakeTracker]-[FakeTracker*]->{('
+        '[FakeTracker]->{([FakeTracker])}-[FakeTracker]-[FakeTracker]->{([FakeTracker])})}'
+    )
 
   def test_trivial_subclass_init_fails_bad_args(self):
     with self.assertRaises(TypeError):

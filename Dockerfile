@@ -57,6 +57,7 @@ RUN bazel version
 
 # Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} --no-cache-dir install \
+    enum34
     keras_applications \
     keras_preprocessing \
     h5py \
