@@ -1,3 +1,4 @@
+enum34
 keras_applications
 keras_preprocessing
 h5py
