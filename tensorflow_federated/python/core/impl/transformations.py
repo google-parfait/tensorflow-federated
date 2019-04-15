@@ -118,23 +118,23 @@ def replace_called_lambda_with_block(comp):
   This transform traverses `comp` postorder, matches the following pattern `*`,
   and replaces the following computation containing a called lambda:
 
-               *Call
-               /    \
-     *Lambda(x)      z=Computation
-               \
-                y=Computation
+            *Call
+            /    \
+     *Lambda      Comp(y)
+            \
+             Comp(x)
 
-  (x -> y)(z)
+  (arg -> x)(y)
 
   with the following computation containing a block:
 
-                      Block
-                     /     \
-   (x, y=Computation)       z=Computation
+                    Block
+                   /     \
+   arg=Computation(y)       Computation(x)
 
-  let x=z in y
+  let arg=y in x
 
-  The functional computation `y` and the argument `z` are retained; the other
+  The functional computation `b` and the argument `c` are retained; the other
   computations are replaced. This transformation is used to facilitate the
   merging of TFF orchestration logic, in particular to remove unnecessary lambda
   expressions and as a stepping stone for merging Blocks together.
@@ -167,7 +167,7 @@ def replace_called_lambda_with_block(comp):
 def remove_mapped_or_applied_identity(comp):
   r"""Removes all the mapped or applied identity functions in `comp`.
 
-  This transform traverses `comp` postorder, matches the follwoing pattern `*`,
+  This transform traverses `comp` postorder, matches the following pattern `*`,
   and removes all the mapped or applied identity fucntions by replacing the
   following computation:
 
@@ -175,15 +175,15 @@ def remove_mapped_or_applied_identity(comp):
             /    \
   *Intrinsic     *Tuple
                  /     \
-       *Lambda(a)       x=Computation
+          *Lambda       Comp(x)
                  \
-                 *Reference(a)
+                 *Ref(arg)
 
-  (<(a -> a), x>)
+  Intrinsic(<(arg -> arg), x>)
 
   with its argument:
 
-  x=Computation
+  Comp(x)
 
   x
 
@@ -239,11 +239,11 @@ def replace_chained_federated_maps_with_federated_map(comp):
             /    \
   *Intrinsic     *Tuple
                  /     \
-    x=Computation      *Call
+          Comp(x)      *Call
                        /    \
              *Intrinsic     *Tuple
                             /     \
-               y=Computation       z=Computation
+                     Comp(y)       Comp(z)
 
   federated_map(<x, federated_map(<y, z>)>)
 
@@ -253,15 +253,15 @@ def replace_chained_federated_maps_with_federated_map(comp):
            /    \
   Intrinsic      Tuple
                 /     \
-       Lambda(a)       z=Computation
+          Lambda       Comp(z)
                 \
                  Call
                 /    \
-   x=Computation      Call
+         Comp(x)      Call
                      /    \
-        y=Computation      Reference(a)
+              Comp(y)      Ref(arg)
 
-  federated_map(<(a -> x(y(a))), z>)
+  federated_map(<(arg -> x(y(arg))), z>)
 
   The functional computations `x` and `y`, and the argument `z` are retained;
   the other computations are replaced.
@@ -298,7 +298,7 @@ def replace_chained_federated_maps_with_federated_map(comp):
       return comp
     map_arg = comp.argument[1].argument[1]
     inner_arg = computation_building_blocks.Reference(
-        'inner_arg', map_arg.type_signature.member)
+        'arg', map_arg.type_signature.member)
     inner_fn = comp.argument[1].argument[0]
     inner_call = computation_building_blocks.Call(inner_fn, inner_arg)
     outer_fn = comp.argument[0]
