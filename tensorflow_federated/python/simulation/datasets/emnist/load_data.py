@@ -146,7 +146,7 @@ def _compile_transform(angle=0,
                                 translation)
 
 
-def _transform_fn_cons(raw_client_id, index):
+def _make_transform_fn(raw_client_id, index):
   """Generates a random affine transform based on the client_id and index.
 
   If the index is 0, `None` is returned so no transform is applied by the
@@ -224,5 +224,5 @@ def infinite_emnist(emnist_client_data, num_pseudo_clients):
 
   return transforming_client_data.TransformingClientData(
       raw_client_data=emnist_client_data,
-      transform_fn_cons=_transform_fn_cons,
+      make_transform_fn=_make_transform_fn,
       num_transformed_clients=(num_client_ids * num_pseudo_clients))
