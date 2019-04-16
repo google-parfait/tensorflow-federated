@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import abc
 import collections
+import itertools
 import enum
 
 import six
@@ -28,18 +29,18 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import computation_building_blocks
 
 
-def transform_postorder(comp, fn):
+def transform_postorder(comp, transform):
   """Traverses `comp` recursively postorder and replaces its constituents.
 
   For each element of `comp` viewed as an expression tree, the transformation
-  `fn` is applied first to building blocks it is parameterized by, then the
-  element itself. The transformation `fn` should act as an identity function
-  on the kinds of elements (computation building blocks) it does not care to
-  transform. This corresponds to a post-order traversal of the expression tree,
-  i.e., parameters are alwaysd transformed left-to-right (in the order in which
-  they are listed in building block constructors), then the parent is visited
-  and transformed with the already-visited, and possibly transformed arguments
-  in place.
+  `transform` is applied first to building blocks it is parameterized by, then
+  the element itself. The transformation `transform` should act as an identity
+  function on the kinds of elements (computation building blocks) it does not
+  care to transform. This corresponds to a post-order traversal of the
+  expression tree, i.e., parameters are alwaysd transformed left-to-right (in
+  the order in which they are listed in building block constructors), then the
+  parent is visited and transformed with the already-visited, and possibly
+  transformed arguments in place.
 
   NOTE: In particular, in `Call(f,x)`, both `f` and `x` are arguments to `Call`.
   Therefore, `f` is transformed into `f'`, next `x` into `x'` and finally,
@@ -47,13 +48,15 @@ def transform_postorder(comp, fn):
 
   Args:
     comp: The computation to traverse and transform bottom-up.
-    fn: The transformation to apply locally to each building block in `comp`. It
-      is a Python function that accepts a building block at input, and should
-      return either the same, or transformed building block at output. Both the
-      intput and output of `fn` are instances of `ComputationBuildingBlock`.
+    transform: The transformation to apply locally to each building block in
+      `comp`. It is a Python function that accepts a building block at input,
+      and should return either the same, or transformed building block as
+      output. Both the input and output of `transform` are instances of
+      `ComputationBuildingBlock`.
 
   Returns:
-    The result of applying `fn` to parts of `comp` in a bottom-up fashion.
+    The result of applying `transform` to parts of `comp` in a bottom-up
+    fashion.
 
   Raises:
     TypeError: If the arguments are of the wrong computation_types.
@@ -68,38 +71,214 @@ def transform_postorder(comp, fn):
        computation_building_blocks.Data, computation_building_blocks.Intrinsic,
        computation_building_blocks.Placement,
        computation_building_blocks.Reference)):
-    return fn(comp)
+    return transform(comp)
   elif isinstance(comp, computation_building_blocks.Selection):
-    return fn(
+    return transform(
         computation_building_blocks.Selection(
-            transform_postorder(comp.source, fn), comp.name, comp.index))
+            transform_postorder(comp.source, transform), comp.name, comp.index))
   elif isinstance(comp, computation_building_blocks.Tuple):
-    return fn(
+    return transform(
         computation_building_blocks.Tuple([
-            (k, transform_postorder(v, fn))
+            (k, transform_postorder(v, transform))
             for k, v in anonymous_tuple.to_elements(comp)
         ]))
   elif isinstance(comp, computation_building_blocks.Call):
-    transformed_fn = transform_postorder(comp.function, fn)
+    transformed_transform = transform_postorder(comp.function, transform)
     if comp.argument is not None:
-      transformed_arg = transform_postorder(comp.argument, fn)
+      transformed_arg = transform_postorder(comp.argument, transform)
     else:
       transformed_arg = None
-    return fn(computation_building_blocks.Call(transformed_fn, transformed_arg))
+    return transform(
+        computation_building_blocks.Call(transformed_transform,
+                                         transformed_arg))
   elif isinstance(comp, computation_building_blocks.Lambda):
-    transformed_result = transform_postorder(comp.result, fn)
-    return fn(
+    transformed_result = transform_postorder(comp.result, transform)
+    return transform(
         computation_building_blocks.Lambda(comp.parameter_name,
                                            comp.parameter_type,
                                            transformed_result))
   elif isinstance(comp, computation_building_blocks.Block):
-    return fn(
+    return transform(
         computation_building_blocks.Block(
-            [(k, transform_postorder(v, fn)) for k, v in comp.locals],
-            transform_postorder(comp.result, fn)))
+            [(k, transform_postorder(v, transform)) for k, v in comp.locals],
+            transform_postorder(comp.result, transform)))
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
+
+
+def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
+  """Uses symbol binding hooks to execute transformations.
+
+  `transform_postorder_with_symbol_bindings` hooks into the preorder traversal
+  that is defined by walking down the tree to its leaves, using
+  the variable bindings along this path to push information onto
+  the given `SymbolTree`. Once we hit the leaves, we walk back up the
+  tree in a postorder fashion, calling `transform` as we go.
+
+  The transformations `transform_postorder_with_symbol_bindings` executes are
+  therefore stateful in some sense. Here 'stateful' means that a transformation
+  executed on a given AST node in general depends on not only the node itself
+  or its immediate vicinity; possibly there is some global information on which
+  this transformation depends. `transform_postorder_with_symbol_bindings` is
+  functional 'from AST to AST' (where `comp` represents the root of an AST) but
+  not 'from node to node'.
+
+  One important fact to note: there are recursion invariants that the
+  `transform_postorder_with_symbol_bindings` uses the `SymbolTree` data
+  structure
+  to enforce. In particular, within a `transform` call the following
+  invariants hold, for `symbol_tree` the SymbolTree argument to `transform`:
+
+    * `symbol_tree.update_payload_tracking_reference` with an argument `ref` of
+      type `Reference` will call `update` on the `BoundVariableTracker` in
+      `symbol_tree` which tracks the value of `ref` active in the current
+      lexical scope. Will raise a `NameError` if none exists.
+
+    * `symbol_tree.get_payload_with_name` with a string argument `name`
+       will return the `BoundVariableTracker` instance from `symbol_tree`
+      which corresponds to the computation bound to the variable `name` in
+      the current lexical scope. Will raise a `NameError` if none exists.
+
+  These recursion invariants are enforced by the framework, and should be
+  relied on when designing new transformations that depend on variable
+  bindings.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      read information from or transform.
+    transform: Python function accepting `comp` and `symbol_tree` arguments and
+      returning `transformed_comp`.
+    symbol_tree: Instance of `SymbolTree`, the data structure into which we may
+      read information about variable bindings, and from which we may read.
+
+  Returns:
+    Returns a possibly modified version of `comp`, an instance
+    of `computation_building_blocks.ComputationBuildingBlock`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(symbol_tree, SymbolTree)
+  identifier_seq = itertools.count(start=1)
+
+  def _transform_postorder_with_symbol_bindings_switch(comp, transform_fn,
+                                                       ctxt_tree,
+                                                       identifier_sequence):
+    """Recursive helper function delegated to after binding comp_id sequence."""
+    if isinstance(comp, (computation_building_blocks.CompiledComputation,
+                         computation_building_blocks.Data,
+                         computation_building_blocks.Intrinsic,
+                         computation_building_blocks.Placement,
+                         computation_building_blocks.Reference)):
+      return _traverse_leaf(comp, transform_fn, ctxt_tree, identifier_sequence)
+    elif isinstance(comp, computation_building_blocks.Selection):
+      return _traverse_selection(comp, transform, ctxt_tree,
+                                 identifier_sequence)
+    elif isinstance(comp, computation_building_blocks.Tuple):
+      return _traverse_tuple(comp, transform, ctxt_tree, identifier_sequence)
+    elif isinstance(comp, computation_building_blocks.Call):
+      return _traverse_call(comp, transform, ctxt_tree, identifier_sequence)
+    elif isinstance(comp, computation_building_blocks.Lambda):
+      return _traverse_lambda(comp, transform, ctxt_tree, identifier_sequence)
+    elif isinstance(comp, computation_building_blocks.Block):
+      return _traverse_block(comp, transform, ctxt_tree, identifier_sequence)
+    else:
+      raise NotImplementedError(
+          'Unrecognized computation building block: {}'.format(str(comp)))
+
+  def _traverse_leaf(comp, transform, context_tree, identifier_seq):
+    """Helper function holding traversal logic for leaf nodes."""
+    _ = six.next(identifier_seq)
+    return transform(comp, context_tree)
+
+  def _traverse_selection(comp, transform, context_tree, identifier_seq):
+    """Helper function holding traversal logic for selection nodes."""
+    _ = six.next(identifier_seq)
+    transformed_source = _transform_postorder_with_symbol_bindings_switch(
+        comp.source, transform, context_tree, identifier_seq)
+    transformed_comp = transform(
+        computation_building_blocks.Selection(transformed_source, comp.name,
+                                              comp.index), context_tree)
+    return transformed_comp
+
+  def _traverse_tuple(comp, transform, context_tree, identifier_seq):
+    """Helper function holding traversal logic for tuple nodes."""
+    _ = six.next(identifier_seq)
+    new_elems = []
+    for k, v in anonymous_tuple.to_elements(comp):
+      transformed_elem = _transform_postorder_with_symbol_bindings_switch(
+          v, transform, context_tree, identifier_seq)
+      new_elems.append((k, transformed_elem))
+    transformed_comp = transform(
+        computation_building_blocks.Tuple(new_elems), context_tree)
+    return transformed_comp
+
+  def _traverse_call(comp, transform, context_tree, identifier_seq):
+    """Helper function holding traversal logic for call nodes."""
+    _ = six.next(identifier_seq)
+    transformed_func = _transform_postorder_with_symbol_bindings_switch(
+        comp.function, transform, context_tree, identifier_seq)
+    if comp.argument is not None:
+      transformed_arg = _transform_postorder_with_symbol_bindings_switch(
+          comp.argument, transform, context_tree, identifier_seq)
+    else:
+      transformed_arg = None
+    transformed_comp = transform(
+        computation_building_blocks.Call(transformed_func, transformed_arg),
+        context_tree)
+    return transformed_comp
+
+  def _traverse_lambda(comp, transform, context_tree, identifier_seq):
+    """Helper function holding traversal logic for lambda nodes."""
+    comp_id = six.next(identifier_seq)
+    context_tree.ingest_variable_binding(
+        name=comp.parameter_name,
+        value=None,
+        mode=MutationMode.CHILD,
+        comp_id=comp_id)
+    transformed_result = _transform_postorder_with_symbol_bindings_switch(
+        comp.result, transform, context_tree, identifier_seq)
+    transformed_comp = transform(
+        computation_building_blocks.Lambda(comp.parameter_name,
+                                           comp.parameter_type,
+                                           transformed_result), context_tree)
+    context_tree.move_to_parent_context()
+    return transformed_comp
+
+  def _traverse_block(comp, transform, context_tree, identifier_seq):
+    """Helper function holding traversal logic for block nodes."""
+    comp_id = six.next(identifier_seq)
+    transformed_locals = []
+    if comp.locals:
+      first_local_name = comp.locals[0][0]
+      first_local_comp = comp.locals[0][1]
+      new_value = _transform_postorder_with_symbol_bindings_switch(
+          first_local_comp, transform, context_tree, identifier_seq)
+      transformed_locals.append((first_local_name, new_value))
+      context_tree.ingest_variable_binding(
+          name=transformed_locals[0][0],
+          value=transformed_locals[0][1],
+          mode=MutationMode.CHILD,
+          comp_id=comp_id)
+    for k in range(1, len(comp.locals)):
+      new_value = _transform_postorder_with_symbol_bindings_switch(
+          comp.locals[k][1], transform, context_tree, identifier_seq)
+      transformed_locals.append((comp.locals[k][0], new_value))
+      context_tree.ingest_variable_binding(
+          name=transformed_locals[k][0],
+          value=transformed_locals[k][1],
+          mode=MutationMode.SIBLING)
+    transformed_result = _transform_postorder_with_symbol_bindings_switch(
+        comp.result, transform, context_tree, identifier_seq)
+    transformed_comp = transform(
+        computation_building_blocks.Block(transformed_locals,
+                                          transformed_result), context_tree)
+    if comp.locals:
+      context_tree.move_to_parent_context()
+    return transformed_comp
+
+  return _transform_postorder_with_symbol_bindings_switch(
+      comp, transform, symbol_tree, identifier_seq)
 
 
 class MutationMode(enum.Enum):
