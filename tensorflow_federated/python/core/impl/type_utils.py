@@ -283,33 +283,33 @@ def get_named_tuple_element_type(type_spec, name):
                        name, str([e[0] for e in elements if e[0]])))
 
 
-def preorder_call(given_type, func, arg):
-  """Recursively calls `func` on the possibly nested structure `given_type`.
+def preorder_call(given_type, fn, arg):
+  """Recursively calls `fn` on the possibly nested structure `given_type`.
 
   Walks the tree in a preorder manner. Updates `arg` on the way down with
-  the appropriate information, as defined in `func`.
+  the appropriate information, as defined in `fn`.
 
   Args:
     given_type: Possibly nested `computation_types.Type` or object convertible
       to it by `computation_types.to_type`.
-    func: Function to apply to each of the constituent elements of `given_type`
+    fn: Function to apply to each of the constituent elements of `given_type`
       with the argument `arg`. Must return an updated version of `arg` which
       incorporated the information we'd like to track as we move down the nested
       type tree.
     arg: Initial state of information to be passed down the tree.
   """
   type_signature = computation_types.to_type(given_type)
-  arg = func(type_signature, arg)
+  arg = fn(type_signature, arg)
   if isinstance(type_signature, computation_types.FederatedType):
-    preorder_call(type_signature.member, func, arg)
+    preorder_call(type_signature.member, fn, arg)
   elif isinstance(type_signature, computation_types.SequenceType):
-    preorder_call(type_signature.element, func, arg)
+    preorder_call(type_signature.element, fn, arg)
   elif isinstance(type_signature, computation_types.FunctionType):
-    preorder_call(type_signature.parameter, func, arg)
-    preorder_call(type_signature.result, func, arg)
+    preorder_call(type_signature.parameter, fn, arg)
+    preorder_call(type_signature.result, fn, arg)
   elif isinstance(type_signature, computation_types.NamedTupleType):
     for element in anonymous_tuple.to_elements(type_signature):
-      preorder_call(element[1], func, arg)
+      preorder_call(element[1], fn, arg)
 
 
 def check_well_formed(type_spec):

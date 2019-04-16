@@ -291,28 +291,28 @@ def is_same_structure(a, b):
   return True
 
 
-def map_structure(func, *structure):
-  """Applies `func` to each entry in `structure` and returns a new structure.
+def map_structure(fn, *structure):
+  """Applies `fn` to each entry in `structure` and returns a new structure.
 
   This is a special implementation of `tf.contrib.framework.nest.map_structure`
   that works for `AnonymousTuple`.
 
   Args:
-    func: a callable that accepts as many arguments as there are structures.
+    fn: a callable that accepts as many arguments as there are structures.
     *structure: a scalar, tuple, or list of constructed scalars and/or
       tuples/lists, or scalars. Note: numpy arrays are considered scalars.
 
   Returns:
     A new structure with the same arity as `structure` and same type as
-    `structure[0]`, whose values correspond to `func(x[0], x[1], ...)` where
+    `structure[0]`, whose values correspond to `fn(x[0], x[1], ...)` where
     `x[i]` is a value in the corresponding location in `structure[i]`.
 
   Raises:
-    TypeError: if `func` is not a callable, or *structure contains types other
+    TypeError: if `fn` is not a callable, or *structure contains types other
       than AnonymousTuple.
     ValueError: if `*structure` is empty.
   """
-  py_typecheck.check_callable(func)
+  py_typecheck.check_callable(fn)
   if not structure:
     raise ValueError('Must provide at least one structure')
 
@@ -324,7 +324,7 @@ def map_structure(func, *structure):
 
   flat_structure = [flatten(s) for s in structure]
   entries = zip(*flat_structure)
-  s = [func(*x) for x in entries]
+  s = [fn(*x) for x in entries]
 
   return pack_sequence_as(structure[0], s)
 

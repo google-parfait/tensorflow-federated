@@ -659,15 +659,15 @@ class ReferenceExecutor(context_base.Context):
 
   def ingest(self, arg, type_spec):
 
-    def _handle_callable(func, func_type):
-      py_typecheck.check_type(func, computation_base.Computation)
-      type_utils.check_assignable_from(func.type_signature, func_type)
-      return func
+    def _handle_callable(fn, fn_type):
+      py_typecheck.check_type(fn, computation_base.Computation)
+      type_utils.check_assignable_from(fn.type_signature, fn_type)
+      return fn
 
     return to_representation_for_type(arg, type_spec, _handle_callable)
 
-  def invoke(self, func, arg):
-    comp = self._compile(func)
+  def invoke(self, fn, arg):
+    comp = self._compile(fn)
     cardinalities = {}
     root_context = ComputationContext(cardinalities=cardinalities)
     computed_comp = self._compute(comp, root_context)
@@ -682,11 +682,11 @@ class ReferenceExecutor(context_base.Context):
     else:
       if arg is not None:
 
-        def _handle_callable(func, func_type):
-          py_typecheck.check_type(func, computation_base.Computation)
-          type_utils.check_assignable_from(func.type_signature, func_type)
-          computed_func = self._compute(self._compile(func), root_context)
-          return computed_func.value
+        def _handle_callable(fn, fn_type):
+          py_typecheck.check_type(fn, computation_base.Computation)
+          type_utils.check_assignable_from(fn.type_signature, fn_type)
+          computed_fn = self._compute(self._compile(fn), root_context)
+          return computed_fn.value
 
         computed_arg = ComputedValue(
             to_representation_for_type(arg,
@@ -776,21 +776,21 @@ class ReferenceExecutor(context_base.Context):
 
   def _compute_call(self, comp, context):
     py_typecheck.check_type(comp, computation_building_blocks.Call)
-    computed_func = self._compute(comp.function, context)
-    py_typecheck.check_type(computed_func.type_signature,
+    computed_fn = self._compute(comp.function, context)
+    py_typecheck.check_type(computed_fn.type_signature,
                             computation_types.FunctionType)
     if comp.argument is not None:
       computed_arg = self._compute(comp.argument, context)
-      type_utils.check_assignable_from(computed_func.type_signature.parameter,
+      type_utils.check_assignable_from(computed_fn.type_signature.parameter,
                                        computed_arg.type_signature)
       computed_arg = fit_argument(computed_arg,
-                                  computed_func.type_signature.parameter,
+                                  computed_fn.type_signature.parameter,
                                   context)
     else:
       computed_arg = None
-    result = computed_func.value(computed_arg)
+    result = computed_fn.value(computed_arg)
     py_typecheck.check_type(result, ComputedValue)
-    type_utils.check_assignable_from(computed_func.type_signature.result,
+    type_utils.check_assignable_from(computed_fn.type_signature.result,
                                      result.type_signature)
     return result
 

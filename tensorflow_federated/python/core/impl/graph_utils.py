@@ -121,16 +121,16 @@ class OneShotDataset(typed_object.TypedObject):
   # way to make it work, so that the users can get an instance of the standard
   # data set type.
 
-  def __init__(self, func, element_type):
-    """Constructs this factory from `func`.
+  def __init__(self, fn, element_type):
+    """Constructs this factory from `fn`.
 
     Args:
-      func: A no-argument callable that creates instances of `tf.data.Dataset`.
+      fn: A no-argument callable that creates instances of `tf.data.Dataset`.
       element_type: The type of elements.
     """
     py_typecheck.check_type(element_type, computation_types.Type)
     self._type_signature = computation_types.SequenceType(element_type)
-    self._func = func
+    self._fn = fn
 
   @property
   def type_signature(self):
@@ -138,7 +138,7 @@ class OneShotDataset(typed_object.TypedObject):
     return self._type_signature
 
   def __getattr__(self, name):
-    return getattr(self._func(), name)
+    return getattr(self._fn(), name)
 
 
 # We cannot currently subclass `tf.data.Dataset`, so we have to resort to
