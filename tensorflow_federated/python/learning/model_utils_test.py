@@ -314,6 +314,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(m['loss'][1], input_vocab_size * num_iterations)
 
   def test_keras_model_using_batch_norm(self):
+    self.skipTest('b/130646097')
     model = model_examples.build_conv_batch_norm_keras_model()
 
     def loss_fn(y_true, y_pred):
