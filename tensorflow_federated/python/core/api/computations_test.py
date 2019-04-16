@@ -45,10 +45,10 @@ class ComputationsTest(test.TestCase):
     self.assertEqual(baz(), 10)
 
     # Wrapping a no-parameter Python function.
-    def bak_func():
+    def bak_fn():
       return tf.constant(10)
 
-    bak = computations.tf_computation(bak_func)
+    bak = computations.tf_computation(bak_fn)
     self.assertEqual(str(bak.type_signature), '( -> int32)')
     self.assertEqual(bak(), 10)
 

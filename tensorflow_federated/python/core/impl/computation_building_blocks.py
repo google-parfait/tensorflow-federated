@@ -361,52 +361,52 @@ class Call(ComputationBuildingBlock):
   @classmethod
   def from_proto(cls, computation_proto):
     _check_computation_oneof(computation_proto, 'call')
-    func = ComputationBuildingBlock.from_proto(computation_proto.call.function)
+    fn = ComputationBuildingBlock.from_proto(computation_proto.call.function)
     arg_proto = computation_proto.call.argument
     if arg_proto.WhichOneof('computation') is not None:
       arg = ComputationBuildingBlock.from_proto(arg_proto)
     else:
       arg = None
-    return cls(func, arg)
+    return cls(fn, arg)
 
-  def __init__(self, func, arg=None):
-    """Creates a call to 'func' with argument 'arg'.
+  def __init__(self, fn, arg=None):
+    """Creates a call to 'fn' with argument 'arg'.
 
     Args:
-      func: A value of a functional type that represents the function to invoke.
-      arg: The optional argument, present iff 'func' expects one, of a type that
-        matches the type of 'func'.
+      fn: A value of a functional type that represents the function to invoke.
+      arg: The optional argument, present iff 'fn' expects one, of a type that
+        matches the type of 'fn'.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(func, ComputationBuildingBlock)
+    py_typecheck.check_type(fn, ComputationBuildingBlock)
     if arg is not None:
       py_typecheck.check_type(arg, ComputationBuildingBlock)
-    if not isinstance(func.type_signature, computation_types.FunctionType):
-      raise TypeError('Expected func to be of a functional type, '
+    if not isinstance(fn.type_signature, computation_types.FunctionType):
+      raise TypeError('Expected fn to be of a functional type, '
                       'but found that its type is {}.'.format(
-                          str(func.type_signature)))
-    if func.type_signature.parameter is not None:
+                          str(fn.type_signature)))
+    if fn.type_signature.parameter is not None:
       if arg is None:
         raise TypeError('The invoked function expects an argument of type {}, '
                         'but got None instead.'.format(
-                            str(func.type_signature.parameter)))
-      if not type_utils.is_assignable_from(func.type_signature.parameter,
+                            str(fn.type_signature.parameter)))
+      if not type_utils.is_assignable_from(fn.type_signature.parameter,
                                            arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '
             'type {}.'.format(
-                str(func.type_signature.parameter), str(arg.type_signature)))
+                str(fn.type_signature.parameter), str(arg.type_signature)))
     elif arg is not None:
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
           'an argument of type {}.'.format(py_typecheck.type_string(type(arg))))
-    super(Call, self).__init__(func.type_signature.result)
+    super(Call, self).__init__(fn.type_signature.result)
     # By now, this condition should hold, so we only double-check in debug mode.
-    assert (arg is not None) == (func.type_signature.parameter is not None)
-    self._function = func
+    assert (arg is not None) == (fn.type_signature.parameter is not None)
+    self._function = fn
     self._argument = arg
 
   @property

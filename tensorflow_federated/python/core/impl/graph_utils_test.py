@@ -502,10 +502,10 @@ class GraphUtilsTest(test.TestCase):
 
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
-    def reduce_func(x, y):
+    def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
 
-    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
 
   def test_make_data_set_from_elements_with_list_of_dicts_with_tensors(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
@@ -518,10 +518,10 @@ class GraphUtilsTest(test.TestCase):
 
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
-    def reduce_func(x, y):
+    def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
 
-    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
 
   def test_make_data_set_from_elements_with_list_of_dicts_with_np_array(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
@@ -533,10 +533,10 @@ class GraphUtilsTest(test.TestCase):
     }], [('a', (tf.int32, [1])), ('b', (tf.int32, [1]))])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
-    def reduce_func(x, y):
+    def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
 
-    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_func)), 10)
+    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
 
   def test_fetch_value_in_session_with_string(self):
     x = tf.constant('abc')

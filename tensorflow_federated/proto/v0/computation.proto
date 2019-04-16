@@ -650,8 +650,8 @@ message Intrinsic {
 // form "parameter_name : T -> comp" to indicate that parameter is of type "T".
 // For example, a lambda that takes a 2-tuple of an unary operator and an
 // integer as input, and returns the result of calling the unary operator
-// on the integer, can be written as "x -> x.func(x.arg)", or in the full form
-// with type annotation as "x: <func=(int->int), arg=int> -> x.func(x.arg)".
+// on the integer, can be written as "x -> x[0](x[1])", or in the full form with
+// type annotation as "x: <(int->int), arg=int> -> x[0](x[1])".
 message Lambda {
   // The name to use internally within this lambda to refer to the parameter.
   // The parameter is mandatory. The name defined here can be used internally
@@ -708,8 +708,8 @@ message Lambda {
 // Concise syntax: "let name_1=comp_1, ...., name_k=comp_k in comp" with
 // "name_k" and "comp_k" representing the names of the locals, and computations
 // that compute the results that those names represent. For example, a complex
-// expression "x.func(x.arg)" can be represented in a slightly more expanded
-// form as "let f=x.func, v=x.arg in f(v)".
+// expression "x[0](x[1])" can be represented in a slightly more expanded
+// form as "let f=x[0], v=[1] in f(v)".
 message Block {
   // One or more locals defined within the block, each associating a name with a
   // computation. Computations, whether those associated with the locals, or
@@ -783,9 +783,9 @@ message Tuple {
 //
 // The concise representation of a selection is "x[index]" for positional
 // selection, and "x.name" for name-based selection, where "x" represents the
-// source from which to select. For example, in lambda "x -> x.func(x.val)",
-// the "x.func" and "x.val" both represent selections of named members "func"
-// and "val" from the named tuple "x", respectively.
+// source from which to select. For example, in lambda "x -> x[0](x[1])", where
+// "x[0]" and "x[1]" both represent selections of named members from the named
+// tuple "x", respectively.
 message Selection {
   // The source of selection, always required. This is a computation that
   // returns a named tuple (possibly nested), from which to select an element
