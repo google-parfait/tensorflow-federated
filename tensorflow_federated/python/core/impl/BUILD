@@ -790,9 +790,9 @@ py_test(
     srcs = ["value_impl_test.py"],
     deps = [
         ":computation_building_blocks",
-        ":computation_impl",
         ":context_stack_impl",
         ":federated_computation_context",
+        ":reference_executor",
         ":transformations",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

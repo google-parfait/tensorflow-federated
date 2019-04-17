@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_context
+from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -495,6 +496,68 @@ class ValueImplTest(parameterized.TestCase):
         str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
     with self.assertRaisesRegexp(ValueError, r'has no element of name c'):
       _ = federated_value_server.c
+
+  def test_setattr_named_tuple_type_int(self):
+
+    @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
+    def foo(x):
+      x.a = 10
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(foo([5, True]).a, 10)
+      self.assertEqual(foo([0, True]).a, 10)
+      self.assertEqual(foo([5, True]).b, True)
+
+  def test_setattr_named_tuple_type_bool(self):
+
+    @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
+    def foo(x):
+      x.b = False
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(foo([5, True]).b, False)
+      self.assertEqual(foo([5, False]).b, False)
+      self.assertEqual(foo([0, True]).a, 0)
+
+  def test_setattr_named_tuple_type_fails_on_implicit_type_conversion(self):
+
+    with self.assertRaisesRegexp(
+        TypeError, r'has attempted to set element a of type '
+        'int32 with incompatible item True.'):
+
+      @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
+      def _(x):
+        x.a = True
+        return x
+
+    with self.assertRaisesRegexp(
+        TypeError, r'has attempted to set element b of type '
+        'bool with incompatible item 10.'):
+
+      @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
+      def _(x):
+        x.b = 10
+        return x
+
+  def test_setattr_fails_undeclared_name(self):
+    with self.assertRaises(AttributeError):
+
+      @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
+      def _(x):
+        x.c = 10
+        return x
+
+  def test_setattr_fails_tensor_type(self):
+    with self.assertRaises(TypeError):
+
+      @computations.federated_computation(tf.int32)
+      def _(x):
+        x.c = 10
+        return x
 
 
 if __name__ == '__main__':
