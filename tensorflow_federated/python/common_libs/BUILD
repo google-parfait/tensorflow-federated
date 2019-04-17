@@ -46,25 +46,6 @@ py_test(
 )
 
 py_library(
-    name = "test",
-    testonly = 1,
-    srcs = ["test.py"],
-    deps = [
-        "//tensorflow_federated/python/core",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
-)
-
-py_test(
-    name = "test_test",
-    size = "small",
-    srcs = ["test_test.py"],
-    deps = [":test"],
-)
-
-py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
     deps = [
@@ -84,4 +65,22 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@protobuf_archive//:protobuf_python",
     ],
+)
+
+py_library(
+    name = "test",
+    testonly = 1,
+    srcs = ["test.py"],
+    deps = [
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
+    ],
+)
+
+py_test(
+    name = "test_test",
+    size = "small",
+    srcs = ["test_test.py"],
+    deps = [":test"],
 )
