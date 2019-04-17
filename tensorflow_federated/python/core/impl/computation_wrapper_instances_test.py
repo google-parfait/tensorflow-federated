@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl import placement_literals
 
 class ComputationWrapperInstancesTest(test.TestCase):
 
+  @test.graph_mode_test
   def test_tf_wrapper_with_one_op_py_fn(self):
 
     @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
@@ -55,6 +56,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
              for n in [1, 20, 5, 10, 30]),
         [[False], [True], [False], [False], [True]])
 
+  @test.graph_mode_test
   def test_tf_wrapper_with_tf_add(self):
     foo = computation_wrapper_instances.tensorflow_wrapper(
         tf.add, (tf.int32, tf.int32))

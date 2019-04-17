@@ -39,6 +39,7 @@ py_test(
         ":federated_averaging",
         ":model_examples",
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",

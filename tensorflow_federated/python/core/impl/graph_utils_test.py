@@ -92,8 +92,8 @@ class GraphUtilsTest(test.TestCase):
 
   def _checked_capture_result(self, result):
     """Returns the captured result type after first verifying the binding."""
-    with tf.Graph().as_default() as graph:
-      type_spec, binding = graph_utils.capture_result_from_graph(result, graph)
+    graph = tf.get_default_graph()
+    type_spec, binding = graph_utils.capture_result_from_graph(result, graph)
     self._assert_binding_matches_type_and_value(binding, type_spec, result,
                                                 graph)
     return type_spec
@@ -220,11 +220,13 @@ class GraphUtilsTest(test.TestCase):
           np.ndarray(shape=(2, 0), dtype=np.int32), graph)
     self._assert_captured_result_eq_dtype(type_spec, binding, 'int32[2,0]')
 
+  @test.graph_mode_test
   def test_capture_result_with_int_placeholder(self):
     self.assertEqual(
         str(self._checked_capture_result(tf.placeholder(tf.int32, shape=[]))),
         'int32')
 
+  @test.graph_mode_test
   def test_capture_result_with_int_variable(self):
     # Verifies that the variable dtype is not being captured as `int32_ref`,
     # since TFF has no concept of passing arguments by reference.
@@ -233,16 +235,19 @@ class GraphUtilsTest(test.TestCase):
             self._checked_capture_result(
                 tf.get_variable('foo', dtype=tf.int32, shape=[]))), 'int32')
 
+  @test.graph_mode_test
   def test_capture_result_with_list_of_constants(self):
     self.assertEqual(
         str(self._checked_capture_result([tf.constant(1),
                                           tf.constant(True)])), '<int32,bool>')
 
+  @test.graph_mode_test
   def test_capture_result_with_tuple_of_constants(self):
     self.assertEqual(
         str(self._checked_capture_result((tf.constant(1), tf.constant(True)))),
         '<int32,bool>')
 
+  @test.graph_mode_test
   def test_capture_result_with_dict_of_constants(self):
     self.assertEqual(
         str(
@@ -257,6 +262,7 @@ class GraphUtilsTest(test.TestCase):
                 'a': tf.constant(1),
             })), '<a=int32,b=bool>')
 
+  @test.graph_mode_test
   def test_capture_result_with_ordered_dict_of_constants(self):
     self.assertEqual(
         str(
@@ -266,6 +272,7 @@ class GraphUtilsTest(test.TestCase):
                     ('a', tf.constant(1)),
                 ]))), '<b=bool,a=int32>')
 
+  @test.graph_mode_test
   def test_capture_result_with_namedtuple_of_constants(self):
     self.assertEqual(
         str(
@@ -274,6 +281,7 @@ class GraphUtilsTest(test.TestCase):
                                                    tf.constant(True)))),
         '<x=int32,y=bool>')
 
+  @test.graph_mode_test
   def test_capture_result_with_anonymous_tuple_of_constants(self):
     self.assertEqual(
         str(
@@ -284,6 +292,7 @@ class GraphUtilsTest(test.TestCase):
                     ('y', tf.constant(0.66)),
                 ]))), '<x=int32,bool,y=float32>')
 
+  @test.graph_mode_test
   def test_capture_result_with_nested_lists_and_tuples(self):
     self.assertEqual(
         str(
@@ -297,10 +306,12 @@ class GraphUtilsTest(test.TestCase):
                     (None, [[tf.constant(10)]]),
                 ]))), '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
 
+  @test.graph_mode_test
   def test_capture_result_with_sequence_of_ints_using_from_tensors(self):
     ds = tf.data.Dataset.from_tensors(tf.constant(10))
     self.assertEqual(str(self._checked_capture_result(ds)), 'int32*')
 
+  @test.graph_mode_test
   def test_capture_result_with_sequence_of_ints_using_range(self):
     ds = tf.data.Dataset.range(10)
     self.assertEqual(str(self._checked_capture_result(ds)), 'int64*')
@@ -342,6 +353,7 @@ class GraphUtilsTest(test.TestCase):
     result = graph_utils.extract_tensor_names_from_binding(binding)
     self.assertEqual(str(sorted(result)), '[\'foo\']')
 
+  @test.graph_mode_test
   def test_assemble_result_from_graph_with_named_tuple(self):
     type_spec = [('X', tf.int32), ('Y', tf.int32)]
     binding = pb.TensorFlow.Binding(
@@ -351,13 +363,14 @@ class GraphUtilsTest(test.TestCase):
             pb.TensorFlow.Binding(
                 tensor=pb.TensorFlow.TensorBinding(tensor_name='Q'))
         ]))
-    output_map = {'P': tf.constant(1, name='A'), 'Q': tf.constant(2, name='B')}
+    tensor_a = tf.constant(1, name='A')
+    tensor_b = tf.constant(2, name='B')
+    output_map = {'P': tensor_a, 'Q': tensor_b}
     result = graph_utils.assemble_result_from_graph(type_spec, binding,
                                                     output_map)
-    self.assertEqual(
-        str(result), '<X=Tensor("A:0", shape=(), dtype=int32),'
-        'Y=Tensor("B:0", shape=(), dtype=int32)>')
+    self.assertEqual(str(result), '<X={},Y={}>'.format(tensor_a, tensor_b))
 
+  @test.graph_mode_test
   def test_assemble_result_from_graph_with_sequence(self):
     type_spec = computation_types.SequenceType([('X', tf.int32),
                                                 ('Y', tf.int32)])
@@ -411,12 +424,14 @@ class GraphUtilsTest(test.TestCase):
     self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
     self.assertFalse(graph_utils.nested_structures_equal([10, 20], ['x']))
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [],
                                                  tf.float32)
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list_definite_tensor(self):
     ds = graph_utils.make_data_set_from_elements(
         tf.get_default_graph(), [],
@@ -426,6 +441,7 @@ class GraphUtilsTest(test.TestCase):
                      tf.TensorShape([1, 10]).as_list())
     self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list_definite_tuple(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [], [
         computation_types.TensorType(tf.float32, [None, 10]),
@@ -434,12 +450,14 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(ds.output_shapes, ([1, 10], [1, 5]))
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ints(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(),
                                                  [1, 2, 3, 4], tf.int32)
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.Session().run(ds.reduce(0, lambda x, y: x + y)), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
         'a': 1,
@@ -452,6 +470,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ordered_dicts(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
         collections.OrderedDict([
@@ -467,6 +486,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_lists(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
         [[1], [2]],
@@ -476,6 +496,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + tf.reduce_sum(y))), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_anonymous_tuples(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
         anonymous_tuple.AnonymousTuple([
@@ -491,6 +512,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(
         tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_lists(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
         'a': [1],
@@ -507,6 +529,7 @@ class GraphUtilsTest(test.TestCase):
 
     self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_tensors(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
         'a': 1,
@@ -523,6 +546,7 @@ class GraphUtilsTest(test.TestCase):
 
     self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
 
+  @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_np_array(self):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
         'a': np.array([1], dtype=np.int32),
@@ -538,19 +562,21 @@ class GraphUtilsTest(test.TestCase):
 
     self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
 
+  @test.graph_mode_test
   def test_fetch_value_in_session_with_string(self):
     x = tf.constant('abc')
-    with self.session() as sess:
+    with tf.Session() as sess:
       y = graph_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), 'abc')
 
+  @test.graph_mode_test
   def test_fetch_value_in_session_without_data_sets(self):
     x = anonymous_tuple.AnonymousTuple([
         ('a', anonymous_tuple.AnonymousTuple([
             ('b', tf.constant(10)),
         ])),
     ])
-    with self.session() as sess:
+    with tf.Session() as sess:
       y = graph_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=10>>')
 
