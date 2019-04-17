@@ -57,8 +57,8 @@ class ValueImpl(value_base.Value):
     py_typecheck.check_type(
         comp, computation_building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-    self._comp = comp
-    self._context_stack = context_stack
+    super(ValueImpl, self).__setattr__('_comp', comp)
+    super(ValueImpl, self).__setattr__('_context_stack', context_stack)
 
   @property
   def type_signature(self):
@@ -111,6 +111,38 @@ class ValueImpl(value_base.Value):
     return ValueImpl(
         computation_building_blocks.Selection(self._comp, name=name),
         self._context_stack)
+
+  def __setattr__(self, name, value):
+    py_typecheck.check_type(name, six.string_types)
+    if not isinstance(self._comp.type_signature,
+                      computation_types.NamedTupleType):
+      raise TypeError(
+          'Operator setattr() is only supported for named tuples, but the '
+          'object on which it has been invoked is of type {}.'.format(
+              str(self._comp.type_signature)))
+    if name not in dir(self._comp.type_signature):
+      raise AttributeError(
+          'There is no such attribute as \'{}\' in this tuple. '
+          'TFF does not allow for assigning to a nonexistent attribute. '
+          'If you want to assign to \'{}\', you must create a new named tuple '
+          'containing this attribute.'.format(name, name))
+    elem_array = []
+    type_signature_elements = anonymous_tuple.to_elements(
+        self._comp.type_signature)
+    for k, v in type_signature_elements:
+      if k == name:
+        try:
+          value = to_value(value, v, self._context_stack)
+        except TypeError:
+          raise TypeError('Setattr has attempted to set element {} of type {} '
+                          'with incompatible item {}.'.format(k, v, value))
+        elem_array.append((k, ValueImpl.get_comp(value)))
+      else:
+        elem_array.append(
+            (k, computation_building_blocks.Selection(self._comp, name=k)))
+    new_comp = computation_building_blocks.Tuple([(k, v) for k, v in elem_array
+                                                 ])
+    super(ValueImpl, self).__setattr__('_comp', new_comp)
 
   def __len__(self):
     type_signature = self._comp.type_signature
