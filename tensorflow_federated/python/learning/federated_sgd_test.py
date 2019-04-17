@@ -201,7 +201,4 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  # We default to TF 2.0 behavior, including eager execution, and use the
-  # @graph_mode_test annotation for graph-mode (sess.run) tests.
-  tf.compat.v1.enable_v2_behavior()
   test.main()

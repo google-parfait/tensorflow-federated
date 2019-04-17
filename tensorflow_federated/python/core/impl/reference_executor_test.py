@@ -1099,8 +1099,5 @@ if __name__ == '__main__':
   # to compare against, it is the compiler pipeline that should get tested
   # against this implementation, not the other way round.
   executor_without_compiler = reference_executor.ReferenceExecutor()
-  # We must enable eager behavior as we cannot currently process Datasets in
-  # graph mode.
-  tf.compat.v1.enable_v2_behavior()
   with context_stack_impl.context_stack.install(executor_without_compiler):
     test.main()

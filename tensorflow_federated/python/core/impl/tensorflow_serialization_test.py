@@ -42,6 +42,7 @@ class TensorFlowSerializationTest(test.TestCase):
             None, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [99])
 
+  @test.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
     comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         lambda x: x + 3, tf.int32, context_stack_impl.context_stack)
@@ -56,6 +57,7 @@ class TensorFlowSerializationTest(test.TestCase):
             [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [1003])
 
+  @test.graph_mode_test
   def test_serialize_tensorflow_with_data_set_sum_lambda(self):
 
     def _legacy_dataset_reducer_example(ds):

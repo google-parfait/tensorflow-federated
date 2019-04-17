@@ -21,7 +21,6 @@ from absl.testing import absltest
 from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python import tf2
 from tensorflow_federated.python.core.api import computation_types
 
 
@@ -34,14 +33,11 @@ class TestCase(tf.test.TestCase, absltest.TestCase):
 
 
 def main():
-  """Runs all unit tests with select TF 2.0 features enabled.
+  """Runs all unit tests with TF 2.0 features enabled.
 
   This function should only be used if TensorFlow code is being tested.
-  Eventually, all TF 2.0 features will be enabled.
   """
-  tf2.enable()  # Switches TensorArrayV2 and control flow V2
-  tf.enable_v2_tensorshape()
-  tf.enable_resource_variables()  # Required since we use defuns.
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
 
 

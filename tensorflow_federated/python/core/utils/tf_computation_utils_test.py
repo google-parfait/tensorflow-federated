@@ -26,6 +26,12 @@ from tensorflow_federated.python.core.utils import tf_computation_utils
 
 class TfComputationUtilsTest(test.TestCase):
 
+  def _assertMatchesVariable(self, var, expected_name, expected_shape,
+                             expected_dtype):
+    self.assertEqual(var.name, expected_name)
+    self.assertEqual(var.shape, expected_shape)
+    self.assertEqual(var.dtype, expected_dtype)
+
   def test_get_variables_with_tensor_type(self):
     x = tf_computation_utils.get_variables('foo', tf.int32)
     self.assertIsInstance(x, tf.Variable)
@@ -37,10 +43,11 @@ class TfComputationUtilsTest(test.TestCase):
     x = tf_computation_utils.get_variables('foo', [('x', tf.int32),
                                                    ('y', tf.string), tf.bool])
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
-    self.assertEqual(
-        str(x), '<x=<tf.Variable \'foo/x:0\' shape=() dtype=int32>,'
-        'y=<tf.Variable \'foo/y:0\' shape=() dtype=string>,'
-        '<tf.Variable \'foo/2:0\' shape=() dtype=bool>>')
+    self.assertLen(x, 3)
+    self.assertEqual(dir(x), ['x', 'y'])
+    self._assertMatchesVariable(x[0], 'foo/x:0', (), tf.int32)
+    self._assertMatchesVariable(x[1], 'foo/y:0', (), tf.string)
+    self._assertMatchesVariable(x[2], 'foo/2:0', (), tf.bool)
 
   def test_assign_with_unordered_dict(self):
     with tf.Graph().as_default() as graph:

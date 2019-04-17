@@ -136,5 +136,5 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
 if __name__ == '__main__':
   # Need eager_mode to iterate over tf.data.Dataset.
-  tf.enable_v2_behavior()
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
