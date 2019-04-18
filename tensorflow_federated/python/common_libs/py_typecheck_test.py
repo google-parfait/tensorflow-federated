@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,30 +38,30 @@ class PyTypeCheckTest(absltest.TestCase):
     except TypeError:
       self.fail('Function {} raised TypeError unexpectedly.'.format(
           py_typecheck.check_type.__name__))
-    self.assertRaisesRegexp(TypeError, 'Expected .*TestCase, found int.',
-                            py_typecheck.check_type, 10, absltest.TestCase)
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(TypeError, 'Expected .*TestCase, found int.',
+                           py_typecheck.check_type, 10, absltest.TestCase)
+    self.assertRaisesRegex(
         TypeError,
         'Expected foo to be of type int, found __main__.PyTypeCheckTest.',
         py_typecheck.check_type,
         self,
         int,
         label='foo')
-    self.assertRaisesRegexp(TypeError, 'Expected int or bool, found str.',
-                            py_typecheck.check_type, 'a', (int, bool))
-    self.assertRaisesRegexp(TypeError,
-                            'Expected int, bool, or float, found str.',
-                            py_typecheck.check_type, 'a', (int, bool, float))
+    self.assertRaisesRegex(TypeError, 'Expected int or bool, found str.',
+                           py_typecheck.check_type, 'a', (int, bool))
+    self.assertRaisesRegex(TypeError,
+                           'Expected int, bool, or float, found str.',
+                           py_typecheck.check_type, 'a', (int, bool, float))
 
   def test_check_subclass(self):
     py_typecheck.check_subclass(PyTypeCheckTest, absltest.TestCase)
     py_typecheck.check_subclass(PyTypeCheckTest, (absltest.TestCase, int))
     py_typecheck.check_subclass(int, (int, float))
     py_typecheck.check_subclass(float, float)
-    with self.assertRaisesRegexp(TypeError, 'Expected .* to subclass '):
+    with self.assertRaisesRegex(TypeError, 'Expected .* to subclass '):
       py_typecheck.check_subclass(int, float)
       py_typecheck.check_subclass(int, (float, float))
-    with self.assertRaisesRegexp(TypeError, 'Expected a class,'):
+    with self.assertRaisesRegex(TypeError, 'Expected a class,'):
       py_typecheck.check_subclass(0, int)
       py_typecheck.check_subclass(int, 0)
       py_typecheck.check_subclass(int, (int, 0))
@@ -72,9 +73,9 @@ class PyTypeCheckTest(absltest.TestCase):
     except TypeError:
       self.fail('Function {} raised TypeError unexpectedly.'.format(
           py_typecheck.check_callable.__name__))
-    self.assertRaisesRegexp(TypeError,
-                            'Expected a callable, found non-callable int.',
-                            py_typecheck.check_callable, 10)
+    self.assertRaisesRegex(TypeError,
+                           'Expected a callable, found non-callable int.',
+                           py_typecheck.check_callable, 10)
 
   def test_is_named_tuple(self):
     T = collections.namedtuple('T', ['a', 'b'])  # pylint: disable=invalid-name

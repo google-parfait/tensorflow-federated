@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -124,7 +125,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
                     'tf.errors.FailedPreconditionError')
 
   def test_non_keras_model(self):
-    with self.assertRaisesRegexp(TypeError, r'keras\..*\.Model'):
+    with self.assertRaisesRegex(TypeError, r'keras\..*\.Model'):
       model_utils.from_keras_model(
           keras_model=0,  # not a tf.keras.Model
           dummy_batch=_create_dummy_batch(1),
@@ -188,8 +189,8 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     }
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
-    with self.assertRaisesRegexp(AttributeError,
-                                 'no attribute \'train_on_batch\''):
+    with self.assertRaisesRegex(AttributeError,
+                                'no attribute \'train_on_batch\''):
       tff_model.train_on_batch(batch)
 
     output = tff_model.forward_pass(batch)
@@ -471,7 +472,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     model = model_utils.enhance(model_examples.LinearRegression(3))
     self.assertIsInstance(model, model_utils.EnhancedModel)
 
-    with self.assertRaisesRegexp(ValueError, 'another EnhancedModel'):
+    with self.assertRaisesRegex(ValueError, 'another EnhancedModel'):
       model_utils.EnhancedModel(model)
 
   def test_enhanced_var_lists(self):
@@ -493,14 +494,14 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         return 'Not BatchOutput'
 
     bad_model = model_utils.enhance(BadModel())
-    self.assertRaisesRegexp(TypeError,
-                            'Variable', lambda: bad_model.trainable_variables)
-    self.assertRaisesRegexp(TypeError,
-                            'Iterable', lambda: bad_model.local_variables)
-    self.assertRaisesRegexp(TypeError,
-                            'BatchOutput', lambda: bad_model.forward_pass(1))
-    self.assertRaisesRegexp(TypeError,
-                            'BatchOutput', lambda: bad_model.train_on_batch(1))
+    self.assertRaisesRegex(TypeError,
+                           'Variable', lambda: bad_model.trainable_variables)
+    self.assertRaisesRegex(TypeError,
+                           'Iterable', lambda: bad_model.local_variables)
+    self.assertRaisesRegex(TypeError,
+                           'BatchOutput', lambda: bad_model.forward_pass(1))
+    self.assertRaisesRegex(TypeError,
+                           'BatchOutput', lambda: bad_model.train_on_batch(1))
 
 
 if __name__ == '__main__':

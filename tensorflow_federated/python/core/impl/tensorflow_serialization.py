@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +70,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   py_typecheck.check_type(target, types.FunctionType)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   parameter_type = computation_types.to_type(parameter_type)
-  argspec = inspect.getargspec(target)
+  argspec = inspect.getargspec(target)  # pylint: disable=deprecated-method
 
   with tf.Graph().as_default() as graph:
     args = []

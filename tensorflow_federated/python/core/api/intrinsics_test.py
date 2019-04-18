@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -514,7 +515,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
   def test_federated_value_raw_tf_scalar_variable(self):
     v = tf.Variable(initial_value=0., name='test_var')
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, 'TensorFlow construct (.*) has been '
         'encountered in a federated context.'):
       _ = intrinsics.federated_value(v, placements.SERVER)

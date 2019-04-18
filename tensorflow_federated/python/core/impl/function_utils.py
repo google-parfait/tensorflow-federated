@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,7 +77,7 @@ def get_argspec(fn):
     TypeError: if the argument is not of a supported type.
   """
   if isinstance(fn, types.FunctionType):
-    return inspect.getargspec(fn)
+    return inspect.getargspec(fn)  # pylint: disable=deprecated-method
   # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
   # currently omitted due to issues with visibility, using tf_inspect.getargspec
   # that works in eager mode.
@@ -91,7 +92,7 @@ def get_argspec(fn):
       )):
     # On the non-eager defuns, tf_inspect does not appear to work, so we peek
     # inside to extract arguments.
-    return inspect.getargspec(fn._func)  # pylint: disable=protected-access
+    return inspect.getargspec(fn._func)  # pylint: disable=protected-access,deprecated-method
   elif is_defun(fn):
     raise TypeError(
         'Support for defuns of type {} has not been implemented yet.'.format(

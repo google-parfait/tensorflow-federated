@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +66,7 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       _ = computation_constructing_utils.construct_federated_getattr_comp(
           non_federated_arg, 'a')
-    with self.assertRaisesRegexp(ValueError, 'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, 'has no element of name c'):
       _ = computation_constructing_utils.construct_federated_getattr_comp(
           federated_value, 'c')
 
@@ -228,7 +229,7 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     type_utils.check_federated_value_placement(
         value_impl.to_value(name_b, None, context_stack_impl.context_stack),
         placement)
-    with self.assertRaisesRegexp(ValueError, 'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, 'has no element of name c'):
       _ = computation_constructing_utils.construct_federated_getattr_call(
           federated_comp_named, 'c')
 

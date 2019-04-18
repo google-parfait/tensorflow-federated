@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,7 @@ from __future__ import print_function
 from absl.testing import absltest
 from absl.testing import parameterized
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -672,9 +674,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree._move_to_child(0)
     symbol_tree._add_younger_sibling(fake_tracker_node_two)
     symbol_tree._move_to_younger_sibling()
-    with self.assertRaisesRegexp(ValueError, 'can only appear once'):
+    with self.assertRaisesRegex(ValueError, 'can only appear once'):
       symbol_tree._add_child(1, fake_tracker_node_one)
-    with self.assertRaisesRegexp(ValueError, 'can only appear once'):
+    with self.assertRaisesRegex(ValueError, 'can only appear once'):
       symbol_tree._add_younger_sibling(fake_tracker_node_one)
 
   def test_bad_mock_class_fails_symbol_tree(self):
@@ -682,7 +684,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     class BadMock(object):
       pass
 
-    with self.assertRaisesRegexp(TypeError, 'subclass'):
+    with self.assertRaisesRegex(TypeError, 'subclass'):
       transformation_utils.SymbolTree(BadMock)
 
   def test_symbol_tree_get_payload_resolves_child_parent_name_conflict(self):
@@ -1064,7 +1066,7 @@ class TransformationUtilsTest(parameterized.TestCase):
         0,
         transformation_utils.SequentialBindingNode(
             FakeTracker('FakeTracker', None)))
-    with self.assertRaisesRegexp(ValueError, 'nonexistent parent'):
+    with self.assertRaisesRegex(ValueError, 'nonexistent parent'):
       symbol_tree.move_to_parent_context()
 
   def test_symbol_tree_move_to_good_parent_succeeds(self):
@@ -1096,7 +1098,7 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_symbol_tree_move_to_bad_older_sibling_fails(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree._add_younger_sibling(fake_tracker_node_factory())
-    with self.assertRaisesRegexp(ValueError, 'nonexistent older sibling'):
+    with self.assertRaisesRegex(ValueError, 'nonexistent older sibling'):
       symbol_tree._move_to_older_sibling()
 
   def test_symbol_tree_has_younger_sibling(self):
@@ -1108,7 +1110,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree._add_younger_sibling(fake_tracker_node_factory())
     symbol_tree._move_to_younger_sibling()
-    with self.assertRaisesRegexp(ValueError, 'nonexistent younger sibling'):
+    with self.assertRaisesRegex(ValueError, 'nonexistent younger sibling'):
       symbol_tree._move_to_younger_sibling()
     symbol_tree._move_to_older_sibling()
 

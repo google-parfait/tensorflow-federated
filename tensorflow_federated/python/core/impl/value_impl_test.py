@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -325,12 +326,12 @@ class ValueImplTest(parameterized.TestCase):
       value_impl.to_value(10, tf.bool, context_stack_impl.context_stack)
 
   def test_tf_mapping_raises_helpful_error(self):
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, 'TensorFlow construct (.*) has been '
         'encountered in a federated context.'):
       _ = value_impl.to_value(
           tf.constant(10), None, context_stack_impl.context_stack)
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, 'TensorFlow construct (.*) has been '
         'encountered in a federated context.'):
       _ = value_impl.to_value(
@@ -354,14 +355,14 @@ class ValueImplTest(parameterized.TestCase):
     sliced_v = v[4::-1]
     self.assertEqual(str(sliced_v), '<bar,foo>')
     self.assertIsInstance(sliced_v, value_base.Value)
-    with self.assertRaisesRegexp(IndexError, 'slice 0 elements'):
+    with self.assertRaisesRegex(IndexError, 'slice 0 elements'):
       _ = v[2:4]
 
   def test_slicing_fails_non_namedtuple(self):
     v = value_impl.to_value(
         np.ones([10, 10, 10], dtype=np.float32), None,
         context_stack_impl.context_stack)
-    with self.assertRaisesRegexp(TypeError, 'only supported for named tuples'):
+    with self.assertRaisesRegex(TypeError, 'only supported for named tuples'):
       _ = v[:1]
 
   def test_slicing_support_non_tuple_underlying_comp(self):
@@ -373,7 +374,7 @@ class ValueImplTest(parameterized.TestCase):
     self.assertIsInstance(sliced_v, value_base.Value)
     sliced_v = v[4:2:-1]
     self.assertIsInstance(sliced_v, value_base.Value)
-    with self.assertRaisesRegexp(IndexError, 'slice 0 elements'):
+    with self.assertRaisesRegex(IndexError, 'slice 0 elements'):
       _ = v[2:4:-1]
 
   @parameterized.named_parameters(('list', list), ('tuple', tuple))
@@ -484,7 +485,7 @@ class ValueImplTest(parameterized.TestCase):
         context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_clients.type_signature), '<a=int32,b=bool>@CLIENTS')
-    with self.assertRaisesRegexp(ValueError, r'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, r'has no element of name c'):
       _ = federated_value_clients.c
     federated_value_server = value_impl.to_value(
         computation_building_blocks.Reference(
@@ -494,7 +495,7 @@ class ValueImplTest(parameterized.TestCase):
         context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
-    with self.assertRaisesRegexp(ValueError, r'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, r'has no element of name c'):
       _ = federated_value_server.c
 
   def test_setattr_named_tuple_type_int(self):
@@ -525,7 +526,7 @@ class ValueImplTest(parameterized.TestCase):
 
   def test_setattr_named_tuple_type_fails_on_implicit_type_conversion(self):
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, r'has attempted to set element a of type '
         'int32 with incompatible item True.'):
 
@@ -534,7 +535,7 @@ class ValueImplTest(parameterized.TestCase):
         x.a = True
         return x
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, r'has attempted to set element b of type '
         'bool with incompatible item 10.'):
 

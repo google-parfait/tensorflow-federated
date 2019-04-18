@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +106,7 @@ class AnonymousTuple(object):
     return iter(self._element_array)
 
   def __dir__(self):
-    return self._name_to_index.keys()
+    return list(self._name_to_index.keys())
 
   def __getitem__(self, key):
     py_typecheck.check_type(key, (int, slice))

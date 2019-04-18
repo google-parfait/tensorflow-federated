@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -456,7 +457,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       type_utils.get_named_tuple_element_type(type_spec, 10)
 
-  # pylint: disable=g-long-lambda
+  # pylint: disable=g-long-lambda,g-complex-comprehension
   @parameterized.parameters(*[
       computation_types.to_type(spec) for spec in ((
           lambda t, u: [
@@ -483,12 +484,12 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
           ])(computation_types.AbstractType('T'),
              computation_types.AbstractType('U')))
   ])
-  # pylint: enable=g-long-lambda
+  # pylint: enable=g-long-lambda,g-complex-comprehension
   def test_check_abstract_types_are_bound_valid_cases(self, type_spec):
     type_utils.check_well_formed(type_spec)
     type_utils.check_all_abstract_types_are_bound(type_spec)
 
-  # pylint: disable=g-long-lambda
+  # pylint: disable=g-long-lambda,g-complex-comprehension
   @parameterized.parameters(*[
       computation_types.to_type(spec) for spec in ((
           lambda t, u: [
@@ -502,7 +503,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
           ])(computation_types.AbstractType('T'),
              computation_types.AbstractType('U')))
   ])
-  # pylint: enable=g-long-lambda
+  # pylint: enable=g-long-lambda,g-complex-comprehension
   def test_check_abstract_types_are_bound_invalid_cases(self, type_spec):
     self.assertRaises(TypeError, type_utils.check_all_abstract_types_are_bound,
                       type_spec)
@@ -660,22 +661,21 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     nest_federated = computation_types.FederatedType(
         computation_types.FederatedType(tf.int32, placements.CLIENTS),
         placements.CLIENTS)
-    with self.assertRaisesRegexp(TypeError,
-                                 'A {int32}@CLIENTS has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                'A {int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(nest_federated)
     sequence_in_sequence = computation_types.SequenceType(
         computation_types.SequenceType([tf.int32]))
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A <int32>\* has been encountered'):
+    with self.assertRaisesRegex(TypeError, r'A <int32>\* has been encountered'):
       type_utils.check_well_formed(sequence_in_sequence)
     federated_fn = computation_types.FederatedType(
         computation_types.FunctionType(tf.int32, tf.int32), placements.CLIENTS)
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A \(int32 -> int32\) has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                r'A \(int32 -> int32\) has been encountered'):
       type_utils.check_well_formed(federated_fn)
     tuple_federated_fn = computation_types.NamedTupleType([federated_fn])
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A \(int32 -> int32\) has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                r'A \(int32 -> int32\) has been encountered'):
       type_utils.check_well_formed(tuple_federated_fn)
 
   def test_extra_well_formed_check_nested_types(self):
@@ -683,25 +683,25 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         computation_types.FederatedType(tf.int32, placements.CLIENTS),
         placements.CLIENTS)
     tuple_federated_nest = computation_types.NamedTupleType([nest_federated])
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A {int32}@CLIENTS has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                r'A {int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(tuple_federated_nest)
     federated_inner = computation_types.FederatedType(tf.int32,
                                                       placements.CLIENTS)
     tuple_on_federated = computation_types.NamedTupleType([federated_inner])
     federated_outer = computation_types.FederatedType(tuple_on_federated,
                                                       placements.CLIENTS)
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A {int32}@CLIENTS has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                r'A {int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(federated_outer)
     multiple_nest = computation_types.NamedTupleType(
         [computation_types.NamedTupleType([federated_outer])])
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A {int32}@CLIENTS has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                r'A {int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(multiple_nest)
     sequence_of_federated = computation_types.SequenceType(federated_inner)
-    with self.assertRaisesRegexp(TypeError,
-                                 r'A {int32}@CLIENTS has been encountered'):
+    with self.assertRaisesRegex(TypeError,
+                                r'A {int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(sequence_of_federated)
 
   def test_check_whitelisted(self):

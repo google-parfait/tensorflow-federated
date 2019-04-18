@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +62,7 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(anonymous_tuple.to_elements(x), v)
     self.assertEqual(repr(x), 'AnonymousTuple([(None, 10)])')
     self.assertEqual(str(x), '<10>')
-    with self.assertRaisesRegexp(ValueError, 'unnamed'):
+    with self.assertRaisesRegex(ValueError, 'unnamed'):
       anonymous_tuple.to_odict(x)
 
   def test_single_named(self):
@@ -108,12 +109,12 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(
         repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
-    with self.assertRaisesRegexp(ValueError, 'unnamed'):
+    with self.assertRaisesRegex(ValueError, 'unnamed'):
       anonymous_tuple.to_odict(x)
 
   def test_duplicated_names(self):
     v = [('foo', 20), ('foo', 30)]
-    with self.assertRaisesRegexp(ValueError, 'duplicated.*foo'):
+    with self.assertRaisesRegex(ValueError, 'duplicated.*foo'):
       anonymous_tuple.AnonymousTuple(v)
 
   def test_immutable(self):
