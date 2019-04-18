@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,10 +101,10 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
           [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
   # pyformat: enable
   def test_get_callargs_for_argspec(self, fn, args, kwargs):
-    argspec = inspect.getargspec(fn)
+    argspec = inspect.getargspec(fn)  # pylint: disable=deprecated-method
     expected_error = None
     try:
-      expected_callargs = inspect.getcallargs(fn, *args, **kwargs)
+      expected_callargs = inspect.getcallargs(fn, *args, **kwargs)  # pylint: disable=deprecated-method
     except TypeError as e:
       expected_error = e
       expected_callargs = None
@@ -125,8 +126,10 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
               str(expected_error), str(result_callargs), str(test_err)))
 
   # pyformat: disable
+  # pylint: disable=g-complex-comprehension
   @parameterized.parameters(
-      (inspect.getargspec(params[0]),) + params[1:] for params in [
+      (inspect.getargspec(params[0]),) + params[1:]  # pylint: disable=deprecated-method
+      for params in [
           (lambda a: None, [tf.int32], {}, True),
           (lambda a=True: None, [tf.int32], {}, False),
           (lambda a, b=True: None, [tf.int32, tf.bool], {}, True),
@@ -135,6 +138,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
           (lambda a=10, b=True: None, [tf.int32], {'b': tf.bool}, True),
           (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}, False)]
   )
+  # pylint: enable=g-complex-comprehension
   # pyformat: enable
   def test_is_argspec_compatible_with_types(self, argspec, args, kwargs,
                                             expected_result):

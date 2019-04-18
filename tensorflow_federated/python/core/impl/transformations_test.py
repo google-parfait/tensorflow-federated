@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -128,8 +129,8 @@ def _create_called_federated_map(fn, arg):
                                        arg.type_signature.member):
     raise TypeError(
         'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(str(fn.parameter_type),
-                                          str(arg.type_signature.member)))
+        'an incompatible type {}.'.format(
+            str(fn.parameter_type), str(arg.type_signature.member)))
   result_type = computation_types.FederatedType(
       fn.type_signature.result, arg.type_signature.placement, all_equal=False)
   intrinsic_type = computation_types.FunctionType(
@@ -215,8 +216,8 @@ def _create_chained_call(fn, arg, n):
   if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
     raise TypeError(
         'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(str(fn.parameter_type),
-                                          str(arg.type_signature)))
+        'an incompatible type {}.'.format(
+            str(fn.parameter_type), str(arg.type_signature)))
   if not type_utils.is_assignable_from(fn.parameter_type,
                                        fn.result.type_signature):
     raise TypeError(
