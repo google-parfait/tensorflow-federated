@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -784,8 +785,7 @@ class ReferenceExecutor(context_base.Context):
       type_utils.check_assignable_from(computed_fn.type_signature.parameter,
                                        computed_arg.type_signature)
       computed_arg = fit_argument(computed_arg,
-                                  computed_fn.type_signature.parameter,
-                                  context)
+                                  computed_fn.type_signature.parameter, context)
     else:
       computed_arg = None
     result = computed_fn.value(computed_arg)

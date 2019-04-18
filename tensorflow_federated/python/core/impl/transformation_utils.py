@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,12 @@ from __future__ import print_function
 
 import abc
 import collections
-import itertools
 import enum
+import itertools
 
 import six
+from six.moves import range
+from six.moves import zip
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
