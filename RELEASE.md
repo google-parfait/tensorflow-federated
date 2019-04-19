@@ -1,8 +1,23 @@
+# Release 0.4.0
+
+## Major Features and Improvements
+
+* New `tff.simulation.TransformingClientData` API and associated inifinite EMNIST dataset (see tensorflow.org/federated/api\_docs/python/tff for details)
+
+## Breaking Change
+
+* Normalized `func` to `fn` across the repository (rename some parameters and functions)
+
+## Bug Fixes
+
+* Wrapped Keras models can now be used with `tff.learning.build_federated_evaluation`
+* Keras models with non-trainable variables in intermediate layers (e.g.  BatchNormalization) can be assigned back to Keras models with `tff.learning.ModelWeights.assign_weights_to`
+
 # Release 0.3.0
 
 ## Breaking Changes
 
-* Rename tff.learning.federated_average to tff.learning.federated_mean.
+* Rename tff.learning.federated\_average to tff.learning.federated\_mean.
 * Rename 'func' arguments to 'fn' throughout the API.
 
 ## Bug Fixes
