@@ -30,6 +30,7 @@ from six.moves import zip
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import type_utils
 
 
 def transform_postorder(comp, transform):
@@ -545,10 +546,9 @@ class SymbolTree(object):
       return False
     if len(self_node.children) != len(other_node.children):
       return False
-    for (key_1, val_1), (key_2, val_2) in zip(
+    for (_, val_1), (_, val_2) in zip(
         six.iteritems(self_node.children), six.iteritems(other_node.children)):
-      if key_1 != key_2:
-        return False
+      # keys not compared to avoid coupling walking logic to `SymbolTree`.
       if not self._equal_under_node(val_1, val_2):
         return False
     return self._equal_under_node(self_node.younger_sibling,
@@ -786,10 +786,23 @@ class BoundVariableTracker(object):
     """Abstract string method required as context tree will delegate."""
     pass
 
-  @abc.abstractmethod
   def __eq__(self, other):
-    """Abstract equality method required as context tree will delegate."""
-    pass
+    """Base class equality checks names and values equal."""
+    # TODO(b/130890785): Delegate value-checking to
+    # `computation_building_blocks.ComputationBuildingBlock`.
+    if self is other:
+      return True
+    if not isinstance(other, BoundVariableTracker):
+      return NotImplemented
+    if self.name != other.name:
+      return False
+    if isinstance(self.value,
+                  computation_building_blocks.ComputationBuildingBlock):
+      return isinstance(
+          other.value, computation_building_blocks.ComputationBuildingBlock
+      ) and self.value.tff_repr == other.value.tff_repr and type_utils.are_equivalent_types(
+          self.value.type_signature, other.value.type_signature)
+    return self.value is other.value
 
   def __ne__(self, other):
     """Implementing __ne__ to enforce in Python2 the Python3 standard."""
@@ -1195,3 +1208,75 @@ class InlineReferences(object):
           transform_postorder(comp.result, _execute_inlining_from_bound_dict))
     else:
       return comp
+
+
+class ReferenceCounter(BoundVariableTracker):
+  """Data container to track number References to a variable in an AST.
+
+
+  Attributes:
+    name: The string name representing the variable whose binding is represented
+      by an instance of `ReferenceCounter`.
+    value: The value bound to `name`. Can be an instance of
+      `computation_building_blocks.ComputationBuildingBlock` or None if this
+      binding is simply a placeholder, e.g. in a Lambda.
+    count: An integer tracking how many times the variable an instance of
+      `ReferenceCounter` represents is referenced in a TFF AST.
+  """
+
+  def __init__(self, name, value):
+    super(ReferenceCounter, self).__init__(name, value)
+    self.count = 0
+
+  def update(self, reference=None):
+    del reference  # Unused
+    self.count += 1
+
+  def __str__(self):
+    return 'Instance count: {}; value: {}; name: {}.'.format(
+        self.count, self.value, self.name)
+
+  def __repr__(self):
+    return str(self)
+
+  def __eq__(self, other):
+    if self is other:
+      return True
+    if not isinstance(other, ReferenceCounter):
+      return NotImplemented
+    if not super(ReferenceCounter, self).__eq__(other):
+      return False
+    return self.count == other.count
+
+
+def get_count_of_references_to_variables(comp):
+  """Returns `SymbolTree` counting references to each bound variable in `comp`.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      representing the root of the AST for which we want to read total reference
+      counts by context.
+
+  Returns:
+    An instance of `SymbolTree` representing root of context tree
+    populated with `transformation_utils.ReferenceCounter`s which
+    contain the number of times each variable bound by a
+    `computation_building_blocks.Lambda`
+    or `computation_building_blocks.Block` are referenced in their computation's
+    body.
+  """
+
+  reference_counter = SymbolTree(ReferenceCounter)
+
+  def _should_transform(comp, context_tree):
+    del context_tree  # Unused
+    return isinstance(comp, computation_building_blocks.Reference)
+
+  def transform_fn(comp, context_tree):
+    if _should_transform(comp, context_tree):
+      context_tree.update_payload_tracking_reference(comp)
+    return comp
+
+  transform_postorder_with_symbol_bindings(comp, transform_fn,
+                                           reference_counter)
+  return reference_counter

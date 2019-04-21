@@ -70,6 +70,14 @@ def _construct_complex_symbol_tree():
   return symbol_tree
 
 
+def _construct_simple_block(type_signature):
+  """Constructs minimal example of LET construct in TFF."""
+  test_arg = computation_building_blocks.Data('data', type_signature)
+  result = computation_building_blocks.Reference('x', test_arg.type_signature)
+  simple_block = computation_building_blocks.Block([('x', test_arg)], result)
+  return simple_block
+
+
 class UpdatableTracker(transformation_utils.BoundVariableTracker):
 
   def __init__(self, name, value):
@@ -103,16 +111,13 @@ def fake_tracker_node_factory():
       FakeTracker('FakeTracker', None))
 
 
-class TrivialSubclass(transformation_utils.BoundVariableTracker):
+class TrivialBoundVariableTracker(transformation_utils.BoundVariableTracker):
 
   def update(self, comp):
     pass
 
   def __str__(self):
-    return 'TrivialSubclass'
-
-  def __eq__(self, other):
-    return id(self) == id(other)
+    return 'TrivialBoundVariableTracker'
 
 
 def _construct_trivial_instance_of_all_computation_building_blocks():
@@ -1191,14 +1196,14 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_trivial_subclass_init_fails_bad_args(self):
     with self.assertRaises(TypeError):
-      TrivialSubclass()
+      TrivialBoundVariableTracker()
     with self.assertRaises(TypeError):
-      TrivialSubclass(0, None)
+      TrivialBoundVariableTracker(0, None)
     with self.assertRaises(TypeError):
-      TrivialSubclass('x', 0)
+      TrivialBoundVariableTracker('x', 0)
 
   def test_trivial_subclass_init(self):
-    x = TrivialSubclass('x', None)
+    x = TrivialBoundVariableTracker('x', None)
     self.assertEqual(x.name, 'x')
     self.assertIsNone(x.value)
 
@@ -1211,7 +1216,7 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_sequential_binding_node_initialization(self):
 
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None))
 
     self.assertEqual(trivial_instance.payload.name, 'trivial_name')
     self.assertEmpty(trivial_instance.children)
@@ -1220,17 +1225,17 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertIsNone(trivial_instance.younger_sibling)
     self.assertIsNone(trivial_instance.older_sibling)
 
-  def test_comptracker_trivial_subclass_init_bad_args(self):
+  def test_bound_variable_tracker_trivial_subclass_init_bad_args(self):
     with self.assertRaises(TypeError):
-      TrivialSubclass(0, None)
+      TrivialBoundVariableTracker(0, None)
     with self.assertRaises(TypeError):
-      TrivialSubclass('x', 0)
+      TrivialBoundVariableTracker('x', 0)
 
-  def test_comptracker_trivial_subclass_parent_child_relationship(self):
+  def test_sequential_binding_node_parent_child_relationship(self):
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None))
     second_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('second_trivial_name', None))
+        TrivialBoundVariableTracker('second_trivial_name', None))
 
     self.assertNotEqual(trivial_instance, second_trivial_instance)
     second_trivial_instance.set_parent(trivial_instance)
@@ -1243,11 +1248,11 @@ class TransformationUtilsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       second_trivial_instance.add_child(0, 0)
 
-  def test_comptracker_trivial_subclass_sibling_relationship(self):
+  def test_sequential_binding_node_sibling_relationship(self):
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None))
     second_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('second_trivial_name', None))
+        TrivialBoundVariableTracker('second_trivial_name', None))
 
     self.assertNotEqual(trivial_instance, second_trivial_instance)
     trivial_instance.set_younger_sibling(second_trivial_instance)
@@ -1259,13 +1264,13 @@ class TransformationUtilsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       second_trivial_instance.set_older_sibling(0)
 
-  def test_comptracker_trivial_subclass_cousin_relationship(self):
+  def test_sequential_binding_nodes_cousin_relationship(self):
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None))
     second_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('second_trivial_name', None))
+        TrivialBoundVariableTracker('second_trivial_name', None))
     third_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialSubclass('third_trivial_name', None))
+        TrivialBoundVariableTracker('third_trivial_name', None))
     trivial_instance.add_child(0, second_trivial_instance)
     trivial_instance.add_child(1, third_trivial_instance)
     second_trivial_instance.set_parent(trivial_instance)
@@ -1283,6 +1288,23 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertNotIn(third_trivial_instance, second_trivial_instance_relations)
     self.assertEqual(
         id(second_trivial_instance.parent), id(third_trivial_instance.parent))
+
+  def test_bound_variable_tracker_equality_names(self):
+    data = computation_building_blocks.Data('bound_data', tf.int32)
+    dummy_tracker = TrivialBoundVariableTracker('x', data)
+    second_dummy_tracker = TrivialBoundVariableTracker('x', data)
+    self.assertEqual(dummy_tracker, second_dummy_tracker)
+    second_dummy_tracker.name = 'y'
+    self.assertNotEqual(dummy_tracker, second_dummy_tracker)
+    dummy_tracker.name = 'y'
+    self.assertEqual(dummy_tracker, second_dummy_tracker)
+
+  def test_bound_variable_tracker_equality_values(self):
+    dummy_tracker = TrivialBoundVariableTracker(
+        'x', computation_building_blocks.Data('bound_data', tf.int32))
+    second_dummy_tracker = TrivialBoundVariableTracker(
+        'x', computation_building_blocks.Data('other_data', tf.int32))
+    self.assertNotEqual(dummy_tracker, second_dummy_tracker)
 
   def test_outer_context_pointer_equality(self):
     outer_context = transformation_utils.OuterContextPointer()
@@ -1397,6 +1419,338 @@ class TransformationUtilsTest(parameterized.TestCase):
             'input1': 1
         }
     })
+
+  def test_reference_tracker_initializes(self):
+    dummy_tracker = transformation_utils.ReferenceCounter(
+        'x', computation_building_blocks.Data('bound_data', tf.int32))
+    self.assertEqual(dummy_tracker.name, 'x')
+    self.assertEqual(dummy_tracker.value.tff_repr, 'bound_data')
+    self.assertEqual(dummy_tracker.count, 0)
+
+  def test_reference_tracker_updates(self):
+    dummy_tracker = transformation_utils.ReferenceCounter(
+        'x', computation_building_blocks.Data('bound_data', tf.int32))
+    for k in range(10):
+      dummy_tracker.update()
+      self.assertEqual(dummy_tracker.count, k + 1)
+
+  def test_reference_tracker_equality_instances(self):
+    data = computation_building_blocks.Data('bound_data', tf.int32)
+    dummy_tracker = transformation_utils.ReferenceCounter('x', data)
+    second_dummy_tracker = transformation_utils.ReferenceCounter('x', data)
+    self.assertEqual(dummy_tracker, second_dummy_tracker)
+    dummy_tracker.update()
+    self.assertNotEqual(dummy_tracker, second_dummy_tracker)
+    second_dummy_tracker.update()
+    self.assertEqual(dummy_tracker, second_dummy_tracker)
+
+  def test_get_count_of_references_to_variables_simple_block(self):
+    simple_block = _construct_simple_block(tf.int32)
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        simple_block)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      arg = transformation_utils.ReferenceCounter(simple_block.locals[0][0],
+                                                  simple_block.locals[0][1])
+      arg.update()
+      constructed_context_stack._add_child(
+          1, transformation_utils.SequentialBindingNode(arg))
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_simple_block_two_references(
+      self):
+    simple_block = _construct_simple_block(tf.int32)
+    ref = simple_block.result
+    result = computation_building_blocks.Tuple([ref, ref])
+    simple_block = computation_building_blocks.Block(simple_block.locals,
+                                                     result)
+    self.assertEqual(simple_block.tff_repr, '(let x=data in <x,x>)')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        simple_block)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          simple_block.locals[0][0], simple_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.update_payload_tracking_reference(ref)
+      constructed_context_stack.update_payload_tracking_reference(ref)
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_nested_blocks_conflicting_names(
+      self):
+    first_block = _construct_simple_block(tf.int32)
+    outer_block_output = computation_building_blocks.Reference(
+        'x', first_block.type_signature)
+    second_block = computation_building_blocks.Block([('x', first_block)],
+                                                     outer_block_output)
+
+    self.assertEqual(second_block.tff_repr, '(let x=(let x=data in x) in x)')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        second_block)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          first_block.locals[0][0], first_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 2)
+      constructed_context_stack.update_payload_tracking_reference(
+          first_block.result)
+      constructed_context_stack.move_to_parent_context()
+      constructed_context_stack.ingest_variable_binding(
+          second_block.locals[0][0], second_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.update_payload_tracking_reference(
+          second_block.result)
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_block_lambda_name_conflict(
+      self):
+    innermost_x = computation_building_blocks.Reference('x', tf.int32)
+    inner_lambda = computation_building_blocks.Lambda('x', tf.int32,
+                                                      innermost_x)
+    second_x = computation_building_blocks.Reference('x', tf.int32)
+    called_lambda = computation_building_blocks.Call(inner_lambda, second_x)
+    block_input = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('x', block_input)],
+                                              called_lambda)
+    self.assertEqual(block.tff_repr, '(let x=data in (x -> x)(x))')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        block)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          block.locals[0][0], block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 2)
+      constructed_context_stack.update_payload_tracking_reference(second_x)
+      constructed_context_stack.ingest_variable_binding(
+          inner_lambda.parameter_name, None,
+          transformation_utils.MutationMode.CHILD, 3)
+      constructed_context_stack.update_payload_tracking_reference(innermost_x)
+      constructed_context_stack.move_to_parent_context()
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_lambda_name_conflict(self):
+    inner_x = computation_building_blocks.Reference('x', tf.int32)
+    inner_lambda = computation_building_blocks.Lambda('x', tf.int32, inner_x)
+    outer_x = computation_building_blocks.Reference('x', tf.int32)
+    call = computation_building_blocks.Call(inner_lambda, outer_x)
+    outer_lambda = computation_building_blocks.Lambda('x', tf.int32, call)
+    self.assertEqual(outer_lambda.tff_repr, '(x -> (x -> x)(x))')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        outer_lambda)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          outer_lambda.parameter_name, None,
+          transformation_utils.MutationMode.CHILD, 0)
+      constructed_context_stack.update_payload_tracking_reference(outer_x)
+      constructed_context_stack.ingest_variable_binding(
+          inner_lambda.parameter_name, None,
+          transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.update_payload_tracking_reference(inner_x)
+      constructed_context_stack.move_to_parent_context()
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_block_local_overwriting_name_in_scope(
+      self):
+    arg_comp = computation_building_blocks.Reference('arg',
+                                                     [tf.int32, tf.int32])
+    selected = computation_building_blocks.Selection(arg_comp, index=0)
+    internal_arg = computation_building_blocks.Reference('arg', tf.int32)
+    block = computation_building_blocks.Block([('arg', selected)], internal_arg)
+    lam = computation_building_blocks.Lambda('arg', arg_comp.type_signature,
+                                             block)
+    self.assertEqual(lam.tff_repr, '(arg -> (let arg=arg[0] in arg))')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        lam)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          lam.parameter_name, None, transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.update_payload_tracking_reference(arg_comp)
+      constructed_context_stack.ingest_variable_binding(
+          block.locals[0][0], block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 2)
+      constructed_context_stack.update_payload_tracking_reference(internal_arg)
+      constructed_context_stack.move_to_parent_context()
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_nested_block_no_name_conflict(
+      self):
+    used1 = computation_building_blocks.Reference('used1', tf.int32)
+    used2 = computation_building_blocks.Data('used2', tf.int32)
+    ref = computation_building_blocks.Reference('x', used1.type_signature)
+    lower_block = computation_building_blocks.Block([('x', used1)], ref)
+    higher_block = computation_building_blocks.Block([('used1', used2)],
+                                                     lower_block)
+    self.assertEqual(higher_block.tff_repr,
+                     '(let used1=used2 in (let x=used1 in x))')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        higher_block)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          higher_block.locals[0][0], higher_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.update_payload_tracking_reference(used1)
+      constructed_context_stack.ingest_variable_binding(
+          lower_block.locals[0][0], lower_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 3)
+      constructed_context_stack.update_payload_tracking_reference(ref)
+      constructed_context_stack.move_to_parent_context()
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_nested_block_no_overwrite(self):
+    used1 = computation_building_blocks.Reference('used1', tf.int32)
+    used2 = computation_building_blocks.Data('used2', tf.int32)
+    user_inlined_lower_block = computation_building_blocks.Block([('x', used1)],
+                                                                 used1)
+    user_inlined_higher_block = computation_building_blocks.Block(
+        [('used1', used2)], user_inlined_lower_block)
+    self.assertEqual(user_inlined_higher_block.tff_repr,
+                     '(let used1=used2 in (let x=used1 in used1))')
+    second_context_stack = transformation_utils.get_count_of_references_to_variables(
+        user_inlined_higher_block)
+
+    def _construct_second_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          user_inlined_higher_block.locals[0][0],
+          user_inlined_higher_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.update_payload_tracking_reference(used1)
+      constructed_context_stack.update_payload_tracking_reference(used1)
+      constructed_context_stack.ingest_variable_binding(
+          user_inlined_lower_block.locals[0][0],
+          user_inlined_lower_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 3)
+      constructed_context_stack.move_to_parent_context()
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    self.assertEqual(second_context_stack, _construct_second_context_stack())
+
+  def test_get_count_of_references_to_variables_mixed_scope(self):
+    innermost = computation_building_blocks.Reference('x', tf.int32)
+    intermediate_arg = computation_building_blocks.Reference('y', tf.int32)
+    inner_block = computation_building_blocks.Block([('x', intermediate_arg)],
+                                                    innermost)
+    item1 = computation_building_blocks.Reference('x', tf.int32)
+    mediate_tuple = computation_building_blocks.Tuple([item1, inner_block])
+    used = computation_building_blocks.Data('used', tf.int32)
+    used1 = computation_building_blocks.Data('used1', tf.int32)
+    outer_block = computation_building_blocks.Block([('x', used), ('y', used1)],
+                                                    mediate_tuple)
+    self.assertEqual(outer_block.tff_repr,
+                     '(let x=used,y=used1 in <x,(let x=y in x)>)')
+    context_stack = transformation_utils.get_count_of_references_to_variables(
+        outer_block)
+
+    def _construct_context_stack():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          outer_block.locals[0][0], outer_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 1)
+      constructed_context_stack.ingest_variable_binding(
+          outer_block.locals[1][0], outer_block.locals[1][1],
+          transformation_utils.MutationMode.SIBLING)
+      constructed_context_stack.update_payload_tracking_reference(
+          intermediate_arg)
+      constructed_context_stack.update_payload_tracking_reference(item1)
+      constructed_context_stack.ingest_variable_binding(
+          inner_block.locals[0][0], inner_block.locals[0][1],
+          transformation_utils.MutationMode.CHILD, 6)
+      constructed_context_stack.update_payload_tracking_reference(innermost)
+      return constructed_context_stack
+
+    self.assertEqual(context_stack, _construct_context_stack())
+
+  def test_get_count_of_references_to_variables_sequential_overwrite_in_block_locals(
+      self):
+    add_one = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_impl.ComputationImpl.get_proto(
+            computations.tf_computation(lambda x: x + 1, tf.int32)))
+
+    make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_impl.ComputationImpl.get_proto(
+            computations.tf_computation(lambda: tf.constant(10))))
+
+    dummy_x_reference = computation_building_blocks.Reference('x', tf.int32)
+
+    make_13 = computation_building_blocks.Block(
+        [('x', computation_building_blocks.Call(make_10)),
+         ('x', computation_building_blocks.Call(add_one, dummy_x_reference)),
+         ('x', computation_building_blocks.Call(add_one, dummy_x_reference)),
+         ('x', computation_building_blocks.Call(add_one, dummy_x_reference))],
+        dummy_x_reference)
+
+    references = transformation_utils.get_count_of_references_to_variables(
+        make_13)
+
+    child_id = list(references.active_node.children.keys())[0]
+
+    def _make_context_tree():
+      constructed_context_stack = transformation_utils.SymbolTree(
+          transformation_utils.ReferenceCounter)
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[0][0], make_13.locals[0][1],
+          transformation_utils.MutationMode.CHILD, child_id)
+      constructed_context_stack.update_payload_tracking_reference(
+          dummy_x_reference)
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[1][0], make_13.locals[1][1],
+          transformation_utils.MutationMode.SIBLING)
+      constructed_context_stack.update_payload_tracking_reference(
+          dummy_x_reference)
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[2][0], make_13.locals[2][1],
+          transformation_utils.MutationMode.SIBLING)
+      constructed_context_stack.update_payload_tracking_reference(
+          dummy_x_reference)
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[3][0], make_13.locals[3][1],
+          transformation_utils.MutationMode.SIBLING)
+      constructed_context_stack.update_payload_tracking_reference(
+          dummy_x_reference)
+      constructed_context_stack.move_to_parent_context()
+      return constructed_context_stack
+
+    constructed_tree = _make_context_tree()
+    self.assertEqual(references, constructed_tree)
 
 
 if __name__ == '__main__':

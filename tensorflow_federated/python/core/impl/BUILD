@@ -609,6 +609,7 @@ py_library(
     srcs = ["transformation_utils.py"],
     deps = [
         ":computation_building_blocks",
+        ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@six_archive//:six",
@@ -658,7 +659,6 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
-        ":intrinsic_bodies",
         ":intrinsic_defs",
         ":tensorflow_serialization",
         ":transformations",
@@ -666,7 +666,6 @@ py_test(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
