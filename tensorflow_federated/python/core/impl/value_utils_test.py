@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +20,7 @@ from __future__ import print_function
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import six
 from six.moves import range
 import tensorflow as tf
 
@@ -94,7 +96,7 @@ class ValueUtilsTest(parameterized.TestCase):
             computation_types.FederatedType(tf.int32, placements.CLIENTS, True),
             computation_types.FederatedType(tf.bool, placements.SERVER, True)
         ]))
-    with self.assertRaisesRegexp(TypeError, 'should be placed at CLIENTS'):
+    with six.assertRaisesRegex(self, TypeError, 'should be placed at CLIENTS'):
       _ = value_utils.zip_two_tuple(
           value_impl.to_value(server_test_ref, None, _context_stack),
           _context_stack)
@@ -104,7 +106,7 @@ class ValueUtilsTest(parameterized.TestCase):
             computation_types.FederatedType(tf.int32, placements.CLIENTS, True),
             computation_types.FederatedType(tf.bool, placements.CLIENTS, True)
         ]))
-    with self.assertRaisesRegexp(TypeError, '(Expected).*(Value)'):
+    with six.assertRaisesRegex(self, TypeError, '(Expected).*(Value)'):
       _ = value_utils.zip_two_tuple(client_test_ref, _context_stack)
     three_tuple_test_ref = computation_building_blocks.Reference(
         'three_tuple_test',
@@ -113,7 +115,7 @@ class ValueUtilsTest(parameterized.TestCase):
             computation_types.FederatedType(tf.int32, placements.CLIENTS, True),
             computation_types.FederatedType(tf.int32, placements.CLIENTS, True)
         ]))
-    with self.assertRaisesRegexp(ValueError, 'must be a 2-tuple'):
+    with six.assertRaisesRegex(self, ValueError, 'must be a 2-tuple'):
       _ = value_utils.zip_two_tuple(
           value_impl.to_value(three_tuple_test_ref, None, _context_stack),
           _context_stack)
@@ -124,7 +126,7 @@ class ValueUtilsTest(parameterized.TestCase):
     input_fn = computation_building_blocks.Lambda(
         'test', input_reference.type_signature, input_reference)
     type_to_add = computation_types.NamedTupleType([tf.int32])
-    with self.assertRaisesRegexp(TypeError, '(Expected).*(Value)'):
+    with six.assertRaisesRegex(self, TypeError, '(Expected).*(Value)'):
       _ = value_utils.flatten_first_index(input_fn, type_to_add, _context_stack)
 
   @parameterized.named_parameters([

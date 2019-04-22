@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
+import six
 import tensorflow as tf
 
 from google.protobuf import any_pb2
@@ -44,12 +46,12 @@ class SerializationUtilsTest(absltest.TestCase):
       serialization_utils.pack_graph_def('not a graphdef')
 
   def test_unpack_graph_def_not_any_arg(self):
-    with self.assertRaisesRegexp(TypeError, 'Any'):
+    with six.assertRaisesRegex(self, TypeError, 'Any'):
       serialization_utils.unpack_graph_def('not_any')
 
   def test_unpack_graph_def_not_packed_graph_def(self):
     any_pb = any_pb2.Any()
-    with self.assertRaisesRegexp(ValueError, 'Unable to unpack'):
+    with six.assertRaisesRegex(self, ValueError, 'Unable to unpack'):
       serialization_utils.unpack_graph_def(any_pb)
 
 
