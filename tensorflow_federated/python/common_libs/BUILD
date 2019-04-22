@@ -64,6 +64,7 @@ py_test(
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@protobuf_archive//:protobuf_python",
+        "@six_archive//:six",
     ],
 )
 
