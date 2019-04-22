@@ -5,6 +5,8 @@
 
 # tff.learning.keras_weights_from_tff_weights
 
+Converts TFF's nested weights structure to flat weights.
+
 ```python
 tff.learning.keras_weights_from_tff_weights(tff_weights)
 ```
@@ -13,8 +15,6 @@ Defined in
 [`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-Converts TFF's nested weights structure to flat weights.
 
 This function may be used, for example, to retrieve the model parameters trained
 by the federated averaging process for use in an existing `keras` model, e.g.:

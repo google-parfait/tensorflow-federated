@@ -5,6 +5,9 @@
 
 # tff.federated_sum
 
+Computes a sum at <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> of a
+`value` placed on the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
+
 ```python
 tff.federated_sum(value)
 ```
@@ -13,9 +16,6 @@ Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
 <!-- Placeholder for "Used in" -->
-
-Computes a sum at <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> of a
-`value` placed on the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 #### Args:
 

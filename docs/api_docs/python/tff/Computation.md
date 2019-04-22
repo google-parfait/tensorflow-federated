@@ -9,6 +9,8 @@
 
 ## Class `Computation`
 
+An abstract interface for all classes that represent computations.
+
 Inherits From: [`TypedObject`](../tff/TypedObject.md)
 
 Defined in
@@ -16,7 +18,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-An abstract interface for all classes that represent computations.
 
 ## Properties
 

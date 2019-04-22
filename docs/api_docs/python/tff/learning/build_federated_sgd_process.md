@@ -5,6 +5,8 @@
 
 # tff.learning.build_federated_sgd_process
 
+Builds the TFF computations for optimization using federated SGD.
+
 ```python
 tff.learning.build_federated_sgd_process(
     model_fn,
@@ -17,8 +19,6 @@ Defined in
 [`learning/federated_sgd.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_sgd.py).
 
 <!-- Placeholder for "Used in" -->
-
-Builds the TFF computations for optimization using federated SGD.
 
 #### Args:
 

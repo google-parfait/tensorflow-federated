@@ -5,12 +5,13 @@
 
 # Module: tff.learning
 
+The public API for model developers using federated learning algorithms.
+
 Defined in
 [`learning/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
-The public API for model developers using federated learning algorithms.
 
 ## Modules
 

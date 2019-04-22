@@ -5,6 +5,9 @@
 
 # tff.to_type
 
+Converts the argument into an instance of
+<a href="../tff/Type.md"><code>tff.Type</code></a>.
+
 ```python
 tff.to_type(spec)
 ```
@@ -13,9 +16,6 @@ Defined in
 [`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
 <!-- Placeholder for "Used in" -->
-
-Converts the argument into an instance of
-<a href="../tff/Type.md"><code>tff.Type</code></a>.
 
 Examples of arguments convertible to tensor types:
 

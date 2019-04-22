@@ -14,14 +14,14 @@
 
 ## Class `FilePerUserClientData`
 
+A `tf.simulation.ClientData` that maps a set of files to a dataset.
+
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
 Defined in
 [`simulation/file_per_user_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py).
 
 <!-- Placeholder for "Used in" -->
-
-A `tf.simulation.ClientData` that maps a set of files to a dataset.
 
 This mapping is restricted to one file per user.
 
@@ -46,9 +46,31 @@ Constructs a `tf.simulation.ClientData` object.
 
 <h3 id="client_ids"><code>client_ids</code></h3>
 
+The list of string identifiers for clients in this dataset.
+
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
+Returns the shape of each component of an element of the client datasets.
+
+Any `tf.data.Dataset` constructed by this class is expected to have matching
+`tf.data.Dataset.output_shapes` properties.
+
+#### Returns:
+
+A nested structure of `tf.TensorShape` objects corresponding to each component
+of an element of the client datasets.
+
 <h3 id="output_types"><code>output_types</code></h3>
+
+Returns the type of each component of an element of the client datasets.
+
+Any `tf.data.Dataset` constructed by this class is expected have matching
+`tf.data.Dataset.output_types` properties.
+
+#### Returns:
+
+A nested structure of `tf.DType` objects corresponding to each component of an
+element of the client datasets.
 
 ## Methods
 
@@ -86,6 +108,16 @@ object.
 ```python
 create_tf_dataset_for_client(client_id)
 ```
+
+Creates a new `tf.data.Dataset` containing the client training examples.
+
+#### Args:
+
+*   <b>`client_id`</b>: The string client_id for the desired client.
+
+#### Returns:
+
+A `tf.data.Dataset` object.
 
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 

@@ -5,6 +5,10 @@
 
 # tff.learning.framework.build_model_delta_optimizer_process
 
+Constructs
+<a href="../../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
+for Federated Averaging or SGD.
+
 ```python
 tff.learning.framework.build_model_delta_optimizer_process(
     model_fn,
@@ -19,10 +23,6 @@ Defined in
 [`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-Constructs
-<a href="../../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
-for Federated Averaging or SGD.
 
 This provides the TFF orchestration logic connecting the common server logic
 which applies aggregated model deltas to the server model with a ClientDeltaFn
