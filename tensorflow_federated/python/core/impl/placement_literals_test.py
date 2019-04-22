@@ -43,6 +43,33 @@ class PlacementLiteralsTest(absltest.TestCase):
     self.assertEqual(foo[placement_literals.CLIENTS], 10)
     self.assertEqual(foo[placement_literals.SERVER], 20)
 
+  def test_placement_literals_equality(self):
+    foo = placement_literals.PlacementLiteral('name', 'uri', 'desc')
+    foo_eq = placement_literals.PlacementLiteral('name', 'uri', 'desc')
+    foo_ne_attr1 = placement_literals.PlacementLiteral('dummy', 'uri', 'desc')
+    foo_ne_attr2 = placement_literals.PlacementLiteral('name', 'dummy', 'desc')
+    foo_ne_attr3 = placement_literals.PlacementLiteral('name', 'uri', 'dummy')
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertTrue(foo.__eq__(foo_ne_attr1))
+    self.assertTrue(foo_ne_attr1.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr2))
+    self.assertFalse(foo_ne_attr2.__eq__(foo))
+    self.assertTrue(foo.__eq__(foo_ne_attr3))
+    self.assertTrue(foo_ne_attr3.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertFalse(foo.__ne__(foo_ne_attr1))
+    self.assertFalse(foo_ne_attr1.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr2))
+    self.assertTrue(foo_ne_attr2.__ne__(foo))
+    self.assertFalse(foo.__ne__(foo_ne_attr3))
+    self.assertFalse(foo_ne_attr3.__ne__(foo))
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -60,13 +60,26 @@ class TensorTypeTest(absltest.TestCase):
         str(computation_types.TensorType(tf.int32, [None, 10])), 'int32[?,10]')
 
   def test_equality(self):
-    t1 = computation_types.TensorType(tf.int32, [10])
-    t2 = computation_types.TensorType(tf.int32, [10])
-    t3 = computation_types.TensorType(tf.int32, [None])
-    t4 = computation_types.TensorType(tf.int32, [None])
-    self.assertEqual(t1, t2)
-    self.assertEqual(t3, t4)
-    self.assertNotEqual(t1, t3)
+    foo = computation_types.TensorType(tf.int32, [10])
+    foo_eq = computation_types.TensorType(tf.int32, [10])
+    foo_ne_attr1 = computation_types.TensorType(tf.int64, [10])
+    foo_ne_attr2 = computation_types.TensorType(tf.int32, [None])
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr1))
+    self.assertFalse(foo_ne_attr1.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr2))
+    self.assertFalse(foo_ne_attr2.__eq__(foo))
+    self.assertTrue(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr1))
+    self.assertTrue(foo_ne_attr1.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr2))
+    self.assertTrue(foo_ne_attr2.__ne__(foo))
 
 
 class NamedTupleTypeTest(absltest.TestCase):
@@ -114,18 +127,58 @@ class NamedTupleTypeTest(absltest.TestCase):
     self.assertEqual(
         str(computation_types.NamedTupleType([(None, tf.int32)])), '<int32>')
 
-  def test_equality(self):
-    t1 = computation_types.to_type([tf.int32, tf.bool])
-    t2 = computation_types.to_type([tf.int32, tf.bool])
-    t3 = computation_types.to_type([('a', tf.int32), ('b', tf.bool)])
-    t4 = computation_types.to_type([('a', tf.int32), ('b', tf.bool)])
-    t5 = computation_types.to_type([('b', tf.int32), ('a', tf.bool)])
-    t6 = computation_types.to_type([('a', tf.bool), ('b', tf.int32)])
-    self.assertEqual(t1, t2)
-    self.assertEqual(t3, t4)
-    self.assertNotEqual(t1, t3)
-    self.assertNotEqual(t4, t5)
-    self.assertNotEqual(t4, t6)
+  def test_equality_unnamed(self):
+    foo = computation_types.NamedTupleType([tf.int32, tf.bool])
+    foo_eq = computation_types.NamedTupleType([tf.int32, tf.bool])
+    foo_ne_order = computation_types.NamedTupleType([tf.bool, tf.int32])
+    foo_ne_value = computation_types.NamedTupleType([tf.float32, tf.float32])
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_order))
+    self.assertFalse(foo_ne_order.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_value))
+    self.assertFalse(foo_ne_value.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_order))
+    self.assertTrue(foo_ne_order.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_value))
+    self.assertTrue(foo_ne_value.__ne__(foo))
+
+  def test_equality_named(self):
+    foo = computation_types.NamedTupleType([('a', tf.int32), ('b', tf.bool)])
+    foo_eq = computation_types.NamedTupleType([('a', tf.int32),
+                                                ('b', tf.bool)])
+    foo_ne_order = computation_types.NamedTupleType([('b', tf.bool),
+                                                      ('a', tf.int32)])
+    foo_ne_name = computation_types.NamedTupleType([('b', tf.int32),
+                                                     ('a', tf.bool)])
+    foo_ne_value = computation_types.NamedTupleType([('a', tf.float32),
+                                                      ('b', tf.float32)])
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_order))
+    self.assertFalse(foo_ne_order.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_name))
+    self.assertFalse(foo_ne_name.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_value))
+    self.assertFalse(foo_ne_value.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_order))
+    self.assertTrue(foo_ne_order.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_name))
+    self.assertTrue(foo_ne_name.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_value))
+    self.assertTrue(foo_ne_value.__ne__(foo))
 
 
 class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
@@ -186,11 +239,21 @@ class SequenceTypeTest(absltest.TestCase):
         str(computation_types.SequenceType(tf.int32).element), 'int32')
 
   def test_equality(self):
-    t1 = computation_types.SequenceType(tf.int32)
-    t2 = computation_types.SequenceType(tf.int32)
-    t3 = computation_types.SequenceType(tf.bool)
-    self.assertEqual(t1, t2)
-    self.assertNotEqual(t1, t3)
+    foo = computation_types.SequenceType(tf.int32)
+    foo_eq = computation_types.SequenceType(tf.int32)
+    foo_ne = computation_types.SequenceType(tf.bool)
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne))
+    self.assertFalse(foo_ne.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne))
+    self.assertTrue(foo_ne.__ne__(foo))
 
 
 class FunctionTypeTest(absltest.TestCase):
@@ -216,13 +279,26 @@ class FunctionTypeTest(absltest.TestCase):
     self.assertEqual(str(t.result), 'bool')
 
   def test_equality(self):
-    t1 = computation_types.FunctionType(tf.int32, tf.bool)
-    t2 = computation_types.FunctionType(tf.int32, tf.bool)
-    t3 = computation_types.FunctionType(tf.int32, tf.int32)
-    t4 = computation_types.FunctionType(tf.bool, tf.bool)
-    self.assertEqual(t1, t2)
-    self.assertNotEqual(t1, t3)
-    self.assertNotEqual(t1, t4)
+    foo = computation_types.FunctionType(tf.int32, tf.bool)
+    foo_eq = computation_types.FunctionType(tf.int32, tf.bool)
+    foo_ne_attr1 = computation_types.FunctionType(tf.bool, tf.bool)
+    foo_ne_attr2 = computation_types.FunctionType(tf.int32, tf.int32)
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr1))
+    self.assertFalse(foo_ne_attr1.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr2))
+    self.assertFalse(foo_ne_attr2.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr1))
+    self.assertTrue(foo_ne_attr1.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr2))
+    self.assertTrue(foo_ne_attr2.__ne__(foo))
 
 
 class AbstractTypeTest(absltest.TestCase):
@@ -235,11 +311,21 @@ class AbstractTypeTest(absltest.TestCase):
     self.assertRaises(TypeError, computation_types.AbstractType, 10)
 
   def test_equality(self):
-    t1 = computation_types.AbstractType('T')
-    t2 = computation_types.AbstractType('T')
-    t3 = computation_types.AbstractType('U')
-    self.assertEqual(t1, t2)
-    self.assertNotEqual(t1, t3)
+    foo = computation_types.AbstractType('T')
+    foo_eq = computation_types.AbstractType('T')
+    foo_ne = computation_types.AbstractType('U')
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne))
+    self.assertFalse(foo_ne.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne))
+    self.assertTrue(foo_ne.__ne__(foo))
 
 
 class PlacementTypeTest(absltest.TestCase):
@@ -250,9 +336,16 @@ class PlacementTypeTest(absltest.TestCase):
     self.assertEqual(str(t1), 'placement')
 
   def test_equality(self):
-    t1 = computation_types.PlacementType()
-    t2 = computation_types.PlacementType()
-    self.assertEqual(t1, t2)
+    foo = computation_types.PlacementType()
+    foo_eq = computation_types.PlacementType()
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
 
 
 class FederatedTypeTest(absltest.TestCase):
@@ -271,15 +364,35 @@ class FederatedTypeTest(absltest.TestCase):
     self.assertEqual(str(t2), 'int32@CLIENTS')
 
   def test_equality(self):
-    t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS, False)
-    t2 = computation_types.FederatedType(tf.int32, placements.CLIENTS, False)
-    t3 = computation_types.FederatedType(tf.bool, placements.CLIENTS, False)
-    t4 = computation_types.FederatedType(tf.int32, placements.SERVER, False)
-    t5 = computation_types.FederatedType(tf.int32, placements.CLIENTS, True)
-    self.assertEqual(t1, t2)
-    self.assertNotEqual(t1, t3)
-    self.assertNotEqual(t1, t4)
-    self.assertNotEqual(t1, t5)
+    foo = computation_types.FederatedType(tf.int32, placements.CLIENTS, False)
+    foo_eq = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                             False)
+    foo_ne_attr1 = computation_types.FederatedType(tf.bool, placements.CLIENTS,
+                                                   False)
+    foo_ne_attr2 = computation_types.FederatedType(tf.int32, placements.SERVER,
+                                                   False)
+    foo_ne_attr3 = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                   True)
+    self.assertTrue(foo.__eq__(foo))
+    self.assertEqual(foo.__eq__(1), NotImplemented)
+    self.assertTrue(foo.__eq__(foo_eq))
+    self.assertTrue(foo_eq.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr1))
+    self.assertFalse(foo_ne_attr1.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr2))
+    self.assertFalse(foo_ne_attr2.__eq__(foo))
+    self.assertFalse(foo.__eq__(foo_ne_attr3))
+    self.assertFalse(foo_ne_attr3 == foo)
+    self.assertFalse(foo.__ne__(foo))
+    self.assertEqual(foo.__ne__(1), NotImplemented)
+    self.assertFalse(foo.__ne__(foo_eq))
+    self.assertFalse(foo_eq.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr1))
+    self.assertTrue(foo_ne_attr1.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr2))
+    self.assertTrue(foo_ne_attr2.__ne__(foo))
+    self.assertTrue(foo.__ne__(foo_ne_attr3))
+    self.assertTrue(foo_ne_attr3.__ne__(foo))
 
 
 class ToTypeTest(absltest.TestCase):

@@ -130,8 +130,14 @@ class TensorType(Type):
       return self._dtype.name
 
   def __eq__(self, other):
-    return (isinstance(other, TensorType) and self._dtype == other.dtype and
-            tensor_utils.same_shape(self._shape, other.shape))
+    if self is other:
+      return True
+    if not isinstance(other, TensorType):
+      return NotImplemented
+    if (self._dtype != other.dtype or
+        not tensor_utils.same_shape(self._shape, other.shape)):
+      return False
+    return True
 
 
 class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
@@ -196,8 +202,11 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     ])))
 
   def __eq__(self, other):
-    return (isinstance(other, NamedTupleType) and
-            super(NamedTupleType, self).__eq__(other))
+    if self is other:
+      return True
+    if not isinstance(other, NamedTupleType):
+      return NotImplemented
+    return super(NamedTupleType, self).__eq__(other)
 
 
 # While this lives in the `api` diretory, `NamedTupleTypeWithPyContainerType` is
@@ -238,7 +247,13 @@ class SequenceType(Type):
     return '{}*'.format(str(self._element))
 
   def __eq__(self, other):
-    return isinstance(other, SequenceType) and self._element == other.element
+    if self is other:
+      return True
+    if not isinstance(other, SequenceType):
+      return NotImplemented
+    if self._element != other.element:
+      return False
+    return True
 
 
 class FunctionType(Type):
@@ -274,8 +289,13 @@ class FunctionType(Type):
         str(self._result))
 
   def __eq__(self, other):
-    return (isinstance(other, FunctionType) and
-            self._parameter == other.parameter and self._result == other.result)
+    if self is other:
+      return True
+    if not isinstance(other, FunctionType):
+      return NotImplemented
+    if self._parameter != other.parameter or self._result != other.result:
+      return False
+    return True
 
 
 class AbstractType(Type):
@@ -302,7 +322,13 @@ class AbstractType(Type):
     return self._label
 
   def __eq__(self, other):
-    return isinstance(other, AbstractType) and self._label == other.label
+    if self is other:
+      return True
+    if not isinstance(other, AbstractType):
+      return NotImplemented
+    if self._label != other.label:
+      return False
+    return True
 
 
 class PlacementType(Type):
@@ -320,7 +346,11 @@ class PlacementType(Type):
     return 'placement'
 
   def __eq__(self, other):
-    return isinstance(other, PlacementType)
+    if self is other:
+      return True
+    if not isinstance(other, PlacementType):
+      return NotImplemented
+    return True
 
 
 class FederatedType(Type):
@@ -377,10 +407,14 @@ class FederatedType(Type):
       return '{{{}}}@{}'.format(str(self._member), str(self._placement))
 
   def __eq__(self, other):
-    return (isinstance(other, FederatedType) and
-            self._member == other.member and
-            self._placement == other.placement and
-            self._all_equal == other.all_equal)
+    if self is other:
+      return True
+    if not isinstance(other, FederatedType):
+      return NotImplemented
+    if (self._member != other.member or self._placement != other.placement or
+        self._all_equal != other.all_equal):
+      return False
+    return True
 
 
 def to_type(spec):

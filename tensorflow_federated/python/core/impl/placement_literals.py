@@ -45,10 +45,16 @@ class PlacementLiteral(object):
     return 'PlacementLiteral(\'{}\')'.format(self._uri)
 
   def __eq__(self, other):
-    return self._uri == other.uri
+    if self is other:
+      return True
+    if not isinstance(other, PlacementLiteral):
+      return NotImplemented
+    if self.uri != other.uri:
+      return False
+    return True
 
   def __ne__(self, other):
-    return not self.__eq__(other)
+    return not self == other
 
   def __hash__(self):
     return hash(self._uri)
