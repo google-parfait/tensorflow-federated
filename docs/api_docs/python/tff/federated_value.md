@@ -5,6 +5,8 @@
 
 # tff.federated_value
 
+Returns a federated value at `placement`, with `value` as the constituent.
+
 ```python
 tff.federated_value(
     value,
@@ -16,8 +18,6 @@ Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
 <!-- Placeholder for "Used in" -->
-
-Returns a federated value at `placement`, with `value` as the constituent.
 
 #### Args:
 

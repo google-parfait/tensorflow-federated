@@ -9,12 +9,13 @@
 
 ## Class `Type`
 
+An abstract interface for all classes that represent TFF types.
+
 Defined in
 [`core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
 
 <!-- Placeholder for "Used in" -->
 
-An abstract interface for all classes that represent TFF types.
 
 ## Methods
 
@@ -48,3 +49,5 @@ with differently named type variables in their definitions.
 ```python
 __ne__(other)
 ```
+
+Return self!=value.

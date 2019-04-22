@@ -5,6 +5,8 @@
 
 # tff.sequence_reduce
 
+Reduces a TFF sequence `value` given a `zero` and reduction operator `op`.
+
 ```python
 tff.sequence_reduce(
     value,
@@ -17,8 +19,6 @@ Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
 <!-- Placeholder for "Used in" -->
-
-Reduces a TFF sequence `value` given a `zero` and reduction operator `op`.
 
 This method reduces a set of elements of a TFF sequence `value`, using a given
 `zero` in the algebra (i.e., the result of reducing an empty sequence) of some

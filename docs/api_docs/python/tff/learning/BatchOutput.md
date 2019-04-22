@@ -10,13 +10,13 @@
 
 ## Class `BatchOutput`
 
+A structure that holds the output of a
+<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
+
 Defined in
 [`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
 <!-- Placeholder for "Used in" -->
-
-A structure that holds the output of a
-<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
 NOTE: All fields are optional (may be None).
 

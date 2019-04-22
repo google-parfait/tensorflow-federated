@@ -13,6 +13,9 @@
 
 ## Class `FederatedType`
 
+An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
+representing federated types in TFF.
+
 Inherits From: [`Type`](../tff/Type.md)
 
 Defined in
@@ -20,8 +23,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
-representing federated types in TFF.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -67,8 +68,29 @@ Constructs a new federated type instance.
 __eq__(other)
 ```
 
+Determines whether two type definitions are identical.
+
+Note that this notion of equality is stronger than equivalence. Two types with
+equivalent definitions may not be identical, e.g., if they represent templates
+with differently named type variables in their definitions.
+
+#### Args:
+
+*   <b>`other`</b>: The other type to compare against.
+
+#### Returns:
+
+`True` iff type definitions are syntatically identical (as defined above), or
+`False` otherwise.
+
+#### Raises:
+
+*   <b>`NotImplementedError`</b>: If not implemented in the derived class.
+
 <h3 id="__ne__"><code>__ne__</code></h3>
 
 ```python
 __ne__(other)
 ```
+
+Return self!=value.

@@ -10,12 +10,12 @@
 
 ## Class `StatefulBroadcastFn`
 
+A simple container for a stateful broadcast function.
+
 Defined in
 [`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-A simple container for a stateful broadcast function.
 
 A typical (though trivial) example would be:
 

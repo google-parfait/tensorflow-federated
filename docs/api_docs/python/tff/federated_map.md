@@ -5,6 +5,10 @@
 
 # tff.federated_map
 
+Maps a federated value on
+<a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> pointwise using a
+mapping function.
+
 ```python
 tff.federated_map(
     mapping_fn,
@@ -16,10 +20,6 @@ Defined in
 [`core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
 
 <!-- Placeholder for "Used in" -->
-
-Maps a federated value on
-<a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> pointwise using a
-mapping function.
 
 #### Args:
 

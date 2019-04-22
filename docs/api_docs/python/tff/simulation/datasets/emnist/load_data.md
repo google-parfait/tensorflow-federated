@@ -5,6 +5,8 @@
 
 # tff.simulation.datasets.emnist.load_data
 
+Loads the Federated EMNIST dataset.
+
 ```python
 tff.simulation.datasets.emnist.load_data(
     only_digits=True,
@@ -16,8 +18,6 @@ Defined in
 [`simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
 
 <!-- Placeholder for "Used in" -->
-
-Loads the Federated EMNIST dataset.
 
 Downloads and caches the dataset locally. If previously downloaded, tries to
 load the dataset from cache.

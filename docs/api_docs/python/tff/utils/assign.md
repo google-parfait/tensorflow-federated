@@ -5,6 +5,8 @@
 
 # tff.utils.assign
 
+Creates an op that assigns `target` from `source`.
+
 ```python
 tff.utils.assign(
     target,
@@ -16,8 +18,6 @@ Defined in
 [`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-Creates an op that assigns `target` from `source`.
 
 This utility function provides the exact same behavior as `tf.assign`, but it
 generalizes to a wider class of objects, including ordinary variables as well as

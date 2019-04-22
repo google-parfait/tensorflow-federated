@@ -5,12 +5,13 @@
 
 # Module: tff.simulation
 
+The public API for experimenters running federated learning simulations.
+
 Defined in
 [`simulation/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
-The public API for experimenters running federated learning simulations.
 
 ## Modules
 

@@ -5,6 +5,8 @@
 
 # tff.tf_computation
 
+Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
+
 ```python
 tff.tf_computation(*args)
 ```
@@ -13,8 +15,6 @@ Defined in
 [`core/api/computations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py).
 
 <!-- Placeholder for "Used in" -->
-
-Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
 This symbol can be used as either a decorator or a wrapper applied to a function
 given to it as an argument. The supported patterns and examples of usage are as

@@ -5,6 +5,8 @@
 
 # tff.utils.identity
 
+Applies `tf.identity` pointwise to `source`.
+
 ```python
 tff.utils.identity(source)
 ```
@@ -13,8 +15,6 @@ Defined in
 [`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-Applies `tf.identity` pointwise to `source`.
 
 This utility function provides the exact same behavior as `tf.identity`, but it
 generalizes to a wider class of objects, including ordinary tensors, variables,

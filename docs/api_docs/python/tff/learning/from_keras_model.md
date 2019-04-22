@@ -5,6 +5,10 @@
 
 # tff.learning.from_keras_model
 
+Builds a
+<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a> for an
+example mini batch.
+
 ```python
 tff.learning.from_keras_model(
     keras_model,
@@ -19,10 +23,6 @@ Defined in
 [`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-Builds a
-<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a> for an
-example mini batch.
 
 #### Args:
 

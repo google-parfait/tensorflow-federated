@@ -5,6 +5,8 @@
 
 # tff.learning.build_federated_averaging_process
 
+Builds the TFF computations for optimization using federated averaging.
+
 ```python
 tff.learning.build_federated_averaging_process(
     model_fn,
@@ -17,8 +19,6 @@ Defined in
 [`learning/federated_averaging.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py).
 
 <!-- Placeholder for "Used in" -->
-
-Builds the TFF computations for optimization using federated averaging.
 
 #### Args:
 

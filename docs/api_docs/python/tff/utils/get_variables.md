@@ -5,6 +5,8 @@
 
 # tff.utils.get_variables
 
+Creates a set of variables that matches the given `type_spec`.
+
 ```python
 tff.utils.get_variables(
     name,
@@ -17,8 +19,6 @@ Defined in
 [`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-Creates a set of variables that matches the given `type_spec`.
 
 #### Args:
 

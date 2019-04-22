@@ -5,12 +5,13 @@
 
 # Module: tff.simulation.datasets
 
+Datasets for running Federated Learning experiments in simulation.
+
 Defined in
 [`simulation/datasets/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
-Datasets for running Federated Learning experiments in simulation.
 
 ## Modules
 

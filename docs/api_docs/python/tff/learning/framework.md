@@ -5,12 +5,13 @@
 
 # Module: tff.learning.framework
 
+The public API for contributors who develop federated learning algorithms.
+
 Defined in
 [`learning/framework/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
-The public API for contributors who develop federated learning algorithms.
 
 ## Classes
 
@@ -23,7 +24,8 @@ for outputs returned from clients during federated optimization.
 [`class EnhancedModel`](../../tff/learning/framework/EnhancedModel.md): A
 wrapper around a Model that adds sanity checking and metadata helpers.
 
-[`class EnhancedTrainableModel`](../../tff/learning/framework/EnhancedTrainableModel.md)
+[`class EnhancedTrainableModel`](../../tff/learning/framework/EnhancedTrainableModel.md):
+A wrapper around a Model that adds sanity checking and metadata helpers.
 
 [`class ModelWeights`](../../tff/learning/framework/ModelWeights.md): A
 container for the trainable and non-trainable variables of a `Model`.
