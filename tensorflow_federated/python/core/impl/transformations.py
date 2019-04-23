@@ -22,6 +22,7 @@ import itertools
 
 import six
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -98,17 +99,12 @@ def replace_intrinsic_with_callable(comp, uri, body, context_stack):
             isinstance(comp.type_signature, computation_types.FunctionType))
 
   def _transform(comp):
-    """Internal transform function."""
     if not _should_transform(comp):
       return comp
     # We need 'wrapped_body' to accept exactly one argument.
     wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
     return federated_computation_utils.zero_or_one_arg_fn_to_building_block(
-        wrapped_body,
-        'arg',
-        comp.type_signature.parameter,
-        context_stack,
-        suggested_name=uri)
+        wrapped_body, 'arg', comp.type_signature.parameter, context_stack, uri)
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -121,19 +117,19 @@ def replace_called_lambda_with_block(comp):
 
             *Call
             /    \
-     *Lambda      Comp(y)
+  *Lambda(x)      Comp(y)
             \
-             Comp(x)
+             Comp(z)
 
-  (arg -> x)(y)
+  (x -> z)(y)
 
   with the following computation containing a block:
 
-                    Block
-                   /     \
-   arg=Computation(y)       Computation(x)
+            Block
+           /     \
+  x=Comp(y)       Comp(z)
 
-  let arg=y in x
+  let x=y in z
 
   The functional computation `b` and the argument `c` are retained; the other
   computations are replaced. This transformation is used to facilitate the
@@ -175,18 +171,18 @@ def remove_mapped_or_applied_identity(comp):
             *Call
             /    \
   *Intrinsic     *Tuple
-                 /     \
-          *Lambda       Comp(x)
-                 \
-                 *Ref(arg)
+                  |
+                  [*Lambda(x), Comp(y)]
+                             \
+                             *Ref(x)
 
-  Intrinsic(<(arg -> arg), x>)
+  Intrinsic(<(x -> x), y>)
 
   with its argument:
 
-  Comp(x)
+  Comp(y)
 
-  x
+  y
 
   Args:
     comp: The computation building block in which to perform the replacements.
@@ -199,12 +195,6 @@ def remove_mapped_or_applied_identity(comp):
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
-
-  def _is_identity_function(comp):
-    """Returns `True` if `comp` is an identity function."""
-    return (isinstance(comp, computation_building_blocks.Lambda) and
-            isinstance(comp.result, computation_building_blocks.Reference) and
-            comp.parameter_name == comp.result.name)
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a mapped or applied identity function."""
@@ -239,12 +229,12 @@ def replace_chained_federated_maps_with_federated_map(comp):
             *Call
             /    \
   *Intrinsic     *Tuple
-                 /     \
-          Comp(x)      *Call
-                       /    \
-             *Intrinsic     *Tuple
-                            /     \
-                     Comp(y)       Comp(z)
+                  |
+                  [Comp(x), *Call]
+                            /    \
+                  *Intrinsic     *Tuple
+                                  |
+                                  [Comp(y), Comp(z)]
 
   federated_map(<x, federated_map(<y, z>)>)
 
@@ -253,14 +243,14 @@ def replace_chained_federated_maps_with_federated_map(comp):
             Call
            /    \
   Intrinsic      Tuple
-                /     \
-          Lambda       Comp(z)
-                \
-                 Call
-                /    \
-         Comp(x)      Call
-                     /    \
-              Comp(y)      Ref(arg)
+                 |
+                 [Lambda(arg), Comp(z)]
+                             \
+                              Call
+                             /    \
+                      Comp(x)      Call
+                                  /    \
+                           Comp(y)      Ref(arg)
 
   federated_map(<(arg -> x(y(arg))), z>)
 
@@ -279,22 +269,17 @@ def replace_chained_federated_maps_with_federated_map(comp):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
-  def _is_federated_map(comp):
-    """Returns `True` if `comp` is a federated map."""
-    return (isinstance(comp, computation_building_blocks.Call) and
-            isinstance(comp.function, computation_building_blocks.Intrinsic) and
-            comp.function.uri == intrinsic_defs.FEDERATED_MAP.uri)
-
   def _should_transform(comp):
-    """Returns `True` if `comp` is a chained federated map."""
-    if _is_federated_map(comp):
+    """Returns `True` if `comp` is a chained federated map computation."""
+    uri = intrinsic_defs.FEDERATED_MAP.uri
+    if _is_called_intrinsic(comp, uri):
       outer_arg = comp.argument[1]
-      if _is_federated_map(outer_arg):
+      if _is_called_intrinsic(outer_arg, uri):
         return True
     return False
 
   def _transform(comp):
-    """Internal transform function."""
+    """Returns a new transformed computation or `comp`."""
     if not _should_transform(comp):
       return comp
     map_arg = comp.argument[1].argument[1]
@@ -313,6 +298,196 @@ def replace_chained_federated_maps_with_federated_map(comp):
     map_intrinsic = computation_building_blocks.Intrinsic(
         comp.function.uri, map_intrinsic_type)
     return computation_building_blocks.Call(map_intrinsic, map_tuple)
+
+  return transformation_utils.transform_postorder(comp, _transform)
+
+
+def replace_tuple_intrinsics_with_intrinsic(comp):
+  r"""Replaces all the tuples of intrinsics in `comp` with one intrinsic.
+
+  This transform traverses `comp` postorder, matches the following pattern `*`,
+  and replaces the following computation containing a tuple of called intrinsics
+  all represeting the same operation:
+
+           *Tuple
+            |
+           *[Call,                        Call, ...]
+            /    \                       /    \
+  *Intrinsic      Tuple        *Intrinsic      Tuple
+                  |                            |
+         [Comp(f1), Comp(v1), ...]    [Comp(f2), Comp(v2), ...]
+
+  <Intrinsic(<f1, v1>), Intrinsic(<f2, v2>)>
+
+  with the following computation containing one called intrinsic:
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Block,               Tuple, ...]
+                 /     \               |
+         fn=Tuple       Lambda(arg)    [Comp(y), Comp(y), ...]
+            |                      \
+   [Comp(f1), Comp(f2), ...]        Tuple
+                                    |
+                               [Call,                  Call, ...]
+                               /    \                 /    \
+                         Sel(0)      Sel(0)     Sel(1)      Sel(1)
+                        /           /          /           /
+                 Ref(fn)    Ref(arg)    Ref(fn)    Ref(arg)
+
+  Intrinsic(<
+    (let fn=<f1, f2> in (arg -> <fn[0](arg[0]), fn[1](arg[1])>)),
+    <v1, v2>,
+  >)
+
+  The functional computations `f1`, `f2`, etc..., and the computations `v1`,
+  `v2`, etc... are retained; the other computations are replaced.
+
+  NOTE: This is just an example of what this transformation would look like when
+  applied to a tuple of federated maps. The components `f1`, `f2`, `v1`, and
+  `v2` and the number of those components are not important.
+
+  NOTE: This transformation is implemented to match the following intrinsics:
+
+  * intrinsic_defs.FEDERATED_MAP.uri
+  * intrinsic_defs.FEDERATED_AGGREGATE.uri
+
+  Args:
+    comp: The computation building block in which to perform the replacements.
+
+  Returns:
+    A new computation with the transformation applied or the original `comp`.
+
+  Raises:
+    TypeError: If types do not match.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def _should_transform(comp):
+    uri = (
+        intrinsic_defs.FEDERATED_MAP.uri,
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+    )
+    return (isinstance(comp, computation_building_blocks.Tuple) and
+            _is_called_intrinsic(comp[0], uri) and all(
+                _is_called_intrinsic(element, comp[0].function.uri)
+                for element in comp))
+
+  def _transform(comp):
+    """Returns a new transformed computation or `comp`."""
+    if not _should_transform(comp):
+      return comp
+
+    def _get_comp_elements(comp):
+      """Constructs a 2 dimentional Python list of (name, computation) pairs.
+
+      Args:
+        comp: A `computation_building_blocks.Tuple` containing `n` called
+          intrinsics with `m` arguments.
+
+      Returns:
+        A 2 dimentional Python list of (name, computation) pairs.
+      """
+      first_call = comp[0]
+      comps = [[] for _ in range(len(first_call.argument))]
+      for name, call in anonymous_tuple.to_elements(comp):
+        for index, arg in enumerate(call.argument):
+          comps[index].append((name, arg))
+      return comps
+
+    def _create_transformed_arg_from_functional_comps(comps):
+      r"""Constructs a transformed computation from `comps`.
+
+      Given the "original" computation containing `n` called intrinsics
+      with `m` arguments, this function constructs the following computation:
+
+                     Block
+                    /     \
+            fn=Tuple       Lambda(arg)
+               |                      \
+      [Comp(f1), Comp(f2), ...]        Tuple
+                                       |
+                                  [Call,                  Call, ...]
+                                  /    \                 /    \
+                            Sel(0)      Sel(0)     Sel(1)      Sel(1)
+                           /           /          /           /
+                    Ref(fn)    Ref(arg)    Ref(fn)    Ref(arg)
+
+      with one `computation_building_blocks.Call` for each `n`. This computation
+      represents one of `m` arguments that should be passed to the call of the
+      "transformed" computation.
+
+      Args:
+        comps: A Python list of functional computations.
+
+      Returns:
+        A `computation_building_blocks.Block` from the Python list of functional
+        computations `comps`.
+      """
+      elements = []
+      arg_types = []
+      for name, fn in comps:
+        elements.append((name, fn))
+        arg_types.append(fn.type_signature.parameter)
+      functions = computation_building_blocks.Tuple(elements)
+      fn = computation_building_blocks.Reference('fn', functions.type_signature)
+      arg = computation_building_blocks.Reference('arg', arg_types)
+      elements = []
+      for index, _ in enumerate(comps):
+        sel_fn = computation_building_blocks.Selection(fn, index=index)
+        sel_arg = computation_building_blocks.Selection(arg, index=index)
+        call = computation_building_blocks.Call(sel_fn, sel_arg)
+        elements.append(call)
+      calls = computation_building_blocks.Tuple(elements)
+      lam = computation_building_blocks.Lambda(arg.name, arg.type_signature,
+                                               calls)
+      return computation_building_blocks.Block([('fn', functions)], lam)
+
+    def _create_transformed_args(elements):
+      """Constructs a Python list of transformed computations.
+
+      Given the "original" computation containing `n` called intrinsics
+      with `m` arguments, this function constructs the following Python list
+      of computations:
+
+      [Block, Tuple, ...]
+
+      with one `computation_building_blocks.Block` for each functional
+      computation in `m` and one `computation_building_blocks.Tuple` for each
+      non-functional computation in `m`. This list of computations represent the
+      arguments that should be passed to the `computation_building_blocks.Call`
+      of the "transformed" computation.
+
+      Args:
+        elements: A 2 dimentional Python list of (name, computation) pairs.
+
+      Returns:
+        A Python list of computations.
+      """
+      args = []
+      for comps in elements:
+        _, first_comp = comps[0]
+        if isinstance(first_comp.type_signature,
+                      computation_types.FunctionType):
+          arg = _create_transformed_arg_from_functional_comps(comps)
+        else:
+          arg = computation_building_blocks.Tuple(comps)
+        args.append(arg)
+      return args
+
+    elements = _get_comp_elements(comp)
+    args = _create_transformed_args(elements)
+    arg = computation_building_blocks.Tuple(args)
+    parameter_type = computation_types.to_type(arg.type_signature)
+    elements = anonymous_tuple.to_elements(comp)
+    result_type = [(n, c.function.type_signature.result) for n, c in elements]
+    intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
+    intrinsic = computation_building_blocks.Intrinsic(comp[0].function.uri,
+                                                      intrinsic_type)
+    return computation_building_blocks.Call(intrinsic, arg)
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -340,3 +515,29 @@ def inline_blocks_with_n_referenced_locals(comp, inlining_threshold=1):
   op = transformation_utils.InlineReferences(inlining_threshold, count_snapshot,
                                              comp)
   return transformation_utils.transform_postorder(comp, op)
+
+
+def _is_called_intrinsic(comp, uri):
+  """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
+
+            Call
+           /
+  Intrinsic
+
+  Args:
+    comp: The computation building block in which to test.
+    uri: A uri or a list, tuple, or set of uri.
+  """
+  if isinstance(uri, six.string_types):
+    uri = (uri,)
+  py_typecheck.check_type(uri, (list, tuple, set))
+  return (isinstance(comp, computation_building_blocks.Call) and
+          isinstance(comp.function, computation_building_blocks.Intrinsic) and
+          comp.function.uri in uri)
+
+
+def _is_identity_function(comp):
+  """Returns `True` if `comp` is an identity function."""
+  return (isinstance(comp, computation_building_blocks.Lambda) and
+          isinstance(comp.result, computation_building_blocks.Reference) and
+          comp.parameter_name == comp.result.name)
