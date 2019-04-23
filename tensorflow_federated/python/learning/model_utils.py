@@ -91,58 +91,58 @@ class ModelWeights(
         anonymous_tuple.to_odict(anon_tuple.trainable),
         anonymous_tuple.to_odict(anon_tuple.non_trainable))
 
-  @property
-  def keras_weights(self):
-    """Returns a list of weights in the same order as `tf.keras.Model.weights`.
-
-    (Assuming that this ModelWeights object corresponds to the weights of
-    a keras model).
-
-    IMPORTANT: this is not the same order as `tf.keras.Model.get_weights()`, and
-    hence will not work with `tf.keras.Model.set_weights()`. Instead, use
-    `tff.learning.ModelWeights.assign_weights_to`.
-    """
-    return list(self.trainable.values()) + list(self.non_trainable.values())
-
   def assign_weights_to(self, keras_model):
     """Assign these TFF model weights to the weights of a `tf.keras.Model`.
 
     Args:
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-    for k, w in zip(keras_model.weights, self.keras_weights):
-      k.assign(w)
+
+    def assign_weights(keras_weights, tff_weights):
+      for k, w in zip(keras_weights, six.itervalues(tff_weights)):
+        k.assign(w)
+
+    assign_weights(keras_model.trainable_weights, self.trainable)
+    assign_weights(keras_model.non_trainable_weights, self.non_trainable)
 
 
-def keras_weights_from_tff_weights(tff_weights):
-  """Converts TFF's nested weights structure to flat weights.
+def assign_weights_to_keras_model(keras_model, tff_weights):
+  """Assigns a nested structure of TFF weights to a Keras model.
 
-  This function may be used, for example, to retrieve the model parameters
-  trained by the federated averaging process for use in an existing
-  `keras` model, e.g.:
+  This function may be used to retrieve the model parameters trained by the
+  federated averaging process for use in an existing `tf.keras.models.Model`,
+  e.g.:
 
   ```
-  fed_avg = tff.learning.build_federated_averaging_process(...)
+  keras_model = tf.keras.models.Model(inputs=..., outputs=...)
+
+  def model_fn():
+    return tff.learning.from_keras_model(keras_model)
+
+  fed_avg = tff.learning.build_federated_averaging_process(model_fn, ...)
   state = fed_avg.initialize()
   state = fed_avg.next(state, ...)
   ...
-  keras_model.set_weights(
-      tff.learning.keras_weights_from_tff_weights(state.model))
+  tff.learning.assign_weights_to_keras_model(state.model, keras_model)
   ```
 
   Args:
+    keras_model: A `tf.keras.models.Model` instance to assign weights to.
     tff_weights: A TFF value representing the weights of a model.
 
-  Returns:
-    A list of tensors suitable for passing to `tf.keras.Model.set_weights`.
+  Raises:
+    TypeError: if `tff_weights` is not a TFF value, or `keras_model` is not a
+      `tf.keras.models.Model` instance.
   """
   # TODO(b/123092620): Simplify this.
   py_typecheck.check_type(tff_weights,
                           (anonymous_tuple.AnonymousTuple, ModelWeights))
+  py_typecheck.check_type(keras_model, tf.keras.models.Model)
   if isinstance(tff_weights, anonymous_tuple.AnonymousTuple):
-    return list(tff_weights.trainable) + list(tff_weights.non_trainable)
+    weights_to_assign = ModelWeights.from_tff_value(tff_weights)
   else:
-    return tff_weights.keras_weights
+    weights_to_assign = tff_weights
+  weights_to_assign.assign_weights_to(keras_model)
 
 
 def from_keras_model(keras_model,

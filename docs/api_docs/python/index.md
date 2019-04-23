@@ -25,6 +25,7 @@
 *   <a href="./tff/learning/BatchOutput.md"><code>tff.learning.BatchOutput</code></a>
 *   <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>
 *   <a href="./tff/learning/TrainableModel.md"><code>tff.learning.TrainableModel</code></a>
+*   <a href="./tff/learning/assign_weights_to_keras_model.md"><code>tff.learning.assign_weights_to_keras_model</code></a>
 *   <a href="./tff/learning/build_federated_averaging_process.md"><code>tff.learning.build_federated_averaging_process</code></a>
 *   <a href="./tff/learning/build_federated_evaluation.md"><code>tff.learning.build_federated_evaluation</code></a>
 *   <a href="./tff/learning/build_federated_sgd_process.md"><code>tff.learning.build_federated_sgd_process</code></a>
@@ -37,7 +38,6 @@
 *   <a href="./tff/learning/framework/build_model_delta_optimizer_process.md"><code>tff.learning.framework.build_model_delta_optimizer_process</code></a>
 *   <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
 *   <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
-*   <a href="./tff/learning/keras_weights_from_tff_weights.md"><code>tff.learning.keras_weights_from_tff_weights</code></a>
 *   <a href="./tff/learning/state_with_new_model_weights.md"><code>tff.learning.state_with_new_model_weights</code></a>
 *   <a href="./tff/sequence_map.md"><code>tff.sequence_map</code></a>
 *   <a href="./tff/sequence_reduce.md"><code>tff.sequence_reduce</code></a>

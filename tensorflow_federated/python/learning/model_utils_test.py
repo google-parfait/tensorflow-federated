@@ -26,6 +26,7 @@ import itertools
 
 from absl.testing import parameterized
 import numpy as np
+import six
 from six.moves import range
 from six.moves import zip
 import tensorflow as tf
@@ -315,7 +316,6 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(m['loss'][1], input_vocab_size * num_iterations)
 
   def test_keras_model_using_batch_norm(self):
-    self.skipTest('b/130646097')
     model = model_examples.build_conv_batch_norm_keras_model()
 
     def loss_fn(y_true, y_pred):
@@ -360,12 +360,18 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_examples.build_conv_batch_norm_keras_model()
     tff_weights.assign_weights_to(keras_model)
 
-    for keras_w, tff_w in zip(keras_model.weights, tff_weights.keras_weights):
-      self.assertAllClose(
-          self.evaluate(keras_w),
-          self.evaluate(tff_w),
-          atol=1e-4,
-          msg='Variable [{}]'.format(keras_w.name))
+    def assert_all_weights_close(keras_weights, tff_weights):
+      for keras_w, tff_w in zip(keras_weights, six.itervalues(tff_weights)):
+        self.assertAllClose(
+            self.evaluate(keras_w),
+            self.evaluate(tff_w),
+            atol=1e-4,
+            msg='Variable [{}]'.format(keras_w.name))
+
+    assert_all_weights_close(keras_model.trainable_weights,
+                             tff_weights.trainable)
+    assert_all_weights_close(keras_model.non_trainable_weights,
+                             tff_weights.non_trainable)
 
   def test_wrap_tff_model_in_tf_computation(self):
     feature_dims = 3
@@ -451,8 +457,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertGreater(aggregated_outputs['loss'], 0.0)
 
     keras_model = _make_keras_model()
-    keras_model.set_weights(
-        model_utils.keras_weights_from_tff_weights(tff_weights))
+    model_utils.assign_weights_to_keras_model(keras_model, tff_weights)
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.

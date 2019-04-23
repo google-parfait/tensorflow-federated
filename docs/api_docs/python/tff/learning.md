@@ -32,6 +32,9 @@ additional method for (local) training.
 
 ## Functions
 
+[`assign_weights_to_keras_model(...)`](../tff/learning/assign_weights_to_keras_model.md):
+Assigns a nested structure of TFF weights to a Keras model.
+
 [`build_federated_averaging_process(...)`](../tff/learning/build_federated_averaging_process.md):
 Builds the TFF computations for optimization using federated averaging.
 
@@ -48,9 +51,6 @@ for an example mini batch.
 [`from_keras_model(...)`](../tff/learning/from_keras_model.md): Builds a
 <a href="../tff/learning/Model.md"><code>tff.learning.Model</code></a> for an
 example mini batch.
-
-[`keras_weights_from_tff_weights(...)`](../tff/learning/keras_weights_from_tff_weights.md):
-Converts TFF's nested weights structure to flat weights.
 
 [`state_with_new_model_weights(...)`](../tff/learning/state_with_new_model_weights.md):
 Returns a `ServerState` with updated model weights.

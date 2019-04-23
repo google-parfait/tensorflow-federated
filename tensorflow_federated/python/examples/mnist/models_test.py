@@ -64,8 +64,7 @@ class MnistTest(tf.test.TestCase):
     federated_data = [[batch]]
 
     def keras_evaluate(state):
-      keras_model.set_weights(
-          tff.learning.keras_weights_from_tff_weights(state.model))
+      tff.learning.assign_weights_to_keras_model(keras_model, state.model)
       # N.B. The loss computed here won't match the
       # loss computed by TFF because of the Dropout layer.
       keras_model.test_on_batch(batch.x, batch.y)
