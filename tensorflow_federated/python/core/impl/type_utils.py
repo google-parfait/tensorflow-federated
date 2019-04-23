@@ -712,7 +712,7 @@ def is_assignable_from(target_type, source_type):
               (target_type.parameter is None)) or
              ((source_type.parameter is not None) and
               (target_type.parameter is not None) and is_assignable_from(
-                  source_type.parameter, target_type.parameter)) and
+                  target_type.parameter, source_type.parameter)) and
              is_assignable_from(target_type.result, source_type.result)))
   elif isinstance(target_type, computation_types.AbstractType):
     # TODO(b/113112108): Revise this to extend the relation of assignability to
