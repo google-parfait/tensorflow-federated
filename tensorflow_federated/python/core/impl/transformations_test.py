@@ -1036,7 +1036,7 @@ class TransformationsTest(parameterized.TestCase):
         '<a=federated_map(<(x -> x),y>),b=federated_map(<(x -> x),y>)>')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<a=(x -> x),b=(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<a=y,b=y>>)'
+        'federated_map(<(let fn=<a=(x -> x),b=(x -> x)> in (arg -> <a=fn[0](arg[0]),b=fn[1](arg[1])>)),<a=y,b=y>>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
