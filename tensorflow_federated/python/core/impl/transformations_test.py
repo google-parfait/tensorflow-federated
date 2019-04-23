@@ -32,27 +32,59 @@ from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def _create_dummy_block(comp):
-  r"""Creates a dummy block.
+def _create_called_federated_aggregate(value, zero, accumulate, merge, report):
+  r"""Creates a to call a federated aggregate.
 
-         Block
-        /     \
-    Data       Comp
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp, Comp, Comp, Comp]
 
   Args:
-    comp: A `computation_building_blocks.ComputationBuildingBlock`.
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value of the federated aggregate intrinsic.
+    zero: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      zero of the federated aggregate intrinsic.
+    accumulate: A `computation_building_blocks.ComputationBuildingBlock` to use
+      as the accumulate of the federated aggregate intrinsic.
+    merge: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the merge of the federated aggregate intrinsic.
+    report: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the report of the federated aggregate intrinsic.
 
   Returns:
-    A dummy `computation_building_blocks.Block`.
-
-  Raises:
-    TypeError: If `comp` is not a
-    `computation_building_blocks.ComputationBuildingBlock`.
+    A `computation_building_blocks.Call`.
   """
-  py_typecheck.check_type(comp,
+  py_typecheck.check_type(value,
                           computation_building_blocks.ComputationBuildingBlock)
-  data = computation_building_blocks.Data('data', tf.int32)
-  return computation_building_blocks.Block([('local', data)], comp)
+  py_typecheck.check_type(zero,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(accumulate,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(merge,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(report,
+                          computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(report.type_signature.result,
+                                                placements.SERVER, True)
+  intrinsic_type = computation_types.FunctionType((
+      value.type_signature,
+      zero.type_signature,
+      accumulate.type_signature,
+      merge.type_signature,
+      report.type_signature,
+  ), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_AGGREGATE.uri, intrinsic_type)
+  arg = computation_building_blocks.Tuple((
+      value,
+      zero,
+      accumulate,
+      merge,
+      report,
+  ))
+  return computation_building_blocks.Call(intrinsic, arg)
 
 
 def _create_called_federated_apply(fn, arg):
@@ -61,8 +93,8 @@ def _create_called_federated_apply(fn, arg):
             Call
            /    \
   Intrinsic      Tuple
-                /     \
-            Comp       Comp
+                 |
+                 [Comp, Comp]
 
   Args:
     fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
@@ -72,11 +104,6 @@ def _create_called_federated_apply(fn, arg):
 
   Returns:
     A `computation_building_blocks.Call`.
-
-  Raises:
-    TypeError: If `fn` or `arg` is not a
-    `computation_building_blocks.ComputationBuildingBlock` or if `fn` has a
-    parameter type that is not assignable from `arg` type.
   """
   py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -88,10 +115,10 @@ def _create_called_federated_apply(fn, arg):
         'The parameter of the function is of type {}, and the argument is of '
         'an incompatible type {}.'.format(
             str(fn.parameter_type), str(arg.type_signature.member)))
-  result_type = computation_types.FederatedType(
-      fn.type_signature.result, arg.type_signature.placement, all_equal=True)
+  result_type = computation_types.FederatedType(fn.type_signature.result,
+                                                placements.SERVER, True)
   intrinsic_type = computation_types.FunctionType(
-      [fn.type_signature, arg.type_signature], result_type)
+      (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
   tup = computation_building_blocks.Tuple((fn, arg))
@@ -104,8 +131,8 @@ def _create_called_federated_map(fn, arg):
             Call
            /    \
   Intrinsic      Tuple
-                /     \
-            Comp       Comp
+                 |
+                 [Comp, Comp]
 
   Args:
     fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
@@ -115,11 +142,6 @@ def _create_called_federated_map(fn, arg):
 
   Returns:
     A `computation_building_blocks.Call`.
-
-  Raises:
-    TypeError: If `fn` or `arg` is not a
-    `computation_building_blocks.ComputationBuildingBlock` or if `fn` has a
-    parameter type that is not assignable from `arg` type.
   """
   py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -131,10 +153,10 @@ def _create_called_federated_map(fn, arg):
         'The parameter of the function is of type {}, and the argument is of '
         'an incompatible type {}.'.format(
             str(fn.parameter_type), str(arg.type_signature.member)))
-  result_type = computation_types.FederatedType(
-      fn.type_signature.result, arg.type_signature.placement, all_equal=False)
+  result_type = computation_types.FederatedType(fn.type_signature.result,
+                                                placements.CLIENTS, False)
   intrinsic_type = computation_types.FunctionType(
-      [fn.type_signature, arg.type_signature], result_type)
+      (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type)
   tup = computation_building_blocks.Tuple((fn, arg))
@@ -147,8 +169,8 @@ def _create_called_sequence_map(fn, arg):
             Call
            /    \
   Intrinsic      Tuple
-                /     \
-            Comp       Comp
+                 |
+                 [Comp, Comp]
 
   Args:
     fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
@@ -158,11 +180,6 @@ def _create_called_sequence_map(fn, arg):
 
   Returns:
     A `computation_building_blocks.Call`.
-
-  Raises:
-    TypeError: If `fn` or `arg` is not a
-    `computation_building_blocks.ComputationBuildingBlock` or if `fn` has a
-    parameter type that is not assignable from `arg` type.
   """
   py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -176,7 +193,7 @@ def _create_called_sequence_map(fn, arg):
             str(fn.parameter_type), str(arg.type_signature.element)))
   result_type = computation_types.SequenceType(fn.type_signature.result)
   intrinsic_type = computation_types.FunctionType(
-      [fn.type_signature, arg.type_signature], result_type)
+      (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type)
   tup = computation_building_blocks.Tuple((fn, arg))
@@ -202,12 +219,6 @@ def _create_chained_call(fn, arg, n):
 
   Returns:
     A `computation_building_blocks.Call`.
-
-  Raises:
-    TypeError: If `fn` or `arg` is not a
-    `computation_building_blocks.ComputationBuildingBlock`; if `fn` has a
-    parameter type that is not assignable from `arg` type; or if `fn` has a
-    parameter type that is not assignable from its result type.
   """
   py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -236,15 +247,16 @@ def _create_chained_called_federated_map(fn, arg, n):
             Call
            /    \
   Intrinsic      Tuple
-                /     \
-            Comp       ...
-                          \
-                           Call
-                          /    \
-                 Intrinsic      Tuple
-                               /     \
-                           Comp       Comp
-
+                 |
+                 [Comp, Comp]
+                            \
+                             ...
+                                \
+                                 Call
+                                /    \
+                       Intrinsic      Tuple
+                                      |
+                                      [Comp, Comp]
   Args:
     fn: A functional `computation_building_blocks.ComputationBuildingBlock` with
       a parameter type that is assignable from its result type.
@@ -253,12 +265,6 @@ def _create_chained_called_federated_map(fn, arg, n):
 
   Returns:
     A `computation_building_blocks.Call`.
-
-  Raises:
-    TypeError: If `fn` or `arg` is not a
-    `computation_building_blocks.ComputationBuildingBlock`; if `fn` has a
-    parameter type that is not assignable from `arg` type; or if `fn` has a
-    parameter type that is not assignable from its result type.
   """
   py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -282,62 +288,73 @@ def _create_chained_called_federated_map(fn, arg, n):
   return call
 
 
-def _create_lambda_to_dummy_intrinsic(type_spec, uri='dummy'):
-  r"""Creates a lambda to call a dummy intrinsic.
+def _create_lambda_to_identity(parameter_name, parameter_type):
+  r"""Creates a lambda to return the argument.
 
-  Lambda
+  Lambda(x)
         \
-         Call
-        /    \
-  Intrinsic   Ref(arg)
+         Ref(x)
 
   Args:
-    type_spec: The type of the argument.
-    uri: The URI of the intrinsic.
+    parameter_name: The name of the parameter.
+    parameter_type: The type of the parameter.
 
   Returns:
     A `computation_building_blocks.Lambda`.
+  """
+  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
+  return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
-  Raises:
-    TypeError: If `type_spec` is not a `tf.dtypes.DType`.
+
+def _create_dummy_block(comp):
+  r"""Creates a dummy block.
+
+                Block
+               /     \
+  local=Data(x)       Comp
+
+  Args:
+    comp: A `computation_building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A dummy `computation_building_blocks.Block`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  data = computation_building_blocks.Data('x', tf.int32)
+  return computation_building_blocks.Block([('local', data)], comp)
+
+
+def _create_lambda_to_dummy_intrinsic(uri='dummy', type_spec=tf.int32):
+  r"""Creates a lambda to call a dummy intrinsic.
+
+  Lambda(x)
+           \
+            Call
+           /    \
+  Intrinsic      Ref(x)
+
+  Args:
+    uri: The URI of the intrinsic.
+    type_spec: The type of the parameter.
+
+  Returns:
+    A `computation_building_blocks.Lambda`.
   """
   py_typecheck.check_type(type_spec, tf.dtypes.DType)
   intrinsic_type = computation_types.FunctionType(type_spec, type_spec)
   intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
-  arg = computation_building_blocks.Reference('arg', type_spec)
-  call = computation_building_blocks.Call(intrinsic, arg)
-  return computation_building_blocks.Lambda(arg.name, arg.type_signature, call)
-
-
-def _create_lambda_to_identity(type_spec):
-  r"""Creates a lambda to return the argument.
-
-  Lambda
-        \
-         Ref(arg)
-
-  Args:
-    type_spec: The type of the argument.
-
-  Returns:
-    A `computation_building_blocks.Lambda`.
-
-  Raises:
-    TypeError: If `type_spec` is not a `tf.dtypes.DType`.
-  """
-  py_typecheck.check_type(type_spec, tf.dtypes.DType)
-  arg = computation_building_blocks.Reference('arg', type_spec)
-  return computation_building_blocks.Lambda(arg.name, arg.type_signature, arg)
+  ref = computation_building_blocks.Reference('x', type_spec)
+  call = computation_building_blocks.Call(intrinsic, ref)
+  return computation_building_blocks.Lambda(ref.name, ref.type_signature, call)
 
 
 def _create_lambda_to_dummy_cast(parameter_type, result_type):
   r"""Creates a lambda to cast from `parameter_type` to `result_type`.
 
-  Lambda
-        \
-         Call
-        /    \
-    Comp      Ref(arg)
+  Lambda(x)
+           \
+            Data(y)
 
   Args:
     parameter_type: The type of the argument.
@@ -345,14 +362,69 @@ def _create_lambda_to_dummy_cast(parameter_type, result_type):
 
   Returns:
     A `computation_building_blocks.Lambda`.
-
-  Raises:
-    TypeError: If `parameter_type` or `result_type` is not a `tf.dtypes.DType`.
   """
   py_typecheck.check_type(parameter_type, tf.dtypes.DType)
   py_typecheck.check_type(result_type, tf.dtypes.DType)
-  arg = computation_building_blocks.Data('data', result_type)
-  return computation_building_blocks.Lambda('arg', parameter_type, arg)
+  arg = computation_building_blocks.Data('y', result_type)
+  return computation_building_blocks.Lambda('x', parameter_type, arg)
+
+
+def _create_dummy_called_federated_aggregate():
+  value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+  value = computation_building_blocks.Data('v', value_type)
+  zero = computation_building_blocks.Data('z', tf.int32)
+  accumulate_type = computation_types.FunctionType((tf.int32, tf.int32),
+                                                   tf.int32)
+  accumulate_result = computation_building_blocks.Data('a', tf.int32)
+  accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+                                                  accumulate_result)
+  merge_type = computation_types.FunctionType((tf.int32, tf.int32), tf.int32)
+  merge_result = computation_building_blocks.Data('m', tf.int32)
+  merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+  report_type = computation_types.FederatedType(tf.int32, placements.SERVER,
+                                                True)
+  report_result = computation_building_blocks.Data('r', tf.int32)
+  report = computation_building_blocks.Lambda('x', report_type, report_result)
+  return _create_called_federated_aggregate(value, zero, accumulate, merge,
+                                            report)
+
+
+def _create_dummy_called_federated_apply(parameter_name='x',
+                                         parameter_type=tf.int32,
+                                         argument_name='y'):
+  fn = _create_lambda_to_identity(parameter_name, parameter_type)
+  arg_type = computation_types.FederatedType(parameter_type, placements.SERVER,
+                                             True)
+  arg = computation_building_blocks.Data(argument_name, arg_type)
+  return _create_called_federated_apply(fn, arg)
+
+
+def _create_dummy_called_federated_map(parameter_name='x',
+                                       parameter_type=tf.int32,
+                                       argument_name='y'):
+  fn = _create_lambda_to_identity(parameter_name, parameter_type)
+  arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS,
+                                             False)
+  arg = computation_building_blocks.Data(argument_name, arg_type)
+  return _create_called_federated_map(fn, arg)
+
+
+def _create_dummy_called_sequence_map(parameter_name='x',
+                                      parameter_type=tf.int32,
+                                      argument_name='y'):
+  fn = _create_lambda_to_identity(parameter_name, parameter_type)
+  arg_type = computation_types.SequenceType(parameter_type)
+  arg = computation_building_blocks.Data(argument_name, arg_type)
+  return _create_called_sequence_map(fn, arg)
+
+
+def _create_dummy_called_intrinsic(uri='dummy', type_spec=tf.int32):
+  py_typecheck.check_type(type_spec, tf.dtypes.DType)
+  intrinsic_type = computation_types.FunctionType(type_spec, type_spec)
+  intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
+  arg = computation_building_blocks.Data('x', type_spec)
+  return computation_building_blocks.Call(intrinsic, arg)
 
 
 class TransformationsTest(parameterized.TestCase):
@@ -373,17 +445,18 @@ class TransformationsTest(parameterized.TestCase):
         comp)
 
     self.assertNotEqual(transformed_comp._name, comp._name)
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_compiled_computations_names_replaces_multiple_names(self):
-    comps = []
+    elements = []
     for _ in range(10):
       fn = lambda: tf.constant(1)
       tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
           fn, None, context_stack_impl.context_stack)
       compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
-      comps.append(compiled_comp)
-    comp_tuple = computation_building_blocks.Tuple(comps)
-    comp = comp_tuple
+      elements.append(compiled_comp)
+    compiled_comps = computation_building_blocks.Tuple(elements)
+    comp = compiled_comps
 
     transformed_comp = transformations.replace_compiled_computations_names_with_unique_names(
         comp)
@@ -395,6 +468,7 @@ class TransformationsTest(parameterized.TestCase):
         len(transformed_comp_names), len(set(transformed_comp_names)),
         'The transformed computation names are not unique: {}.'.format(
             transformed_comp_names))
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_compiled_computations_names_does_not_replace_other_name(
       self):
@@ -404,6 +478,7 @@ class TransformationsTest(parameterized.TestCase):
         comp)
 
     self.assertEqual(transformed_comp._name, comp._name)
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_intrinsic_raises_type_error_none_comp(self):
     uri = 'dummy'
@@ -414,7 +489,7 @@ class TransformationsTest(parameterized.TestCase):
           None, uri, body, context_stack_impl.context_stack)
 
   def test_replace_intrinsic_raises_type_error_none_uri(self):
-    comp = _create_lambda_to_dummy_intrinsic(tf.int32)
+    comp = _create_lambda_to_dummy_intrinsic()
     body = lambda x: x
 
     with self.assertRaises(TypeError):
@@ -422,7 +497,7 @@ class TransformationsTest(parameterized.TestCase):
           comp, None, body, context_stack_impl.context_stack)
 
   def test_replace_intrinsic_raises_type_error_none_body(self):
-    comp = _create_lambda_to_dummy_intrinsic(tf.int32)
+    comp = _create_lambda_to_dummy_intrinsic()
     uri = 'dummy'
 
     with self.assertRaises(TypeError):
@@ -430,7 +505,7 @@ class TransformationsTest(parameterized.TestCase):
           comp, uri, None, context_stack_impl.context_stack)
 
   def test_replace_intrinsic_raises_type_error_none_context_stack(self):
-    comp = _create_lambda_to_dummy_intrinsic(tf.int32)
+    comp = _create_lambda_to_dummy_intrinsic()
     uri = 'dummy'
     body = lambda x: x
 
@@ -438,19 +513,20 @@ class TransformationsTest(parameterized.TestCase):
       transformations.replace_intrinsic_with_callable(comp, uri, body, None)
 
   def test_replace_intrinsic_replaces_intrinsic(self):
-    comp = _create_lambda_to_dummy_intrinsic(tf.int32)
+    comp = _create_lambda_to_dummy_intrinsic()
     uri = 'dummy'
     body = lambda x: x
 
     transformed_comp = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr, '(arg -> dummy(arg))')
+    self.assertEqual(comp.tff_repr, '(x -> dummy(x))')
     self.assertEqual(transformed_comp.tff_repr,
-                     '(arg -> (dummy_arg -> dummy_arg)(arg))')
+                     '(x -> (dummy_arg -> dummy_arg)(x))')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_intrinsic_replaces_nested_intrinsic(self):
-    fn = _create_lambda_to_dummy_intrinsic(tf.int32)
+    fn = _create_lambda_to_dummy_intrinsic()
     block = _create_dummy_block(fn)
     comp = block
     uri = 'dummy'
@@ -459,13 +535,13 @@ class TransformationsTest(parameterized.TestCase):
     transformed_comp = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr, '(let local=data in (arg -> dummy(arg)))')
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let local=data in (arg -> (dummy_arg -> dummy_arg)(arg)))')
+    self.assertEqual(comp.tff_repr, '(let local=x in (x -> dummy(x)))')
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let local=x in (x -> (dummy_arg -> dummy_arg)(x)))')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_replace_intrinsic_replaces_multiple_intrinsics(self):
-    fn = _create_lambda_to_dummy_intrinsic(tf.int32)
+  def test_replace_intrinsic_replaces_chained_intrinsics(self):
+    fn = _create_lambda_to_dummy_intrinsic(type_spec=tf.int32)
     arg = computation_building_blocks.Data('x', tf.int32)
     call = _create_chained_call(fn, arg, 2)
     comp = call
@@ -475,85 +551,89 @@ class TransformationsTest(parameterized.TestCase):
     transformed_comp = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr,
-                     '(arg -> dummy(arg))((arg -> dummy(arg))(x))')
+    self.assertEqual(comp.tff_repr, '(x -> dummy(x))((x -> dummy(x))(x))')
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(arg -> (dummy_arg -> dummy_arg)(arg))((arg -> (dummy_arg -> dummy_arg)(arg))(x))'
+        '(x -> (dummy_arg -> dummy_arg)(x))((x -> (dummy_arg -> dummy_arg)(x))(x))'
     )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_intrinsic_does_not_replace_other_intrinsic(self):
-    comp = _create_lambda_to_dummy_intrinsic(tf.int32)
+    comp = _create_lambda_to_dummy_intrinsic()
     uri = 'other'
     body = lambda x: x
 
     transformed_comp = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr, '(arg -> dummy(arg))')
-    self.assertEqual(transformed_comp.tff_repr, '(arg -> dummy(arg))')
+    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
+    self.assertEqual(transformed_comp.tff_repr, '(x -> dummy(x))')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_called_lambda_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.replace_called_lambda_with_block(None)
 
   def test_replace_called_lambda_replaces_called_lambda(self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', tf.int32)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
 
     transformed_comp = transformations.replace_called_lambda_with_block(comp)
 
-    self.assertEqual(comp.tff_repr, '(arg -> arg)(x)')
-    self.assertEqual(transformed_comp.tff_repr, '(let arg=x in arg)')
+    self.assertEqual(comp.tff_repr, '(x -> x)(y)')
+    self.assertEqual(transformed_comp.tff_repr, '(let x=y in x)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_called_lambda_replaces_nested_called_lambda(self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', tf.int32)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     block = _create_dummy_block(call)
     comp = block
 
     transformed_comp = transformations.replace_called_lambda_with_block(comp)
 
-    self.assertEqual(comp.tff_repr, '(let local=data in (arg -> arg)(x))')
+    self.assertEqual(comp.tff_repr, '(let local=x in (x -> x)(y))')
     self.assertEqual(transformed_comp.tff_repr,
-                     '(let local=data in (let arg=x in arg))')
+                     '(let local=x in (let x=y in x))')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_replace_called_lambda_replaces_multiple_called_lambdas(self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', tf.int32)
+  def test_replace_called_lambda_replaces_chained_called_lambdas(self):
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg = computation_building_blocks.Data('y', tf.int32)
     call = _create_chained_call(fn, arg, 2)
     comp = call
 
     transformed_comp = transformations.replace_called_lambda_with_block(comp)
 
-    self.assertEqual(comp.tff_repr, '(arg -> arg)((arg -> arg)(x))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let arg=(let arg=x in arg) in arg)')
+    self.assertEqual(comp.tff_repr, '(x -> x)((x -> x)(y))')
+    self.assertEqual(transformed_comp.tff_repr, '(let x=(let x=y in x) in x)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_called_lambda_does_not_replace_uncalled_lambda(self):
-    fn = _create_lambda_to_identity(tf.int32)
+    fn = _create_lambda_to_identity('x', tf.int32)
     comp = fn
 
     transformed_comp = transformations.replace_called_lambda_with_block(comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(arg -> arg)')
+    self.assertEqual(transformed_comp.tff_repr, '(x -> x)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_called_lambda_does_not_replace_separated_called_lambda(self):
-    fn = _create_lambda_to_identity(tf.int32)
+    fn = _create_lambda_to_identity('x', tf.int32)
     block = _create_dummy_block(fn)
-    arg = computation_building_blocks.Data('x', tf.int32)
+    arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(block, arg)
     comp = call
 
     transformed_comp = transformations.replace_called_lambda_with_block(comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let local=data in (arg -> arg))(x)')
+    self.assertEqual(transformed_comp.tff_repr, '(let local=x in (x -> x))(y)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_remove_mapped_or_applied_identity_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -563,145 +643,177 @@ class TransformationsTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('federated_apply',
        intrinsic_defs.FEDERATED_APPLY.uri,
-       computation_types.FederatedType(tf.int32, placements.SERVER),
-       _create_called_federated_apply),
+       _create_dummy_called_federated_apply),
       ('federated_map',
        intrinsic_defs.FEDERATED_MAP.uri,
-       computation_types.FederatedType(tf.int32, placements.CLIENTS),
-       _create_called_federated_map),
+       _create_dummy_called_federated_map),
       ('sequence_map',
        intrinsic_defs.SEQUENCE_MAP.uri,
-       computation_types.SequenceType(tf.int32),
-       _create_called_sequence_map))
+       _create_dummy_called_sequence_map))
   # pyformat: enable
   def test_remove_mapped_or_applied_identity_removes_identity(
-      self, uri, type_spec, comp_factory):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', type_spec)
-    call = comp_factory(fn, arg)
+      self, uri, comp_factory):
+    call = comp_factory()
     comp = call
 
     transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
 
-    self.assertEqual(comp.tff_repr, '{}(<(arg -> arg),x>)'.format(uri))
-    self.assertEqual(transformed_comp.tff_repr, 'x')
+    self.assertEqual(comp.tff_repr, '{}(<(x -> x),y>)'.format(uri))
+    self.assertEqual(transformed_comp.tff_repr, 'y')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('federated_apply',
-       intrinsic_defs.FEDERATED_APPLY.uri,
-       computation_types.FederatedType(tf.int32, placements.SERVER),
-       _create_called_federated_apply),
-      ('federated_map',
-       intrinsic_defs.FEDERATED_MAP.uri,
-       computation_types.FederatedType(tf.int32, placements.CLIENTS),
-       _create_called_federated_map),
-      ('sequence_map',
-       intrinsic_defs.SEQUENCE_MAP.uri,
-       computation_types.SequenceType(tf.int32),
-       _create_called_sequence_map))
-  # pyformat: enable
-  def test_remove_mapped_or_applied_identity_removes_nested_identity(
-      self, uri, type_spec, comp_factory):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', type_spec)
-    call = comp_factory(fn, arg)
+  def test_remove_mapped_or_applied_identity_replaces_federated_maps_with_named_result(
+      self):
+    parameter_type = [('a', tf.int32), ('b', tf.int32)]
+    fn = _create_lambda_to_identity('x', parameter_type)
+    arg_type = computation_types.FederatedType(parameter_type,
+                                               placements.CLIENTS, False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call = _create_called_federated_map(fn, arg)
+    comp = call
+
+    transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
+
+    self.assertEqual(comp.tff_repr, 'federated_map(<(x -> x),y>)')
+    self.assertEqual(transformed_comp.tff_repr, 'y')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_remove_mapped_or_applied_identity_removes_nested_federated_map(self):
+    call = _create_dummy_called_federated_map()
     block = _create_dummy_block(call)
     comp = block
 
     transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
 
     self.assertEqual(comp.tff_repr,
-                     '(let local=data in {}(<(arg -> arg),x>))'.format(uri))
-    self.assertEqual(transformed_comp.tff_repr, '(let local=data in x)')
+                     '(let local=x in federated_map(<(x -> x),y>))')
+    self.assertEqual(transformed_comp.tff_repr, '(let local=x in y)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_remove_mapped_or_applied_identity_removes_multiple_identities(self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('x', arg_type)
+  def test_remove_mapped_or_applied_identity_removes_chained_federated_maps(
+      self):
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map(fn, arg, 2)
     comp = call
 
     transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
 
-    self.assertEqual(
-        comp.tff_repr,
-        'federated_map(<(arg -> arg),federated_map(<(arg -> arg),x>)>)')
-    self.assertEqual(transformed_comp.tff_repr, 'x')
+    self.assertEqual(comp.tff_repr,
+                     'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
+    self.assertEqual(transformed_comp.tff_repr, 'y')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_remove_mapped_or_applied_identity_does_not_remove_other_intrinsic(
+  def test_remove_mapped_or_applied_identity_does_not_remove_dummy_intrinsic(
       self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', tf.int32)
-    intrinsic_type = computation_types.FunctionType(
-        [fn.type_signature, arg.type_signature], arg.type_signature)
-    intrinsic = computation_building_blocks.Intrinsic('dummy', intrinsic_type)
-    tup = computation_building_blocks.Tuple((fn, arg))
-    call = computation_building_blocks.Call(intrinsic, tup)
-    comp = call
+    comp = _create_dummy_called_intrinsic()
 
     transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
 
-    self.assertEqual(comp.tff_repr, 'dummy(<(arg -> arg),x>)')
-    self.assertEqual(transformed_comp.tff_repr, 'dummy(<(arg -> arg),x>)')
+    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
+    self.assertEqual(transformed_comp.tff_repr, 'dummy(x)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_remove_mapped_or_applied_identity_does_not_remove_called_lambda(
       self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg = computation_building_blocks.Data('x', tf.int32)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
 
     transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
 
-    self.assertEqual(comp.tff_repr, '(arg -> arg)(x)')
-    self.assertEqual(transformed_comp.tff_repr, '(arg -> arg)(x)')
+    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
+    self.assertEqual(transformed_comp.tff_repr, '(x -> x)(y)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.replace_chained_federated_maps_with_federated_map(None)
 
   def test_replace_chained_federated_maps_replaces_federated_maps(self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('x', arg_type)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map(fn, arg, 2)
     comp = call
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
-    self.assertEqual(
-        comp.tff_repr,
-        'federated_map(<(arg -> arg),federated_map(<(arg -> arg),x>)>)')
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        'federated_map(<(arg -> (arg -> arg)((arg -> arg)(arg))),x>)')
+    self.assertEqual(comp.tff_repr,
+                     'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     'federated_map(<(arg -> (x -> x)((x -> x)(arg))),y>)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_replace_chained_federated_maps_replaces_federated_maps_with_different_types(
+  def test_replace_chained_federated_maps_replaces_federated_maps_with_different_names(
       self):
-    fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Reference('x', arg_type)
+    fn_1 = _create_lambda_to_identity('a', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('b', arg_type)
     call_1 = _create_called_federated_map(fn_1, arg)
-    fn_2 = _create_lambda_to_identity(tf.float32)
+    fn_2 = _create_lambda_to_identity('c', tf.int32)
     call_2 = _create_called_federated_map(fn_2, call_1)
     comp = call_2
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
-    self.assertEqual(
-        comp.tff_repr,
-        'federated_map(<(arg -> arg),federated_map(<(arg -> data),x>)>)')
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        'federated_map(<(arg -> (arg -> arg)((arg -> data)(arg))),x>)')
+    self.assertEqual(comp.tff_repr,
+                     'federated_map(<(c -> c),federated_map(<(a -> a),b>)>)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     'federated_map(<(arg -> (c -> c)((a -> a)(arg))),b>)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_chained_federated_maps_replaces_federated_maps_with_different_types(
+      self):
+    fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call_1 = _create_called_federated_map(fn_1, arg)
+    fn_2 = _create_lambda_to_identity('x', tf.float32)
+    call_2 = _create_called_federated_map(fn_2, call_1)
+    comp = call_2
+
+    transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
+        comp)
+
+    self.assertEqual(comp.tff_repr,
+                     'federated_map(<(x -> x),federated_map(<(x -> y),y>)>)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     'federated_map(<(arg -> (x -> x)((x -> y)(arg))),y>)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_chained_federated_maps_replaces_federated_maps_with_named_result(
+      self):
+    parameter_type = [('a', tf.int32), ('b', tf.int32)]
+    fn = _create_lambda_to_identity('x', parameter_type)
+    arg_type = computation_types.FederatedType(parameter_type,
+                                               placements.CLIENTS, False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call = _create_chained_called_federated_map(fn, arg, 2)
+    comp = call
+
+    transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
+        comp)
+
+    self.assertEqual(comp.tff_repr,
+                     'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     'federated_map(<(arg -> (x -> x)((x -> x)(arg))),y>)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_replaces_nested_federated_maps(self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('x', arg_type)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map(fn, arg, 2)
     block = _create_dummy_block(call)
     comp = block
@@ -711,18 +823,19 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        '(let local=data in federated_map(<(arg -> arg),federated_map(<(arg -> arg),x>)>))'
+        '(let local=x in federated_map(<(x -> x),federated_map(<(x -> x),y>)>))'
     )
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let local=data in federated_map(<(arg -> (arg -> arg)((arg -> arg)(arg))),x>))'
-    )
+        '(let local=x in federated_map(<(arg -> (x -> x)((x -> x)(arg))),y>))')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
-  def test_replace_chained_federated_maps_replaces_multiple_federated_maps(
+  def test_replace_chained_federated_maps_replaces_multiple_chained_federated_maps(
       self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('x', arg_type)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map(fn, arg, 3)
     comp = call
 
@@ -731,18 +844,20 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        'federated_map(<(arg -> arg),federated_map(<(arg -> arg),federated_map(<(arg -> arg),x>)>)>)'
+        'federated_map(<(x -> x),federated_map(<(x -> x),federated_map(<(x -> x),y>)>)>)'
     )
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(arg -> (arg -> arg)((arg -> (arg -> arg)((arg -> arg)(arg)))(arg))),x>)'
+        'federated_map(<(arg -> (x -> x)((arg -> (x -> x)((x -> x)(arg)))(arg))),y>)'
     )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_does_not_replace_one_federated_map(
       self):
-    fn = _create_lambda_to_identity(tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('x', arg_type)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
     call = _create_called_federated_map(fn, arg)
     comp = call
 
@@ -750,18 +865,18 @@ class TransformationsTest(parameterized.TestCase):
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr,
-                     'federated_map(<(arg -> arg),x>)')
+    self.assertEqual(transformed_comp.tff_repr, 'federated_map(<(x -> x),y>)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_does_not_replace_separated_federated_maps(
       self):
-    fn_1 = _create_lambda_to_identity(tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('x', arg_type)
-    call_1 = _create_called_federated_map(fn_1, arg)
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call_1 = _create_called_federated_map(fn, arg)
     block = _create_dummy_block(call_1)
-    fn_2 = _create_lambda_to_identity(tf.int32)
-    call_2 = _create_called_federated_map(fn_2, block)
+    call_2 = _create_called_federated_map(fn, block)
     comp = call_2
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
@@ -770,8 +885,245 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(arg -> arg),(let local=data in federated_map(<(arg -> arg),x>))>)'
+        'federated_map(<(x -> x),(let local=x in federated_map(<(x -> x),y>))>)'
     )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_raises_type_error(self):
+    with self.assertRaises(TypeError):
+      transformations.replace_tuple_intrinsics_with_intrinsic(None)
+
+  def test_replace_tuple_intrinsics_replaces_federated_aggregates(self):
+    elements = [_create_dummy_called_federated_aggregate() for _ in range(2)]
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_aggregate(<v,z,(x -> a),(x -> m),(x -> r)>),federated_aggregate(<v,z,(x -> a),(x -> m),(x -> r)>)>'
+    )
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_aggregate(<<v,v>,<z,z>,(let fn=<(x -> a),(x -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> m),(x -> m)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> r),(x -> r)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_federated_maps(self):
+    elements = [_create_dummy_called_federated_map() for _ in range(2)]
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_federated_maps_with_different_names(
+      self):
+    elements = (
+        _create_dummy_called_federated_map(
+            parameter_name='a', argument_name='b'),
+        _create_dummy_called_federated_map(
+            parameter_name='c', argument_name='d'),
+    )
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(a -> a),b>),federated_map(<(c -> c),d>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(a -> a),(c -> c)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<b,d>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_federated_maps_with_different_types(
+      self):
+    elements = (
+        _create_dummy_called_federated_map(parameter_type=tf.int32),
+        _create_dummy_called_federated_map(parameter_type=tf.float32),
+    )
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_federated_maps_with_named_result(
+      self):
+    parameter_type = [('a', tf.int32), ('b', tf.int32)]
+    fn = _create_lambda_to_identity('x', parameter_type)
+    arg_type = computation_types.FederatedType(parameter_type,
+                                               placements.CLIENTS, False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call = _create_called_federated_map(fn, arg)
+    elements = [call, call]
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_federated_maps_with_unbound_reference(
+      self):
+    ref = computation_building_blocks.Reference('arg', tf.int32)
+    fn = computation_building_blocks.Lambda('x', tf.int32, ref)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call = _create_called_federated_map(fn, arg)
+    elements = [call, call]
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(x -> arg),y>),federated_map(<(x -> arg),y>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> arg),(x -> arg)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_named_federated_maps(self):
+    elements = (
+        ('a', _create_dummy_called_federated_map()),
+        ('b', _create_dummy_called_federated_map()),
+    )
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<a=federated_map(<(x -> x),y>),b=federated_map(<(x -> x),y>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<a=(x -> x),b=(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<a=y,b=y>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_nested_federated_maps(self):
+    elements = [_create_dummy_called_federated_map() for _ in range(2)]
+    calls = computation_building_blocks.Tuple(elements)
+    block = _create_dummy_block(calls)
+    comp = block
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '(let local=x in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
+    )
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(let local=x in federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>))'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_multiple_federated_maps(self):
+    comp_elements = []
+    for _ in range(2):
+      call_elements = [_create_dummy_called_federated_map() for _ in range(2)]
+      calls = computation_building_blocks.Tuple(call_elements)
+      comp_elements.append(calls)
+    comps = computation_building_blocks.Tuple(comp_elements)
+    comp = comps
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>,<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>>'
+    )
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<<y,y>,<y,y>>>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_replaces_one_federated_map(self):
+    elements = (_create_dummy_called_federated_map(),)
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(comp.tff_repr, '<federated_map(<(x -> x),y>)>')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> x)> in (arg -> <fn[0](arg[0])>)),<y>>)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_does_not_replace_different_intrinsics(self):
+    elements = (
+        _create_dummy_called_federated_aggregate(),
+        _create_dummy_called_federated_map(),
+    )
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '<federated_aggregate(<v,z,(x -> a),(x -> m),(x -> r)>),federated_map(<(x -> x),y>)>'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_tuple_intrinsics_does_not_replace_dummy_intrinsics(self):
+    elements = [_create_dummy_called_intrinsic() for _ in range(2)]
+    calls = computation_building_blocks.Tuple(elements)
+    comp = calls
+
+    transformed_comp = transformations.replace_tuple_intrinsics_with_intrinsic(
+        comp)
+
+    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
+    self.assertEqual(transformed_comp.tff_repr, '<dummy(x),dummy(x)>')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_inline_conflicting_lambdas(self):
     comp = computation_building_blocks.Tuple(

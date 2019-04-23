@@ -646,6 +646,7 @@ py_library(
         ":federated_computation_utils",
         ":intrinsic_defs",
         ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "@six_archive//:six",
