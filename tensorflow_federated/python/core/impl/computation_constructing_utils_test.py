@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
@@ -232,6 +233,202 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'has no element of name c'):
       _ = computation_constructing_utils.construct_federated_getattr_call(
           federated_comp_named, 'c')
+
+  def test_construct_setattr_named_tuple_type_fails_on_bad_type(self):
+    bad_type = computation_types.FederatedType([('a', tf.int32)],
+                                               placement_literals.CLIENTS)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+          bad_type, 'a', value_comp)
+
+  def test_construct_setattr_named_tuple_type_fails_on_none_name(self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32)])
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+          good_type, None, value_comp)
+
+  def test_construct_setattr_named_tuple_type_fails_on_none_value(self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32)])
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+          good_type, 'a', None)
+
+  def test_construct_setattr_named_tuple_type_fails_implicit_type_conversion(
+      self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                  ('b', tf.bool)])
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaisesRegex(TypeError, 'incompatible type'):
+      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+          good_type, 'b', value_comp)
+
+  def test_construct_setattr_named_tuple_type_fails_unknown_name(self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                  ('b', tf.bool)])
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaises(AttributeError):
+      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+          good_type, 'c', value_comp)
+
+  def test_construct_setattr_named_tuple_type_replaces_single_element(self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                  ('b', tf.bool)])
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    lam = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+        good_type, 'a', value_comp)
+    self.assertEqual(
+        lam.tff_repr,
+        '(let value_comp_placeholder=x in (lambda_arg -> <a=value_comp_placeholder,b=lambda_arg[1]>))'
+    )
+
+  def test_construct_setattr_named_tuple_type_skips_unnamed_element(self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                  (None, tf.float32),
+                                                  ('b', tf.bool)])
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    lam = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+        good_type, 'a', value_comp)
+    self.assertEqual(
+        lam.tff_repr,
+        '(let value_comp_placeholder=x in (lambda_arg -> <a=value_comp_placeholder,lambda_arg[1],b=lambda_arg[2]>))'
+    )
+
+  def test_construct_setattr_named_tuple_type_leaves_type_signature_unchanged(
+      self):
+    good_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                  (None, tf.float32),
+                                                  ('b', tf.bool)])
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    lam = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+        good_type, 'a', value_comp)
+    self.assertTrue(
+        type_utils.are_equivalent_types(lam.type_signature.parameter,
+                                        lam.type_signature.result))
+
+  def test_federated_setattr_call_fails_on_none_federated_comp(self):
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_federated_setattr_call(
+          None, 'a', value_comp)
+
+  def test_federated_setattr_call_fails_non_federated_type(self):
+    bad_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                 (None, tf.float32),
+                                                 ('b', tf.bool)])
+    bad_comp = computation_building_blocks.Data('data', bad_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_federated_setattr_call(
+          bad_comp, 'a', value_comp)
+
+  def test_federated_setattr_call_fails_on_none_name(self):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type,
+                                                placement_literals.CLIENTS)
+    acceptable_comp = computation_building_blocks.Data('data', good_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_federated_setattr_call(
+          acceptable_comp, None, value_comp)
+
+  def test_federated_setattr_call_fails_on_none_value(self):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type,
+                                                placement_literals.CLIENTS)
+    acceptable_comp = computation_building_blocks.Data('data', good_type)
+
+    with self.assertRaises(TypeError):
+      _ = computation_constructing_utils.construct_federated_setattr_call(
+          acceptable_comp, 'a', None)
+
+  def test_federated_setattr_call_constructs_correct_intrinsic_clients(self):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type,
+                                                placement_literals.CLIENTS)
+    federated_comp = computation_building_blocks.Data('federated_comp',
+                                                      good_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+        federated_comp, 'a', value_comp)
+    self.assertEqual(federated_setattr.function.uri,
+                     intrinsic_defs.FEDERATED_MAP.uri)
+
+  def test_federated_setattr_call_constructs_correct_intrinsic_server(self):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type,
+                                                placement_literals.SERVER)
+    federated_comp = computation_building_blocks.Data('federated_comp',
+                                                      good_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+        federated_comp, 'a', value_comp)
+    self.assertEqual(federated_setattr.function.uri,
+                     intrinsic_defs.FEDERATED_APPLY.uri)
+
+  @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
+                                  ('server', placement_literals.SERVER))
+  def test_federated_setattr_call_leaves_type_signatures_alone(self, placement):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type, placement)
+    federated_comp = computation_building_blocks.Data('federated_comp',
+                                                      good_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+        federated_comp, 'a', value_comp)
+    self.assertTrue(
+        type_utils.are_equivalent_types(federated_setattr.type_signature,
+                                        federated_comp.type_signature))
+
+  def test_federated_setattr_call_constructs_correct_computation_clients(self):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type,
+                                                placement_literals.CLIENTS)
+    federated_comp = computation_building_blocks.Data('federated_comp',
+                                                      good_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+        federated_comp, 'a', value_comp)
+    self.assertEqual(
+        federated_setattr.tff_repr,
+        'federated_map(<(let value_comp_placeholder=x in (lambda_arg -> <a=value_comp_placeholder,lambda_arg[1],b=lambda_arg[2]>)),federated_comp>)'
+    )
+
+  def test_federated_setattr_call_constructs_correct_computation_server(self):
+    named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                         (None, tf.float32),
+                                                         ('b', tf.bool)])
+    good_type = computation_types.FederatedType(named_tuple_type,
+                                                placement_literals.SERVER)
+    federated_comp = computation_building_blocks.Data('federated_comp',
+                                                      good_type)
+    value_comp = computation_building_blocks.Data('x', tf.int32)
+
+    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+        federated_comp, 'a', value_comp)
+    self.assertEqual(
+        federated_setattr.tff_repr,
+        'federated_apply(<(let value_comp_placeholder=x in (lambda_arg -> <a=value_comp_placeholder,lambda_arg[1],b=lambda_arg[2]>)),federated_comp>)'
+    )
 
 
 if __name__ == '__main__':
