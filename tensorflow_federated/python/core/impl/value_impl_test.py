@@ -524,11 +524,25 @@ class ValueImplTest(parameterized.TestCase):
       self.assertEqual(foo([5, False]).b, False)
       self.assertEqual(foo([0, True]).a, 0)
 
+  def test_setattr_named_tuple_with_unnamed_element(self):
+
+    @computations.federated_computation([('a', tf.int32), (None, tf.float32),
+                                         ('b', tf.bool)])
+    def foo(x):
+      x.b = False
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(foo([5, 1.0, True]).b, False)
+      self.assertEqual(foo([5, 1.0, False]).b, False)
+      self.assertEqual(foo([5, 1.0, True])[1], 1.0)
+
   def test_setattr_named_tuple_type_fails_on_implicit_type_conversion(self):
 
     with self.assertRaisesRegex(
         TypeError, r'has attempted to set element a of type '
-        'int32 with incompatible item True.'):
+        'int32 with incompatible type'):
 
       @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
       def _(x):
@@ -537,7 +551,7 @@ class ValueImplTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(
         TypeError, r'has attempted to set element b of type '
-        'bool with incompatible item 10.'):
+        'bool with incompatible type'):
 
       @computations.federated_computation([('a', tf.int32), ('b', tf.bool)])
       def _(x):
@@ -558,6 +572,99 @@ class ValueImplTest(parameterized.TestCase):
       @computations.federated_computation(tf.int32)
       def _(x):
         x.c = 10
+        return x
+
+  def test_setattr_federated_named_tuple_int_on_server(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                        placements.SERVER,
+                                        all_equal=True))
+    def foo(x):
+      x.a = 10
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(
+          foo([5, True]),
+          anonymous_tuple.AnonymousTuple([('a', 10), ('b', True)]))
+
+  def test_setattr_federated_named_tuple_int(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                        placements.CLIENTS))
+    def foo(x):
+      x.a = 10
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(
+          foo([[5, True], [0, False], [-5, True]]), [
+              anonymous_tuple.AnonymousTuple([('a', 10), ('b', True)]),
+              anonymous_tuple.AnonymousTuple([('a', 10), ('b', False)]),
+              anonymous_tuple.AnonymousTuple([('a', 10), ('b', True)])
+          ])
+
+  def test_setattr_federated_named_tuple_type_bool(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                        placements.CLIENTS))
+    def foo(x):
+      x.b = False
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(
+          foo([[5, True], [0, False], [-5, True]]), [
+              anonymous_tuple.AnonymousTuple([('a', 5), ('b', False)]),
+              anonymous_tuple.AnonymousTuple([('a', 0), ('b', False)]),
+              anonymous_tuple.AnonymousTuple([('a', -5), ('b', False)])
+          ])
+
+  def test_setattr_federated_named_tuple_type_with_unnamed_element(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.int32), (None, tf.float32),
+                                         ('b', tf.bool)], placements.CLIENTS))
+    def foo(x):
+      x.b = False
+      return x
+
+    with context_stack_impl.context_stack.install(
+        reference_executor.ReferenceExecutor()):
+      self.assertEqual(
+          foo([[5, 1.0, True], [0, 2.0, True], [-5, 3.0, False]]), [
+              anonymous_tuple.AnonymousTuple([
+                  ('a', 5),
+                  (None, 1.0),
+                  ('b', False),
+              ]),
+              anonymous_tuple.AnonymousTuple([
+                  ('a', 0),
+                  (None, 2.0),
+                  ('b', False),
+              ]),
+              anonymous_tuple.AnonymousTuple([
+                  ('a', -5),
+                  (None, 3.0),
+                  ('b', False),
+              ])
+          ])
+
+  def test_setattr_federated_named_tuple_fails_on_implicit_conversion(self):
+
+    with self.assertRaisesRegex(TypeError, r'incompatible type'):
+
+      @computations.federated_computation(
+          computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                          placements.CLIENTS))
+      def _(x):
+        x.b = 10
         return x
 
 

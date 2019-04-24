@@ -89,6 +89,122 @@ def construct_federated_getattr_call(arg, name):
   return call
 
 
+def construct_federated_setattr_call(federated_comp, name, value_comp):
+  """Returns building block for `setattr(name, value_comp)` on `federated_comp`.
+
+  Constructs an appropriate communication intrinsic (either `federated_map` or
+  `federated_apply`) as well as a `computation_building_blocks.Lambda`
+  representing setting the `name` attribute of `federated_comp`'s `member` to
+  `value_comp`, and stitches these together in a call.
+
+  Notice that `federated_comp`'s `member` must actually define a `name`
+  attribute; this is enforced to avoid the need to worry about theplacement of a
+  previously undefined name.
+
+  Args:
+    federated_comp: Instance of
+      `computation_building_blocks.ComputationBuildingBlock` of type
+      `computation_types.FederatedType`, with member of type
+      `computation_types.NamedTupleType` whose attribute `name` we wish to set
+      to `value_comp`.
+    name: String name of the attribute we wish to overwrite in `federated_comp`.
+    value_comp: Instance of
+      `computation_building_blocks.ComputationBuildingBlock`, the value to
+      assign to `federated_comp`'s `member`'s `name` attribute.
+
+  Returns:
+    Instance of `computation_building_blocks.ComputationBuildingBlock`
+    representing `federated_comp` with its `member`'s `name` attribute set to
+    `value`.
+  """
+  py_typecheck.check_type(federated_comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(value_comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(federated_comp.type_signature,
+                          computation_types.FederatedType)
+  py_typecheck.check_type(federated_comp.type_signature.member,
+                          computation_types.NamedTupleType)
+  named_tuple_type_signature = federated_comp.type_signature.member
+  setattr_lambda = construct_named_tuple_setattr_lambda(
+      named_tuple_type_signature, name, value_comp)
+  intrinsic = construct_map_or_apply(setattr_lambda, federated_comp)
+  call = computation_building_blocks.Call(
+      intrinsic,
+      computation_building_blocks.Tuple([setattr_lambda, federated_comp]))
+  return call
+
+
+def construct_named_tuple_setattr_lambda(named_tuple_signature, name,
+                                         value_comp):
+  """Constructs a building block for replacing one attribute in a named tuple.
+
+  Returns an instance of `computation_building_blocks.Lambda` which takes an
+  argument of type `computation_types.NamedTupleType` and returns a
+  `computation_building_blocks.Tuple` which contains all the same elements as
+  the argument, except the attribute `name` now has value `value_comp`. The
+  Lambda constructed is the analogue of Python's `setattr` for the concrete
+  type `named_tuple_signature`.
+
+  Args:
+    named_tuple_signature: Instance of `computation_types.NamedTupleType`, the
+      type of the argument to the constructed
+      `computation_building_blocks.Lambda`.
+    name: String name of the attribute in the `named_tuple_signature` to replace
+      with `value_comp`. Must be present as a name in `named_tuple_signature;
+      otherwise we will raise an `AttributeError`.
+    value_comp: Instance of
+      `computation_building_blocks.ComputationBuildingBlock`, the value to place
+      as attribute `name` in the argument of the returned function.
+
+  Returns:
+    An instance of `computation_building_blocks.Block` of functional type
+    representing setting attribute `name` to value `value_comp` in its argument
+    of type `named_tuple_signature`.
+
+  Raises:
+    TypeError: If the types of the arguments don't match the assumptions above.
+    AttributeError: If `name` is not present as a named element in
+      `named_tuple_signature`
+  """
+  py_typecheck.check_type(named_tuple_signature,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(value_comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  value_comp_placeholder = computation_building_blocks.Reference(
+      'value_comp_placeholder', value_comp.type_signature)
+  lambda_arg = computation_building_blocks.Reference('lambda_arg',
+                                                     named_tuple_signature)
+  if name not in dir(named_tuple_signature):
+    raise AttributeError(
+        'There is no such attribute as \'{}\' in this federated tuple. '
+        'TFF does not allow for assigning to a nonexistent attribute. '
+        'If you want to assign to \'{}\', you must create a new named tuple '
+        'containing this attribute.'.format(name, name))
+  elements = []
+  for idx, (key, element_type) in enumerate(
+      anonymous_tuple.to_elements(named_tuple_signature)):
+    if key == name:
+      if not type_utils.is_assignable_from(element_type,
+                                           value_comp.type_signature):
+        raise TypeError(
+            '`setattr` has attempted to set element {} of type {} with incompatible type {}'
+            .format(key, element_type, value_comp.type_signature))
+      elements.append((key, value_comp_placeholder))
+    else:
+      elements.append(
+          (key, computation_building_blocks.Selection(lambda_arg, index=idx)))
+  return_tuple = computation_building_blocks.Tuple(elements)
+  lambda_to_return = computation_building_blocks.Lambda(lambda_arg.name,
+                                                        named_tuple_signature,
+                                                        return_tuple)
+  enclosing_block = computation_building_blocks.Block(
+      [(value_comp_placeholder.name, value_comp)], lambda_to_return)
+  return enclosing_block
+
+
 def construct_map_or_apply(fn, arg):
   """Injects intrinsic to allow application of `fn` to federated `arg`.
 

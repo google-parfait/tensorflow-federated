@@ -94,6 +94,7 @@ py_test(
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":context_stack_impl",
+        ":intrinsic_defs",
         ":placement_literals",
         ":type_utils",
         ":value_impl",
