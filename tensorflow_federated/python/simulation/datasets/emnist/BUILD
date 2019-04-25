@@ -21,7 +21,6 @@ py_library(
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
         "//tensorflow_federated/python/simulation:hdf5_client_data",
         "//tensorflow_federated/python/simulation:transforming_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -29,9 +28,5 @@ py_test(
     name = "load_data_test",
     size = "small",
     srcs = ["load_data_test.py"],
-    deps = [
-        ":load_data",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = [":load_data"],
 )

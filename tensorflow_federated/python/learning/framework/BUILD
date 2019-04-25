@@ -22,8 +22,6 @@ py_library(
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -39,8 +37,5 @@ py_test(
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
     ],
 )
