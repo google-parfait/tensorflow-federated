@@ -20,9 +20,9 @@ from __future__ import print_function
 
 import abc
 import collections
-import enum
 import itertools
 
+import enum
 import six
 from six.moves import range
 from six.moves import zip

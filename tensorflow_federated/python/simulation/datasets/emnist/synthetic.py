@@ -22,7 +22,9 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+
 import numpy as np
+from six.moves import range
 
 
 def from_ints(data):

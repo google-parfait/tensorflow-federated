@@ -11,6 +11,7 @@ py_library(
 py_library(
     name = "synthetic",
     srcs = ["synthetic.py"],
+    deps = ["@six_archive//:six"],
 )
 
 py_library(
@@ -33,5 +34,6 @@ py_test(
         ":load_data",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
+        "@six_archive//:six",
     ],
 )
