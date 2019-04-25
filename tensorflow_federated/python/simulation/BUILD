@@ -19,10 +19,6 @@ py_library(
 py_library(
     name = "client_data",
     srcs = ["client_data.py"],
-    deps = [
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
 )
 
 py_library(
@@ -32,7 +28,6 @@ py_library(
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -40,12 +35,7 @@ py_test(
     name = "file_per_user_client_data_test",
     size = "small",
     srcs = ["file_per_user_client_data_test.py"],
-    deps = [
-        ":file_per_user_client_data",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
+    deps = [":file_per_user_client_data"],
 )
 
 py_library(
@@ -55,8 +45,6 @@ py_library(
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -64,12 +52,7 @@ py_test(
     name = "hdf5_client_data_test",
     size = "small",
     srcs = ["hdf5_client_data_test.py"],
-    deps = [
-        ":hdf5_client_data",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
-    ],
+    deps = [":hdf5_client_data"],
 )
 
 py_library(
@@ -78,8 +61,6 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -90,9 +71,6 @@ py_test(
     deps = [
         ":hdf5_client_data",
         ":transforming_client_data",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -102,8 +80,6 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -111,8 +87,5 @@ py_test(
     name = "from_tensor_slices_client_data_test",
     size = "small",
     srcs = ["from_tensor_slices_client_data_test.py"],
-    deps = [
-        ":from_tensor_slices_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = [":from_tensor_slices_client_data"],
 )

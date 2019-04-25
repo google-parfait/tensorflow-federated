@@ -21,8 +21,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -34,7 +32,6 @@ py_test(
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -54,8 +51,5 @@ py_test(
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )

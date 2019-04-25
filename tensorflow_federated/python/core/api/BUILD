@@ -22,10 +22,7 @@ py_library(
 py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
-    deps = [
-        ":typed_object",
-        "@six_archive//:six",
-    ],
+    deps = [":typed_object"],
 )
 
 py_library(
@@ -36,8 +33,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:placement_literals",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -49,9 +44,6 @@ py_test(
         ":computation_types",
         ":placements",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -72,7 +64,6 @@ py_test(
         ":computations",
         ":value_base",
         "//tensorflow_federated/python/common_libs:test",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -97,10 +88,6 @@ py_test(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:federated_computation_context",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -115,16 +102,12 @@ py_library(
 py_library(
     name = "typed_object",
     srcs = ["typed_object.py"],
-    deps = ["@six_archive//:six"],
 )
 
 py_library(
     name = "value_base",
     srcs = ["value_base.py"],
-    deps = [
-        ":typed_object",
-        "@six_archive//:six",
-    ],
+    deps = [":typed_object"],
 )
 
 py_library(
@@ -143,6 +126,5 @@ py_test(
     deps = [
         ":value_base",
         ":values",
-        "@absl_py//absl/testing:absltest",
     ],
 )

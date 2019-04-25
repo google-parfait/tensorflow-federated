@@ -1,42 +1,48 @@
 workspace(name = "org_tensorflow_federated")
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-http_archive(
-    name = "org_tensorflow",
-    sha256 = "9345658274058773f34a8865fba14b9fdd3c1c4cb3eaf44dbb7f6c01632ee830",
-    strip_prefix = "tensorflow-6612da89516247503f03ef76e974b51a434fb52e",
-    urls = [
-        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/6612da89516247503f03ef76e974b51a434fb52e.tar.gz",
-        "https://github.com/tensorflow/tensorflow/archive/6612da89516247503f03ef76e974b51a434fb52e.tar.gz",
-    ],
+git_repository(
+    name = "com_google_protobuf",
+    commit = "5902e759108d14ee8e6b0b07653dac2f4e70ac73",
+    remote = "https://github.com/protocolbuffers/protobuf.git",
+    shallow_since = "2019-04-01",
 )
 
-# TensorFlow depends on "io_bazel_rules_closure" so we need this here.
-http_archive(
-    name = "io_bazel_rules_closure",
-    sha256 = "a38539c5b5c358548e75b44141b4ab637bba7c4dc02b46b1f62a96d6433f56ae",
-    strip_prefix = "rules_closure-dbb96841cc0a5fb2664c37822803b06dab20c7d1",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_closure/archive/dbb96841cc0a5fb2664c37822803b06dab20c7d1.tar.gz",
-        "https://github.com/bazelbuild/rules_closure/archive/dbb96841cc0a5fb2664c37822803b06dab20c7d1.tar.gz",
-    ],
+#Required by com_google_protobuf
+git_repository(
+    name = "bazel_skylib",
+    commit = "3721d32c14d3639ff94320c780a60a6e658fb033",
+    remote = "https://github.com/bazelbuild/bazel-skylib.git",
 )
 
-load("@org_tensorflow//tensorflow:version_check.bzl", "check_bazel_version_at_least")
-
-check_bazel_version_at_least("0.19.2")
-
-load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
-
-tf_workspace(
-    path_prefix = "",
-    tf_repo_name = "org_tensorflow",
+new_git_repository(
+    name = "benjaminp_six",
+    build_file = "//third_party:six.BUILD",
+    commit = "d927b9e27617abca8dbf4d66cc9265ebbde261d6",
+    remote = "https://github.com/benjaminp/six.git",
 )
 
-# gRPC wants the existence of a cares dependence but its contents are not
-# actually important since we have set GRPC_ARES=0 in .bazelrc
+#Required by com_google_protobuf
 bind(
-    name = "cares",
-    actual = "@grpc//third_party/nanopb:nanopb",
+    name = "six",
+    actual = "@benjaminp_six//:six",
+)
+
+http_archive(
+    name = "zlib_archive",
+    build_file = "//third_party:zlib.BUILD",
+    sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
+    strip_prefix = "zlib-1.2.11",
+    urls = [
+        "http://mirror.tensorflow.org/zlib.net/zlib-1.2.11.tar.gz",
+        "https://zlib.net/zlib-1.2.11.tar.gz",
+    ],
+)
+
+#Required by com_google_protobuf
+bind(
+    name = "zlib",
+    actual = "@zlib_archive//:zlib",
 )

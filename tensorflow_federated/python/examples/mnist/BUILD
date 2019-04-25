@@ -11,11 +11,7 @@ py_library(
 py_library(
     name = "models",
     srcs = ["models.py"],
-    deps = [
-        "//tensorflow_federated/python",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
-    ],
+    deps = ["//tensorflow_federated/python"],
 )
 
 py_test(
@@ -25,7 +21,5 @@ py_test(
     deps = [
         ":models",
         "//tensorflow_federated/python",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )

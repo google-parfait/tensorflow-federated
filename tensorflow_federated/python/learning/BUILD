@@ -26,8 +26,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
     ],
 )
 
@@ -41,8 +39,6 @@ py_test(
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -55,10 +51,6 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
-        "@six_archive//:six",
     ],
 )
 
@@ -69,7 +61,6 @@ py_library(
         ":model_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -83,7 +74,6 @@ py_test(
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -96,9 +86,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
-        "@six_archive//:six",
     ],
 )
 
@@ -111,16 +98,12 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
 py_library(
     name = "model",
     srcs = ["model.py"],
-    deps = ["@six_archive//:six"],
 )
 
 py_library(
@@ -129,7 +112,6 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/core",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -141,9 +123,6 @@ py_test(
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@six_archive//:six",
     ],
 )
 
@@ -157,9 +136,6 @@ py_library(
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/tensorflow_libs:graph_keys",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras:engine",
-        "@six_archive//:six",
     ],
 )
 
@@ -173,10 +149,5 @@ py_test(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/python/keras:engine",
-        "@org_tensorflow//tensorflow/python/keras/optimizer_v2",
-        "@six_archive//:six",
     ],
 )
