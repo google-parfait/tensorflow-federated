@@ -24,8 +24,11 @@ import os.path
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import hdf5_client_data
-from tensorflow_federated.python.simulation import transforming_client_data
+from tensorflow_federated.python.simulation.datasets.emnist import synthetic
+from tensorflow_federated.python.simulation.from_tensor_slices_client_data import FromTensorSlicesClientData
+from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
+from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData
+
 
 img = tf.contrib.image
 
@@ -40,6 +43,16 @@ def load_data(only_digits=True, cache_dir=None):
   (https://github.com/TalwalkarLab/leaf) pre-processing of the Extended MNIST
   dataset, grouping examples by writer. Details about Leaf were published in
   "LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
+
+  *Note*: This dataset does not include some additional preprocessing that
+  MNIST includes, such as size-normalization and centering.
+  In the Federated EMNIST data, the value of 1.0
+  corresponds to the background, and 0.0 corresponds to the color of the digits
+  themselves; this is the *inverse* of some MNIST representations,
+  e.g. in [tensorflow_datasets]
+  (https://github.com/tensorflow/datasets/blob/master/docs/datasets.md#mnist),
+  where 0 corresponds to the background color, and 255 represents the color of
+  the digit.
 
   Data set sizes:
 
@@ -64,7 +77,8 @@ def load_data(only_digits=True, cache_dir=None):
   and values:
 
     -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],
-        containing the pixels of the handwritten digit.
+        containing the pixels of the handwritten digit, with values in
+        the range [0.0, 1.0].
     -   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
         label of the corresponding pixels.
 
@@ -97,12 +111,35 @@ def load_data(only_digits=True, cache_dir=None):
       cache_dir=cache_dir)
 
   dir_path = os.path.dirname(path)
-  train_client_data = hdf5_client_data.HDF5ClientData(
+  train_client_data = HDF5ClientData(
       os.path.join(dir_path, fileprefix + '_train.h5'))
-  test_client_data = hdf5_client_data.HDF5ClientData(
+  test_client_data = HDF5ClientData(
       os.path.join(dir_path, fileprefix + '_test.h5'))
 
   return train_client_data, test_client_data
+
+
+def get_synthetic(num_clients=2):
+  """Quickly returns a small synthetic dataset, useful for unit tests, etc.
+
+  Each client produced has exactly 10 examples, one of each digit. The images
+  are derived from a fixed set of hard-coded images, and transformed using
+  `tff.simulation.datasets.emnist.infinite_emnist` to produce the desired
+  number of clients.
+
+  Args:
+    num_clients: The number of syntehtic clients to generate.
+
+  Returns:
+     Tuple of (train, test) where the tuple elements are
+     `tff.simulation.ClientData` objects matching the characteristics
+     (other than size) of those provided by
+     `tff.simulation.datasets.emnist.load_data`.
+  """
+  return get_infinite(
+      # Base ClientData with one client
+      FromTensorSlicesClientData({'synthetic': synthetic.get_data()}),
+      num_pseudo_clients=num_clients)
 
 
 def _compile_transform(angle=0,
@@ -194,7 +231,7 @@ def _make_transform_fn(raw_client_id, index):
   return _transform_fn
 
 
-def infinite_emnist(emnist_client_data, num_pseudo_clients):
+def get_infinite(emnist_client_data, num_pseudo_clients):
   """Converts a Federated EMNIST dataset into an Infinite Federated EMNIST set.
 
   Infinite Federated EMNIST expands each writer from the EMNIST dataset into
@@ -223,7 +260,7 @@ def infinite_emnist(emnist_client_data, num_pseudo_clients):
   """
   num_client_ids = len(emnist_client_data.client_ids)
 
-  return transforming_client_data.TransformingClientData(
+  return TransformingClientData(
       raw_client_data=emnist_client_data,
       make_transform_fn=_make_transform_fn,
       num_transformed_clients=(num_client_ids * num_pseudo_clients))
