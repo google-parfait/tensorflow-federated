@@ -12,11 +12,13 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Functions
 
-[`infinite_emnist(...)`](../../../tff/simulation/datasets/emnist/infinite_emnist.md):
+[`get_infinite(...)`](../../../tff/simulation/datasets/emnist/get_infinite.md):
 Converts a Federated EMNIST dataset into an Infinite Federated EMNIST set.
+
+[`get_synthetic(...)`](../../../tff/simulation/datasets/emnist/get_synthetic.md):
+Quickly returns a small synthetic dataset, useful for unit tests, etc.
 
 [`load_data(...)`](../../../tff/simulation/datasets/emnist/load_data.md): Loads
 the Federated EMNIST dataset.

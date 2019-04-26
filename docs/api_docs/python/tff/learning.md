@@ -12,7 +12,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Modules
 
 [`framework`](../tff/learning/framework.md) module: The public API for

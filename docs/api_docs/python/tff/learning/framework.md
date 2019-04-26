@@ -12,7 +12,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Classes
 
 [`class ClientDeltaFn`](../../tff/learning/framework/ClientDeltaFn.md):

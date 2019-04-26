@@ -1,3 +1,4 @@
+# Lint as: python2
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.learning import framework
-
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation
 from tensorflow_federated.python.learning.federated_sgd import build_federated_sgd_process

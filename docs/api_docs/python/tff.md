@@ -14,7 +14,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Modules
 
 [`learning`](./tff/learning.md) module: The public API for model developers

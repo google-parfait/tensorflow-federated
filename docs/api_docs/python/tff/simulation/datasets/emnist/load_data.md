@@ -27,6 +27,15 @@ This dataset is derived from the Leaf repository
 dataset, grouping examples by writer. Details about Leaf were published in
 "LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
 
+*Note*: This dataset does not include some additional preprocessing that MNIST
+includes, such as size-normalization and centering. In the Federated EMNIST
+data, the value of 1.0 corresponds to the background, and 0.0 corresponds to the
+color of the digits themselves; this is the *inverse* of some MNIST
+representations, e.g. in
+[tensorflow_datasets](https://github.com/tensorflow/datasets/blob/master/docs/datasets.md#mnist),
+where 0 corresponds to the background color, and 255 represents the color of the
+digit.
+
 Data set sizes:
 
 *only_digits=True*: 3,383 users, 10 label classes
@@ -50,7 +59,8 @@ will yield `collections.OrderedDict` objects at each iteration, with the
 following keys and values:
 
 -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],
-    containing the pixels of the handwritten digit.
+    containing the pixels of the handwritten digit, with values in the range
+    [0.0, 1.0].
 -   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
     label of the corresponding pixels.
 

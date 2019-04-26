@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+
 from absl.testing import absltest
 import tensorflow as tf
 
@@ -31,14 +32,12 @@ class LoadDataTest(tf.test.TestCase, absltest.TestCase):
     client_data = load_data.get_synthetic(num_clients=4)
     self.assertLen(client_data.client_ids, 4)
 
-    self.assertEqual(client_data.output_types,
-                     collections.OrderedDict([
-                         ('pixels', tf.float32),
-                         ('label', tf.int32)]))
-    self.assertEqual(client_data.output_shapes,
-                     collections.OrderedDict([
-                         ('pixels', (28, 28)),
-                         ('label', ())]))
+    self.assertEqual(
+        client_data.output_types,
+        collections.OrderedDict([('pixels', tf.float32), ('label', tf.int32)]))
+    self.assertEqual(
+        client_data.output_shapes,
+        collections.OrderedDict([('pixels', (28, 28)), ('label', ())]))
 
     for client_id in client_data.client_ids:
       data = list(client_data.create_tf_dataset_for_client(client_id))

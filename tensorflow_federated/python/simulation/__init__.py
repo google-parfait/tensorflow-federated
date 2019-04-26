@@ -1,3 +1,4 @@
+# Lint as: python2
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +17,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation.client_data import ClientData
 from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData

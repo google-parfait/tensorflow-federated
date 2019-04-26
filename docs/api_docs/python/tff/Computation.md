@@ -18,7 +18,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Properties
 
 <h3 id="type_signature"><code>type_signature</code></h3>

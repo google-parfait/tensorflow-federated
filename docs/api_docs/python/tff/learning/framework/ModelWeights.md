@@ -44,10 +44,6 @@ Create new instance of ModelWeightsBase(trainable, non_trainable)
 
 <h3 id="non_trainable"><code>non_trainable</code></h3>
 
-
-
-
-
 ## Methods
 
 <h3 id="assign_weights_to"><code>assign_weights_to</code></h3>

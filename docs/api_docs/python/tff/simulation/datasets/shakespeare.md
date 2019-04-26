@@ -12,7 +12,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Functions
 
 [`load_data(...)`](../../../tff/simulation/datasets/shakespeare/load_data.md):
