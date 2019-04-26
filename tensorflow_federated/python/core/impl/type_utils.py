@@ -57,9 +57,12 @@ def infer_type(arg):
     return arg.type_signature
   elif tf.contrib.framework.is_tensor(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
-  elif isinstance(arg, tf.data.Dataset):
+  elif isinstance(arg, (
+      tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
     return computation_types.SequenceType(
-        tf_dtypes_and_shapes_to_type(arg.output_types, arg.output_shapes))
+        tf_dtypes_and_shapes_to_type(
+            tf.compat.v1.data.get_output_types(arg),
+            tf.compat.v1.data.get_output_shapes(arg)))
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return computation_types.NamedTupleType([
         (k, infer_type(v)) if k else infer_type(v)
@@ -251,7 +254,48 @@ def type_to_tf_dtypes_and_shapes(type_spec):
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes.append(element_output[0])
         output_shapes.append(element_output[1])
+      output_dtypes = tuple(output_dtypes)
+      output_shapes = tuple(output_shapes)
     return (output_dtypes, output_shapes)
+  else:
+    raise ValueError('Unsupported type {}.'.format(
+        py_typecheck.type_string(type(type_spec))))
+
+
+def type_to_tf_structure(type_spec):
+  """Returns nested `tf.data.experimental.Structure` for a given TFF type.
+
+  Args:
+    type_spec: Type specification, either an instance of
+      `computation_types.Type`, or something convertible to it. Ther type
+      specification must be composed of only named tuples and tensors. In all
+      named tuples that appear in the type spec, all the elements must be named.
+
+  Returns:
+    An instance of `tf.data.experimental.Structure`, possibly nested, that
+    corresponds to `type_spec`.
+
+  Raises:
+    ValueError: if the `type_spec` is composed of something other than named
+      tuples and tensors, or if any of the elements in named tuples are unnamed.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  if isinstance(type_spec, computation_types.TensorType):
+    return tf.data.experimental.TensorStructure(
+        type_spec.dtype, type_spec.shape)
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    elements = anonymous_tuple.to_elements(type_spec)
+    if not elements:
+      raise ValueError('Empty tuples are unsupported.')
+    element_outputs = [(k, type_to_tf_structure(v)) for k, v in elements]
+    named = element_outputs[0][0] is not None
+    if not all((e[0] is not None) == named for e in element_outputs):
+      raise ValueError('Tuple elements inconsistently named.')
+    if named:
+      output = collections.OrderedDict(element_outputs)
+    else:
+      output = tuple([v for _, v in element_outputs])
+    return tf.data.experimental.NestedStructure(output)
   else:
     raise ValueError('Unsupported type {}.'.format(
         py_typecheck.type_string(type(type_spec))))

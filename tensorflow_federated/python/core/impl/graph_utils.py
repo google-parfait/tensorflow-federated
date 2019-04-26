@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import collections
 import itertools
+import logging
 
 import numpy as np
 import six
@@ -96,12 +97,13 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
                     element=element_bindings)))
   elif isinstance(parameter_type, computation_types.SequenceType):
     with graph.as_default():
-      handle = tf.placeholder(tf.string, shape=[])
-    ds = make_dataset_from_string_handle(handle, parameter_type.element)
+      variant_tensor = tf.placeholder(tf.variant, shape=[])
+      ds = make_dataset_from_variant_tensor(
+          variant_tensor, parameter_type.element)
     return (ds,
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
-                    iterator_string_handle_name=handle.name)))
+                    variant_tensor_name=variant_tensor.name)))
   else:
     raise ValueError(
         'Parameter type component {} cannot be stamped into a TensorFlow '
@@ -116,11 +118,7 @@ class OneShotDataset(typed_object.TypedObject):
   then forwards the call to that data set. A new data set is created per call.
   """
 
-  # TODO(b/113112108): It would be preferable if we could simply subclass here
-  # `tf.data.Dataset`, but that unfortunately causes things to break (possibly
-  # more overloads than those in `DatasetV1Adapter` needed). We need to find a
-  # way to make it work, so that the users can get an instance of the standard
-  # data set type.
+  # TODO(b/129956296): Eventually delete this deprecated class.
 
   def __init__(self, fn, element_type):
     """Constructs this factory from `fn`.
@@ -129,6 +127,9 @@ class OneShotDataset(typed_object.TypedObject):
       fn: A no-argument callable that creates instances of `tf.data.Dataset`.
       element_type: The type of elements.
     """
+    # TODO(b/131426323) Possibly reuse TensorFlow's @deprecation.deprecated()
+    # here if possible.
+    logging.warning('OneShotDataset is deprecated.')
     py_typecheck.check_type(element_type, computation_types.Type)
     self._type_signature = computation_types.SequenceType(element_type)
     self._fn = fn
@@ -142,10 +143,12 @@ class OneShotDataset(typed_object.TypedObject):
     return getattr(self._fn(), name)
 
 
-# We cannot currently subclass `tf.data.Dataset`, so we have to resort to
-# adding this symbol as a level of indirection to limit the scope of future
-# changes in how the support for data sets is implemented.
-DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, OneShotDataset)
+# TODO(b/129956296): Eventually delete this deprecated declaration.
+DATASET_REPRESENTATION_TYPES = (
+    tf.data.Dataset,
+    tf.compat.v1.data.Dataset,
+    tf.compat.v2.data.Dataset,
+    OneShotDataset)
 
 
 def make_dataset_from_string_handle(handle, type_spec):
@@ -159,6 +162,8 @@ def make_dataset_from_string_handle(handle, type_spec):
   Returns:
     A corresponding instance of `tf.data.Dataset`.
   """
+  # TODO(b/129956296): Eventually delete this deprecated code path.
+
   type_spec = computation_types.to_type(type_spec)
   tf_dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
 
@@ -190,6 +195,32 @@ def make_dataset_from_string_handle(handle, type_spec):
 
   # NOTE: To revert to the old behavior, simply invoke `make()` here directly.
   return OneShotDataset(make, type_spec)
+
+
+def make_dataset_from_variant_tensor(variant_tensor, type_spec):
+  """Constructs a `tf.data.Dataset` from a variant tensor and type spec.
+
+  Args:
+    variant_tensor: The variant tensor that represents the dataset.
+    type_spec: The type spec of elements of the data set, either an instance of
+      `types.Type` or something convertible to it.
+
+  Returns:
+    A corresponding instance of `tf.data.Dataset`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  if not tf.contrib.framework.is_tensor(variant_tensor):
+    raise TypeError(
+        'Expected `variant_tensor` to be a tensor, found {}.'.format(
+            py_typecheck.type_string(type(variant_tensor))))
+  if variant_tensor.dtype != tf.variant:
+    raise TypeError(
+        'Expected `variant_tensor` to be of a variant type, found {}.'.format(
+            str(variant_tensor.dtype)))
+  return tf.data.experimental.from_variant(variant_tensor, structure=(
+      type_utils.type_to_tf_structure(computation_types.to_type(type_spec))))
 
 
 def capture_result_from_graph(result, graph):
@@ -259,9 +290,24 @@ def capture_result_from_graph(result, graph):
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
-  elif isinstance(result, DATASET_REPRESENTATION_TYPES):
+  elif isinstance(
+      result, (tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
+    variant_tensor = tf.data.experimental.to_variant(result)
+    # TODO(b/130032140): Switch to TF2.0 way of doing it while cleaning up the
+    # legacy structures all over the code base and replacing them with the new
+    # tf.data.experimenta.Structure variants.
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        result.output_types, result.output_shapes)
+        tf.compat.v1.data.get_output_types(result),
+        tf.compat.v1.data.get_output_shapes(result))
+    return (computation_types.SequenceType(element_type),
+            pb.TensorFlow.Binding(
+                sequence=pb.TensorFlow.SequenceBinding(
+                    variant_tensor_name=variant_tensor.name)))
+  elif isinstance(result, OneShotDataset):
+    # TODO(b/129956296): Eventually delete this deprecated code path.
+    element_type = type_utils.tf_dtypes_and_shapes_to_type(
+        tf.compat.v1.data.get_output_types(result),
+        tf.compat.v1.data.get_output_shapes(result))
     handle_name = result.make_one_shot_iterator().string_handle().name
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
@@ -302,10 +348,24 @@ def compute_map_from_bindings(source, target):
     return collections.OrderedDict([(str(source.tensor.tensor_name),
                                      str(target.tensor.tensor_name))])
   elif source_oneof == 'sequence':
-    return collections.OrderedDict([
-        (str(source.sequence.iterator_string_handle_name),
-         str(target.sequence.iterator_string_handle_name))
-    ])
+    sequence_oneof = source.sequence.WhichOneof('binding')
+    if target.sequence.WhichOneof('binding') != sequence_oneof:
+      raise ValueError(
+          'Source and target sequence bindings mismatch: {} vs. {}'.format(
+              sequence_oneof, target.sequence.WhichOneof('binding')))
+    if sequence_oneof == 'iterator_string_handle_name':
+      # TODO(b/129956296): Eventually delete this deprecated code path.
+      return collections.OrderedDict([
+          (str(source.sequence.iterator_string_handle_name),
+           str(target.sequence.iterator_string_handle_name))
+      ])
+    elif sequence_oneof == 'variant_tensor_name':
+      return collections.OrderedDict([
+          (str(source.sequence.variant_tensor_name),
+           str(target.sequence.variant_tensor_name))
+      ])
+    else:
+      raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
   elif source_oneof == 'tuple':
     if len(source.tuple.element) != len(target.tuple.element):
       raise ValueError(
@@ -335,7 +395,14 @@ def extract_tensor_names_from_binding(binding):
   if binding_oneof == 'tensor':
     return [str(binding.tensor.tensor_name)]
   elif binding_oneof == 'sequence':
-    return [str(binding.sequence.iterator_string_handle_name)]
+    sequence_oneof = binding.sequence.WhichOneof('binding')
+    if sequence_oneof == 'iterator_string_handle_name':
+      # TODO(b/129956296): Eventually delete this deprecated code path.
+      return [str(binding.sequence.iterator_string_handle_name)]
+    elif sequence_oneof == 'variant_tensor_name':
+      return [str(binding.sequence.variant_tensor_name)]
+    else:
+      raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
   elif binding_oneof == 'tuple':
     return list(
         itertools.chain.from_iterable([
@@ -415,8 +482,18 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       raise ValueError(
           'Expected a sequence binding, found {}.'.format(binding_oneof))
     else:
-      handle = output_map[binding.sequence.iterator_string_handle_name]
-      return make_dataset_from_string_handle(handle, type_spec.element)
+      sequence_oneof = binding.sequence.WhichOneof('binding')
+      if sequence_oneof == 'iterator_string_handle_name':
+        # TODO(b/129956296): Eventually delete this deprecated code path.
+        handle = output_map[binding.sequence.iterator_string_handle_name]
+        return make_dataset_from_string_handle(handle, type_spec.element)
+      elif sequence_oneof == 'variant_tensor_name':
+        variant_tensor = output_map[binding.sequence.variant_tensor_name]
+        return make_dataset_from_variant_tensor(
+            variant_tensor, type_spec.element)
+      else:
+        raise ValueError(
+            'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))
   else:
     raise ValueError('Unsupported type \'{}\'.'.format(str(type_spec)))
 
@@ -550,7 +627,15 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
   # TODO(b/113116813): This could be made more efficient, but for now we won't
   # need to worry about it as this is an odd corner case.
   if isinstance(value, anonymous_tuple.AnonymousTuple):
-    value = collections.OrderedDict(anonymous_tuple.to_elements(value))
+    elements = anonymous_tuple.to_elements(value)
+    if all(k is not None for k, _ in elements):
+      value = collections.OrderedDict(elements)
+    elif all(k is None for k, _ in elements):
+      value = tuple([v for _, v in elements])
+    else:
+      raise TypeError(
+          'Expected an anonymous tuple to either have all elements named '
+          'or all unnamed, got {}.'.format(str(value)))
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(structure, list)
     structure.append(value)
@@ -743,9 +828,8 @@ def fetch_value_in_session(sess, value):
   # `tf.data.Dataset`s and what the API would look like to support this.
   if isinstance(value, DATASET_REPRESENTATION_TYPES):
     with sess.graph.as_default():
-      iterator = value.make_initializable_iterator()
+      iterator = tf.compat.v1.data.make_one_shot_iterator(value)
       next_element = iterator.get_next()
-    sess.run(iterator.initializer)
     elements = []
     while True:
       try:

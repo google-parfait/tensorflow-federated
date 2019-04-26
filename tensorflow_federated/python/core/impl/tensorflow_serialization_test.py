@@ -76,8 +76,8 @@ class TensorFlowSerializationTest(test.TestCase):
     results = tf.Session().run(
         tf.import_graph_def(
             serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
-                comp.tensorflow.parameter.sequence.iterator_string_handle_name:
-                    (parameter.make_one_shot_iterator().string_handle())
+                comp.tensorflow.parameter.sequence.variant_tensor_name:
+                    tf.data.experimental.to_variant(parameter)
             }, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [10])
 

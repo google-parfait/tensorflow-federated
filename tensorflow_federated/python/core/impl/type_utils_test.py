@@ -444,6 +444,48 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             }
         })
 
+  def test_type_to_tf_structure_with_names(self):
+    type_spec = computation_types.to_type(
+        [('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])])
+    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
+    structure = type_utils.type_to_tf_structure(type_spec)
+    with tf.Graph().as_default():
+      ds = tf.data.experimental.from_variant(
+          tf.placeholder(tf.variant, shape=[]), structure=structure)
+      ds_dtypes = tf.compat.v1.data.get_output_types(ds)
+      ds_shapes = tf.compat.v1.data.get_output_shapes(ds)
+      test.assert_nested_struct_eq(ds_dtypes, dtypes)
+      test.assert_nested_struct_eq(ds_shapes, shapes)
+
+  def test_type_to_tf_structure_without_names(self):
+    type_spec = computation_types.to_type([tf.bool, tf.int32])
+    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
+    structure = type_utils.type_to_tf_structure(type_spec)
+    with tf.Graph().as_default():
+      ds = tf.data.experimental.from_variant(
+          tf.placeholder(tf.variant, shape=[]), structure=structure)
+      ds_dtypes = tf.compat.v1.data.get_output_types(ds)
+      ds_shapes = tf.compat.v1.data.get_output_shapes(ds)
+      test.assert_nested_struct_eq(ds_dtypes, dtypes)
+      test.assert_nested_struct_eq(ds_shapes, shapes)
+
+  def test_type_to_tf_structure_with_none(self):
+    with self.assertRaises(ValueError):
+      type_utils.type_to_tf_structure(None)
+
+  def test_type_to_tf_structure_with_sequence_type(self):
+    with self.assertRaises(ValueError):
+      type_utils.type_to_tf_structure(computation_types.SequenceType(tf.int32))
+
+  def test_type_to_tf_structure_with_inconsistently_named_elements(self):
+    with self.assertRaises(ValueError):
+      type_utils.type_to_tf_structure(computation_types.NamedTupleType([
+          ('a', tf.int32), tf.bool]))
+
+  def test_type_to_tf_structure_with_no_elements(self):
+    with self.assertRaises(ValueError):
+      type_utils.type_to_tf_structure(computation_types.NamedTupleType([]))
+
   def test_get_named_tuple_element_type(self):
     type_spec = [('a', tf.int32), ('b', tf.bool)]
     self.assertEqual(
