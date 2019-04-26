@@ -26,11 +26,10 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
 
   def test_basic(self):
     tensor_slices_dict = {'a': [1, 2, 3],
-                          'b': [4, 5],
-                          'c': []}
+                          'b': [4, 5]}
     client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
         tensor_slices_dict)
-    self.assertCountEqual(client_data.client_ids, ['a', 'b', 'c'])
+    self.assertCountEqual(client_data.client_ids, ['a', 'b'])
     self.assertEqual(client_data.output_types, tf.int32)
     self.assertEqual(client_data.output_shapes, ())
 
@@ -41,8 +40,10 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
         as_list(client_data.create_tf_dataset_for_client('a')), [1, 2, 3])
     self.assertEqual(
         as_list(client_data.create_tf_dataset_for_client('b')), [4, 5])
-    self.assertEqual(
-        as_list(client_data.create_tf_dataset_for_client('c')), [])
+
+  def test_empty(self):
+    with self.assertRaises(ValueError):
+      from_tensor_slices_client_data.FromTensorSlicesClientData({'a': []})
 
 
 if __name__ == '__main__':
