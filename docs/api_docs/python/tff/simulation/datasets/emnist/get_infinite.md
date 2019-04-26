@@ -1,14 +1,14 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tff.simulation.datasets.emnist.infinite_emnist" />
+<meta itemprop="name" content="tff.simulation.datasets.emnist.get_infinite" />
 <meta itemprop="path" content="Stable" />
 </div>
 
-# tff.simulation.datasets.emnist.infinite_emnist
+# tff.simulation.datasets.emnist.get_infinite
 
 Converts a Federated EMNIST dataset into an Infinite Federated EMNIST set.
 
 ```python
-tff.simulation.datasets.emnist.infinite_emnist(
+tff.simulation.datasets.emnist.get_infinite(
     emnist_client_data,
     num_pseudo_clients
 )

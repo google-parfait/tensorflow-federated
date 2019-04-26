@@ -1,23 +1,45 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tff.simulation.ClientData" />
+<meta itemprop="name" content="tff.simulation.FromTensorSlicesClientData" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="client_ids"/>
 <meta itemprop="property" content="output_shapes"/>
 <meta itemprop="property" content="output_types"/>
+<meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="create_tf_dataset_for_client"/>
 <meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
 </div>
 
-# tff.simulation.ClientData
+# tff.simulation.FromTensorSlicesClientData
 
-## Class `ClientData`
+## Class `FromTensorSlicesClientData`
 
-Object to hold a dataset and a mapping of clients to examples.
+ClientData based on `tf.data.Dataset.from_tensor_slices`.
+
+Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
 Defined in
-[`simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
+[`simulation/from_tensor_slices_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/from_tensor_slices_client_data.py).
 
 <!-- Placeholder for "Used in" -->
+
+<h2 id="__init__"><code>__init__</code></h2>
+
+```python
+__init__(tensor_slices_dict)
+```
+
+Constructs the object from a dictionary of client data.
+
+NOTE: All clients are required to have non-empty data.
+
+#### Args:
+
+*   <b>`tensor_slices_dict`</b>: A dictionary keyed by client_id, where values
+    are structures suitable for passing to `tf.data.Dataset.from_tensor_slices`.
+
+#### Raises:
+
+*   <b>`ValueError`</b>: If a client with no data is found.
 
 ## Properties
 

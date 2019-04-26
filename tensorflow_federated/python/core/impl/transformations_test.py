@@ -1147,7 +1147,7 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(transformed_comp.tff_repr, '<dummy(x),dummy(x)>')
-#     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_inline_conflicting_lambdas(self):
     comp = computation_building_blocks.Tuple(

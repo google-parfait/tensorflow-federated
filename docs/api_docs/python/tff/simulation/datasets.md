@@ -12,7 +12,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Modules
 
 [`emnist`](../../tff/simulation/datasets/emnist.md) module: Module for the

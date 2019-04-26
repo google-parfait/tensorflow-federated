@@ -104,6 +104,8 @@ toc:
       path: /federated/api_docs/python/tff/simulation/ClientData
     - title: FilePerUserClientData
       path: /federated/api_docs/python/tff/simulation/FilePerUserClientData
+    - title: FromTensorSlicesClientData
+      path: /federated/api_docs/python/tff/simulation/FromTensorSlicesClientData
     - title: HDF5ClientData
       path: /federated/api_docs/python/tff/simulation/HDF5ClientData
     - title: TransformingClientData
@@ -116,8 +118,10 @@ toc:
         section:
         - title: Overview
           path: /federated/api_docs/python/tff/simulation/datasets/emnist
-        - title: infinite_emnist
-          path: /federated/api_docs/python/tff/simulation/datasets/emnist/infinite_emnist
+        - title: get_infinite
+          path: /federated/api_docs/python/tff/simulation/datasets/emnist/get_infinite
+        - title: get_synthetic
+          path: /federated/api_docs/python/tff/simulation/datasets/emnist/get_synthetic
         - title: load_data
           path: /federated/api_docs/python/tff/simulation/datasets/emnist/load_data
       - title: shakespeare

@@ -16,7 +16,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Properties
 
 <h3 id="variables"><code>variables</code></h3>

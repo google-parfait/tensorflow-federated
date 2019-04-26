@@ -16,7 +16,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 ## Methods
 
 <h3 id="__eq__"><code>__eq__</code></h3>

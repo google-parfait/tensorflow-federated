@@ -22,7 +22,6 @@ from tensorflow_federated.python.simulation.datasets.emnist.load_data import get
 from tensorflow_federated.python.simulation.datasets.emnist.load_data import get_synthetic
 from tensorflow_federated.python.simulation.datasets.emnist.load_data import load_data
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "get_infinite",

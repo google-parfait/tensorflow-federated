@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+
 import numpy as np
 
 
@@ -47,8 +48,8 @@ def get_data():
     img_array = img_array.astype(np.float32) / 9.0
     img_list.append(img_array)
   assert len(img_list) == 10
-  return collections.OrderedDict([
-      ('pixels', img_list), ('label', list(range(10)))])
+  return collections.OrderedDict([('pixels', img_list),
+                                  ('label', list(range(10)))])
 
 
 # pyformat: disable

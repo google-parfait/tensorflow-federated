@@ -23,7 +23,6 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-
 <h2 id="__init__"><code>__init__</code></h2>
 
 ```python

@@ -1,3 +1,4 @@
+# Lint as: python2
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +24,7 @@ from __future__ import print_function
 # pylint: disable=g-bad-import-order,wildcard-import
 from tensorflow_federated.python.core import *
 
-# N.B. This import must happen after core.api, since we import core.api
+# NOTE: This import must happen after core.api, since we import core.api
 # inside of learning.
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation
@@ -44,11 +45,11 @@ _allowed_symbols = [
     "Value",
     "federated_aggregate",
     "federated_apply",
-    "federated_mean",
     "federated_broadcast",
     "federated_collect",
     "federated_computation",
     "federated_map",
+    "federated_mean",
     "federated_reduce",
     "federated_sum",
     "federated_value",

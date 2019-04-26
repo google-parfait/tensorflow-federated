@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+
 from tensorflow_federated.python.simulation import from_tensor_slices_client_data
 
 
 class FromTensorSlicesClientDataTest(tf.test.TestCase):
 
   def test_basic(self):
-    tensor_slices_dict = {'a': [1, 2, 3],
-                          'b': [4, 5]}
+    tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
     client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
         tensor_slices_dict)
     self.assertCountEqual(client_data.client_ids, ['a', 'b'])

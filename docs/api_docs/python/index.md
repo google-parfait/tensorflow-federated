@@ -45,11 +45,13 @@
 *   <a href="./tff/simulation.md"><code>tff.simulation</code></a>
 *   <a href="./tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
 *   <a href="./tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>
+*   <a href="./tff/simulation/FromTensorSlicesClientData.md"><code>tff.simulation.FromTensorSlicesClientData</code></a>
 *   <a href="./tff/simulation/HDF5ClientData.md"><code>tff.simulation.HDF5ClientData</code></a>
 *   <a href="./tff/simulation/TransformingClientData.md"><code>tff.simulation.TransformingClientData</code></a>
 *   <a href="./tff/simulation/datasets.md"><code>tff.simulation.datasets</code></a>
 *   <a href="./tff/simulation/datasets/emnist.md"><code>tff.simulation.datasets.emnist</code></a>
-*   <a href="./tff/simulation/datasets/emnist/infinite_emnist.md"><code>tff.simulation.datasets.emnist.infinite_emnist</code></a>
+*   <a href="./tff/simulation/datasets/emnist/get_infinite.md"><code>tff.simulation.datasets.emnist.get_infinite</code></a>
+*   <a href="./tff/simulation/datasets/emnist/get_synthetic.md"><code>tff.simulation.datasets.emnist.get_synthetic</code></a>
 *   <a href="./tff/simulation/datasets/emnist/load_data.md"><code>tff.simulation.datasets.emnist.load_data</code></a>
 *   <a href="./tff/simulation/datasets/shakespeare.md"><code>tff.simulation.datasets.shakespeare</code></a>
 *   <a href="./tff/simulation/datasets/shakespeare/load_data.md"><code>tff.simulation.datasets.shakespeare.load_data</code></a>

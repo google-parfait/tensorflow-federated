@@ -29,7 +29,6 @@ from tensorflow_federated.python.simulation.from_tensor_slices_client_data impor
 from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
 from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData
 
-
 img = tf.contrib.image
 
 
