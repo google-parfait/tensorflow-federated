@@ -1092,6 +1092,16 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(sum_of_square_errors(10, [11, 8, 13]), 14)
 
+  def test_variable_input(self):
+    assert tf.executing_eagerly()
+    v = tf.Variable(10.0)
+
+    @computations.tf_computation
+    def add_one(x):
+      return x + 1.0
+
+    self.assertEqual(add_one(v), 11.0)
+
 
 if __name__ == '__main__':
   # We need to be able to individually test all components of the executor, and
