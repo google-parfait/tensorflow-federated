@@ -155,7 +155,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   # the Python types recognized by that helper function.
 
   if isinstance(type_spec, computation_types.TensorType):
-    if tf.executing_eagerly() and isinstance(value, tf.Tensor):
+    if tf.executing_eagerly() and isinstance(value, (tf.Tensor, tf.Variable)):
       value = value.numpy()
     py_typecheck.check_type(value, dtype_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_utils.infer_type(value)
