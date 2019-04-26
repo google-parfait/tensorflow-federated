@@ -200,8 +200,8 @@ def _create_called_sequence_map(fn, arg):
   return computation_building_blocks.Call(intrinsic, tup)
 
 
-def _create_chained_call(fn, arg, n):
-  r"""Creates a lambda to a chain of `n` calls.
+def _create_chained_calls(functions, arg):
+  r"""Creates a chain of `n` calls.
 
        Call
       /    \
@@ -211,37 +211,34 @@ def _create_chained_call(fn, arg, n):
                /    \
            Comp      Comp
 
+  The first functional computation in `functions` must have a parameter type
+  that is assignable from the type of `arg`, each other functional computation
+  in `functions` must have a parameter type that is assignable from the previous
+  functional computations result type.
+
   Args:
-    fn: A functional `computation_building_blocks.ComputationBuildingBlock` with
-      a parameter type that is assignable from its result type.
+    functions: A Python list of functional computations.
     arg: A `computation_building_blocks.ComputationBuildingBlock`.
-    n: The number of calls.
 
   Returns:
     A `computation_building_blocks.Call`.
   """
-  py_typecheck.check_type(fn,
-                          computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
-  if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(
-            str(fn.parameter_type), str(arg.type_signature)))
-  if not type_utils.is_assignable_from(fn.parameter_type,
-                                       fn.result.type_signature):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the result of the '
-        'function is of an incompatible type {}.'.format(
-            str(fn.parameter_type), str(fn.result.type_signature)))
-  for _ in range(n):
+  for fn in functions:
+    py_typecheck.check_type(
+        fn, computation_building_blocks.ComputationBuildingBlock)
+    if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
+      raise TypeError(
+          'The parameter of the function is of type {}, and the argument is of '
+          'an incompatible type {}.'.format(
+              str(fn.parameter_type), str(arg.type_signature)))
     call = computation_building_blocks.Call(fn, arg)
     arg = call
   return call
 
 
-def _create_chained_called_federated_map(fn, arg, n):
+def _create_chained_called_federated_map(functions, arg):
   r"""Creates a chain of `n` calls to federated map.
 
             Call
@@ -257,32 +254,30 @@ def _create_chained_called_federated_map(fn, arg, n):
                        Intrinsic      Tuple
                                       |
                                       [Comp, Comp]
+
+  The first functional computation in `functions` must have a parameter type
+  that is assignable from the type of `arg`, each other functional computation
+  in `functions` must have a parameter type that is assignable from the previous
+  functional computations result type.
+
   Args:
-    fn: A functional `computation_building_blocks.ComputationBuildingBlock` with
-      a parameter type that is assignable from its result type.
+    functions: A Python list of functional computations.
     arg: A `computation_building_blocks.ComputationBuildingBlock`.
-    n: The number of calls.
 
   Returns:
     A `computation_building_blocks.Call`.
   """
-  py_typecheck.check_type(fn,
-                          computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
-  if not type_utils.is_assignable_from(fn.parameter_type,
-                                       arg.type_signature.member):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(
-            str(fn.parameter_type), str(arg.type_signature.member)))
-  if not type_utils.is_assignable_from(fn.parameter_type,
-                                       fn.result.type_signature):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the result of the '
-        'function is of an incompatible type {}.'.format(
-            str(fn.parameter_type), str(fn.result.type_signature)))
-  for _ in range(n):
+  for fn in functions:
+    py_typecheck.check_type(
+        fn, computation_building_blocks.ComputationBuildingBlock)
+    if not type_utils.is_assignable_from(fn.parameter_type,
+                                         arg.type_signature.member):
+      raise TypeError(
+          'The parameter of the function is of type {}, and the argument is of '
+          'an incompatible type {}.'.format(
+              str(fn.parameter_type), str(arg.type_signature.member)))
     call = _create_called_federated_map(fn, arg)
     arg = call
   return call
@@ -292,8 +287,8 @@ def _create_lambda_to_identity(parameter_name, parameter_type):
   r"""Creates a lambda to return the argument.
 
   Lambda(x)
-        \
-         Ref(x)
+           \
+            Ref(x)
 
   Args:
     parameter_name: The name of the parameter.
@@ -543,7 +538,7 @@ class TransformationsTest(parameterized.TestCase):
   def test_replace_intrinsic_replaces_chained_intrinsics(self):
     fn = _create_lambda_to_dummy_intrinsic(type_spec=tf.int32)
     arg = computation_building_blocks.Data('x', tf.int32)
-    call = _create_chained_call(fn, arg, 2)
+    call = _create_chained_calls([fn, fn], arg)
     comp = call
     uri = 'dummy'
     body = lambda x: x
@@ -603,7 +598,7 @@ class TransformationsTest(parameterized.TestCase):
   def test_replace_called_lambda_replaces_chained_called_lambdas(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg = computation_building_blocks.Data('y', tf.int32)
-    call = _create_chained_call(fn, arg, 2)
+    call = _create_chained_calls([fn, fn], arg)
     comp = call
 
     transformed_comp = transformations.replace_called_lambda_with_block(comp)
@@ -696,7 +691,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map(fn, arg, 2)
+    call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
 
     transformed_comp = transformations.remove_mapped_or_applied_identity(comp)
@@ -738,7 +733,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map(fn, arg, 2)
+    call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
@@ -746,8 +741,10 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(comp.tff_repr,
                      'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     'federated_map(<(arg -> (x -> x)((x -> x)(arg))),y>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_replaces_federated_maps_with_different_names(
@@ -756,18 +753,19 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('b', arg_type)
-    call_1 = _create_called_federated_map(fn_1, arg)
     fn_2 = _create_lambda_to_identity('c', tf.int32)
-    call_2 = _create_called_federated_map(fn_2, call_1)
-    comp = call_2
+    call = _create_chained_called_federated_map([fn_1, fn_2], arg)
+    comp = call
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
     self.assertEqual(comp.tff_repr,
                      'federated_map(<(c -> c),federated_map(<(a -> a),b>)>)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     'federated_map(<(arg -> (c -> c)((a -> a)(arg))),b>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(a -> a),(c -> c)> in (arg -> fn[1](fn[0](arg)))),b>)'
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_replaces_federated_maps_with_different_types(
@@ -776,18 +774,19 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call_1 = _create_called_federated_map(fn_1, arg)
     fn_2 = _create_lambda_to_identity('x', tf.float32)
-    call_2 = _create_called_federated_map(fn_2, call_1)
-    comp = call_2
+    call = _create_chained_called_federated_map([fn_1, fn_2], arg)
+    comp = call
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
         comp)
 
     self.assertEqual(comp.tff_repr,
                      'federated_map(<(x -> x),federated_map(<(x -> y),y>)>)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     'federated_map(<(arg -> (x -> x)((x -> y)(arg))),y>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> y),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_replaces_federated_maps_with_named_result(
@@ -797,7 +796,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS, False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map(fn, arg, 2)
+    call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
@@ -805,8 +804,32 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(comp.tff_repr,
                      'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     'federated_map(<(arg -> (x -> x)((x -> x)(arg))),y>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+
+  def test_replace_chained_federated_maps_replaces_federated_maps_with_unbound_references(
+      self):
+    ref = computation_building_blocks.Reference('arg', tf.int32)
+    fn = computation_building_blocks.Lambda('x', tf.int32, ref)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call = _create_chained_called_federated_map([fn, fn], arg)
+    comp = call
+
+    transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_map(<(x -> arg),federated_map(<(x -> arg),y>)>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(x -> arg),(x -> arg)> in (arg -> fn[1](fn[0](arg)))),y>)'
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_replaces_nested_federated_maps(self):
@@ -814,7 +837,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map(fn, arg, 2)
+    call = _create_chained_called_federated_map([fn, fn], arg)
     block = _create_dummy_block(call)
     comp = block
 
@@ -827,7 +850,8 @@ class TransformationsTest(parameterized.TestCase):
     )
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let local=x in federated_map(<(arg -> (x -> x)((x -> x)(arg))),y>))')
+        '(let local=x in federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>))'
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_replace_chained_federated_maps_replaces_multiple_chained_federated_maps(
@@ -836,7 +860,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map(fn, arg, 3)
+    call = _create_chained_called_federated_map([fn, fn, fn], arg)
     comp = call
 
     transformed_comp = transformations.replace_chained_federated_maps_with_federated_map(
@@ -848,7 +872,7 @@ class TransformationsTest(parameterized.TestCase):
     )
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(arg -> (x -> x)((arg -> (x -> x)((x -> x)(arg)))(arg))),y>)'
+        'federated_map(<(let fn=<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
@@ -1123,7 +1147,7 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(transformed_comp.tff_repr, '<dummy(x),dummy(x)>')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+#     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
   def test_inline_conflicting_lambdas(self):
     comp = computation_building_blocks.Tuple(
