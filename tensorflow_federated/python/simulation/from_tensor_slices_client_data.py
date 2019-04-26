@@ -30,13 +30,17 @@ class FromTensorSlicesClientData(client_data.ClientData):
   def __init__(self, tensor_slices_dict):
     """Constructs the object from a dictionary of client data.
 
+    NOTE: All clients are required to have non-empty data.
+
     Args:
       tensor_slices_dict: A dictionary keyed by client_id, where values are
         structures suitable for passing to `tf.data.Dataset.from_tensor_slices`.
+
+    Raises:
+      ValueError: If a client with no data is found.
     """
     py_typecheck.check_type(tensor_slices_dict, dict)
     self._tensor_slices_dict = tensor_slices_dict
-
     example_dataset = self.create_tf_dataset_for_client(
         self.client_ids[0])
     self._output_types = example_dataset.output_types
@@ -47,8 +51,11 @@ class FromTensorSlicesClientData(client_data.ClientData):
     return list(self._tensor_slices_dict.keys())
 
   def create_tf_dataset_for_client(self, client_id):
-    return tf.data.Dataset.from_tensor_slices(
-        self._tensor_slices_dict[client_id])
+    tensor_slices = self._tensor_slices_dict[client_id]
+    if tensor_slices:
+      return tf.data.Dataset.from_tensor_slices(tensor_slices)
+    else:
+      raise ValueError('No data found for client {}'.format(client_id))
 
   @property
   def output_types(self):
