@@ -83,15 +83,43 @@ class ComputationsTest(test.TestCase):
 
     self.assertEqual(bar(), 10)
 
-  def test_tf_comp_with_sequence_inputs_and_outputs_fails(self):
-    # This fails right now due to our handling of creation and passing
-    # around of tf.data.Datasets; we should be able to define a function
-    # like this, but currently it is a limitation.
-    with self.assertRaises(ValueError):
+  def test_tf_comp_with_sequence_inputs_and_outputs_does_not_fail(self):
+    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    def _(x):
+      return x
 
-      @computations.tf_computation(computation_types.SequenceType(tf.int32))
-      def _(x):
-        return x
+  def test_with_sequence_of_pairs(self):
+    pairs = tf.data.Dataset.from_tensor_slices(
+        (list(range(5)), list(range(5, 10))))
+
+    @computations.tf_computation
+    def process_pairs(ds):
+      return ds.reduce(0, lambda state, pair: state + pair[0] + pair[1])
+
+    self.assertEqual(process_pairs(pairs), 45)
+
+  def test_with_four_element_dataset_pipeline(self):
+    @computations.tf_computation
+    def comp1():
+      return tf.data.Dataset.range(5)
+
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
+    def comp2(ds):
+      return ds.map(lambda x: tf.cast(x + 1, tf.float32))
+
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    def comp3(ds):
+      return ds.repeat(5)
+
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    def comp4(ds):
+      return ds.reduce(0.0, lambda x, y: x + y)
+
+    @computations.tf_computation
+    def comp5():
+      return comp4(comp3(comp2(comp1())))
+
+    self.assertEqual(comp5(), 75.0)
 
   def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(self):
     # Wrapping a lambda.

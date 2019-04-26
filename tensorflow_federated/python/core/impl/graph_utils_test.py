@@ -52,16 +52,28 @@ class GraphUtilsTest(test.TestCase):
       self.assertEqual(repr(type_spec.shape), repr(val.shape))
     elif binding_oneof == 'sequence':
       self.assertIsInstance(val, graph_utils.DATASET_REPRESENTATION_TYPES)
-      handle = graph.get_tensor_by_name(
-          binding.sequence.iterator_string_handle_name)
-      self.assertIn(
-          str(handle.op.type), ['Placeholder', 'IteratorToStringHandle'])
-      self.assertEqual(handle.dtype, tf.string)
+      sequence_oneof = binding.sequence.WhichOneof('binding')
+      if sequence_oneof == 'iterator_string_handle_name':
+        # TODO(b/129956296): Eventually delete this deprecated code path.
+        handle = graph.get_tensor_by_name(
+            binding.sequence.iterator_string_handle_name)
+        self.assertIn(
+            str(handle.op.type), ['Placeholder', 'IteratorToStringHandle'])
+        self.assertEqual(handle.dtype, tf.string)
+      else:
+        self.assertEqual(sequence_oneof, 'variant_tensor_name')
+        variant_tensor = graph.get_tensor_by_name(
+            binding.sequence.variant_tensor_name)
+        op = str(variant_tensor.op.type)
+        self.assertTrue((op == 'Placeholder') or ('Dataset' in op))
+        self.assertEqual(variant_tensor.dtype, tf.variant)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       output_dtypes, output_shapes = (
           type_utils.type_to_tf_dtypes_and_shapes(type_spec.element))
-      test.assert_nested_struct_eq(val.output_types, output_dtypes)
-      test.assert_nested_struct_eq(val.output_shapes, output_shapes)
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_types(val), output_dtypes)
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_shapes(val), output_shapes)
     elif binding_oneof == 'tuple':
       self.assertIsInstance(type_spec, computation_types.NamedTupleType)
       if not isinstance(val, (list, tuple, anonymous_tuple.AnonymousTuple)):
@@ -138,16 +150,20 @@ class GraphUtilsTest(test.TestCase):
       x = self._checked_stamp_parameter('foo',
                                         computation_types.SequenceType(tf.bool))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
-      test.assert_nested_struct_eq(x.output_types, tf.bool)
-      test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([]))
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_types(x), tf.bool)
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_shapes(x), tf.TensorShape([]))
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo', computation_types.SequenceType((tf.int32, [50])))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
-      test.assert_nested_struct_eq(x.output_types, tf.int32)
-      test.assert_nested_struct_eq(x.output_shapes, tf.TensorShape([50]))
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_types(x), tf.int32)
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_shapes(x), tf.TensorShape([50]))
 
   def test_stamp_parameter_in_graph_with_tensor_pair_sequence(self):
     with tf.Graph().as_default():
@@ -156,11 +172,11 @@ class GraphUtilsTest(test.TestCase):
           computation_types.SequenceType([('A', (tf.float32, [3, 4, 5])),
                                           ('B', (tf.int32, [1]))]))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
-      test.assert_nested_struct_eq(x.output_types, {
+      test.assert_nested_struct_eq(tf.compat.v1.data.get_output_types(x), {
           'A': tf.float32,
           'B': tf.int32
       })
-      test.assert_nested_struct_eq(x.output_shapes, {
+      test.assert_nested_struct_eq(tf.compat.v1.data.get_output_shapes(x), {
           'A': tf.TensorShape([3, 4, 5]),
           'B': tf.TensorShape([1])
       })
@@ -795,6 +811,26 @@ class GraphUtilsTest(test.TestCase):
 
     with tf.Session(graph=graph) as sess:
       self.assertEqual(sess.run(result), 2)
+
+  def test_make_dataset_from_variant_tensor_constructs_dataset(self):
+    with tf.Graph().as_default():
+      ds = graph_utils.make_dataset_from_variant_tensor(
+          tf.data.experimental.to_variant(tf.data.Dataset.range(5)), tf.int64)
+      self.assertIsInstance(ds, tf.compat.v2.data.Dataset)
+      result = ds.reduce(np.int64(0), lambda x, y: x + y)
+      with tf.Session() as sess:
+        self.assertEqual(sess.run(result), 10)
+
+  def test_make_dataset_from_variant_tensor_fails_with_bad_tensor(self):
+    with self.assertRaises(TypeError):
+      with tf.Graph().as_default():
+        graph_utils.make_dataset_from_variant_tensor(tf.constant(10), tf.int32)
+
+  def test_make_dataset_from_variant_tensor_fails_with_bad_type(self):
+    with self.assertRaises(TypeError):
+      with tf.Graph().as_default():
+        graph_utils.make_dataset_from_variant_tensor(
+            tf.data.experimental.to_variant(tf.data.Dataset.range(5)), 'a')
 
 
 if __name__ == '__main__':

@@ -71,7 +71,7 @@ REQUIRED_PACKAGES = [
     'h5py~=2.6',
     'numpy~=1.14',
     'six~=1.10',
-    'tensorflow~=1.13',
+    'tf-nightly',
 ]
 
 setuptools.setup(
