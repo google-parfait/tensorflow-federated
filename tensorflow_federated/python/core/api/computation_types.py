@@ -200,6 +200,21 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
             super(NamedTupleType, self).__eq__(other))
 
 
+# While this lives in the `api` diretory, `NamedTupleTypeWithPyContainerType` is
+# intended to be TFF internal and not exposed in the public API.
+class NamedTupleTypeWithPyContainerType(NamedTupleType):
+  """A representation of a TFF named tuple type and a Python container type."""
+
+  def __init__(self, elements, container_type):
+    py_typecheck.check_type(container_type, type)
+    self._container_type = container_type
+    super(NamedTupleTypeWithPyContainerType, self).__init__(elements)
+
+  @classmethod
+  def get_container_type(cls, value):
+    return value._container_type  # pylint: disable=protected-access
+
+
 class SequenceType(Type):
   """An implementation of `tff.Type` representing types of sequences in TFF."""
 
@@ -406,7 +421,6 @@ def to_type(spec):
   """
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.
-
   if isinstance(spec, Type) or spec is None:
     return spec
   elif isinstance(spec, tf.DType):
@@ -424,7 +438,13 @@ def to_type(spec):
     # We thus convert this into a TensorType.
     return TensorType(spec[0], spec[1])
   elif isinstance(spec, (list, tuple, collections.OrderedDict)):
-    return NamedTupleType(spec)
+    return NamedTupleTypeWithPyContainerType(spec, type(spec))
+  elif isinstance(spec, collections.Mapping):
+    # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an
+    # ordering, which the original container did not have.
+    raise TypeError(
+        'Unsupported mapping type {}. Use collections.OrderedDict for'
+        'mappings.'.format(py_typecheck.type_string(type(spec))))
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
