@@ -23,10 +23,12 @@ from six.moves import range
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_base
+from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
@@ -299,7 +301,6 @@ class IntrinsicFactory(object):
     # in the federated types, and expanding the type specification of the
     # intrinsic this is based on to work with federated values of arbitrary
     # placement.
-
     value = value_impl.to_value(value, None, self._context_stack)
     if isinstance(value.type_signature, computation_types.NamedTupleType):
       if len(anonymous_tuple.to_elements(value.type_signature)) >= 2:
@@ -310,6 +311,17 @@ class IntrinsicFactory(object):
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
+    if isinstance(mapping_fn, function_utils.PolymorphicFunction):
+      # Note: This adds an extra level of indirection in the computation
+      # AST; however, there does not be a simple way to construct
+      # a ConcreteFunction for value directly: 1) We can't easily
+      # extract the non-federated payload of the value, and 2)
+      # working directly with the type, we would have to introduce potentially
+      # implementation-dependent logic on the way function arguments
+      # are wrapped in AnonymousTuples.
+      mapping_fn = computations.federated_computation(
+          lambda v: mapping_fn(v), value.type_signature.member)  # pylint: disable=unnecessary-lambda
+
     mapping_fn = value_impl.to_value(mapping_fn, None, self._context_stack)
 
     py_typecheck.check_type(mapping_fn, value_base.Value)

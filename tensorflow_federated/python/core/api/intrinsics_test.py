@@ -90,6 +90,16 @@ class IntrinsicsTest(parameterized.TestCase):
         return tff.federated_map(
             tff.tf_computation(lambda x: x > 10, tf.int32), x)
 
+  def test_federated_map_with_polymorphic_fn(self):
+
+    add_one = tff.tf_computation(lambda x: x + 1.0)
+
+    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    def add_one_to_clients(client_value):
+      return tff.federated_map(add_one, client_value)
+
+    self.assertCountEqual(add_one_to_clients([1.0, 2.0]), [2.0, 3.0])
+
   def test_federated_sum_with_client_int(self):
 
     @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
