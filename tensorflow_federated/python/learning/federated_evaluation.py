@@ -23,7 +23,6 @@ import collections
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.learning import model_utils
 
 nest = tf.contrib.framework.nest
@@ -53,7 +52,7 @@ def build_federated_evaluation(model_fn):
     batch_type = tff.to_type(model.input_spec)
 
   @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))
-  def client_eval(model_weights, dataset):
+  def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
     model = model_utils.enhance(model_fn())
 
@@ -63,17 +62,11 @@ def build_federated_evaluation(model_fn):
       model_output = model.forward_pass(batch, training=False)
       return dummy + tf.cast(model_output.loss, tf.float64)
 
-    # TODO(b/123092620): Avoid the need for this manual conversion.
-    model_vars = anonymous_tuple.from_container(
-        collections.OrderedDict([('trainable', model.weights.trainable),
-                                 ('non_trainable', model.weights.non_trainable)
-                                ]),
-        recursive=True)
-
     # TODO(b/123898430): The control dependencies below have been inserted as a
     # temporary workaround. These control dependencies need to be removed, and
     # defuns and datasets supported together fully.
-    with tf.control_dependencies([tff.utils.assign(model_vars, model_weights)]):
+    with tf.control_dependencies(
+        [tff.utils.assign(model.weights, incoming_model_weights)]):
       dummy = dataset.reduce(tf.constant(0.0, dtype=tf.float64), reduce_fn)
 
     with tf.control_dependencies([dummy]):

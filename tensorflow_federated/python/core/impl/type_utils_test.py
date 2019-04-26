@@ -545,7 +545,14 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_type_to_tf_structure_with_names(self):
     type_spec = computation_types.to_type(
-        [('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])])
+        collections.OrderedDict([
+            ('a', tf.bool),
+            ('b',
+             collections.OrderedDict([
+                 ('c', tf.float32),
+                 ('d', (tf.int32, [20])),
+             ])),
+        ]))
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
     structure = type_utils.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
@@ -557,7 +564,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
       test.assert_nested_struct_eq(ds_shapes, shapes)
 
   def test_type_to_tf_structure_without_names(self):
-    type_spec = computation_types.to_type([tf.bool, tf.int32])
+    type_spec = computation_types.to_type((tf.bool, tf.int32))
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
     structure = type_utils.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
