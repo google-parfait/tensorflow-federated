@@ -60,9 +60,7 @@ py_test(
     size = "small",
     srcs = ["computations_test.py"],
     deps = [
-        ":computation_types",
-        ":computations",
-        ":value_base",
+        ":api",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )
@@ -81,10 +79,7 @@ py_test(
     size = "large",
     srcs = ["intrinsics_test.py"],
     deps = [
-        ":computation_types",
-        ":computations",
-        ":intrinsics",
-        ":placements",
+        ":api",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:federated_computation_context",
