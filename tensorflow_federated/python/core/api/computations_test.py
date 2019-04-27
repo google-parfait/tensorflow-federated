@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for computations.py."""
+"""Tests for computations.py (and __init__.py)."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,26 +22,24 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core import api as tff
 
 
 class ComputationsTest(test.TestCase):
 
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(self):
     # Wrapping a lambda with a parameter.
-    foo = computations.tf_computation(lambda x: x > 10, tf.int32)
+    foo = tff.tf_computation(lambda x: x > 10, tf.int32)
     self.assertEqual(str(foo.type_signature), '(int32 -> bool)')
     self.assertEqual(foo(9), False)
     self.assertEqual(foo(11), True)
 
     # Wrapping an existing Python function with a parameter.
-    bar = computations.tf_computation(tf.add, (tf.int32, tf.int32))
+    bar = tff.tf_computation(tf.add, (tf.int32, tf.int32))
     self.assertEqual(str(bar.type_signature), '(<int32,int32> -> int32)')
 
     # Wrapping a no-parameter lambda.
-    baz = computations.tf_computation(lambda: tf.constant(10))
+    baz = tff.tf_computation(lambda: tf.constant(10))
     self.assertEqual(str(baz.type_signature), '( -> int32)')
     self.assertEqual(baz(), 10)
 
@@ -49,13 +47,13 @@ class ComputationsTest(test.TestCase):
     def bak_fn():
       return tf.constant(10)
 
-    bak = computations.tf_computation(bak_fn)
+    bak = tff.tf_computation(bak_fn)
     self.assertEqual(str(bak.type_signature), '( -> int32)')
     self.assertEqual(bak(), 10)
 
   def test_tf_fn_with_variable(self):
 
-    @computations.tf_computation
+    @tff.tf_computation
     def read_var():
       v = tf.Variable(10, name='test_var')
       return v
@@ -64,7 +62,7 @@ class ComputationsTest(test.TestCase):
 
   def test_tf_comp_second_mode_of_usage_as_non_polymorphic_decorator(self):
     # Decorating a Python function with a parameter.
-    @computations.tf_computation(tf.int32)
+    @tff.tf_computation(tf.int32)
     def foo(x):
       return x > 10
 
@@ -75,7 +73,7 @@ class ComputationsTest(test.TestCase):
     self.assertEqual(foo(11), True)
 
     # Decorating a no-parameter Python function.
-    @computations.tf_computation
+    @tff.tf_computation
     def bar():
       return tf.constant(10)
 
@@ -84,7 +82,8 @@ class ComputationsTest(test.TestCase):
     self.assertEqual(bar(), 10)
 
   def test_tf_comp_with_sequence_inputs_and_outputs_does_not_fail(self):
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+
+    @tff.tf_computation(tff.SequenceType(tf.int32))
     def _(x):
       return x
 
@@ -92,30 +91,31 @@ class ComputationsTest(test.TestCase):
     pairs = tf.data.Dataset.from_tensor_slices(
         (list(range(5)), list(range(5, 10))))
 
-    @computations.tf_computation
+    @tff.tf_computation
     def process_pairs(ds):
       return ds.reduce(0, lambda state, pair: state + pair[0] + pair[1])
 
     self.assertEqual(process_pairs(pairs), 45)
 
   def test_with_four_element_dataset_pipeline(self):
-    @computations.tf_computation
+
+    @tff.tf_computation
     def comp1():
       return tf.data.Dataset.range(5)
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int64))
+    @tff.tf_computation(tff.SequenceType(tf.int64))
     def comp2(ds):
       return ds.map(lambda x: tf.cast(x + 1, tf.float32))
 
-    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    @tff.tf_computation(tff.SequenceType(tf.float32))
     def comp3(ds):
       return ds.repeat(5)
 
-    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    @tff.tf_computation(tff.SequenceType(tf.float32))
     def comp4(ds):
       return ds.reduce(0.0, lambda x, y: x + y)
 
-    @computations.tf_computation
+    @tff.tf_computation
     def comp5():
       return comp4(comp3(comp2(comp1())))
 
@@ -123,14 +123,14 @@ class ComputationsTest(test.TestCase):
 
   def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(self):
     # Wrapping a lambda.
-    foo = computations.tf_computation(lambda x: x > 0)
+    foo = tff.tf_computation(lambda x: x > 0)
 
     self.assertEqual(foo(-1), False)
     self.assertEqual(foo(0), False)
     self.assertEqual(foo(1), True)
 
     # Decorating a Python function.
-    @computations.tf_computation
+    @tff.tf_computation
     def bar(x, y):
       return x > y
 
@@ -140,22 +140,21 @@ class ComputationsTest(test.TestCase):
 
   def test_fed_comp_typical_usage_as_decorator_with_unlabeled_type(self):
 
-    @computations.federated_computation(
-        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32))
+    @tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
     def foo(f, x):
-      assert isinstance(f, value_base.Value)
-      assert isinstance(x, value_base.Value)
+      assert isinstance(f, tff.Value)
+      assert isinstance(x, tff.Value)
       assert str(f.type_signature) == '(int32 -> int32)'
       assert str(x.type_signature) == 'int32'
       result_value = f(f(x))
-      assert isinstance(result_value, value_base.Value)
+      assert isinstance(result_value, tff.Value)
       assert str(result_value.type_signature) == 'int32'
       return result_value
 
     self.assertEqual(
         str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
 
-    @computations.tf_computation(tf.int32)
+    @tff.tf_computation(tf.int32)
     def third_power(x):
       return x**3
 
@@ -164,18 +163,18 @@ class ComputationsTest(test.TestCase):
 
   def test_fed_comp_typical_usage_as_decorator_with_labeled_type(self):
 
-    @computations.federated_computation((
-        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
+    @tff.federated_computation((
+        ('f', tff.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32),
     ))
     def foo(f, x):
       return f(f(x))
 
-    @computations.tf_computation(tf.int32)
+    @tff.tf_computation(tf.int32)
     def square(x):
       return x**2
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tff.tf_computation(tf.int32, tf.int32)
     def square_drop_y(x, y):  # pylint: disable=unused-argument
       return x * x
 
@@ -191,13 +190,13 @@ class ComputationsTest(test.TestCase):
 
   def test_with_tf_datasets(self):
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int64))
+    @tff.tf_computation(tff.SequenceType(tf.int64))
     def foo(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     self.assertEqual(str(foo.type_signature), '(int64* -> int64)')
 
-    @computations.tf_computation
+    @tff.tf_computation
     def bar():
       return tf.data.Dataset.range(10)
 
@@ -207,7 +206,7 @@ class ComputationsTest(test.TestCase):
 
   def test_no_argument_fed_comp(self):
 
-    @computations.federated_computation
+    @tff.federated_computation
     def foo():
       return 10
 
