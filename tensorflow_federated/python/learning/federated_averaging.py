@@ -28,7 +28,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -113,7 +112,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 
 def build_federated_averaging_process(
     model_fn,
-    server_optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0),
+    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
     client_weight_fn=None):
   """Builds the TFF computations for optimization using federated averaging.
 

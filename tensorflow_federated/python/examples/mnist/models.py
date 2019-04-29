@@ -22,7 +22,6 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated import python as tff
 
 
@@ -40,13 +39,9 @@ def create_simple_keras_model(learning_rate=0.1):
       tf.keras.layers.Dense(10, tf.nn.softmax, kernel_initializer='zeros')
   ])
 
-  def loss_fn(y_true, y_pred):
-    return tf.reduce_mean(
-        tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
-
   model.compile(
-      loss=loss_fn,
-      optimizer=gradient_descent.SGD(learning_rate),
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+      optimizer=tf.keras.optimizers.SGD(learning_rate),
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
   return model
 
@@ -112,15 +107,9 @@ def create_keras_model(compile_model=False):
       l.Dense(10, kernel_initializer=initializer)
   ])
   if compile_model:
-    # TODO(b/124534248): Currently we need the extra reduce_mean to ensure
-    # the loss is a scalar.
-    def loss_fn(y_true, y_pred):
-      return tf.reduce_mean(
-          tf.keras.losses.sparse_categorical_crossentropy(
-              y_true, y_pred, from_logits=True))
-
     model.compile(
-        loss=loss_fn, optimizer=gradient_descent.SGD(learning_rate=0.1))
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.1))
   return model
 
 

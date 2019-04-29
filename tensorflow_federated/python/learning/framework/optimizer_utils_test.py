@@ -24,7 +24,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
@@ -175,7 +174,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
   @test.graph_mode_test
   def test_server_graph_mode(self):
-    optimizer_fn = lambda: gradient_descent.SGD(learning_rate=0.1)
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
 
     # Explicitly entering a graph as a default enables graph-mode.
@@ -219,7 +218,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.TrainableLinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0),
+        server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
         # A federated_mean that maintains an int32 state equal to the
         # number of times the federated_mean has been executed,
         # allowing us to test that a stateful aggregator's state

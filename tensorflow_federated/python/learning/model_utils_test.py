@@ -31,9 +31,6 @@ from six.moves import range
 from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python.keras import metrics as keras_metrics
-from tensorflow.python.keras.optimizer_v2 import adam
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
@@ -43,55 +40,20 @@ from tensorflow_federated.python.learning import model_utils
 nest = tf.contrib.framework.nest
 
 
-# TODO(b/123578208): Remove this local Sum implementation once TFF's TF version
-# is moved back to HEAD. This can be replaced with tf.keras.metrics.Sum.
-class Sum(keras_metrics.Metric):
-  """Encapsulates metrics that perform a sum operation on the values."""
-
-  def __init__(self, name='sum', dtype=None):
-    """Creates a `Sum` instance.
-
-    Args:
-      name: string name of the metric instance.
-      dtype: (Optional) data type of the metric result.
-    """
-    super(Sum, self).__init__(name=name, dtype=dtype)
-    self.total = self.add_weight('total', initializer=tf.zeros_initializer)
-
-  def update_state(self, values, sample_weight=None):
-    """Accumulates statistics for computing the reduction metric.
-
-    Args:
-      values: Per-example value.
-      sample_weight: (Ignored) weighting of each example. Defaults to 1.
-
-    Returns:
-      Update op.
-    """
-    del sample_weight
-    values = tf.cast(values, self._dtype)
-    value_sum = tf.reduce_sum(values)
-    with tf.control_dependencies([value_sum]):
-      return self.total.assign_add(value_sum)
-
-  def result(self):
-    return tf.identity(self.total)
-
-
-class NumBatchesCounter(Sum):
+class NumBatchesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
 
-  def __init__(self, name='num_batches', dtype=tf.int64):
+  def __init__(self, name='num_batches', dtype=tf.int64):  # pylint: disable=useless-super-delegation
     super(NumBatchesCounter, self).__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
     return super(NumBatchesCounter, self).update_state(1, sample_weight)
 
 
-class NumExamplesCounter(Sum):
+class NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
-  def __init__(self, name='num_examples', dtype=tf.int64):
+  def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
     super(NumExamplesCounter, self).__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
@@ -234,7 +196,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_fn(feature_dims)
     # If the model is intended to be used for training, it must be compiled.
     keras_model.compile(
-        optimizer=gradient_descent.SGD(learning_rate=0.01),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
         loss=loss_fn,
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     tff_model = model_utils.from_compiled_keras_model(
@@ -276,7 +238,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       return tf.reduce_mean(loss_per_example)
 
     model.compile(
-        optimizer=adam.Adam(),
+        optimizer=tf.keras.optimizers.Adam(),
         loss=loss_fn,
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -324,7 +286,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       return tf.reduce_mean(loss_per_example)
 
     model.compile(
-        optimizer=gradient_descent.SGD(learning_rate=0.01),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
         loss=loss_fn,
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -382,7 +344,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
           feature_dims)
       # If the model is intended to be used for training, it must be compiled.
       keras_model.compile(
-          optimizer=gradient_descent.SGD(learning_rate=0.01),
+          optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
@@ -415,7 +377,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       keras_model = model_examples.build_linear_regresion_keras_functional_model(
           feature_dims)
       keras_model.compile(
-          optimizer=gradient_descent.SGD(learning_rate=0.01),
+          optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
@@ -467,7 +429,7 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         dummy_batch=_create_dummy_batch(1),
         loss=tf.keras.losses.MeanSquaredError(),
-        optimizer=gradient_descent.SGD(learning_rate=0.01))
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01))
     self.assertIsInstance(tff_model, model_utils.EnhancedTrainableModel)
     # pylint: disable=internal-access
     self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
