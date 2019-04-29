@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import functools
 import itertools
 import logging
 
@@ -241,6 +242,20 @@ def capture_result_from_graph(result, graph):
   Raises:
     TypeError: If the argument or any of its parts are of an uexpected type.
   """
+
+  def _get_bindings_for_elements(name_value_pairs, graph, type_fn):
+    """Build `(type_spec, binding)` tuple for name value pairs."""
+    element_name_type_binding_triples = [
+        ((k,) + capture_result_from_graph(v, graph))
+        for k, v in name_value_pairs
+    ]
+    type_spec = type_fn([((e[0], e[1]) if e[0] else e[1])
+                         for e in element_name_type_binding_triples])
+    binding = pb.TensorFlow.Binding(
+        tuple=pb.TensorFlow.NamedTupleBinding(
+            element=[e[2] for e in element_name_type_binding_triples]))
+    return type_spec, binding
+
   # TODO(b/113112885): The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
@@ -261,32 +276,33 @@ def capture_result_from_graph(result, graph):
     # the fact that collections.namedtuples inherit from 'tuple' because we'd be
     # failing to retain the information about naming of tuple members.
     # pylint: disable=protected-access
-    return capture_result_from_graph(result._asdict(), graph)
+    name_value_pairs = six.iteritems(result._asdict())
     # pylint: enable=protected-access
-  elif isinstance(result, (dict, anonymous_tuple.AnonymousTuple)):
-    if isinstance(result, anonymous_tuple.AnonymousTuple):
-      name_value_pairs = anonymous_tuple.to_elements(result)
-    elif isinstance(result, collections.OrderedDict):
+    return _get_bindings_for_elements(
+        name_value_pairs, graph,
+        functools.partial(
+            computation_types.NamedTupleTypeWithPyContainerType,
+            container_type=type(result)))
+  elif isinstance(result, anonymous_tuple.AnonymousTuple):
+    return _get_bindings_for_elements(
+        anonymous_tuple.to_elements(result), graph,
+        computation_types.NamedTupleType)
+  elif isinstance(result, dict):
+    if isinstance(result, collections.OrderedDict):
       name_value_pairs = six.iteritems(result)
     else:
       name_value_pairs = sorted(six.iteritems(result))
-    element_name_type_binding_triples = [
-        ((k,) + capture_result_from_graph(v, graph))
-        for k, v in name_value_pairs
-    ]
-    return (computation_types.NamedTupleType([
-        ((e[0], e[1]) if e[0] else e[1])
-        for e in element_name_type_binding_triples
-    ]),
-            pb.TensorFlow.Binding(
-                tuple=pb.TensorFlow.NamedTupleBinding(
-                    element=[e[2] for e in element_name_type_binding_triples])))
+    return _get_bindings_for_elements(
+        name_value_pairs, graph,
+        functools.partial(
+            computation_types.NamedTupleTypeWithPyContainerType,
+            container_type=type(result)))
   elif isinstance(result, (list, tuple)):
     element_type_binding_pairs = [
         capture_result_from_graph(e, graph) for e in result
     ]
-    return (computation_types.NamedTupleType(
-        [e[0] for e in element_type_binding_pairs]),
+    return (computation_types.NamedTupleTypeWithPyContainerType(
+        [e[0] for e in element_type_binding_pairs], type(result)),
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))

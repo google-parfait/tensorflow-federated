@@ -138,8 +138,20 @@ class GraphUtilsTest(test.TestCase):
 
   def test_stamp_parameter_in_graph_with_named_tuple(self):
     with tf.Graph().as_default() as my_graph:
-      x = self._checked_stamp_parameter('foo',
-                                        (('a', tf.int32), ('b', tf.bool)))
+      x = self._checked_stamp_parameter(
+          'foo',
+          computation_types.NamedTupleType([('a', tf.int32), ('b', tf.bool)]))
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertTrue(len(x), 2)
+    self._assert_is_placeholder(x.a, 'foo_a:0', tf.int32, [], my_graph)
+    self._assert_is_placeholder(x.b, 'foo_b:0', tf.bool, [], my_graph)
+
+  def test_stamp_parameter_in_graph_with_py_container_named_tuple(self):
+    with tf.Graph().as_default() as my_graph:
+      x = self._checked_stamp_parameter(
+          'foo',
+          computation_types.NamedTupleTypeWithPyContainerType(
+              [('a', tf.int32), ('b', tf.bool)], collections.OrderedDict))
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertTrue(len(x), 2)
     self._assert_is_placeholder(x.a, 'foo_a:0', tf.int32, [], my_graph)
@@ -165,12 +177,13 @@ class GraphUtilsTest(test.TestCase):
       test.assert_nested_struct_eq(
           tf.compat.v1.data.get_output_shapes(x), tf.TensorShape([50]))
 
-  def test_stamp_parameter_in_graph_with_tensor_pair_sequence(self):
+  def test_stamp_parameter_in_graph_with_tensor_ordered_dict_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo',
-          computation_types.SequenceType([('A', (tf.float32, [3, 4, 5])),
-                                          ('B', (tf.int32, [1]))]))
+          computation_types.SequenceType(
+              collections.OrderedDict([('A', (tf.float32, [3, 4, 5])),
+                                       ('B', (tf.int32, [1]))])))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(tf.compat.v1.data.get_output_types(x), {
           'A': tf.float32,
@@ -254,74 +267,112 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_capture_result_with_list_of_constants(self):
-    self.assertEqual(
-        str(self._checked_capture_result([tf.constant(1),
-                                          tf.constant(True)])), '<int32,bool>')
+    t = self._checked_capture_result([tf.constant(1), tf.constant(True)])
+    self.assertEqual(str(t), '<int32,bool>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), list)
 
   @test.graph_mode_test
   def test_capture_result_with_tuple_of_constants(self):
-    self.assertEqual(
-        str(self._checked_capture_result((tf.constant(1), tf.constant(True)))),
-        '<int32,bool>')
+    t = self._checked_capture_result((tf.constant(1), tf.constant(True)))
+    self.assertEqual(str(t), '<int32,bool>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), tuple)
 
   @test.graph_mode_test
   def test_capture_result_with_dict_of_constants(self):
-    self.assertEqual(
-        str(
-            self._checked_capture_result({
-                'a': tf.constant(1),
-                'b': tf.constant(True),
-            })), '<a=int32,b=bool>')
-    self.assertEqual(
-        str(
-            self._checked_capture_result({
-                'b': tf.constant(True),
-                'a': tf.constant(1),
-            })), '<a=int32,b=bool>')
+    t1 = self._checked_capture_result({
+        'a': tf.constant(1),
+        'b': tf.constant(True),
+    })
+    self.assertEqual(str(t1), '<a=int32,b=bool>')
+    self.assertIsInstance(t1,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t1), dict)
+
+    t2 = self._checked_capture_result({
+        'b': tf.constant(True),
+        'a': tf.constant(1),
+    })
+    self.assertEqual(str(t2), '<a=int32,b=bool>')
+    self.assertIsInstance(t2,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t2), dict)
 
   @test.graph_mode_test
   def test_capture_result_with_ordered_dict_of_constants(self):
-    self.assertEqual(
-        str(
-            self._checked_capture_result(
-                collections.OrderedDict([
-                    ('b', tf.constant(True)),
-                    ('a', tf.constant(1)),
-                ]))), '<b=bool,a=int32>')
+    t = self._checked_capture_result(
+        collections.OrderedDict([
+            ('b', tf.constant(True)),
+            ('a', tf.constant(1)),
+        ]))
+    self.assertEqual(str(t), '<b=bool,a=int32>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), collections.OrderedDict)
 
   @test.graph_mode_test
   def test_capture_result_with_namedtuple_of_constants(self):
-    self.assertEqual(
-        str(
-            self._checked_capture_result(
-                collections.namedtuple('_', 'x y')(tf.constant(1),
-                                                   tf.constant(True)))),
-        '<x=int32,y=bool>')
+    test_named_tuple = collections.namedtuple('_', 'x y')
+    t = self._checked_capture_result(
+        test_named_tuple(tf.constant(1), tf.constant(True)))
+    self.assertEqual(str(t), '<x=int32,y=bool>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), test_named_tuple)
 
   @test.graph_mode_test
   def test_capture_result_with_anonymous_tuple_of_constants(self):
-    self.assertEqual(
-        str(
-            self._checked_capture_result(
-                anonymous_tuple.AnonymousTuple([
-                    ('x', tf.constant(10)),
-                    (None, tf.constant(True)),
-                    ('y', tf.constant(0.66)),
-                ]))), '<x=int32,bool,y=float32>')
+    t = self._checked_capture_result(
+        anonymous_tuple.AnonymousTuple([
+            ('x', tf.constant(10)),
+            (None, tf.constant(True)),
+            ('y', tf.constant(0.66)),
+        ]))
+    self.assertEqual(str(t), '<x=int32,bool,y=float32>')
+    self.assertIsInstance(t, computation_types.NamedTupleType)
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
 
   @test.graph_mode_test
   def test_capture_result_with_nested_lists_and_tuples(self):
-    self.assertEqual(
-        str(
-            self._checked_capture_result(
-                anonymous_tuple.AnonymousTuple([
-                    ('x', collections.namedtuple('_', 'a b')({
-                        'p': {
-                            'q': tf.constant(True)
-                        }
-                    }, [tf.constant(False)])),
-                    (None, [[tf.constant(10)]]),
-                ]))), '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
+    named_tuple_type = collections.namedtuple('_', 'a b')
+    t = self._checked_capture_result(
+        anonymous_tuple.AnonymousTuple([
+            ('x',
+             named_tuple_type({'p': {
+                 'q': tf.constant(True)
+             }}, [tf.constant(False)])),
+            (None, [[tf.constant(10)]]),
+        ]))
+    self.assertEqual(str(t), '<x=<a=<p=<q=bool>>,b=<bool>>,<<int32>>>')
+    self.assertIsInstance(t, computation_types.NamedTupleType)
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t.x,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.x), named_tuple_type)
+    self.assertIsInstance(t[1],
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t[1]), list)
 
   @test.graph_mode_test
   def test_capture_result_with_sequence_of_ints_using_from_tensors(self):
@@ -372,7 +423,8 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_assemble_result_from_graph_with_named_tuple(self):
-    type_spec = [('X', tf.int32), ('Y', tf.int32)]
+    test_named_tuple = collections.namedtuple('_', 'X Y')
+    type_spec = test_named_tuple(tf.int32, tf.int32)
     binding = pb.TensorFlow.Binding(
         tuple=pb.TensorFlow.NamedTupleBinding(element=[
             pb.TensorFlow.Binding(
@@ -385,12 +437,38 @@ class GraphUtilsTest(test.TestCase):
     output_map = {'P': tensor_a, 'Q': tensor_b}
     result = graph_utils.assemble_result_from_graph(type_spec, binding,
                                                     output_map)
-    self.assertEqual(str(result), '<X={},Y={}>'.format(tensor_a, tensor_b))
+    self.assertIsInstance(result, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(result.X, tensor_a)
+    self.assertEqual(result.Y, tensor_b)
 
   @test.graph_mode_test
-  def test_assemble_result_from_graph_with_sequence(self):
-    type_spec = computation_types.SequenceType([('X', tf.int32),
-                                                ('Y', tf.int32)])
+  def test_assemble_result_from_graph_with_sequence_of_odicts(self):
+    type_spec = computation_types.SequenceType(
+        collections.OrderedDict([('X', tf.int32), ('Y', tf.int32)]))
+    binding = pb.TensorFlow.Binding(
+        sequence=pb.TensorFlow.SequenceBinding(
+            iterator_string_handle_name='foo'))
+    data_set = tf.data.Dataset.from_tensors({
+        'X': tf.constant(1),
+        'Y': tf.constant(2)
+    })
+    it = data_set.make_one_shot_iterator()
+    output_map = {'foo': it.string_handle()}
+    result = graph_utils.assemble_result_from_graph(type_spec, binding,
+                                                    output_map)
+    self.assertIsInstance(result, graph_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertEqual(
+        str(result.output_types),
+        'OrderedDict([(\'X\', tf.int32), (\'Y\', tf.int32)])')
+    self.assertEqual(
+        str(result.output_shapes),
+        'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
+
+  @test.graph_mode_test
+  def test_assemble_result_from_graph_with_sequence_of_namedtuples(self):
+    named_tuple_type = collections.namedtuple('TestNamedTuple', 'X Y')
+    type_spec = computation_types.SequenceType(
+        named_tuple_type(tf.int32, tf.int32))
     binding = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(
             iterator_string_handle_name='foo'))

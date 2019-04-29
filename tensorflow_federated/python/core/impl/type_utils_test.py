@@ -141,74 +141,125 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(str(type_utils.infer_type(np.float64(1))), 'float64')
 
   def test_infer_type_with_int_list(self):
-    self.assertEqual(
-        str(type_utils.infer_type([1, 2, 3])), '<int32,int32,int32>')
+    t = type_utils.infer_type([1, 2, 3])
+    self.assertEqual(str(t), '<int32,int32,int32>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), list)
 
   def test_infer_type_with_nested_float_list(self):
-    self.assertEqual(
-        str(type_utils.infer_type([[0.1], [0.2], [0.3]])),
-        '<<float32>,<float32>,<float32>>')
+    t = type_utils.infer_type([[0.1], [0.2], [0.3]])
+    self.assertEqual(str(t), '<<float32>,<float32>,<float32>>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), list)
 
   def test_infer_type_with_anonymous_tuple(self):
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                anonymous_tuple.AnonymousTuple([
-                    ('a', 10),
-                    (None, False),
-                ]))), '<a=int32,bool>')
+    t = type_utils.infer_type(
+        anonymous_tuple.AnonymousTuple([
+            ('a', 10),
+            (None, False),
+        ]))
+    self.assertEqual(str(t), '<a=int32,bool>')
+    self.assertIsInstance(t, computation_types.NamedTupleType)
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
 
   def test_infer_type_with_nested_anonymous_tuple(self):
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                anonymous_tuple.AnonymousTuple([
-                    ('a', 10),
-                    (None,
-                     anonymous_tuple.AnonymousTuple([
-                         (None, True),
-                         (None, 0.5),
-                     ])),
-                ]))), '<a=int32,<bool,float32>>')
+    t = type_utils.infer_type(
+        anonymous_tuple.AnonymousTuple([
+            ('a', 10),
+            (None, anonymous_tuple.AnonymousTuple([
+                (None, True),
+                (None, 0.5),
+            ])),
+        ]))
+    self.assertEqual(str(t), '<a=int32,<bool,float32>>')
+    self.assertIsInstance(t, computation_types.NamedTupleType)
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
 
   def test_infer_type_with_namedtuple(self):
-    self.assertEqual(
-        str(type_utils.infer_type(collections.namedtuple('_', 'y x')(1, True))),
-        '<y=int32,x=bool>')
+    test_named_tuple = collections.namedtuple('TestNamedTuple', 'y x')
+    t = type_utils.infer_type(test_named_tuple(1, True))
+    self.assertEqual(str(t), '<y=int32,x=bool>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), test_named_tuple)
 
   def test_infer_type_with_dict(self):
-    self.assertEqual(
-        str(type_utils.infer_type({
-            'a': 1,
-            'b': 2.0,
-        })), '<a=int32,b=float32>')
-    self.assertEqual(
-        str(type_utils.infer_type({
-            'b': 2.0,
-            'a': 1,
-        })), '<a=int32,b=float32>')
+    v1 = {
+        'a': 1,
+        'b': 2.0,
+    }
+    inferred_type = type_utils.infer_type(v1)
+    self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
+    self.assertIsInstance(inferred_type,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            inferred_type), dict)
+
+    v2 = {
+        'b': 2.0,
+        'a': 1,
+    }
+    inferred_type = type_utils.infer_type(v2)
+    self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
+    self.assertIsInstance(inferred_type,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            inferred_type), dict)
 
   def test_infer_type_with_ordered_dict(self):
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                collections.OrderedDict([('b', 2.0), ('a', 1)]))),
-        '<b=float32,a=int32>')
+    t = type_utils.infer_type(collections.OrderedDict([('b', 2.0), ('a', 1)]))
+    self.assertEqual(str(t), '<b=float32,a=int32>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), collections.OrderedDict)
 
   def test_infer_type_with_dataset_list(self):
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                [tf.data.Dataset.from_tensors(x) for x in [1, True, [0.5]]])),
-        '<int32*,bool*,float32[1]*>')
+    t = type_utils.infer_type(
+        [tf.data.Dataset.from_tensors(x) for x in [1, True, [0.5]]])
+    self.assertEqual(str(t), '<int32*,bool*,float32[1]*>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), list)
 
   def test_infer_type_with_nested_dataset_list_tuple(self):
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                tuple([(tf.data.Dataset.from_tensors(x),)
-                       for x in [1, True, [0.5]]]))),
-        '<<int32*>,<bool*>,<float32[1]*>>')
+    t = type_utils.infer_type(
+        tuple([(tf.data.Dataset.from_tensors(x),) for x in [1, True, [0.5]]]))
+    self.assertEqual(str(t), '<<int32*>,<bool*>,<float32[1]*>>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), tuple)
+
+  def test_infer_type_with_dataset_of_named_tuple(self):
+    test_named_tuple = collections.namedtuple('_', 'A B')
+    t = type_utils.infer_type(
+        tf.data.Dataset.from_tensor_slices({
+            'x': [0.0],
+            'y': [1],
+        }).map(lambda v: test_named_tuple(v['x'], v['y'])))
+    self.assertEqual(str(t), '<A=float32,B=int32>*')
+    self.assertIsInstance(t.element,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.element), test_named_tuple)
 
   def test_to_canonical_value_with_none(self):
     self.assertEqual(type_utils.to_canonical_value(None), None)
@@ -315,89 +366,131 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         'int32[2]')
 
   def test_tf_dtypes_and_shapes_to_type_with_dict(self):
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                {
-                    'a': tf.int32,
-                    'b': tf.bool,
-                },
-                {
-                    'a': tf.TensorShape([]),
-                    'b': tf.TensorShape([5]),
-                },
-            )), '<a=int32,b=bool[5]>')
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                {
-                    'b': tf.bool,
-                    'a': tf.int32,
-                },
-                {
-                    'a': tf.TensorShape([]),
-                    'b': tf.TensorShape([5]),
-                },
-            )), '<a=int32,b=bool[5]>')
+    t1 = type_utils.tf_dtypes_and_shapes_to_type(
+        {
+            'a': tf.int32,
+            'b': tf.bool,
+        },
+        {
+            'a': tf.TensorShape([]),
+            'b': tf.TensorShape([5]),
+        },
+    )
+    self.assertEqual(str(t1), '<a=int32,b=bool[5]>')
+    self.assertIsInstance(t1,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t1), dict)
+
+    t2 = type_utils.tf_dtypes_and_shapes_to_type(
+        {
+            'b': tf.bool,
+            'a': tf.int32,
+        },
+        {
+            'a': tf.TensorShape([]),
+            'b': tf.TensorShape([5]),
+        },
+    )
+    self.assertEqual(str(t2), '<a=int32,b=bool[5]>')
+    self.assertIsInstance(t2,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t2), dict)
 
   def test_tf_dtypes_and_shapes_to_type_with_ordered_dict(self):
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                collections.OrderedDict([('b', tf.int32), ('a', tf.bool)]),
-                collections.OrderedDict([
-                    ('b', tf.TensorShape([1])),
-                    ('a', tf.TensorShape([])),
-                ]))), '<b=int32[1],a=bool>')
+    t = type_utils.tf_dtypes_and_shapes_to_type(
+        collections.OrderedDict([('b', tf.int32), ('a', tf.bool)]),
+        collections.OrderedDict([
+            ('b', tf.TensorShape([1])),
+            ('a', tf.TensorShape([])),
+        ]))
+    self.assertEqual(str(t), '<b=int32[1],a=bool>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), collections.OrderedDict)
 
   def test_tf_dtypes_and_shapes_to_type_with_tuple(self):
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                (tf.int32, tf.bool),
-                (tf.TensorShape([1]), tf.TensorShape([2])))),
-        '<int32[1],bool[2]>')
+    t = type_utils.tf_dtypes_and_shapes_to_type(
+        (tf.int32, tf.bool), (tf.TensorShape([1]), tf.TensorShape([2])))
+    self.assertEqual(str(t), '<int32[1],bool[2]>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), tuple)
 
   def test_tf_dtypes_and_shapes_to_type_with_list(self):
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                [tf.int32, tf.bool],
-                [tf.TensorShape([1]), tf.TensorShape([2])])),
-        '<int32[1],bool[2]>')
+    t = type_utils.tf_dtypes_and_shapes_to_type(
+        [tf.int32, tf.bool],
+        [tf.TensorShape([1]), tf.TensorShape([2])])
+    self.assertEqual(str(t), '<int32[1],bool[2]>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), list)
 
   def test_tf_dtypes_and_shapes_to_type_with_list_of_lists(self):
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                [[tf.int32, tf.int32], [tf.bool, tf.bool]], [
-                    [tf.TensorShape([1]),
-                     tf.TensorShape([2])],
-                    [tf.TensorShape([]), tf.TensorShape([])],
-                ])), '<<int32[1],int32[2]>,<bool,bool>>')
+    t = type_utils.tf_dtypes_and_shapes_to_type(
+        [[tf.int32, tf.int32], [tf.bool, tf.bool]], [
+            [tf.TensorShape([1]), tf.TensorShape([2])],
+            [tf.TensorShape([]), tf.TensorShape([])],
+        ])
+    self.assertEqual(str(t), '<<int32[1],int32[2]>,<bool,bool>>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), list)
+    self.assertIsInstance(t[0],
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t[0]), list)
 
   def test_tf_dtypes_and_shapes_to_type_with_namedtuple(self):
     foo = collections.namedtuple('_', 'y x')
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                foo(x=tf.int32, y=tf.bool),
-                foo(x=tf.TensorShape([1]), y=tf.TensorShape([2])))),
-        '<y=bool[2],x=int32[1]>')
+    t = type_utils.tf_dtypes_and_shapes_to_type(
+        foo(x=tf.int32, y=tf.bool),
+        foo(x=tf.TensorShape([1]), y=tf.TensorShape([2])))
+    self.assertEqual(str(t), '<y=bool[2],x=int32[1]>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), foo)
 
   def test_tf_dtypes_and_shapes_to_type_with_three_level_nesting(self):
     foo = collections.namedtuple('_', 'y x')
-    self.assertEqual(
-        str(
-            type_utils.tf_dtypes_and_shapes_to_type(
-                foo(x=[tf.int32, {
-                    'bar': tf.float32
-                }], y=tf.bool),
-                foo(x=[tf.TensorShape([1]), {
-                    'bar': tf.TensorShape([2])
-                }],
-                    y=tf.TensorShape([3])))),
-        '<y=bool[3],x=<int32[1],<bar=float32[2]>>>')
+    t = type_utils.tf_dtypes_and_shapes_to_type(
+        foo(x=[tf.int32, {
+            'bar': tf.float32
+        }], y=tf.bool),
+        foo(x=[tf.TensorShape([1]), {
+            'bar': tf.TensorShape([2])
+        }],
+            y=tf.TensorShape([3])))
+    self.assertEqual(str(t), '<y=bool[3],x=<int32[1],<bar=float32[2]>>>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), foo)
+    self.assertIsInstance(t.x,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.x), list)
+    self.assertIsInstance(t.x[1],
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.x[1]), dict)
 
   def test_type_to_tf_dtypes_and_shapes_with_int_scalar(self):
     dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(tf.int32)
@@ -410,9 +503,9 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     test.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
 
   def test_type_to_tf_dtypes_and_shapes_with_tensor_triple(self):
-    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes([
-        ('a', (tf.int32, [5])), ('b', tf.bool), ('c', (tf.float32, [3]))
-    ])
+    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(
+        collections.OrderedDict([('a', (tf.int32, [5])), ('b', tf.bool),
+                                 ('c', (tf.float32, [3]))]))
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.int32,
         'b': tf.bool,
@@ -425,9 +518,15 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     })
 
   def test_type_to_tf_dtypes_and_shapes_with_two_level_tuple(self):
-    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes([
-        ('a', tf.bool), ('b', [('c', tf.float32), ('d', (tf.int32, [20]))])
-    ])
+    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(
+        collections.OrderedDict([
+            ('a', tf.bool),
+            ('b',
+             collections.OrderedDict([
+                 ('c', tf.float32),
+                 ('d', (tf.int32, [20])),
+             ])),
+        ]))
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {
