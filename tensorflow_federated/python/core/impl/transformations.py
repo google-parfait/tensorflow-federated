@@ -529,6 +529,52 @@ def replace_tuple_intrinsics_with_intrinsic(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
+def merge_chained_blocks(comp):
+  r"""Merges Block constructs defined in sequence in the AST of `comp`.
+
+  Looks for occurrences of the following pattern:
+
+                Block
+               /     \
+            [...]     Block
+                     /     \
+                  [...]    Comp
+
+  And merges them to
+
+              Block
+             /     \
+          [...]    Comp
+
+  Preserving the relative ordering of any locals declarations in a postorder
+  walk, which therefore preserves scoping rules.
+
+  Notice that because TFF Block constructs bind their variables in sequence, it
+  is completely safe to add the locals lists together in this implementation,
+
+  Args:
+    comp: The `computation_building_blocks.ComputationBuildingBlock` whose
+      blocks should be merged if possible.
+
+  Returns:
+    Transformed version of `comp` with its neighboring blocks merged.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def _should_transform(comp):
+    return (isinstance(comp, computation_building_blocks.Block) and
+            isinstance(comp.result, computation_building_blocks.Block))
+
+  def _transform(comp):
+    if not _should_transform(comp):
+      return comp
+    return computation_building_blocks.Block(comp.locals + comp.result.locals,
+                                             comp.result.result)
+
+  return transformation_utils.transform_postorder(comp, _transform)
+
+
 def _is_called_intrinsic(comp, uri):
   """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
 
