@@ -529,31 +529,6 @@ def replace_tuple_intrinsics_with_intrinsic(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def inline_blocks_with_n_referenced_locals(comp, inlining_threshold=1):
-  """Replaces locals referenced few times in `comp` with bound values.
-
-  Args:
-    comp: The computation building block in which to inline the locals which
-      occur only `inlining_threshold` times in the result computation.
-    inlining_threshold: The threshhold below which to inline computations. E.g.
-      if `inlining_threshold` is 1, locals which are referenced exactly once
-      will be inlined, but locals which are referenced twice or more will not.
-
-  Returns:
-    A modified version of `comp` for which all occurrences of
-    `computation_building_blocks.Block`s with locals which
-      are referenced `inlining_threshold` or fewer times inlined with the value
-      of the local.
-  """
-
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  count_snapshot = transformation_utils.scope_count_snapshot(comp)
-  op = transformation_utils.InlineReferences(inlining_threshold, count_snapshot,
-                                             comp)
-  return transformation_utils.transform_postorder(comp, op)
-
-
 def _is_called_intrinsic(comp, uri):
   """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
 
