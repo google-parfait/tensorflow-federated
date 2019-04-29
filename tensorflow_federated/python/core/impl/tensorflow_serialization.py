@@ -40,13 +40,14 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   Args:
     target: The entity to convert into and serialize as a TF computation. This
       can currently only be a Python function. In the future, we will add here
-      support for serializing the various kinds of non-eager and eager defuns,
-      and eventually aim at full support for and compliance with TF 2.0. This
-      function is currently required to declare either zero parameters if
-      `parameter_type` is `None`, or exactly one parameter if it's not `None`.
-      The nested structure of this parameter must correspond to the structure of
-      the 'parameter_type'. In the future, we may support targets with multiple
-      args/keyword args (to be documented in the API and referenced from here).
+      support for serializing the various kinds of non-eager and eager
+      functions, and eventually aim at full support for and compliance with TF
+      2.0. This function is currently required to declare either zero parameters
+      if `parameter_type` is `None`, or exactly one parameter if it's not
+      `None`.  The nested structure of this parameter must correspond to the
+      structure of the 'parameter_type'. In the future, we may support targets
+      with multiple args/keyword args (to be documented in the API and
+      referenced from here).
     parameter_type: The parameter type specification if the target accepts a
       parameter, or `None` if the target doesn't declare any parameters. Either
       an instance of `types.Type`, or something that's convertible to it by

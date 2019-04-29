@@ -62,8 +62,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return []
 
-  # TODO(b/124777499): Remove `autograph=False` when possible.
-  @tf.contrib.eager.function(autograph=False)
+  @tf.function
   def __call__(self, dataset, initial_weights):
     # TODO(b/113112108): Remove this temporary workaround and restore check for
     # `tf.data.Dataset` after subclassing the currently used custom data set
@@ -75,8 +74,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     model = self._model
     nest.map_structure(tf.assign, model.weights, initial_weights)
 
-    # TODO(b/124777499): Remove `autograph=False` when possible.
-    @tf.contrib.eager.function(autograph=False)
+    @tf.function
     def reduce_fn(num_examples_sum, batch):
       """Runs `tff.learning.Model.train_on_batch` on local client batch."""
       output = model.train_on_batch(batch)
@@ -98,9 +96,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     else:
       weights_delta_weight = self._client_weight_fn(aggregated_outputs)
     # Zero out the weight if there are any non-finite values.
-    weights_delta_weight = tf.cond(
-        tf.equal(has_non_finite_delta,
-                 0), lambda: weights_delta_weight, lambda: tf.constant(0.0))
+    if has_non_finite_delta > 0:
+      weights_delta_weight = tf.constant(0.0)
 
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, aggregated_outputs,

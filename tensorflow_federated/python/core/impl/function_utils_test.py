@@ -57,8 +57,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertFalse(function_utils.is_defun(None))
 
   def test_get_defun_argspec_with_typed_non_eager_defun(self):
-    # In a non-eager defun with a defined input signature, **kwargs or default
-    # values are not allowed, but *args are, and the input signature may
+    # In a non-eager function with a defined input signature, **kwargs or
+    # default values are not allowed, but *args are, and the input signature may
     # overlap with *args.
     self.assertEqual(
         function_utils.get_argspec(
@@ -68,8 +68,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
   def test_get_defun_argspec_with_untyped_non_eager_defun(self):
-    # In a non-eager defun with no input signature, the same restrictions as in
-    # a typed defun apply.
+    # In a non-eager function with no input signature, the same restrictions as
+    # in a typed eager function apply.
     self.assertEqual(
         function_utils.get_argspec(function.Defun()(lambda x, y, *z: None)),
         inspect.ArgSpec(
