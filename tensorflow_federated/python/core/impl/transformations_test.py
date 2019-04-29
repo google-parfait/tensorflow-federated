@@ -1149,5 +1149,70 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.tff_repr, '<dummy(x),dummy(x)>')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
 
+  def test_merge_chained_blocks_fails_on_none(self):
+    with self.assertRaises(TypeError):
+      transformations.merge_chained_blocks(None)
+
+  def test_merge_chained_blocks_single_level_of_nesting(self):
+    input1 = computation_building_blocks.Reference('input1', tf.int32)
+    result = computation_building_blocks.Reference('result', tf.int32)
+    block1 = computation_building_blocks.Block([('result', input1)], result)
+    input2 = computation_building_blocks.Data('input2', tf.int32)
+    block2 = computation_building_blocks.Block([('input1', input2)], block1)
+    self.assertEqual(block2.tff_repr,
+                     '(let input1=input2 in (let result=input1 in result))')
+    merged_blocks = transformations.merge_chained_blocks(block2)
+    self.assertEqual(merged_blocks.tff_repr,
+                     '(let input1=input2,result=input1 in result)')
+
+  def test_merge_chained_blocks_leaves_names(self):
+    input1 = computation_building_blocks.Data('input1', tf.int32)
+    result_tuple = computation_building_blocks.Tuple([
+        ('a', computation_building_blocks.Data('result_a', tf.int32)),
+        ('b', computation_building_blocks.Data('result_b', tf.int32))
+    ])
+    block1 = computation_building_blocks.Block([('x', input1)], result_tuple)
+    result_block = block1
+    input2 = computation_building_blocks.Data('input2', tf.int32)
+    block2 = computation_building_blocks.Block([('y', input2)], result_block)
+    self.assertEqual(
+        block2.tff_repr,
+        '(let y=input2 in (let x=input1 in <a=result_a,b=result_b>))')
+    merged = transformations.merge_chained_blocks(block2)
+    self.assertEqual(merged.tff_repr,
+                     '(let y=input2,x=input1 in <a=result_a,b=result_b>)')
+
+  def test_merge_chained_blocks_leaves_separated_chained_blocks_alone(self):
+    input1 = computation_building_blocks.Data('input1', tf.int32)
+    result = computation_building_blocks.Data('result', tf.int32)
+    block1 = computation_building_blocks.Block([('x', input1)], result)
+    result_block = block1
+    result_tuple = computation_building_blocks.Tuple([result_block])
+    input2 = computation_building_blocks.Data('input2', tf.int32)
+    block2 = computation_building_blocks.Block([('y', input2)], result_tuple)
+    self.assertEqual(block2.tff_repr,
+                     '(let y=input2 in <(let x=input1 in result)>)')
+    merged = transformations.merge_chained_blocks(block2)
+    self.assertEqual(merged.tff_repr,
+                     '(let y=input2 in <(let x=input1 in result)>)')
+
+  def test_merge_chained_blocks_two_levels_of_nesting(self):
+    input1 = computation_building_blocks.Reference('input1', tf.int32)
+    result = computation_building_blocks.Reference('result', tf.int32)
+    block1 = computation_building_blocks.Block([('result', input1)], result)
+    input2 = computation_building_blocks.Reference('input2', tf.int32)
+    block2 = computation_building_blocks.Block([('input1', input2)], block1)
+    input3 = computation_building_blocks.Data('input3', tf.int32)
+    block3 = computation_building_blocks.Block([('input2', input3)], block2)
+    self.assertEqual(
+        block3.tff_repr,
+        '(let input2=input3 in (let input1=input2 in (let result=input1 in result)))'
+    )
+    merged_blocks = transformations.merge_chained_blocks(block3)
+    self.assertEqual(
+        merged_blocks.tff_repr,
+        '(let input2=input3,input1=input2,result=input1 in result)')
+
+
 if __name__ == '__main__':
   absltest.main()
