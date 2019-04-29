@@ -69,18 +69,19 @@ def infer_type(arg):
         for k, v in anonymous_tuple.to_elements(arg)
     ])
   elif py_typecheck.is_named_tuple(arg):
-    # Special handling needed for collections.namedtuple.
-    return infer_type(arg._asdict())
+    items = arg._asdict()
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        [(k, infer_type(v)) for k, v in six.iteritems(items)], type(arg))
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
       items = six.iteritems(arg)
     else:
       items = sorted(six.iteritems(arg))
-    return computation_types.NamedTupleType([
-        (k, infer_type(v)) for k, v in items
-    ])
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        [(k, infer_type(v)) for k, v in items], type(arg))
   elif isinstance(arg, (tuple, list)):
-    return computation_types.NamedTupleType([infer_type(e) for e in arg])
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        [infer_type(e) for e in arg], type(arg))
   elif isinstance(arg, six.string_types):
     return computation_types.TensorType(tf.string)
   elif isinstance(arg, (np.generic, np.ndarray)):
@@ -175,7 +176,12 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   elif py_typecheck.is_named_tuple(dtypes):
     # Special handling needed for collections.namedtuple due to the lack of
     # a base class. Note this must precede the test for being a list.
-    return tf_dtypes_and_shapes_to_type(dtypes._asdict(), shapes._asdict())
+    shape_dict = shapes._asdict()
+    elements = [(name,
+                 tf_dtypes_and_shapes_to_type(dtypes_elem, shape_dict[name]))
+                for name, dtypes_elem in six.iteritems(dtypes._asdict())]
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        elements, type(dtypes))
   elif isinstance(dtypes, dict):
     if isinstance(dtypes, collections.OrderedDict):
       items = six.iteritems(dtypes)
@@ -183,12 +189,13 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
       items = sorted(six.iteritems(dtypes))
     elements = [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
                 for name, dtypes_elem in items]
-    return computation_types.NamedTupleType(elements)
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        elements, type(dtypes))
   elif isinstance(dtypes, (list, tuple)):
-    return computation_types.NamedTupleType([
+    return computation_types.NamedTupleTypeWithPyContainerType([
         tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
         for idx, dtypes_elem in enumerate(dtypes)
-    ])
+    ], type(dtypes))
   else:
     raise TypeError('Unrecognized: dtypes {}, shapes {}.'.format(
         str(dtypes), str(shapes)))
