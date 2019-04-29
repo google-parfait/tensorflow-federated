@@ -29,7 +29,6 @@ from __future__ import print_function
 from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
@@ -136,7 +135,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
 def build_federated_sgd_process(
     model_fn,
-    server_optimizer_fn=lambda: gradient_descent.SGD(learning_rate=0.1),
+    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
     client_weight_fn=None):
   """Builds the TFF computations for optimization using federated SGD.
 

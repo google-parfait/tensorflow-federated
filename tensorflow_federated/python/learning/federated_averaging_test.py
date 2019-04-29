@@ -25,7 +25,6 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
@@ -149,7 +148,7 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
     def model_fn():
       keras_model = build_keras_model_fn(feature_dims=2)
       keras_model.compile(
-          optimizer=gradient_descent.SGD(learning_rate=0.01),
+          optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[])
       return model_utils.from_compiled_keras_model(keras_model, dummy_batch)

@@ -25,7 +25,6 @@ import six
 from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python.keras import metrics as keras_metrics
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -314,31 +313,22 @@ class _KerasModel(model_lib.Model):
     self._metrics = metrics if metrics is not None else []
 
     # This is defined here so that it closes over the `loss_fn`.
-    class _WeightedMeanLossMetric(keras_metrics.Metric):
+    class _WeightedMeanLossMetric(tf.keras.metrics.Mean):
       """A `tf.keras.metrics.Metric` wrapper for the loss function."""
 
       def __init__(self, name='loss', dtype=tf.float32):
         super(_WeightedMeanLossMetric, self).__init__(name, dtype)
-        self._total_loss = self.add_weight('total_loss', initializer='zeros')
-        self._total_weight = self.add_weight(
-            'total_weight', initializer='zeros')
         self._loss_fn = loss_fn
 
       def update_state(self, y_true, y_pred, sample_weight=None):
         y_true = tf.cast(y_true, self._dtype)
         y_pred = tf.cast(y_pred, self._dtype)
 
-        # _loss_fn is expected to return the scalar mean loss, so we multiply by
-        # the batch_size to get back to total loss.
         batch_size = tf.cast(tf.shape(y_pred)[0], self._dtype)
-        batch_total_loss = self._loss_fn(y_true, y_pred) * batch_size
+        batch_loss = self._loss_fn(y_true, y_pred)
 
-        op = self._total_loss.assign_add(batch_total_loss)
-        with tf.control_dependencies([op]):
-          return self._total_weight.assign_add(batch_size)
-
-      def result(self):
-        return tf.div_no_nan(self._total_loss, self._total_weight)
+        return super(_WeightedMeanLossMetric,
+                     self).update_state(batch_loss, batch_size)
 
     self._loss_metric = _WeightedMeanLossMetric()
 
