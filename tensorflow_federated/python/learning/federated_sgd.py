@@ -67,8 +67,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return []
 
-  # TODO(b/124777499): Remove `autograph=False` when possible.
-  @tf.contrib.eager.function(autograph=False)
+  @tf.function
   def __call__(self, dataset, initial_weights):
     model = self._model
 
@@ -82,8 +81,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     nest.map_structure(tf.assign, model.weights, initial_weights)
     flat_trainable_weights = tuple(nest.flatten(model.weights.trainable))
 
-    # TODO(b/124777499): Remove `autograph=False` when possible.
-    @tf.contrib.eager.function(autograph=False)
+    @tf.function
     def reduce_fn(state, batch):
       """Runs forward_pass on batch and sums the weighted gradients."""
       flat_accumulated_grads, batch_weight_sum = state
@@ -121,10 +119,10 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         lambda gradient: -1.0 * gradient / batch_weight_sum, grad_sums)
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
-    weights_delta_weight = tf.cond(
-        tf.equal(has_non_finite_delta,
-                 0), lambda: batch_weight_sum, lambda: tf.constant(0.0))
-
+    if has_non_finite_delta > 0:
+      weights_delta_weight = tf.constant(0.0)
+    else:
+      weights_delta_weight = batch_weight_sum
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, model.report_local_outputs(),
         tensor_utils.to_odict({

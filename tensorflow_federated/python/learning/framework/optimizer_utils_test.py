@@ -44,30 +44,24 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
   def variables(self):
     return []
 
-  # TODO(b/123898430): The control dependencies below have been inserted as a
-  # temporary workaround that annotating this with @tf.contrib.eager.function is
-  # not supported.
+  @tf.function
   def __call__(self, dataset, initial_weights):
     # Iterate over the dataset to get new metric values.
     def reduce_fn(dummy, batch):
       self._model.train_on_batch(batch)
       return dummy
 
-    dummy_output = dataset.reduce(tf.constant(0.0), reduce_fn)
+    dataset.reduce(tf.constant(0.0), reduce_fn)
 
     # Create some fake weight deltas to send back.
     trainable_weights_delta = nest.map_structure(lambda x: -tf.ones_like(x),
                                                  initial_weights.trainable)
-    with tf.control_dependencies([dummy_output]):
-      client_weight = tf.constant(1.0)
-      return optimizer_utils.ClientOutput(
-          trainable_weights_delta,
-          weights_delta_weight=client_weight,
-          model_output=self._model.report_local_outputs(),
-          optimizer_output={
-              'client_weight': client_weight,
-              'workaround for b/121400757': dummy_output
-          })
+    client_weight = tf.constant(1.0)
+    return optimizer_utils.ClientOutput(
+        trainable_weights_delta,
+        weights_delta_weight=client_weight,
+        model_output=self._model.report_local_outputs(),
+        optimizer_output={'client_weight': client_weight})
 
 
 def _state_incrementing_mean_next(server_state, client_value, weight=None):

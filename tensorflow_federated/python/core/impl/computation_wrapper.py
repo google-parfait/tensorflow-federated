@@ -149,7 +149,7 @@ class ComputationWrapper(object):
 
   ```python
   @xyz(...decorator arguments...)
-  @tf.contrib.eager.defun
+  @tf.function
   def my_comp(...function parameters...):
     ...
   ```

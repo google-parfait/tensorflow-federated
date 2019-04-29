@@ -881,7 +881,7 @@ class GraphUtilsTest(test.TestCase):
       ds2 = graph_utils.OneShotDataset(
           make, computation_types.TensorType(dtype, shape))
 
-      @tf.contrib.eager.defun
+      @tf.function
       def foo():
         return ds2.reduce(np.int32(0), lambda x, y: x + y)
 

@@ -90,7 +90,7 @@ def get_argspec(fn):
           function._DefinedFunction,  # pylint: disable=protected-access
           function._OverloadedFunction  # pylint: disable=protected-access
       )):
-    # On the non-eager defuns, tf_inspect does not appear to work, so we peek
+    # On the non-eager functions, tf_inspect does not appear to work, so we peek
     # inside to extract arguments.
     return inspect.getargspec(fn._func)  # pylint: disable=protected-access,deprecated-method
   elif is_defun(fn):
@@ -417,7 +417,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
 
   Example usage:
 
-    @tf.contrib.eager.defun
+    @tf.function
     def my_fn(x, y, z=10, name='bar', *p, **q):
       return x + y
 
