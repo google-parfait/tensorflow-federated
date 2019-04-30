@@ -261,6 +261,20 @@ def type_to_tf_dtypes_and_shapes(type_spec):
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes.append(element_output[0])
         output_shapes.append(element_output[1])
+    if isinstance(type_spec,
+                  computation_types.NamedTupleTypeWithPyContainerType):
+      container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+          type_spec)
+
+      def _convert_to_py_container(elements):
+        if hasattr(container_type, '_asdict'):
+          return container_type(**dict(elements))
+        else:
+          return container_type(elements)
+
+      output_dtypes = _convert_to_py_container(output_dtypes)
+      output_shapes = _convert_to_py_container(output_shapes)
+    else:
       output_dtypes = tuple(output_dtypes)
       output_shapes = tuple(output_shapes)
     return (output_dtypes, output_shapes)
@@ -298,10 +312,22 @@ def type_to_tf_structure(type_spec):
     named = element_outputs[0][0] is not None
     if not all((e[0] is not None) == named for e in element_outputs):
       raise ValueError('Tuple elements inconsistently named.')
-    if named:
-      output = collections.OrderedDict(element_outputs)
+    if not isinstance(type_spec,
+                      computation_types.NamedTupleTypeWithPyContainerType):
+      if named:
+        output = collections.OrderedDict(element_outputs)
+      else:
+        output = tuple(v for _, v in element_outputs)
     else:
-      output = tuple([v for _, v in element_outputs])
+      container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+          type_spec)
+      if hasattr(container_type, '_asdict'):
+        output = container_type(**dict(element_outputs))
+      elif named:
+        output = container_type(element_outputs)
+      else:
+        output = container_type(
+            e if e[0] is not None else e[1] for e in element_outputs)
     return tf.data.experimental.NestedStructure(output)
   else:
     raise ValueError('Unsupported type {}.'.format(
