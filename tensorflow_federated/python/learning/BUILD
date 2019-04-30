@@ -59,7 +59,6 @@ py_library(
     srcs = ["federated_evaluation.py"],
     deps = [
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core",
     ],
 )

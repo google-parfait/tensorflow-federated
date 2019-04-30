@@ -437,7 +437,7 @@ class GraphUtilsTest(test.TestCase):
     output_map = {'P': tensor_a, 'Q': tensor_b}
     result = graph_utils.assemble_result_from_graph(type_spec, binding,
                                                     output_map)
-    self.assertIsInstance(result, anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(result, test_named_tuple)
     self.assertEqual(result.X, tensor_a)
     self.assertEqual(result.Y, tensor_b)
 
@@ -483,10 +483,10 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(result, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         str(result.output_types),
-        'OrderedDict([(\'X\', tf.int32), (\'Y\', tf.int32)])')
+        'TestNamedTuple(X=tf.int32, Y=tf.int32)')
     self.assertEqual(
         str(result.output_shapes),
-        'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
+        'TestNamedTuple(X=TensorShape([]), Y=TensorShape([]))')
 
   def test_make_dummy_element_TensorType(self):
     type_spec = computation_types.TensorType(tf.float32,

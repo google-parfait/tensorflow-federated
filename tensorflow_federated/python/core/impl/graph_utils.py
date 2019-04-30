@@ -492,7 +492,14 @@ def assemble_result_from_graph(type_spec, binding, output_map):
         element_object = assemble_result_from_graph(element_type,
                                                     element_binding, output_map)
         result_elements.append((element_name, element_object))
-      return anonymous_tuple.AnonymousTuple(result_elements)
+      if not isinstance(type_spec,
+                        computation_types.NamedTupleTypeWithPyContainerType):
+        return anonymous_tuple.AnonymousTuple(result_elements)
+      container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+          type_spec)
+      if hasattr(container_type, '_asdict'):
+        return container_type(**dict(result_elements))
+      return container_type(result_elements)
   elif isinstance(type_spec, computation_types.SequenceType):
     if binding_oneof != 'sequence':
       raise ValueError(

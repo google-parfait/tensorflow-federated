@@ -225,6 +225,8 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 
   @tff.tf_computation
   def zeros_fn():
+    # `member_type` is a (potentially nested) `tff.NamedTupleType`, which is an
+    # `anonymous_tuple.AnonymousTuple`.
     return anonymous_tuple.map_structure(
         lambda v: tf.zeros(v.shape, dtype=v.dtype), member_type)
 
@@ -238,11 +240,11 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 
   @tff.tf_computation(member_type, member_type)
   def accumulate(accumulators, variables):
-    return anonymous_tuple.map_structure(tf.add, accumulators, variables)
+    return nest.map_structure(tf.add, accumulators, variables)
 
   @tff.tf_computation(member_type, member_type)
   def merge(a, b):
-    return anonymous_tuple.map_structure(tf.add, a, b)
+    return nest.map_structure(tf.add, a, b)
 
   @tff.tf_computation(member_type)
   def report(accumulators):

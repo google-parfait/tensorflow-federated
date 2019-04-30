@@ -373,10 +373,10 @@ class ReferenceExecutorTest(test.TestCase):
       bar(ds2)
 
   def test_batching_namedtuple_dataset(self):
-    Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
+    batch_type = collections.namedtuple('Batch', ['x', 'y'])
     federated_sequence_type = computation_types.FederatedType(
         computation_types.SequenceType(
-            Batch(
+            batch_type(
                 x=computation_types.TensorType(tf.float32, [None, 2]),
                 y=computation_types.TensorType(tf.float32, [None, 1]))),
         placements.CLIENTS,
@@ -384,8 +384,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.tf_computation(federated_sequence_type.member)
     def test_batch_select_and_reduce(z):
-      # namedtuple is converted to OrderedDict under the hood
-      i = z.map(lambda x: x['y'])
+      i = z.map(lambda x: x.y)
       return i.reduce(0., lambda x, y: x + tf.reduce_sum(y))
 
     @computations.federated_computation(federated_sequence_type)
@@ -880,9 +879,9 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(str(bar.type_signature), '(float32* -> int32)')
     self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
 
-  def test_sequence_reduce_with_tuples(self):
-
-    accumulator_type = [('sum', tf.int32), ('product', tf.int32)]
+  def test_sequence_reduce_with_namedtuples(self):
+    accumulator_type = collections.namedtuple('_', ['sum', 'product'])(
+        sum=tf.int32, product=tf.int32)
 
     @computations.tf_computation(accumulator_type, tf.int32)
     def foo(accumulator, x):
@@ -982,7 +981,9 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(foo_result_str, '<1,4>,<2,5>,<3,6>')
 
   def test_federated_aggregate_with_integers(self):
-    accu_type = computation_types.to_type([('sum', tf.int32), ('n', tf.int32)])
+    test_named_tuple = collections.namedtuple('_', ['sum', 'n'])
+    accu_type = computation_types.to_type(
+        test_named_tuple(sum=tf.int32, n=tf.int32))
 
     @computations.tf_computation(accu_type, tf.int32)
     def accumulate(a, x):
