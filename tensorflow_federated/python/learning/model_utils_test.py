@@ -37,8 +37,6 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
-nest = tf.contrib.framework.nest
-
 
 class NumBatchesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of batches seen."""

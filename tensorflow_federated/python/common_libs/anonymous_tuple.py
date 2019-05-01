@@ -26,8 +26,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-nest = tf.contrib.framework.nest
-
 
 class AnonymousTuple(object):
   """Represents an anonymous named tuple.
@@ -216,7 +214,7 @@ def flatten(structure):
     The list of values in the tuple (or the singleton argument if not a tuple).
   """
   if not isinstance(structure, AnonymousTuple):
-    return nest.flatten(structure)
+    return tf.nest.flatten(structure)
   else:
     result = []
     for _, v in to_elements(structure):
@@ -286,7 +284,7 @@ def is_same_structure(a, b):
       return False
     else:
       try:
-        nest.assert_same_structure(val_a, val_b, check_types=True)
+        tf.nest.assert_same_structure(val_a, val_b, check_types=True)
       except (ValueError, TypeError):
         return False
   return True

@@ -27,8 +27,6 @@ from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 
-nest = tf.contrib.framework.nest
-
 
 class ModelExamplesTest(test.TestCase, parameterized.TestCase):
 
@@ -113,7 +111,7 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
           y=tf.constant([[0.0], [1.0]]))
       with tf.control_dependencies([init_op]):
         batch_output = model.forward_pass(batch)
-        with tf.control_dependencies(nest.flatten(batch_output)):
+        with tf.control_dependencies(tf.nest.flatten(batch_output)):
           local_output = model.report_local_outputs()
       return batch_output, local_output
 

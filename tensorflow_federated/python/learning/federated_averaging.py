@@ -33,8 +33,6 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-nest = tf.contrib.framework.nest
-
 
 class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
@@ -72,7 +70,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
           py_typecheck.type_string(type(dataset))))
 
     model = self._model
-    nest.map_structure(tf.assign, model.weights, initial_weights)
+    tf.nest.map_structure(tf.assign, model.weights, initial_weights)
 
     @tf.function
     def reduce_fn(num_examples_sum, batch):
@@ -83,8 +81,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     num_examples_sum = dataset.reduce(
         initial_state=tf.constant(0), reduce_func=reduce_fn)
 
-    weights_delta = nest.map_structure(tf.subtract, model.weights.trainable,
-                                       initial_weights.trainable)
+    weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
+                                          initial_weights.trainable)
     aggregated_outputs = model.report_local_outputs()
 
     # TODO(b/122071074): Consider moving this functionality into
