@@ -55,8 +55,10 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
     context_stack: The context stack to use.
 
   Returns:
-    The constructed `pb.Computation` instance with the `pb.TensorFlow` variant
-      set.
+    A tuple of (`pb.Computation`, `tff.Type`), where the computation contains
+    the instance with the `pb.TensorFlow` variant set, and the type is an
+    instance of `tff.Type`, potentially including Python container annotations,
+    for use by TensorFlow computation wrappers.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -131,6 +133,8 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
     result_type, result_binding = graph_utils.capture_result_from_graph(
         result, graph)
 
+  annotated_type = computation_types.FunctionType(parameter_type, result_type)
+
   return pb.Computation(
       type=pb.Type(
           function=pb.FunctionType(
@@ -140,4 +144,4 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
           graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
           parameter=parameter_binding,
           result=result_binding,
-          initialize_op=init_op_name))
+          initialize_op=init_op_name)), annotated_type

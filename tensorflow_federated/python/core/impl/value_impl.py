@@ -243,7 +243,7 @@ def _wrap_constant_as_value(const, context_stack):
     An instance of `value_base.Value`.
   """
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+  tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       lambda: tf.constant(const), None, context_stack)
   compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
   called_comp = computation_building_blocks.Call(compiled_comp)
@@ -284,11 +284,11 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
                                                    elements, element_type)
 
   # Wraps the dataset as a value backed by a no-argument TensorFlow computation.
+  tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+      _create_dataset_from_elements, None, context_stack)
   return ValueImpl(
       computation_building_blocks.Call(
-          computation_building_blocks.CompiledComputation(
-              tensorflow_serialization.serialize_py_fn_as_tf_computation(
-                  _create_dataset_from_elements, None, context_stack))),
+          computation_building_blocks.CompiledComputation(tf_comp)),
       context_stack)
 
 

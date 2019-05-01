@@ -35,18 +35,36 @@ class ComputationImpl(function_utils.ConcreteFunction):
     py_typecheck.check_type(value, cls)
     return value._computation_proto  # pylint: disable=protected-access
 
-  def __init__(self, computation_proto, context_stack):
+  def __init__(self, computation_proto, context_stack, annotated_type=None):
     """Constructs a new instance of ComputationImpl from the computation_proto.
 
     Args:
       computation_proto: The protocol buffer that represents the computation, an
         instance of pb.Computation.
       context_stack: The context stack to use.
+      annotated_type: Optional, type information with additional annotations
+        that replaces the information in `computation_proto.type`.
+
+    Raises:
+      TypeError: if `annotated_type` is not `None` and is not compatible with
+      `computation_proto.type`.
     """
     py_typecheck.check_type(computation_proto, pb.Computation)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     type_spec = type_serialization.deserialize_type(computation_proto.type)
     py_typecheck.check_type(type_spec, computation_types.Type)
+    if annotated_type is not None:
+      py_typecheck.check_type(annotated_type, computation_types.Type)
+      # Extra information is encoded in a NamedTupleTypeWithPyContainerType
+      # subclass which does not override __eq__. The two type specs should still
+      # compare as equal.
+      if type_spec != annotated_type:
+        raise TypeError(
+            'annotated_type not compatible with computation_proto.type\n'
+            'computation_proto.type: {!s}\n'
+            'annotated_type: {!s}'.format(type_spec, annotated_type)
+        )
+      type_spec = annotated_type
 
     type_utils.check_well_formed(type_spec)
 

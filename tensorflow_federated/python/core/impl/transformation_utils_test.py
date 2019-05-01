@@ -141,9 +141,9 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   call = computation_building_blocks.Call(lam, ref_to_x)
   cbb_list.append(('call', call))
   fn = lambda: tf.constant(1)
-  compiled_comp = computation_building_blocks.CompiledComputation(
-      tensorflow_serialization.serialize_py_fn_as_tf_computation(
-          fn, None, context_stack_impl.context_stack))
+  tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+      fn, None, context_stack_impl.context_stack)
+  compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
   cbb_list.append(('compiled_comp', compiled_comp))
   placement = computation_building_blocks.Placement(placement_literals.CLIENTS)
   cbb_list.append(('placement', placement))
