@@ -250,7 +250,7 @@ def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
   def fn(comp):
     if predicate is None or predicate(comp):
       count[0] += 1
-    return comp
+    return comp, False
 
   transformation_utils.transform_postorder(comp, fn)
   return count[0]
@@ -281,7 +281,7 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_transform_postorder_fails_on_none_comp(self):
 
     def transform(comp):
-      return comp
+      return comp, False
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder(None, transform)
@@ -307,11 +307,12 @@ class TransformationUtilsTest(parameterized.TestCase):
         n = n + 1
 
         def _fn(x):
-          return computation_building_blocks.Call(
-              computation_building_blocks.Intrinsic(
-                  'F{}'.format(n),
-                  computation_types.FunctionType(x.type_signature,
-                                                 x.type_signature)), x)
+          intrinsic_type = computation_types.FunctionType(
+              x.type_signature, x.type_signature)
+          intrinsic = computation_building_blocks.Intrinsic(
+              'F{}'.format(n), intrinsic_type)
+          call = computation_building_blocks.Call(intrinsic, x)
+          return call, True
 
         yield _fn
 
@@ -319,37 +320,38 @@ class TransformationUtilsTest(parameterized.TestCase):
     # pylint: disable=unnecessary-lambda
     tx_fn = lambda x: six.next(transformation_fn_sequence)(x)
     # pylint: enable=unnecessary-lambda
-    transfomed_comp = transformation_utils.transform_postorder(comp, tx_fn)
+    transfomed_comp, modified = transformation_utils.transform_postorder(
+        comp, tx_fn)
     self.assertEqual(
-        str(transfomed_comp),
+        transfomed_comp.tff_repr,
         'F6((foo_arg -> F5(F2(F1(foo_arg)[0])(F4(F3(foo_arg)[1])))))')
+    self.assertTrue(modified)
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
       [('complex_tree', _construct_nested_tree())])
   def test_transform_postorder_returns_untransformed(self, comp):
 
-    def transform_noop(internal_comp):
-      return internal_comp
+    def transform_noop(comp):
+      return comp, False
 
-    same_comp = transformation_utils.transform_postorder(comp, transform_noop)
+    same_comp, modified = transformation_utils.transform_postorder(
+        comp, transform_noop)
     self.assertEqual(same_comp.tff_repr, comp.tff_repr)
+    self.assertFalse(modified)
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks())
-  def test_transform_postorder_constructs_new_internal(self, comp):
+  def test_transform_postorder_does_not_construct_new_internal(self, comp):
 
     def transform_noop(comp):
-      return comp
+      return comp, False
 
-    same_comp = transformation_utils.transform_postorder(comp, transform_noop)
+    same_comp, modified = transformation_utils.transform_postorder(
+        comp, transform_noop)
 
-    if not isinstance(comp, (computation_building_blocks.CompiledComputation,
-                             computation_building_blocks.Data,
-                             computation_building_blocks.Intrinsic,
-                             computation_building_blocks.Placement,
-                             computation_building_blocks.Reference)):
-      self.assertNotEqual(id(comp), id(same_comp))
+    self.assertEqual(comp, same_comp)
+    self.assertFalse(modified)
 
   def test_transform_postorder_hits_all_nodes_once(self):
     complex_ast = _construct_nested_tree()
@@ -364,7 +366,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     def transform(comp):
       if isinstance(comp, computation_building_blocks.Data):
         leaf_name_order.append(comp.uri)
-      return comp
+      return comp, False
 
     transformation_utils.transform_postorder(complex_ast, transform)
 
@@ -380,7 +382,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, computation_building_blocks.Block):
         for name, _ in comp.locals:
           leaf_name_order.append(name)
-      return comp
+      return comp, False
 
     transformation_utils.transform_postorder(complex_ast, transform)
 
@@ -407,7 +409,7 @@ class TransformationUtilsTest(parameterized.TestCase):
           leaf_name_order.append(name)
       elif isinstance(comp, computation_building_blocks.Data):
         leaf_name_order.append(comp.uri)
-      return comp
+      return comp, False
 
     transformation_utils.transform_postorder(complex_ast, transform)
     postorder_nodes = [
@@ -865,7 +867,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       complex_symbol_tree._add_child(5, young_y)
       complex_symbol_tree._move_to_child(5)
       complex_symbol_tree._add_child(6, misdirect_z)
-      return (complex_symbol_tree, x_tracker, elder_y, young_y, misdirect_z)
+      return complex_symbol_tree, x_tracker, elder_y, young_y, misdirect_z
 
     (complex_symbol_tree, x_tracker, elder_y, young_y,
      misdirect_z) = _construct_symbol_tree()

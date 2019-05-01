@@ -384,9 +384,9 @@ class ValueImplTest(parameterized.TestCase):
       return value_impl.to_value(cbb, None, context_stack_impl.context_stack)
 
     t = sequence_type(range(0, 50, 10))
-    v = _to_value(
-        transformations.replace_compiled_computations_names_with_unique_names(
-            value_impl.ValueImpl.get_comp(_to_value(t))))
+    comp, _ = transformations.replace_compiled_computations_names_with_unique_names(
+        value_impl.ValueImpl.get_comp(_to_value(t)))
+    v = _to_value(comp)
 
     self.assertEqual((str(v.type_signature)), '<int32,int32,int32,int32,int32>')
     self.assertEqual(str(v[:]), str(v))

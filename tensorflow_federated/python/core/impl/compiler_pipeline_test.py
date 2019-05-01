@@ -58,7 +58,7 @@ class CompilerPipelineTest(absltest.TestCase):
     def _not_federated_sum(x):
       if isinstance(x, computation_building_blocks.Intrinsic):
         self.assertNotEqual(x.uri, intrinsic_defs.FEDERATED_SUM.uri)
-      return x
+      return x, False
 
     transformation_utils.transform_postorder(
         computation_building_blocks.ComputationBuildingBlock.from_proto(

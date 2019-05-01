@@ -51,12 +51,15 @@ def transform_postorder(comp, transform):
   `Call(f',x')` is transformed at the end.
 
   Args:
-    comp: The computation to traverse and transform bottom-up.
+    comp: A `computation_building_block.ComputationBuildingBlock` to traverse
+      and transform bottom-up.
     transform: The transformation to apply locally to each building block in
       `comp`. It is a Python function that accepts a building block at input,
-      and should return either the same, or transformed building block as
-      output. Both the input and output of `transform` are instances of
-      `ComputationBuildingBlock`.
+      and should return a (building block, bool) tuple as output, where the
+      building block is a `computation_building_block.ComputationBuildingBlock`
+      representing either the original building block or a transformed building
+      block and the bool is a flag indicating if the building block was
+      modified as.
 
   Returns:
     The result of applying `transform` to parts of `comp` in a bottom-up
@@ -77,35 +80,52 @@ def transform_postorder(comp, transform):
        computation_building_blocks.Reference)):
     return transform(comp)
   elif isinstance(comp, computation_building_blocks.Selection):
-    return transform(
-        computation_building_blocks.Selection(
-            transform_postorder(comp.source, transform), comp.name, comp.index))
+    source, source_modified = transform_postorder(comp.source, transform)
+    if source_modified:
+      comp = computation_building_blocks.Selection(source, comp.name,
+                                                   comp.index)
+    comp, comp_modified = transform(comp)
+    return comp, comp_modified or source_modified
   elif isinstance(comp, computation_building_blocks.Tuple):
-    return transform(
-        computation_building_blocks.Tuple([
-            (k, transform_postorder(v, transform))
-            for k, v in anonymous_tuple.to_elements(comp)
-        ]))
+    elements = []
+    elements_modified = False
+    for key, value in anonymous_tuple.to_elements(comp):
+      value, value_modified = transform_postorder(value, transform)
+      elements.append((key, value))
+      elements_modified = elements_modified or value_modified
+    if elements_modified:
+      comp = computation_building_blocks.Tuple(elements)
+    comp, comp_modified = transform(comp)
+    return comp, comp_modified or elements_modified
   elif isinstance(comp, computation_building_blocks.Call):
-    transformed_transform = transform_postorder(comp.function, transform)
+    fn, fn_modified = transform_postorder(comp.function, transform)
     if comp.argument is not None:
-      transformed_arg = transform_postorder(comp.argument, transform)
+      arg, arg_modified = transform_postorder(comp.argument, transform)
     else:
-      transformed_arg = None
-    return transform(
-        computation_building_blocks.Call(transformed_transform,
-                                         transformed_arg))
+      arg, arg_modified = (None, False)
+    if fn_modified or arg_modified:
+      comp = computation_building_blocks.Call(fn, arg)
+    comp, comp_modified = transform(comp)
+    return comp, comp_modified or fn_modified or arg_modified
   elif isinstance(comp, computation_building_blocks.Lambda):
-    transformed_result = transform_postorder(comp.result, transform)
-    return transform(
-        computation_building_blocks.Lambda(comp.parameter_name,
-                                           comp.parameter_type,
-                                           transformed_result))
+    result, result_modified = transform_postorder(comp.result, transform)
+    if result_modified:
+      comp = computation_building_blocks.Lambda(comp.parameter_name,
+                                                comp.parameter_type, result)
+    comp, comp_modified = transform(comp)
+    return comp, comp_modified or result_modified
   elif isinstance(comp, computation_building_blocks.Block):
-    return transform(
-        computation_building_blocks.Block(
-            [(k, transform_postorder(v, transform)) for k, v in comp.locals],
-            transform_postorder(comp.result, transform)))
+    local_symbols = []
+    locals_modified = False
+    for key, value in comp.locals:
+      value, value_modified = transform_postorder(value, transform)
+      local_symbols.append((key, value))
+      locals_modified = locals_modified or value_modified
+    result, result_modified = transform_postorder(comp.result, transform)
+    if locals_modified or result_modified:
+      comp = computation_building_blocks.Block(local_symbols, result)
+    comp, comp_modified = transform(comp)
+    return comp, comp_modified or locals_modified or result_modified
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))

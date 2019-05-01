@@ -192,12 +192,9 @@ class ValueUtilsTest(parameterized.TestCase):
     curried = value_utils.get_curried(add_numbers)
     self.assertEqual(str(curried.type_signature), '(int32 -> (int32 -> int32))')
 
-    self.assertEqual(
-        str(
-            transformations
-            .replace_compiled_computations_names_with_unique_names(
-                value_impl.ValueImpl.get_comp(curried))),
-        '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
+    comp, _ = transformations.replace_compiled_computations_names_with_unique_names(
+        value_impl.ValueImpl.get_comp(curried))
+    self.assertEqual(comp.tff_repr, '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
 
 
 if __name__ == '__main__':
