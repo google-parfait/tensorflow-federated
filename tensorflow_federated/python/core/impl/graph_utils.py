@@ -37,8 +37,6 @@ from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import type_utils
 
-nest = tf.contrib.framework.nest
-
 
 def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   """Stamps a parameter of a given type in the given tf.Graph instance.
@@ -532,10 +530,10 @@ def nested_structures_equal(x, y):
     `True` iff `x` and `y` are equal, `False` otherwise.
   """
   try:
-    nest.assert_same_structure(x, y)
+    tf.nest.assert_same_structure(x, y)
   except ValueError:
     return False
-  return nest.flatten(x) == nest.flatten(y)
+  return tf.nest.flatten(x) == tf.nest.flatten(y)
 
 
 def make_empty_list_structure_for_element_type_spec(type_spec):

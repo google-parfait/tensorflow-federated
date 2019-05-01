@@ -32,8 +32,6 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-nest = tf.contrib.framework.nest
-
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 
@@ -54,8 +52,8 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
     dataset.reduce(tf.constant(0.0), reduce_fn)
 
     # Create some fake weight deltas to send back.
-    trainable_weights_delta = nest.map_structure(lambda x: -tf.ones_like(x),
-                                                 initial_weights.trainable)
+    trainable_weights_delta = tf.nest.map_structure(lambda x: -tf.ones_like(x),
+                                                    initial_weights.trainable)
     client_weight = tf.constant(1.0)
     return optimizer_utils.ClientOutput(
         trainable_weights_delta,

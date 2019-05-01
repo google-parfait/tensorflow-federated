@@ -26,8 +26,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-nest = tf.contrib.framework.nest
-
 
 class TensorUtilsTest(test.TestCase):
 
@@ -76,7 +74,7 @@ class TensorUtilsTest(test.TestCase):
         },
         'KEY2': 1.0,
     }
-    nest.assert_same_structure(nested_dict, nested_dict_different_types)
+    tf.nest.assert_same_structure(nested_dict, nested_dict_different_types)
 
     # Same as nested_dict but with one different value
     nested_dict_different_value = {
@@ -156,7 +154,7 @@ class TensorUtilsTest(test.TestCase):
         with self.session() as sess:
           result, error = sess.run((result, error))
         try:
-          nest.map_structure(np.testing.assert_allclose, result, structure)
+          tf.nest.map_structure(np.testing.assert_allclose, result, structure)
         except AssertionError:
           self.fail('Expected to get input {} back, but instead got {}'.format(
               structure, result))
@@ -174,7 +172,7 @@ class TensorUtilsTest(test.TestCase):
         with self.session() as sess:
           result, error = sess.run((result, error))
         try:
-          nest.map_structure(np.testing.assert_allclose, result, expected)
+          tf.nest.map_structure(np.testing.assert_allclose, result, expected)
         except AssertionError:
           self.fail('Expected to get zeros, but instead got {}'.format(result))
         self.assertEqual(error, 1)

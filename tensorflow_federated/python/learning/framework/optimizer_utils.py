@@ -31,8 +31,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-nest = tf.contrib.framework.nest
-
 
 class ClientOutput(
     collections.namedtuple('ClientOutput', [
@@ -111,17 +109,17 @@ def _build_server_optimizer(model, optimizer):
   @tf.function
   def apply_delta(delta):
     """Applies `delta` to `model.weights`."""
-    nest.assert_same_structure(delta, model.weights.trainable)
-    grads_and_vars = nest.map_structure(lambda x, v: (-1.0 * x, v),
-                                        nest.flatten(delta),
-                                        nest.flatten(model.weights.trainable))
+    tf.nest.assert_same_structure(delta, model.weights.trainable)
+    grads_and_vars = tf.nest.map_structure(
+        lambda x, v: (-1.0 * x, v), tf.nest.flatten(delta),
+        tf.nest.flatten(model.weights.trainable))
     # N.B. This may create variables.
     optimizer.apply_gradients(grads_and_vars, name='server_update')
     return tf.constant(1)  # We have to return something.
 
   # Create a dummy input and trace apply_delta so that
   # we can determine the optimizer's variables.
-  weights_delta = nest.map_structure(tf.zeros_like, model.weights.trainable)
+  weights_delta = tf.nest.map_structure(tf.zeros_like, model.weights.trainable)
 
   # TODO(b/109733734): We would like to call get_concrete_function,
   # but that does not currently work with structured inputs.
@@ -261,8 +259,8 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
   @tf.function
   def update_model_inner():
     """Applies the update."""
-    nest.map_structure(tf.assign, (model.weights, optimizer_vars),
-                       (server_state.model, server_state.optimizer_state))
+    tf.nest.map_structure(tf.assign, (model.weights, optimizer_vars),
+                          (server_state.model, server_state.optimizer_state))
     apply_delta_fn(no_nan_weights_delta)
     return model.weights, optimizer_vars
 

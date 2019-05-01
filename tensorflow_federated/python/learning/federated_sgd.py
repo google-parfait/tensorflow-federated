@@ -35,8 +35,6 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-nest = tf.contrib.framework.nest
-
 
 class ClientSgd(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated SGD."""
@@ -78,8 +76,8 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       raise TypeError('Expected a data set, found {}.'.format(
           py_typecheck.type_string(type(dataset))))
 
-    nest.map_structure(tf.assign, model.weights, initial_weights)
-    flat_trainable_weights = tuple(nest.flatten(model.weights.trainable))
+    tf.nest.map_structure(tf.assign, model.weights, initial_weights)
+    flat_trainable_weights = tuple(tf.nest.flatten(model.weights.trainable))
 
     @tf.function
     def reduce_fn(state, batch):
@@ -112,10 +110,11 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
     flat_grad_sums, batch_weight_sum = dataset.reduce(
         initial_state=_zero_initial_state(), reduce_func=reduce_fn)
-    grad_sums = nest.pack_sequence_as(model.weights.trainable, flat_grad_sums)
+    grad_sums = tf.nest.pack_sequence_as(model.weights.trainable,
+                                         flat_grad_sums)
 
     # For SGD, the delta is just the negative of the average gradient:
-    weights_delta = nest.map_structure(
+    weights_delta = tf.nest.map_structure(
         lambda gradient: -1.0 * gradient / batch_weight_sum, grad_sums)
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))

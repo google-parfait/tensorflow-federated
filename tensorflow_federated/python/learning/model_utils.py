@@ -32,8 +32,6 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import graph_keys
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-nest = tf.contrib.framework.nest
-
 
 def model_initializer(model, name=None):
   """Creates an initializer op for all of the model's variables."""
@@ -240,11 +238,11 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 
   @tff.tf_computation(member_type, member_type)
   def accumulate(accumulators, variables):
-    return nest.map_structure(tf.add, accumulators, variables)
+    return tf.nest.map_structure(tf.add, accumulators, variables)
 
   @tff.tf_computation(member_type, member_type)
   def merge(a, b):
-    return nest.map_structure(tf.add, a, b)
+    return tf.nest.map_structure(tf.add, a, b)
 
   @tff.tf_computation(member_type)
   def report(accumulators):
@@ -307,8 +305,8 @@ class _KerasModel(model_lib.Model):
           shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
       return spec
 
-    self._input_spec = nest.map_structure(_tensor_spec_with_undefined_batch_dim,
-                                          dummy_tensors)
+    self._input_spec = tf.nest.map_structure(
+        _tensor_spec_with_undefined_batch_dim, dummy_tensors)
 
     self._keras_model = inner_model
     self._loss_fn = loss_fn
@@ -334,8 +332,8 @@ class _KerasModel(model_lib.Model):
 
     self._loss_metric = _WeightedMeanLossMetric()
 
-    metric_variable_type_dict = nest.map_structure(tf.TensorSpec.from_tensor,
-                                                   self.report_local_outputs())
+    metric_variable_type_dict = tf.nest.map_structure(
+        tf.TensorSpec.from_tensor, self.report_local_outputs())
     federated_local_outputs_type = tff.FederatedType(
         metric_variable_type_dict, tff.CLIENTS, all_equal=False)
 

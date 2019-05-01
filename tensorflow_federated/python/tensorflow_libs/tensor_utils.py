@@ -28,8 +28,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
-nest = tf.contrib.framework.nest
-
 
 def check_nested_equal(nested_x, nested_y, eq_fn=operator.eq):
   """Raises error if two nested structures are not equal.
@@ -47,9 +45,9 @@ def check_nested_equal(nested_x, nested_y, eq_fn=operator.eq):
     ValueError: If the two structures differ in value at any position in the
       nested structure.
   """
-  nest.assert_same_structure(nested_x, nested_y)
-  flat_x = nest.flatten(nested_x)
-  flat_y = nest.flatten(nested_y)
+  tf.nest.assert_same_structure(nested_x, nested_y)
+  flat_x = tf.nest.flatten(nested_x)
+  flat_y = tf.nest.flatten(nested_y)
   for x, y in zip(flat_x, flat_y):
     if not eq_fn(x, y):
       raise ValueError('{x} != {y}'.format(x=x, y=y))
@@ -109,7 +107,7 @@ def zero_all_if_any_non_finite(structure):
      A tuple (input, 0) if all entries are finite or the structure is empty, or
      a tuple (zeros, 1) if any non-finite entries were found.
   """
-  flat = nest.flatten(structure)
+  flat = tf.nest.flatten(structure)
   if not flat:
     return (structure, tf.constant(0))
   flat_bools = [tf.reduce_all(tf.is_finite(t)) for t in flat]
@@ -117,7 +115,7 @@ def zero_all_if_any_non_finite(structure):
   if all_finite:
     return (structure, tf.constant(0))
   else:
-    return (nest.map_structure(tf.zeros_like, structure), tf.constant(1))
+    return (tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1))
 
 
 def is_scalar(tensor):

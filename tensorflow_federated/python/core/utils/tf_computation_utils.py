@@ -25,8 +25,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 
-nest = tf.contrib.framework.nest
-
 
 def get_variables(name, type_spec, **kwargs):
   """Creates a set of variables that matches the given `type_spec`.
@@ -91,7 +89,7 @@ def assign(target, source):
         anonymous_tuple.map_structure(tf.assign, target, source)))
   else:
     return tf.group(
-        *nest.flatten(nest.map_structure(tf.assign, target, source)))
+        *tf.nest.flatten(tf.nest.map_structure(tf.assign, target, source)))
 
 
 def identity(source):
@@ -129,4 +127,4 @@ def identity(source):
   if isinstance(source, anonymous_tuple.AnonymousTuple):
     return anonymous_tuple.map_structure(_mapping_fn, source)
   else:
-    return nest.map_structure(_mapping_fn, source)
+    return tf.nest.map_structure(_mapping_fn, source)

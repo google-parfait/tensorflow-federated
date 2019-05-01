@@ -25,8 +25,6 @@ import tensorflow as tf
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.learning import model_utils
 
-nest = tf.contrib.framework.nest
-
 
 def build_federated_evaluation(model_fn):
   """Builds the TFF computation for federated evaluation of the given model.
@@ -46,7 +44,7 @@ def build_federated_evaluation(model_fn):
   with tf.Graph().as_default():
     model = model_utils.enhance(model_fn())
     model_weights_type = tff.to_type(
-        nest.map_structure(
+        tf.nest.map_structure(
             lambda v: tff.TensorType(v.dtype.base_dtype, v.shape),
             model.weights))
     batch_type = tff.to_type(model.input_spec)
