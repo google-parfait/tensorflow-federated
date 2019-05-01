@@ -612,7 +612,6 @@ py_test(
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
     ],
 )

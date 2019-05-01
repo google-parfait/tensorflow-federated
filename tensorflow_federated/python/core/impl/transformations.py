@@ -59,9 +59,10 @@ def replace_compiled_computations_names_with_unique_names(comp):
 
   def _transform(comp):
     if not _should_transform(comp):
-      return comp
-    return computation_building_blocks.CompiledComputation(
+      return comp, False
+    transformed_comp = computation_building_blocks.CompiledComputation(
         comp.proto, str(six.next(name_generator)))
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -102,11 +103,12 @@ def replace_intrinsic_with_callable(comp, uri, body, context_stack):
 
   def _transform(comp):
     if not _should_transform(comp):
-      return comp
+      return comp, False
     # We need 'wrapped_body' to accept exactly one argument.
     wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
-    return federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+    transformed_comp = federated_computation_utils.zero_or_one_arg_fn_to_building_block(
         wrapped_body, 'arg', comp.type_signature.parameter, context_stack, uri)
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -156,9 +158,10 @@ def replace_called_lambda_with_block(comp):
 
   def _transform(comp):
     if not _should_transform(comp):
-      return comp
-    return computation_building_blocks.Block(
+      return comp, False
+    transformed_comp = computation_building_blocks.Block(
         [(comp.function.parameter_name, comp.argument)], comp.function.result)
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -214,9 +217,9 @@ def remove_mapped_or_applied_identity(comp):
 
   def _transform(comp):
     if not _should_transform(comp):
-      return comp
-    called_arg = comp.argument[1]
-    return called_arg
+      return comp, False
+    transformed_comp = comp.argument[1]
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -287,7 +290,7 @@ def replace_chained_federated_maps_with_federated_map(comp):
   def _transform(comp):
     """Returns a new transformed computation or `comp`."""
     if not _should_transform(comp):
-      return comp
+      return comp, False
 
     def _create_block_to_chained_calls(comps):
       r"""Constructs a transformed block computation from `comps`.
@@ -338,7 +341,8 @@ def replace_chained_federated_maps_with_federated_map(comp):
         arg.type_signature, comp.function.type_signature.result)
     intrinsic = computation_building_blocks.Intrinsic(comp.function.uri,
                                                       intrinsic_type)
-    return computation_building_blocks.Call(intrinsic, arg)
+    transformed_comp = computation_building_blocks.Call(intrinsic, arg)
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -420,7 +424,7 @@ def replace_tuple_intrinsics_with_intrinsic(comp):
   def _transform(comp):
     """Returns a new transformed computation or `comp`."""
     if not _should_transform(comp):
-      return comp
+      return comp, False
 
     def _get_comps(comp):
       """Constructs a 2 dimentional Python list of computations.
@@ -524,7 +528,8 @@ def replace_tuple_intrinsics_with_intrinsic(comp):
     intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
     intrinsic = computation_building_blocks.Intrinsic(comp[0].function.uri,
                                                       intrinsic_type)
-    return computation_building_blocks.Call(intrinsic, arg)
+    transformed_comp = computation_building_blocks.Call(intrinsic, arg)
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
@@ -534,17 +539,17 @@ def merge_chained_blocks(comp):
 
   Looks for occurrences of the following pattern:
 
-                Block
-               /     \
-            [...]     Block
-                     /     \
-                  [...]    Comp
+        Block
+       /     \
+  [...]       Block
+             /     \
+        [...]       Comp(x)
 
   And merges them to
 
-              Block
-             /     \
-          [...]    Comp
+        Block
+       /     \
+  [...]       Comp(x)
 
   Preserving the relative ordering of any locals declarations in a postorder
   walk, which therefore preserves scoping rules.
@@ -568,9 +573,11 @@ def merge_chained_blocks(comp):
 
   def _transform(comp):
     if not _should_transform(comp):
-      return comp
-    return computation_building_blocks.Block(comp.locals + comp.result.locals,
-                                             comp.result.result)
+      return comp, False
+    transformed_comp = computation_building_blocks.Block(comp.locals +
+                                                         comp.result.locals,
+                                                         comp.result.result)
+    return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
