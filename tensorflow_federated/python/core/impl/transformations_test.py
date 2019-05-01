@@ -431,7 +431,7 @@ class TransformationsTest(parameterized.TestCase):
 
   def test_replace_compiled_computations_names_replaces_name(self):
     fn = lambda: tf.constant(1)
-    tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+    tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         fn, None, context_stack_impl.context_stack)
     compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
     comp = compiled_comp
@@ -446,7 +446,7 @@ class TransformationsTest(parameterized.TestCase):
     elements = []
     for _ in range(10):
       fn = lambda: tf.constant(1)
-      tf_comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+      tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
           fn, None, context_stack_impl.context_stack)
       compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
       elements.append(compiled_comp)

@@ -343,20 +343,19 @@ def build_model_delta_optimizer_process(
   with tf.Graph().as_default():
     dummy_model_for_metadata = model_utils.enhance(model_fn())
 
+  @tff.tf_computation
+  def tf_init_fn():
+    return server_init(model_fn, server_optimizer_fn,
+                       stateful_delta_aggregate_fn.initialize(),
+                       stateful_model_broadcast_fn.initialize())
+
   @tff.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
-
-    @tff.tf_computation
-    def _fn():
-      return server_init(model_fn, server_optimizer_fn,
-                         stateful_delta_aggregate_fn.initialize(),
-                         stateful_model_broadcast_fn.initialize())
-
-    return tff.federated_value(_fn(), tff.SERVER)
+    return tff.federated_value(tf_init_fn(), tff.SERVER)
 
   federated_server_state_type = server_init_tff.type_signature.result
-  server_state_type = federated_server_state_type.member
+  server_state_type = tf_init_fn.type_signature.result
 
   tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
   federated_dataset_type = tff.FederatedType(
@@ -375,7 +374,7 @@ def build_model_delta_optimizer_process(
       A tuple of updated `tff.learning.framework.ServerState` and the result of
     `tff.learning.Model.federated_output_computation`.
     """
-    model_weights_type = federated_server_state_type.member.model
+    model_weights_type = server_state_type.model
 
     @tff.tf_computation(tf_dataset_type, model_weights_type)
     def client_delta_tf(tf_dataset, initial_model_weights):
@@ -390,14 +389,6 @@ def build_model_delta_optimizer_process(
         A `ClientOutput` structure.
       """
       client_delta_fn = model_to_client_delta_fn(model_fn)
-
-      # TODO(b/123092620): this can be removed once AnonymousTuple works with
-      # tf.contrib.framework.nest, or the following behavior is moved to
-      # anonymous_tuple module.
-      if isinstance(initial_model_weights, anonymous_tuple.AnonymousTuple):
-        initial_model_weights = model_utils.ModelWeights.from_tff_value(
-            initial_model_weights)
-
       client_output = client_delta_fn(tf_dataset, initial_model_weights)
       return client_output
 
@@ -414,15 +405,9 @@ def build_model_delta_optimizer_process(
     def server_update_tf(server_state, model_delta, new_delta_aggregate_state,
                          new_broadcaster_state):
       """Converts args to correct python types and calls server_update_model."""
-      # We need to convert TFF types to the types server_update_model expects.
-      # TODO(b/123092620): Mixing AnonymousTuple with other nested types is not
-      # pretty, fold this into anonymous_tuple module or get working with
-      # tf.contrib.framework.nest.
-      py_typecheck.check_type(model_delta, anonymous_tuple.AnonymousTuple)
-      model_delta = anonymous_tuple.to_odict(model_delta)
-      py_typecheck.check_type(server_state, anonymous_tuple.AnonymousTuple)
+      py_typecheck.check_type(server_state, ServerState)
       server_state = ServerState(
-          model=model_utils.ModelWeights.from_tff_value(server_state.model),
+          model=server_state.model,
           optimizer_state=list(server_state.optimizer_state),
           delta_aggregate_state=new_delta_aggregate_state,
           model_broadcast_state=new_broadcaster_state)

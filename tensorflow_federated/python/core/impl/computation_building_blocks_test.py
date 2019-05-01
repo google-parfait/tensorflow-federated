@@ -242,7 +242,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_compiled_computation_class(self):
-    comp = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+    comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         lambda x: x + 3, tf.int32, context_stack_impl.context_stack)
     x = computation_building_blocks.CompiledComputation(comp)
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')

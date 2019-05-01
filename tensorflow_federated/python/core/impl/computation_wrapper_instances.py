@@ -35,9 +35,9 @@ def _tf_wrapper_fn(target_fn, parameter_type, name=None):
                     'and `TensorType`; you have attempted to create one '
                     'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack
-  comp_pb = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+  comp_pb, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       target_fn, parameter_type, ctx_stack)
-  return computation_impl.ComputationImpl(comp_pb, ctx_stack)
+  return computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
 
 
 tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
