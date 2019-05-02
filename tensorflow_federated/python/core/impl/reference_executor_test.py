@@ -395,8 +395,24 @@ class ReferenceExecutorTest(test.TestCase):
         'x': [[1., 2.], [3., 4.]],
         'y': [[5.], [6.]]
     }).batch(1)
-
     self.assertEqual(map_y_sum([ds] * 5), [np.array([[11.]])] * 5)
+
+  def test_batching_ordereddict_dataset(self):
+    odict_type = collections.OrderedDict([
+        ('x', computation_types.TensorType(tf.float32, [None, 2])),
+        ('y', computation_types.TensorType(tf.float32, [None, 1])),
+    ])
+
+    @computations.tf_computation(odict_type)
+    def test_foo(z):
+      return tf.reduce_sum(z['x']) + z['y']
+
+    self.assertEqual(
+        test_foo(
+            collections.OrderedDict([
+                ('x', np.ones(shape=[1, 2], dtype=np.float32)),
+                ('y', np.ones(shape=[1, 1], dtype=np.float32)),
+            ])), 3.0)
 
   def test_helpful_failure_federated_int_sequence(self):
     sequence_type = computation_types.SequenceType(tf.int32)

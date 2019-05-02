@@ -18,8 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import inspect
 
+import six
 from six.moves import builtins
 
 
@@ -166,3 +168,20 @@ def is_named_tuple(value):
     if '_asdict' in vars(p):
       return True
   return False
+
+
+def is_name_value_pair(element):
+  """Determines whether `element` can be considered a name and value pair.
+
+  In TFF a named field is a `collection.Sequence` of two elements, a `name` and
+  a `value`.
+
+  Args:
+    element: an instance of a Python class.
+
+  Returns:
+    True iff `element` is a sequence of two elements, the first which is string
+    type.
+  """
+  return (isinstance(element, collections.Sequence) and len(element) == 2 and
+          isinstance(element[0], six.string_types))

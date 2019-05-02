@@ -90,6 +90,22 @@ class PyTypeCheckTest(absltest.TestCase):
     self.assertNotIn('_asdict', vars(type(u)))
     self.assertTrue(py_typecheck.is_named_tuple(u))
 
+  def test_is_name_value_pair(self):
+    self.assertTrue(py_typecheck.is_name_value_pair(['a', 1]))
+    self.assertTrue(py_typecheck.is_name_value_pair(['a', [1, 2]]))
+    self.assertTrue(py_typecheck.is_name_value_pair(('a', 1)))
+    self.assertTrue(py_typecheck.is_name_value_pair(('a', [1, 2])))
+
+    self.assertFalse(py_typecheck.is_name_value_pair([0, 'a']))
+    self.assertFalse(py_typecheck.is_name_value_pair((0, 'a')))
+    self.assertFalse(py_typecheck.is_name_value_pair('a'))
+    self.assertFalse(py_typecheck.is_name_value_pair('abc'))
+    self.assertFalse(py_typecheck.is_name_value_pair(['abc']))
+    self.assertFalse(py_typecheck.is_name_value_pair(('abc')))
+    self.assertFalse(py_typecheck.is_name_value_pair((None, 0)))
+    self.assertFalse(py_typecheck.is_name_value_pair([None, 0]))
+    self.assertFalse(py_typecheck.is_name_value_pair({'a': 1}))
+
 
 if __name__ == '__main__':
   absltest.main()
