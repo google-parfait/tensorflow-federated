@@ -344,12 +344,20 @@ class ToTypeTest(absltest.TestCase):
   def test_list_of_named_tf_types(self):
     s = [('a', tf.int32), ('b', tf.bool)]
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), list)
+    # Note: list of pairs should be interpreted as a plain NamedTupleType, and
+    # not try to convert into a python list afterwards.
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
     self.assertEqual(str(t), '<a=int32,b=bool>')
+
+  def test_list_of_partially_named_tf_types(self):
+    s = [tf.bool, ('a', tf.int32)]
+    t = computation_types.to_type(s)
+    # Note: list of pairs should be interpreted as a plain NamedTupleType, and
+    # not try to convert into a python list afterwards.
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertEqual(str(t), '<bool,a=int32>')
 
   def test_ordered_dict_of_tf_types(self):
     s = collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
@@ -379,9 +387,8 @@ class ToTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), tuple)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t[1]), tuple)
+    self.assertNotIsInstance(
+        t[1], computation_types.NamedTupleTypeWithPyContainerType)
     self.assertEqual(str(t), '<int32,<x=float32,bool>>')
 
   def test_nested_tuple_of_named_nonscalar_tf_types(self):
@@ -392,9 +399,8 @@ class ToTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), tuple)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t[1]), tuple)
+    self.assertNotIsInstance(
+        t[1], computation_types.NamedTupleTypeWithPyContainerType)
     self.assertEqual(str(t), '<int32[1],<x=float32[2],bool[3]>>')
 
   def test_namedtuple_elements_two_tuples(self):
@@ -411,11 +417,10 @@ class ToTypeTest(absltest.TestCase):
   def test_namedtuples_addressable_by_name(self):
     elems = [('item' + str(k), tf.int32) for k in range(5)]
     t = computation_types.to_type(elems)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), list)
+    # Note: list of pairs should be interpreted as a plain NamedTupleType, and
+    # not try to convert into a python list afterwards.
+    self.assertNotIsInstance(
+        t, computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIsInstance(t.item0, computation_types.TensorType)
     self.assertEqual(t.item0, t[0])
 

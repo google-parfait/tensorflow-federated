@@ -437,7 +437,15 @@ def to_type(spec):
     # or a list, or a tuple that can be fed as argument into a tf.TensorShape.
     # We thus convert this into a TensorType.
     return TensorType(spec[0], spec[1])
-  elif isinstance(spec, (list, tuple, collections.OrderedDict)):
+  elif isinstance(spec, (list, tuple)):
+    if any(py_typecheck.is_name_value_pair(e) for e in spec):
+      # The sequence has a (name, value) elements, the whole sequence is most
+      # likely intended to be an AnonymousTuple, do not store the Python
+      # container.
+      return NamedTupleType(spec)
+    else:
+      return NamedTupleTypeWithPyContainerType(spec, type(spec))
+  elif isinstance(spec, collections.OrderedDict):
     return NamedTupleTypeWithPyContainerType(spec, type(spec))
   elif isinstance(spec, collections.Mapping):
     # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an

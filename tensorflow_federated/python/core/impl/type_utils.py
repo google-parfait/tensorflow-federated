@@ -80,8 +80,18 @@ def infer_type(arg):
     return computation_types.NamedTupleTypeWithPyContainerType(
         [(k, infer_type(v)) for k, v in items], type(arg))
   elif isinstance(arg, (tuple, list)):
-    return computation_types.NamedTupleTypeWithPyContainerType(
-        [infer_type(e) for e in arg], type(arg))
+    elements = []
+    all_elements_named = True
+    for element in arg:
+      all_elements_named &= py_typecheck.is_name_value_pair(element)
+      elements.append(infer_type(element))
+    # If this is a tuple of (name, value) pairs, the caller most likely intended
+    # this to be a NamedTupleType, so we avoid storing the Python container.
+    if all_elements_named:
+      return computation_types.NamedTupleType(elements)
+    else:
+      return computation_types.NamedTupleTypeWithPyContainerType(
+          elements, type(arg))
   elif isinstance(arg, six.string_types):
     return computation_types.TensorType(tf.string)
   elif isinstance(arg, (np.generic, np.ndarray)):
