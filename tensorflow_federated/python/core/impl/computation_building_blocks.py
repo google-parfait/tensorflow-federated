@@ -118,7 +118,19 @@ class ComputationBuildingBlock(typed_object.TypedObject):
 
 
 class Reference(ComputationBuildingBlock):
-  """A reference to a name defined earlier, e.g., in a Lambda."""
+  """A reference to a name defined earlier in TFF's internal language.
+
+  Names are defined by lambda expressions (which have formal named parameters),
+  and block structures (which can have one or more locals). The reference
+  construct is used to refer to those parameters or locals by a string name.
+  The usual hiding rules apply. A reference binds to the closest definition of
+  the given name in the most deeply nested surrounding lambda or block.
+
+  A concise notation for a reference to name `foo` is `foo`. For example, in
+  a lambda expression `(x -> f(x))` there are two references, one to `x` that
+  is defined as the formal parameter of the lambda epxression, and one to `f`
+  that must have been defined somewhere in the surrounding context.
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):
@@ -174,7 +186,12 @@ class Reference(ComputationBuildingBlock):
 
 
 class Selection(ComputationBuildingBlock):
-  """A selection by name or index from another tuple-typed value."""
+  """A selection by name or index from a tuple-typed value in TFF's language.
+
+  The concise syntax for selections is `foo.bar` (selecting a named `bar` from
+  the value of expression `foo`), and `foo[n]` (selecting element at index `n`
+  from the value of `foo`).
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):
@@ -283,7 +300,17 @@ class Selection(ComputationBuildingBlock):
 
 
 class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
-  """A tuple with one or more values as named or unnamed elements."""
+  """A tuple with named or unnamed elements in TFF's internal language.
+
+  The concise notation for tuples is `<name_1=value_1, ...., name_n=value_n>`
+  for tuples with named elements, `<value_1, ..., value_n>` for tuples with
+  unnamed elements, or a mixture of these for tuples with ome named and some
+  unnamed elements, where `name_k` are the names, and `value_k` are the value
+  expressions.
+
+  For example, a lambda expression that applies `fn` to elements of 2-tuples
+  pointwise could be represented as `(arg -> <fn(arg[0]),fn(arg[1])>)`.
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):
@@ -357,7 +384,16 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
 
 
 class Call(ComputationBuildingBlock):
-  """A representation of a TFF function call."""
+  """A representation of a function invocation in TFF's internal language.
+
+  The call construct takes an argument tuple with two elements, the first being
+  the function to invoke (represented as a computation with a functional result
+  type), and the second being the argument to feed to that function. Typically,
+  the function is either a TFF instrinsic, or a lambda expression.
+
+  The concise notation for calls is `foo(bar)`, where `foo` is the function,
+  and `bar` is the argument.
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):
@@ -443,7 +479,13 @@ class Call(ComputationBuildingBlock):
 
 
 class Lambda(ComputationBuildingBlock):
-  """A representation of a TFF lambda expression."""
+  """A representation of a lambda expression in TFF's internal language.
+
+  A lambda expression consists of a string formal parameter name, and a result
+  expression that can contain references by name to that formal parameter. A
+  concise notation for lambdas is `(foo -> bar)`, where `foo` is the name of
+  the formal parameter, and `bar` is the result expression.
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):
@@ -516,7 +558,45 @@ class Lambda(ComputationBuildingBlock):
 
 
 class Block(ComputationBuildingBlock):
-  """A representation of a block of TFF code."""
+  """A representation of a block of code in TFF's internal language.
+
+  A block is a syntactic structure that consists of a sequence of local name
+  bindings followed by a result. The bindings are interpreted sequentially,
+  with bindings later in the sequence in the scope of those listed earlier,
+  and the result in the scope of the entire sequence. The usual hiding rules
+  apply.
+
+  An informal concise notation for blocks is the following, with `name_k`
+  representing the names defined locally for the block, `value_k` the values
+  associated with them, and `result` being the expression that reprsents the
+  value of the block construct.
+
+  ```
+  let name_1=value_1, name_2=value_2, ..., name_n=value_n in result
+  ```
+
+  Blocks are technically a redundant abstraction, as they can be equally well
+  represented by lambda expressions. A block of the form `let x=y in z` is
+  roughly equivalent to `(x -> z)(y)`. Although redundant, blocks have a use
+  as a way to reduce TFF computation ASTs to a simpler, less nested and more
+  readable form, and are helpful in AST transformations as a mechanism that
+  prevents possible naming conflicts.
+
+  An example use of a block expression to flatten a nested structure below:
+
+  ```
+  z = federated_sum(federated_map(x, federated_broadcast(y)))
+  ```
+
+  An equivalent form in a more sequential notation using a block expression:
+  ```
+  let
+    v1 = federated_broadcast(y),
+    v2 = federated_map(x, v1)
+  in
+    federated_sum(v2)
+  ```
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):
@@ -592,11 +672,14 @@ class Block(ComputationBuildingBlock):
 
 
 class Intrinsic(ComputationBuildingBlock):
-  """A representation of an intrinsic.
+  """A representation of an intrinsic in TFF's internal language.
 
-  This class does not deal with parsing intrinsic URIs and verifying their
-  types, it is only a container. Parsing and type analysis are a responsibility
-  or a component external to this module.
+  An instrinsic is a symbol known to the TFF's compiler pipeline, represended
+  a a known URI. It generally appears in expressions with a concrete type,
+  although all intrinsic are defined with template types. This class does not
+  deal with parsing intrinsic URIs and verifying their types, it is only a
+  container. Parsing and type analysis are a responsibility or the components
+  that manipulate ASTs.
   """
 
   @classmethod
@@ -697,7 +780,14 @@ class Data(ComputationBuildingBlock):
 
 
 class CompiledComputation(ComputationBuildingBlock):
-  """A representation of a fully constructed and serialized computation."""
+  """A representation of a fully constructed and serialized computation.
+
+  A compile comutation is one that has not been parsed into constituents, and
+  is simply represented as an embedded `Computation` protocol buffer. Whereas
+  technically, any computation can be represented and passed around this way,
+  this structure is generally only used to represent TensorFlow sections, for
+  which otherwise there isn't any dedicated structure.
+  """
 
   def __init__(self, proto, name=None):
     """Creates a representation of a fully constructed computation.
@@ -737,7 +827,10 @@ class CompiledComputation(ComputationBuildingBlock):
 
 
 class Placement(ComputationBuildingBlock):
-  """A class for representing placement literals in computation definitions."""
+  """A representation of a placement literal in TFF's internal language.
+
+  Currently this can only be `tff.SERVER` or `tff.CLIENTS`.
+  """
 
   @classmethod
   def from_proto(cls, computation_proto):

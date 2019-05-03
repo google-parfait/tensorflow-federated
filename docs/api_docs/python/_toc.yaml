@@ -56,6 +56,28 @@ toc:
       path: /federated/api_docs/python/tff/TypedObject
     - title: Value
       path: /federated/api_docs/python/tff/Value
+  - title: tff.framework
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/framework
+    - title: Block
+      path: /federated/api_docs/python/tff/framework/Block
+    - title: Call
+      path: /federated/api_docs/python/tff/framework/Call
+    - title: CompiledComputation
+      path: /federated/api_docs/python/tff/framework/CompiledComputation
+    - title: Intrinsic
+      path: /federated/api_docs/python/tff/framework/Intrinsic
+    - title: Lambda
+      path: /federated/api_docs/python/tff/framework/Lambda
+    - title: Placement
+      path: /federated/api_docs/python/tff/framework/Placement
+    - title: Reference
+      path: /federated/api_docs/python/tff/framework/Reference
+    - title: Selection
+      path: /federated/api_docs/python/tff/framework/Selection
+    - title: Tuple
+      path: /federated/api_docs/python/tff/framework/Tuple
   - title: tff.learning
     section:
     - title: Overview

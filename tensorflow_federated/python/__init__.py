@@ -24,8 +24,7 @@ from __future__ import print_function
 # pylint: disable=g-bad-import-order,wildcard-import
 from tensorflow_federated.python.core import *
 
-# NOTE: This import must happen after core.api, since we import core.api
-# inside of learning.
+# NOTE: This import must happen after the wildcard import.
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation
 # pylint: enable=g-bad-import-order,wildcard-import
@@ -54,6 +53,7 @@ _allowed_symbols = [
     "federated_sum",
     "federated_value",
     "federated_zip",
+    "framework",
     "learning",
     "sequence_map",
     "sequence_reduce",
