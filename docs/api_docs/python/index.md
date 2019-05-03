@@ -25,6 +25,7 @@
 *   <a href="./tff/framework/Block.md"><code>tff.framework.Block</code></a>
 *   <a href="./tff/framework/Call.md"><code>tff.framework.Call</code></a>
 *   <a href="./tff/framework/CompiledComputation.md"><code>tff.framework.CompiledComputation</code></a>
+*   <a href="./tff/framework/ComputationBuildingBlock.md"><code>tff.framework.ComputationBuildingBlock</code></a>
 *   <a href="./tff/framework/Intrinsic.md"><code>tff.framework.Intrinsic</code></a>
 *   <a href="./tff/framework/Lambda.md"><code>tff.framework.Lambda</code></a>
 *   <a href="./tff/framework/Placement.md"><code>tff.framework.Placement</code></a>

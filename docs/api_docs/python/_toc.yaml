@@ -66,6 +66,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/Call
     - title: CompiledComputation
       path: /federated/api_docs/python/tff/framework/CompiledComputation
+    - title: ComputationBuildingBlock
+      path: /federated/api_docs/python/tff/framework/ComputationBuildingBlock
     - title: Intrinsic
       path: /federated/api_docs/python/tff/framework/Intrinsic
     - title: Lambda

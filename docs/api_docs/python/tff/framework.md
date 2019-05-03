@@ -23,6 +23,9 @@ invocation in TFF's internal language.
 [`class CompiledComputation`](../tff/framework/CompiledComputation.md): A
 representation of a fully constructed and serialized computation.
 
+[`class ComputationBuildingBlock`](../tff/framework/ComputationBuildingBlock.md):
+The abstract base class for abstractions in the TFF's internal language.
+
 [`class Intrinsic`](../tff/framework/Intrinsic.md): A representation of an
 intrinsic in TFF's internal language.
 

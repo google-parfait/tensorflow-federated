@@ -16,6 +16,9 @@
 
 A reference to a name defined earlier in TFF's internal language.
 
+Inherits From:
+[`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
+
 Defined in
 [`core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
 
