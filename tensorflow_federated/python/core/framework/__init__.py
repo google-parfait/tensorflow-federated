@@ -21,6 +21,7 @@ from __future__ import print_function
 from tensorflow_federated.python.core.impl.computation_building_blocks import Block
 from tensorflow_federated.python.core.impl.computation_building_blocks import Call
 from tensorflow_federated.python.core.impl.computation_building_blocks import CompiledComputation
+from tensorflow_federated.python.core.impl.computation_building_blocks import ComputationBuildingBlock
 from tensorflow_federated.python.core.impl.computation_building_blocks import Intrinsic
 from tensorflow_federated.python.core.impl.computation_building_blocks import Lambda
 from tensorflow_federated.python.core.impl.computation_building_blocks import Placement
@@ -34,6 +35,7 @@ _allowed_symbols = [
     "Block",
     "Call",
     "CompiledComputation",
+    "ComputationBuildingBlock",
     "Intrinsic",
     "Lambda",
     "Placement",

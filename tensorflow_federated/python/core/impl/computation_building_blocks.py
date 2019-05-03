@@ -43,7 +43,16 @@ def _check_computation_oneof(computation_proto, expected_computation_oneof):
 
 @six.add_metaclass(abc.ABCMeta)
 class ComputationBuildingBlock(typed_object.TypedObject):
-  """A generic base class for all computation building blocks defined below."""
+  """The abstract base class for abstractions in the TFF's internal language.
+
+  Instances of this class correspond roughly one-to-one to the abstractions
+  defined in the `Computation` message in TFF's `computation.proto`, and are
+  intended primarily for the ease of manipulating the abstract syntax trees
+  (AST) of federated computations as they are transformed by TFF's compiler
+  pipeline to mold into the needs of a particular execution backend. The only
+  abstraction that does not have a dedicated Python equivalent is a section
+  of TensorFlow code (it's represented by `tff.framework.CompiledComputation`).
+  """
 
   _deserializer_dict = None  # Defined at the end of this file.
 
