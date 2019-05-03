@@ -679,7 +679,11 @@ class ReferenceExecutor(context_base.Context):
       if arg is not None:
         raise TypeError('Unexpected argument {}.'.format(str(arg)))
       else:
-        return computed_comp.value
+        value = computed_comp.value
+        result_type = fn.type_signature.result
+        if type_utils.is_anon_tuple_with_py_container(value, result_type):
+          return type_utils.convert_to_py_container(value, result_type)
+        return value
     else:
       if arg is not None:
 
@@ -701,7 +705,11 @@ class ReferenceExecutor(context_base.Context):
       py_typecheck.check_type(result, ComputedValue)
       type_utils.check_assignable_from(comp.type_signature.result,
                                        result.type_signature)
-      return result.value
+      value = result.value
+      fn_result_type = fn.type_signature.result
+      if type_utils.is_anon_tuple_with_py_container(value, fn_result_type):
+        return type_utils.convert_to_py_container(value, fn_result_type)
+      return value
 
   def _compile(self, comp):
     """Compiles a `computation_base.Computation` to prepare it for execution.

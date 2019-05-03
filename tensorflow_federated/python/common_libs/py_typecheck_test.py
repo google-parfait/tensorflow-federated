@@ -86,9 +86,11 @@ class PyTypeCheckTest(absltest.TestCase):
     t = T(1, 2)
     self.assertIn('_asdict', vars(type(t)))
     self.assertTrue(py_typecheck.is_named_tuple(t))
+    self.assertTrue(py_typecheck.is_named_tuple(T))
     u = U(3, 4)
     self.assertNotIn('_asdict', vars(type(u)))
     self.assertTrue(py_typecheck.is_named_tuple(u))
+    self.assertTrue(py_typecheck.is_named_tuple(U))
 
   def test_is_name_value_pair(self):
     self.assertTrue(py_typecheck.is_name_value_pair(['a', 1]))

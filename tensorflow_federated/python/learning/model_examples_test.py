@@ -118,8 +118,13 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
     batch_output, local_output = forward_pass_and_output()
     self.assertAllEqual(batch_output.predictions, [[0.0], [0.0]])
     self.assertEqual(batch_output.loss, 0.25)
-    self.assertEqual(local_output.num_examples, 2)
-    self.assertEqual(local_output.num_batches, 1)
+    self.assertDictEqual(
+        local_output, {
+            'num_examples': 2,
+            'num_batches': 1,
+            'loss': 0.25,
+            'num_examples_float': 2.0,
+        })
 
     # TODO(b/122114585): Add tests for model.federated_output_computation.
 
