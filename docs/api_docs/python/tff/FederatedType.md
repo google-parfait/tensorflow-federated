@@ -29,7 +29,7 @@ Defined in
 __init__(
     member,
     placement,
-    all_equal=False
+    all_equal=None
 )
 ```
 
@@ -49,7 +49,11 @@ Constructs a new federated type instance.
     defined in other parts of a type signature. Specifying placement labels is
     not implemented yet.
 *   <b>`all_equal`</b>: A `bool` value that indicates whether all members of the
-    federated type are equal (`True`), or are allowed to differ (`False`).
+    federated type are equal (`True`), or are allowed to differ (`False`). If
+    `all_equal` is `None`, the value is selected as the default for the
+    placement, e.g., `True` for
+    <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> and `False` for
+    <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 ## Properties
 

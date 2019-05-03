@@ -22,10 +22,11 @@ from __future__ import print_function
 class PlacementLiteral(object):
   """A representation of one of the globally recognized placement literals."""
 
-  def __init__(self, name, uri, description):
+  def __init__(self, name, uri, default_all_equal, description):
     self._name = name
     self._uri = uri
     self._description = description
+    self._default_all_equal = default_all_equal
 
   @property
   def name(self):
@@ -34,6 +35,10 @@ class PlacementLiteral(object):
   @property
   def uri(self):
     return self._uri
+
+  @property
+  def default_all_equal(self):
+    return self._default_all_equal
 
   def __doc__(self):
     return self._description
@@ -57,11 +62,17 @@ class PlacementLiteral(object):
 # TODO(b/113112108): Define the remaining placement literals (e.g., intermediate
 # coordinators). Possibly rename SERVER to COORDINATOR or some such if desired.
 
-CLIENTS = PlacementLiteral('CLIENTS', 'clients',
-                           'The collective of all client devices.')
+CLIENTS = PlacementLiteral(
+    'CLIENTS',
+    'clients',
+    default_all_equal=False,
+    description='The collective of all client devices.')
 
-SERVER = PlacementLiteral('SERVER', 'server',
-                          'The single top-level central coordinator.')
+SERVER = PlacementLiteral(
+    'SERVER',
+    'server',
+    default_all_equal=True,
+    description='The single top-level central coordinator.')
 
 
 def uri_to_placement_literal(uri):

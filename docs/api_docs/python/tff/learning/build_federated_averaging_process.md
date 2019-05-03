@@ -10,7 +10,7 @@ Builds the TFF computations for optimization using federated averaging.
 ```python
 tff.learning.build_federated_averaging_process(
     model_fn,
-    server_optimizer_fn=(lambda : gradient_descent.SGD(learning_rate=1.0)),
+    server_optimizer_fn=(lambda : tf.keras.optimizers.SGD(learning_rate=1.0)),
     client_weight_fn=None
 )
 ```

@@ -326,7 +326,7 @@ class PlacementType(Type):
 class FederatedType(Type):
   """An implementation of `tff.Type` representing federated types in TFF."""
 
-  def __init__(self, member, placement, all_equal=False):
+  def __init__(self, member, placement, all_equal=None):
     """Constructs a new federated type instance.
 
     Args:
@@ -341,13 +341,18 @@ class FederatedType(Type):
         implemented yet.
       all_equal: A `bool` value that indicates whether all members of the
         federated type are equal (`True`), or are allowed to differ (`False`).
+        If `all_equal` is `None`, the value is selected as the default for the
+        placement, e.g., `True` for `tff.SERVER` and `False` for `tff.CLIENTS`.
     """
     if not isinstance(placement, placement_literals.PlacementLiteral):
       raise NotImplementedError(
           'At the moment, only specifying placement literals is implemented.')
-    py_typecheck.check_type(all_equal, bool)
     self._member = to_type(member)
     self._placement = placement
+    if all_equal is None:
+      all_equal = placement.default_all_equal
+
+    py_typecheck.check_type(all_equal, bool)
     self._all_equal = all_equal
 
   # TODO(b/113112108): Extend this to support federated types parameterized

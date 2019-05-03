@@ -10,7 +10,7 @@ Builds the TFF computations for optimization using federated SGD.
 ```python
 tff.learning.build_federated_sgd_process(
     model_fn,
-    server_optimizer_fn=(lambda : gradient_descent.SGD(learning_rate=0.1)),
+    server_optimizer_fn=(lambda : tf.keras.optimizers.SGD(learning_rate=0.1)),
     client_weight_fn=None
 )
 ```
