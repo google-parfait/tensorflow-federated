@@ -18,7 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# pylint: disable=wildcard-import
-from tensorflow_federated.python.core import utils
+# TensorFlow Federated uses Python imports to manage namespaces in ways that are
+# different from the Google Python Style guide.
+#
+# pylint: disable=g-bad-import-order,wildcard-import
 from tensorflow_federated.python.core.api import *
-# pylint: enable=wildcard-import
+
+# NOTE: This import must happen after the wildcard import.
+from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import utils
+# pylint: enable=g-bad-import-order,wildcard-import

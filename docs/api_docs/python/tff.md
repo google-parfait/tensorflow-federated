@@ -16,6 +16,9 @@ Defined in
 
 ## Modules
 
+[`framework`](./tff/framework.md) module: Interfaces for extensions, selectively
+lifted out of `impl`.
+
 [`learning`](./tff/learning.md) module: The public API for model developers
 using federated learning algorithms.
 

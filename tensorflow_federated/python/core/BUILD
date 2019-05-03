@@ -8,6 +8,7 @@ py_library(
     srcs = ["__init__.py"],
     deps = [
         "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/framework",
         "//tensorflow_federated/python/core/utils",
     ],
 )
