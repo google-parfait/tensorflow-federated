@@ -495,7 +495,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
         return anonymous_tuple.AnonymousTuple(result_elements)
       container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
           type_spec)
-      if hasattr(container_type, '_asdict'):
+      if py_typecheck.is_named_tuple(container_type):
         return container_type(**dict(result_elements))
       return container_type(result_elements)
   elif isinstance(type_spec, computation_types.SequenceType):

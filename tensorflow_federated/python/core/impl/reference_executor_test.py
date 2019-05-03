@@ -326,6 +326,17 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(foo([ds1, ds2]), 100)
     self.assertEqual(foo((ds1, ds2)), 100)
 
+  def test_tensorflow_computation_output_nested_structure(self):
+    test_named_tuple = collections.namedtuple('TestNamedTuple', ['a'])
+
+    @computations.tf_computation
+    def foo():
+      return test_named_tuple(tf.constant(10.0))
+
+    result = foo()
+    self.assertIsInstance(result, test_named_tuple)
+    self.assertEqual(result, test_named_tuple(10.0))
+
   def test_computation_with_batched_federated_int_sequence(self):
     ds1_shape = tf.TensorShape([None])
     sequence_type = computation_types.SequenceType(

@@ -155,12 +155,16 @@ def is_named_tuple(value):
   all namedtuple subclasses support).
 
   Args:
-    value: an instance of a Python class.
+    value: an instance of a Python class or a Python type object.
 
   Returns:
-    True iff `value` can be considered a named tuple.
+    True iff `value` can be considered an instance or type of
+    `collections.namedtuple`.
   """
-  cls = type(value)
+  if isinstance(value, type):
+    cls = value
+  else:
+    cls = type(value)
   if '_asdict' in vars(cls):
     return True
   parent_classes = inspect.getmro(cls)[1:]

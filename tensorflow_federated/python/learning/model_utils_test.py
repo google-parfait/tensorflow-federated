@@ -363,10 +363,11 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
 
     output, metrics = _train_loop()
     self.assertGreater(output.loss, 0.0)
-    self.assertEqual(metrics.num_batches[0], 1)
-    self.assertEqual(metrics.num_examples[0], 2)
-    self.assertGreater(metrics.loss[0], 0.0)
-    self.assertEqual(metrics.loss[1], 2)
+    self.assertEqual(metrics['num_batches'], [1])
+    self.assertEqual(metrics['num_examples'], [2])
+    loss_metric = metrics['loss']
+    self.assertGreater(loss_metric[0], 0.0)
+    self.assertEqual(loss_metric[1], 2)
 
   def test_keras_model_federated_output_computation(self):
     feature_dims = 3

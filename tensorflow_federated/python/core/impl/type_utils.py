@@ -181,17 +181,20 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
     TypeError: if the arguments are of types that weren't recognized.
   """
   tf.contrib.framework.nest.assert_same_structure(dtypes, shapes)
+
+  def _parallel_dict_to_element_list(dtype_dict, shape_dict):
+    return [(name, tf_dtypes_and_shapes_to_type(dtype_elem, shape_dict[name]))
+            for name, dtype_elem in six.iteritems(dtype_dict)]
+
   if isinstance(dtypes, tf.DType):
     return computation_types.TensorType(dtypes, shapes)
   elif py_typecheck.is_named_tuple(dtypes):
     # Special handling needed for collections.namedtuple due to the lack of
     # a base class. Note this must precede the test for being a list.
     shape_dict = shapes._asdict()
-    elements = [(name,
-                 tf_dtypes_and_shapes_to_type(dtypes_elem, shape_dict[name]))
-                for name, dtypes_elem in six.iteritems(dtypes._asdict())]
+    dtype_dict = dtypes._asdict()
     return computation_types.NamedTupleTypeWithPyContainerType(
-        elements, type(dtypes))
+        _parallel_dict_to_element_list(dtype_dict, shape_dict), type(dtypes))
   elif isinstance(dtypes, dict):
     if isinstance(dtypes, collections.OrderedDict):
       items = six.iteritems(dtypes)
@@ -276,14 +279,14 @@ def type_to_tf_dtypes_and_shapes(type_spec):
       container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
           type_spec)
 
-      def _convert_to_py_container(elements):
-        if hasattr(container_type, '_asdict'):
+      def build_py_container(elements):
+        if py_typecheck.is_named_tuple(container_type):
           return container_type(**dict(elements))
         else:
           return container_type(elements)
 
-      output_dtypes = _convert_to_py_container(output_dtypes)
-      output_shapes = _convert_to_py_container(output_shapes)
+      output_dtypes = build_py_container(output_dtypes)
+      output_shapes = build_py_container(output_shapes)
     else:
       output_dtypes = tuple(output_dtypes)
       output_shapes = tuple(output_shapes)
@@ -331,7 +334,7 @@ def type_to_tf_structure(type_spec):
     else:
       container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
           type_spec)
-      if hasattr(container_type, '_asdict'):
+      if py_typecheck.is_named_tuple(container_type):
         output = container_type(**dict(element_outputs))
       elif named:
         output = container_type(element_outputs)
@@ -847,3 +850,54 @@ def are_equivalent_types(type1, type2):
   else:
     return type2 is not None and (is_assignable_from(type1, type2) and
                                   is_assignable_from(type2, type1))
+
+
+def is_anon_tuple_with_py_container(value, type_spec):
+  return (isinstance(value, anonymous_tuple.AnonymousTuple) and isinstance(
+      type_spec, computation_types.NamedTupleTypeWithPyContainerType))
+
+
+def convert_to_py_container(anon_tuple, type_spec):
+  """Recursively convert an AnonymosuTuple to a Python container."""
+  py_typecheck.check_type(type_spec,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+  py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
+
+  def is_container_type_without_names(container_type):
+    return (issubclass(container_type, (list, tuple)) and
+            not py_typecheck.is_named_tuple(container_type))
+
+  def is_container_type_with_names(container_type):
+    return (py_typecheck.is_named_tuple(container_type) or
+            issubclass(container_type, dict))
+
+  container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+      type_spec)
+
+  # Avoid projecting the AnonymousTuple into a Python container that is not
+  # supported. There may be edge cases where this results in a surprise..
+  num_named_elements = len(dir(anon_tuple))
+  if ((num_named_elements > 0 and
+       is_container_type_without_names(container_type)) or
+      (num_named_elements < len(anon_tuple) and
+       is_container_type_with_names(container_type))):
+    return anon_tuple
+
+  elements = []
+  for index, elem_type_spec in enumerate(
+      anonymous_tuple.to_elements(type_spec)):
+    elem_name, elem_type = elem_type_spec
+    if isinstance(elem_type,
+                  computation_types.NamedTupleTypeWithPyContainerType):
+      value = convert_to_py_container(anon_tuple[index], elem_type)
+    else:
+      value = anon_tuple[index]
+    if elem_name is None:
+      elements.append(value)
+    else:
+      elements.append((elem_name, value))
+
+  if py_typecheck.is_named_tuple(container_type):
+    return container_type(**dict(elements))
+  else:
+    return container_type(elements)

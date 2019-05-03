@@ -403,56 +403,6 @@ def pack_args(parameter_type, args, kwargs, context):
       return context.ingest(arg, parameter_type)
 
 
-def _is_anon_tuple_with_py_container(arg, type_spec):
-  return (isinstance(arg, anonymous_tuple.AnonymousTuple) and isinstance(
-      type_spec, computation_types.NamedTupleTypeWithPyContainerType))
-
-
-def _convert_to_py_container(anon_tuple, type_spec):
-  """Recursively convert an AnonymosuTuple to a Python container."""
-  py_typecheck.check_type(type_spec,
-                          computation_types.NamedTupleTypeWithPyContainerType)
-  py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
-
-  def is_container_type_without_names(container_type):
-    return isinstance(container_type, (list, tuple))
-
-  def is_container_type_with_names(container_type):
-    return (py_typecheck.is_named_tuple(container_type) or
-            isinstance(container_type, dict))
-
-  container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-      type_spec)
-
-  # Avoid projecting the AnonymousTuple into a Python contianer that is not
-  # supported. There may be edge cases where this results in a surprise..
-  num_named_elements = len(dir(anon_tuple))
-  if ((num_named_elements > 0 and
-       is_container_type_without_names(container_type)) or
-      (num_named_elements < len(anon_tuple) and
-       is_container_type_with_names(container_type))):
-    return anon_tuple
-
-  elements = []
-  for index, elem_type_spec in enumerate(
-      anonymous_tuple.to_elements(type_spec)):
-    elem_name, elem_type = elem_type_spec
-    if isinstance(elem_type,
-                  computation_types.NamedTupleTypeWithPyContainerType):
-      value = _convert_to_py_container(anon_tuple[index], elem_type)
-    else:
-      value = anon_tuple[index]
-    if elem_name is None:
-      elements.append(value)
-    else:
-      elements.append((elem_name, value))
-
-  if hasattr(container_type, '_asdict'):
-    return container_type(**dict(elements))
-  else:
-    return container_type(elements)
-
-
 def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
   """Wraps around `fn` so it accepts up to one positional TFF-typed argument.
 
@@ -585,9 +535,10 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
             raise TypeError('Expected element at position {} to be '
                             'of type {}, found {}.'.format(
                                 idx, str(expected_type), str(actual_type)))
-          if _is_anon_tuple_with_py_container(element_value, expected_type):
-            element_value = _convert_to_py_container(element_value,
-                                                     expected_type)
+          if type_utils.is_anon_tuple_with_py_container(element_value,
+                                                        expected_type):
+            element_value = type_utils.convert_to_py_container(
+                element_value, expected_type)
           args.append(element_value)
         kwargs = {}
         for name, expected_type in six.iteritems(kwarg_types):
@@ -597,9 +548,10 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
             raise TypeError('Expected element named {} to be '
                             'of type {}, found {}.'.format(
                                 name, str(expected_type), str(actual_type)))
-          if _is_anon_tuple_with_py_container(element_value, expected_type):
-            element_value = _convert_to_py_container(element_value,
-                                                     expected_type)
+          if type_utils.is_anon_tuple_with_py_container(element_value,
+                                                        expected_type):
+            element_value = type_utils.convert_to_py_container(
+                element_value, expected_type)
           kwargs[name] = element_value
         return fn(*args, **kwargs)
 
@@ -618,8 +570,8 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
         if not type_utils.is_assignable_from(parameter_type, arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               str(parameter_type), str(arg_type)))
-        if _is_anon_tuple_with_py_container(arg, parameter_type):
-          arg = _convert_to_py_container(arg, parameter_type)
+        if type_utils.is_anon_tuple_with_py_container(arg, parameter_type):
+          arg = type_utils.convert_to_py_container(arg, parameter_type)
         return fn(arg)
 
       # Deliberate wrapping to isolate the caller from the underlying function
