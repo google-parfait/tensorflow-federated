@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import abc
 import collections
-import enum
 import itertools
 
 import six
@@ -148,11 +147,10 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   functional 'from AST to AST' (where `comp` represents the root of an AST) but
   not 'from node to node'.
 
-  One important fact to note: there are recursion invariants that the
+  One important fact to note: there are recursion invariants that
   `transform_postorder_with_symbol_bindings` uses the `SymbolTree` data
-  structure
-  to enforce. In particular, within a `transform` call the following
-  invariants hold, for `symbol_tree` the SymbolTree argument to `transform`:
+  structure to enforce. In particular, within a `transform` call the following
+  invariants hold:
 
     * `symbol_tree.update_payload_tracking_reference` with an argument `ref` of
       type `Reference` will call `update` on the `BoundVariableTracker` in
@@ -183,6 +181,10 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(symbol_tree, SymbolTree)
+  if not callable(transform):
+    raise TypeError('Argument `transform` to '
+                    '`transform_postorder_with_symbol_bindings` must '
+                    'be callable.')
   identifier_seq = itertools.count(start=1)
 
   def _transform_postorder_with_symbol_bindings_switch(comp, transform_fn,
@@ -255,59 +257,40 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   def _traverse_lambda(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for lambda nodes."""
     comp_id = six.next(identifier_seq)
-    context_tree.ingest_variable_binding(
-        name=comp.parameter_name,
-        value=None,
-        mode=MutationMode.CHILD,
-        comp_id=comp_id)
+    context_tree.drop_scope_down(comp_id)
+    context_tree.ingest_variable_binding(name=comp.parameter_name, value=None)
     transformed_result = _transform_postorder_with_symbol_bindings_switch(
         comp.result, transform, context_tree, identifier_seq)
+    context_tree.walk_to_scope_beginning()
     transformed_comp = transform(
         computation_building_blocks.Lambda(comp.parameter_name,
                                            comp.parameter_type,
                                            transformed_result), context_tree)
-    context_tree.move_to_parent_context()
+    context_tree.pop_scope_up()
     return transformed_comp
 
   def _traverse_block(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for block nodes."""
     comp_id = six.next(identifier_seq)
     transformed_locals = []
-    if comp.locals:
-      first_local_name = comp.locals[0][0]
-      first_local_comp = comp.locals[0][1]
-      new_value = _transform_postorder_with_symbol_bindings_switch(
-          first_local_comp, transform, context_tree, identifier_seq)
-      transformed_locals.append((first_local_name, new_value))
-      context_tree.ingest_variable_binding(
-          name=transformed_locals[0][0],
-          value=transformed_locals[0][1],
-          mode=MutationMode.CHILD,
-          comp_id=comp_id)
-    for k in range(1, len(comp.locals)):
+    context_tree.drop_scope_down(comp_id)
+    for k in range(len(comp.locals)):
       new_value = _transform_postorder_with_symbol_bindings_switch(
           comp.locals[k][1], transform, context_tree, identifier_seq)
-      transformed_locals.append((comp.locals[k][0], new_value))
       context_tree.ingest_variable_binding(
-          name=transformed_locals[k][0],
-          value=transformed_locals[k][1],
-          mode=MutationMode.SIBLING)
+          name=comp.locals[k][0], value=new_value)
+      transformed_locals.append((comp.locals[k][0], new_value))
     transformed_result = _transform_postorder_with_symbol_bindings_switch(
         comp.result, transform, context_tree, identifier_seq)
+    context_tree.walk_to_scope_beginning()
     transformed_comp = transform(
         computation_building_blocks.Block(transformed_locals,
                                           transformed_result), context_tree)
-    if comp.locals:
-      context_tree.move_to_parent_context()
+    context_tree.pop_scope_up()
     return transformed_comp
 
   return _transform_postorder_with_symbol_bindings_switch(
       comp, transform, symbol_tree, identifier_seq)
-
-
-class MutationMode(enum.Enum):
-  CHILD = 1
-  SIBLING = 2
 
 
 class SymbolTree(object):
@@ -316,6 +299,13 @@ class SymbolTree(object):
   `SymbolTree` is designed to be constructed and mutatated as we traverse an
   AST, maintaining a pointer to an active node representing the variable
   bindings we currently have available as we walk the AST.
+
+  `SymbolTree` is a hierarchical tree-like data structure. Its levels
+  correspond to nodes in the TFF AST it is tracking, meaning that walking into
+  or out of a scope-defining TFF node (a block or lambda) corresponds to
+  moving up or down a level in the `SymbolTree`. Block constructs (a.k.a.
+  the let statement) binds variables sequentially, and this sequential binding
+  corresponds to variables bound at the same level of the `SymbolTree`.
 
   Each instance of the node class can be used at most once in the symbol tree,
   as checked by memory location. This disallows circular tree structures that
@@ -329,7 +319,7 @@ class SymbolTree(object):
       payload_type: Class which subclasses BoundVariableTracker; the type of
         payloads to be constructed and held in this SymbolTree.
     """
-    initial_node = SequentialBindingNode(OuterContextPointer())
+    initial_node = SequentialBindingNode(_BeginScopePointer())
     py_typecheck.check_subclass(payload_type, BoundVariableTracker)
     self.active_node = initial_node
     self.payload_type = payload_type
@@ -353,7 +343,7 @@ class SymbolTree(object):
     """
     py_typecheck.check_type(name, six.string_types)
     comp = self.active_node
-    while not isinstance(comp.payload, OuterContextPointer):
+    while comp.parent is not None or comp.older_sibling is not None:
       if name == comp.payload.name:
         return comp.payload
       if comp.older_sibling is not None:
@@ -378,19 +368,94 @@ class SymbolTree(object):
     """
     py_typecheck.check_type(ref, computation_building_blocks.Reference)
     comp = self.active_node
-    while not isinstance(comp.payload, OuterContextPointer):
+    while comp.parent is not None or comp.older_sibling is not None:
       if ref.name == comp.payload.name:
         comp.payload.update(ref)
-        break
+        return
       if comp.older_sibling is not None:
         comp = comp.older_sibling
       elif comp.parent is not None:
         comp = comp.parent
-    if isinstance(comp.payload, OuterContextPointer):
-      raise NameError('The reference {} is not available in {}'.format(
-          ref, self))
+    raise NameError('The reference {} is not available in {}'.format(ref, self))
 
-  def ingest_variable_binding(self, name, value, mode, comp_id=None):
+  def walk_to_scope_beginning(self):
+    """Walks `active_node` back to the sentinel node beginning current scope.
+
+    `walk_to_scope_beginning` resolves the issue of scope at a node which
+    introduces scope in the following manner: each of these nodes (for instance,
+    a `computation_building_blocks.Lambda`) corresponds to a sentinel value of
+    the `_BeginScopePointer` class, ensuring that these nodes do not have access
+    to
+    scope that is technically not available to them. That is, we conceptualize
+    the node corresponding to `(x -> x)` as existing in the scope outside of the
+    binding of `x`, and therefore is unable to reference `x`. However, these
+    nodes can walk down their variable declarations via
+    `walk_down_one_variable_binding` in order to inspect these declarations and
+    perhaps execute some logic based on them.
+    """
+    scope_sentinel = _BeginScopePointer()
+    while self.active_node.payload != scope_sentinel:
+      self.active_node = self.active_node.older_sibling
+
+  def pop_scope_up(self):
+    """Moves `active_node` up one level in the `SymbolTree`.
+
+    Raises:
+      Raises ValueError if we are already at the highest level.
+    """
+    self.walk_to_scope_beginning()
+    if self.active_node.parent:
+      self.active_node = self.active_node.parent
+    else:
+      raise ValueError('You have tried to pop out of the highest level in this '
+                       '`SymbolTree`.')
+
+  def drop_scope_down(self, comp_id):
+    """Constructs a new scope level for `self`.
+
+    Scope levels in `SymbolTree` correspond to scope-introducing nodes in TFF
+    ASTs; that is, either `computation_building_blocks.Block` or
+    `computation_building_blocks.Lambda` nodes. Inside of these levels,
+    variables are bound in sequence. The implementer of a transformation
+    function needing to interact with scope should never need to explicitly walk
+    the scope levels `drop_scope_down` constructs; `drop_scope_down` is simply
+    provided
+    for ease of exposing to a traversal function.
+
+    Args:
+      comp_id: Integer representing a unique key for the
+        `computation_building_blocks.ComputationBuildingBlock` which is defines
+        this scope. Used to differentiate between scopes which both branch from
+        the same point in the tree.
+    """
+    py_typecheck.check_type(comp_id, int)
+    if self.active_node.children.get(comp_id) is None:
+      node = SequentialBindingNode(_BeginScopePointer())
+      self._add_child(comp_id, node)
+      self._move_to_child(comp_id)
+    else:
+      self._move_to_child(comp_id)
+
+  def walk_down_one_variable_binding(self):
+    """Moves `active_node` to the younger sibling of the current active node.
+
+    This action represents walking from one variable binding in the
+    `SymbolTree` to the next, sequentially.
+
+    If there is no such variable binding, then the lower bound variables must
+    be accessed via `drop_scope_down`.
+
+    Raises:
+      Raises ValueError if there is no such available variable binding.
+    """
+    if self.active_node.younger_sibling:
+      self.active_node = self.active_node.younger_sibling
+    else:
+      raise ValueError(
+          'You have tried to move to a nonexistent variable binding in {}'
+          .format(self))
+
+  def ingest_variable_binding(self, name, value):
     """Constructs or updates node in symbol tree as AST is walked.
 
     Passes `name` and `value` onto the symbol tree's node constructor, with
@@ -409,11 +474,6 @@ class SymbolTree(object):
       value: Instance of `computation_building_blocks.ComputationBuildingBlock`
         or `None`, as in the `value` to pass to symbol tree's node payload
         constructor.
-      mode: Enum indicating the relationship the desired node should bear to the
-        symbol tree's active node. Can be either CHILD or SIBLING.
-      comp_id: Integer `comp_id` generated by walking the tree, used to address
-        children of nodes in the symbol tree. Only necessary if `mode` is
-        'child'.
 
     Raises:
       ValueError: If we are passed a name-mode pair such that a
@@ -423,58 +483,23 @@ class SymbolTree(object):
         or that we have a symbol tree instance that does not match the
         computation we are currently processing.
     """
-    py_typecheck.check_type(mode, MutationMode)
-    if mode == MutationMode.CHILD:
-      py_typecheck.check_type(comp_id, int)
     py_typecheck.check_type(name, six.string_types)
     if value is not None:
       py_typecheck.check_type(
           value, computation_building_blocks.ComputationBuildingBlock)
     node = SequentialBindingNode(self.payload_type(name=name, value=value))
-    if mode == MutationMode.SIBLING:
-      if self.active_node.younger_sibling is None:
-        self._add_younger_sibling(node)
-        self._move_to_younger_sibling()
-      else:
-        if self.active_node.younger_sibling.payload.name != name:
-          raise ValueError(
-              'You have a mismatch between your symbol tree and the '
-              'computation you are trying to process; your symbol tree is {} '
-              'and you are looking for a BoundVariableTracker with name {} '
-              'and value {}'.format(self, name, value))
-        self._move_to_younger_sibling()
-        self.active_node.payload.value = value
+    if self.active_node.younger_sibling is None:
+      self._add_younger_sibling(node)
+      self.walk_down_one_variable_binding()
     else:
-      if self.active_node.children.get(comp_id) is None:
-        self._add_child(comp_id, node)
-        self._move_to_child(comp_id)
-      else:
-        if self.active_node.children[comp_id].payload.name != name:
-          raise ValueError(
-              'You have a mismatch between your symbol tree and the '
-              'computation you are trying to process; your symbol tree is {} '
-              'and you are looking for a BoundVariableTracker with name {} '
-              'and value {}'.format(self, name, value))
-        self._move_to_child(comp_id)
-        self.active_node.payload.value = value
-
-  def move_to_parent_context(self):
-    """Moves `active_node` to the parent of current active node.
-
-    Of the `active_node` manipulation methods, this is the only one exposed.
-    This is because the parent-child relationship corresponds directly to
-    passing through a scope-introducing TFF AST node in a postorder traversal;
-    therefore it is convenient to expose this as a mechanism to a TFF AST
-    traversal function. The rest of these manipulation methods are more easily
-    exposed via `ingest_variable_binding`.
-
-    Raises:
-      Raises ValueError if the active node has no parent.
-    """
-    if self.active_node.parent:
-      self.active_node = self.active_node.parent
-    else:
-      raise ValueError('You have tried to move to a nonexistent parent.')
+      if self.active_node.younger_sibling.payload.name != name:
+        raise ValueError(
+            'You have a mismatch between your symbol tree and the '
+            'computation you are trying to process; your symbol tree is {} '
+            'and you are looking for a BoundVariableTracker with name {} '
+            'and value {}'.format(self, name, value))
+      self.walk_down_one_variable_binding()
+      self.active_node.payload.value = value
 
   def _add_younger_sibling(self, comp_tracker):
     """Appends comp as younger sibling of current `active_node`."""
@@ -485,35 +510,9 @@ class SymbolTree(object):
           .format(self.payload_type))
     if self.active_node.younger_sibling is not None:
       raise ValueError('Ambiguity in adding a younger sibling')
-    if self.active_node.parent is not None:
-      comp_tracker.set_parent(self.active_node.parent)
     comp_tracker.set_older_sibling(self.active_node)
     self.active_node.set_younger_sibling(comp_tracker)
     self._node_ids[id(comp_tracker)] = 1
-
-  def _move_to_younger_sibling(self):
-    """Moves `active_node` to the younger sibling of the current active node.
-
-    Raises:
-      Raises ValueError if the active node has no younger sibling.
-    """
-    if self.active_node.younger_sibling:
-      self.active_node = self.active_node.younger_sibling
-    else:
-      raise ValueError('You have tried to move to a '
-                       'nonexistent younger sibling in ' + str(self))
-
-  def _move_to_older_sibling(self):
-    """Moves `active_node` to the older sibling of the current active node.
-
-    Raises:
-      Raises ValueError if the active node has no older sibling.
-    """
-    if self.active_node.older_sibling:
-      self.active_node = self.active_node.older_sibling
-    else:
-      raise ValueError('You have tried to move to a '
-                       'nonexistent older sibling in ' + str(self))
 
   def _add_child(self, constructing_comp_id, comp_tracker):
     """Writes `comp_tracker` to children of active node.
@@ -590,9 +589,9 @@ class SymbolTree(object):
       return True
     if not isinstance(other, SymbolTree):
       return NotImplemented
-    self_node = _walk_to_root(self.active_node)
-    other_node = _walk_to_root(other.active_node)
-    return self._equal_under_node(self_node, other_node)
+    self_root = _walk_to_root(self.active_node)
+    other_root = _walk_to_root(other.active_node)
+    return self._equal_under_node(self_root, other_root)
 
   def __ne__(self, other):
     return not self == other
@@ -630,15 +629,15 @@ class SymbolTree(object):
     """
     node = self.active_node
     root_node = _walk_to_root(node)
-    py_typecheck.check_type(root_node.payload, OuterContextPointer)
     return self._string_under_node(root_node)
 
 
 def _walk_to_root(node):
-  while node.parent is not None:
-    node = node.parent
-  while node.older_sibling is not None:
-    node = node.older_sibling
+  while node.parent is not None or node.older_sibling is not None:
+    while node.older_sibling is not None:
+      node = node.older_sibling
+    while node.parent is not None:
+      node = node.parent
   return node
 
 
@@ -829,38 +828,34 @@ class BoundVariableTracker(object):
     return not self == other
 
 
-class OuterContextPointer(BoundVariableTracker):
-  """Sentinel node class representing the context 'outside' a given AST."""
+class _BeginScopePointer(BoundVariableTracker):
+  """Sentinel representing the beginning of a scope defined by an AST node."""
 
   def __init__(self, name=None, value=None):
     if name is not None or value is not None:
       raise ValueError('Please don\'t pass a name or value to '
-                       'OuterContextPointer; it will simply be ignored.')
-    super(OuterContextPointer, self).__init__('OuterContext', None)
+                       '_BeginScopePointer; it will simply be ignored.')
+    super(_BeginScopePointer, self).__init__('BeginScope', None)
 
   def update(self, comp=None):
-    del comp
+    del comp  # Unused
     raise RuntimeError('We shouldn\'t be trying to update the outer context.')
 
   def __str__(self):
     return self.name
 
   def __eq__(self, other):
-    """Returns `True` iff `other` is also an `OuterContextPointer`.
-
-    OuterContextPointer simply refers to a global notion of 'external',
-    so all instances are identical--"outside" of every building refers
-    to the same location.
+    """Returns `True` iff `other` is also a `_BeginScopePointer`.
 
     Args:
       other: Value for equality comparison.
 
     Returns:
-      Returns true iff `other` is also an instance of `OuterContextPointer`.
+      Returns true iff `other` is also an instance of `_BeginScopePointer`.
     """
     # Using explicit type comparisons here to prevent a subclass from passing.
     # pylint: disable=unidiomatic-typecheck
-    return type(other) is OuterContextPointer
+    return type(other) is _BeginScopePointer
     # pylint: enable=unidiomatic-typecheck
 
 
