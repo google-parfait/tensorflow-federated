@@ -67,7 +67,6 @@ if '--project_name' in sys.argv:
   sys.argv.pop(project_name_idx)
 
 REQUIRED_PACKAGES = [
-    'enum34~=1.1',
     'h5py~=2.6',
     'numpy~=1.14',
     'six~=1.10',
