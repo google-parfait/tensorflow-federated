@@ -582,6 +582,57 @@ def merge_chained_blocks(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
+def replace_selection_from_tuple_with_tuple_element(comp):
+  r"""Replaces any selection from a tuple with the underlying tuple element.
+
+  Replaces any occurences of:
+
+                              Selection
+                                  |
+                                Tuple
+                               / ... \
+                           Comp  ...  Comp
+
+  with the appropriate Comp, as determined by the `index` or `name` of the
+  `Selection`.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      transform.
+
+  Returns:
+    A possibly modified version of comp, without any occurrences of selections
+    from tuples.
+
+  Raises:
+    TypeError: If `comp` is not an instance of
+      `computation_building_blocks.ComputationBuildingBlock`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def _should_transform(comp):
+    if (isinstance(comp, computation_building_blocks.Selection) and
+        isinstance(comp.source, computation_building_blocks.Tuple)):
+      return True
+    return False
+
+  def _get_index_from_name(selection_name, tuple_type_signature):
+    type_elements = anonymous_tuple.to_elements(tuple_type_signature)
+    return [x[0] for x in type_elements].index(selection_name)
+
+  def _transform(comp):
+    if not _should_transform(comp):
+      return comp, False
+    if comp.name is not None:
+      index = _get_index_from_name(comp.name, comp.source.type_signature)
+    else:
+      index = comp.index
+    return comp.source[index], True
+
+  return transformation_utils.transform_postorder(comp, _transform)
+
+
 def _is_called_intrinsic(comp, uri):
   """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
 
