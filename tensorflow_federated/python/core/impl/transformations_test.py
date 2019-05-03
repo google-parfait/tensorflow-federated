@@ -1267,6 +1267,78 @@ class TransformationsTest(parameterized.TestCase):
         '(let input2=input3,input1=input2,result=input1 in result)')
     self.assertTrue(modified)
 
+  def test_replace_selection_from_tuple_fails_on_none_comp(self):
+    with self.assertRaises(TypeError):
+      transformations.replace_selection_from_tuple_with_tuple_element(None)
+
+  def test_replace_selection_from_tuple_leaves_selection_from_ref_by_index_alone(
+      self):
+    ref_to_tuple = computation_building_blocks.Reference(
+        'tup', [('a', tf.int32), ('b', tf.float32)])
+    a_selected = computation_building_blocks.Selection(ref_to_tuple, index=0)
+    b_selected = computation_building_blocks.Selection(ref_to_tuple, index=1)
+
+    a_returned, a_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        a_selected)
+    b_returned, b_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        b_selected)
+
+    self.assertFalse(a_transformed)
+    self.assertEqual(a_returned.proto, a_selected.proto)
+    self.assertFalse(b_transformed)
+    self.assertEqual(b_returned.proto, b_selected.proto)
+
+  def test_replace_selection_from_tuple_leaves_selection_from_ref_by_name_alone(
+      self):
+    ref_to_tuple = computation_building_blocks.Reference(
+        'tup', [('a', tf.int32), ('b', tf.float32)])
+    a_selected = computation_building_blocks.Selection(ref_to_tuple, name='a')
+    b_selected = computation_building_blocks.Selection(ref_to_tuple, name='b')
+
+    a_returned, a_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        a_selected)
+    b_returned, b_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        b_selected)
+
+    self.assertFalse(a_transformed)
+    self.assertEqual(a_returned.proto, a_selected.proto)
+    self.assertFalse(b_transformed)
+    self.assertEqual(b_returned.proto, b_selected.proto)
+
+  def test_replace_selection_from_tuple_by_index_grabs_correct_element(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    y_data = computation_building_blocks.Data('y', [('a', tf.float32)])
+    tup = computation_building_blocks.Tuple([x_data, y_data])
+    x_selected = computation_building_blocks.Selection(tup, index=0)
+    y_selected = computation_building_blocks.Selection(tup, index=1)
+
+    collapsed_selection_x, x_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        x_selected)
+    collapsed_selection_y, y_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        y_selected)
+
+    self.assertTrue(x_transformed)
+    self.assertTrue(y_transformed)
+    self.assertEqual(collapsed_selection_x.proto, x_data.proto)
+    self.assertEqual(collapsed_selection_y.proto, y_data.proto)
+
+  def test_replace_selection_from_tuple_by_name_grabs_correct_element(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    y_data = computation_building_blocks.Data('y', [('a', tf.float32)])
+    tup = computation_building_blocks.Tuple([('a', x_data), ('b', y_data)])
+    x_selected = computation_building_blocks.Selection(tup, name='a')
+    y_selected = computation_building_blocks.Selection(tup, name='b')
+
+    collapsed_selection_x, x_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        x_selected)
+    collapsed_selection_y, y_transformed = transformations.replace_selection_from_tuple_with_tuple_element(
+        y_selected)
+
+    self.assertTrue(x_transformed)
+    self.assertTrue(y_transformed)
+    self.assertEqual(collapsed_selection_x.proto, x_data.proto)
+    self.assertEqual(collapsed_selection_y.proto, y_data.proto)
+
 
 if __name__ == '__main__':
   absltest.main()
