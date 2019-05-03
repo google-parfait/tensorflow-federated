@@ -121,12 +121,9 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
 
     local_data_type = tff.SequenceType(batch_type)
 
-    server_model_type = tff.FederatedType(
-        model_type, tff.SERVER, all_equal=True)
+    server_model_type = tff.FederatedType(model_type, tff.SERVER)
     client_data_type = tff.FederatedType(local_data_type, tff.CLIENTS)
-
-    server_float_type = tff.FederatedType(
-        tf.float32, tff.SERVER, all_equal=True)
+    server_float_type = tff.FederatedType(tf.float32, tff.SERVER)
 
     computation_building_start = time.time()
 

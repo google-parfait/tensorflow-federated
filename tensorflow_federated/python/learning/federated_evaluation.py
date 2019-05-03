@@ -73,7 +73,7 @@ def build_federated_evaluation(model_fn):
                                       ('workaround for b/121400757', dummy)])
 
   @tff.federated_computation(
-      tff.FederatedType(model_weights_type, tff.SERVER, all_equal=True),
+      tff.FederatedType(model_weights_type, tff.SERVER),
       tff.FederatedType(tff.SequenceType(batch_type), tff.CLIENTS))
   def server_eval(server_model_weights, federated_dataset):
     client_outputs = tff.federated_map(
