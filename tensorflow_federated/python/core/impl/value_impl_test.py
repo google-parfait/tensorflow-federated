@@ -408,24 +408,24 @@ class ValueImplTest(parameterized.TestCase):
         computation_building_blocks.Reference(
             'test',
             computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, True)), None,
+                                            placements.CLIENTS, False)), None,
         context_stack_impl.context_stack)
     self.assertEqual(
-        str(federated_value.type_signature), '<int32,bool>@CLIENTS')
+        str(federated_value.type_signature), '{<int32,bool>}@CLIENTS')
     federated_attribute = federated_value[0]
-    self.assertEqual(str(federated_attribute.type_signature), 'int32@CLIENTS')
+    self.assertEqual(str(federated_attribute.type_signature), '{int32}@CLIENTS')
 
   def test_getitem_federated_slice_constructs_comp_clients(self):
     federated_value = value_impl.to_value(
         computation_building_blocks.Reference(
             'test',
             computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, True)), None,
+                                            placements.CLIENTS, False)), None,
         context_stack_impl.context_stack)
     self.assertEqual(
-        str(federated_value.type_signature), '<int32,bool>@CLIENTS')
+        str(federated_value.type_signature), '{<int32,bool>}@CLIENTS')
     identity = federated_value[:]
-    self.assertEqual(str(identity.type_signature), '<int32,bool>@CLIENTS')
+    self.assertEqual(str(identity.type_signature), '{<int32,bool>}@CLIENTS')
     self.assertEqual(str(identity), 'federated_map(<(x -> <x[0],x[1]>),test>)')
 
   def test_getitem_resolution_federated_value_server(self):
@@ -469,12 +469,12 @@ class ValueImplTest(parameterized.TestCase):
         computation_building_blocks.Reference(
             'test',
             computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.CLIENTS, True)), None,
+                                            placements.CLIENTS, False)), None,
         context_stack_impl.context_stack)
     self.assertEqual(
-        str(federated_value.type_signature), '<a=int32,b=bool>@CLIENTS')
+        str(federated_value.type_signature), '{<a=int32,b=bool>}@CLIENTS')
     federated_attribute = federated_value.a
-    self.assertEqual(str(federated_attribute.type_signature), 'int32@CLIENTS')
+    self.assertEqual(str(federated_attribute.type_signature), '{int32}@CLIENTS')
 
   def test_getattr_fails_federated_value_unknown_attr(self):
     federated_value_clients = value_impl.to_value(

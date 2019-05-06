@@ -97,7 +97,17 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
         'x', arg_ref.type_signature, return_val)
     intrinsic = computation_constructing_utils.construct_map_or_apply(
         non_federated_fn, federated_comp)
+    intrinsic_type = computation_types.FunctionType(
+        [
+            non_federated_fn.type_signature,
+            computation_types.FederatedType(
+                federated_comp.type_signature.member,
+                placement_literals.CLIENTS, False)
+        ],
+        computation_types.FederatedType(return_val.type_signature,
+                                        placement_literals.CLIENTS, False))
     self.assertEqual(str(intrinsic), 'federated_map')
+    self.assertEqual(str(intrinsic.type_signature), str(intrinsic_type))
 
   def test_intrinsic_construction_fails_bad_type(self):
     x = computation_building_blocks.Reference('x', tf.int32)
