@@ -278,6 +278,7 @@ py_library(
         ":computation_building_blocks",
         ":context_stack_base",
         ":federated_computation_context",
+        ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",

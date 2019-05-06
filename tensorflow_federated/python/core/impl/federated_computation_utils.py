@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_context
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
 
@@ -47,8 +48,10 @@ def zero_or_one_arg_fn_to_building_block(fn,
       If not `None`, it must be a string.
 
   Returns:
-    An instance of `computation_building_blocks.ComputationBuildingBlock` that
-    contains the logic from `fn`.
+    A tuple of `(computation_building_blocks.ComputationBuildingBlock,
+    computation_types.Type)`, where the first element contains the logic from
+    `fn`, and the second element contains potentially annotated type information
+    for the result of `fn`.
 
   Raises:
     ValueError: if `fn` is incompatible with `parameter_type`.
@@ -77,10 +80,13 @@ def zero_or_one_arg_fn_to_building_block(fn,
               context_stack))
     else:
       result = fn()
+    annotated_type = type_utils.infer_type(result)
     result = value_impl.to_value(result, None, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
     if parameter_type is None:
-      return result_comp
+      return result_comp, annotated_type
     else:
+      annotated_type = computation_types.FunctionType(parameter_type,
+                                                      annotated_type)
       return computation_building_blocks.Lambda(parameter_name, parameter_type,
-                                                result_comp)
+                                                result_comp), annotated_type

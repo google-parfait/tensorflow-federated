@@ -145,7 +145,6 @@ py_test(
     deps = [
         ":model_examples",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
     ],
