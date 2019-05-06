@@ -42,6 +42,33 @@ py_test(
 )
 
 py_library(
+    name = "compiled_computation_transforms",
+    srcs = ["compiled_computation_transforms.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "compiled_computation_transforms_test",
+    size = "small",
+    srcs = ["compiled_computation_transforms_test.py"],
+    deps = [
+        ":compiled_computation_transforms",
+        ":computation_building_blocks",
+        ":context_stack_impl",
+        ":tensorflow_serialization",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_library(
     name = "computation_building_blocks",
     srcs = ["computation_building_blocks.py"],
     deps = [
