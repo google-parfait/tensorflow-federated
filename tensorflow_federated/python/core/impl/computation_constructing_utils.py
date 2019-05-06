@@ -237,10 +237,18 @@ def construct_map_or_apply(fn, arg):
         computation_types.FunctionType([fn.type_signature, arg.type_signature],
                                        result_type))
   elif arg.type_signature.placement == placement_literals.CLIENTS:
+    #  We need to adjust the type signature of arg for assignability checks in
+    #  the Intrinsic constructor
+    adjusted_arg_type = computation_types.FederatedType(
+        arg.type_signature.member,
+        arg.type_signature.placement,
+        all_equal=False)
+    adjusted_result_type = computation_types.FederatedType(
+        result_type.member, result_type.placement, all_equal=False)
     intrinsic = computation_building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MAP.uri,
-        computation_types.FunctionType([fn.type_signature, arg.type_signature],
-                                       result_type))
+        computation_types.FunctionType([fn.type_signature, adjusted_arg_type],
+                                       adjusted_result_type))
   return intrinsic
 
 
