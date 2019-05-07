@@ -57,8 +57,9 @@ def infer_type(arg):
     return arg.type_signature
   elif tf.contrib.framework.is_tensor(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
-  elif isinstance(arg, (
-      tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
+  elif isinstance(
+      arg,
+      (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
     return computation_types.SequenceType(
         tf_dtypes_and_shapes_to_type(
             tf.compat.v1.data.get_output_types(arg),
@@ -315,8 +316,8 @@ def type_to_tf_structure(type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   if isinstance(type_spec, computation_types.TensorType):
-    return tf.data.experimental.TensorStructure(
-        type_spec.dtype, type_spec.shape)
+    return tf.data.experimental.TensorStructure(type_spec.dtype,
+                                                type_spec.shape)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
     if not elements:

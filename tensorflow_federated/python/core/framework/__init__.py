@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.computation_building_blocks import Re
 from tensorflow_federated.python.core.impl.computation_building_blocks import Selection
 from tensorflow_federated.python.core.impl.computation_building_blocks import Tuple
 
-
 # Used by doc generation script.
 _allowed_symbols = [
     "Block",

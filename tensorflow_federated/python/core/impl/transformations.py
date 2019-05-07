@@ -574,9 +574,8 @@ def merge_chained_blocks(comp):
   def _transform(comp):
     if not _should_transform(comp):
       return comp, False
-    transformed_comp = computation_building_blocks.Block(comp.locals +
-                                                         comp.result.locals,
-                                                         comp.result.result)
+    transformed_comp = computation_building_blocks.Block(
+        comp.locals + comp.result.locals, comp.result.result)
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)

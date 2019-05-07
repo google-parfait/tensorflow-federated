@@ -585,8 +585,8 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_type_to_tf_structure_with_inconsistently_named_elements(self):
     with self.assertRaises(ValueError):
-      type_utils.type_to_tf_structure(computation_types.NamedTupleType([
-          ('a', tf.int32), tf.bool]))
+      type_utils.type_to_tf_structure(
+          computation_types.NamedTupleType([('a', tf.int32), tf.bool]))
 
   def test_type_to_tf_structure_with_no_elements(self):
     with self.assertRaises(ValueError):
