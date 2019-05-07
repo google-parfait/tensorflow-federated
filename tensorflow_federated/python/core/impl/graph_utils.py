@@ -97,8 +97,8 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   elif isinstance(parameter_type, computation_types.SequenceType):
     with graph.as_default():
       variant_tensor = tf.placeholder(tf.variant, shape=[])
-      ds = make_dataset_from_variant_tensor(
-          variant_tensor, parameter_type.element)
+      ds = make_dataset_from_variant_tensor(variant_tensor,
+                                            parameter_type.element)
     return (ds,
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
@@ -143,11 +143,8 @@ class OneShotDataset(typed_object.TypedObject):
 
 
 # TODO(b/129956296): Eventually delete this deprecated declaration.
-DATASET_REPRESENTATION_TYPES = (
-    tf.data.Dataset,
-    tf.compat.v1.data.Dataset,
-    tf.compat.v2.data.Dataset,
-    OneShotDataset)
+DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, tf.compat.v1.data.Dataset,
+                                tf.compat.v2.data.Dataset, OneShotDataset)
 
 
 def make_dataset_from_string_handle(handle, type_spec):
@@ -218,8 +215,10 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
     raise TypeError(
         'Expected `variant_tensor` to be of a variant type, found {}.'.format(
             str(variant_tensor.dtype)))
-  return tf.data.experimental.from_variant(variant_tensor, structure=(
-      type_utils.type_to_tf_structure(computation_types.to_type(type_spec))))
+  return tf.data.experimental.from_variant(
+      variant_tensor,
+      structure=(type_utils.type_to_tf_structure(
+          computation_types.to_type(type_spec))))
 
 
 def capture_result_from_graph(result, graph):
@@ -304,8 +303,8 @@ def capture_result_from_graph(result, graph):
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
-  elif isinstance(
-      result, (tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
+  elif isinstance(result,
+                  (tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
     variant_tensor = tf.data.experimental.to_variant(result)
     # TODO(b/130032140): Switch to TF2.0 way of doing it while cleaning up the
     # legacy structures all over the code base and replacing them with the new
@@ -376,7 +375,7 @@ def compute_map_from_bindings(source, target):
     elif sequence_oneof == 'variant_tensor_name':
       return collections.OrderedDict([
           (str(source.sequence.variant_tensor_name),
-           str(target.sequence.variant_tensor_name))
+           str(target.sequence.variant_tensor_name)),
       ])
     else:
       raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
@@ -510,8 +509,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
         return make_dataset_from_string_handle(handle, type_spec.element)
       elif sequence_oneof == 'variant_tensor_name':
         variant_tensor = output_map[binding.sequence.variant_tensor_name]
-        return make_dataset_from_variant_tensor(
-            variant_tensor, type_spec.element)
+        return make_dataset_from_variant_tensor(variant_tensor,
+                                                type_spec.element)
       else:
         raise ValueError(
             'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))

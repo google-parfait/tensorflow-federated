@@ -62,8 +62,7 @@ class ComputationImpl(function_utils.ConcreteFunction):
         raise TypeError(
             'annotated_type not compatible with computation_proto.type\n'
             'computation_proto.type: {!s}\n'
-            'annotated_type: {!s}'.format(type_spec, annotated_type)
-        )
+            'annotated_type: {!s}'.format(type_spec, annotated_type))
       type_spec = annotated_type
 
     type_utils.check_well_formed(type_spec)

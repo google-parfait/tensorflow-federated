@@ -27,7 +27,6 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core import api as tff
 
@@ -229,7 +228,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
     @tff.federated_computation([
         ('a', tff.FederatedType(tf.int32, tff.SERVER)),
-        ('b', tff.FederatedType(tf.bool, tff.SERVER))
+        ('b', tff.FederatedType(tf.bool, tff.SERVER)),
     ])
     def foo(arg):
       return tff.federated_zip(arg)

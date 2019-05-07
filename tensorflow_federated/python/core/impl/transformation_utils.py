@@ -57,8 +57,8 @@ def transform_postorder(comp, transform):
       and should return a (building block, bool) tuple as output, where the
       building block is a `computation_building_block.ComputationBuildingBlock`
       representing either the original building block or a transformed building
-      block and the bool is a flag indicating if the building block was
-      modified as.
+      block and the bool is a flag indicating if the building block was modified
+      as.
 
   Returns:
     The result of applying `transform` to parts of `comp` in a bottom-up

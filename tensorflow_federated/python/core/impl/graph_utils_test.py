@@ -185,14 +185,16 @@ class GraphUtilsTest(test.TestCase):
               collections.OrderedDict([('A', (tf.float32, [3, 4, 5])),
                                        ('B', (tf.int32, [1]))])))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
-      test.assert_nested_struct_eq(tf.compat.v1.data.get_output_types(x), {
-          'A': tf.float32,
-          'B': tf.int32
-      })
-      test.assert_nested_struct_eq(tf.compat.v1.data.get_output_shapes(x), {
-          'A': tf.TensorShape([3, 4, 5]),
-          'B': tf.TensorShape([1])
-      })
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_types(x), {
+              'A': tf.float32,
+              'B': tf.int32
+          })
+      test.assert_nested_struct_eq(
+          tf.compat.v1.data.get_output_shapes(x), {
+              'A': tf.TensorShape([3, 4, 5]),
+              'B': tf.TensorShape([1])
+          })
 
   def test_capture_result_with_string(self):
     with tf.Graph().as_default() as graph:
@@ -482,8 +484,7 @@ class GraphUtilsTest(test.TestCase):
                                                     output_map)
     self.assertIsInstance(result, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        str(result.output_types),
-        'TestNamedTuple(X=tf.int32, Y=tf.int32)')
+        str(result.output_types), 'TestNamedTuple(X=tf.int32, Y=tf.int32)')
     self.assertEqual(
         str(result.output_shapes),
         'TestNamedTuple(X=TensorShape([]), Y=TensorShape([]))')
