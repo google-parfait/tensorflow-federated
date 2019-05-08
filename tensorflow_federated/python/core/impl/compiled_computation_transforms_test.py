@@ -20,10 +20,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 
@@ -34,7 +36,12 @@ def _create_compiled_computation(py_fn, arg_type):
   return computation_building_blocks.CompiledComputation(proto)
 
 
-class CompiledComputationUtilsTest(test.TestCase):
+def _to_computation_impl(building_block):
+  return computation_impl.ComputationImpl(building_block.proto,
+                                          context_stack_impl.context_stack)
+
+
+class CompiledComputationTransformsTest(test.TestCase):
 
   def test_select_graph_output_with_none_comp_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -183,11 +190,9 @@ class CompiledComputationUtilsTest(test.TestCase):
                                                      ('b', tf.float32)])
     nested_type2 = computation_types.NamedTupleType([('c', tf.int32),
                                                      ('d', tf.float32)])
-
     computation_arg_type = computation_types.NamedTupleType([
         ('x', nested_type1), ('y', nested_type2)
     ])
-
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
@@ -218,6 +223,124 @@ class CompiledComputationUtilsTest(test.TestCase):
                      second_element_selected.proto.tensorflow.initialize_op)
     self.assertEqual(foo.proto.tensorflow.result.tuple.element[1].tuple,
                      second_element_selected.proto.tensorflow.result.tuple)
+
+  def test_permute_graph_inputs_with_none_comp_raises_type_error(self):
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.permute_graph_inputs(None, [0])
+
+  def test_permute_graph_inputs_with_integer_map_raises_type_error(self):
+    computation_arg_type = computation_types.NamedTupleType([('a', tf.int32)])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.permute_graph_inputs(foo, 0)
+
+  def test_permute_graph_inputs_with_list_of_strings_raises_type_error(self):
+    computation_arg_type = computation_types.NamedTupleType([('a', tf.int32)])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.permute_graph_inputs(foo, ['a'])
+
+  def test_permute_graph_inputs_wrong_permutation_length_raises_value_error(
+      self):
+    computation_arg_type = computation_types.NamedTupleType(
+        [tf.int32, tf.float32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    with self.assertRaises(ValueError):
+      compiled_computation_transforms.permute_graph_inputs(foo, [0])
+
+  def test_permute_graph_inputs_repeated_indices_raises_value_error(self):
+    computation_arg_type = computation_types.NamedTupleType(
+        [tf.int32, tf.float32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    with self.assertRaises(ValueError):
+      compiled_computation_transforms.permute_graph_inputs(foo, [0, 0])
+
+  def test_permute_graph_inputs_large_index_raises_value_error(self):
+    computation_arg_type = computation_types.NamedTupleType(
+        [tf.int32, tf.float32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    with self.assertRaises(ValueError):
+      compiled_computation_transforms.permute_graph_inputs(foo, [0, 2])
+
+  def test_permute_graph_inputs_negative_index_raises_value_error(self):
+    computation_arg_type = computation_types.NamedTupleType(
+        [tf.int32, tf.float32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    with self.assertRaises(ValueError):
+      compiled_computation_transforms.permute_graph_inputs(foo, [0, -1])
+
+  def test_permute_graph_inputs_identity_permutation_noops(self):
+    computation_arg_type = computation_types.NamedTupleType(
+        [tf.int32, tf.float32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
+        foo, [0, 1])
+
+    self.assertEqual(mapped_to_identity.proto, foo.proto)
+
+  def test_permute_graph_inputs_identity_permutation_leaves_names_alone(self):
+    computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                             ('b', tf.float32)])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
+        foo, [0, 1])
+
+    self.assertEqual(mapped_to_identity.proto, foo.proto)
+    self.assertEqual(mapped_to_identity.type_signature, foo.type_signature)
+
+  def test_permute_graph_inputs_flip_input_order_changes_only_parameters(self):
+    computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                             ('b', tf.float32),
+                                                             ('c', tf.bool)])
+    permuted_arg_type = computation_types.NamedTupleType([('c', tf.bool),
+                                                          ('a', tf.int32),
+                                                          ('b', tf.float32)])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    permuted_inputs = compiled_computation_transforms.permute_graph_inputs(
+        foo, [2, 0, 1])
+
+    self.assertEqual(permuted_inputs.type_signature.parameter,
+                     permuted_arg_type)
+    self.assertEqual(permuted_inputs.type_signature.result,
+                     foo.type_signature.result)
+    self.assertEqual(permuted_inputs.proto.tensorflow.graph_def,
+                     foo.proto.tensorflow.graph_def)
+    self.assertEqual(permuted_inputs.proto.tensorflow.initialize_op,
+                     foo.proto.tensorflow.initialize_op)
+    self.assertEqual(permuted_inputs.proto.tensorflow.result,
+                     foo.proto.tensorflow.result)
+
+  def test_permute_graph_inputs_flip_input_order_executes_correctly(self):
+    computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
+                                                             ('b', tf.float32),
+                                                             ('c', tf.bool)])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    flipped_inputs = compiled_computation_transforms.permute_graph_inputs(
+        foo, [1, 0, 2])
+    executable_flipped_inputs = _to_computation_impl(flipped_inputs)
+    expected_result = anonymous_tuple.AnonymousTuple([('a', 0), ('b', 1.0),
+                                                      ('c', True)])
+    anonymous_tuple_input = anonymous_tuple.AnonymousTuple([('b', 1.0),
+                                                            ('a', 0),
+                                                            ('c', True)])
+
+    self.assertEqual(executable_flipped_inputs([1., 0, True]), expected_result)
+    self.assertEqual(
+        executable_flipped_inputs(anonymous_tuple_input), expected_result)
+    with self.assertRaises(TypeError):
+      executable_flipped_inputs([0, 1., True])
+    with self.assertRaises(TypeError):
+      executable_flipped_inputs(expected_result)
 
 
 if __name__ == '__main__':
