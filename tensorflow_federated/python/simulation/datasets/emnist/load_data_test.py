@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets.emnist import load_data
@@ -44,7 +45,7 @@ class LoadDataTest(tf.test.TestCase, absltest.TestCase):
       images = [x['pixels'].numpy() for x in data]
       labels = [x['label'].numpy() for x in data]
       self.assertLen(labels, 10)
-      self.assertCountEqual(labels, range(10))
+      self.assertCountEqual(labels, list(range(10)))
       self.assertLen(images, 10)
       self.assertEqual(images[0].shape, (28, 28))
       self.assertEqual(images[-1].shape, (28, 28))
