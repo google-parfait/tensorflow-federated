@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
