@@ -18,14 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from six.moves import range
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_constructors
@@ -280,12 +279,12 @@ class IntrinsicFactory(object):
         self._context_stack)
     return intrinsic(value)
 
-  def federated_map(self, mapping_fn, value):
+  def federated_map(self, fn, arg):
     """Implements `federated_map` as defined in `api/intrinsics.py`.
 
     Args:
-      mapping_fn: As in `api/intrinsics.py`.
-      value: As in `api/intrinsics.py`.
+      fn: As in `api/intrinsics.py`.
+      arg: As in `api/intrinsics.py`.
 
     Returns:
       As in `api/intrinsics.py`.
@@ -293,48 +292,25 @@ class IntrinsicFactory(object):
     Raises:
       TypeError: As in `api/intrinsics.py`.
     """
-
     # TODO(b/113112108): Possibly lift the restriction that the mapped value
     # must be placed at the clients after adding support for placement labels
     # in the federated types, and expanding the type specification of the
     # intrinsic this is based on to work with federated values of arbitrary
     # placement.
 
-    value = value_impl.to_value(value, None, self._context_stack)
-    if isinstance(value.type_signature, computation_types.NamedTupleType):
-      if len(anonymous_tuple.to_elements(value.type_signature)) >= 2:
-        # We've been passed a value which the user expects to be zipped.
-        value = self.federated_zip(value)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be mapped')
-
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
-    mapping_fn = value_impl.to_value(mapping_fn, None, self._context_stack)
 
-    py_typecheck.check_type(mapping_fn, value_base.Value)
-    py_typecheck.check_type(mapping_fn.type_signature,
-                            computation_types.FunctionType)
-    if not type_utils.is_assignable_from(mapping_fn.type_signature.parameter,
-                                         value.type_signature.member):
-      raise TypeError(
-          'The mapping function expects a parameter of type {}, but member '
-          'constituents of the mapped value are of incompatible type {}.'
-          .format(
-              str(mapping_fn.type_signature.parameter),
-              str(value.type_signature.member)))
-
-    # TODO(b/113112108): Replace this as noted above.
-    result_type = computation_types.FederatedType(
-        mapping_fn.type_signature.result, placements.CLIENTS,
-        value.type_signature.all_equal)
-    intrinsic = value_impl.ValueImpl(
-        computation_building_blocks.Intrinsic(
-            intrinsic_defs.FEDERATED_MAP.uri,
-            computation_types.FunctionType(
-                [mapping_fn.type_signature, value.type_signature],
-                result_type)), self._context_stack)
-    return intrinsic(mapping_fn, value)
+    fn = value_impl.to_value(fn, None, self._context_stack)
+    arg = value_impl.to_value(arg, None, self._context_stack)
+    if isinstance(arg.type_signature, computation_types.NamedTupleType):
+      if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
+        # We've been passed a value which the user expects to be zipped.
+        arg = self.federated_zip(arg)
+    fn = value_impl.ValueImpl.get_comp(fn)
+    arg = value_impl.ValueImpl.get_comp(arg)
+    comp = computation_constructing_utils.create_federated_map(fn, arg)
+    return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_reduce(self, value, zero, op):
     """Implements `federated_reduce` as defined in `api/intrinsics.py`.

@@ -70,7 +70,8 @@ class IntrinsicsTest(parameterized.TestCase):
       return tff.federated_map(
           tff.tf_computation(lambda x: x > 10, tf.int32), x)
 
-    self.assertEqual(str(foo.type_signature), '(int32@CLIENTS -> bool@CLIENTS)')
+    self.assertEqual(
+        str(foo.type_signature), '(int32@CLIENTS -> {bool}@CLIENTS)')
 
   def test_federated_map_with_client_non_all_equal_int(self):
 
