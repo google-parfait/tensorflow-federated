@@ -179,7 +179,7 @@ class IntrinsicDef(object):
 #
 # Actual implementations might vary.
 #
-# Type signature: <{T}@CLIENTS,U,(U,T->U),(U,U->U),(U->R)> -> R@SERVER
+# Type signature: <{T}@CLIENTS,U,(<U,T>->U),(<U,U>->U),(U->R)> -> R@SERVER
 FEDERATED_AGGREGATE = IntrinsicDef(
     'FEDERATED_AGGREGATE', 'federated_aggregate',
     computation_types.FunctionType(
