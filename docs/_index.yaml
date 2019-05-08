@@ -117,3 +117,9 @@ landing_page:
       buttons:
       - label: "View on GitHub"
         path: https://github.com/tensorflow/federated
+    - heading: "Federated learning comic book from Google AI"
+      image_path: /resources/images/federated-learning-promo-card-16x9.png
+      path: https://federated.withgoogle.com
+      buttons:
+      - label: "View the comic online"
+        path: https://federated.withgoogle.com
