@@ -53,10 +53,7 @@ def construct_federated_getitem_call(arg, idx):
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
   getitem_comp = construct_federated_getitem_comp(arg, idx)
-  intrinsic = construct_map_or_apply(getitem_comp, arg)
-  call = computation_building_blocks.Call(
-      intrinsic, computation_building_blocks.Tuple([getitem_comp, arg]))
-  return call
+  return construct_map_or_apply(getitem_comp, arg)
 
 
 def construct_federated_getattr_call(arg, name):
@@ -83,10 +80,7 @@ def construct_federated_getattr_call(arg, name):
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
   getattr_comp = construct_federated_getattr_comp(arg, name)
-  intrinsic = construct_map_or_apply(getattr_comp, arg)
-  call = computation_building_blocks.Call(
-      intrinsic, computation_building_blocks.Tuple([getattr_comp, arg]))
-  return call
+  return construct_map_or_apply(getattr_comp, arg)
 
 
 def construct_federated_setattr_call(federated_comp, name, value_comp):
@@ -129,11 +123,7 @@ def construct_federated_setattr_call(federated_comp, name, value_comp):
   named_tuple_type_signature = federated_comp.type_signature.member
   setattr_lambda = construct_named_tuple_setattr_lambda(
       named_tuple_type_signature, name, value_comp)
-  intrinsic = construct_map_or_apply(setattr_lambda, federated_comp)
-  call = computation_building_blocks.Call(
-      intrinsic,
-      computation_building_blocks.Tuple([setattr_lambda, federated_comp]))
-  return call
+  return construct_map_or_apply(setattr_lambda, federated_comp)
 
 
 def construct_named_tuple_setattr_lambda(named_tuple_signature, name,
@@ -228,28 +218,18 @@ def construct_map_or_apply(fn, arg):
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   type_utils.check_assignable_from(fn.type_signature.parameter,
                                    arg.type_signature.member)
-  result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                arg.type_signature.placement,
-                                                arg.type_signature.all_equal)
   if arg.type_signature.placement == placement_literals.SERVER:
+    result_type = computation_types.FederatedType(fn.type_signature.result,
+                                                  arg.type_signature.placement,
+                                                  arg.type_signature.all_equal)
+    intrinsic_type = computation_types.FunctionType(
+        [fn.type_signature, arg.type_signature], result_type)
     intrinsic = computation_building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_APPLY.uri,
-        computation_types.FunctionType([fn.type_signature, arg.type_signature],
-                                       result_type))
+        intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
+    tup = computation_building_blocks.Tuple((fn, arg))
+    return computation_building_blocks.Call(intrinsic, tup)
   elif arg.type_signature.placement == placement_literals.CLIENTS:
-    #  We need to adjust the type signature of arg for assignability checks in
-    #  the Intrinsic constructor
-    adjusted_arg_type = computation_types.FederatedType(
-        arg.type_signature.member,
-        arg.type_signature.placement,
-        all_equal=False)
-    adjusted_result_type = computation_types.FederatedType(
-        result_type.member, result_type.placement, all_equal=False)
-    intrinsic = computation_building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_MAP.uri,
-        computation_types.FunctionType([fn.type_signature, adjusted_arg_type],
-                                       adjusted_result_type))
-  return intrinsic
+    return create_federated_map(fn, arg)
 
 
 def construct_federated_getattr_comp(comp, name):
@@ -332,3 +312,44 @@ def construct_federated_getitem_comp(comp, key):
                                                     apply_input.type_signature,
                                                     selected)
   return apply_lambda
+
+
+def create_federated_map(fn, arg):
+  r"""Creates a called federated map.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  Args:
+    fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
+      use as the function.
+    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      argument.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  type_utils.check_federated_type(arg.type_signature)
+  parameter_type = computation_types.FederatedType(fn.type_signature.parameter,
+                                                   placement_literals.CLIENTS,
+                                                   False)
+  result_type = computation_types.FederatedType(fn.type_signature.result,
+                                                placement_literals.CLIENTS,
+                                                False)
+  intrinsic_type = computation_types.FunctionType(
+      (fn.type_signature, parameter_type), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type)
+  tup = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, tup)

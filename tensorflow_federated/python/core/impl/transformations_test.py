@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
@@ -121,44 +122,6 @@ def _create_called_federated_apply(fn, arg):
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((fn, arg))
-  return computation_building_blocks.Call(intrinsic, tup)
-
-
-def _create_called_federated_map(fn, arg):
-  r"""Creates a to call a federated map.
-
-            Call
-           /    \
-  Intrinsic      Tuple
-                 |
-                 [Comp, Comp]
-
-  Args:
-    fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
-      use as the function.
-    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
-      argument.
-
-  Returns:
-    A `computation_building_blocks.Call`.
-  """
-  py_typecheck.check_type(fn,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(arg,
-                          computation_building_blocks.ComputationBuildingBlock)
-  if not type_utils.is_assignable_from(fn.parameter_type,
-                                       arg.type_signature.member):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(
-            str(fn.parameter_type), str(arg.type_signature.member)))
-  result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                placements.CLIENTS, False)
-  intrinsic_type = computation_types.FunctionType(
-      (fn.type_signature, arg.type_signature), result_type)
-  intrinsic = computation_building_blocks.Intrinsic(
-      intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type)
   tup = computation_building_blocks.Tuple((fn, arg))
   return computation_building_blocks.Call(intrinsic, tup)
 
@@ -278,7 +241,7 @@ def _create_chained_called_federated_map(functions, arg):
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
               str(fn.parameter_type), str(arg.type_signature.member)))
-    call = _create_called_federated_map(fn, arg)
+    call = computation_constructing_utils.create_federated_map(fn, arg)
     arg = call
   return call
 
@@ -402,7 +365,7 @@ def _create_dummy_called_federated_map(parameter_name='x',
   arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS,
                                              False)
   arg = computation_building_blocks.Data(argument_name, arg_type)
-  return _create_called_federated_map(fn, arg)
+  return computation_constructing_utils.create_federated_map(fn, arg)
 
 
 def _create_dummy_called_sequence_map(parameter_name='x',
@@ -683,7 +646,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS, False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_called_federated_map(fn, arg)
+    call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
@@ -918,7 +881,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_called_federated_map(fn, arg)
+    call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = transformations.replace_chained_federated_maps_with_federated_map(
@@ -935,9 +898,9 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call_1 = _create_called_federated_map(fn, arg)
+    call_1 = computation_constructing_utils.create_federated_map(fn, arg)
     block = _create_dummy_block(call_1)
-    call_2 = _create_called_federated_map(fn, block)
+    call_2 = computation_constructing_utils.create_federated_map(fn, block)
     comp = call_2
 
     transformed_comp, modified = transformations.replace_chained_federated_maps_with_federated_map(
@@ -1045,7 +1008,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS, False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_called_federated_map(fn, arg)
+    call = computation_constructing_utils.create_federated_map(fn, arg)
     elements = [call, call]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -1070,7 +1033,7 @@ class TransformationsTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_called_federated_map(fn, arg)
+    call = computation_constructing_utils.create_federated_map(fn, arg)
     elements = [call, call]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls

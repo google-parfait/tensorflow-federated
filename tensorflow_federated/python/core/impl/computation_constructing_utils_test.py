@@ -23,6 +23,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
@@ -83,7 +84,7 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
         'x', arg_ref.type_signature, return_val)
     intrinsic = computation_constructing_utils.construct_map_or_apply(
         non_federated_fn, federated_comp)
-    self.assertEqual(str(intrinsic), 'federated_apply')
+    self.assertEqual(str(intrinsic), 'federated_apply(<(x -> x.a),test>)')
 
   def test_intrinsic_construction_clients(self):
     federated_comp = computation_building_blocks.Reference(
@@ -97,17 +98,8 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
         'x', arg_ref.type_signature, return_val)
     intrinsic = computation_constructing_utils.construct_map_or_apply(
         non_federated_fn, federated_comp)
-    intrinsic_type = computation_types.FunctionType(
-        [
-            non_federated_fn.type_signature,
-            computation_types.FederatedType(
-                federated_comp.type_signature.member,
-                placement_literals.CLIENTS, False)
-        ],
-        computation_types.FederatedType(return_val.type_signature,
-                                        placement_literals.CLIENTS, False))
-    self.assertEqual(str(intrinsic), 'federated_map')
-    self.assertEqual(str(intrinsic.type_signature), str(intrinsic_type))
+    self.assertEqual(intrinsic.tff_repr, 'federated_map(<(x -> x.a),test>)')
+    self.assertEqual(str(intrinsic.type_signature), '{int32}@CLIENTS')
 
   def test_intrinsic_construction_fails_bad_type(self):
     x = computation_building_blocks.Reference('x', tf.int32)
@@ -439,6 +431,45 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
         federated_setattr.tff_repr,
         'federated_apply(<(let value_comp_placeholder=x in (lambda_arg -> <a=value_comp_placeholder,lambda_arg[1],b=lambda_arg[2]>)),federated_comp>)'
     )
+
+
+class CreateFederatedMapTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_fn(self):
+    arg = computation_building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_map(None, arg)
+
+  def test_raises_type_error_with_nonfunctional_fn(self):
+    fn = computation_building_blocks.Reference('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.bool, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_map(fn, arg)
+
+  def test_raises_type_error_with_none_arg(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_map(fn, None)
+
+  def test_raises_type_error_with_nonfederated_arg(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    arg = computation_building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_map(fn, arg)
+
+  def test_returns_federated_map(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                               False)
+    arg = computation_building_blocks.Data('y', arg_type)
+    comp = computation_constructing_utils.create_federated_map(fn, arg)
+    self.assertEqual(comp.tff_repr, 'federated_map(<(x -> x),y>)')
+    self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
 if __name__ == '__main__':
