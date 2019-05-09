@@ -212,18 +212,6 @@ FEDERATED_APPLY = IntrinsicDef(
         result=type_constructors.at_server(
             computation_types.AbstractType('U'))))
 
-# Computes a simple (equally weighted) mean of client items. Only supported
-# for numeric tensor types, or composite structures made up of numeric types.
-#
-# Type signature: {T}@CLIENTS -> T@SERVER
-FEDERATED_MEAN = IntrinsicDef(
-    'FEDERATED_MEAN', 'federated_mean',
-    computation_types.FunctionType(
-        parameter=type_constructors.at_clients(
-            computation_types.AbstractType('T')),
-        result=type_constructors.at_server(
-            computation_types.AbstractType('T'))))
-
 # Broadcasts a server item to all clients.
 #
 # Type signature: T@SERVER -> T@CLIENTS
@@ -262,6 +250,18 @@ FEDERATED_MAP = IntrinsicDef(
         ],
         result=type_constructors.at_clients(
             computation_types.AbstractType('U'))))
+
+# Computes a simple (equally weighted) mean of client items. Only supported
+# for numeric tensor types, or composite structures made up of numeric types.
+#
+# Type signature: {T}@CLIENTS -> T@SERVER
+FEDERATED_MEAN = IntrinsicDef(
+    'FEDERATED_MEAN', 'federated_mean',
+    computation_types.FunctionType(
+        parameter=type_constructors.at_clients(
+            computation_types.AbstractType('T')),
+        result=type_constructors.at_server(
+            computation_types.AbstractType('T'))))
 
 # Reduces a set of member constituents of a client value using a given 'zero' in
 # the algebra (i.e., the result of reducing an empty set) and a given reduction
