@@ -146,6 +146,11 @@ def _check_is_class(cls):
                   'found {}.'.format(cls))
 
 
+def is_attrs(value):
+  """Determines whether `value` is an instance of an attrs decorated class."""
+  return hasattr(value, '__attrs_attrs__')
+
+
 def is_named_tuple(value):
   """Determines whether `value` can be considered a `collections.namedtuple`.
 

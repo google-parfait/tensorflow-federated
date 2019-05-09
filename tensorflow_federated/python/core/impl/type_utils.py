@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import collections
 
+import attr
 import numpy as np
 import six
 from six.moves import range
@@ -69,6 +70,11 @@ def infer_type(arg):
         (k, infer_type(v)) if k else infer_type(v)
         for k, v in anonymous_tuple.to_elements(arg)
     ])
+  elif py_typecheck.is_attrs(arg):
+    items = attr.asdict(
+        arg, dict_factory=collections.OrderedDict, recurse=False)
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        [(k, infer_type(v)) for k, v in six.iteritems(items)], type(arg))
   elif py_typecheck.is_named_tuple(arg):
     items = arg._asdict()
     return computation_types.NamedTupleTypeWithPyContainerType(
@@ -192,10 +198,17 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   elif py_typecheck.is_named_tuple(dtypes):
     # Special handling needed for collections.namedtuple due to the lack of
     # a base class. Note this must precede the test for being a list.
-    shape_dict = shapes._asdict()
     dtype_dict = dtypes._asdict()
+    shape_dict = shapes._asdict()
     return computation_types.NamedTupleTypeWithPyContainerType(
         _parallel_dict_to_element_list(dtype_dict, shape_dict), type(dtypes))
+  elif py_typecheck.is_attrs(dtypes):
+    dtype_dict = attr.asdict(
+        dtypes, dict_factory=collections.OrderedDict, recurse=False)
+    shapes_dict = attr.asdict(
+        shapes, dict_factory=collections.OrderedDict, recurse=False)
+    return computation_types.NamedTupleTypeWithPyContainerType(
+        _parallel_dict_to_element_list(dtype_dict, shapes_dict), type(dtypes))
   elif isinstance(dtypes, dict):
     if isinstance(dtypes, collections.OrderedDict):
       items = six.iteritems(dtypes)
@@ -281,7 +294,8 @@ def type_to_tf_dtypes_and_shapes(type_spec):
           type_spec)
 
       def build_py_container(elements):
-        if py_typecheck.is_named_tuple(container_type):
+        if (py_typecheck.is_named_tuple(container_type) or
+            py_typecheck.is_attrs(container_type)):
           return container_type(**dict(elements))
         else:
           return container_type(elements)
@@ -335,7 +349,8 @@ def type_to_tf_structure(type_spec):
     else:
       container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
           type_spec)
-      if py_typecheck.is_named_tuple(container_type):
+      if (py_typecheck.is_named_tuple(container_type) or
+          py_typecheck.is_attrs(container_type)):
         output = container_type(**dict(element_outputs))
       elif named:
         output = container_type(element_outputs)
@@ -870,6 +885,7 @@ def convert_to_py_container(anon_tuple, type_spec):
 
   def is_container_type_with_names(container_type):
     return (py_typecheck.is_named_tuple(container_type) or
+            py_typecheck.is_attrs(container_type) or
             issubclass(container_type, dict))
 
   container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
@@ -898,7 +914,8 @@ def convert_to_py_container(anon_tuple, type_spec):
     else:
       elements.append((elem_name, value))
 
-  if py_typecheck.is_named_tuple(container_type):
+  if (py_typecheck.is_named_tuple(container_type) or
+      py_typecheck.is_attrs(container_type)):
     return container_type(**dict(elements))
   else:
     return container_type(elements)

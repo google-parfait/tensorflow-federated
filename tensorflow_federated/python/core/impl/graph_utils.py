@@ -23,6 +23,7 @@ import functools
 import itertools
 import logging
 
+import attr
 import numpy as np
 import six
 from six.moves import range
@@ -280,6 +281,14 @@ def capture_result_from_graph(result, graph):
         functools.partial(
             computation_types.NamedTupleTypeWithPyContainerType,
             container_type=type(result)))
+  elif py_typecheck.is_attrs(result):
+    name_value_pairs = attr.asdict(
+        result, dict_factory=collections.OrderedDict, recurse=False)
+    return _get_bindings_for_elements(
+        six.iteritems(name_value_pairs), graph,
+        functools.partial(
+            computation_types.NamedTupleTypeWithPyContainerType,
+            container_type=type(result)))
   elif isinstance(result, anonymous_tuple.AnonymousTuple):
     return _get_bindings_for_elements(
         anonymous_tuple.to_elements(result), graph,
@@ -494,7 +503,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
         return anonymous_tuple.AnonymousTuple(result_elements)
       container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
           type_spec)
-      if py_typecheck.is_named_tuple(container_type):
+      if (py_typecheck.is_named_tuple(container_type) or
+          py_typecheck.is_attrs(container_type)):
         return container_type(**dict(result_elements))
       return container_type(result_elements)
   elif isinstance(type_spec, computation_types.SequenceType):

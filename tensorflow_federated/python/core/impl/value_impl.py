@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import collections
 
+import attr
 import six
 from six.moves import range
 import tensorflow as tf
@@ -351,6 +352,10 @@ def to_value(arg, type_spec, context_stack):
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
     result = to_value(arg._asdict(), None, context_stack)
+  elif py_typecheck.is_attrs(arg):
+    result = to_value(
+        attr.asdict(arg, dict_factory=collections.OrderedDict, recurse=False),
+        None, context_stack)
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
       items = six.iteritems(arg)
