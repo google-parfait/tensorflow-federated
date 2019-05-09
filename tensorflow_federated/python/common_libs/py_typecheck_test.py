@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
+import attr
 import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -107,6 +108,21 @@ class PyTypeCheckTest(absltest.TestCase):
     self.assertFalse(py_typecheck.is_name_value_pair((None, 0)))
     self.assertFalse(py_typecheck.is_name_value_pair([None, 0]))
     self.assertFalse(py_typecheck.is_name_value_pair({'a': 1}))
+
+  def test_is_attr(self):
+
+    @attr.s
+    class TestAttrClass(object):
+      a = attr.ib(default=0)
+
+    class TestClass(object):
+      a = 0
+
+    self.assertTrue(py_typecheck.is_attrs(TestAttrClass))
+    self.assertTrue(py_typecheck.is_attrs(TestAttrClass()))
+    self.assertFalse(py_typecheck.is_attrs(0))
+    self.assertFalse(py_typecheck.is_attrs(TestClass))
+    self.assertFalse(py_typecheck.is_attrs(TestClass()))
 
 
 if __name__ == '__main__':

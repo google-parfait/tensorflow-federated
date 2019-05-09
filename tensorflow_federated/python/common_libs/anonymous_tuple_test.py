@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
+import attr
 from six.moves import range
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -296,6 +297,17 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_from_container_with_namedtuple(self):
     x = anonymous_tuple.from_container(collections.namedtuple('_', 'x y')(1, 2))
+    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertEqual(str(x), '<x=1,y=2>')
+
+  def test_from_container_with_attrs_class(self):
+
+    @attr.s
+    class TestFoo(object):
+      x = attr.ib()
+      y = attr.ib()
+
+    x = anonymous_tuple.from_container(TestFoo(1, 2))
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertEqual(str(x), '<x=1,y=2>')
 

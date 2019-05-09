@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import collections
 
+import attr
 import six
 from six.moves import zip
 import tensorflow as tf
@@ -369,6 +370,11 @@ def from_container(value, recursive=False):
         ])
       else:
         return value
+    elif py_typecheck.is_attrs(value):
+      return _convert(
+          attr.asdict(
+              value, dict_factory=collections.OrderedDict, recurse=False),
+          recursive, must_be_container)
     elif py_typecheck.is_named_tuple(value):
       return _convert(value._asdict(), recursive, must_be_container)
     elif isinstance(value, collections.OrderedDict):

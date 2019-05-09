@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import parameterized
+import attr
 import numpy as np
 import tensorflow as tf
 
@@ -226,6 +227,24 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), collections.OrderedDict)
+
+  def test_infer_type_with_nested_attrs_class(self):
+
+    @attr.s
+    class TestAttrClass(object):
+      a = attr.ib()
+      b = attr.ib()
+
+    t = type_utils.infer_type(TestAttrClass(a=0, b={'x': True, 'y': 0.0}))
+    self.assertEqual(str(t), '<a=int32,b=<x=bool,y=float32>>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), TestAttrClass)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.b), dict)
 
   def test_infer_type_with_dataset_list(self):
     t = type_utils.infer_type(
@@ -464,6 +483,25 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), foo)
+
+  def test_tf_dtypes_and_shapes_to_type_with_attrs(self):
+
+    @attr.s
+    class Foo(object):
+      A = attr.ib()
+      B = attr.ib()
+
+    foo = Foo(A=tf.constant(True), B=tf.constant([1, 2]))
+    dtypes = tf.nest.map_structure(lambda x: x.dtype.base_dtype, foo)
+    shapes = tf.nest.map_structure(lambda x: x.shape, foo)
+
+    t = type_utils.tf_dtypes_and_shapes_to_type(dtypes, shapes)
+    self.assertEqual(str(t), '<A=bool,B=int32[2]>')
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), Foo)
 
   def test_tf_dtypes_and_shapes_to_type_with_three_level_nesting(self):
     foo = collections.namedtuple('_', 'y x')
@@ -1079,6 +1117,18 @@ class ConvertToPyContainerTest(test.TestCase):
             computation_types.NamedTupleTypeWithPyContainerType(
                 types, test_named_tuple)), test_named_tuple(a=1, b=2.0))
 
+    @attr.s
+    class TestFoo(object):
+      a = attr.ib()
+      b = attr.ib()
+
+    self.assertEqual(
+        type_utils.convert_to_py_container(
+            anon_tuple,
+            computation_types.NamedTupleTypeWithPyContainerType(types,
+                                                                TestFoo)),
+        TestFoo(a=1, b=2.0))
+
   def test_anon_tuple_without_names_to_container_with_names(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
     types = [('a', tf.int32), ('b', tf.float32)]
@@ -1098,6 +1148,18 @@ class ConvertToPyContainerTest(test.TestCase):
             anon_tuple,
             computation_types.NamedTupleTypeWithPyContainerType(
                 types, test_named_tuple)), anon_tuple)
+
+    @attr.s
+    class TestFoo(object):
+      a = attr.ib()
+      b = attr.ib()
+
+    self.assertEqual(
+        type_utils.convert_to_py_container(
+            anon_tuple,
+            computation_types.NamedTupleTypeWithPyContainerType(types,
+                                                                TestFoo)),
+        anon_tuple)
 
   def test_nested_py_containers(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([

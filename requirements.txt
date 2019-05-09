@@ -1,3 +1,4 @@
+attrs~=18.2
 absl-py~=0.7
 h5py~=2.6
 matplotlib~=3.0

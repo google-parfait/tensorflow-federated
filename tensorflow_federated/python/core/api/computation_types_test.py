@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
+import attr
 from six.moves import range
 import tensorflow as tf
 
@@ -162,6 +163,19 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), py_named_tuple_type)
     self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
+
+  def test_py_attr_class(self):
+
+    @attr.s
+    class TestFoo(object):
+      A = attr.ib()
+
+    t = computation_types.NamedTupleTypeWithPyContainerType([('A', tf.int32)],
+                                                            TestFoo)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), TestFoo)
+    self.assertEqual(repr(t), 'NamedTupleType([(\'A\', TensorType(tf.int32))])')
 
 
 class SequenceTypeTest(absltest.TestCase):
@@ -430,6 +444,51 @@ class ToTypeTest(absltest.TestCase):
     a, b = t
     self.assertIsInstance(a, computation_types.TensorType)
     self.assertIsInstance(b, computation_types.TensorType)
+
+  def test_attrs_class(self):
+
+    @attr.s
+    class TestFoo(object):
+      A = attr.ib()
+      B = attr.ib()
+
+    t = computation_types.to_type(TestFoo(A=tf.int32, B=(tf.float32, [2])))
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), TestFoo)
+    self.assertEqual(str(t), '<A=int32,B=float32[2]>')
+
+  def test_nested_attrs_class(self):
+
+    @attr.s
+    class TestFoo(object):
+      A = attr.ib()
+      B = attr.ib()
+
+    @attr.s
+    class TestFoo2(object):
+      C = attr.ib()
+
+    t = computation_types.to_type(
+        TestFoo(A=[tf.int32, tf.bool], B=TestFoo2(C=(tf.float32, [2]))))
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), TestFoo)
+    self.assertIsInstance(t.A,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.A), list)
+    self.assertIsInstance(t.B,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t.B), TestFoo2)
+    self.assertEqual(str(t), '<A=<int32,bool>,B=<C=float32[2]>>')
 
 
 if __name__ == '__main__':

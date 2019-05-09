@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import collections
 
+import attr
 import six
 import tensorflow as tf
 
@@ -452,6 +453,10 @@ def to_type(spec):
       return NamedTupleTypeWithPyContainerType(spec, type(spec))
   elif isinstance(spec, collections.OrderedDict):
     return NamedTupleTypeWithPyContainerType(spec, type(spec))
+  elif py_typecheck.is_attrs(spec):
+    return NamedTupleTypeWithPyContainerType(
+        attr.asdict(spec, dict_factory=collections.OrderedDict, recurse=False),
+        type(spec))
   elif isinstance(spec, collections.Mapping):
     # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an
     # ordering, which the original container did not have.

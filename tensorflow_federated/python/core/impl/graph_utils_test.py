@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import collections
 
+import attr
 import numpy as np
 import six
 from six.moves import range
@@ -336,6 +337,24 @@ class GraphUtilsTest(test.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), test_named_tuple)
+
+  @test.graph_mode_test
+  def test_capture_result_with_attrs_of_constants(self):
+
+    @attr.s
+    class TestFoo(object):
+      x = attr.ib()
+      y = attr.ib()
+
+    graph = tf.get_default_graph()
+    type_spec, _ = graph_utils.capture_result_from_graph(
+        TestFoo(tf.constant(1), tf.constant(True)), graph)
+    self.assertEqual(str(type_spec), '<x=int32,y=bool>')
+    self.assertIsInstance(type_spec,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            type_spec), TestFoo)
 
   @test.graph_mode_test
   def test_capture_result_with_anonymous_tuple_of_constants(self):
