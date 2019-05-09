@@ -29,8 +29,11 @@ from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
+
+RENAME_PREFIX = '_variable'
 
 
 def _create_called_federated_aggregate(value, zero, accumulate, merge, report):
@@ -383,6 +386,30 @@ def _create_dummy_called_intrinsic(uri='dummy', type_spec=tf.int32):
   intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
   arg = computation_building_blocks.Data('x', type_spec)
   return computation_building_blocks.Call(intrinsic, arg)
+
+
+def _has_unique_names(comp):
+  """Checks that each variable of `comp` is bound at most once."""
+  names = set()
+  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
+  unique = [True]
+
+  def _transform(comp):
+    if unique[0]:
+      if isinstance(comp, computation_building_blocks.Block):
+        for name, _ in comp.locals:
+          if name in names:
+            unique[0] = False
+          names.add(name)
+      elif isinstance(comp, computation_building_blocks.Lambda):
+        if comp.parameter_name in names:
+          unique[0] = False
+        names.add(comp.parameter_name)
+    return comp, False
+
+  transformation_utils.transform_postorder(comp, _transform)
+
+  return unique[0]
 
 
 class TransformationsTest(parameterized.TestCase):
@@ -1301,6 +1328,120 @@ class TransformationsTest(parameterized.TestCase):
     self.assertTrue(y_transformed)
     self.assertEqual(collapsed_selection_x.proto, x_data.proto)
     self.assertEqual(collapsed_selection_y.proto, y_data.proto)
+
+
+class UniquifyReferencesTest(absltest.TestCase):
+
+  def test_uniquify_references_single_level_block(self):
+    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('x', data), ('x', x_ref),
+                                               ('x', x_ref)], x_ref)
+    self.assertEqual(block.tff_repr, '(let x=data,x=x,x=x in x)')
+    renamed = transformations.uniquify_references(block)
+    self.assertEqual(
+        renamed.tff_repr,
+        '(let {0}1=data,{0}2={0}1,{0}3={0}2 in {0}3)'.format(RENAME_PREFIX))
+
+  def test_uniquify_references_nested_blocks(self):
+    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    input1 = computation_building_blocks.Data('input1', tf.int32)
+    block1 = computation_building_blocks.Block([('x', input1), ('x', x_ref)],
+                                               x_ref)
+    input2 = computation_building_blocks.Data('input2', tf.int32)
+    block2 = computation_building_blocks.Block([('x', input2), ('x', x_ref)],
+                                               block1)
+    self.assertEqual(
+        str(block2), '(let x=input2,x=x in (let x=input1,x=x in x))')
+    renamed = transformations.uniquify_references(block2)
+    self.assertTrue(_has_unique_names(renamed))
+    self.assertEqual(
+        renamed.tff_repr,
+        '(let {0}1=input2,{0}2={0}1 in (let {0}3=input1,{0}4={0}3 in {0}4))'
+        .format(RENAME_PREFIX))
+
+  def test_uniquify_references_nested_lambdas(self):
+    comp = computation_building_blocks.Data('test', tf.int32)
+    input1 = computation_building_blocks.Reference('input1',
+                                                   comp.type_signature)
+    first_level_call = computation_building_blocks.Call(
+        computation_building_blocks.Lambda('input1', input1.type_signature,
+                                           input1), comp)
+    input2 = computation_building_blocks.Reference(
+        'input2', first_level_call.type_signature)
+    second_level_call = computation_building_blocks.Call(
+        computation_building_blocks.Lambda('input2', input2.type_signature,
+                                           input2), first_level_call)
+    renamed = transformations.uniquify_references(second_level_call)
+    self.assertTrue(_has_unique_names(renamed))
+    self.assertEqual(
+        renamed.tff_repr,
+        '({0}1 -> {0}1)(({0}2 -> {0}2)(test))'.format(RENAME_PREFIX))
+
+  def test_uniquify_references_block_lambda_block_lambda(self):
+    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    inner_lambda = computation_building_blocks.Lambda('x', tf.int32, x_ref)
+    called_lambda = computation_building_blocks.Call(inner_lambda, x_ref)
+    lower_block = computation_building_blocks.Block([('x', x_ref),
+                                                     ('x', x_ref)],
+                                                    called_lambda)
+    second_lambda = computation_building_blocks.Lambda('x', tf.int32,
+                                                       lower_block)
+    second_call = computation_building_blocks.Call(second_lambda, x_ref)
+    final_input = computation_building_blocks.Data('test_data', tf.int32)
+    last_block = computation_building_blocks.Block([('x', final_input),
+                                                    ('x', x_ref)], second_call)
+    renamed = transformations.uniquify_references(last_block)
+    self.assertEqual(
+        last_block.tff_repr,
+        '(let x=test_data,x=x in (x -> (let x=x,x=x in (x -> x)(x)))(x))')
+    self.assertTrue(_has_unique_names(renamed))
+    self.assertEqual(
+        renamed.tff_repr,
+        '(let {0}1=test_data,{0}2={0}1 in ({0}3 -> (let {0}4={0}3,{0}5={0}4 in ({0}6 -> {0}6)({0}5)))({0}2))'
+        .format(RENAME_PREFIX))
+
+  def test_uniquify_references_blocks_nested_inside_of_locals(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    lower_block = computation_building_blocks.Block([('y', data)], x_data)
+    middle_block = computation_building_blocks.Block([('y', lower_block)],
+                                                     x_data)
+    higher_block = computation_building_blocks.Block([('y', middle_block)],
+                                                     x_data)
+
+    y_ref = computation_building_blocks.Reference('y', tf.int32)
+    lower_block_with_y_ref = computation_building_blocks.Block([('y', y_ref)],
+                                                               x_data)
+    middle_block_with_y_ref = computation_building_blocks.Block(
+        [('y', lower_block_with_y_ref)], x_data)
+    higher_block_with_y_ref = computation_building_blocks.Block(
+        [('y', middle_block_with_y_ref)], x_data)
+
+    multiple_bindings_highest_block = computation_building_blocks.Block(
+        [('y', higher_block),
+         ('y', higher_block_with_y_ref)], higher_block_with_y_ref)
+    renamed = transformations.uniquify_references(
+        multiple_bindings_highest_block)
+    self.assertEqual(higher_block.tff_repr,
+                     '(let y=(let y=(let y=data in x) in x) in x)')
+    self.assertEqual(higher_block_with_y_ref.tff_repr,
+                     '(let y=(let y=(let y=y in x) in x) in x)')
+    self.assertEqual(renamed.locals[0][0], '{}4'.format(RENAME_PREFIX))
+    self.assertEqual(
+        renamed.locals[0][1].tff_repr,
+        '(let {0}3=(let {0}2=(let {0}1=data in x) in x) in x)'.format(
+            RENAME_PREFIX))
+    self.assertEqual(renamed.locals[1][0], '{}8'.format(RENAME_PREFIX))
+    self.assertEqual(
+        renamed.locals[1][1].tff_repr,
+        '(let {0}7=(let {0}6=(let {0}5={0}4 in x) in x) in x)'.format(
+            RENAME_PREFIX))
+    self.assertEqual(
+        renamed.result.tff_repr,
+        '(let {0}11=(let {0}10=(let {0}9={0}8 in x) in x) in x)'.format(
+            RENAME_PREFIX))
+    self.assertTrue(_has_unique_names(renamed))
 
 
 if __name__ == '__main__':
