@@ -26,6 +26,7 @@ TENSOR_REPRESENTATION_TYPES = (
     int,
     float,
     bool,
+    bytes,
 
     # Numpy data types
     np.generic,
