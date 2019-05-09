@@ -791,14 +791,15 @@ class BoundVariableTracker(object):
     self.name = name
     self.value = value
 
-  @abc.abstractmethod
   def update(self, value=None):
-    """Abstract method defining the way information is read into this node.
+    """Defines the way information is read into this node.
+
+    Defaults to no-op.
 
     Args:
       value: Similar to `value` argument in initializer.
     """
-    pass
+    del value  # Unused
 
   @abc.abstractmethod
   def __str__(self):
