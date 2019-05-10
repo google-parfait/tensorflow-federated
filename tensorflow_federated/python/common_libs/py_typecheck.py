@@ -167,16 +167,9 @@ def is_named_tuple(value):
     `collections.namedtuple`.
   """
   if isinstance(value, type):
-    cls = value
+    return issubclass(value, tuple) and hasattr(value, '_fields')
   else:
-    cls = type(value)
-  if '_asdict' in vars(cls):
-    return True
-  parent_classes = inspect.getmro(cls)[1:]
-  for p in parent_classes:
-    if '_asdict' in vars(p):
-      return True
-  return False
+    return is_named_tuple(type(value))
 
 
 def is_name_value_pair(element):

@@ -113,10 +113,12 @@ class AnonymousTupleTest(absltest.TestCase):
     with self.assertRaisesRegex(ValueError, 'unnamed'):
       anonymous_tuple.to_odict(x)
 
-  def test_duplicated_names(self):
-    v = [('foo', 20), ('foo', 30)]
+  def test_bad_names(self):
     with self.assertRaisesRegex(ValueError, 'duplicated.*foo'):
-      anonymous_tuple.AnonymousTuple(v)
+      anonymous_tuple.AnonymousTuple([('foo', 20), ('foo', 30)])
+
+    with self.assertRaisesRegex(ValueError, '_asdict.*reserved'):
+      anonymous_tuple.AnonymousTuple([('_asdict', 40)])
 
   def test_immutable(self):
     v = [('foo', 'a string'), ('bar', 1), ('baz', [1.0, 2.0, 3.0])]
