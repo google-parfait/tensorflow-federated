@@ -343,5 +343,135 @@ class CompiledComputationTransformsTest(test.TestCase):
       executable_flipped_inputs(expected_result)
 
 
+class WrapParameterAsTupleTest(test.TestCase):
+
+  def test_wrap_graph_parameter_as_tuple_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.wraph_graph_parameter_as_tuple(None)
+
+  def test_wrap_graph_parameter_as_tuple_wraps_tuple(self):
+    computation_arg_type = computation_types.to_type([tf.int32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_inputs = compiled_computation_transforms.wraph_graph_parameter_as_tuple(
+        foo)
+    expected_type_signature = computation_types.FunctionType(
+        [foo.type_signature.parameter], foo.type_signature.result)
+    executable_wrapped_inputs = _to_computation_impl(wrapped_inputs)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
+    self.assertEqual(executable_wrapped_inputs([[1]]), executable_foo([1]))
+
+  def test_wrap_graph_parameter_as_tuple_wraps_sequence(self):
+    computation_arg_type = computation_types.SequenceType(tf.int32)
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_inputs = compiled_computation_transforms.wraph_graph_parameter_as_tuple(
+        foo)
+    expected_type_signature = computation_types.FunctionType(
+        [foo.type_signature.parameter], foo.type_signature.result)
+    executable_wrapped_inputs = _to_computation_impl(wrapped_inputs)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
+    self.assertEqual(executable_wrapped_inputs([[1]]), executable_foo([1]))
+
+  def test_wrap_graph_parameter_as_tuple_wraps_tensor(self):
+    computation_arg_type = computation_types.to_type(tf.int32)
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_inputs = compiled_computation_transforms.wraph_graph_parameter_as_tuple(
+        foo)
+    expected_type_signature = computation_types.FunctionType(
+        [foo.type_signature.parameter], foo.type_signature.result)
+    executable_wrapped_inputs = _to_computation_impl(wrapped_inputs)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
+    self.assertEqual(executable_wrapped_inputs([1]), executable_foo(1))
+
+
+class GraphInputPaddingTest(test.TestCase):
+
+  def test_pad_graph_inputs_to_match_type_raises_on_none(self):
+    with self.assertRaisesRegexp(TypeError, r'Expected.*CompiledComputation'):
+      compiled_computation_transforms.pad_graph_inputs_to_match_type(
+          None, computation_types.to_type([tf.int32]))
+
+  def test_pad_graph_inputs_to_match_type_raises_on_wrong_requested_type(self):
+    comp = _create_compiled_computation(lambda x: x,
+                                        computation_types.to_type([tf.int32]))
+    tensor_type = computation_types.to_type(tf.int32)
+    with self.assertRaisesRegexp(TypeError, r'Expected.*NamedTupleType'):
+      compiled_computation_transforms.pad_graph_inputs_to_match_type(
+          comp, tensor_type)
+
+  def test_pad_graph_inputs_to_match_type_raises_on_wrong_graph_parameter_type(
+      self):
+    comp = _create_compiled_computation(lambda x: x,
+                                        computation_types.to_type(tf.int32))
+    with self.assertRaisesRegexp(
+        TypeError,
+        r'Can only pad inputs of a CompiledComputation with parameter type tuple'
+    ):
+      compiled_computation_transforms.pad_graph_inputs_to_match_type(
+          comp, computation_types.to_type([tf.int32]))
+
+  def test_pad_graph_inputs_to_match_type_raises_on_requested_type_too_short(
+      self):
+    comp = _create_compiled_computation(
+        lambda x: x, computation_types.to_type([tf.int32] * 3))
+    with self.assertRaisesRegexp(ValueError, r'must have more elements'):
+      compiled_computation_transforms.pad_graph_inputs_to_match_type(
+          comp, computation_types.to_type([tf.int32] * 2))
+
+  def test_pad_graph_inputs_to_match_type_raises_on_mismatched_graph_type_and_requested_type(
+      self):
+    comp = _create_compiled_computation(lambda x: x,
+                                        computation_types.to_type([tf.float32]))
+    with self.assertRaisesRegexp(TypeError, r'must match the beginning'):
+      compiled_computation_transforms.pad_graph_inputs_to_match_type(
+          comp, computation_types.to_type([tf.int32] * 2))
+
+  def test_pad_graph_inputs_to_match_type_preserves_named_type_signature(self):
+    computation_arg_type = computation_types.to_type([('a', tf.int32)])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
+        foo,
+        computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]))
+    expetected_type_signature = computation_types.FunctionType(
+        [('a', tf.int32), ('b', tf.float32)], [('a', tf.int32)])
+
+    self.assertEqual(padded_inputs.type_signature, expetected_type_signature)
+
+  def test_pad_graph_inputs_to_match_type_preserves_unnamed_type_signature(
+      self):
+    computation_arg_type = computation_types.to_type([tf.int32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
+        foo, computation_types.NamedTupleType([tf.int32, tf.float32]))
+    expetected_type_signature = computation_types.FunctionType(
+        [tf.int32, tf.float32], [tf.int32])
+
+    self.assertEqual(padded_inputs.type_signature, expetected_type_signature)
+
+  def test_pad_graph_inputs_to_match_type_add_single_int_executes_correctly(
+      self):
+    computation_arg_type = computation_types.to_type([tf.int32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
+        foo, computation_types.NamedTupleType([tf.int32, tf.float32]))
+    executable_padded_inputs = _to_computation_impl(padded_inputs)
+
+    expected_result = anonymous_tuple.AnonymousTuple([(None, 1)])
+
+    self.assertEqual(executable_padded_inputs([1, 0.]), expected_result)
+    self.assertEqual(executable_padded_inputs([1, 10.]), expected_result)
+
+
 if __name__ == '__main__':
   test.main()
