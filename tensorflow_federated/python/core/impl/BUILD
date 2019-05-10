@@ -46,10 +46,12 @@ py_library(
     srcs = ["compiled_computation_transforms.py"],
     deps = [
         ":computation_building_blocks",
+        ":graph_utils",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
