@@ -24,6 +24,7 @@ from absl.testing import absltest
 import attr
 import six
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
@@ -92,6 +93,12 @@ class PyTypeCheckTest(absltest.TestCase):
     self.assertNotIn('_asdict', vars(type(u)))
     self.assertTrue(py_typecheck.is_named_tuple(u))
     self.assertTrue(py_typecheck.is_named_tuple(U))
+
+    # Not named tuples
+    self.assertFalse(py_typecheck.is_named_tuple(
+        anonymous_tuple.AnonymousTuple([(None, 10)])))
+    self.assertFalse(py_typecheck.is_named_tuple([]))
+    self.assertFalse(py_typecheck.is_named_tuple(tuple()))
 
   def test_is_name_value_pair(self):
     self.assertTrue(py_typecheck.is_name_value_pair(['a', 1]))
