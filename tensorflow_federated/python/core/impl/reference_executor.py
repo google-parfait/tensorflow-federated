@@ -915,9 +915,10 @@ class ReferenceExecutor(context_base.Context):
   def _federated_map(self, arg):
     mapping_type = arg.type_signature[0]
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
-    type_utils.check_federated_type(arg.type_signature[1],
-                                    mapping_type.parameter, placements.CLIENTS,
-                                    False)
+    type_utils.check_assignable_from(
+        computation_types.FederatedType(mapping_type.parameter,
+                                        placements.CLIENTS, False),
+        arg.type_signature[1])
     fn = arg.value[0]
     result_val = [
         fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
