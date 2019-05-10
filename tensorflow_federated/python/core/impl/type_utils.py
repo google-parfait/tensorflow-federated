@@ -713,7 +713,7 @@ def check_federated_type(type_spec, member=None, placement=None,
     py_typecheck.check_type(all_equal, bool)
     if type_spec.all_equal != all_equal:
       raise TypeError(
-          'Expected federated type with all_equial {}, got one with {}.'.format(
+          'Expected federated type with all_equal {}, got one with {}.'.format(
               str(all_equal), str(type_spec.all_equal)))
 
 
