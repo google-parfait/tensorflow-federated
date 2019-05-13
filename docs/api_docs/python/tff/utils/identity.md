@@ -24,10 +24,10 @@ together with `tf.control_dependencies` in non-eager TensorFlow.
 #### Args:
 
 *   <b>`source`</b>: A nested structure composed of tensors or variables
-    embedded in containers that are compatible with `tf.contrib.framework.nest`,
-    or instances of `anonymous_tuple.AnonymousTuple`. Elements that represent
-    variables have their content extracted prior to identity mapping by first
-    invoking `tf.Variable.read_value`.
+    embedded in containers that are compatible with `tf.nest`, or instances of
+    `anonymous_tuple.AnonymousTuple`. Elements that represent variables have
+    their content extracted prior to identity mapping by first invoking
+    `tf.Variable.read_value`.
 
 #### Returns:
 

@@ -26,8 +26,8 @@ various types of nested structures.
 #### Args:
 
 *   <b>`target`</b>: A nested structure composed of variables embedded in
-    containers that are compatible with `tf.contrib.framework.nest`, or
-    instances of `anonymous_tuple.AnonymousTuple`.
+    containers that are compatible with `tf.nest`, or instances of
+    `anonymous_tuple.AnonymousTuple`.
 *   <b>`source`</b>: A nsested structure composed of tensors, matching that of
     `target`.
 

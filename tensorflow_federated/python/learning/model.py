@@ -160,7 +160,7 @@ class Model(object):
     how many times each feature exceed a certain magnitude.
 
     Returns:
-      A structure of tensors (as supported by `tf.contrib.framework.nest`)
+      A structure of tensors (as supported by `tf.nest`)
       to be aggregated across clients.
     """
     pass

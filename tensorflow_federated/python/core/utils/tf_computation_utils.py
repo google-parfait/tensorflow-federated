@@ -73,7 +73,7 @@ def assign(target, source):
 
   Args:
     target: A nested structure composed of variables embedded in containers that
-      are compatible with `tf.contrib.framework.nest`, or instances of
+      are compatible with `tf.nest`, or instances of
       `anonymous_tuple.AnonymousTuple`.
     source: A nsested structure composed of tensors, matching that of `target`.
 
@@ -102,7 +102,7 @@ def identity(source):
 
   Args:
     source: A nested structure composed of tensors or variables embedded in
-      containers that are compatible with `tf.contrib.framework.nest`, or
+      containers that are compatible with `tf.nest`, or
       instances of `anonymous_tuple.AnonymousTuple`. Elements that represent
       variables have their content extracted prior to identity mapping by first
       invoking `tf.Variable.read_value`.

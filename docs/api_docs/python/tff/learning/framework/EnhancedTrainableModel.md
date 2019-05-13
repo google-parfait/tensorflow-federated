@@ -170,8 +170,8 @@ each feature exceed a certain magnitude.
 
 #### Returns:
 
-A structure of tensors (as supported by `tf.contrib.framework.nest`) to be
-aggregated across clients.
+A structure of tensors (as supported by `tf.nest`) to be aggregated across
+clients.
 
 <h3 id="train_on_batch"><code>train_on_batch</code></h3>
 
