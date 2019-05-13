@@ -43,7 +43,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(type_spec, computation_types.Type)
     binding_oneof = binding.WhichOneof('binding')
     if binding_oneof == 'tensor':
-      self.assertTrue(tf.contrib.framework.is_tensor(val))
+      self.assertTrue(tf.is_tensor(val))
       if not isinstance(val, tf.Variable):
         # We insert a read_value() op for Variables, which produces
         # a name we don't control. Otherwise, names should match:
