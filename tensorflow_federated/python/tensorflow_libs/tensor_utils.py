@@ -101,7 +101,7 @@ def zero_all_if_any_non_finite(structure):
   """Zeroes out all entries in input if any are not finite.
 
   Args:
-    structure: A structure supported by tf.contrib.framework.nest.
+    structure: A structure supported by tf.nest.
 
   Returns:
      A tuple (input, 0) if all entries are finite or the structure is empty, or

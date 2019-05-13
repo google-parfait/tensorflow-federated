@@ -73,9 +73,9 @@ def assert_nested_struct_eq(x, y):
   Raises:
     ValueError: if the structures are not the same.
   """
-  tf.contrib.framework.nest.assert_same_structure(x, y)
-  xl = tf.contrib.framework.nest.flatten(x)
-  yl = tf.contrib.framework.nest.flatten(y)
+  tf.nest.assert_same_structure(x, y)
+  xl = tf.nest.flatten(x)
+  yl = tf.nest.flatten(y)
   if len(xl) != len(yl):
     raise ValueError('The sizes of structures {} and {} mismatch.'.format(
         str(len(xl)), str(len(yl))))

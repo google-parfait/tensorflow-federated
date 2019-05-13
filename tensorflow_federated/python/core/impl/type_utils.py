@@ -187,7 +187,7 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
   Raises:
     TypeError: if the arguments are of types that weren't recognized.
   """
-  tf.contrib.framework.nest.assert_same_structure(dtypes, shapes)
+  tf.nest.assert_same_structure(dtypes, shapes)
 
   def _parallel_dict_to_element_list(dtype_dict, shape_dict):
     return [(name, tf_dtypes_and_shapes_to_type(dtype_elem, shape_dict[name]))
