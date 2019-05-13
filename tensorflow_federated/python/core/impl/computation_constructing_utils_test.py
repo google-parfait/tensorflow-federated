@@ -84,7 +84,7 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
         'x', arg_ref.type_signature, return_val)
     intrinsic = computation_constructing_utils.construct_map_or_apply(
         non_federated_fn, federated_comp)
-    self.assertEqual(str(intrinsic), 'federated_apply(<(x -> x.a),test>)')
+    self.assertEqual(intrinsic.tff_repr, 'federated_apply(<(x -> x.a),test>)')
 
   def test_intrinsic_construction_clients(self):
     federated_comp = computation_building_blocks.Reference(
@@ -100,17 +100,6 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
         non_federated_fn, federated_comp)
     self.assertEqual(intrinsic.tff_repr, 'federated_map(<(x -> x.a),test>)')
     self.assertEqual(str(intrinsic.type_signature), '{int32}@CLIENTS')
-
-  def test_intrinsic_construction_fails_bad_type(self):
-    x = computation_building_blocks.Reference('x', tf.int32)
-    bad_lambda = computation_building_blocks.Lambda('x', tf.int32, x)
-    x = computation_building_blocks.Reference('x', tf.int32)
-    clients_ref = computation_building_blocks.Reference(
-        'y',
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
-    with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_map_or_apply(
-          bad_lambda, clients_ref)
 
   def test_federated_getitem_call_fails_value(self):
     x = computation_building_blocks.Reference(
@@ -433,6 +422,170 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     )
 
 
+class CreateFederatedAggregateTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    zero = computation_building_blocks.Data('z', tf.int32)
+    accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    accumulate_result = computation_building_blocks.Data('a', tf.int32)
+    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+                                                    accumulate_result)
+    merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    merge_result = computation_building_blocks.Data('m', tf.int32)
+    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = computation_building_blocks.Reference('r', tf.int32)
+    report = computation_building_blocks.Lambda(report_ref.name,
+                                                report_ref.type_signature,
+                                                report_ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_aggregate(
+          None, zero, accumulate, merge, report)
+
+  def test_raises_type_error_with_none_zero(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    accumulate_result = computation_building_blocks.Data('a', tf.int32)
+    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+                                                    accumulate_result)
+    merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    merge_result = computation_building_blocks.Data('m', tf.int32)
+    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = computation_building_blocks.Reference('r', tf.int32)
+    report = computation_building_blocks.Lambda(report_ref.name,
+                                                report_ref.type_signature,
+                                                report_ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_aggregate(
+          value, None, accumulate, merge, report)
+
+  def test_raises_type_error_with_none_accumulate(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    merge_result = computation_building_blocks.Data('m', tf.int32)
+    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = computation_building_blocks.Reference('r', tf.int32)
+    report = computation_building_blocks.Lambda(report_ref.name,
+                                                report_ref.type_signature,
+                                                report_ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_aggregate(
+          value, zero, None, merge, report)
+
+  def test_raises_type_error_with_none_merge(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    accumulate_result = computation_building_blocks.Data('a', tf.int32)
+    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+                                                    accumulate_result)
+    report_ref = computation_building_blocks.Reference('r', tf.int32)
+    report = computation_building_blocks.Lambda(report_ref.name,
+                                                report_ref.type_signature,
+                                                report_ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_aggregate(
+          value, zero, accumulate, None, report)
+
+  def test_raises_type_error_with_none_report(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    accumulate_result = computation_building_blocks.Data('a', tf.int32)
+    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+                                                    accumulate_result)
+    merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    merge_result = computation_building_blocks.Data('m', tf.int32)
+    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_aggregate(
+          value, zero, accumulate, merge, None)
+
+  def test_returns_federated_aggregate(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    accumulate_result = computation_building_blocks.Data('a', tf.int32)
+    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+                                                    accumulate_result)
+    merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    merge_result = computation_building_blocks.Data('m', tf.int32)
+    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = computation_building_blocks.Reference('r', tf.int32)
+    report = computation_building_blocks.Lambda(report_ref.name,
+                                                report_ref.type_signature,
+                                                report_ref)
+    comp = computation_constructing_utils.create_federated_aggregate(
+        value, zero, accumulate, merge, report)
+    self.assertEqual(comp.tff_repr,
+                     'federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+
+class CreateFederatedApplyTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_fn(self):
+    arg = computation_building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_apply(None, arg)
+
+  def test_raises_type_error_with_none_arg(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_apply(fn, None)
+
+  def test_returns_federated_apply(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER,
+                                               True)
+    arg = computation_building_blocks.Data('y', arg_type)
+    comp = computation_constructing_utils.create_federated_apply(fn, arg)
+    self.assertEqual(comp.tff_repr, 'federated_apply(<(x -> x),y>)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+
+class CreateFederatedBroadcastTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_broadcast(None)
+
+  def test_returns_federated_broadcast(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.SERVER,
+                                                 True)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_broadcast(value)
+    self.assertEqual(comp.tff_repr, 'federated_broadcast(v)')
+    self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
+
+
+class CreateFederatedCollectTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_collect(None)
+
+  def test_returns_federated_collect(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_collect(value)
+    self.assertEqual(comp.tff_repr, 'federated_collect(v)')
+    self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
+
+
 class CreateFederatedMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
@@ -440,26 +593,11 @@ class CreateFederatedMapTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       computation_constructing_utils.create_federated_map(None, arg)
 
-  def test_raises_type_error_with_nonfunctional_fn(self):
-    fn = computation_building_blocks.Reference('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.bool, placements.CLIENTS,
-                                               False)
-    arg = computation_building_blocks.Data('y', arg_type)
-    with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map(fn, arg)
-
   def test_raises_type_error_with_none_arg(self):
     ref = computation_building_blocks.Reference('x', tf.int32)
     fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
       computation_constructing_utils.create_federated_map(fn, None)
-
-  def test_raises_type_error_with_nonfederated_arg(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg = computation_building_blocks.Data('y', tf.int32)
-    with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map(fn, arg)
 
   def test_returns_federated_map(self):
     ref = computation_building_blocks.Reference('x', tf.int32)
@@ -470,6 +608,198 @@ class CreateFederatedMapTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_map(fn, arg)
     self.assertEqual(comp.tff_repr, 'federated_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
+
+
+class CreateFederatedMeanTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_mean(None, None)
+
+  def test_returns_federated_mean(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_mean(value, None)
+    self.assertEqual(comp.tff_repr, 'federated_mean(v)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+  def test_returns_federated_weighted_mean(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    weight_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                  False)
+    weight = computation_building_blocks.Data('w', weight_type)
+    comp = computation_constructing_utils.create_federated_mean(value, weight)
+    self.assertEqual(comp.tff_repr, 'federated_weighted_mean(<v,w>)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+
+class CreateFederatedReduceTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    zero = computation_building_blocks.Data('z', tf.int32)
+    op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    op_result = computation_building_blocks.Data('o', tf.int32)
+    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_reduce(None, zero, op)
+
+  def test_raises_type_error_with_none_zero(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    op_result = computation_building_blocks.Data('o', tf.int32)
+    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_reduce(value, None, op)
+
+  def test_raises_type_error_with_none_op(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_reduce(value, zero, None)
+
+  def test_returns_federated_reduce(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    op_result = computation_building_blocks.Data('o', tf.int32)
+    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    comp = computation_constructing_utils.create_federated_reduce(
+        value, zero, op)
+    self.assertEqual(comp.tff_repr, 'federated_reduce(<v,z,(x -> o)>)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+
+class CreateFederatedSumTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_sum(None)
+
+  def test_returns_federated_sum(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
+                                                 False)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_sum(value)
+    self.assertEqual(comp.tff_repr, 'federated_sum(v)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+
+class CreateFederatedValueTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_value(
+          None, placement_literals.CLIENTS)
+
+  def test_raises_type_error_with_none_placement(self):
+    value = computation_building_blocks.Data('v', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_value(value, None)
+
+  def test_raises_type_error_with_unknown_placement(self):
+    value = computation_building_blocks.Data('v', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_value(value, 'unknown')
+
+  def test_returns_federated_value_at_clients(self):
+    value = computation_building_blocks.Data('v', tf.int32)
+    comp = computation_constructing_utils.create_federated_value(
+        value, placement_literals.CLIENTS)
+    self.assertEqual(comp.tff_repr, 'federated_value_at_clients(v)')
+    self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
+
+  def test_returns_federated_value_at_server(self):
+    value = computation_building_blocks.Data('v', tf.int32)
+    comp = computation_constructing_utils.create_federated_value(
+        value, placement_literals.SERVER)
+    self.assertEqual(comp.tff_repr, 'federated_value_at_server(v)')
+    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
+
+
+class CreateSequenceMapTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_fn(self):
+    arg_type = computation_types.SequenceType(tf.int32)
+    arg = computation_building_blocks.Data('y', arg_type)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_sequence_map(None, arg)
+
+  def test_raises_type_error_with_none_arg(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_sequence_map(fn, None)
+
+  def test_returns_sequence_map(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    arg_type = computation_types.SequenceType(tf.int32)
+    arg = computation_building_blocks.Data('y', arg_type)
+    comp = computation_constructing_utils.create_sequence_map(fn, arg)
+    self.assertEqual(comp.tff_repr, 'sequence_map(<(x -> x),y>)')
+    self.assertEqual(str(comp.type_signature), 'int32*')
+
+
+class CreateSequenceReduceTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    zero = computation_building_blocks.Data('z', tf.int32)
+    op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    op_result = computation_building_blocks.Data('o', tf.int32)
+    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_sequence_reduce(None, zero, op)
+
+  def test_raises_type_error_with_none_zero(self):
+    value_type = computation_types.SequenceType(tf.int32)
+    value = computation_building_blocks.Data('v', value_type)
+    op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    op_result = computation_building_blocks.Data('o', tf.int32)
+    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_sequence_reduce(value, None, op)
+
+  def test_raises_type_error_with_none_op(self):
+    value_type = computation_types.SequenceType(tf.int32)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_sequence_reduce(value, zero, None)
+
+  def test_returns_sequence_reduce(self):
+    value_type = computation_types.SequenceType(tf.int32)
+    value = computation_building_blocks.Data('v', value_type)
+    zero = computation_building_blocks.Data('z', tf.int32)
+    op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    op_result = computation_building_blocks.Data('o', tf.int32)
+    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    comp = computation_constructing_utils.create_sequence_reduce(
+        value, zero, op)
+    self.assertEqual(comp.tff_repr, 'sequence_reduce(<v,z,(x -> o)>)')
+    self.assertEqual(str(comp.type_signature), 'int32')
+
+
+class CreateSequenceSumTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_sequence_sum(None)
+
+  def test_returns_federated_sum(self):
+    value_type = computation_types.SequenceType(tf.int32)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_sequence_sum(value)
+    self.assertEqual(comp.tff_repr, 'sequence_sum(v)')
+    self.assertEqual(str(comp.type_signature), 'int32')
 
 
 if __name__ == '__main__':
