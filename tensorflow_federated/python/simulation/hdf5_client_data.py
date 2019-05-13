@@ -30,7 +30,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 class HDF5ClientData(client_data.ClientData):
-  """A `tf.simulation.ClientData` backed by an HDF5 file.
+  """A `tff.simulation.ClientData` backed by an HDF5 file.
 
   This class expects that the HDF5 file has a top-level group `examples` which
   contains further subgroups, one per user, named by the user ID.
@@ -44,7 +44,7 @@ class HDF5ClientData(client_data.ClientData):
   _EXAMPLES_GROUP = "examples"
 
   def __init__(self, hdf5_filepath):
-    """Constructs a `tf.simulation.ClientData` object.
+    """Constructs a `tff.simulation.ClientData` object.
 
     Args:
       hdf5_filepath: String path to the hdf5 file.
