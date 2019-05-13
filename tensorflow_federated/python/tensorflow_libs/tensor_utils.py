@@ -130,7 +130,7 @@ def is_scalar(tensor):
   Raises:
     TypeError: when the argument is not a tensor.
   """
-  if not tf.contrib.framework.is_tensor(tensor):
+  if not tf.is_tensor(tensor):
     raise TypeError('Expected a tensor, found "{}".'.format(
         py_typecheck.type_string(type(tensor))))
   return (hasattr(tensor, 'get_shape') and

@@ -56,7 +56,7 @@ def infer_type(arg):
     return None
   elif isinstance(arg, typed_object.TypedObject):
     return arg.type_signature
-  elif tf.contrib.framework.is_tensor(arg):
+  elif tf.is_tensor(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(
       arg,

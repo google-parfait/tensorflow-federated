@@ -116,7 +116,7 @@ def identity(source):
   """
 
   def _mapping_fn(x):
-    if not tf.contrib.framework.is_tensor(x):
+    if not tf.is_tensor(x):
       raise TypeError('Expected a tensor, found {}.'.format(
           str(py_typecheck.type_string(type(x)))))
     if hasattr(x, 'read_value'):

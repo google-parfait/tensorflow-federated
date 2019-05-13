@@ -208,7 +208,7 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  if not tf.contrib.framework.is_tensor(variant_tensor):
+  if not tf.is_tensor(variant_tensor):
     raise TypeError(
         'Expected `variant_tensor` to be a tensor, found {}.'.format(
             py_typecheck.type_string(type(variant_tensor))))
@@ -260,7 +260,7 @@ def capture_result_from_graph(result, graph):
   if isinstance(result, dtype_utils.TENSOR_REPRESENTATION_TYPES):
     with graph.as_default():
       result = tf.constant(result)
-  if tf.contrib.framework.is_tensor(result):
+  if tf.is_tensor(result):
     if hasattr(result, 'read_value'):
       # We have a tf.Variable-like result, get a proper tensor to fetch.
       with graph.as_default():
@@ -466,7 +466,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
   py_typecheck.check_type(output_map, dict)
   for k, v in six.iteritems(output_map):
     py_typecheck.check_type(k, six.string_types)
-    if not tf.contrib.framework.is_tensor(v):
+    if not tf.is_tensor(v):
       raise TypeError(
           'Element with key {} in the output map is {}, not a tensor.'.format(
               k, py_typecheck.type_string(type(v))))
@@ -870,7 +870,7 @@ def fetch_value_in_session(sess, value):
   else:
     flattened_value = anonymous_tuple.flatten(value)
     for v in flattened_value:
-      if not tf.contrib.framework.is_tensor(v):
+      if not tf.is_tensor(v):
         raise ValueError('Unsupported value type {}.'.format(str(v)))
     flattened_results = sess.run(flattened_value)
 
@@ -879,6 +879,6 @@ def fetch_value_in_session(sess, value):
         return v.decode('utf-8')
       return v
 
-    if tf.contrib.framework.is_tensor(value) and value.dtype == tf.string:
+    if tf.is_tensor(value) and value.dtype == tf.string:
       flattened_results = [_to_unicode(result) for result in flattened_results]
     return anonymous_tuple.pack_sequence_as(value, flattened_results)
