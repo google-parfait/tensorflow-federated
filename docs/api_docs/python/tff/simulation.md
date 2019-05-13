@@ -29,7 +29,8 @@ and a mapping of clients to examples.
 ClientData based on `tf.data.Dataset.from_tensor_slices`.
 
 [`class HDF5ClientData`](../tff/simulation/HDF5ClientData.md): A
-`tf.simulation.ClientData` backed by an HDF5 file.
+<a href="../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
+backed by an HDF5 file.
 
 [`class TransformingClientData`](../tff/simulation/TransformingClientData.md):
 Transforms client data, potentially expanding by adding pseudo-clients.

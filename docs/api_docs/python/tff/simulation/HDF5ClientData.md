@@ -13,7 +13,9 @@
 
 ## Class `HDF5ClientData`
 
-A `tf.simulation.ClientData` backed by an HDF5 file.
+A
+<a href="../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
+backed by an HDF5 file.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
@@ -36,7 +38,9 @@ fashion to `tf.data.Dataset.from_tensor_slices()`.
 __init__(hdf5_filepath)
 ```
 
-Constructs a `tf.simulation.ClientData` object.
+Constructs a
+<a href="../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
+object.
 
 #### Args:
 
