@@ -32,12 +32,12 @@ instances using TFF operators.
 The supported modes of usage are identical to those for
 <a href="../tff/tf_computation.md"><code>tff.tf_computation</code></a>.
 
-Example:
+#### Example:
 
 ```python
-  @tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
-  def foo(f, x):
-    return f(f(x))
+@tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
+def foo(f, x):
+  return f(f(x))
 ```
 
 The above defines `foo` as a function that takes a tuple consisting of an unary
