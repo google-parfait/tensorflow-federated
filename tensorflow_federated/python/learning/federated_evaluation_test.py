@@ -122,7 +122,7 @@ class FederatedEvaluationTest(test.TestCase):
           })
 
     evaluate_comp = federated_evaluation.build_federated_evaluation(model_fn)
-    initial_weights = tf.contrib.framework.nest.map_structure(
+    initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
         model_utils.enhance(model_fn()).weights)
 

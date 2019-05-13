@@ -110,8 +110,7 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
             {k: v[i] for k, v in six.iteritems(expected_data)})
       for actual in tf_dataset:
         expected = expected_examples.pop(0)
-        actual = tf.contrib.framework.nest.map_structure(
-            lambda t: t.numpy(), actual)
+        actual = tf.nest.map_structure(lambda t: t.numpy(), actual)
         self.assertCountEqual(actual, expected)
       self.assertEmpty(expected_examples)
 
@@ -129,8 +128,7 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
     for actual in tf_dataset:
       expected = expected_examples.pop(0)
-      actual = tf.contrib.framework.nest.map_structure(lambda t: t.numpy(),
-                                                       actual)
+      actual = tf.nest.map_structure(lambda t: t.numpy(), actual)
       self.assertCountEqual(actual, expected)
     self.assertEmpty(expected_examples)
 

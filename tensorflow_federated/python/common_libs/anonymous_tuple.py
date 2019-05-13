@@ -263,7 +263,7 @@ def pack_sequence_as(structure, flat_sequence):
 def is_same_structure(a, b):
   """Compares whether `a` and `b` have the same nested structure.
 
-  This method is analogous to `tf.contrib.framework.nest.assert_same_structure`,
+  This method is analogous to `tf.nest.assert_same_structure`,
   but returns a boolean rather than throwing an exception.
 
   Args:
@@ -302,7 +302,7 @@ def is_same_structure(a, b):
 def map_structure(fn, *structure):
   """Applies `fn` to each entry in `structure` and returns a new structure.
 
-  This is a special implementation of `tf.contrib.framework.nest.map_structure`
+  This is a special implementation of `tf.nest.map_structure`
   that works for `AnonymousTuple`.
 
   Args:
