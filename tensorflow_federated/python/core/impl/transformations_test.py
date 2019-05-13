@@ -36,136 +36,6 @@ from tensorflow_federated.python.core.impl import type_utils
 RENAME_PREFIX = '_variable'
 
 
-def _create_called_federated_aggregate(value, zero, accumulate, merge, report):
-  r"""Creates a to call a federated aggregate.
-
-            Call
-           /    \
-  Intrinsic      Tuple
-                 |
-                 [Comp, Comp, Comp, Comp, Comp]
-
-  Args:
-    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
-      the value of the federated aggregate intrinsic.
-    zero: A `computation_building_blocks.ComputationBuildingBlock` to use as the
-      zero of the federated aggregate intrinsic.
-    accumulate: A `computation_building_blocks.ComputationBuildingBlock` to use
-      as the accumulate of the federated aggregate intrinsic.
-    merge: A `computation_building_blocks.ComputationBuildingBlock` to use as
-      the merge of the federated aggregate intrinsic.
-    report: A `computation_building_blocks.ComputationBuildingBlock` to use as
-      the report of the federated aggregate intrinsic.
-
-  Returns:
-    A `computation_building_blocks.Call`.
-  """
-  py_typecheck.check_type(value,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(zero,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(accumulate,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(merge,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(report,
-                          computation_building_blocks.ComputationBuildingBlock)
-  result_type = computation_types.FederatedType(report.type_signature.result,
-                                                placements.SERVER, True)
-  intrinsic_type = computation_types.FunctionType((
-      value.type_signature,
-      zero.type_signature,
-      accumulate.type_signature,
-      merge.type_signature,
-      report.type_signature,
-  ), result_type)
-  intrinsic = computation_building_blocks.Intrinsic(
-      intrinsic_defs.FEDERATED_AGGREGATE.uri, intrinsic_type)
-  arg = computation_building_blocks.Tuple((
-      value,
-      zero,
-      accumulate,
-      merge,
-      report,
-  ))
-  return computation_building_blocks.Call(intrinsic, arg)
-
-
-def _create_called_federated_apply(fn, arg):
-  r"""Creates a to call a federated apply.
-
-            Call
-           /    \
-  Intrinsic      Tuple
-                 |
-                 [Comp, Comp]
-
-  Args:
-    fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
-      use as the function.
-    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
-      argument.
-
-  Returns:
-    A `computation_building_blocks.Call`.
-  """
-  py_typecheck.check_type(fn,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(arg,
-                          computation_building_blocks.ComputationBuildingBlock)
-  if not type_utils.is_assignable_from(fn.parameter_type,
-                                       arg.type_signature.member):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(
-            str(fn.parameter_type), str(arg.type_signature.member)))
-  result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                placements.SERVER, True)
-  intrinsic_type = computation_types.FunctionType(
-      (fn.type_signature, arg.type_signature), result_type)
-  intrinsic = computation_building_blocks.Intrinsic(
-      intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((fn, arg))
-  return computation_building_blocks.Call(intrinsic, tup)
-
-
-def _create_called_sequence_map(fn, arg):
-  r"""Creates a to call a sequence map.
-
-            Call
-           /    \
-  Intrinsic      Tuple
-                 |
-                 [Comp, Comp]
-
-  Args:
-    fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
-      use as the function.
-    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
-      argument.
-
-  Returns:
-    A `computation_building_blocks.Call`.
-  """
-  py_typecheck.check_type(fn,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(arg,
-                          computation_building_blocks.ComputationBuildingBlock)
-  if not type_utils.is_assignable_from(fn.parameter_type,
-                                       arg.type_signature.element):
-    raise TypeError(
-        'The parameter of the function is of type {}, and the argument is of '
-        'an incompatible type {}.'.format(
-            str(fn.parameter_type), str(arg.type_signature.element)))
-  result_type = computation_types.SequenceType(fn.type_signature.result)
-  intrinsic_type = computation_types.FunctionType(
-      (fn.type_signature, arg.type_signature), result_type)
-  intrinsic = computation_building_blocks.Intrinsic(
-      intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((fn, arg))
-  return computation_building_blocks.Call(intrinsic, tup)
-
-
 def _create_chained_calls(functions, arg):
   r"""Creates a chain of `n` calls.
 
@@ -335,20 +205,19 @@ def _create_dummy_called_federated_aggregate():
                                                False)
   value = computation_building_blocks.Data('v', value_type)
   zero = computation_building_blocks.Data('z', tf.int32)
-  accumulate_type = computation_types.FunctionType((tf.int32, tf.int32),
-                                                   tf.int32)
+  accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
   accumulate_result = computation_building_blocks.Data('a', tf.int32)
   accumulate = computation_building_blocks.Lambda('x', accumulate_type,
                                                   accumulate_result)
-  merge_type = computation_types.FunctionType((tf.int32, tf.int32), tf.int32)
+  merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
   merge_result = computation_building_blocks.Data('m', tf.int32)
   merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
-  report_type = computation_types.FederatedType(tf.int32, placements.SERVER,
-                                                True)
-  report_result = computation_building_blocks.Data('r', tf.int32)
-  report = computation_building_blocks.Lambda('x', report_type, report_result)
-  return _create_called_federated_aggregate(value, zero, accumulate, merge,
-                                            report)
+  report_ref = computation_building_blocks.Reference('r', tf.int32)
+  report = computation_building_blocks.Lambda(report_ref.name,
+                                              report_ref.type_signature,
+                                              report_ref)
+  return computation_constructing_utils.create_federated_aggregate(
+      value, zero, accumulate, merge, report)
 
 
 def _create_dummy_called_federated_apply(parameter_name='x',
@@ -358,7 +227,7 @@ def _create_dummy_called_federated_apply(parameter_name='x',
   arg_type = computation_types.FederatedType(parameter_type, placements.SERVER,
                                              True)
   arg = computation_building_blocks.Data(argument_name, arg_type)
-  return _create_called_federated_apply(fn, arg)
+  return computation_constructing_utils.create_federated_apply(fn, arg)
 
 
 def _create_dummy_called_federated_map(parameter_name='x',
@@ -377,7 +246,7 @@ def _create_dummy_called_sequence_map(parameter_name='x',
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
   arg_type = computation_types.SequenceType(parameter_type)
   arg = computation_building_blocks.Data(argument_name, arg_type)
-  return _create_called_sequence_map(fn, arg)
+  return computation_constructing_utils.create_sequence_map(fn, arg)
 
 
 def _create_dummy_called_intrinsic(uri='dummy', type_spec=tf.int32):
@@ -955,11 +824,11 @@ class TransformationsTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        '<federated_aggregate(<v,z,(x -> a),(x -> m),(x -> r)>),federated_aggregate(<v,z,(x -> a),(x -> m),(x -> r)>)>'
+        '<federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>),federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)>'
     )
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_aggregate(<<v,v>,<z,z>,(let fn=<(x -> a),(x -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> m),(x -> m)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> r),(x -> r)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))>)'
+        'federated_aggregate(<<v,v>,<z,z>,(let fn=<(x -> a),(x -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> m),(x -> m)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(r -> r),(r -> r)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -1171,7 +1040,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
         transformed_comp.tff_repr,
-        '<federated_aggregate(<v,z,(x -> a),(x -> m),(x -> r)>),federated_map(<(x -> x),y>)>'
+        '<federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>),federated_map(<(x -> x),y>)>'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)

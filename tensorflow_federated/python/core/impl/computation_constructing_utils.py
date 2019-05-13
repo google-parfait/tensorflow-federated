@@ -210,26 +210,13 @@ def construct_map_or_apply(fn, arg):
     Returns a `computation_building_blocks.Intrinsic` which can call
     `fn` on `arg`.
   """
-  py_typecheck.check_type(fn,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(arg,
-                          computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-  py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-  type_utils.check_assignable_from(fn.type_signature.parameter,
-                                   arg.type_signature.member)
-  if arg.type_signature.placement == placement_literals.SERVER:
-    result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                  arg.type_signature.placement,
-                                                  arg.type_signature.all_equal)
-    intrinsic_type = computation_types.FunctionType(
-        [fn.type_signature, arg.type_signature], result_type)
-    intrinsic = computation_building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
-    tup = computation_building_blocks.Tuple((fn, arg))
-    return computation_building_blocks.Call(intrinsic, tup)
-  elif arg.type_signature.placement == placement_literals.CLIENTS:
+  if arg.type_signature.placement is placement_literals.CLIENTS:
     return create_federated_map(fn, arg)
+  elif arg.type_signature.placement is placement_literals.SERVER:
+    return create_federated_apply(fn, arg)
+  else:
+    raise TypeError('Unsupported placement {}.'.format(
+        arg.type_signature.placement))
 
 
 def construct_federated_getattr_comp(comp, name):
@@ -314,8 +301,61 @@ def construct_federated_getitem_comp(comp, key):
   return apply_lambda
 
 
-def create_federated_map(fn, arg):
-  r"""Creates a called federated map.
+def create_federated_aggregate(value, zero, accumulate, merge, report):
+  r"""Creates a called federated aggregate.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp, Comp, Comp, Comp]
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+    zero: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      initial value.
+    accumulate: A `computation_building_blocks.ComputationBuildingBlock` to use
+      as the accumulate function.
+    merge: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the merge function.
+    report: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the report function.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(zero,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(accumulate,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(merge,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(report,
+                          computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(report.type_signature.result,
+                                                placement_literals.SERVER, True)
+  intrinsic_type = computation_types.FunctionType((
+      value.type_signature,
+      zero.type_signature,
+      accumulate.type_signature,
+      merge.type_signature,
+      report.type_signature,
+  ), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_AGGREGATE.uri, intrinsic_type)
+  tup = computation_building_blocks.Tuple(
+      (value, zero, accumulate, merge, report))
+  return computation_building_blocks.Call(intrinsic, tup)
+
+
+def create_federated_apply(fn, arg):
+  r"""Creates a called federated apply.
 
             Call
            /    \
@@ -324,8 +364,8 @@ def create_federated_map(fn, arg):
                  [Comp, Comp]
 
   Args:
-    fn: A functional `computation_building_blocks.ComputationBuildingBlock` to
-      use as the function.
+    fn: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      function.
     arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
       argument.
 
@@ -337,19 +377,354 @@ def create_federated_map(fn, arg):
   """
   py_typecheck.check_type(fn,
                           computation_building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
-  type_utils.check_federated_type(arg.type_signature)
-  parameter_type = computation_types.FederatedType(fn.type_signature.parameter,
-                                                   placement_literals.CLIENTS,
-                                                   False)
+  result_type = computation_types.FederatedType(fn.type_signature.result,
+                                                placement_literals.SERVER, True)
+  intrinsic_type = computation_types.FunctionType(
+      (fn.type_signature, arg.type_signature), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
+  tup = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, tup)
+
+
+def create_federated_broadcast(value):
+  r"""Creates a called federated broadcast.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placement_literals.CLIENTS,
+                                                True)
+  intrinsic_type = computation_types.FunctionType(value.type_signature,
+                                                  result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_BROADCAST.uri, intrinsic_type)
+  return computation_building_blocks.Call(intrinsic, value)
+
+
+def create_federated_collect(value):
+  r"""Creates a called federated collect.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  type_signature = computation_types.SequenceType(value.type_signature.member)
+  result_type = computation_types.FederatedType(type_signature,
+                                                placement_literals.SERVER, True)
+  intrinsic_type = computation_types.FunctionType(value.type_signature,
+                                                  result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_COLLECT.uri, intrinsic_type)
+  return computation_building_blocks.Call(intrinsic, value)
+
+
+def create_federated_map(fn, arg):
+  r"""Creates a called federated map.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  Args:
+    fn: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      function.
+    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      argument.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(fn.type_signature.result,
                                                 placement_literals.CLIENTS,
                                                 False)
   intrinsic_type = computation_types.FunctionType(
-      (fn.type_signature, parameter_type), result_type)
+      (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type)
   tup = computation_building_blocks.Tuple((fn, arg))
   return computation_building_blocks.Call(intrinsic, tup)
+
+
+def create_federated_mean(value, weight):
+  r"""Creates a called federated mean.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+    weight: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the weight or `None`.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if weight is not None:
+    py_typecheck.check_type(
+        weight, computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placement_literals.SERVER, True)
+  if weight is not None:
+    intrinsic_type = computation_types.FunctionType(
+        (value.type_signature, weight.type_signature), result_type)
+    intrinsic = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, intrinsic_type)
+    tup = computation_building_blocks.Tuple((value, weight))
+    return computation_building_blocks.Call(intrinsic, tup)
+  else:
+    intrinsic_type = computation_types.FunctionType(value.type_signature,
+                                                    result_type)
+    intrinsic = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MEAN.uri, intrinsic_type)
+    return computation_building_blocks.Call(intrinsic, value)
+
+
+def create_federated_reduce(value, zero, op):
+  r"""Creates a called federated reduce.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp, Comp]
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+    zero: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      initial value.
+    op: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      op function.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(zero,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(op,
+                          computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(op.type_signature.result,
+                                                placement_literals.SERVER, True)
+  intrinsic_type = computation_types.FunctionType((
+      value.type_signature,
+      zero.type_signature,
+      op.type_signature,
+  ), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_REDUCE.uri, intrinsic_type)
+  tup = computation_building_blocks.Tuple((value, zero, op))
+  return computation_building_blocks.Call(intrinsic, tup)
+
+
+def create_federated_sum(value):
+  r"""Creates a called federated sum.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placement_literals.SERVER, True)
+  intrinsic_type = computation_types.FunctionType(value.type_signature,
+                                                  result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_SUM.uri, intrinsic_type)
+  return computation_building_blocks.Call(intrinsic, value)
+
+
+def create_federated_value(value, placement):
+  r"""Creates a called federated value.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+    placement: A `placement_literals.PlacementLiteral` to use as the placement.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if placement is placement_literals.CLIENTS:
+    uri = intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri
+  elif placement is placement_literals.SERVER:
+    uri = intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri
+  else:
+    raise TypeError('Unsupported placement {}.'.format(placement))
+  result_type = computation_types.FederatedType(value.type_signature, placement,
+                                                True)
+  intrinsic_type = computation_types.FunctionType(value.type_signature,
+                                                  result_type)
+  intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
+  return computation_building_blocks.Call(intrinsic, value)
+
+
+def create_sequence_map(fn, arg):
+  r"""Creates a called sequence map.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  Args:
+    fn: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      function.
+    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      argument.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.SequenceType(fn.type_signature.result)
+  intrinsic_type = computation_types.FunctionType(
+      (fn.type_signature, arg.type_signature), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type)
+  tup = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, tup)
+
+
+def create_sequence_reduce(value, zero, op):
+  r"""Creates a called sequence reduce.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp, Comp]
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+    zero: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      initial value.
+    op: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      op function.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(zero,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(op,
+                          computation_building_blocks.ComputationBuildingBlock)
+  intrinsic_type = computation_types.FunctionType((
+      value.type_signature,
+      zero.type_signature,
+      op.type_signature,
+  ), op.type_signature.result)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.SEQUENCE_REDUCE.uri, intrinsic_type)
+  tup = computation_building_blocks.Tuple((value, zero, op))
+  return computation_building_blocks.Call(intrinsic, tup)
+
+
+def create_sequence_sum(value):
+  r"""Creates a called sequence sum.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` to use as
+      the value.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  intrinsic_type = computation_types.FunctionType(value.type_signature,
+                                                  value.type_signature.element)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type)
+  return computation_building_blocks.Call(intrinsic, value)
