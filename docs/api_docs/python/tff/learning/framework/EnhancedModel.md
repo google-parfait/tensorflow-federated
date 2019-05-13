@@ -115,7 +115,7 @@ However, this method may update aggregated metrics computed across calls to
 forward_pass; the final values of such metrics can be accessed via
 `aggregated_outputs`.
 
-Uses in TFF:
+#### Uses in TFF:
 
 *   To implement model evaluation.
 *   To implement federated gradient descent and other non-Federated-Averaging

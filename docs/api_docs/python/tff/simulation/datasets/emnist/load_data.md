@@ -36,7 +36,7 @@ representations, e.g. in
 where 0 corresponds to the background color, and 255 represents the color of the
 digit.
 
-Data set sizes:
+#### Data set sizes:
 
 *only_digits=True*: 3,383 users, 10 label classes
 
