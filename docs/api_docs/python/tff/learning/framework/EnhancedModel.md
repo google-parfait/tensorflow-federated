@@ -167,5 +167,5 @@ each feature exceed a certain magnitude.
 
 #### Returns:
 
-A structure of tensors (as supported by `tf.contrib.framework.nest`) to be
-aggregated across clients.
+A structure of tensors (as supported by `tf.nest`) to be aggregated across
+clients.

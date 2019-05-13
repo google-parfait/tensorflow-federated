@@ -68,7 +68,7 @@ landing_page:
         train_data = [client_data(n) for n in range(3)]
 
         # Grab a single batch of data so that TFF knows what data looks like.
-        sample_batch = tf.contrib.framework.nest.map_structure(
+        sample_batch = tf.nest.map_structure(
             lambda x: x.numpy(), iter(train_data[0]).next())
 
         # Wrap a Keras model for use with TFF.
