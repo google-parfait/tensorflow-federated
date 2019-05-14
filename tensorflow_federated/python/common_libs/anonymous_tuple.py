@@ -213,7 +213,7 @@ def flatten(structure):
   """Returns a list of values in a possibly recursively nested tuple.
 
   N.B. This implementation is not compatible with the approach of
-  `tf.contrib.nest.flatten`, which enforces lexical order for `OrderedDict`s.
+  `tf.nest.flatten`, which enforces lexical order for `OrderedDict`s.
 
   Args:
     structure: An anonymous tuple, possibly recursively nested, or a non-tuple
