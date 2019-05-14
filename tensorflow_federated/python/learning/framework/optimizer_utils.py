@@ -288,7 +288,7 @@ def build_stateless_mean():
 
 
 def build_stateless_broadcaster():
-  """Just tff.federated_mean with empty state, to use as a default."""
+  """Just tff.federated_broadcast with empty state, to use as a default."""
   return tff.utils.StatefulBroadcastFn(
       initialize_fn=lambda: (),
       next_fn=lambda state, value: (  # pylint: disable=g-long-lambda
