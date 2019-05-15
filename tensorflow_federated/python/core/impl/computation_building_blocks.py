@@ -348,12 +348,9 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
       """Returns a named or unnamed element."""
       if isinstance(e, ComputationBuildingBlock):
         return (None, e)
-      elif (isinstance(e, tuple) and (len(e) == 2) and
-            (e[0] is None or isinstance(e[0], six.string_types))):
-        py_typecheck.check_type(e[1], ComputationBuildingBlock)
-        # Explicitly compare to an empty string because other values that are
-        # naturally false are allowed.
-        if e[0] == '':  # pylint: disable=g-explicit-bool-comparison
+      elif py_typecheck.is_name_value_pair(
+          e, name_required=False, value_type=ComputationBuildingBlock):
+        if e[0] is not None and not e[0]:
           raise ValueError('Unexpected tuple element with empty string name.')
         return (e[0], e[1])
       else:

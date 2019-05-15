@@ -79,6 +79,21 @@ class PyTypeCheckTest(absltest.TestCase):
                            'Expected a callable, found non-callable int.',
                            py_typecheck.check_callable, 10)
 
+  def test_is_attr(self):
+
+    @attr.s
+    class TestAttrClass(object):
+      a = attr.ib(default=0)
+
+    class TestClass(object):
+      a = 0
+
+    self.assertTrue(py_typecheck.is_attrs(TestAttrClass))
+    self.assertTrue(py_typecheck.is_attrs(TestAttrClass()))
+    self.assertFalse(py_typecheck.is_attrs(0))
+    self.assertFalse(py_typecheck.is_attrs(TestClass))
+    self.assertFalse(py_typecheck.is_attrs(TestClass()))
+
   def test_is_named_tuple(self):
     T = collections.namedtuple('T', ['a', 'b'])  # pylint: disable=invalid-name
 
@@ -101,35 +116,55 @@ class PyTypeCheckTest(absltest.TestCase):
     self.assertFalse(py_typecheck.is_named_tuple(tuple()))
 
   def test_is_name_value_pair(self):
-    self.assertTrue(py_typecheck.is_name_value_pair(['a', 1]))
-    self.assertTrue(py_typecheck.is_name_value_pair(['a', [1, 2]]))
     self.assertTrue(py_typecheck.is_name_value_pair(('a', 1)))
-    self.assertTrue(py_typecheck.is_name_value_pair(('a', [1, 2])))
-
-    self.assertFalse(py_typecheck.is_name_value_pair([0, 'a']))
-    self.assertFalse(py_typecheck.is_name_value_pair((0, 'a')))
-    self.assertFalse(py_typecheck.is_name_value_pair('a'))
-    self.assertFalse(py_typecheck.is_name_value_pair('abc'))
-    self.assertFalse(py_typecheck.is_name_value_pair(['abc']))
-    self.assertFalse(py_typecheck.is_name_value_pair(('abc')))
-    self.assertFalse(py_typecheck.is_name_value_pair((None, 0)))
-    self.assertFalse(py_typecheck.is_name_value_pair([None, 0]))
+    self.assertTrue(py_typecheck.is_name_value_pair(['a', 1]))
+    self.assertTrue(py_typecheck.is_name_value_pair(('a', 'b')))
     self.assertFalse(py_typecheck.is_name_value_pair({'a': 1}))
+    self.assertFalse(py_typecheck.is_name_value_pair({'a': 1, 'b': 2}))
+    self.assertFalse(py_typecheck.is_name_value_pair(('a')))
+    self.assertFalse(py_typecheck.is_name_value_pair(('a', 'b', 'c')))
+    self.assertFalse(py_typecheck.is_name_value_pair((None, 1)))
+    self.assertFalse(py_typecheck.is_name_value_pair((1, 1)))
 
-  def test_is_attr(self):
+  def test_is_name_value_pair_with_no_name_required(self):
+    self.assertTrue(
+        py_typecheck.is_name_value_pair(('a', 1), name_required=False))
+    self.assertTrue(
+        py_typecheck.is_name_value_pair(['a', 1], name_required=False))
+    self.assertTrue(
+        py_typecheck.is_name_value_pair(('a', 'b'), name_required=False))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair({'a': 1}, name_required=False))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair({
+            'a': 1,
+            'b': 2,
+        }, name_required=False))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair(('a'), name_required=False))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair(('a', 'b', 'c'), name_required=False))
+    self.assertTrue(
+        py_typecheck.is_name_value_pair((None, 1), name_required=False))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair((1, 1), name_required=False))
 
-    @attr.s
-    class TestAttrClass(object):
-      a = attr.ib(default=0)
-
-    class TestClass(object):
-      a = 0
-
-    self.assertTrue(py_typecheck.is_attrs(TestAttrClass))
-    self.assertTrue(py_typecheck.is_attrs(TestAttrClass()))
-    self.assertFalse(py_typecheck.is_attrs(0))
-    self.assertFalse(py_typecheck.is_attrs(TestClass))
-    self.assertFalse(py_typecheck.is_attrs(TestClass()))
+  def test_is_name_value_pair_with_value_type(self):
+    self.assertTrue(py_typecheck.is_name_value_pair(('a', 1), value_type=int))
+    self.assertTrue(py_typecheck.is_name_value_pair(['a', 1], value_type=int))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair(('a', 'b'), value_type=int))
+    self.assertFalse(py_typecheck.is_name_value_pair({'a': 1}, value_type=int))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair({
+            'a': 1,
+            'b': 2,
+        }, value_type=int))
+    self.assertFalse(py_typecheck.is_name_value_pair(('a'), value_type=int))
+    self.assertFalse(
+        py_typecheck.is_name_value_pair(('a', 'b', 'c'), value_type=int))
+    self.assertFalse(py_typecheck.is_name_value_pair((None, 1), value_type=int))
+    self.assertFalse(py_typecheck.is_name_value_pair((1, 1), value_type=int))
 
 
 if __name__ == '__main__':

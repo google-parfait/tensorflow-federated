@@ -80,8 +80,7 @@ class AnonymousTuple(object):
     """
     py_typecheck.check_type(elements, list)
     for e in elements:
-      if not (isinstance(e, tuple) and (len(e) == 2) and
-              (e[0] is None or isinstance(e[0], six.string_types))):
+      if not py_typecheck.is_name_value_pair(e, name_required=False):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {}.'.format(repr(e)))

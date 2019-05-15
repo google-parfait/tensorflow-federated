@@ -332,17 +332,13 @@ def create_computation_appending(comp1, comp2):
                           computation_building_blocks.ComputationBuildingBlock)
   if isinstance(comp2, computation_building_blocks.ComputationBuildingBlock):
     name2 = None
-  elif (isinstance(comp2, tuple) and len(comp2) == 2 and
-        (comp2[0] is None or isinstance(comp2[0], six.string_types)) and
-        isinstance(comp2[1],
-                   computation_building_blocks.ComputationBuildingBlock)):
+  elif py_typecheck.is_name_value_pair(
+      comp2,
+      name_required=False,
+      value_type=computation_building_blocks.ComputationBuildingBlock):
     name2, comp2 = comp2
   else:
-    raise TypeError(
-        'Expected a \'computation_building_blocks.ComputationBuildingBlock\' '
-        'or a named computation representable as a single element of an '
-        '\'anonymous_tuple.AnonymousTuple\', found {}.'.format(comp2))
-
+    raise TypeError('Unexpected tuple element: {}.'.format(comp2))
   comps = computation_building_blocks.Tuple((comp1, comp2))
   ref = computation_building_blocks.Reference('comps', comps.type_signature)
   symbols = ((ref.name, comps),)
