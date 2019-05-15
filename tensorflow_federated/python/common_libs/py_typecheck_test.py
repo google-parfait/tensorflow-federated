@@ -110,8 +110,9 @@ class PyTypeCheckTest(absltest.TestCase):
     self.assertTrue(py_typecheck.is_named_tuple(U))
 
     # Not named tuples
-    self.assertFalse(py_typecheck.is_named_tuple(
-        anonymous_tuple.AnonymousTuple([(None, 10)])))
+    self.assertFalse(
+        py_typecheck.is_named_tuple(
+            anonymous_tuple.AnonymousTuple([(None, 10)])))
     self.assertFalse(py_typecheck.is_named_tuple([]))
     self.assertFalse(py_typecheck.is_named_tuple(tuple()))
 
