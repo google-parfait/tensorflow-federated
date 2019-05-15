@@ -101,7 +101,7 @@ class StatefulAggregateFn(StatefulFn):
     Args:
       state: A `tff.Value` placed on the `tff.SERVER`.
       value: A `tff.Value` to be aggregated, placed on the `tff.CLIENTS`.
-      weight: An optional `tff.Value` for weighting values, placed on the
+      weight: An optional `tff.Value` for weighting `value`s, placed on the
         `tff.CLIENTS`.
 
     Returns:
@@ -110,8 +110,28 @@ class StatefulAggregateFn(StatefulFn):
          * aggregate: The result of the aggregation of `value` weighted by
              `weight.
     """
-    return self._next_fn(
-        tff.to_value(state), tff.to_value(value), tff.to_value(weight))
+    py_typecheck.check_type(state, tff.Value)
+    py_typecheck.check_type(state.type_signature, tff.FederatedType)
+    if state.type_signature.placement is not tff.SERVER:
+      raise TypeError('`state` argument must be a tff.Value placed at SERVER. '
+                      'Got: {!s}'.format(state.type_signature))
+
+    py_typecheck.check_type(value, tff.Value)
+    py_typecheck.check_type(value.type_signature, tff.FederatedType)
+    if value.type_signature.placement is not tff.CLIENTS:
+      raise TypeError('`value` argument must be a tff.Value placed at CLIENTS. '
+                      'Got: {!s}'.format(value.type_signature))
+
+    if weight is not None:
+      py_typecheck.check_type(weight, tff.Value)
+      py_typecheck.check_type(weight.type_signature, tff.FederatedType)
+      py_typecheck.check_type(weight.type_signature, tff.FederatedType)
+      if weight.type_signature.placement is not tff.CLIENTS:
+        raise TypeError('If not None, `weight` argument must be a tff.Value '
+                        'placed at CLIENTS. Got: {!s}'.format(
+                            weight.type_signature))
+
+    return self._next_fn(state, value, weight)
 
 
 class StatefulBroadcastFn(StatefulFn):
@@ -137,7 +157,8 @@ class StatefulBroadcastFn(StatefulFn):
 
     Args:
       state: A `tff.Value` placed on the `tff.SERVER`.
-      value: A `tff.Value` to be broadcast to the `tff.CLIENTS`.
+      value: A `tff.Value` placed on the `tff.SERVER`, to be broadcast to the
+        `tff.CLIENTS`.
 
     Returns:
        A tuple of `tff.Value`s (state@SERVER, value@CLIENTS) where
@@ -145,7 +166,19 @@ class StatefulBroadcastFn(StatefulFn):
          * aggregate: The `value` now placed (communicated) to the
            `tff.CLIENTS`.
     """
-    return self._next_fn(tff.to_value(state), tff.to_value(value))
+    py_typecheck.check_type(state, tff.Value)
+    py_typecheck.check_type(state.type_signature, tff.FederatedType)
+    if state.type_signature.placement is not tff.SERVER:
+      raise TypeError('`state` argument must be a tff.Value placed at SERVER. '
+                      'Got: {!s}'.format(state.type_signature))
+
+    py_typecheck.check_type(value, tff.Value)
+    py_typecheck.check_type(value.type_signature, tff.FederatedType)
+    if value.type_signature.placement is not tff.SERVER:
+      raise TypeError('`value` argument must be a tff.Value placed at CLIENTS. '
+                      'Got: {!s}'.format(value.type_signature))
+
+    return self._next_fn(state, value)
 
 
 class IterativeProcess(object):
