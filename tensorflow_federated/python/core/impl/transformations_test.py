@@ -281,14 +281,15 @@ def _has_unique_names(comp):
   return unique[0]
 
 
-class TransformationsTest(parameterized.TestCase):
+class ReplaceCompiledComputationsNamesWithUniqueNamesTest(
+    parameterized.TestCase):
 
-  def test_replace_compiled_computations_names_raises_type_error(self):
+  def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.replace_compiled_computations_names_with_unique_names(
           None)
 
-  def test_replace_compiled_computations_names_replaces_name(self):
+  def test_replaces_name(self):
     fn = lambda: tf.constant(1)
     tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         fn, None, context_stack_impl.context_stack)
@@ -302,7 +303,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_compiled_computations_names_replaces_multiple_names(self):
+  def test_replaces_multiple_names(self):
     elements = []
     for _ in range(10):
       fn = lambda: tf.constant(1)
@@ -326,8 +327,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_compiled_computations_names_does_not_replace_other_name(
-      self):
+  def test_does_not_replace_other_name(self):
     comp = computation_building_blocks.Reference('name', tf.int32)
 
     transformed_comp, modified = transformations.replace_compiled_computations_names_with_unique_names(
@@ -337,7 +337,10 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_intrinsic_raises_type_error_none_comp(self):
+
+class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
+
+  def test_raises_type_error_none_comp(self):
     uri = 'dummy'
     body = lambda x: x
 
@@ -345,7 +348,7 @@ class TransformationsTest(parameterized.TestCase):
       transformations.replace_intrinsic_with_callable(
           None, uri, body, context_stack_impl.context_stack)
 
-  def test_replace_intrinsic_raises_type_error_none_uri(self):
+  def test_raises_type_error_none_uri(self):
     comp = _create_lambda_to_dummy_intrinsic()
     body = lambda x: x
 
@@ -353,7 +356,7 @@ class TransformationsTest(parameterized.TestCase):
       transformations.replace_intrinsic_with_callable(
           comp, None, body, context_stack_impl.context_stack)
 
-  def test_replace_intrinsic_raises_type_error_none_body(self):
+  def test_raises_type_error_none_body(self):
     comp = _create_lambda_to_dummy_intrinsic()
     uri = 'dummy'
 
@@ -361,7 +364,7 @@ class TransformationsTest(parameterized.TestCase):
       transformations.replace_intrinsic_with_callable(
           comp, uri, None, context_stack_impl.context_stack)
 
-  def test_replace_intrinsic_raises_type_error_none_context_stack(self):
+  def test_raises_type_error_none_context_stack(self):
     comp = _create_lambda_to_dummy_intrinsic()
     uri = 'dummy'
     body = lambda x: x
@@ -369,7 +372,7 @@ class TransformationsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       transformations.replace_intrinsic_with_callable(comp, uri, body, None)
 
-  def test_replace_intrinsic_replaces_intrinsic(self):
+  def test_replaces_intrinsic(self):
     comp = _create_lambda_to_dummy_intrinsic()
     uri = 'dummy'
     body = lambda x: x
@@ -383,7 +386,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_intrinsic_replaces_nested_intrinsic(self):
+  def test_replaces_nested_intrinsic(self):
     fn = _create_lambda_to_dummy_intrinsic()
     block = _create_dummy_block(fn)
     comp = block
@@ -399,7 +402,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_intrinsic_replaces_chained_intrinsics(self):
+  def test_replaces_chained_intrinsics(self):
     fn = _create_lambda_to_dummy_intrinsic(type_spec=tf.int32)
     arg = computation_building_blocks.Data('x', tf.int32)
     call = _create_chained_calls([fn, fn], arg)
@@ -418,7 +421,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_intrinsic_does_not_replace_other_intrinsic(self):
+  def test_does_not_replace_other_intrinsic(self):
     comp = _create_lambda_to_dummy_intrinsic()
     uri = 'other'
     body = lambda x: x
@@ -431,11 +434,14 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_called_lambda_raises_type_error(self):
+
+class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
+
+  def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.replace_called_lambda_with_block(None)
 
-  def test_replace_called_lambda_replaces_called_lambda(self):
+  def test_replaces_called_lambda(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
@@ -449,7 +455,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_called_lambda_replaces_nested_called_lambda(self):
+  def test_replaces_nested_called_lambda(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
@@ -465,7 +471,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_called_lambda_replaces_chained_called_lambdas(self):
+  def test_replaces_chained_called_lambdas(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg = computation_building_blocks.Data('y', tf.int32)
     call = _create_chained_calls([fn, fn], arg)
@@ -479,7 +485,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_called_lambda_does_not_replace_uncalled_lambda(self):
+  def test_does_not_replace_uncalled_lambda(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     comp = fn
 
@@ -491,7 +497,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_called_lambda_does_not_replace_separated_called_lambda(self):
+  def test_does_not_replace_separated_called_lambda(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     block = _create_dummy_block(fn)
     arg = computation_building_blocks.Data('y', tf.int32)
@@ -506,7 +512,10 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_remove_mapped_or_applied_identity_raises_type_error(self):
+
+class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
+
+  def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.remove_mapped_or_applied_identity(None)
 
@@ -522,8 +531,7 @@ class TransformationsTest(parameterized.TestCase):
        intrinsic_defs.SEQUENCE_MAP.uri,
        _create_dummy_called_sequence_map))
   # pyformat: enable
-  def test_remove_mapped_or_applied_identity_removes_identity(
-      self, uri, comp_factory):
+  def test_removes_identity(self, uri, comp_factory):
     call = comp_factory()
     comp = call
 
@@ -535,8 +543,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_remove_mapped_or_applied_identity_replaces_federated_maps_with_named_result(
-      self):
+  def test_replaces_federated_maps_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
@@ -553,7 +560,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_remove_mapped_or_applied_identity_removes_nested_federated_map(self):
+  def test_removes_nested_federated_map(self):
     call = _create_dummy_called_federated_map()
     block = _create_dummy_block(call)
     comp = block
@@ -567,8 +574,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_remove_mapped_or_applied_identity_removes_chained_federated_maps(
-      self):
+  def test_removes_chained_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -585,8 +591,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_remove_mapped_or_applied_identity_does_not_remove_dummy_intrinsic(
-      self):
+  def test_does_not_remove_dummy_intrinsic(self):
     comp = _create_dummy_called_intrinsic()
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
@@ -597,8 +602,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_remove_mapped_or_applied_identity_does_not_remove_called_lambda(
-      self):
+  def test_does_not_remove_called_lambda(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg = computation_building_blocks.Data('y', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
@@ -612,11 +616,14 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_chained_federated_maps_raises_type_error(self):
+
+class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
+
+  def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.replace_chained_federated_maps_with_federated_map(None)
 
-  def test_replace_chained_federated_maps_replaces_federated_maps(self):
+  def test_replaces_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -636,8 +643,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_replaces_federated_maps_with_different_names(
-      self):
+  def test_replaces_federated_maps_with_different_names(self):
     fn_1 = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -658,8 +664,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_replaces_federated_maps_with_different_types(
-      self):
+  def test_replaces_federated_maps_with_different_types(self):
     fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -680,8 +685,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_replaces_federated_maps_with_named_result(
-      self):
+  def test_replaces_federated_maps_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
@@ -702,8 +706,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_replaces_federated_maps_with_unbound_references(
-      self):
+  def test_replaces_federated_maps_with_unbound_references(self):
     ref = computation_building_blocks.Reference('arg', tf.int32)
     fn = computation_building_blocks.Lambda('x', tf.int32, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
@@ -725,7 +728,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_replaces_nested_federated_maps(self):
+  def test_replaces_nested_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -748,8 +751,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_replaces_multiple_chained_federated_maps(
-      self):
+  def test_replaces_multiple_chained_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -771,8 +773,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_chained_federated_maps_does_not_replace_one_federated_map(
-      self):
+  def test_does_not_replace_one_federated_map(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -788,8 +789,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_chained_federated_maps_does_not_replace_separated_federated_maps(
-      self):
+  def test_does_not_replace_separated_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                False)
@@ -810,11 +810,14 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_tuple_intrinsics_raises_type_error(self):
+
+class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
+
+  def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.replace_tuple_intrinsics_with_intrinsic(None)
 
-  def test_replace_tuple_intrinsics_replaces_federated_aggregates(self):
+  def test_replaces_federated_aggregates(self):
     elements = [_create_dummy_called_federated_aggregate() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -833,7 +836,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_federated_maps(self):
+  def test_replaces_federated_maps(self):
     elements = [_create_dummy_called_federated_map() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -851,8 +854,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_federated_maps_with_different_names(
-      self):
+  def test_replaces_federated_maps_with_different_names(self):
     elements = (
         _create_dummy_called_federated_map(
             parameter_name='a', argument_name='b'),
@@ -875,8 +877,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_federated_maps_with_different_types(
-      self):
+  def test_replaces_federated_maps_with_different_types(self):
     elements = (
         _create_dummy_called_federated_map(parameter_type=tf.int32),
         _create_dummy_called_federated_map(parameter_type=tf.float32),
@@ -897,8 +898,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_federated_maps_with_named_result(
-      self):
+  def test_replaces_federated_maps_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
@@ -922,8 +922,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_federated_maps_with_unbound_reference(
-      self):
+  def test_replaces_federated_maps_with_unbound_reference(self):
     ref = computation_building_blocks.Reference('arg', tf.int32)
     fn = computation_building_blocks.Lambda('x', tf.int32, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
@@ -947,7 +946,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_named_federated_maps(self):
+  def test_replaces_named_federated_maps(self):
     elements = (
         ('a', _create_dummy_called_federated_map()),
         ('b', _create_dummy_called_federated_map()),
@@ -968,7 +967,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_nested_federated_maps(self):
+  def test_replaces_nested_federated_maps(self):
     elements = [_create_dummy_called_federated_map() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     block = _create_dummy_block(calls)
@@ -988,7 +987,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_multiple_federated_maps(self):
+  def test_replaces_multiple_federated_maps(self):
     comp_elements = []
     for _ in range(2):
       call_elements = [_create_dummy_called_federated_map() for _ in range(2)]
@@ -1011,7 +1010,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_replaces_one_federated_map(self):
+  def test_replaces_one_federated_map(self):
     elements = (_create_dummy_called_federated_map(),)
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -1026,7 +1025,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replace_tuple_intrinsics_does_not_replace_different_intrinsics(self):
+  def test_does_not_replace_different_intrinsics(self):
     elements = (
         _create_dummy_called_federated_aggregate(),
         _create_dummy_called_federated_map(),
@@ -1045,7 +1044,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_replace_tuple_intrinsics_does_not_replace_dummy_intrinsics(self):
+  def test_does_not_replace_dummy_intrinsics(self):
     elements = [_create_dummy_called_intrinsic() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -1058,11 +1057,14 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_merge_chained_blocks_fails_on_none(self):
+
+class MergeChainedBlocksTest(absltest.TestCase):
+
+  def test_fails_on_none(self):
     with self.assertRaises(TypeError):
       transformations.merge_chained_blocks(None)
 
-  def test_merge_chained_blocks_single_level_of_nesting(self):
+  def test_single_level_of_nesting(self):
     input1 = computation_building_blocks.Reference('input1', tf.int32)
     result = computation_building_blocks.Reference('result', tf.int32)
     block1 = computation_building_blocks.Block([('result', input1)], result)
@@ -1075,7 +1077,7 @@ class TransformationsTest(parameterized.TestCase):
                      '(let input1=input2,result=input1 in result)')
     self.assertTrue(modified)
 
-  def test_merge_chained_blocks_leaves_names(self):
+  def test_leaves_names(self):
     input1 = computation_building_blocks.Data('input1', tf.int32)
     result_tuple = computation_building_blocks.Tuple([
         ('a', computation_building_blocks.Data('result_a', tf.int32)),
@@ -1093,7 +1095,7 @@ class TransformationsTest(parameterized.TestCase):
                      '(let y=input2,x=input1 in <a=result_a,b=result_b>)')
     self.assertTrue(modified)
 
-  def test_merge_chained_blocks_leaves_separated_chained_blocks_alone(self):
+  def test_leaves_separated_chained_blocks_alone(self):
     input1 = computation_building_blocks.Data('input1', tf.int32)
     result = computation_building_blocks.Data('result', tf.int32)
     block1 = computation_building_blocks.Block([('x', input1)], result)
@@ -1108,7 +1110,7 @@ class TransformationsTest(parameterized.TestCase):
                      '(let y=input2 in <(let x=input1 in result)>)')
     self.assertFalse(modified)
 
-  def test_merge_chained_blocks_two_levels_of_nesting(self):
+  def test_two_levels_of_nesting(self):
     input1 = computation_building_blocks.Reference('input1', tf.int32)
     result = computation_building_blocks.Reference('result', tf.int32)
     block1 = computation_building_blocks.Block([('result', input1)], result)
@@ -1126,12 +1128,14 @@ class TransformationsTest(parameterized.TestCase):
         '(let input2=input3,input1=input2,result=input1 in result)')
     self.assertTrue(modified)
 
-  def test_replace_selection_from_tuple_fails_on_none_comp(self):
+
+class ReplaceSelectionFromTupleWithTupleElementTest(absltest.TestCase):
+
+  def test_fails_on_none_comp(self):
     with self.assertRaises(TypeError):
       transformations.replace_selection_from_tuple_with_tuple_element(None)
 
-  def test_replace_selection_from_tuple_leaves_selection_from_ref_by_index_alone(
-      self):
+  def test_leaves_selection_from_ref_by_index_alone(self):
     ref_to_tuple = computation_building_blocks.Reference(
         'tup', [('a', tf.int32), ('b', tf.float32)])
     a_selected = computation_building_blocks.Selection(ref_to_tuple, index=0)
@@ -1147,8 +1151,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertFalse(b_transformed)
     self.assertEqual(b_returned.proto, b_selected.proto)
 
-  def test_replace_selection_from_tuple_leaves_selection_from_ref_by_name_alone(
-      self):
+  def test_leaves_selection_from_ref_by_name_alone(self):
     ref_to_tuple = computation_building_blocks.Reference(
         'tup', [('a', tf.int32), ('b', tf.float32)])
     a_selected = computation_building_blocks.Selection(ref_to_tuple, name='a')
@@ -1164,7 +1167,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertFalse(b_transformed)
     self.assertEqual(b_returned.proto, b_selected.proto)
 
-  def test_replace_selection_from_tuple_by_index_grabs_correct_element(self):
+  def test_by_index_grabs_correct_element(self):
     x_data = computation_building_blocks.Data('x', tf.int32)
     y_data = computation_building_blocks.Data('y', [('a', tf.float32)])
     tup = computation_building_blocks.Tuple([x_data, y_data])
@@ -1181,7 +1184,7 @@ class TransformationsTest(parameterized.TestCase):
     self.assertEqual(collapsed_selection_x.proto, x_data.proto)
     self.assertEqual(collapsed_selection_y.proto, y_data.proto)
 
-  def test_replace_selection_from_tuple_by_name_grabs_correct_element(self):
+  def test_by_name_grabs_correct_element(self):
     x_data = computation_building_blocks.Data('x', tf.int32)
     y_data = computation_building_blocks.Data('y', [('a', tf.float32)])
     tup = computation_building_blocks.Tuple([('a', x_data), ('b', y_data)])
@@ -1201,7 +1204,7 @@ class TransformationsTest(parameterized.TestCase):
 
 class UniquifyReferencesTest(absltest.TestCase):
 
-  def test_uniquify_references_single_level_block(self):
+  def test_single_level_block(self):
     x_ref = computation_building_blocks.Reference('x', tf.int32)
     data = computation_building_blocks.Data('data', tf.int32)
     block = computation_building_blocks.Block([('x', data), ('x', x_ref),
@@ -1212,7 +1215,7 @@ class UniquifyReferencesTest(absltest.TestCase):
         renamed.tff_repr,
         '(let {0}1=data,{0}2={0}1,{0}3={0}2 in {0}3)'.format(RENAME_PREFIX))
 
-  def test_uniquify_references_nested_blocks(self):
+  def test_nested_blocks(self):
     x_ref = computation_building_blocks.Reference('x', tf.int32)
     input1 = computation_building_blocks.Data('input1', tf.int32)
     block1 = computation_building_blocks.Block([('x', input1), ('x', x_ref)],
@@ -1229,7 +1232,7 @@ class UniquifyReferencesTest(absltest.TestCase):
         '(let {0}1=input2,{0}2={0}1 in (let {0}3=input1,{0}4={0}3 in {0}4))'
         .format(RENAME_PREFIX))
 
-  def test_uniquify_references_nested_lambdas(self):
+  def test_nested_lambdas(self):
     comp = computation_building_blocks.Data('test', tf.int32)
     input1 = computation_building_blocks.Reference('input1',
                                                    comp.type_signature)
@@ -1247,7 +1250,7 @@ class UniquifyReferencesTest(absltest.TestCase):
         renamed.tff_repr,
         '({0}1 -> {0}1)(({0}2 -> {0}2)(test))'.format(RENAME_PREFIX))
 
-  def test_uniquify_references_block_lambda_block_lambda(self):
+  def test_block_lambda_block_lambda(self):
     x_ref = computation_building_blocks.Reference('x', tf.int32)
     inner_lambda = computation_building_blocks.Lambda('x', tf.int32, x_ref)
     called_lambda = computation_building_blocks.Call(inner_lambda, x_ref)
@@ -1270,7 +1273,7 @@ class UniquifyReferencesTest(absltest.TestCase):
         '(let {0}1=test_data,{0}2={0}1 in ({0}3 -> (let {0}4={0}3,{0}5={0}4 in ({0}6 -> {0}6)({0}5)))({0}2))'
         .format(RENAME_PREFIX))
 
-  def test_uniquify_references_blocks_nested_inside_of_locals(self):
+  def test_blocks_nested_inside_of_locals(self):
     x_data = computation_building_blocks.Data('x', tf.int32)
     data = computation_building_blocks.Data('data', tf.int32)
     lower_block = computation_building_blocks.Block([('y', data)], x_data)
