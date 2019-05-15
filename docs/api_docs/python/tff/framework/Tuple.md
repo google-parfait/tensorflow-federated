@@ -78,7 +78,7 @@ Returns the TFF type of this object (an instance of
 __dir__()
 ```
 
-__dir__() -> list default dir() implementation
+__dir__() -> listdefault dir() implementation
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 

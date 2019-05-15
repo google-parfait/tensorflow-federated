@@ -60,9 +60,8 @@ __call__(
 )
 ```
 
-Performs a broadcast of value@SERVER, producing value@CLIENTS.
-
-This is a function intended to (only) be invoked in the context of a
+Performs a broadcast of value@SERVER, producing value@CLIENTS. This is a
+function intended to (only) be invoked in the context of a
 <a href="../../tff/federated_computation.md"><code>tff.federated_computation</code></a>.
 It shold be compatible with the TFF type signature `(state@SERVER, value@SERVER)
 -> (state@SERVER, value@CLIENTS)`.
@@ -71,7 +70,8 @@ It shold be compatible with the TFF type signature `(state@SERVER, value@SERVER)
 
 *   <b>`state`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a>
     placed on the <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>.
-*   <b>`value`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a> to
+*   <b>`value`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a>
+    placed on the <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>, to
     be broadcast to the
     <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 

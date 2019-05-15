@@ -40,10 +40,9 @@ Initialize self. See help(type(self)) for accurate signature.
 
 <h3 id="federated_output_computation"><code>federated_output_computation</code></h3>
 
-Performs federated aggregation of the `Model's` `local_outputs`.
-
-This is typically used to aggregate metrics across many clients, e.g. the body
-of the computation might be:
+Performs federated aggregation of the `Model's` `local_outputs`. This is
+typically used to aggregate metrics across many clients, e.g. the body of the
+computation might be:
 
 ```python
 return {
@@ -72,9 +71,8 @@ values as outputs of the overall computation consuming the model.
 
 <h3 id="input_spec"><code>input_spec</code></h3>
 
-The type specification of the `batch_input` parameter for `forward_pass`.
-
-A nested structure of `tf.TensorSpec` objects, that matches the structure of
+The type specification of the `batch_input` parameter for `forward_pass`. A
+nested structure of `tf.TensorSpec` objects, that matches the structure of
 arguments that will be passed as the `batch_input` argument of `forward_pass`.
 The tensors must include a batch dimension as the first dimension, but the batch
 dimension may be undefined.
@@ -108,11 +106,9 @@ forward_pass(
 )
 ```
 
-Runs the forward pass and returns results.
-
-This method should not modify any variables that are part of the model, that is,
-variables that influence the predictions; for that, see
-`TrainableModel.train_on_batch`.
+Runs the forward pass and returns results. This method should not modify any
+variables that are part of the model, that is, variables that influence the
+predictions; for that, see `TrainableModel.train_on_batch`.
 
 However, this method may update aggregated metrics computed across calls to
 forward_pass; the final values of such metrics can be accessed via
@@ -149,10 +145,9 @@ will be trained via a gradient-based algorithm.
 report_local_outputs()
 ```
 
-Returns tensors representing values aggregated over `forward_pass` calls.
-
-In federated learning, the values returned by this method will typically be
-further aggregated across clients and made available on the server.
+Returns tensors representing values aggregated over `forward_pass` calls. In
+federated learning, the values returned by this method will typically be further
+aggregated across clients and made available on the server.
 
 This method returns results from aggregating across *all* previous calls to
 `forward_pass`, most typically metrics like accuracy and loss. If needed, we may
@@ -179,10 +174,8 @@ clients.
 train_on_batch(batch_input)
 ```
 
-Like `forward_pass`, but updates the model variables.
-
-Typically this will invoke `forward_pass`, with any corresponding side-effects
-such as updating metrics.
+Like `forward_pass`, but updates the model variables. Typically this will invoke
+`forward_pass`, with any corresponding side-effects such as updating metrics.
 
 #### Args:
 

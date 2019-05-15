@@ -28,7 +28,6 @@ The list of string identifiers for clients in this dataset.
 <h3 id="output_shapes"><code>output_shapes</code></h3>
 
 Returns the shape of each component of an element of the client datasets.
-
 Any `tf.data.Dataset` constructed by this class is expected to have matching
 `tf.data.Dataset.output_shapes` properties.
 
@@ -40,7 +39,6 @@ of an element of the client datasets.
 <h3 id="output_types"><code>output_types</code></h3>
 
 Returns the type of each component of an element of the client datasets.
-
 Any `tf.data.Dataset` constructed by this class is expected have matching
 `tf.data.Dataset.output_types` properties.
 
@@ -73,10 +71,9 @@ A `tf.data.Dataset` object.
 create_tf_dataset_from_all_clients()
 ```
 
-Creates a new `tf.data.Dataset` containing _all_ client examples.
-
-NOTE: the returned `tf.data.Dataset` is not serializable and runnable on other
-devices, as it uses `tf.py_func` internally.
+Creates a new `tf.data.Dataset` containing _all_ client examples. NOTE: the
+returned `tf.data.Dataset` is not serializable and runnable on other devices, as
+it uses `tf.py_func` internally.
 
 #### Returns:
 

@@ -53,7 +53,7 @@ Constructs a new instance from the given element types.
 __dir__()
 ```
 
-__dir__() -> list default dir() implementation
+__dir__() -> listdefault dir() implementation
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
@@ -61,11 +61,10 @@ __dir__() -> list default dir() implementation
 __eq__(other)
 ```
 
-Determines whether two type definitions are identical.
-
-Note that this notion of equality is stronger than equivalence. Two types with
-equivalent definitions may not be identical, e.g., if they represent templates
-with differently named type variables in their definitions.
+Determines whether two type definitions are identical. Note that this notion of
+equality is stronger than equivalence. Two types with equivalent definitions may
+not be identical, e.g., if they represent templates with differently named type
+variables in their definitions.
 
 #### Args:
 

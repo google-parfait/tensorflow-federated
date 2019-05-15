@@ -83,11 +83,9 @@ that returns the initial state.
 <h3 id="next"><code>next</code></h3>
 
 A <a href="../../tff/Computation.md"><code>tff.Computation</code></a> that
-produces the next state.
-
-The first argument of should always be the current state (originally produced by
-`tff.IterativeProcess.initialize`), and the first (or only) returned value is
-the updated state.
+produces the next state. The first argument of should always be the current
+state (originally produced by `tff.IterativeProcess.initialize`), and the first
+(or only) returned value is the updated state.
 
 #### Returns:
 

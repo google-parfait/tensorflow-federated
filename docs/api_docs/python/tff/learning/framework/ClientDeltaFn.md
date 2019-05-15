@@ -20,13 +20,10 @@ Defined in
 
 <h3 id="variables"><code>variables</code></h3>
 
-Returns all the variables of this object.
-
-Note this only includes variables that are part of the state of this object, and
-not the model variables themselves.
+Returns all the variables of this object. Note this only includes variables that
+are part of the state of this object, and not the model variables themselves.
 
 #### Returns:
-
 An iterable of `tf.Variable` objects.
 
 ## Methods
@@ -41,7 +38,6 @@ __call__(
 ```
 
 Defines the complete client computation.
-
 Typically implementations should be decorated with `tf.function`.
 
 #### Args:

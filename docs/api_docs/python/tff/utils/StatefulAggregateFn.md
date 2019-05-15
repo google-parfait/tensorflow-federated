@@ -61,9 +61,8 @@ __call__(
 )
 ```
 
-Performs an aggregate of value@CLIENTS, with optional weight@CLIENTS.
-
-This is a function intended to (only) be invoked in the context of a
+Performs an aggregate of value@CLIENTS, with optional weight@CLIENTS. This is a
+function intended to (only) be invoked in the context of a
 <a href="../../tff/federated_computation.md"><code>tff.federated_computation</code></a>.
 It shold be compatible with the TFF type signature
 
@@ -81,7 +80,7 @@ It shold be compatible with the TFF type signature
     <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 *   <b>`weight`</b>: An optional
     <a href="../../tff/Value.md"><code>tff.Value</code></a> for weighting
-    values, placed on the
+    `value`s, placed on the
     <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 #### Returns:

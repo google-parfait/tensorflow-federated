@@ -30,7 +30,6 @@ together with `tf.control_dependencies` in non-eager TensorFlow.
     `tf.Variable.read_value`.
 
 #### Returns:
-
 The result of applying `tf.identity` to read all elements of the `source`
 pointwise, with the same structure as `source`.
 

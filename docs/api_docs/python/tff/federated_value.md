@@ -27,7 +27,6 @@ Defined in
     <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>).
 
 #### Returns:
-
 A federated value with the given placement `placement`, and the member
 constituent `value` equal at all locations.
 

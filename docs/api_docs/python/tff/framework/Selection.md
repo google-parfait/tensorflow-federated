@@ -40,7 +40,6 @@ __init__(
 ```
 
 A selection from 'source' by a string or numeric 'name_or_index'.
-
 Exactly one of 'name' or 'index' must be specified (not None).
 
 #### Args:
