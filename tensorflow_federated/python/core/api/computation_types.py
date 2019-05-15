@@ -157,8 +157,7 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
       elements = list(elements.items())
 
     def _is_full_element_spec(e):
-      return (isinstance(e, tuple) and (len(e) == 2) and
-              (e[0] is None or isinstance(e[0], six.string_types)))
+      return py_typecheck.is_name_value_pair(e, name_required=False)
 
     def _map_element(e):
       if isinstance(e, Type):
