@@ -103,9 +103,9 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
       },
       {
           'dummy_batch':
-              collections.OrderedDict([('x', [[1.0]]), ('y', [[0.0]])])
+              _make_test_batch(
+                  x=np.ones([1, 1], np.float32), y=np.zeros([1, 1], np.float32))
       },
-      {'dummy_batch': _make_test_batch(x=[[1.0]], y=[[0.0]])},
   )
   def test_dummy_batch_types(self, dummy_batch):
     keras_model = model_examples.build_linear_regresion_keras_functional_model(
@@ -274,6 +274,72 @@ class ModelUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(m['num_examples'], [input_vocab_size * num_iterations])
     self.assertGreater(m['loss'][0], 0.0)
     self.assertEqual(m['loss'][1], input_vocab_size * num_iterations)
+
+  def test_preprocess_batch_only_converts_leaves_to_tensors(self):
+    dummy_batch = collections.OrderedDict([
+        ('x', [[np.zeros([1, 1], dtype=np.float32)],
+               [np.zeros([1, 1], dtype=np.float32)]]),
+        ('y', [np.zeros([1, 1], dtype=np.float32)]),
+    ])
+    processed_batch = model_utils._preprocess_dummy_batch(dummy_batch)
+    self.assertIsInstance(processed_batch['x'], list)
+    self.assertIsInstance(processed_batch['y'], list)
+    self.assertIsInstance(processed_batch['x'][0], list)
+    self.assertIsInstance(processed_batch['x'][0][0], tf.Tensor)
+    self.assertIsInstance(processed_batch['y'][0], tf.Tensor)
+
+  def test_keras_model_multiple_inputs(self):
+    model = model_examples.build_multiple_inputs_keras_model()
+
+    model.compile(
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
+        loss=tf.keras.losses.MSE,
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+
+    dummy_batch = collections.OrderedDict([
+        ('x', [
+            np.zeros([1, 1], dtype=np.float32),
+            np.zeros([1, 1], dtype=np.float32)
+        ]),
+        ('y', np.zeros([1, 1], dtype=np.float32)),
+    ])
+    tff_model = model_utils.from_compiled_keras_model(
+        keras_model=model, dummy_batch=dummy_batch)
+
+    batch_size = 2
+    batch = {
+        'x': [
+            np.ones(shape=[batch_size, 1], dtype=np.float32),
+            np.ones(shape=[batch_size, 1], dtype=np.float32)
+        ],
+        'y': np.asarray([[2.0], [2.0]]).astype(np.float32),
+    }
+
+    num_iterations = 2
+    for _ in range(num_iterations):
+      self.evaluate(tff_model.train_on_batch(batch))
+
+    m = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(m['num_batches'], [num_iterations])
+    self.assertEqual(m['num_examples'], [batch_size * num_iterations])
+    self.assertGreater(m['loss'][0], 0.0)
+    self.assertEqual(m['loss'][1], batch_size * num_iterations)
+
+    # Ensure we can assign the FL trained model weights to a new model.
+    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    keras_model = model_examples.build_multiple_inputs_keras_model()
+    tff_weights.assign_weights_to(keras_model)
+    keras_model.compile(
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
+        loss=tf.keras.losses.MSE,
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+    loaded_model = model_utils.from_compiled_keras_model(
+        keras_model=keras_model, dummy_batch=dummy_batch)
+
+    orig_model_output = tff_model.forward_pass(batch)
+    loaded_model_output = loaded_model.forward_pass(batch)
+    self.assertAlmostEqual(orig_model_output.loss.numpy(),
+                           loaded_model_output.loss.numpy())
 
   def test_keras_model_using_batch_norm(self):
     model = model_examples.build_conv_batch_norm_keras_model()
