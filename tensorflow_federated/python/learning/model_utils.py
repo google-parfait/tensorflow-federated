@@ -142,6 +142,18 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
   weights_to_assign.assign_weights_to(keras_model)
 
 
+def _preprocess_dummy_batch(dummy_batch):
+  dummy_tensors = tf.nest.map_structure(tf.convert_to_tensor_or_sparse_tensor,
+                                        dummy_batch)
+  if py_typecheck.is_named_tuple(dummy_tensors):
+    dummy_tensors = dummy_tensors._asdict()
+  if not isinstance(dummy_tensors, collections.OrderedDict):
+    dummy_tensors = collections.OrderedDict([
+        (k, v) for k, v in six.iteritems(dummy_tensors)
+    ])
+  return dummy_tensors
+
+
 def from_keras_model(keras_model,
                      dummy_batch,
                      loss,
@@ -172,10 +184,15 @@ def from_keras_model(keras_model,
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled. Use '
                      'from_compiled_keras_model() instead.')
+  dummy_tensors = _preprocess_dummy_batch(dummy_batch)
   if optimizer is None:
-    return enhance(_KerasModel(keras_model, dummy_batch, loss, metrics))
+    return enhance(_KerasModel(keras_model, dummy_tensors, loss, metrics))
   keras_model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-  return enhance(_TrainableKerasModel(keras_model, dummy_batch))
+  # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
+  # until the model has been called on input. The work-around is to call
+  # Model.test_on_batch() once before asking for metrics.
+  keras_model.test_on_batch(**dummy_tensors)
+  return enhance(_TrainableKerasModel(keras_model, dummy_tensors))
 
 
 def from_compiled_keras_model(keras_model, dummy_batch):
@@ -196,11 +213,17 @@ def from_compiled_keras_model(keras_model, dummy_batch):
     ValueError: If `keras_model` was *not* compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
+  dummy_tensors = _preprocess_dummy_batch(dummy_batch)
+  # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
+  # until the model has been called on input. The work-around is to call
+  # Model.test_on_batch() once before asking for metrics.
+  print(dummy_tensors)
+  keras_model.test_on_batch(**dummy_tensors)
   # Optimizer attribute is only set after calling tf.keras.Model.compile().
   if not hasattr(keras_model, 'optimizer'):
     raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
                      'instead.')
-  return enhance(_TrainableKerasModel(keras_model, dummy_batch))
+  return enhance(_TrainableKerasModel(keras_model, dummy_tensors))
 
 
 def federated_aggregate_keras_metric(metric_type, metric_config,
@@ -287,17 +310,9 @@ class _KerasModel(model_lib.Model):
     # resetting the default graph.
     tf.keras.backend.set_session(None)
 
-    if hasattr(dummy_batch, '_asdict'):
-      dummy_batch = dummy_batch._asdict()
-    # Convert input to tensors, possibly from nested lists that need to be
-    # converted to a single top-level tensor.
-    dummy_tensors = collections.OrderedDict([
-        (k, tf.convert_to_tensor_or_sparse_tensor(v))
-        for k, v in six.iteritems(dummy_batch)
-    ])
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. We forced that here.
-    inner_model(dummy_tensors['x'])
+    inner_model(dummy_batch['x'])
 
     def _tensor_spec_with_undefined_batch_dim(tensor):
       # Remove the batch dimension and leave it unspecified.
@@ -306,7 +321,7 @@ class _KerasModel(model_lib.Model):
       return spec
 
     self._input_spec = tf.nest.map_structure(
-        _tensor_spec_with_undefined_batch_dim, dummy_tensors)
+        _tensor_spec_with_undefined_batch_dim, dummy_batch)
 
     self._keras_model = inner_model
     self._loss_fn = loss_fn
@@ -435,13 +450,6 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
   """Wrapper class for `tf.keras.Model`s that can be trained."""
 
   def __init__(self, inner_model, dummy_batch):
-    if hasattr(dummy_batch, '_asdict'):
-      dummy_batch = dummy_batch._asdict()
-    # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
-    # until the model has been called on input. The work-around is to call
-    # Model.test_on_batch() once before asking for metrics.
-    inner_model.test_on_batch(**dummy_batch)
-    # This must occur after test_on_batch()
     if len(inner_model.loss_functions) != 1:
       raise NotImplementedError('only a single loss functions is supported')
     super(_TrainableKerasModel,
