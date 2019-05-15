@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import six
+from six.moves import range
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -288,7 +289,7 @@ def construct_federated_getitem_comp(comp, key):
     selected = computation_building_blocks.Selection(apply_input, index=key)
   else:
     elems = anonymous_tuple.to_elements(comp.type_signature.member)
-    index_range = six.moves.range(*key.indices(len(elems)))
+    index_range = range(*key.indices(len(elems)))
     elem_list = []
     for k in index_range:
       elem_list.append(
@@ -299,6 +300,63 @@ def construct_federated_getitem_comp(comp, key):
                                                     apply_input.type_signature,
                                                     selected)
   return apply_lambda
+
+
+def create_computation_appending(comp1, comp2):
+  r"""Returns a block appending `comp2` to `comp1`.
+
+                Block
+               /     \
+  [comps=Tuple]       Tuple
+         |            |
+    [Comp, Comp]      [Sel(0), ...,  Sel(0),   Sel(1)]
+                             \             \         \
+                              Sel(0)        Sel(n)    Ref(comps)
+                                    \             \
+                                     Ref(comps)    Ref(comps)
+
+  Args:
+    comp1: A `computation_building_blocks.ComputationBuildingBlock` with a
+      `type_signature` of type `computation_type.NamedTupleType`.
+    comp2: A `computation_building_blocks.ComputationBuildingBlock` or a named
+      computation (a tuple pair of name, computation) representing a single
+      element of an `anonymous_tuple.AnonymousTuple`.
+
+  Returns:
+    A `computation_building_blocks.Block`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(comp1,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if isinstance(comp2, computation_building_blocks.ComputationBuildingBlock):
+    name2 = None
+  elif (isinstance(comp2, tuple) and len(comp2) == 2 and
+        (comp2[0] is None or isinstance(comp2[0], six.string_types)) and
+        isinstance(comp2[1],
+                   computation_building_blocks.ComputationBuildingBlock)):
+    name2, comp2 = comp2
+  else:
+    raise TypeError(
+        'Expected a \'computation_building_blocks.ComputationBuildingBlock\' '
+        'or a named computation representable as a single element of an '
+        '\'anonymous_tuple.AnonymousTuple\', found {}.'.format(comp2))
+
+  comps = computation_building_blocks.Tuple((comp1, comp2))
+  ref = computation_building_blocks.Reference('comps', comps.type_signature)
+  symbols = ((ref.name, comps),)
+
+  sel_0 = computation_building_blocks.Selection(ref, index=0)
+  elements = []
+  named_type_signatures = anonymous_tuple.to_elements(comp1.type_signature)
+  for index, (name, _) in enumerate(named_type_signatures):
+    sel = computation_building_blocks.Selection(sel_0, index=index)
+    elements.append((name, sel))
+  sel_1 = computation_building_blocks.Selection(ref, index=1)
+  elements.append((name2, sel_1))
+  result = computation_building_blocks.Tuple(elements)
+  return computation_building_blocks.Block(symbols, result)
 
 
 def create_federated_aggregate(value, zero, accumulate, merge, report):
