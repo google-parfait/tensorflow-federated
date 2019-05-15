@@ -17,6 +17,12 @@ git_repository(
     remote = "https://github.com/bazelbuild/bazel-skylib.git",
 )
 
+git_repository(
+    name = "tensorflow_privacy",
+    commit = "17fefb38958c749f0294bf457dadf8891f2ab49a",
+    remote = "https://github.com/tensorflow/privacy.git",
+)
+
 new_git_repository(
     name = "benjaminp_six",
     build_file = "//third_party:six.BUILD",

@@ -39,3 +39,26 @@ py_test(
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
+
+py_library(
+    name = "dp_utils",
+    srcs = ["dp_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
+        "//third_party/py/tensorflow",
+    ],
+)
+
+py_test(
+    name = "dp_utils_test",
+    srcs = ["dp_utils_test.py"],
+    deps = [
+        ":dp_utils",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
+        "//third_party/py/tensorflow",
+        "//third_party/py/tensorflow_privacy/privacy",
+    ],
+)
