@@ -422,6 +422,51 @@ class ComputationConstructionUtilsTest(parameterized.TestCase):
     )
 
 
+class CreateComputationAppendingTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_comp1(self):
+    comp2 = computation_building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_computation_appending(None, comp2)
+
+  def test_raises_type_error_with_none_comp2(self):
+    value = computation_building_blocks.Data('x', tf.int32)
+    comp1 = computation_building_blocks.Tuple([value, value])
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_computation_appending(comp1, None)
+
+  def test_raises_type_error_with_comp1_bad_type(self):
+    comp1 = computation_building_blocks.Data('x', tf.int32)
+    comp2 = computation_building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_computation_appending(comp1, comp2)
+
+  def test_returns_comp_unnamed(self):
+    value = computation_building_blocks.Data('x', tf.int32)
+    comp1 = computation_building_blocks.Tuple([value, value])
+    comp2 = computation_building_blocks.Data('y', tf.int32)
+    comp = computation_constructing_utils.create_computation_appending(
+        comp1, comp2)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let comps=<<x,x>,y> in <comps[0][0],comps[0][1],comps[1]>)')
+    self.assertEqual(str(comp.type_signature), '<int32,int32,int32>')
+
+  def test_returns_comp_named(self):
+    value = computation_building_blocks.Data('x', tf.int32)
+    comp1 = computation_building_blocks.Tuple((
+        ('a', value),
+        ('b', value),
+    ))
+    comp2 = computation_building_blocks.Data('y', tf.int32)
+    comp = computation_constructing_utils.create_computation_appending(
+        comp1, ('c', comp2))
+    self.assertEqual(
+        comp.tff_repr,
+        '(let comps=<<a=x,b=x>,y> in <a=comps[0][0],b=comps[0][1],c=comps[1]>)')
+    self.assertEqual(str(comp.type_signature), '<a=int32,b=int32,c=int32>')
+
+
 class CreateFederatedAggregateTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
