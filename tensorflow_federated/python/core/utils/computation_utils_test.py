@@ -154,5 +154,84 @@ class ComputationUtilsTest(absltest.TestCase):
           initialize_fn=initialize, next_fn=add_bad_multi_result)
 
 
+def broadcast_initialize_fn():
+  return {'call_count': 0}
+
+
+def broadcast_next_fn(state, value):
+
+  @tff.tf_computation(tf.int32)
+  def add_one(value):
+    return value + 1
+
+  return {
+      'call_count': tff.federated_apply(add_one, state.call_count),
+  }, tff.federated_broadcast(value)
+
+
+class StatefulBroadcastFnTest(absltest.TestCase):
+
+  def test_construct_with_default_weight(self):
+
+    @tff.federated_computation(
+        tff.FederatedType(tf.float32, tff.SERVER, all_equal=True))
+    def federated_broadcast_test(values):
+      broadcast_fn = computation_utils.StatefulBroadcastFn(
+          initialize_fn=broadcast_initialize_fn, next_fn=broadcast_next_fn)
+      state = tff.federated_value(broadcast_fn.initialize(), tff.SERVER)
+      return broadcast_fn(state, values)
+
+    state, value = federated_broadcast_test(1.0)
+    self.assertAlmostEqual(value, 1.0)
+    self.assertDictEqual(state._asdict(), {'call_count': 1})
+
+
+def agg_initialize_fn():
+  return {'call_count': 0}
+
+
+def agg_next_fn(state, value, weight):
+
+  @tff.tf_computation(tf.int32)
+  def add_one(value):
+    return value + 1
+
+  return {
+      'call_count': tff.federated_apply(add_one, state.call_count),
+  }, tff.federated_mean(value, weight)
+
+
+class StatefulAggregateFnTest(absltest.TestCase):
+
+  def test_construct_with_default_weight(self):
+
+    @tff.federated_computation(
+        tff.FederatedType(tf.float32, tff.CLIENTS, all_equal=False))
+    def federated_aggregate_test(values):
+      aggregate_fn = computation_utils.StatefulAggregateFn(
+          initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
+      state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
+      return aggregate_fn(state, values)
+
+    state, mean = federated_aggregate_test([1.0, 2.0, 3.0])
+    self.assertAlmostEqual(mean, 2.0)  # (1 + 2 + 3) / (1 + 1 + 1)
+    self.assertDictEqual(state._asdict(), {'call_count': 1})
+
+  def test_construct_with_explicit_weights(self):
+
+    @tff.federated_computation(
+        tff.FederatedType(tf.float32, tff.CLIENTS, all_equal=False),
+        tff.FederatedType(tf.float32, tff.CLIENTS, all_equal=False))
+    def federated_aggregate_test(values, weights):
+      aggregate_fn = computation_utils.StatefulAggregateFn(
+          initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
+      state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
+      return aggregate_fn(state, values, weights)
+
+    state, mean = federated_aggregate_test([1.0, 2.0, 3.0], [4.0, 1.0, 1.0])
+    self.assertAlmostEqual(mean, 1.5)  # (1*4 + 2*1 + 3*1) / (4 + 1 + 1)
+    self.assertDictEqual(state._asdict(), {'call_count': 1})
+
+
 if __name__ == '__main__':
   absltest.main()
