@@ -870,10 +870,18 @@ def fetch_value_in_session(sess, value):
     return elements
   else:
     flattened_value = anonymous_tuple.flatten(value)
-    for v in flattened_value:
-      if not tf.is_tensor(v):
+    dataset_results = {}
+    flat_tensors = []
+    for idx, v in enumerate(flattened_value):
+      if isinstance(v, DATASET_REPRESENTATION_TYPES):
+        dataset_results[idx] = fetch_value_in_session(sess, v)
+      elif tf.is_tensor(v):
+        flat_tensors.append(v)
+      else:
         raise ValueError('Unsupported value type {}.'.format(str(v)))
-    flattened_results = sess.run(flattened_value)
+    flat_computed_tensors = sess.run(flat_tensors)
+    flattened_results = _interleave_dataset_results_and_tensors(
+        dataset_results, flat_computed_tensors)
 
     def _to_unicode(v):
       if six.PY3 and isinstance(v, bytes):
@@ -883,3 +891,13 @@ def fetch_value_in_session(sess, value):
     if tf.is_tensor(value) and value.dtype == tf.string:
       flattened_results = [_to_unicode(result) for result in flattened_results]
     return anonymous_tuple.pack_sequence_as(value, flattened_results)
+
+
+def _interleave_dataset_results_and_tensors(dataset_results, flat_run_tensors):
+  flattened_results = []
+  for idx in range(len(dataset_results) + len(flat_run_tensors)):
+    if dataset_results.get(idx):
+      flattened_results.append(dataset_results[idx])
+    else:
+      flattened_results.append(flat_run_tensors.pop(0))
+  return flattened_results
