@@ -102,10 +102,10 @@ def identity(source):
 
   Args:
     source: A nested structure composed of tensors or variables embedded in
-      containers that are compatible with `tf.nest`, or
-      instances of `anonymous_tuple.AnonymousTuple`. Elements that represent
-      variables have their content extracted prior to identity mapping by first
-      invoking `tf.Variable.read_value`.
+      containers that are compatible with `tf.nest`, or instances of
+      `anonymous_tuple.AnonymousTuple`. Elements that represent variables have
+      their content extracted prior to identity mapping by first invoking
+      `tf.Variable.read_value`.
 
   Returns:
     The result of applying `tf.identity` to read all elements of the `source`
