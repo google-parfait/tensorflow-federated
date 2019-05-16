@@ -500,11 +500,12 @@ def create_federated_map(fn, arg):
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
+  parameter_type = computation_types.FederatedType(arg.type_signature.member,
+                                                   placement_literals.CLIENTS)
   result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                placement_literals.CLIENTS,
-                                                False)
+                                                placement_literals.CLIENTS)
   intrinsic_type = computation_types.FunctionType(
-      (fn.type_signature, arg.type_signature), result_type)
+      (fn.type_signature, parameter_type), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type)
   values = computation_building_blocks.Tuple((fn, arg))
