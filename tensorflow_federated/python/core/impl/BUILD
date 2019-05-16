@@ -625,6 +625,7 @@ py_library(
     srcs = ["transformations.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_constructing_utils",
         ":context_stack_base",
         ":federated_computation_utils",
         ":intrinsic_defs",

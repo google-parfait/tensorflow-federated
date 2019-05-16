@@ -756,10 +756,20 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
         comp.tff_repr,
         'federated_map(<(x -> x),federated_map(<(x -> x),federated_map(<(x -> x),y>)>)>)'
     )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+        'federated_map(<'
+            '(let fn=<'
+                '(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),'
+                '(x -> x)'
+            '> in (arg -> fn[1](fn[0](arg)))),'
+            'y'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -799,29 +809,46 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
     self.assertFalse(modified)
 
 
-class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
+class MergeTupleIntrinsicsTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.replace_tuple_intrinsics_with_intrinsic(None)
+      transformations.merge_tuple_intrinsics(None)
 
   def test_replaces_federated_aggregates(self):
     elements = [_create_dummy_called_federated_aggregate() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>),federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)>'
     )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_aggregate(<<v,v>,<z,z>,(let fn=<(x -> a),(x -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> m),(x -> m)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(r -> r),(r -> r)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))>)'
+        '(let value=federated_aggregate(<'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<v,v> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>),'
+            '<z,z>,'
+            '(let fn=<(x -> a),(x -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let fn=<(x -> m),(x -> m)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let fn=<(r -> r),(r -> r)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))'
+        '>) in <'
+            'federated_apply(<(arg -> arg[0]),value>),'
+            'federated_apply(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature), '<int32@SERVER,int32@SERVER>')
     self.assertTrue(modified)
 
   def test_replaces_federated_maps(self):
@@ -829,17 +856,32 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+        '(let value=federated_map(<'
+            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_federated_maps_with_different_names(self):
@@ -852,17 +894,32 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<federated_map(<(a -> a),b>),federated_map(<(c -> c),d>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(a -> a),(c -> c)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<b,d>>)'
+        '(let value=federated_map(<'
+            '(let fn=<(a -> a),(c -> c)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<b,d> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_federated_maps_with_different_types(self):
@@ -873,17 +930,32 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+        '(let value=federated_map(<'
+            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{float32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_federated_maps_with_named_result(self):
@@ -893,21 +965,36 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
                                                placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
-    elements = [call, call]
+    elements = [call for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+        '(let value=federated_map(<'
+            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{<a=int32,b=int32>}@CLIENTS,{<a=int32,b=int32>}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_federated_maps_with_unbound_reference(self):
@@ -920,17 +1007,32 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<federated_map(<(x -> arg),y>),federated_map(<(x -> arg),y>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> arg),(x -> arg)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>)'
+        '(let value=federated_map(<'
+            '(let fn=<(x -> arg),(x -> arg)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_named_federated_maps(self):
@@ -941,17 +1043,32 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<a=federated_map(<(x -> x),y>),b=federated_map(<(x -> x),y>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<a=(x -> x),b=(x -> x)> in (arg -> <a=fn[0](arg[0]),b=fn[1](arg[1])>)),<a=y,b=y>>)'
+        '(let value=federated_map(<'
+            '(let fn=<a=(x -> x),b=(x -> x)> in (arg -> <a=fn[0](arg[0]),b=fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<a=y,b=y> in federated_zip_at_clients(<a=value[0],b=value[1]>))'
+            '>)'
+        '>) in <'
+            'a=federated_map(<(arg -> arg[0]),value>),'
+            'b=federated_map(<(arg -> arg[1]),value>)'
+        '>)'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<a={int32}@CLIENTS,b={int32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_nested_federated_maps(self):
@@ -960,18 +1077,33 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     block = _create_dummy_block(calls)
     comp = block
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '(let local=x in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
     )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let local=x in federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<y,y>>))'
+        '(let local=x in (let value=federated_map(<'
+            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(arg -> arg),'
+                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_replaces_multiple_federated_maps(self):
@@ -983,18 +1115,45 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     comps = computation_building_blocks.Tuple(comp_elements)
     comp = comps
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
         '<<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>,<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>>'
     )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),<<y,y>,<y,y>>>)'
+        '<'
+            '(let value=federated_map(<'
+                '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>) in <'
+                'federated_map(<(arg -> arg[0]),value>),'
+                'federated_map(<(arg -> arg[1]),value>)'
+            '>),'
+            '(let value=federated_map(<'
+                '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>) in <'
+                'federated_map(<(arg -> arg[0]),value>),'
+                'federated_map(<(arg -> arg[1]),value>)'
+            '>)'
+        '>'
     )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<<{int32}@CLIENTS,{int32}@CLIENTS>,<{int32}@CLIENTS,{int32}@CLIENTS>>')
     self.assertTrue(modified)
 
   def test_replaces_one_federated_map(self):
@@ -1002,14 +1161,22 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(comp.tff_repr, '<federated_map(<(x -> x),y>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> x)> in (arg -> <fn[0](arg[0])>)),<y>>)')
+        '(let value=federated_map(<'
+           '(let fn=<(x -> x)> in (arg -> <fn[0](arg[0])>)),'
+           'federated_map(<(arg -> <arg>),<y>[0]>)'
+        '>) in <federated_map(<(arg -> arg[0]),value>)>)'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '<{int32}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_does_not_replace_different_intrinsics(self):
@@ -1020,8 +1187,7 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
@@ -1029,6 +1195,8 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
         '<federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>),federated_map(<(x -> x),y>)>'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature), '<int32@SERVER,{int32}@CLIENTS>')
     self.assertFalse(modified)
 
   def test_does_not_replace_dummy_intrinsics(self):
@@ -1036,12 +1204,12 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
 
-    transformed_comp, modified = transformations.replace_tuple_intrinsics_with_intrinsic(
-        comp)
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(transformed_comp.tff_repr, '<dummy(x),dummy(x)>')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '<int32,int32>')
     self.assertFalse(modified)
 
 
