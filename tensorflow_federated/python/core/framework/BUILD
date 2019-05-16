@@ -8,5 +8,6 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow_federated/python/core/impl:computation_building_blocks",
+        "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )

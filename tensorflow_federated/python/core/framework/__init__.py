@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.computation_building_blocks import Pl
 from tensorflow_federated.python.core.impl.computation_building_blocks import Reference
 from tensorflow_federated.python.core.impl.computation_building_blocks import Selection
 from tensorflow_federated.python.core.impl.computation_building_blocks import Tuple
+from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 
 # Used by doc generation script.
 _allowed_symbols = [
@@ -41,4 +42,5 @@ _allowed_symbols = [
     "Reference",
     "Selection",
     "Tuple",
+    "is_assignable_from",
 ]
