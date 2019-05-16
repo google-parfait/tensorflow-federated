@@ -720,6 +720,134 @@ class CreateFederatedSumTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
+class CreateFederatedUnzipTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_unzip(None)
+
+  def test_returns_tuple_federated_map_with_empty_value(self):
+    value_type = computation_types.FederatedType([], placements.CLIENTS)
+    value = computation_building_blocks.Data('v', value_type)
+    with self.assertRaises(ValueError):
+      computation_constructing_utils.create_federated_unzip(value)
+
+  def test_returns_tuple_federated_map_with_one_value_unnamed(self):
+    value_type = computation_types.FederatedType((tf.int32,),
+                                                 placements.CLIENTS)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <federated_map(<(arg -> arg[0]),value>)>)')
+    self.assertEqual(str(comp.type_signature), '<{int32}@CLIENTS>')
+
+  def test_returns_tuple_federated_map_with_one_value_named(self):
+    type_signature = computation_types.NamedTupleType((('a', tf.int32),))
+    value_type = computation_types.FederatedType(type_signature,
+                                                 placements.CLIENTS)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <a=federated_map(<(arg -> arg[0]),value>)>)')
+    self.assertEqual(str(comp.type_signature), '<a={int32}@CLIENTS>')
+
+  def test_returns_tuple_federated_map_with_two_values_unnamed(self):
+    value_type = computation_types.FederatedType((tf.int32, tf.int32),
+                                                 placements.CLIENTS)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <federated_map(<(arg -> arg[0]),value>),federated_map(<(arg -> arg[1]),value>)>)'
+    )
+    self.assertEqual(
+        str(comp.type_signature), '<{int32}@CLIENTS,{int32}@CLIENTS>')
+
+  def test_returns_tuple_federated_map_with_two_values_named(self):
+    type_signature = computation_types.NamedTupleType(
+        (('a', tf.int32), ('b', tf.int32)))
+    value_type = computation_types.FederatedType(type_signature,
+                                                 placements.CLIENTS)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <a=federated_map(<(arg -> arg[0]),value>),b=federated_map(<(arg -> arg[1]),value>)>)'
+    )
+    self.assertEqual(
+        str(comp.type_signature), '<a={int32}@CLIENTS,b={int32}@CLIENTS>')
+
+  def test_returns_tuple_federated_map_with_two_values_different_typed(self):
+    value_type = computation_types.FederatedType((tf.int32, tf.bool),
+                                                 placements.CLIENTS)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <federated_map(<(arg -> arg[0]),value>),federated_map(<(arg -> arg[1]),value>)>)'
+    )
+    self.assertEqual(
+        str(comp.type_signature), '<{int32}@CLIENTS,{bool}@CLIENTS>')
+
+  def test_returns_tuple_federated_apply_with_one_value_unnamed(self):
+    value_type = computation_types.FederatedType((tf.int32,), placements.SERVER)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <federated_apply(<(arg -> arg[0]),value>)>)')
+    self.assertEqual(str(comp.type_signature), '<int32@SERVER>')
+
+  def test_returns_tuple_federated_apply_with_one_value_named(self):
+    type_signature = computation_types.NamedTupleType((('a', tf.int32),))
+    value_type = computation_types.FederatedType(type_signature,
+                                                 placements.SERVER)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <a=federated_apply(<(arg -> arg[0]),value>)>)')
+    self.assertEqual(str(comp.type_signature), '<a=int32@SERVER>')
+
+  def test_returns_tuple_federated_apply_with_two_values_unnamed(self):
+    value_type = computation_types.FederatedType((tf.int32, tf.int32),
+                                                 placements.SERVER)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <federated_apply(<(arg -> arg[0]),value>),federated_apply(<(arg -> arg[1]),value>)>)'
+    )
+    self.assertEqual(str(comp.type_signature), '<int32@SERVER,int32@SERVER>')
+
+  def test_returns_tuple_federated_apply_with_two_values_named(self):
+    type_signature = computation_types.NamedTupleType(
+        (('a', tf.int32), ('b', tf.int32)))
+    value_type = computation_types.FederatedType(type_signature,
+                                                 placements.SERVER)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <a=federated_apply(<(arg -> arg[0]),value>),b=federated_apply(<(arg -> arg[1]),value>)>)'
+    )
+    self.assertEqual(
+        str(comp.type_signature), '<a=int32@SERVER,b=int32@SERVER>')
+
+  def test_returns_tuple_federated_apply_with_two_values_different_typed(self):
+    value_type = computation_types.FederatedType((tf.int32, tf.bool),
+                                                 placements.SERVER)
+    value = computation_building_blocks.Data('v', value_type)
+    comp = computation_constructing_utils.create_federated_unzip(value)
+    self.assertEqual(
+        comp.tff_repr,
+        '(let value=v in <federated_apply(<(arg -> arg[0]),value>),federated_apply(<(arg -> arg[1]),value>)>)'
+    )
+    self.assertEqual(str(comp.type_signature), '<int32@SERVER,bool@SERVER>')
+
+
 class CreateFederatedValueTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
