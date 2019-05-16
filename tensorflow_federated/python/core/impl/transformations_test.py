@@ -201,8 +201,7 @@ def _create_lambda_to_dummy_cast(parameter_type, result_type):
 
 
 def _create_dummy_called_federated_aggregate():
-  value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+  value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
   value = computation_building_blocks.Data('v', value_type)
   zero = computation_building_blocks.Data('z', tf.int32)
   accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
@@ -224,8 +223,7 @@ def _create_dummy_called_federated_apply(parameter_name='x',
                                          parameter_type=tf.int32,
                                          argument_name='y'):
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.SERVER,
-                                             True)
+  arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
   arg = computation_building_blocks.Data(argument_name, arg_type)
   return computation_constructing_utils.create_federated_apply(fn, arg)
 
@@ -234,8 +232,7 @@ def _create_dummy_called_federated_map(parameter_name='x',
                                        parameter_type=tf.int32,
                                        argument_name='y'):
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS,
-                                             False)
+  arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
   arg = computation_building_blocks.Data(argument_name, arg_type)
   return computation_constructing_utils.create_federated_map(fn, arg)
 
@@ -547,7 +544,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
-                                               placements.CLIENTS, False)
+                                               placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
@@ -576,8 +573,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_removes_chained_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
@@ -625,8 +621,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_replaces_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
@@ -645,8 +640,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_replaces_federated_maps_with_different_names(self):
     fn_1 = _create_lambda_to_identity('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('b', arg_type)
     fn_2 = _create_lambda_to_identity('c', tf.int32)
     call = _create_chained_called_federated_map([fn_1, fn_2], arg)
@@ -666,8 +660,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_replaces_federated_maps_with_different_types(self):
     fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     fn_2 = _create_lambda_to_identity('x', tf.float32)
     call = _create_chained_called_federated_map([fn_1, fn_2], arg)
@@ -689,7 +682,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
-                                               placements.CLIENTS, False)
+                                               placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
@@ -709,8 +702,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
   def test_replaces_federated_maps_with_unbound_references(self):
     ref = computation_building_blocks.Reference('arg', tf.int32)
     fn = computation_building_blocks.Lambda('x', tf.int32, ref)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map([fn, fn], arg)
     comp = call
@@ -730,8 +722,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_replaces_nested_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map([fn, fn], arg)
     block = _create_dummy_block(call)
@@ -753,8 +744,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_replaces_multiple_chained_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = _create_chained_called_federated_map([fn, fn, fn], arg)
     comp = call
@@ -775,8 +765,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_does_not_replace_one_federated_map(self):
     fn = _create_lambda_to_identity('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
@@ -791,8 +780,7 @@ class ReplaceChainedFederatedMapsWithFederatedMapTest(absltest.TestCase):
 
   def test_does_not_replace_separated_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call_1 = computation_constructing_utils.create_federated_map(fn, arg)
     block = _create_dummy_block(call_1)
@@ -902,7 +890,7 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
-                                               placements.CLIENTS, False)
+                                               placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     elements = [call, call]
@@ -925,8 +913,7 @@ class ReplaceTupleIntrinsicsWithIntrinsicTest(absltest.TestCase):
   def test_replaces_federated_maps_with_unbound_reference(self):
     ref = computation_building_blocks.Reference('arg', tf.int32)
     fn = computation_building_blocks.Lambda('x', tf.int32, ref)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     elements = [call, call]
