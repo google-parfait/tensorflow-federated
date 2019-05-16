@@ -113,7 +113,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
     ],
 )
 
@@ -774,13 +773,10 @@ py_library(
     srcs = ["value_utils.py"],
     deps = [
         ":computation_building_blocks",
-        ":intrinsic_defs",
-        ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:value_base",
     ],
 )
@@ -797,8 +793,6 @@ py_test(
         ":transformations",
         ":value_impl",
         ":value_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:placements",
     ],
 )
