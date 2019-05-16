@@ -555,13 +555,12 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
           kwargs[name] = element_value
         return fn(*args, **kwargs)
 
-      # Deliberate wrapping to isolate the caller from the underlying function
-      # and the interceptor '_call' again, so those cannot be tampered with,
-      # and to force any parameter bindings to be resolved now.
-      # pylint: disable=unnecessary-lambda,undefined-variable
-      return (lambda fn, at, kt: lambda arg: _unpack_and_call(fn, at, kt, arg))(
-          fn, arg_types, kwarg_types)
-      # pylint: enable=unnecessary-lambda,undefined-variable
+      # TODO(b/132888123): Consider other options to avoid possible bugs here.
+      try:
+        (fn, arg_types, kwarg_types)
+      except NameError:
+        raise AssertionError('Args to be bound must be in scope.')
+      return lambda arg: _unpack_and_call(fn, arg_types, kwarg_types, arg)
     else:
       # An interceptor function that verifies the actual parameter before it
       # forwards the call as a last-minute check.
@@ -573,13 +572,12 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
         if type_utils.is_anon_tuple_with_py_container(arg, parameter_type):
           arg = type_utils.convert_to_py_container(arg, parameter_type)
         return fn(arg)
-
-      # Deliberate wrapping to isolate the caller from the underlying function
-      # and the interceptor '_call' again, so those cannot be tampered with,
-      # and to force any parameter bindings to be resolved now.
-      # pylint: disable=unnecessary-lambda,undefined-variable
-      return (lambda fn, pt: lambda arg: _call(fn, pt, arg))(fn, parameter_type)
-      # pylint: enable=unnecessary-lambda,undefined-variable
+      # TODO(b/132888123): Consider other options to avoid possible bugs here.
+      try:
+        (fn, parameter_type)
+      except NameError:
+        raise AssertionError('Args to be bound must be in scope.')
+      return lambda arg: _call(fn, parameter_type, arg)
 
 
 class ConcreteFunction(computation_base.Computation):
