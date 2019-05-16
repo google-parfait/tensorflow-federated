@@ -403,9 +403,9 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   ), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_AGGREGATE.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple(
+  values = computation_building_blocks.Tuple(
       (value, zero, accumulate, merge, report))
-  return computation_building_blocks.Call(intrinsic, tup)
+  return computation_building_blocks.Call(intrinsic, values)
 
 
 def create_federated_apply(fn, arg):
@@ -439,8 +439,8 @@ def create_federated_apply(fn, arg):
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_APPLY.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((fn, arg))
-  return computation_building_blocks.Call(intrinsic, tup)
+  values = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, values)
 
 
 def create_federated_broadcast(value):
@@ -533,8 +533,8 @@ def create_federated_map(fn, arg):
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((fn, arg))
-  return computation_building_blocks.Call(intrinsic, tup)
+  values = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, values)
 
 
 def create_federated_mean(value, weight):
@@ -570,8 +570,8 @@ def create_federated_mean(value, weight):
         (value.type_signature, weight.type_signature), result_type)
     intrinsic = computation_building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, intrinsic_type)
-    tup = computation_building_blocks.Tuple((value, weight))
-    return computation_building_blocks.Call(intrinsic, tup)
+    values = computation_building_blocks.Tuple((value, weight))
+    return computation_building_blocks.Call(intrinsic, values)
   else:
     intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                     result_type)
@@ -618,8 +618,8 @@ def create_federated_reduce(value, zero, op):
   ), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_REDUCE.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((value, zero, op))
-  return computation_building_blocks.Call(intrinsic, tup)
+  values = computation_building_blocks.Tuple((value, zero, op))
+  return computation_building_blocks.Call(intrinsic, values)
 
 
 def create_federated_sum(value):
@@ -684,6 +684,229 @@ def create_federated_value(value, placement):
   return computation_building_blocks.Call(intrinsic, value)
 
 
+def create_federated_zip(value):
+  r"""Creates a called federated zip.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  This function returns a federated tuple given a `value` with a tuple of
+  federated values type signature.
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` with a
+      `type_signature` of type `computation_types.NamedTupleType` containing at
+      least one element.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+    ValueError: If `value` does not contain any elements.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  length = len(named_type_signatures)
+  if length == 0:
+    raise ValueError('federated_zip is only supported on non-empty tuples.')
+  first_name, first_type_signature = named_type_signatures[0]
+  if first_type_signature.placement == placement_literals.CLIENTS:
+    map_fn = create_federated_map
+  elif first_type_signature.placement == placement_literals.SERVER:
+    map_fn = create_federated_apply
+  else:
+    raise TypeError('Unsupported placement {}.'.format(
+        first_type_signature.placement))
+  if length == 1:
+    ref = computation_building_blocks.Reference('arg',
+                                                first_type_signature.member)
+    values = computation_building_blocks.Tuple(((first_name, ref),))
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature,
+                                            values)
+    sel = computation_building_blocks.Selection(value, index=0)
+    return map_fn(fn, sel)
+  else:
+    zipped_args = _create_chain_zipped_values(value)
+    append_fn = _create_fn_to_append_chain_zipped_values(value)
+    return map_fn(append_fn, zipped_args)
+
+
+def _create_chain_zipped_values(value):
+  r"""Creates a chain of called federated zip with two values.
+
+                Block--------
+               /             \
+  [value=Tuple]               Call
+         |                   /    \
+         [Comp1,    Intrinsic      Tuple
+          Comp2,                   |
+          ...]                     [Call,  Sel(n)]
+                                   /    \        \
+                          Intrinsic      Tuple    Ref(value)
+                                         |
+                                         [Sel(0),       Sel(1)]
+                                                \             \
+                                                 Ref(value)    Ref(value)
+
+  NOTE: This function is intended to be used in conjunction with
+  `_create_fn_to_append_chain_zipped_values` and will drop the tuple names. The
+  names will be added back to the resulting computation when the zipped values
+  are mapped to a function that flattens the chain.
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` with a
+      `type_signature` of type `computation_types.NamedTupleType` containing at
+      least two elements.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+    ValueError: If `value` does not contain at least two elements.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  length = len(named_type_signatures)
+  if length < 2:
+    raise ValueError(
+        'Expected a value with at least two elements, received {} elements.'
+        .format(named_type_signatures))
+  first_name, _ = named_type_signatures[0]
+  ref = computation_building_blocks.Reference('value', value.type_signature)
+  symbols = ((ref.name, value),)
+  sel_0 = computation_building_blocks.Selection(ref, index=0)
+  result = (first_name, sel_0)
+  for i in range(1, length):
+    name, _ = named_type_signatures[i]
+    sel = computation_building_blocks.Selection(ref, index=i)
+    values = computation_building_blocks.Tuple((result, (name, sel)))
+    result = _create_zip_two_values(values)
+  return computation_building_blocks.Block(symbols, result)
+
+
+def _create_zip_two_values(value):
+  r"""Creates a called federated zip with two values.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp1, Comp2]
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` with a
+      `type_signature` of type `computation_types.NamedTupleType` containing
+      exactly two elements.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+    ValueError: If `value` does not contain exactly two elements.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  length = len(named_type_signatures)
+  if length != 2:
+    raise ValueError(
+        'Expected a value with exactly two elements, received {} elements.'
+        .format(named_type_signatures))
+  placement = value[0].type_signature.placement
+  if placement is placement_literals.CLIENTS:
+    uri = intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri
+    all_equal = False
+  elif placement is placement_literals.SERVER:
+    uri = intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri
+    all_equal = True
+  else:
+    raise TypeError('Unsupported placement {}.'.format(placement))
+  elements = []
+  for name, type_signature in named_type_signatures:
+    federated_type = computation_types.FederatedType(type_signature.member,
+                                                     placement, all_equal)
+    elements.append((name, federated_type))
+  parameter_type = computation_types.NamedTupleType(elements)
+  result_type = computation_types.FederatedType(
+      [(n, e.member) for n, e in named_type_signatures], placement, all_equal)
+  intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
+  intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
+  return computation_building_blocks.Call(intrinsic, value)
+
+
+def _create_fn_to_append_chain_zipped_values(value):
+  r"""Creates a function to append a chain of zipped values.
+
+  Lambda(arg3)
+            \
+             append([Call,    Sel(1)])
+                    /    \            \
+        Lambda(arg2)      Sel(0)       Ref(arg3)
+                  \             \
+                   \             Ref(arg3)
+                    \
+                     append([Call,    Sel(1)])
+                            /    \            \
+                Lambda(arg1)      Sel(0)       Ref(arg2)
+                            \           \
+                             \           Ref(arg2)
+                              \
+                               Ref(arg1)
+
+  NOTE: This function is intended to be used in conjunction with
+  `_create_chain_zipped_values` add will add back the names that were dropped
+  when zipping the values.
+
+  Args:
+    value: A `computation_building_blocks.ComputationBuildingBlock` with a
+      `type_signature` of type `computation_types.NamedTupleType` containing at
+      least two elements.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value,
+                          computation_building_blocks.ComputationBuildingBlock)
+  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  length = len(named_type_signatures)
+  if length < 2:
+    raise ValueError(
+        'Expected a value with at least two elements, received {} elements.'
+        .format(named_type_signatures))
+  first_name, first_type_signature = named_type_signatures[0]
+  second_name, second_type_signature = named_type_signatures[1]
+  ref_type = computation_types.NamedTupleType((
+      (first_name, first_type_signature.member),
+      (second_name, second_type_signature.member),
+  ))
+  ref = computation_building_blocks.Reference('arg', ref_type)
+  fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+  for name, type_signature in named_type_signatures[2:]:
+    ref_type = computation_types.NamedTupleType((
+        fn.type_signature.parameter,
+        (name, type_signature.member),
+    ))
+    ref = computation_building_blocks.Reference('arg', ref_type)
+    sel_0 = computation_building_blocks.Selection(ref, index=0)
+    call = computation_building_blocks.Call(fn, sel_0)
+    sel_1 = computation_building_blocks.Selection(ref, index=1)
+    result = create_computation_appending(call, (name, sel_1))
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature,
+                                            result)
+  return fn
+
+
 def create_sequence_map(fn, arg):
   r"""Creates a called sequence map.
 
@@ -714,8 +937,8 @@ def create_sequence_map(fn, arg):
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((fn, arg))
-  return computation_building_blocks.Call(intrinsic, tup)
+  values = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, values)
 
 
 def create_sequence_reduce(value, zero, op):
@@ -754,8 +977,8 @@ def create_sequence_reduce(value, zero, op):
   ), op.type_signature.result)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.SEQUENCE_REDUCE.uri, intrinsic_type)
-  tup = computation_building_blocks.Tuple((value, zero, op))
-  return computation_building_blocks.Call(intrinsic, tup)
+  values = computation_building_blocks.Tuple((value, zero, op))
+  return computation_building_blocks.Call(intrinsic, values)
 
 
 def create_sequence_sum(value):

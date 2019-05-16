@@ -403,62 +403,20 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(value, value_base.Value)
     py_typecheck.check_type(value.type_signature,
                             computation_types.NamedTupleType)
-    elements_to_zip = anonymous_tuple.to_elements(value.type_signature)
-    num_elements = len(elements_to_zip)
-    py_typecheck.check_type(elements_to_zip[0][1],
-                            computation_types.FederatedType)
-    output_placement = elements_to_zip[0][1].placement
-    zip_apply_fn = {
-        placements.CLIENTS: self.federated_map,
-        placements.SERVER: self.federated_apply
-    }
-    if output_placement not in zip_apply_fn:
-      raise TypeError(
-          'federated_zip only supports components with CLIENTS or '
-          'SERVER placement, [{}] is unsupported'.format(output_placement))
-    if num_elements == 0:
+    named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+    if not named_type_signatures:
       raise ValueError('federated_zip is only supported on nonempty tuples.')
-    if num_elements == 1:
-      input_ref = computation_building_blocks.Reference(
-          'value_in', elements_to_zip[0][1].member)
-      output_tuple = computation_building_blocks.Tuple([(elements_to_zip[0][0],
-                                                         input_ref)])
-      lam = computation_building_blocks.Lambda('value_in',
-                                               input_ref.type_signature,
-                                               output_tuple)
-      return zip_apply_fn[output_placement](lam, value[0])
-    for _, elem in elements_to_zip:
-      py_typecheck.check_type(elem, computation_types.FederatedType)
-      if elem.placement is not output_placement:
+    _, first_type_signature = named_type_signatures[0]
+    for _, type_signature in named_type_signatures:
+      py_typecheck.check_type(type_signature, computation_types.FederatedType)
+      if type_signature.placement is not first_type_signature.placement:
         raise TypeError(
             'The elements of the named tuple to zip must be placed at {}.'
-            .format(output_placement))
-    named_comps = [(elements_to_zip[k][0],
-                    value_impl.ValueImpl.get_comp(value[k]))
-                   for k in range(len(value))]
-    tuple_to_zip = anonymous_tuple.AnonymousTuple(
-        [named_comps[0], named_comps[1]])
-    zipped = value_utils.zip_two_tuple(
-        value_impl.to_value(tuple_to_zip, None, self._context_stack),
-        self._context_stack)
-    inputs = value_impl.to_value(
-        computation_building_blocks.Reference('inputs',
-                                              zipped.type_signature.member),
-        None, self._context_stack)
-    flatten_fn = value_impl.to_value(
-        computation_building_blocks.Lambda(
-            'inputs', zipped.type_signature.member,
-            value_impl.ValueImpl.get_comp(inputs)), None, self._context_stack)
-    for k in range(2, num_elements):
-      zipped = value_utils.zip_two_tuple(
-          value_impl.to_value(
-              computation_building_blocks.Tuple(
-                  [value_impl.ValueImpl.get_comp(zipped), named_comps[k]]),
-              None, self._context_stack), self._context_stack)
-      last_zipped = (named_comps[k][0], named_comps[k][1].type_signature.member)
-      flatten_fn = value_utils.flatten_first_index(flatten_fn, last_zipped,
-                                                   self._context_stack)
-    return zip_apply_fn[output_placement](flatten_fn, zipped)
+            .format(first_type_signature.placement))
+
+    value = value_impl.ValueImpl.get_comp(value)
+    comp = computation_constructing_utils.create_federated_zip(value)
+    return value_impl.ValueImpl(comp, self._context_stack)
 
   def sequence_map(self, fn, arg):
     """Implements `sequence_map` as defined in `api/intrinsics.py`.
