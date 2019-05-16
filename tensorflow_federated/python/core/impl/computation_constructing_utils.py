@@ -54,7 +54,7 @@ def construct_federated_getitem_call(arg, idx):
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
   getitem_comp = construct_federated_getitem_comp(arg, idx)
-  return construct_map_or_apply(getitem_comp, arg)
+  return create_federated_map_or_apply(getitem_comp, arg)
 
 
 def construct_federated_getattr_call(arg, name):
@@ -81,7 +81,7 @@ def construct_federated_getattr_call(arg, name):
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
   getattr_comp = construct_federated_getattr_comp(arg, name)
-  return construct_map_or_apply(getattr_comp, arg)
+  return create_federated_map_or_apply(getattr_comp, arg)
 
 
 def construct_federated_setattr_call(federated_comp, name, value_comp):
@@ -124,7 +124,7 @@ def construct_federated_setattr_call(federated_comp, name, value_comp):
   named_tuple_type_signature = federated_comp.type_signature.member
   setattr_lambda = construct_named_tuple_setattr_lambda(
       named_tuple_type_signature, name, value_comp)
-  return construct_map_or_apply(setattr_lambda, federated_comp)
+  return create_federated_map_or_apply(setattr_lambda, federated_comp)
 
 
 def construct_named_tuple_setattr_lambda(named_tuple_signature, name,
@@ -193,30 +193,6 @@ def construct_named_tuple_setattr_lambda(named_tuple_signature, name,
                                                         return_tuple)
   symbols = ((value_comp_placeholder.name, value_comp),)
   return computation_building_blocks.Block(symbols, lambda_to_return)
-
-
-def construct_map_or_apply(fn, arg):
-  """Injects intrinsic to allow application of `fn` to federated `arg`.
-
-  Args:
-    fn: An instance of `computation_building_blocks.ComputationBuildingBlock` of
-      functional type to be wrapped with intrinsic in order to call on `arg`.
-    arg: `computation_building_blocks.ComputationBuildingBlock` instance of
-      federated type for which to construct intrinsic in order to call `fn` on
-      `arg`. `member` of `type_signature` of `arg` must be assignable to
-      `parameter` of `type_signature` of `fn`.
-
-  Returns:
-    Returns a `computation_building_blocks.Intrinsic` which can call
-    `fn` on `arg`.
-  """
-  if arg.type_signature.placement is placement_literals.CLIENTS:
-    return create_federated_map(fn, arg)
-  elif arg.type_signature.placement is placement_literals.SERVER:
-    return create_federated_apply(fn, arg)
-  else:
-    raise TypeError('Unsupported placement {}.'.format(
-        arg.type_signature.placement))
 
 
 def construct_federated_getattr_comp(comp, name):
@@ -535,6 +511,40 @@ def create_federated_map(fn, arg):
   return computation_building_blocks.Call(intrinsic, values)
 
 
+def create_federated_map_or_apply(fn, arg):
+  r"""Creates a called federated map or apply depending on `arg`s placement.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  Args:
+    fn: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      function.
+    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      argument.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if arg.type_signature.placement is placement_literals.CLIENTS:
+    return create_federated_map(fn, arg)
+  elif arg.type_signature.placement is placement_literals.SERVER:
+    return create_federated_apply(fn, arg)
+  else:
+    raise TypeError('Unsupported placement {}.'.format(
+        arg.type_signature.placement))
+
+
 def create_federated_mean(value, weight):
   r"""Creates a called federated mean.
 
@@ -695,7 +705,7 @@ def create_federated_unzip(value):
     sel = computation_building_blocks.Selection(fn_ref, index=index)
     fn = computation_building_blocks.Lambda(fn_ref.name, fn_ref.type_signature,
                                             sel)
-    intrinsic = construct_map_or_apply(fn, value_ref)
+    intrinsic = create_federated_map_or_apply(fn, value_ref)
     elements.append((name, intrinsic))
   result = computation_building_blocks.Tuple(elements)
   symbols = ((value_ref.name, value),)
