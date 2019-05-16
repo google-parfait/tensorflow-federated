@@ -105,8 +105,7 @@ class ConstructFederatedGetattrCallTest(parameterized.TestCase):
     federated_comp_named = computation_building_blocks.Reference(
         'test',
         computation_types.FederatedType([('a', tf.int32),
-                                         ('b', tf.bool), tf.int32], placement,
-                                        True))
+                                         ('b', tf.bool), tf.int32], placement))
     self.assertEqual(
         str(federated_comp_named.type_signature.member),
         '<a=int32,b=bool,int32>')
@@ -645,8 +644,7 @@ class CreateFederatedMapOrApplyTest(absltest.TestCase):
   def test_returns_federated_apply(self):
     ref = computation_building_blocks.Reference('x', tf.int32)
     fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER,
-                                               True)
+    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_map_or_apply(fn, arg)
     self.assertEqual(comp.tff_repr, 'federated_apply(<(x -> x),y>)')
@@ -655,8 +653,7 @@ class CreateFederatedMapOrApplyTest(absltest.TestCase):
   def test_returns_federated_map(self):
     ref = computation_building_blocks.Reference('x', tf.int32)
     fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                               False)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_map_or_apply(fn, arg)
     self.assertEqual(comp.tff_repr, 'federated_map(<(x -> x),y>)')
