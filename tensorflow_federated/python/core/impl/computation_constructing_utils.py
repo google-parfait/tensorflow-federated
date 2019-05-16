@@ -367,7 +367,7 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   py_typecheck.check_type(report,
                           computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(report.type_signature.result,
-                                                placement_literals.SERVER, True)
+                                                placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType((
       value.type_signature,
       zero.type_signature,
@@ -408,7 +408,7 @@ def create_federated_apply(fn, arg):
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                placement_literals.SERVER, True)
+                                                placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
@@ -438,7 +438,7 @@ def create_federated_broadcast(value):
                           computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
                                                 placement_literals.CLIENTS,
-                                                True)
+                                                all_equal=True)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = computation_building_blocks.Intrinsic(
@@ -467,7 +467,7 @@ def create_federated_collect(value):
                           computation_building_blocks.ComputationBuildingBlock)
   type_signature = computation_types.SequenceType(value.type_signature.member)
   result_type = computation_types.FederatedType(type_signature,
-                                                placement_literals.SERVER, True)
+                                                placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = computation_building_blocks.Intrinsic(
@@ -573,7 +573,7 @@ def create_federated_mean(value, weight):
     py_typecheck.check_type(
         weight, computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.SERVER, True)
+                                                placement_literals.SERVER)
   if weight is not None:
     intrinsic_type = computation_types.FunctionType(
         (value.type_signature, weight.type_signature), result_type)
@@ -619,7 +619,7 @@ def create_federated_reduce(value, zero, op):
   py_typecheck.check_type(op,
                           computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(op.type_signature.result,
-                                                placement_literals.SERVER, True)
+                                                placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType((
       value.type_signature,
       zero.type_signature,
@@ -651,7 +651,7 @@ def create_federated_sum(value):
   py_typecheck.check_type(value,
                           computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.SERVER, True)
+                                                placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = computation_building_blocks.Intrinsic(
@@ -740,7 +740,7 @@ def create_federated_value(value, placement):
   else:
     raise TypeError('Unsupported placement {}.'.format(placement))
   result_type = computation_types.FederatedType(value.type_signature, placement,
-                                                True)
+                                                all_equal=True)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
