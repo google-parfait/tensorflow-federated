@@ -83,6 +83,8 @@ class CompilerPipeline(object):
       comp, _ = transformations.replace_intrinsic_with_callable(
           comp, uri, body, self._context_stack)
 
+    # Replaces called lambdas with LET constructs with a single local symbol.
+    comp, _ = transformations.replace_called_lambda_with_block(comp)
     # TODO(b/113123410): Add more transformations to simplify and optimize the
     # structure, e.g., such as:
     # * removing unnecessary lambdas,
