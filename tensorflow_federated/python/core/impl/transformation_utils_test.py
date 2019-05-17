@@ -1614,5 +1614,73 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(references, constructed_tree)
 
 
+class HasUniqueNamesTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      transformation_utils.has_unique_names(None)
+
+  def test_returns_true_on_single_lambda(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
+    self.assertTrue(transformation_utils.has_unique_names(lambda_1))
+
+  def test_returns_false_on_nested_lambdas_with_same_variable_name(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
+    lambda_2 = computation_building_blocks.Lambda('x', tf.int32, lambda_1)
+    self.assertFalse(transformation_utils.has_unique_names(lambda_2))
+
+  def test_returns_true_on_nested_lambdas_with_different_variable_name(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
+    lambda_2 = computation_building_blocks.Lambda('y', tf.int32, lambda_1)
+    self.assertTrue(transformation_utils.has_unique_names(lambda_2))
+
+  def test_returns_true_on_single_block(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    single_block = computation_building_blocks.Block([('x', x_data)], x_data)
+    self.assertTrue(transformation_utils.has_unique_names(single_block))
+
+  def test_returns_false_on_sequential_binding_of_same_variable_in_block(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    block = computation_building_blocks.Block([('x', x_data), ('x', x_data)],
+                                              x_data)
+    self.assertFalse(transformation_utils.has_unique_names(block))
+
+  def test_returns_false_on_sequential_binding_of_different_variable_in_block(
+      self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    block = computation_building_blocks.Block([('x', x_data), ('y', x_data)],
+                                              x_data)
+    self.assertTrue(transformation_utils.has_unique_names(block))
+
+  def test_returns_false_block_rebinding_of_lambda_variable(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    single_block = computation_building_blocks.Block([('x', x_data)], x_data)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, single_block)
+    self.assertFalse(transformation_utils.has_unique_names(lambda_1))
+
+  def test_returns_true_block_binding_of_new_variable(self):
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    single_block = computation_building_blocks.Block([('x', x_data)], x_data)
+    lambda_1 = computation_building_blocks.Lambda('y', tf.int32, single_block)
+    self.assertTrue(transformation_utils.has_unique_names(lambda_1))
+
+  def test_returns_false_lambda_rebinding_of_block_variable(self):
+    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, x_ref)
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    single_block = computation_building_blocks.Block([('x', x_data)], lambda_1)
+    self.assertFalse(transformation_utils.has_unique_names(single_block))
+
+  def test_returns_true_lambda_binding_of_new_variable(self):
+    y_ref = computation_building_blocks.Reference('y', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('y', tf.int32, y_ref)
+    x_data = computation_building_blocks.Data('x', tf.int32)
+    single_block = computation_building_blocks.Block([('x', x_data)], lambda_1)
+    self.assertTrue(transformation_utils.has_unique_names(single_block))
+
+
 if __name__ == '__main__':
   absltest.main()

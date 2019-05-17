@@ -723,6 +723,54 @@ def uniquify_references(comp):
   return new_comp
 
 
+def inline_block_locals(comp):
+  """Inlines all block local variables.
+
+  Since this transform is not necessarily safe, it should only be calles if
+  all references under `comp` have unique names.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      whose blocks we wish to inline.
+
+  Returns:
+    A possibly different `computation_building_blocks.ComputationBuildingBlock`
+    containing the same logic as `comp`, but with all blocks inlined.
+
+  Raises:
+    ValueError: If `comp` has variables with non-unique names.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  if not transformation_utils.has_unique_names(comp):
+    raise ValueError('`inline_block_locals`  should only be called after we '
+                     'have uniquified all '
+                     '`computation_building_blocks.Reference` names, since we '
+                     'may be moving computations with unbound references '
+                     'under constructs  which bind those references.')
+
+  def _transform(comp, symbol_tree):
+    """Inline transform function."""
+    if isinstance(comp, computation_building_blocks.Reference):
+      value_to_use = symbol_tree.get_payload_with_name(comp.name).value
+      if value_to_use is not None:
+        # This identifies a variable bound by a Block as opposed to a Lambda.
+        return value_to_use
+      else:
+        return comp
+    elif isinstance(comp, computation_building_blocks.Block):
+      # All locals have been inlined, so the block is equivalent to its result.
+      return comp.result
+    return comp
+
+  empty_tree = transformation_utils.SymbolTree(
+      transformation_utils.ReferenceCounter)
+
+  return transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, _transform, empty_tree)
+
+
 def _is_called_intrinsic(comp, uri):
   """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
 
