@@ -100,9 +100,6 @@ message Computation {
     // signatures that cannot contain FederatedTypes, as they execute locally.
     // In order to construct a TensorFlow computation that maps a federated
     // value pointwise, one must use a federated map intrinsic (to be defined).
-    //
-    // TODO(b/113112455): Start defining the standard intrinsics and reference
-    // them here and elsewhere as appropriate.
     TensorFlow tensorflow = 2;
 
     // A built-in federated communication operator such as broadcast, federated
