@@ -954,3 +954,39 @@ def get_count_of_references_to_variables(comp):
   transform_postorder_with_symbol_bindings(comp, transform_fn,
                                            reference_counter)
   return reference_counter
+
+
+def has_unique_names(comp):
+  """Checks that each variable of `comp` is bound at most once.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    `True` if and only if every variable bound under `comp` uses a unique name.
+    Returns `False` if this condition fails.
+  """
+  names = set()
+  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
+  unique = [True]
+
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def _transform(comp):
+    """Binds any names to external `names` set."""
+    if unique[0]:
+      if isinstance(comp, computation_building_blocks.Block):
+        for name, _ in comp.locals:
+          if name in names:
+            unique[0] = False
+          names.add(name)
+      elif isinstance(comp, computation_building_blocks.Lambda):
+        if comp.parameter_name in names:
+          unique[0] = False
+        names.add(comp.parameter_name)
+    return comp, False
+
+  transform_postorder(comp, _transform)
+
+  return unique[0]

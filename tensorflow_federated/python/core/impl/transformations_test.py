@@ -254,28 +254,25 @@ def _create_dummy_called_intrinsic(uri='dummy', type_spec=tf.int32):
   return computation_building_blocks.Call(intrinsic, arg)
 
 
-def _has_unique_names(comp):
-  """Checks that each variable of `comp` is bound at most once."""
-  names = set()
-  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
-  unique = [True]
+def _create_block_wrapping_data(type_signature):
+  r"""Creates a block representing a noop on a data node of type `tff_type`.
 
-  def _transform(comp):
-    if unique[0]:
-      if isinstance(comp, computation_building_blocks.Block):
-        for name, _ in comp.locals:
-          if name in names:
-            unique[0] = False
-          names.add(name)
-      elif isinstance(comp, computation_building_blocks.Lambda):
-        if comp.parameter_name in names:
-          unique[0] = False
-        names.add(comp.parameter_name)
-    return comp, False
+         Block
+        /     \
+    x=Data    Ref(x)
 
-  transformation_utils.transform_postorder(comp, _transform)
+  Args:
+    type_signature: Argument convertible to `computation_types.Type` via
+      `computation_types.to_type`.
 
-  return unique[0]
+  Returns:
+    A `computation_building_blocks.Block` representing data object of name
+      `data` and type `tff_type`.
+  """
+  tff_type = computation_types.to_type(type_signature)
+  data = computation_building_blocks.Data('data', tff_type)
+  ref = computation_building_blocks.Reference('x', tff_type)
+  return computation_building_blocks.Block([('x', data)], ref)
 
 
 class ReplaceCompiledComputationsNamesWithUniqueNamesTest(
@@ -1381,7 +1378,7 @@ class UniquifyReferencesTest(absltest.TestCase):
     self.assertEqual(
         str(block2), '(let x=input2,x=x in (let x=input1,x=x in x))')
     renamed = transformations.uniquify_references(block2)
-    self.assertTrue(_has_unique_names(renamed))
+    self.assertTrue(transformation_utils.has_unique_names(renamed))
     self.assertEqual(
         renamed.tff_repr,
         '(let {0}1=input2,{0}2={0}1 in (let {0}3=input1,{0}4={0}3 in {0}4))'
@@ -1400,7 +1397,7 @@ class UniquifyReferencesTest(absltest.TestCase):
         computation_building_blocks.Lambda('input2', input2.type_signature,
                                            input2), first_level_call)
     renamed = transformations.uniquify_references(second_level_call)
-    self.assertTrue(_has_unique_names(renamed))
+    self.assertTrue(transformation_utils.has_unique_names(renamed))
     self.assertEqual(
         renamed.tff_repr,
         '({0}1 -> {0}1)(({0}2 -> {0}2)(test))'.format(RENAME_PREFIX))
@@ -1422,7 +1419,7 @@ class UniquifyReferencesTest(absltest.TestCase):
     self.assertEqual(
         last_block.tff_repr,
         '(let x=test_data,x=x in (x -> (let x=x,x=x in (x -> x)(x)))(x))')
-    self.assertTrue(_has_unique_names(renamed))
+    self.assertTrue(transformation_utils.has_unique_names(renamed))
     self.assertEqual(
         renamed.tff_repr,
         '(let {0}1=test_data,{0}2={0}1 in ({0}3 -> (let {0}4={0}3,{0}5={0}4 in ({0}6 -> {0}6)({0}5)))({0}2))'
@@ -1468,7 +1465,165 @@ class UniquifyReferencesTest(absltest.TestCase):
         renamed.result.tff_repr,
         '(let {0}11=(let {0}10=(let {0}9={0}8 in x) in x) in x)'.format(
             RENAME_PREFIX))
-    self.assertTrue(_has_unique_names(renamed))
+    self.assertTrue(transformation_utils.has_unique_names(renamed))
+
+
+class BlockInliningTest(absltest.TestCase):
+
+  def test_inline_block_locals_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      transformations.inline_block_locals(None)
+
+  def test_inline_block_locals_raises_with_non_unique_variable_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    bad_comp = computation_building_blocks.Block([('x', data), ('x', data)],
+                                                 data)
+    with self.assertRaises(ValueError):
+      transformations.inline_block_locals(bad_comp)
+
+  def test_inline_block_locals_noops_on_lambda(self):
+    lam = _create_lambda_to_identity('x', tf.int32)
+    inlined = transformations.inline_block_locals(lam)
+    self.assertEqual(lam.tff_repr, inlined.tff_repr)
+    self.assertEqual(lam.type_signature, inlined.type_signature)
+
+  def test_inline_block_locals_inlines_single_reference(self):
+    simple_block = _create_block_wrapping_data(tf.int32)
+
+    renamed = transformations.uniquify_references(simple_block)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(simple_block.tff_repr, '(let x=data in x)')
+    self.assertEqual(inlined.tff_repr, 'data')
+    self.assertEqual(inlined.type_signature, simple_block.type_signature)
+
+  def test_inline_block_locals_inlines_variable_referenced_once(self):
+    simple_block = _create_block_wrapping_data(tf.int32)
+    result_tuple = computation_building_blocks.Tuple([simple_block.result] * 2)
+    block_wrapping_tuple = computation_building_blocks.Block(
+        simple_block.locals, result_tuple)
+
+    renamed = transformations.uniquify_references(block_wrapping_tuple)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(block_wrapping_tuple.tff_repr, '(let x=data in <x,x>)')
+    self.assertEqual(inlined.tff_repr, '<data,data>')
+    self.assertEqual(inlined.type_signature,
+                     block_wrapping_tuple.type_signature)
+
+  def test_inline_block_locals_propogates_inline_out_of_locals_block(self):
+    simple_block = _create_block_wrapping_data(tf.int32)
+    simple_block_local_name = simple_block.locals[0][0]
+    outer_block_result = computation_building_blocks.Reference(
+        simple_block_local_name, simple_block.type_signature)
+    conflicting_name_outer_block = computation_building_blocks.Block(
+        [(simple_block.locals[0][0], simple_block)], outer_block_result)
+
+    renamed = transformations.uniquify_references(conflicting_name_outer_block)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(
+        str(conflicting_name_outer_block), '(let x=(let x=data in x) in x)')
+    self.assertEqual(str(inlined), 'data')
+    self.assertEqual(inlined.type_signature,
+                     conflicting_name_outer_block.type_signature)
+
+  def test_inline_block_locals_propogates_inline_into_result_block(self):
+    used_ref = computation_building_blocks.Reference('used_ref', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    ref = computation_building_blocks.Reference('x', used_ref.type_signature)
+    lower_block = computation_building_blocks.Block([('x', used_ref)], ref)
+    higher_block = computation_building_blocks.Block([('used_ref', data)],
+                                                     lower_block)
+
+    renamed = transformations.uniquify_references(higher_block)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(
+        str(higher_block), '(let used_ref=data in (let x=used_ref in x))')
+    self.assertEqual(str(inlined), 'data')
+    self.assertEqual(inlined.type_signature, higher_block.type_signature)
+
+  def test_inline_block_locals_ignores_conflicting_name_in_higher_scope(self):
+    lower_block = _create_block_wrapping_data(tf.bool)
+    red_herring_arg = computation_building_blocks.Data(
+        'redherring', lower_block.locals[0][1].type_signature)
+    higher_block = computation_building_blocks.Block([('x', red_herring_arg)],
+                                                     lower_block)
+
+    renamed = transformations.uniquify_references(higher_block)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(
+        str(higher_block), '(let x=redherring in (let x=data in x))')
+    self.assertEqual(str(inlined), 'data')
+    self.assertEqual(inlined.type_signature, higher_block.type_signature)
+
+  def test_inline_block_locals_if_block_local_uses_and_overwrites_bound_variable(
+      self):
+    arg_comp = computation_building_blocks.Reference('arg',
+                                                     [tf.int32, tf.int32])
+    first_selected = computation_building_blocks.Selection(arg_comp, index=0)
+    second_selected = computation_building_blocks.Selection(arg_comp, index=1)
+    internal_arg = computation_building_blocks.Reference('arg', tf.int32)
+    internal_y = computation_building_blocks.Reference('y', tf.int32)
+    identity_tuple = computation_building_blocks.Tuple(
+        [internal_y, internal_arg])
+    block = computation_building_blocks.Block([('y', first_selected),
+                                               ('arg', second_selected)],
+                                              identity_tuple)
+    lam = computation_building_blocks.Lambda('arg', arg_comp.type_signature,
+                                             block)
+
+    renamed = transformations.uniquify_references(lam)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(str(lam), '(arg -> (let y=arg[0],arg=arg[1] in <y,arg>))')
+    self.assertEqual(
+        str(inlined), '({0}1 -> <{0}1[0],{0}1[1]>)'.format(RENAME_PREFIX))
+    self.assertEqual(inlined.type_signature, lam.type_signature)
+
+  def test_inline_block_locals_inlines_differently_in_different_scopes(self):
+    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    y_ref = computation_building_blocks.Reference('y', tf.int32)
+    lower_block = computation_building_blocks.Block([('x', y_ref)], x_ref)
+    middle_tuple = computation_building_blocks.Tuple([x_ref, lower_block])
+    used = computation_building_blocks.Data('used', tf.int32)
+    used1 = computation_building_blocks.Data('used1', tf.int32)
+    outer_block = computation_building_blocks.Block([('x', used), ('y', used1)],
+                                                    middle_tuple)
+
+    renamed = transformations.uniquify_references(outer_block)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(
+        str(outer_block), '(let x=used,y=used1 in <x,(let x=y in x)>)')
+    self.assertEqual(str(inlined), '<used,used1>')
+    self.assertEqual(inlined.type_signature, outer_block.type_signature)
+
+  def test_inline_block_locals_resolves_sequential_binding_in_block_locals(
+      self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    data_a = computation_building_blocks.Data('a', tf.int32)
+    data_b = computation_building_blocks.Data('b', tf.int32)
+    tuple_with_b = computation_building_blocks.Tuple([ref_to_x, data_b])
+    redefined_x = computation_building_blocks.Reference(
+        'x', tuple_with_b.type_signature)
+    data_c = computation_building_blocks.Data('c', tf.int32)
+    tuple_with_c = computation_building_blocks.Tuple([redefined_x, data_c])
+    ref_to_new_x = computation_building_blocks.Reference(
+        'x', tuple_with_c.type_signature)
+    flattened_block = computation_building_blocks.Block([('x', data_a),
+                                                         ('x', tuple_with_b),
+                                                         ('x', tuple_with_c)],
+                                                        ref_to_new_x)
+
+    renamed = transformations.uniquify_references(flattened_block)
+    inlined = transformations.inline_block_locals(renamed)
+
+    self.assertEqual(flattened_block.tff_repr, '(let x=a,x=<x,b>,x=<x,c> in x)')
+    self.assertEqual(inlined.tff_repr, '<<a,b>,c>')
+    self.assertEqual(inlined.type_signature, flattened_block.type_signature)
 
 
 if __name__ == '__main__':
