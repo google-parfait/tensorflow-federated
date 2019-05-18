@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
 def select_graph_output(comp, name=None, index=None):
@@ -394,3 +395,222 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
           result=proto.tensorflow.result))
 
   return computation_building_blocks.CompiledComputation(input_padded_proto)
+
+
+def _unpack_proto_into_graph_spec(tf_block_proto):
+  """Packs a TF proto into a `graph_merge.GraphSpec`.
+
+  Args:
+    tf_block_proto: Instance of `computation_pb2.Computation` with `tensorflow`
+      `computation` attribute.
+
+  Returns:
+    Instance of `graph_merge.GraphSpec` containing Python representations of
+    the information present in `tf_block_proto`.
+  """
+  graph = serialization_utils.unpack_graph_def(
+      tf_block_proto.tensorflow.graph_def)
+  graph_init_op_name = tf_block_proto.tensorflow.initialize_op
+  if not graph_init_op_name:
+    graph_init_op_name = None
+  graph_parameter_binding = tf_block_proto.tensorflow.parameter
+  graph_result_binding = tf_block_proto.tensorflow.result
+
+  if graph_parameter_binding.WhichOneof('binding') is not None:
+    graph_parameter_list = graph_utils.extract_tensor_names_from_binding(
+        graph_parameter_binding)
+  else:
+    graph_parameter_list = []
+  graph_result_list = graph_utils.extract_tensor_names_from_binding(
+      graph_result_binding)
+  return graph_merge.GraphSpec(graph, graph_init_op_name, graph_parameter_list,
+                               graph_result_list)
+
+
+def _repack_binding_with_new_name(binding, name_map):
+  """Constructs new binding via `name_map`.
+
+  Args:
+    binding: Instance of `computation_pb2.TensorFlow.Binding`, a binding from an
+      old `CompiledComputation` which has perhaps had its tensor and op names
+      changed. The handle or tensor names present in `binding` should be the
+      full names of these objects in the graph; in particular,
+      they should contain the appropriate `:n` suffix.
+    name_map: A Python `dict` mapping names from the graph associated to
+      `binding` to a new graph with potentially different names, e.g. the one
+      constructed by `graph_merge.concatenate_inputs_and_outputs`. The values of
+      `name_map` should respect the same semantics as the strings in `binding`;
+      that is, they fully specify the tensor they are referring
+      to, including the `:n` suffix.
+
+  Returns:
+    An instance of `computation_pb2.TensorFlow.Binding` representing the result
+    of mapping the names of `binding` according to `name_map`.
+
+  Raises:
+    TypeError: If `binding` does represent a
+    `computation_pb2.TensorFlow.TensorBinding`,
+    `computation_pb2.TensorFlow.NamedTupleBinding`, or
+    `computation_pb2.TensorFlow.SequenceBinding`.
+  """
+  if binding.WhichOneof('binding') == 'tensor':
+    return pb.TensorFlow.Binding(
+        tensor=pb.TensorFlow.TensorBinding(
+            tensor_name=name_map[binding.tensor.tensor_name]))
+  elif binding.WhichOneof('binding') == 'tuple':
+    return pb.TensorFlow.Binding(
+        tuple=pb.TensorFlow.NamedTupleBinding(element=[
+            _repack_binding_with_new_name(e, name_map)
+            for e in binding.tuple.element
+        ]))
+  elif binding.WhichOneof('binding') == 'sequence':
+    handle_name = binding.sequence.iterator_string_handle_name
+    if handle_name:
+      return pb.TensorFlow.Binding(
+          sequence=pb.TensorFlow.SequenceBinding(
+              iterator_string_handle_name=name_map[handle_name]))
+    else:
+      return pb.TensorFlow.Binding(
+          sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name=name_map[
+              binding.sequence.variant_tensor_name]))
+  else:
+    raise TypeError
+
+
+def _pack_concatenated_bindings(old_bindings, tensor_name_maps):
+  """Maps the old TFF bindings to the correct new names.
+
+  Args:
+    old_bindings: Python `list` or `tuple` of instances of
+      `computation_pb2.TensorFlow.Binding`, representing the bindings into and
+      out of each `tf.Graph` before concatenation.
+    tensor_name_maps: Python `list` or `tuple` of `dicts`, mapping tensor or
+      string handle names in each `tf.Graph` before concatenation to the new
+      names these objects have been given when concatenating graphs.
+
+  Returns:
+    A new instance of `computation_pb2.TensorFlow.Binding` if `old_bindings`
+    contains any non-`None` bindings, or `None` if `old_bindings` represents
+    all `None` bindings, e.g. in the case where all the computations being
+    concatenated declare no parameters.
+
+  Raises:
+    AssertionError: If `tensor_name_maps` and `old_bindings` have different
+    lengths.
+  """
+  assert len(tensor_name_maps) == len(old_bindings)
+  remapped_bindings = []
+  for binding, name_map in zip(old_bindings, tensor_name_maps):
+    if binding.WhichOneof('binding') is not None:
+      remapped_bindings.append(_repack_binding_with_new_name(binding, name_map))
+  if not remapped_bindings:
+    return None
+  if len(remapped_bindings) == 1:
+    return remapped_bindings[0]
+  return pb.TensorFlow.Binding(
+      tuple=pb.TensorFlow.NamedTupleBinding(element=remapped_bindings))
+
+
+def _construct_concatenated_type(type_list):
+  """Encodes the type convention of `concatenate_tensorflow_blocks`.
+
+  This logic is explained in the docstring of `concatenate_tensorflow_blocks`.
+
+  Args:
+    type_list: Python `list` or `tuple` of `computation_types.Type`s, which we
+      want to use to construct a new parameter or result type for a computation
+      representing concatenation of inputs and outputs of two
+      `computation_building_blocks.CompiledComputation`s.
+
+  Returns:
+    Instance of `computation_types.Type` representing the appropriate
+    parameter or result type, or `None` if `type_list` contains no non-`None`
+    types.
+  """
+  non_none_type_list = [x for x in type_list if x is not None]
+  if not non_none_type_list:
+    return None
+  elif len(non_none_type_list) == 1:
+    return non_none_type_list[0]
+  return computation_types.NamedTupleType(non_none_type_list)
+
+
+def concatenate_tensorflow_blocks(tf_comp_list):
+  """Concatenates inputs and outputs of its argument to a single TF block.
+
+  Takes a Python `list` or `tuple` of instances of
+  `computation_building_blocks.CompiledComputation`, and constructs a single
+  instance of the same building block representing the computations present
+  in this list concatenated side-by-side.
+
+  There is one important convention here for callers to be aware of.
+  `concatenate_tensorflow_blocks` does not perform any more packing into tuples
+  than necessary. That is, if `tf_comp_list` contains only a single TF
+  computation which declares a parameter, the parameter type of the resulting
+  computation is exactly this single parameter type. Since all TF blocks declare
+  a result, this is only of concern for parameters, and we will always return a
+  function with a tuple for its result value.
+
+  Args:
+    tf_comp_list: Python `list` or `tuple` of
+      `computation_building_blocks.CompiledComputation`s, whose inputs and
+      outputs we wish to concatenate.
+
+  Returns:
+    A single instance of `computation_building_blocks.CompiledComputation`,
+    representing all the computations in `tf_comp_list` concatenated
+    side-by-side.
+
+  Raises:
+    ValueError: If we are passed less than 2 computations in `tf_comp_list`. In
+      this case, the caller is likely using the wrong function.
+    TypeError: If `tf_comp_list` is not a `list` or `tuple`, or if it
+      contains anything other than TF blocks.
+  """
+  py_typecheck.check_type(tf_comp_list, (list, tuple))
+  if len(tf_comp_list) < 2:
+    raise ValueError('We expect to concatenate at least two blocks of '
+                     'TensorFlow; otherwise the transformation you seek '
+                     'represents simply type manipulation, and you will find '
+                     'your desired function elsewhere in '
+                     '`compiled_computation_transforms`. You passed a tuple of '
+                     'length {}'.format(len(tf_comp_list)))
+  tf_proto_list = []
+  for comp in tf_comp_list:
+    py_typecheck.check_type(comp,
+                            computation_building_blocks.CompiledComputation)
+    tf_proto_list.append(comp.proto)
+
+  (merged_graph, init_op_name, parameter_name_maps,
+   result_name_maps) = graph_merge.concatenate_inputs_and_outputs(
+       [_unpack_proto_into_graph_spec(x) for x in tf_proto_list])
+
+  concatenated_parameter_bindings = _pack_concatenated_bindings(
+      [x.tensorflow.parameter for x in tf_proto_list], parameter_name_maps)
+  concatenated_result_bindings = _pack_concatenated_bindings(
+      [x.tensorflow.result for x in tf_proto_list], result_name_maps)
+
+  if concatenated_parameter_bindings:
+    tf_result_proto = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(
+            merged_graph.as_graph_def()),
+        initialize_op=init_op_name,
+        parameter=concatenated_parameter_bindings,
+        result=concatenated_result_bindings)
+  else:
+    tf_result_proto = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(
+            merged_graph.as_graph_def()),
+        initialize_op=init_op_name,
+        result=concatenated_result_bindings)
+
+  parameter_type = _construct_concatenated_type(
+      [x.type_signature.parameter for x in tf_comp_list])
+  return_type = _construct_concatenated_type(
+      [x.type_signature.result for x in tf_comp_list])
+  function_type = computation_types.FunctionType(parameter_type, return_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  constructed_proto = pb.Computation(
+      type=serialized_function_type, tensorflow=tf_result_proto)
+  return computation_building_blocks.CompiledComputation(constructed_proto)
