@@ -301,14 +301,6 @@ class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
   def __init__(self, inner_model, dummy_batch, loss_fn, metrics):
-    # TODO(b/124477598): the following set_session() should be removed in the
-    # future. This is a workaround for Keras' caching sessions in a way that
-    # isn't compatible with TFF. This is already fixed in TF master, but not as
-    # of v1.13.1.
-    #
-    # We do not use .clear_session() because it blows away the graph stack by
-    # resetting the default graph.
-    tf.keras.backend.set_session(None)
 
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. We forced that here.
