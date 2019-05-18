@@ -473,5 +473,159 @@ class GraphInputPaddingTest(test.TestCase):
     self.assertEqual(executable_padded_inputs([1, 10.]), expected_result)
 
 
+class ConcatenateTFBlocksTest(test.TestCase):
+
+  def test_concatenenate_tensorflow_blocks_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.concatenate_tensorflow_blocks(None)
+
+  def test_concatenenate_tensorflow_blocks_raises_no_iterable(self):
+    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.concatenate_tensorflow_blocks(foo)
+
+  def test_concatenenate_tensorflow_blocks_raises_bad_comp_in_list(self):
+    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    bad_comp = computation_building_blocks.Data('x', tf.int32)
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.concatenate_tensorflow_blocks(
+          [foo, bad_comp])
+
+  def test_concatenate_tensorflow_blocks_raises_list_of_one(self):
+    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    with self.assertRaises(ValueError):
+      compiled_computation_transforms.concatenate_tensorflow_blocks([foo])
+
+  def test_concatenate_tensorflow_blocks_no_arg(self):
+    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    bar = _create_compiled_computation(lambda: tf.constant(1.0), None)
+    merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [foo, bar])
+    self.assertIsInstance(merged_comp,
+                          computation_building_blocks.CompiledComputation)
+    concatenated_type = computation_types.FunctionType(None,
+                                                       [tf.float32, tf.float32])
+    self.assertEqual(merged_comp.type_signature, concatenated_type)
+
+    executable = _to_computation_impl(merged_comp)
+    expected_result = anonymous_tuple.AnonymousTuple([(None, 0.0), (None, 1.0)])
+    self.assertAlmostEqual(executable(), expected_result)
+
+  def test_concatenate_tensorflow_blocks_mix_of_arg_and_no_arg(self):
+    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    bar = _create_compiled_computation(lambda x: x + tf.constant(1.0),
+                                       tf.float32)
+    merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [foo, bar])
+    self.assertIsInstance(merged_comp,
+                          computation_building_blocks.CompiledComputation)
+    concatenated_type = computation_types.FunctionType(tf.float32,
+                                                       [tf.float32, tf.float32])
+    self.assertEqual(merged_comp.type_signature, concatenated_type)
+
+    executable = _to_computation_impl(merged_comp)
+    expected_result = anonymous_tuple.AnonymousTuple([(None, 0.0), (None, 1.0)])
+    self.assertAlmostEqual(executable(0.), expected_result)
+
+  def test_concatenate_tensorflow_blocks_tensor_args(self):
+    foo = _create_compiled_computation(lambda x: x + tf.constant(0.0),
+                                       tf.float32)
+    bar = _create_compiled_computation(lambda x: x + tf.constant(1.0),
+                                       tf.float32)
+    merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [foo, bar])
+    self.assertIsInstance(merged_comp,
+                          computation_building_blocks.CompiledComputation)
+    concatenated_type = computation_types.FunctionType([tf.float32, tf.float32],
+                                                       [tf.float32, tf.float32])
+    self.assertEqual(merged_comp.type_signature, concatenated_type)
+
+    executable = _to_computation_impl(merged_comp)
+    expected_result = anonymous_tuple.AnonymousTuple([(None, 1.0), (None, 1.0)])
+    self.assertAlmostEqual(executable([1., 0.]), expected_result)
+    expected_result = anonymous_tuple.AnonymousTuple([(None, 2.0), (None, 3.0)])
+    self.assertAlmostEqual(executable([2., 2.]), expected_result)
+
+  def test_concatenate_tensorflow_blocks_unnamed_tuple_args(self):
+    foo = _create_compiled_computation(
+        lambda x: [x[0] + tf.constant(0.0), x[1] + tf.constant(1.0)],
+        [tf.float32, tf.float32])
+    bar = _create_compiled_computation(
+        lambda x: [x[0] + tf.constant(1.0), x[1] + tf.constant(1.0)],
+        [tf.float32, tf.float32])
+    merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [foo, bar])
+    self.assertIsInstance(merged_comp,
+                          computation_building_blocks.CompiledComputation)
+    concatenated_type = computation_types.FunctionType(
+        [[tf.float32, tf.float32], [tf.float32, tf.float32]],
+        [[tf.float32, tf.float32], [tf.float32, tf.float32]])
+    self.assertEqual(str(merged_comp.type_signature), str(concatenated_type))
+
+    executable = _to_computation_impl(merged_comp)
+    expected_1 = anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])
+    expected_2 = anonymous_tuple.AnonymousTuple([(None, 1.), (None, 2.)])
+    expected_result = anonymous_tuple.AnonymousTuple([(None, expected_1),
+                                                      (None, expected_2)])
+
+    self.assertEqual(executable([[1., 0.], [0., 1.]])[0], expected_result[0])
+    self.assertEqual(executable([[1., 0.], [0., 1.]])[1], expected_result[1])
+
+  def test_concatenate_tensorflow_blocks_named_tuple_args(self):
+    foo = _create_compiled_computation(lambda x: x, [('a', tf.float32),
+                                                     ('b', tf.float32)])
+    bar = _create_compiled_computation(lambda x: x, [('c', tf.float32),
+                                                     ('d', tf.float32)])
+    merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [foo, bar])
+    self.assertIsInstance(merged_comp,
+                          computation_building_blocks.CompiledComputation)
+    concatenated_type = computation_types.FunctionType(
+        [[('a', tf.float32),
+          ('b', tf.float32)], [('c', tf.float32), ('d', tf.float32)]],
+        [[('a', tf.float32),
+          ('b', tf.float32)], [('c', tf.float32), ('d', tf.float32)]])
+    self.assertEqual(str(merged_comp.type_signature), str(concatenated_type))
+
+    executable = _to_computation_impl(merged_comp)
+    expected_1 = anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 0.)])
+    expected_2 = anonymous_tuple.AnonymousTuple([('c', 0.), ('d', 1.)])
+    expected_result = anonymous_tuple.AnonymousTuple([(None, expected_1),
+                                                      (None, expected_2)])
+
+    self.assertEqual(executable([[1., 0.], [0., 1.]])[0], expected_result[0])
+    self.assertEqual(executable([[1., 0.], [0., 1.]])[1], expected_result[1])
+
+  def test_concatenate_tensorflow_blocks_sequence_parameters_and_results(self):
+    foo = _create_compiled_computation(
+        lambda ds: ds.reduce(tf.constant(0, tf.int64), lambda x, y: x + y),
+        computation_types.SequenceType(tf.int64))
+
+    bar = _create_compiled_computation(lambda: tf.data.Dataset.range(5), None)
+
+    merged_reduce_comps = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [foo, foo])
+    merged_input_comps = compiled_computation_transforms.concatenate_tensorflow_blocks(
+        [bar, bar])
+
+    concat_input_type_signature = computation_types.FunctionType(
+        None, [
+            computation_types.SequenceType(tf.int64),
+            computation_types.SequenceType(tf.int64)
+        ])
+    concat_reduce_type_signature = computation_types.FunctionType(
+        concat_input_type_signature.result, [tf.int64, tf.int64])
+
+    executable_reduce = _to_computation_impl(merged_reduce_comps)
+    executable_input = _to_computation_impl(merged_input_comps)
+
+    self.assertEqual(concat_input_type_signature,
+                     merged_input_comps.type_signature)
+    self.assertEqual(concat_reduce_type_signature,
+                     merged_reduce_comps.type_signature)
+    self.assertEqual(executable_reduce(executable_input())[0], 10)
+    self.assertEqual(executable_reduce(executable_input())[1], 10)
+
+
 if __name__ == '__main__':
   test.main()
