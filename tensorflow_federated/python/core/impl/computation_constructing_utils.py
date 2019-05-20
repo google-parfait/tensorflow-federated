@@ -774,6 +774,7 @@ def create_federated_zip(value):
   py_typecheck.check_type(value,
                           computation_building_blocks.ComputationBuildingBlock)
   named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  names_to_add = [name for name, _ in named_type_signatures]
   length = len(named_type_signatures)
   if length == 0:
     raise ValueError('federated_zip is only supported on non-empty tuples.')
@@ -796,7 +797,8 @@ def create_federated_zip(value):
   else:
     zipped_args = _create_chain_zipped_values(value)
     append_fn = _create_fn_to_append_chain_zipped_values(value)
-    return map_fn(append_fn, zipped_args)
+    unnamed_zip = map_fn(append_fn, zipped_args)
+    return construct_named_federated_tuple(unnamed_zip, names_to_add)
 
 
 def _create_chain_zipped_values(value):
@@ -819,7 +821,13 @@ def _create_chain_zipped_values(value):
   NOTE: This function is intended to be used in conjunction with
   `_create_fn_to_append_chain_zipped_values` and will drop the tuple names. The
   names will be added back to the resulting computation when the zipped values
-  are mapped to a function that flattens the chain.
+  are mapped to a function that flattens the chain. This nested zip -> flatten
+  structure must be used since length of a named tuple type in the TFF type
+  system is an element of the type proper. That is, a named tuple type of
+  length 2 is a different type than a named tuple type of length 3, they are
+  not simply items with the same type and different values, as would be the
+  case if you were thinking of these as Python `list`s. It may be better to
+  think of named tuple types in TFF as more like `struct`s.
 
   Args:
     value: A `computation_building_blocks.ComputationBuildingBlock` with a
@@ -841,15 +849,13 @@ def _create_chain_zipped_values(value):
     raise ValueError(
         'Expected a value with at least two elements, received {} elements.'
         .format(named_type_signatures))
-  first_name, _ = named_type_signatures[0]
   ref = computation_building_blocks.Reference('value', value.type_signature)
   symbols = ((ref.name, value),)
   sel_0 = computation_building_blocks.Selection(ref, index=0)
-  result = (first_name, sel_0)
+  result = sel_0
   for i in range(1, length):
-    name, _ = named_type_signatures[i]
     sel = computation_building_blocks.Selection(ref, index=i)
-    values = computation_building_blocks.Tuple((result, (name, sel)))
+    values = computation_building_blocks.Tuple((result, sel))
     result = _create_zip_two_values(values)
   return computation_building_blocks.Block(symbols, result)
 
@@ -862,6 +868,14 @@ def _create_zip_two_values(value):
   Intrinsic      Tuple
                  |
                  [Comp1, Comp2]
+
+  Notice that this function will drop any names associated to the two-tuple it
+  is processing. This is necessary due to the type signature of the
+  underlying federated zip intrinsic, `<T@P,U@P>-><T,U>@P`. Keeping names
+  here would violate this type signature. The names are cached at a higher
+  level than this function, and appended to the resulting tuple in a single
+  call to `federated_map` or `federated_apply` before the resulting structure
+  is sent back to the caller.
 
   Args:
     value: A `computation_building_blocks.ComputationBuildingBlock` with a
@@ -893,13 +907,14 @@ def _create_zip_two_values(value):
   else:
     raise TypeError('Unsupported placement {}.'.format(placement))
   elements = []
-  for name, type_signature in named_type_signatures:
+  for _, type_signature in named_type_signatures:
     federated_type = computation_types.FederatedType(type_signature.member,
                                                      placement, all_equal)
-    elements.append((name, federated_type))
+    elements.append((None, federated_type))
   parameter_type = computation_types.NamedTupleType(elements)
   result_type = computation_types.FederatedType(
-      [(n, e.member) for n, e in named_type_signatures], placement, all_equal)
+      [(None, e.member) for _, e in named_type_signatures], placement,
+      all_equal)
   intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
   intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)
   return computation_building_blocks.Call(intrinsic, value)
@@ -924,9 +939,9 @@ def _create_fn_to_append_chain_zipped_values(value):
                               \
                                Ref(arg1)
 
-  NOTE: This function is intended to be used in conjunction with
-  `_create_chain_zipped_values` add will add back the names that were dropped
-  when zipping the values.
+  Note that this function will not respect any names it is passed; names
+  for tuples will be cached at a higher level than this function and added back
+  in a single call to federated map or federated apply.
 
   Args:
     value: A `computation_building_blocks.ComputationBuildingBlock` with a
@@ -947,24 +962,24 @@ def _create_fn_to_append_chain_zipped_values(value):
     raise ValueError(
         'Expected a value with at least two elements, received {} elements.'
         .format(named_type_signatures))
-  first_name, first_type_signature = named_type_signatures[0]
-  second_name, second_type_signature = named_type_signatures[1]
+  _, first_type_signature = named_type_signatures[0]
+  _, second_type_signature = named_type_signatures[1]
   ref_type = computation_types.NamedTupleType((
-      (first_name, first_type_signature.member),
-      (second_name, second_type_signature.member),
+      first_type_signature.member,
+      second_type_signature.member,
   ))
   ref = computation_building_blocks.Reference('arg', ref_type)
   fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-  for name, type_signature in named_type_signatures[2:]:
+  for _, type_signature in named_type_signatures[2:]:
     ref_type = computation_types.NamedTupleType((
         fn.type_signature.parameter,
-        (name, type_signature.member),
+        type_signature.member,
     ))
     ref = computation_building_blocks.Reference('arg', ref_type)
     sel_0 = computation_building_blocks.Selection(ref, index=0)
     call = computation_building_blocks.Call(fn, sel_0)
     sel_1 = computation_building_blocks.Selection(ref, index=1)
-    result = create_computation_appending(call, (name, sel_1))
+    result = create_computation_appending(call, sel_1)
     fn = computation_building_blocks.Lambda(ref.name, ref.type_signature,
                                             result)
   return fn
@@ -1068,3 +1083,85 @@ def create_sequence_sum(value):
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type)
   return computation_building_blocks.Call(intrinsic, value)
+
+
+def _construct_naming_function(tuple_type_to_name, names_to_add):
+  """Private function to construct lambda naming a given tuple type.
+
+  Args:
+    tuple_type_to_name: Instance of `computation_types.NamedTupleType`, the type
+      of the argument which we wish to name.
+    names_to_add: Python `list` or `tuple`, the names we wish to give to
+      `tuple_type_to_name`.
+
+  Returns:
+    An instance of `computation_building_blocks.Lambda` representing a function
+    which will take an argument of type `tuple_type_to_name` and return a tuple
+    with the same elements, but with names in `names_to_add` attached.
+
+  Raises:
+    ValueError: If `tuple_type_to_name` and `names_to_add` have different
+    lengths.
+  """
+  py_typecheck.check_type(tuple_type_to_name, computation_types.NamedTupleType)
+  if len(names_to_add) != len(tuple_type_to_name):
+    raise ValueError(
+        'Number of elements in `names_to_add` must match number of element in '
+        'the named tuple type `tuple_type_to_name`; here, `names_to_add` has '
+        '{} elements and `tuple_type_to_name` has {}.'.format(
+            len(names_to_add), len(tuple_type_to_name)))
+  naming_lambda_arg = computation_building_blocks.Reference(
+      'x', tuple_type_to_name)
+
+  def _create_tuple_element(i):
+    return (names_to_add[i],
+            computation_building_blocks.Selection(naming_lambda_arg, index=i))
+
+  named_result = computation_building_blocks.Tuple(
+      [_create_tuple_element(k) for k in range(len(names_to_add))])
+  return computation_building_blocks.Lambda('x',
+                                            naming_lambda_arg.type_signature,
+                                            named_result)
+
+
+def construct_named_federated_tuple(tuple_to_name, names_to_add):
+  """Name tuple elements with names in `names_to_add`.
+
+  Certain intrinsics, e.g. `federated_zip`, only accept unnamed tuples as
+  arguments, and can only produce unnamed tuples as their outputs. This is not
+  necessarily desirable behavior, as it necessitates dropping any names that
+  exist before the zip. This function is intended to provide a general remedy
+  for this shortcoming, so that a tuple can be renamed after it is passed
+  through any function which drops its names.
+
+  Args:
+    tuple_to_name: Instance of
+      `computation_building_blocks.ComputationBuildingBlock` of type
+      `computation_types.FederatedType` with `computation_types.NamedTupleType`
+      member, to populate with names from `names_to_add`.
+    names_to_add: Python `tuple` or `list` containing instances of type `str` or
+      `None`, the names to give to `tuple_type_to_name`.
+
+  Returns:
+    An instance of `computation_building_blocks.ComputationBuildingBlock`
+    representing a federated tuple with the same elements as `tuple_to_name`
+    but with the names from `names_to_add` attached to the type
+    signature. Notice that if these names are already present in
+    `tuple_to_name`, `construct_naming_function` represents the identity.
+
+  Raises:
+    TypeError: If the types do not match the description above.
+  """
+  py_typecheck.check_type(names_to_add, (list, tuple))
+  element_types_to_accept = six.string_types + (type(None),)
+  if not all(isinstance(x, element_types_to_accept) for x in names_to_add):
+    raise TypeError('`names_to_add` must contain only instances of `str` or '
+                    'NoneType; you have passed in {}'.format(names_to_add))
+  py_typecheck.check_type(tuple_to_name,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(tuple_to_name.type_signature,
+                          computation_types.FederatedType)
+
+  naming_fn = _construct_naming_function(tuple_to_name.type_signature.member,
+                                         names_to_add)
+  return create_federated_map_or_apply(naming_fn, tuple_to_name)
