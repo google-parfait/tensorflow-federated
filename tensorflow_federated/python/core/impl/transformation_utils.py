@@ -990,3 +990,16 @@ def has_unique_names(comp):
   transform_postorder(comp, _transform)
 
   return unique[0]
+
+
+@six.add_metaclass(abc.ABCMeta)
+class TransformSpec(object):
+  """"Base class to express the should_transform/transform interface."""
+
+  @abc.abstractmethod
+  def should_transform(self, comp):
+    pass
+
+  @abc.abstractmethod
+  def transform(self, comp):
+    pass
