@@ -217,7 +217,6 @@ def from_compiled_keras_model(keras_model, dummy_batch):
   # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
   # until the model has been called on input. The work-around is to call
   # Model.test_on_batch() once before asking for metrics.
-  print(dummy_tensors)
   keras_model.test_on_batch(**dummy_tensors)
   # Optimizer attribute is only set after calling tf.keras.Model.compile().
   if not hasattr(keras_model, 'optimizer'):
