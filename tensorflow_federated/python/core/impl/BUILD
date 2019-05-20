@@ -47,6 +47,7 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":graph_utils",
+        ":transformation_utils",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

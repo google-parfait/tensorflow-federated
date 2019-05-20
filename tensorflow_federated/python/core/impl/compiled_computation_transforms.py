@@ -29,6 +29,7 @@ from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
@@ -614,3 +615,40 @@ def concatenate_tensorflow_blocks(tf_comp_list):
   constructed_proto = pb.Computation(
       type=serialized_function_type, tensorflow=tf_result_proto)
   return computation_building_blocks.CompiledComputation(constructed_proto)
+
+
+class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
+  r"""`TransformSpec` representing a selection from the result of a TF block.
+
+  That is, parses the pattern:
+
+                            Selection(i)
+                                 |
+                                Call
+                               /    \
+            CompiledComputation      Argument
+
+  Into:
+
+                              Call
+                             /    \
+          CompiledComputation      Argument
+
+  While preserving semantics.
+  """
+
+  def should_transform(self, comp):
+    return (isinstance(comp, computation_building_blocks.Selection) and
+            isinstance(comp.source, computation_building_blocks.Call) and
+            isinstance(comp.source.function,
+                       computation_building_blocks.CompiledComputation))
+
+  def transform(self, comp):
+    if comp.index is not None:
+      return computation_building_blocks.Call(
+          select_graph_output(comp.source.function, index=comp.index),
+          comp.source.argument)
+    else:
+      return computation_building_blocks.Call(
+          select_graph_output(comp.source.function, name=comp.name),
+          comp.source.argument)

@@ -627,5 +627,82 @@ class ConcatenateTFBlocksTest(test.TestCase):
     self.assertEqual(executable_reduce(executable_input())[1], 10)
 
 
+class SelectionFromCalledTensorFlowBlockTest(test.TestCase):
+
+  def test_output_selection_should_transforms_correct_pattern(self):
+    noarg_tuple = _create_compiled_computation(
+        lambda: [tf.constant(0.), tf.constant(1.)], None)
+    called_noarg_tuple = computation_building_blocks.Call(noarg_tuple, None)
+    selected_result = computation_building_blocks.Selection(
+        called_noarg_tuple, index=0)
+    output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
+    )
+    self.assertTrue(output_selector.should_transform(selected_result))
+
+  def test_output_selection_transform_constructs_call_to_compiled_computation(
+      self):
+    noarg_tuple = _create_compiled_computation(
+        lambda: [tf.constant(0.), tf.constant(1.)], None)
+    called_noarg_tuple = computation_building_blocks.Call(noarg_tuple, None)
+    selected_result = computation_building_blocks.Selection(
+        called_noarg_tuple, index=0)
+    output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
+    )
+    parsed_selection = output_selector.transform(selected_result)
+    self.assertIsInstance(parsed_selection, computation_building_blocks.Call)
+    self.assertIsInstance(parsed_selection.function,
+                          computation_building_blocks.CompiledComputation)
+
+  def test_output_selection_leaves_type_signature_alone(self):
+    noarg_tuple = _create_compiled_computation(
+        lambda: [tf.constant(0.), tf.constant(1.)], None)
+    called_noarg_tuple = computation_building_blocks.Call(noarg_tuple, None)
+    selected_result = computation_building_blocks.Selection(
+        called_noarg_tuple, index=0)
+    output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
+    )
+    parsed_selection = output_selector.transform(selected_result)
+    self.assertEqual(parsed_selection.type_signature,
+                     selected_result.type_signature)
+
+  def test_output_selection_executes_zeroth_element(self):
+    noarg_tuple = _create_compiled_computation(
+        lambda: [tf.constant(0.), tf.constant(1.)], None)
+    called_noarg_tuple = computation_building_blocks.Call(noarg_tuple, None)
+    selected_zero = computation_building_blocks.Selection(
+        called_noarg_tuple, index=0)
+    output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
+    )
+    parsed_zero = output_selector.transform(selected_zero)
+    executable_zero = _to_computation_impl(parsed_zero.function)
+    self.assertEqual(executable_zero(), 0.0)
+
+  def test_output_selection_executes_first_element(self):
+    noarg_tuple = _create_compiled_computation(
+        lambda: [tf.constant(0.), tf.constant(1.)], None)
+    called_noarg_tuple = computation_building_blocks.Call(noarg_tuple, None)
+    selected_one = computation_building_blocks.Selection(
+        called_noarg_tuple, index=1)
+    output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
+    )
+    parsed_one = output_selector.transform(selected_one)
+    executable_one = _to_computation_impl(parsed_one.function)
+    self.assertEqual(executable_one(), 1.0)
+
+  def test_output_selection_can_executes_when_selecting_by_name(self):
+    # pyformat: disable
+    noarg_tuple = _create_compiled_computation(
+        lambda: {'a': tf.constant(0.), 'b': tf.constant(1.)}, None)
+    # pyformat: enable
+    called_noarg_tuple = computation_building_blocks.Call(noarg_tuple, None)
+    selected_a = computation_building_blocks.Selection(
+        called_noarg_tuple, name='a')
+    output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
+    )
+    parsed_a = output_selector.transform(selected_a)
+    executable_a = _to_computation_impl(parsed_a.function)
+    self.assertEqual(executable_a(), 0.0)
+
+
 if __name__ == '__main__':
   test.main()
