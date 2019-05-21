@@ -652,3 +652,83 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
       return computation_building_blocks.Call(
           select_graph_output(comp.source.function, name=comp.name),
           comp.source.argument)
+
+
+class LambdaWrappingGraph(transformation_utils.TransformSpec):
+  r"""`TransformSpec` representing a lambda wrapping a call to a TF graph.
+
+  Transforms the pattern:
+
+                            Lambda(x)
+                                |
+                              Call
+                             /    \
+          CompiledComputation      Ref(x)
+
+  Into:
+
+                      CompiledComputation
+
+  While preserving semantics. This represents the final stage of parsing TFF
+  into TF.
+  """
+
+  def should_transform(self, comp):
+    return (isinstance(comp, computation_building_blocks.Lambda) and
+            isinstance(comp.result, computation_building_blocks.Call) and
+            isinstance(comp.result.function,
+                       computation_building_blocks.CompiledComputation) and
+            isinstance(comp.result.argument,
+                       computation_building_blocks.Reference) and
+            comp.result.argument.name == comp.parameter_name)
+
+  def transform(self, comp):
+    return comp.result.function
+
+
+class TupleCalledGraphs(transformation_utils.TransformSpec):
+  r"""`TransformSpec` representing a tuple of called TF graphs.
+
+  Transforms the pattern:
+
+                              Tuple--------------------
+                             / ...                      \
+                         Call                          Call
+                        /    \                        /    \
+     CompiledComputation      Arg1  CompiledComputation    Argn
+
+  Into:
+
+                              Call
+                             /    \
+          CompiledComputation      Tuple
+                                  / ... \
+                                Arg1    Argn
+
+  While preserving semantics.
+  """
+
+  def should_transform(self, comp):
+    return (isinstance(comp, computation_building_blocks.Tuple) and all(
+        isinstance(x, computation_building_blocks.Call) for x in comp) and all(
+            isinstance(x.function,
+                       computation_building_blocks.CompiledComputation)
+            for x in comp))
+
+  def transform(self, comp):
+    compiled_computation_list = []
+    arg_list = []
+    for k in range(len(comp.type_signature)):
+      compiled_computation_list.append(comp[k].function)
+      arg_list.append(comp[k].argument)
+
+    concatenated_tf = concatenate_tensorflow_blocks(compiled_computation_list)
+    non_none_arg_list = [x for x in arg_list if x is not None]
+    if not non_none_arg_list:
+      return computation_building_blocks.Call(concatenated_tf, None)
+    elif len(non_none_arg_list) == 1:
+      return computation_building_blocks.Call(concatenated_tf,
+                                              non_none_arg_list[0])
+    else:
+      return computation_building_blocks.Call(
+          concatenated_tf, computation_building_blocks.Tuple(non_none_arg_list))
