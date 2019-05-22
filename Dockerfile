@@ -64,5 +64,6 @@ RUN ${PIP} --no-cache-dir install \
     matplotlib \
     numpy \
     six \
-    tensorflow_estimator
+    tensorflow_estimator \
+    tensorflow-model-optimization
 RUN pip freeze

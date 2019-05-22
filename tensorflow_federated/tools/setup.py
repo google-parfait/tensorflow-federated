@@ -72,6 +72,7 @@ REQUIRED_PACKAGES = [
     'numpy~=1.14',
     'six~=1.10',
     'tf-nightly',
+    'tensorflow-model-optimization',
 ]
 
 setuptools.setup(

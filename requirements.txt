@@ -5,3 +5,4 @@ matplotlib~=3.0
 numpy~=1.14
 six~=1.10
 tf-nightly
+tensorflow-model-optimization
