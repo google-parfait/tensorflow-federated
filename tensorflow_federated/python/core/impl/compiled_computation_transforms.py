@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
 from six.moves import range
 
 import tensorflow as tf
@@ -223,10 +224,10 @@ def permute_graph_inputs(comp, input_permutation):
   return computation_building_blocks.CompiledComputation(permuted_proto)
 
 
-def wraph_graph_parameter_as_tuple(comp):
+def wrap_graph_parameter_as_tuple(comp, name=None):
   """Wraps the parameter of `comp` in a tuple binding.
 
-  `wraph_graph_parameter_as_tuple` is intended as a preprocessing step
+  `wrap_graph_parameter_as_tuple` is intended as a preprocessing step
   to `pad_graph_inputs_to_match_type`, so that `pad_graph_inputs_to_match_type`
   can
   make the assumption that its argument `comp` always has a tuple binding,
@@ -236,6 +237,8 @@ def wraph_graph_parameter_as_tuple(comp):
   Args:
     comp: Instance of `computation_building_blocks.CompiledComputation` whose
       parameter we wish to wrap in a tuple binding.
+    name: Optional string argument, the name to assign to the element type
+      in the constructed tuple. Defaults to `None`.
 
   Returns:
     A transformed version of comp representing exactly the same computation,
@@ -246,11 +249,13 @@ def wraph_graph_parameter_as_tuple(comp):
       `computation_building_blocks.CompiledComputation`.
   """
   py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  if name is not None:
+    py_typecheck.check_type(name, six.string_types)
   proto = comp.proto
   proto_type = type_serialization.deserialize_type(proto.type)
 
   parameter_binding = [proto.tensorflow.parameter]
-  parameter_type_list = [proto_type.parameter]
+  parameter_type_list = [(name, proto_type.parameter)]
   new_parameter_binding = pb.TensorFlow.Binding(
       tuple=pb.TensorFlow.NamedTupleBinding(element=parameter_binding))
 
@@ -732,3 +737,209 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
     else:
       return computation_building_blocks.Call(
           concatenated_tf, computation_building_blocks.Tuple(non_none_arg_list))
+
+
+def _construct_padding(list_of_indices, tuple_type):
+  """Constructs padding for `_remap_graph_inputs`.
+
+  This function is highly coupled with `_construct_permutation` and
+  intended to be invoked sequentially with it, as in `_remap_graph_inputs`.
+  `_construct_padding` is present in the global scope only to ease its
+  testing; one could consider it to be private to `_remap_graph_inputs`.
+
+  Args:
+    list_of_indices: Python `list` containing integers between 0 and the length
+      of `tuple_type`.
+    tuple_type: Instance of `computation_types.NamedTupleType` as described in
+      the docstring o `_remap_graph_inputs`.
+
+  Returns:
+    An instance of `computation_types.NamedTupleType` containing
+    prefix identical to that constructed from selecting `list_of_indices` in
+    order from `tuple_type`, with the remaining elements being the remaining
+    elements of `tuple_type` in order.
+  """
+  type_elements = anonymous_tuple.to_elements(tuple_type)
+  existing_type = []
+  for i in list_of_indices:
+    existing_type.append(type_elements[i])
+  type_padding_remaining = [
+      x for i, x in enumerate(type_elements) if i not in list_of_indices
+  ]
+  how_to_pad = computation_types.NamedTupleType(existing_type +
+                                                type_padding_remaining)
+  return how_to_pad
+
+
+def _construct_permutation(list_of_indices, tuple_type):
+  """Constructs permutation for `_remap_graph_inputs`.
+
+  This function is highly coupled with `_construct_padding` and
+  intended to be invoked sequentially with it, as in `_remap_graph_inputs`.
+  `_construct_permutation` is present in the global scope only to ease its
+  testing; one could consider it to be private to `_remap_graph_inputs`.
+
+  Args:
+    list_of_indices: Python `list` containing integers between 0 and the length
+      of `tuple_type`.
+    tuple_type: Instance of `computation_types.NamedTupleType` as described in
+      the docstring of `_remap_graph_inputs`.
+
+  Returns:
+    A permutation of the integers in `range(len(tuple_type))` in
+    one-line notation such that applying `how_to_permute` to the type
+    `how_to_pad` will result in `tuple_type`.
+  """
+  type_elements = anonymous_tuple.to_elements(tuple_type)
+  length_of_type = len(type_elements)
+  index_positions_after_padding = list(range(length_of_type))
+  for idx, type_index in enumerate(list_of_indices):
+    index_positions_after_padding.pop(
+        index_positions_after_padding.index(type_index))
+    index_positions_after_padding.insert(idx, type_index)
+  how_to_permute = [
+      index_positions_after_padding.index(k) for k in range(length_of_type)
+  ]
+  return how_to_permute
+
+
+def _remap_graph_inputs(graph, list_of_indices, tuple_type):
+  r"""Maps inputs of `graph` via `list_of_indices` to match `type_elements`.
+
+  We may need to add extra inputs to a TF graph along the way of parsing TFF
+  into TF. This raises the possibility that we additionally need to permute
+  the arguments of the TF graph. For example, consider:
+
+                                      Lambda(arg)
+                                          |
+                                        Call
+                                       /    \
+                    CompiledComputation     Selection(5)
+                                               |
+                                            Ref(arg)
+
+  This compiled computation accepts a single argument, but the Lambda
+  we will need to replace accepts a tuple. So we must first pad the
+  arguments of the compiled computation, to accept a tuple. However,
+  this is not sufficient. The arguments will be passed into the
+  compiled computation positionally; since we have simply padded the input
+  of the computation, this would result in a potential type/semantic mismatch.
+  We must therefore also permute the bindings of the compiled computation so
+  that they match the expectation of the lambda.
+
+  This helper function calls two associated helpers to determine the correct
+  padding and permutation to apply in order to make these types match up,
+  `_construct_padding` and `_construct_permutation`. These associated helpers
+  are fairly highly coupled, through their use in this `_remap_graph_inputs`,
+  and their outputs respect certain invariants. The return value of
+  `_construct_padding` is the type to pad compiled computation with, according
+  to the semantics of `pad_graph_inputs_to_match_type`. The return value of
+  `_construct_permutation` is the permutation to then apply to this
+  padded graph in order to recover `tuple_type`, according to the semantics of
+  `permute_graph_inputs`. The guarantees these helper functions make are
+  twofold:
+
+  * The type `_construct_padding` returns contains all type elements in
+  `tuple_type`, with type prefix the same that would be constructed from
+  constructing a tuple type by selecting `list_of_indices` in order from
+  `tuple_type`.
+
+  * Applying the permutation `_construct_permutation` returns (in one-line
+  notation as noted in `permute_graph_inputs`) to the type returned by
+  `_construct_padding` will recover `tuple_type`.
+
+  These invariants are utilized in `_remap_graph_inputs` to construct a
+  TensorFlow computation with the same semantics as `graph`, but accepting
+  a parameter of type `tuple_type`.
+
+  Args:
+    graph: Instance of `computation_building_blocks.CompiledComputation` whose
+      parameter type we are trying to match with `tuple_type` if possible.
+    list_of_indices: Python `list` containing integers between 0 and the length
+      of `tuple_type`.
+    tuple_type: Instance of `computation_types.NamedTupleType` as described
+      above.
+
+  Returns:
+    An instance of `computation_building_blocks.CompiledComputation` which
+    contains the same logic as the input `graph`, but accepts an argument of
+    type `tuple_type`.
+
+  Raises:
+    TypeError: If `tuple_type` is not a `computation_types.NamedTupleType` or
+    `list_of_indices` is not a `list`.
+    ValueError: If `list_of_indices` contains an index less than 0 or out of
+    range for the `tuple_type`.
+  """
+  # TODO(b/133328350): Extend _remap_graph_inputs to allow for multiple reuse of
+  # selections.
+  py_typecheck.check_type(graph,
+                          computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(graph.type_signature.parameter,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_type(tuple_type, computation_types.NamedTupleType)
+  py_typecheck.check_type(list_of_indices, list)
+  tuple_type_len = len(tuple_type)
+  if len(set(list_of_indices)) != len(list_of_indices):
+    raise ValueError('Support for repeated indices is not yet implemented.')
+  if not all(k < tuple_type_len and k >= 0 for k in list_of_indices):
+    raise ValueError('list_of_indices must contain only indices between 0 and '
+                     'the length of tuple_type; tuple_type here is of length '
+                     '{}, and you have asked for the indices {}'.format(
+                         tuple_type_len, list_of_indices))
+  to_pad = _construct_padding(list_of_indices, tuple_type)
+  permutation = _construct_permutation(list_of_indices, tuple_type)
+  graph_with_appended_inputs = pad_graph_inputs_to_match_type(graph, to_pad)
+  return permute_graph_inputs(graph_with_appended_inputs, permutation)
+
+
+class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
+  r"""Identifies a lambda to a called TF graph on a selection from the lambda's argument.
+
+  Transforms the pattern:
+
+                              Lambda(arg)
+                                  |
+                                Call
+                               /    \
+            CompiledComputation      Selection(x)
+                                          |
+                                      Ref(arg)
+
+  into:
+
+                       CompiledComputation
+
+  By pushing the selection logic into the CompiledComputation.
+
+  Notice that we cannot simply transform the logic strictly under the
+  Lambda before encountering the Lambda, as we must still bind the
+  Reference to the parameter of the Lambda.
+  """
+
+  def should_transform(self, comp):
+    return (isinstance(comp, computation_building_blocks.Lambda) and isinstance(
+        comp.parameter_type, computation_types.NamedTupleType) and
+            isinstance(comp.result, computation_building_blocks.Call) and
+            isinstance(comp.result.function,
+                       computation_building_blocks.CompiledComputation) and
+            isinstance(comp.result.argument,
+                       computation_building_blocks.Selection) and
+            isinstance(comp.result.argument.source,
+                       computation_building_blocks.Reference) and
+            comp.result.argument.source.name == comp.parameter_name)
+
+  def transform(self, comp):
+    parameter_type_elements = anonymous_tuple.to_elements(comp.parameter_type)
+    if comp.result.argument.name is None:
+      index_of_selection = comp.result.argument.index
+    else:
+      index_of_selection = [x[0] for x in parameter_type_elements
+                           ].index(comp.result.argument.name)
+
+    name = parameter_type_elements[index_of_selection][0]
+
+    graph_with_wrapped_parameter = wrap_graph_parameter_as_tuple(
+        comp.result.function, name=name)
+    return _remap_graph_inputs(graph_with_wrapped_parameter,
+                               [index_of_selection], comp.parameter_type)
