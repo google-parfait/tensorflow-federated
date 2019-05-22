@@ -84,6 +84,9 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
           tensor=pb.TensorFlow.TensorBinding(tensor_name=placeholder.name))
       return (placeholder, binding)
   elif isinstance(parameter_type, computation_types.NamedTupleType):
+    # The parameter_type could be a NamedTupleTypeWithPyContainer, however, we
+    # ignore that for now. Instead, the proper containers will be inserted at
+    # call time by function_utils.wrap_as_zero_or_one_arg_callable.
     element_name_value_pairs = []
     element_bindings = []
     for e in anonymous_tuple.to_elements(parameter_type):
