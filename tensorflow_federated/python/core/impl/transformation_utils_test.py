@@ -1616,6 +1616,39 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(references, constructed_tree)
 
 
+class GetUniqueNamesTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      transformation_utils.get_unique_names(None)
+
+  def test_returns_names_single_lambda(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref)
+    names = transformation_utils.get_unique_names(lambda_1)
+    self.assertCountEqual(names, ('x',))
+
+  def test_returns_names_nested_lambdas_with_different_variable_name(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref)
+    lambda_2 = computation_building_blocks.Lambda('y', tf.int32, lambda_1)
+    names = transformation_utils.get_unique_names(lambda_2)
+    self.assertCountEqual(names, ('x', 'y'))
+
+  def test_returns_names_single_block(self):
+    data = computation_building_blocks.Data('x', tf.int32)
+    block = computation_building_blocks.Block([('x', data)], data)
+    names = transformation_utils.get_unique_names(block)
+    self.assertCountEqual(names, ('x',))
+
+  def test_returns_names_nested_blocks_with_different_variable_name(self):
+    data = computation_building_blocks.Data('x', tf.int32)
+    block_1 = computation_building_blocks.Block([('x', data)], data)
+    block_2 = computation_building_blocks.Block([('y', data)], block_1)
+    names = transformation_utils.get_unique_names(block_2)
+    self.assertCountEqual(names, ('x', 'y'))
+
+
 class HasUniqueNamesTest(absltest.TestCase):
 
   def test_raises_on_none(self):
