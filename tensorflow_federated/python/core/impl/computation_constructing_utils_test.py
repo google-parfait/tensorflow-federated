@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
@@ -31,6 +32,76 @@ from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+
+
+class UniqueNameGeneratorTest(absltest.TestCase):
+
+  def test_does_not_raise_type_error_with_none_comp(self):
+    try:
+      computation_constructing_utils.unique_name_generator(None)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  def test_returns_unique_names_with_none_comp_and_none_prefix(self):
+    name_generator = computation_constructing_utils.unique_name_generator(
+        None, prefix=None)
+    names = set(six.next(name_generator) for _ in range(10))
+    first_name = list(names)[0]
+    prefix = first_name[:3]
+    self.assertLen(names, 10)
+    self.assertTrue(all(n.startswith(prefix) for n in names))
+
+  def test_returns_unique_names_with_none_comp_and_unset_prefix(self):
+    name_generator = computation_constructing_utils.unique_name_generator(None)
+    names = set(six.next(name_generator) for _ in range(10))
+    self.assertLen(names, 10)
+    self.assertTrue(all(n.startswith('_var') for n in names))
+
+  def test_returns_unique_names_with_none_comp_and_prefix(self):
+    name_generator = computation_constructing_utils.unique_name_generator(
+        None, prefix='_test')
+    names = set(six.next(name_generator) for _ in range(10))
+    self.assertLen(names, 10)
+    self.assertTrue(all(n.startswith('_test') for n in names))
+
+  def test_returns_unique_names_with_comp_and_none_prefix(self):
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = computation_constructing_utils.unique_name_generator(
+        comp, prefix=None)
+    names = set(six.next(name_generator) for _ in range(10))
+    first_name = list(names)[0]
+    prefix = first_name[:3]
+    self.assertLen(names, 10)
+    self.assertTrue(all(n.startswith(prefix) for n in names))
+
+  def test_returns_unique_names_with_comp_and_unset_prefix(self):
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = computation_constructing_utils.unique_name_generator(comp)
+    names = set(six.next(name_generator) for _ in range(10))
+    self.assertLen(names, 10)
+    self.assertTrue(all(n.startswith('_var') for n in names))
+
+  def test_returns_unique_names_with_comp_and_prefix(self):
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = computation_constructing_utils.unique_name_generator(
+        comp, prefix='_test')
+    names = set(six.next(name_generator) for _ in range(10))
+    self.assertLen(names, 10)
+    self.assertTrue(all(n.startswith('_test') for n in names))
+
+  def test_returns_unique_names_with_conflicting_prefix(self):
+    ref = computation_building_blocks.Reference('_test', tf.int32)
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = computation_constructing_utils.unique_name_generator(
+        comp, prefix='_test')
+    names = set(six.next(name_generator) for _ in range(10))
+    first_name = list(names)[0]
+    prefix = first_name[:3]
+    self.assertNotEqual(prefix, '_test')
+    self.assertTrue(all(n.startswith(prefix) for n in names))
 
 
 class ConstructFederatedGetitemCompTest(parameterized.TestCase):

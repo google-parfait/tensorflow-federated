@@ -113,6 +113,7 @@ py_library(
         ":computation_building_blocks",
         ":intrinsic_defs",
         ":placement_literals",
+        ":transformation_utils",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",

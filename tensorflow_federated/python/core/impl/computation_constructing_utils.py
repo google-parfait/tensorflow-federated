@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import random
+import string
+
 import six
 from six.moves import range
 
@@ -27,7 +30,30 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_utils
+
+
+def unique_name_generator(comp, prefix='_var'):
+  """Yields a new unique name that does not exist in `comp`.
+
+  Args:
+    comp: The compuation building block to use as a reference.
+    prefix: The prefix to use when generating unique names. If `prefix` is
+      `None` or if `comp` contains any name with this prefix, then a unique
+      prefix will be generated from random lowercase ascii characters.
+  """
+  if comp is not None:
+    names = transformation_utils.get_unique_names(comp)
+  else:
+    names = set()
+  while prefix is None or any(n.startswith(prefix) for n in names):
+    characters = string.ascii_lowercase
+    prefix = '_{}'.format(''.join(random.choice(characters) for _ in range(3)))
+  index = 1
+  while True:
+    yield '{}{}'.format(prefix, index)
+    index += 1
 
 
 def construct_federated_getitem_call(arg, idx):
