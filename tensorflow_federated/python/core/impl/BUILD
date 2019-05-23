@@ -27,7 +27,6 @@ py_test(
     name = "compiler_pipeline_test",
     size = "small",
     srcs = ["compiler_pipeline_test.py"],
-    strict_deps = True,
     deps = [
         ":compiler_pipeline",
         ":computation_building_blocks",
@@ -63,7 +62,6 @@ py_test(
     name = "compiled_computation_transforms_test",
     size = "small",
     srcs = ["compiled_computation_transforms_test.py"],
-    strict_deps = True,
     deps = [
         ":compiled_computation_transforms",
         ":computation_building_blocks",
@@ -96,7 +94,6 @@ py_test(
     name = "computation_building_blocks_test",
     size = "small",
     srcs = ["computation_building_blocks_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
@@ -128,7 +125,6 @@ py_test(
     name = "computation_constructing_utils_test",
     size = "small",
     srcs = ["computation_constructing_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
@@ -160,7 +156,6 @@ py_test(
     name = "computation_impl_test",
     size = "small",
     srcs = ["computation_impl_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_impl",
         ":context_stack_impl",
@@ -185,7 +180,6 @@ py_test(
     name = "computation_wrapper_test",
     size = "small",
     srcs = ["computation_wrapper_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_wrapper",
         ":context_base",
@@ -214,7 +208,6 @@ py_test(
     name = "computation_wrapper_instances_test",
     size = "small",
     srcs = ["computation_wrapper_instances_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -252,7 +245,6 @@ py_test(
     name = "context_stack_test",
     size = "small",
     srcs = ["context_stack_test.py"],
-    strict_deps = True,
     deps = [
         ":context_base",
         ":context_stack_impl",
@@ -282,7 +274,6 @@ py_test(
     name = "federated_computation_context_test",
     size = "small",
     srcs = ["federated_computation_context_test.py"],
-    strict_deps = True,
     deps = [
         ":context_stack_impl",
         ":federated_computation_context",
@@ -308,7 +299,6 @@ py_test(
     name = "federated_computation_utils_test",
     size = "small",
     srcs = ["federated_computation_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":context_stack_impl",
         ":federated_computation_utils",
@@ -368,7 +358,6 @@ py_test(
     name = "graph_utils_test",
     size = "small",
     srcs = ["graph_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -399,7 +388,6 @@ py_test(
     name = "intrinsic_bodies_test",
     size = "small",
     srcs = ["intrinsic_bodies_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -445,7 +433,6 @@ py_test(
     name = "intrinsic_defs_test",
     size = "small",
     srcs = ["intrinsic_defs_test.py"],
-    strict_deps = True,
     deps = [
         ":intrinsic_defs",
         ":type_utils",
@@ -470,7 +457,6 @@ py_test(
     name = "intrinsic_utils_test",
     size = "small",
     srcs = ["intrinsic_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":context_stack_impl",
         ":intrinsic_utils",
@@ -486,7 +472,6 @@ py_test(
     name = "placement_literals_test",
     size = "small",
     srcs = ["placement_literals_test.py"],
-    strict_deps = True,
     deps = [":placement_literals"],
 )
 
@@ -518,7 +503,6 @@ py_test(
     name = "reference_executor_test",
     size = "small",
     srcs = ["reference_executor_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -553,7 +537,6 @@ py_test(
     name = "tensorflow_deserialization_test",
     size = "small",
     srcs = ["tensorflow_deserialization_test.py"],
-    strict_deps = True,
     deps = [
         ":context_stack_impl",
         ":tensorflow_deserialization",
@@ -583,7 +566,6 @@ py_test(
     name = "tensorflow_serialization_test",
     size = "small",
     srcs = ["tensorflow_serialization_test.py"],
-    strict_deps = True,
     deps = [
         ":context_stack_impl",
         ":tensorflow_serialization",
@@ -611,7 +593,6 @@ py_test(
     name = "tf_computation_context_test",
     size = "small",
     srcs = ["tf_computation_context_test.py"],
-    strict_deps = True,
     deps = [
         ":tf_computation_context",
         "//tensorflow_federated/python/common_libs:test",
@@ -637,7 +618,6 @@ py_test(
     name = "transformation_utils_test",
     size = "small",
     srcs = ["transformation_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
@@ -671,7 +651,6 @@ py_test(
     name = "transformations_test",
     size = "small",
     srcs = ["transformations_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
@@ -700,7 +679,6 @@ py_test(
     name = "type_constructors_test",
     size = "small",
     srcs = ["type_constructors_test.py"],
-    strict_deps = True,
     deps = [":type_constructors"],
 )
 
@@ -720,7 +698,6 @@ py_test(
     name = "type_serialization_test",
     size = "small",
     srcs = ["type_serialization_test.py"],
-    strict_deps = True,
     deps = [
         ":type_serialization",
         ":type_utils",
@@ -748,7 +725,6 @@ py_test(
     name = "type_utils_test",
     size = "small",
     srcs = ["type_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
@@ -789,7 +765,6 @@ py_test(
     name = "value_impl_test",
     size = "small",
     srcs = ["value_impl_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
@@ -822,7 +797,6 @@ py_test(
     name = "value_utils_test",
     size = "small",
     srcs = ["value_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
