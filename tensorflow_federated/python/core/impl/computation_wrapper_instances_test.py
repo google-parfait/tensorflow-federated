@@ -99,7 +99,9 @@ class ComputationWrapperInstancesTest(test.TestCase):
     building_block = (
         computation_building_blocks.ComputationBuildingBlock.from_proto(comp))
     self.assertEqual(
-        str(building_block), '(foo_arg -> foo_arg[0](foo_arg[0](foo_arg[1])))')
+        str(building_block),
+        '(FEDERATED_arg -> '
+        'FEDERATED_arg[0](FEDERATED_arg[0](FEDERATED_arg[1])))')
 
   def test_tf_wrapper_fails_bad_types(self):
     function = computation_types.FunctionType(

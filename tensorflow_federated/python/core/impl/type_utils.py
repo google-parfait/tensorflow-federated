@@ -119,7 +119,7 @@ def infer_type(arg):
             tf.DType(tensor_proto.dtype),
             tf.TensorShape(tensor_proto.tensor_shape))
       except TypeError as err:
-        raise TypeError('Could not infer the TFF type of {}: {}.'.format(
+        raise TypeError('Could not infer the TFF type of {}: {}'.format(
             py_typecheck.type_string(type(arg)), str(err)))
 
 
@@ -873,11 +873,33 @@ def is_anon_tuple_with_py_container(value, type_spec):
       type_spec, computation_types.NamedTupleTypeWithPyContainerType))
 
 
-def convert_to_py_container(anon_tuple, type_spec):
-  """Recursively convert an AnonymosuTuple to a Python container."""
-  py_typecheck.check_type(type_spec,
-                          computation_types.NamedTupleTypeWithPyContainerType)
-  py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
+def convert_to_py_container(value, type_spec):
+  """Recursively convert `AnonymousTuple`s to Python containers.
+
+  This is in some sense the inverse operation to
+  `anonymous_tuple.from_container`.
+
+  Args:
+    value: An `AnonymousTuple`, in which case this method recurses, replacing
+      all `AnonymousTuple`s with the appropriate Python containers if possible
+      (and keeping AnonymousTuple otherwise); or some other value, in which case
+      that value is returned unmodified immediately (terminating the recursion).
+    type_spec: The `tff.Type` to which value should conform, possibly including
+      `NamedTupleTypeWithPyContainerType`.
+
+  Returns:
+    The input value, with containers converted to appropriate Python
+    containers as specified by the `type_spec`.
+
+  Raises:
+    ValueError: If the conversion is not possible due to a mix of named
+    and unnamed values.
+  """
+  if not isinstance(value, anonymous_tuple.AnonymousTuple):
+    return value
+
+  anon_tuple = value
+  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
 
   def is_container_type_without_names(container_type):
     return (issubclass(container_type, (list, tuple)) and
@@ -888,36 +910,60 @@ def convert_to_py_container(anon_tuple, type_spec):
             py_typecheck.is_attrs(container_type) or
             issubclass(container_type, dict))
 
-  container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-      type_spec)
+  if isinstance(type_spec, computation_types.NamedTupleTypeWithPyContainerType):
+    container_type = (
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            type_spec))
+    container_is_anon_tuple = False
+  else:
+    # TODO(b/133228705): Consider requiring NamedTupleTypeWithPyContainerType.
+    container_is_anon_tuple = True
+    container_type = anonymous_tuple.AnonymousTuple
 
   # Avoid projecting the AnonymousTuple into a Python container that is not
-  # supported. There may be edge cases where this results in a surprise..
-  num_named_elements = len(dir(anon_tuple))
-  if ((num_named_elements > 0 and
-       is_container_type_without_names(container_type)) or
-      (num_named_elements < len(anon_tuple) and
-       is_container_type_with_names(container_type))):
-    return anon_tuple
+  # supported.
+  if not container_is_anon_tuple:
+    num_named_elements = len(dir(anon_tuple))
+    num_unnamed_elements = len(anon_tuple) - num_named_elements
+    if num_named_elements > 0 and num_unnamed_elements > 0:
+      raise ValueError('Cannot represent value {} with container type {}, '
+                       'because value contains a mix of named and unnamed '
+                       'elements.'.format(anon_tuple, container_type))
+    if (num_named_elements > 0 and
+        is_container_type_without_names(container_type)):
+      # NOTE: This could be relaxed in some cases if needed.
+      raise ValueError(
+          'Cannot represent value {} with named elements '
+          'using container type {} which does not support names.'.format(
+              anon_tuple, container_type))
+    if (num_unnamed_elements > 0 and
+        is_container_type_with_names(container_type)):
+      # Note: This could be relaxed in some cases if needed.
+      raise ValueError('Cannot represent value {} with unnamed elements '
+                       'with container type {} which requires names.'.format(
+                           anon_tuple, container_type))
 
   elements = []
-  for index, elem_type_spec in enumerate(
-      anonymous_tuple.to_elements(type_spec)):
-    elem_name, elem_type = elem_type_spec
-    if isinstance(elem_type,
-                  computation_types.NamedTupleTypeWithPyContainerType):
-      value = convert_to_py_container(anon_tuple[index], elem_type)
-    else:
-      value = anon_tuple[index]
-    if elem_name is None:
+  for index, (elem_name,
+              elem_type) in enumerate(anonymous_tuple.to_elements(type_spec)):
+    value = convert_to_py_container(anon_tuple[index], elem_type)
+
+    if elem_name is None and not container_is_anon_tuple:
       elements.append(value)
     else:
       elements.append((elem_name, value))
 
   if (py_typecheck.is_named_tuple(container_type) or
       py_typecheck.is_attrs(container_type)):
+    # The namedtuple and attr.s class constructors cannot interpret a list of
+    # (name, value) tuples; instead call constructor using kwargs. Note
+    # that these classes already define an order of names internally,
+    # so order does not matter.
     return container_type(**dict(elements))
   else:
+    # E.g., tuple and list when elements only has values,
+    # but also dict, OrderedDict, or AnonymousTuple when
+    # elements has (name, value) tuples.
     return container_type(elements)
 
 

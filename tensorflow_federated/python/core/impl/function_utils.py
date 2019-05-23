@@ -25,6 +25,7 @@ import six
 from six.moves import range
 
 from tensorflow.python.framework import function
+from tensorflow.python.util import tf_inspect
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -61,7 +62,9 @@ def is_defun(fn):
           # upstreaming some helper library or extending the public interface.
           function._DefinedFunction,  # pylint: disable=protected-access
           function._OverloadedFunction  # pylint: disable=protected-access
-      ))
+      )) or (
+          # TODO(b/113112885): Add (cleaner) support for tf.Function and
+          'def_function.Function' in py_typecheck.type_string(type(fn)))
 
 
 def get_argspec(fn):
@@ -94,9 +97,7 @@ def get_argspec(fn):
     # inside to extract arguments.
     return inspect.getargspec(fn._func)  # pylint: disable=protected-access,deprecated-method
   elif is_defun(fn):
-    raise TypeError(
-        'Support for defuns of type {} has not been implemented yet.'.format(
-            py_typecheck.type_string(type(fn))))
+    return tf_inspect.getargspec(fn)
   else:
     raise TypeError('Expected a Python function or a defun, found {}.'.format(
         py_typecheck.type_string(type(fn))))
@@ -403,6 +404,80 @@ def pack_args(parameter_type, args, kwargs, context):
       return context.ingest(arg, parameter_type)
 
 
+def infer_unpack_needed(fn, parameter_type, should_unpack=None):
+  """Returns whether parameter_type must be unpacked when calling fn.
+
+  Args:
+    fn: The function to be invoked.
+    parameter_type: The TFF type of the parameter bundle to be accepted by the
+      returned callable, if any, or None if there's no parameter.
+    should_unpack: Default or expected return value; None implies the inferred
+      value should be returned. If either unpacking or packing could work, and
+      should_unpack is not None, then should_unpack is returned.
+
+  Returns:
+    A `bool` indicating whether or not to unpack.
+  """
+  if should_unpack not in [True, False, None]:
+    raise TypeError('The unpack argument has an unexpected value {}.'.format(
+        repr(should_unpack)))
+  unpack = should_unpack  # Default return value.
+  argspec = get_argspec(fn)
+
+  if not parameter_type:
+    if is_argspec_compatible_with_types(argspec):
+      if should_unpack:
+        raise ValueError('Requested unpacking of a no-arg function.')
+      return False
+    else:
+      raise TypeError(
+          'The argspec {} of the supplied function cannot be interpreted as a '
+          'body of a no-parameter computation.'.format(str(argspec)))
+
+  unpack_required = not is_argspec_compatible_with_types(
+      argspec, parameter_type)
+  # Boolean identity comparison becaue unpack can have a non-boolean value.
+  if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
+    raise TypeError(
+        'The supplied function with argspec {} cannot accept a value of '
+        'type {} as a single argument.'.format(
+            str(argspec), str(parameter_type)))
+  if is_argument_tuple(parameter_type):
+    arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
+    unpack_possible = is_argspec_compatible_with_types(argspec, *arg_types,
+                                                       **kwarg_types)
+  else:
+    unpack_possible = False
+  # Boolean identity comparison becaue unpack can have a non-boolean value.
+  if not unpack_possible and should_unpack is True:  # pylint: disable=g-bool-id-comparison
+    raise TypeError(
+        'The supplied function with argspec {} cannot accept a value of '
+        'type {} as multiple positional and/or keyword arguments. '
+        'That is, the argument cannot be unpacked, but unpacking '
+        'was requested.'.format(str(argspec), str(parameter_type)))
+  if unpack_required and not unpack_possible:
+    raise TypeError(
+        'The supplied function with argspec {} cannot accept a value of '
+        'type {} as either a single argument or multiple positional and/or '
+        'keyword arguments.'.format(str(argspec), str(parameter_type)))
+  if not unpack_required and unpack_possible and should_unpack is None:
+    # The supplied function could accept a value as either a single argument,
+    # or as multiple positional and/or keyword arguments, and the caller did
+    # not specify any preference, leaving ambiguity in how to handle the
+    # mapping. We resolve the ambiguity by defaulting to capturing the entire
+    # argument, as that's the behavior suggested as expected by the users.
+    unpack = False
+
+  if unpack is None:
+    # Any ambiguity at this point has been resolved, so the following
+    # condition holds and need only be verified in tests.
+    assert unpack_required == unpack_possible, (unpack_required,
+                                                unpack_possible)
+    unpack = unpack_possible
+
+  return unpack
+
+
 def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
   """Wraps around `fn` so it accepts up to one positional TFF-typed argument.
 
@@ -466,44 +541,8 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
           'The argspec {} of the supplied function cannot be interpreted as a '
           'body of a no-parameter computation.'.format(str(argspec)))
   else:
-    unpack_required = not is_argspec_compatible_with_types(
-        argspec, parameter_type)
-    # Boolean identity comparison becaue unpack can have a non-boolean value.
-    if unpack_required and unpack is False:  # pylint: disable=g-bool-id-comparison
-      raise TypeError(
-          'The supplied function with argspec {} cannot accept a value of '
-          'type {} as a single argument.'.format(
-              str(argspec), str(parameter_type)))
-    if is_argument_tuple(parameter_type):
+    if infer_unpack_needed(fn, parameter_type, unpack):
       arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
-      unpack_possible = is_argspec_compatible_with_types(
-          argspec, *arg_types, **kwarg_types)
-    else:
-      unpack_possible = False
-    # Boolean identity comparison becaue unpack can have a non-boolean value.
-    if not unpack_possible and unpack is True:  # pylint: disable=g-bool-id-comparison
-      raise TypeError(
-          'The supplied function with argspec {} cannot accept a value of '
-          'type {} as multiple positional and/or keyword arguments.'.format(
-              str(argspec), str(parameter_type)))
-    if unpack_required and not unpack_possible:
-      raise TypeError(
-          'The supplied function with argspec {} cannot accept a value of '
-          'type {} as either a single argument or multiple positional and/or '
-          'keyword arguments.'.format(str(argspec), str(parameter_type)))
-    if not unpack_required and unpack_possible and unpack is None:
-      # The supplied function could accept a value as either a single argument,
-      # or as multiple positional and/or keyword arguments, and the caller did
-      # not specify any preference, leaving ambiguity in how to handle the
-      # mapping. We resolve the ambiguity by defaulting to capturing the entire
-      # argument, as that's the behavior suggested as expected by the users.
-      unpack = False
-    if unpack is None:
-      # Any ambiguity at this point has been resolved, so the following
-      # condition holds and need only be verified in tests.
-      assert unpack_required == unpack_possible
-      unpack = unpack_possible
-    if unpack:
 
       def _unpack_and_call(fn, arg_types, kwarg_types, arg):
         """An interceptor function that unpacks 'arg' before calling `fn`.
@@ -535,8 +574,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
             raise TypeError('Expected element at position {} to be '
                             'of type {}, found {}.'.format(
                                 idx, str(expected_type), str(actual_type)))
-          if type_utils.is_anon_tuple_with_py_container(element_value,
-                                                        expected_type):
+          if isinstance(element_value, anonymous_tuple.AnonymousTuple):
             element_value = type_utils.convert_to_py_container(
                 element_value, expected_type)
           args.append(element_value)

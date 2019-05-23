@@ -197,6 +197,7 @@ py_library(
         ":computation_wrapper",
         ":context_stack_impl",
         ":federated_computation_utils",
+        ":function_utils",
         ":tensorflow_serialization",
         ":type_utils",
     ],
@@ -340,6 +341,7 @@ py_library(
     srcs = ["graph_utils.py"],
     deps = [
         ":dtype_utils",
+        ":function_utils",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -547,6 +549,7 @@ py_library(
     srcs = ["tensorflow_serialization.py"],
     deps = [
         ":context_stack_base",
+        ":function_utils",
         ":graph_utils",
         ":tf_computation_context",
         ":type_serialization",
