@@ -23,12 +23,12 @@ from tensorflow_federated.python.learning.federated_averaging import build_feder
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation
 from tensorflow_federated.python.learning.federated_sgd import build_federated_sgd_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import state_with_new_model_weights
+from tensorflow_federated.python.learning.keras_utils import assign_weights_to_keras_model
+from tensorflow_federated.python.learning.keras_utils import from_compiled_keras_model
+from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model import TrainableModel
-from tensorflow_federated.python.learning.model_utils import assign_weights_to_keras_model
-from tensorflow_federated.python.learning.model_utils import from_compiled_keras_model
-from tensorflow_federated.python.learning.model_utils import from_keras_model
 
 # Used by doc generation script.
 _allowed_symbols = [
