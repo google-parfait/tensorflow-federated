@@ -22,13 +22,16 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_utils
+from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def _tf_wrapper_fn(target_fn, parameter_type, name=None):
+def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
   """Wrapper function to plug Tensorflow logic in to TFF framework."""
-  del name
+  del name  # Unused.
+  target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+      target_fn, parameter_type, unpack)
   if not type_utils.check_tf_comp_whitelisted(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
                     'constituents `SequenceType`, `NamedTupleType` '
@@ -43,8 +46,26 @@ def _tf_wrapper_fn(target_fn, parameter_type, name=None):
 tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
-def _federated_computation_wrapper_fn(target_fn, parameter_type, name=None):
+def _tf2_wrapper_fn(target_fn, parameter_type, unpack, name=None):
+  del name  # Unused.
+  comp_pb, extra_type_spec = (
+      tensorflow_serialization.serialize_tf2_as_tf_computation(
+          target_fn, parameter_type, unpack=unpack))
+  return computation_impl.ComputationImpl(comp_pb,
+                                          context_stack_impl.context_stack,
+                                          extra_type_spec)
+
+
+tf2_wrapper = computation_wrapper.ComputationWrapper(_tf2_wrapper_fn)
+
+
+def _federated_computation_wrapper_fn(target_fn,
+                                      parameter_type,
+                                      unpack,
+                                      name=None):
   """Wrapper function to plug orchestration logic in to TFF framework."""
+  target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+      target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
   target_lambda = (
       federated_computation_utils.zero_or_one_arg_fn_to_building_block(

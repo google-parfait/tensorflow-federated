@@ -1053,18 +1053,21 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
 class ConvertToPyContainerTest(test.TestCase):
 
-  def test_fails_not_anon_tuple(self):
-    with self.assertRaises(TypeError):
-      type_utils.convert_to_py_container(
-          (1, 2.0),
-          computation_types.NamedTupleTypeWithPyContainerType(
-              [tf.int32, tf.float32], list))
+  def test_not_anon_tuple_passthrough(self):
+    value = (1, 2.0)
+    result = type_utils.convert_to_py_container(
+        (1, 2.0),
+        computation_types.NamedTupleTypeWithPyContainerType(
+            [tf.int32, tf.float32], container_type=list))
+    self.assertEqual(result, value)
 
-  def test_fails_not_named_tuple_type_with_py_container(self):
-    with self.assertRaises(TypeError):
-      type_utils.convert_to_py_container(
-          anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)]),
-          computation_types.NamedTupleType([tf.int32, tf.float32]))
+  def test_anon_tuple_return(self):
+    anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
+    self.assertEqual(
+        type_utils.convert_to_py_container(
+            anon_tuple, computation_types.NamedTupleType([tf.int32,
+                                                          tf.float32])),
+        anon_tuple)
 
   def test_anon_tuple_without_names_to_container_without_names(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
@@ -1080,19 +1083,19 @@ class ConvertToPyContainerTest(test.TestCase):
             computation_types.NamedTupleTypeWithPyContainerType(types, tuple)),
         (1, 2.0))
 
-  def test_anon_tuple_with_names_to_container_without_names(self):
+  def test_anon_tuple_with_names_to_container_without_names_fails(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2.0)])
     types = [tf.int32, tf.float32]
-    self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types, tuple)),
-        anon_tuple)
-    self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types, list)),
-        anon_tuple)
+    with self.assertRaisesRegex(ValueError,
+                                'contains a mix of named and unnamed elements'):
+      type_utils.convert_to_py_container(
+          anon_tuple,
+          computation_types.NamedTupleTypeWithPyContainerType(types, tuple))
+    anon_tuple = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2.0)])
+    with self.assertRaisesRegex(ValueError, 'which does not support names'):
+      type_utils.convert_to_py_container(
+          anon_tuple,
+          computation_types.NamedTupleTypeWithPyContainerType(types, list))
 
   def test_anon_tuple_with_names_to_container_with_names(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2.0)])
@@ -1129,59 +1132,66 @@ class ConvertToPyContainerTest(test.TestCase):
                                                                 TestFoo)),
         TestFoo(a=1, b=2.0))
 
-  def test_anon_tuple_without_names_to_container_with_names(self):
+  def test_anon_tuple_without_names_to_container_with_names_fails(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
     types = [('a', tf.int32), ('b', tf.float32)]
-    self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types, dict)),
-        anon_tuple)
-    self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(
-                types, collections.OrderedDict)), anon_tuple)
+    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
+      type_utils.convert_to_py_container(
+          anon_tuple,
+          computation_types.NamedTupleTypeWithPyContainerType(types, dict))
+
+    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
+      type_utils.convert_to_py_container(
+          anon_tuple,
+          computation_types.NamedTupleTypeWithPyContainerType(
+              types, collections.OrderedDict))
+
     test_named_tuple = collections.namedtuple('TestNamedTuple', ['a', 'b'])
-    self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(
-                types, test_named_tuple)), anon_tuple)
+    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
+      type_utils.convert_to_py_container(
+          anon_tuple,
+          computation_types.NamedTupleTypeWithPyContainerType(
+              types, test_named_tuple))
 
     @attr.s
     class TestFoo(object):
       a = attr.ib()
       b = attr.ib()
 
-    self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types,
-                                                                TestFoo)),
-        anon_tuple)
+    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
+      type_utils.convert_to_py_container(
+          anon_tuple,
+          computation_types.NamedTupleTypeWithPyContainerType(types, TestFoo))
 
   def test_nested_py_containers(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([
         (None, 1), (None, 2.0),
-        (None,
+        ('dict_key',
          anonymous_tuple.AnonymousTuple([
              ('a', 3),
              ('b', anonymous_tuple.AnonymousTuple([(None, 4), (None, 5)]))
          ]))
     ])
-    expected_nested_structure = [1, 2.0, {'a': 3, 'b': (4, 5)}]
+
+    dict_subtype = computation_types.NamedTupleTypeWithPyContainerType(
+        [('a', tf.int32),
+         ('b',
+          computation_types.NamedTupleTypeWithPyContainerType(
+              [tf.int32, tf.int32], tuple))], dict)
+    type_spec = computation_types.NamedTupleType([(None, tf.int32),
+                                                  (None, tf.float32),
+                                                  ('dict_key', dict_subtype)])
+
+    expected_nested_structure = anonymous_tuple.AnonymousTuple(
+        # A comment here makes auto format nicer. :/
+        [(None, 1), (None, 2.0), ('dict_key', {
+            'a': 3,
+            'b': (4, 5)
+        })])
+
     self.assertEqual(
-        type_utils.convert_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType([
-                tf.int32, tf.float32,
-                computation_types.NamedTupleTypeWithPyContainerType(
-                    [('a', tf.int32),
-                     ('b',
-                      computation_types.NamedTupleTypeWithPyContainerType(
-                          [tf.int32, tf.int32], tuple))], dict)
-            ], list)), expected_nested_structure)
+        type_utils.convert_to_py_container(anon_tuple, type_spec),
+        expected_nested_structure)
 
 
 class IsConcreteInstanceOf(test.TestCase):

@@ -61,6 +61,7 @@ py_test(
     srcs = ["computations_test.py"],
     deps = [
         ":api",
+        ":computations",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )

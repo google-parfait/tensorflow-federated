@@ -36,9 +36,10 @@ class WrappedForTest(function_utils.ConcreteFunction):
   result, all converted into strings via str().
   """
 
-  def __init__(self, fn, parameter_type, name=None):
+  def __init__(self, fn, parameter_type, unpack, name=None):
     del name
-    self._fn = fn
+    self._fn = function_utils.wrap_as_zero_or_one_arg_callable(
+        fn, parameter_type, unpack)
     super(WrappedForTest, self).__init__(
         computation_types.FunctionType(parameter_type, tf.string),
         context_stack_impl.context_stack)

@@ -46,20 +46,26 @@ def _wrap(fn, parameter_type, wrapper_fn):
     parameter_type: The parameter type accepted by the computation, or None if
       there is no parameter.
     wrapper_fn: The Python callable that performs actual wrapping. It must
-      accept two arguments, and optional third `name`. The first argument will
-      be a Python function that takes either zero parameters if the computation
-      is to be a no-parameter computation, or exactly one parameter if the
-      computation does have a parameter. The second argument will be either None
-      for a no-parameter computation, or the type of the computation's parameter
-      (an instance of types.Type) if the computation has one. The third,
-      optional parameter `name` is the optional name of the function that is
-      being wrapped (only for debugging purposes). The object to be returned by
-      this function should be an instance of a ConcreteFunction.
+      accept three arguments, and optional forth kwarg `name`:
+          - `target_fn'`, the Python function that to be wrapped,
+            accepting possibly *args and **kwargs.
+          - Either None for a no-parameter computation, or the type of the
+            computation's parameter (an instance of `computation_types.Type`)
+            if the computation has one.
+          - `unpack`, an argument which will be passed on to
+            `function_utils.wrap_as_zero_or_one_arg_callable` when
+            wrapping `target_fn`. See that function for details.
+          - Optional `name`, the name of the function that is
+            being wrapped (only for debugging purposes).
+      The object to be returned by this function should be an instance of a
+      `ConcreteFunction`.
 
   Returns:
     Either the result of wrapping (an object that represents the computation),
     or a polymorphic callable that performs wrapping upon invocation based on
-    argument types.
+    argument types. The returned function still may accept multiple
+    arguments (it has not yet had
+    `function_uils.wrap_as_zero_or_one_arg_callable` applied to it).
 
   Raises:
     TypeError: if the arguments are of the wrong types, or the `wrapper_fn`
@@ -72,15 +78,11 @@ def _wrap(fn, parameter_type, wrapper_fn):
   argspec = function_utils.get_argspec(fn)
   parameter_type = computation_types.to_type(parameter_type)
   if not parameter_type:
-    if argspec.args or argspec.varargs or argspec.keywords:
+    if (argspec.args or argspec.varargs or argspec.keywords):
       # There is no TFF type specification, and the function/defun declares
       # parameters. Create a polymorphic template.
       def _wrap_polymorphic(wrapper_fn, fn, parameter_type, name=fn_name):
-        return wrapper_fn(
-            function_utils.wrap_as_zero_or_one_arg_callable(
-                fn, parameter_type, unpack=True),
-            parameter_type,
-            name=name)
+        return wrapper_fn(fn, parameter_type, unpack=True, name=name)
 
       polymorphic_fn = function_utils.PolymorphicFunction(
           lambda pt: _wrap_polymorphic(wrapper_fn, fn, pt))
@@ -91,10 +93,9 @@ def _wrap(fn, parameter_type, wrapper_fn):
       # explicitly.
       polymorphic_fn.__doc__ = getattr(fn, '__doc__', None)
       return polymorphic_fn
-  concrete_fn = wrapper_fn(
-      function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type),
-      parameter_type,
-      name=fn_name)
+
+  # Either we have a concrete parameter type, or this is no-arg function.
+  concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
   py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
                           'value returned by the wrapper')
   if not type_utils.are_equivalent_types(concrete_fn.type_signature.parameter,
