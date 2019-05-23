@@ -34,6 +34,7 @@ py_test(
     name = "federated_averaging_benchmark",
     size = "medium",
     srcs = ["federated_averaging_benchmark.py"],
+    strict_deps = True,
     deps = [
         ":federated_averaging",
         ":model_examples",
@@ -47,6 +48,7 @@ py_test(
     name = "federated_averaging_test",
     size = "large",
     srcs = ["federated_averaging_test.py"],
+    strict_deps = True,
     deps = [
         ":federated_averaging",
         ":model_examples",
@@ -68,6 +70,7 @@ py_test(
     name = "federated_evaluation_test",
     size = "medium",
     srcs = ["federated_evaluation_test.py"],
+    strict_deps = True,
     deps = [
         ":federated_evaluation",
         ":model",
@@ -93,6 +96,7 @@ py_test(
     name = "federated_sgd_test",
     size = "large",
     srcs = ["federated_sgd_test.py"],
+    strict_deps = True,
     deps = [
         ":federated_sgd",
         ":keras_utils",
@@ -120,6 +124,7 @@ py_test(
     name = "model_examples_test",
     size = "small",
     srcs = ["model_examples_test.py"],
+    strict_deps = True,
     deps = [
         ":model_examples",
         "//tensorflow_federated/python/common_libs:test",
@@ -143,6 +148,7 @@ py_library(
 py_test(
     name = "model_utils_test",
     srcs = ["model_utils_test.py"],
+    strict_deps = True,
     deps = [
         ":model_examples",
         ":model_utils",
@@ -167,6 +173,7 @@ py_test(
     name = "keras_utils_test",
     size = "large",
     srcs = ["keras_utils_test.py"],
+    strict_deps = True,
     deps = [
         ":keras_utils",
         ":model_examples",

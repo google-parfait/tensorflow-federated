@@ -18,6 +18,7 @@ py_test(
     name = "models_test",
     size = "large",
     srcs = ["models_test.py"],
+    strict_deps = True,
     deps = [
         ":models",
         "//tensorflow_federated/python",

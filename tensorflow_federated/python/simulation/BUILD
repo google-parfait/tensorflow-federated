@@ -35,6 +35,7 @@ py_test(
     name = "file_per_user_client_data_test",
     size = "small",
     srcs = ["file_per_user_client_data_test.py"],
+    strict_deps = True,
     deps = [":file_per_user_client_data"],
 )
 
@@ -52,6 +53,7 @@ py_test(
     name = "hdf5_client_data_test",
     size = "small",
     srcs = ["hdf5_client_data_test.py"],
+    strict_deps = True,
     deps = [":hdf5_client_data"],
 )
 
@@ -68,6 +70,7 @@ py_test(
     name = "transforming_client_data_test",
     size = "small",
     srcs = ["transforming_client_data_test.py"],
+    strict_deps = True,
     deps = [
         ":hdf5_client_data",
         ":transforming_client_data",
@@ -87,5 +90,6 @@ py_test(
     name = "from_tensor_slices_client_data_test",
     size = "small",
     srcs = ["from_tensor_slices_client_data_test.py"],
+    strict_deps = True,
     deps = [":from_tensor_slices_client_data"],
 )

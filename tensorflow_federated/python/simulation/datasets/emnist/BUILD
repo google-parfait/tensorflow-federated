@@ -28,5 +28,6 @@ py_test(
     name = "load_data_test",
     size = "small",
     srcs = ["load_data_test.py"],
+    strict_deps = True,
     deps = [":load_data"],
 )

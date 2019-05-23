@@ -22,6 +22,7 @@ py_test(
     name = "anonymous_tuple_test",
     size = "small",
     srcs = ["anonymous_tuple_test.py"],
+    strict_deps = True,
     deps = [":anonymous_tuple"],
 )
 
@@ -34,6 +35,7 @@ py_test(
     name = "py_typecheck_test",
     size = "small",
     srcs = ["py_typecheck_test.py"],
+    strict_deps = True,
     deps = [
         ":anonymous_tuple",
         ":py_typecheck",
@@ -53,6 +55,7 @@ py_test(
     name = "serialization_utils_test",
     size = "small",
     srcs = ["serialization_utils_test.py"],
+    strict_deps = True,
     deps = [
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
@@ -69,5 +72,6 @@ py_test(
     name = "test_test",
     size = "small",
     srcs = ["test_test.py"],
+    strict_deps = True,
     deps = [":test"],
 )
