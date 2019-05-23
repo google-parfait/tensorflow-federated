@@ -29,7 +29,6 @@ py_test(
     name = "optimizer_utils_test",
     size = "medium",
     srcs = ["optimizer_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":optimizer_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

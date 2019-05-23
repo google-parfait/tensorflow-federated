@@ -17,7 +17,6 @@ py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    strict_deps = True,
     deps = [
         ":tensor_utils",
         "//tensorflow_federated/python/common_libs:test",
@@ -37,7 +36,6 @@ py_library(
 py_test(
     name = "graph_merge_test",
     srcs = ["graph_merge_test.py"],
-    strict_deps = True,
     deps = [
         ":graph_merge",
         "//tensorflow_federated/python/common_libs:test",
