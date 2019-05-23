@@ -28,6 +28,7 @@ py_test(
     name = "tf_computation_utils_test",
     size = "small",
     srcs = ["tf_computation_utils_test.py"],
+    strict_deps = True,
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -48,6 +49,7 @@ py_test(
     name = "computation_utils_test",
     size = "small",
     srcs = ["computation_utils_test.py"],
+    strict_deps = True,
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api",
