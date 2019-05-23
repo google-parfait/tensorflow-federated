@@ -107,6 +107,14 @@ class AnonymousTuple(object):
     return iter(self._element_array)
 
   def __dir__(self):
+    """The list of names.
+
+    IMPORTANT: `len(self)` may be greater than `len(dir(self))`, since field
+    names are not required by AnonymousTuple.
+
+    Returns:
+      A `list` of `str`.
+    """
     return list(self._name_to_index.keys())
 
   def __getitem__(self, key):

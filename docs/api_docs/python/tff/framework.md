@@ -43,3 +43,8 @@ from a tuple-typed value in TFF's language.
 
 [`class Tuple`](../tff/framework/Tuple.md): A tuple with named or unnamed
 elements in TFF's internal language.
+
+## Functions
+
+[`is_assignable_from(...)`](../tff/framework/is_assignable_from.md): Determines
+whether `target_type` is assignable from `source_type`.

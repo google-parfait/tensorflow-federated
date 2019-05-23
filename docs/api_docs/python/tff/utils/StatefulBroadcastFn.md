@@ -71,7 +71,8 @@ It shold be compatible with the TFF type signature `(state@SERVER, value@SERVER)
 
 *   <b>`state`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a>
     placed on the <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>.
-*   <b>`value`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a> to
+*   <b>`value`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a>
+    placed on the <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>, to
     be broadcast to the
     <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 

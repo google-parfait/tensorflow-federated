@@ -70,6 +70,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/ComputationBuildingBlock
     - title: Intrinsic
       path: /federated/api_docs/python/tff/framework/Intrinsic
+    - title: is_assignable_from
+      path: /federated/api_docs/python/tff/framework/is_assignable_from
     - title: Lambda
       path: /federated/api_docs/python/tff/framework/Lambda
     - title: Placement

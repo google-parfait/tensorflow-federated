@@ -17,7 +17,7 @@ tff.learning.from_compiled_keras_model(
 ```
 
 Defined in
-[`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+[`learning/keras_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py).
 
 <!-- Placeholder for "Used in" -->
 
