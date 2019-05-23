@@ -24,6 +24,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_constructors
 
+_intrinsic_registry = {}
+
 
 class IntrinsicDef(object):
   """Represents the definition of an intrinsic.
@@ -48,6 +50,7 @@ class IntrinsicDef(object):
     self._name = str(name)
     self._uri = str(uri)
     self._type_signature = type_spec
+    _intrinsic_registry[str(uri)] = self
 
   # TODO(b/113112885): Add support for an optional type checking function that
   # can verify whether this intrinsic is applicable to given kinds of arguments,
@@ -438,3 +441,13 @@ SEQUENCE_SUM = IntrinsicDef(
         parameter=computation_types.SequenceType(
             computation_types.AbstractType('T')),
         result=computation_types.AbstractType('T')))
+
+_frozen_registry = tuple(sorted(six.iteritems(_intrinsic_registry)))
+del _intrinsic_registry
+
+
+def uri_to_intrinsic_def(uri):
+  for name, value in _frozen_registry:
+    if uri == name:
+      return value
+  return None

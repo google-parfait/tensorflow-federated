@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
 
@@ -225,6 +226,60 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x_proto.WhichOneof('computation'), 'intrinsic')
     self.assertEqual(x_proto.intrinsic.uri, x.uri)
     self._serialize_deserialize_roundtrip_test(x)
+
+  def test_basic_intrinsic_functionality_plus_canonical_typecheck(self):
+    x = computation_building_blocks.Intrinsic(
+        'generic_plus',
+        computation_types.FunctionType([tf.int32, tf.int32], tf.int32))
+    self.assertEqual(str(x.type_signature), '(<int32,int32> -> int32)')
+    self.assertEqual(x.uri, 'generic_plus')
+    self.assertEqual(x.tff_repr, 'generic_plus')
+    x_proto = x.proto
+    self.assertEqual(
+        type_serialization.deserialize_type(x_proto.type), x.type_signature)
+    self.assertEqual(x_proto.WhichOneof('computation'), 'intrinsic')
+    self.assertEqual(x_proto.intrinsic.uri, x.uri)
+    self._serialize_deserialize_roundtrip_test(x)
+
+  def test_intrinsic_class_fails_bad_type(self):
+    with self.assertRaises(TypeError):
+      _ = computation_building_blocks.Intrinsic(
+          intrinsic_defs.GENERIC_PLUS.uri,
+          computation_types.FunctionType([tf.int32, tf.int32], tf.float32))
+
+  def test_intrinsic_class_fails_named_tuple_type_with_names(self):
+    with self.assertRaises(TypeError):
+      _ = computation_building_blocks.Intrinsic(
+          intrinsic_defs.GENERIC_PLUS.uri,
+          computation_types.FunctionType([('a', tf.int32), ('b', tf.int32)],
+                                         tf.int32))
+
+  def test_intrinsic_class_succeeds_simple_federated_map(self):
+    simple_function = computation_types.FunctionType(tf.int32, tf.float32)
+    federated_arg = computation_types.FederatedType(simple_function.parameter,
+                                                    placements.CLIENTS)
+    federated_result = computation_types.FederatedType(simple_function.result,
+                                                       placements.CLIENTS)
+    federated_map_concrete_type = computation_types.FunctionType(
+        [simple_function, federated_arg], federated_result)
+    concrete_federated_map = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MAP.uri, federated_map_concrete_type)
+    self.assertIsInstance(concrete_federated_map,
+                          computation_building_blocks.Intrinsic)
+    self.assertEqual(
+        str(concrete_federated_map.type_signature),
+        '(<(int32 -> float32),{int32}@CLIENTS> -> {float32}@CLIENTS)')
+    self.assertEqual(concrete_federated_map.uri, 'federated_map')
+    self.assertEqual(concrete_federated_map.tff_repr, 'federated_map')
+    concrete_federated_map_proto = concrete_federated_map.proto
+    self.assertEqual(
+        type_serialization.deserialize_type(concrete_federated_map_proto.type),
+        concrete_federated_map.type_signature)
+    self.assertEqual(
+        concrete_federated_map_proto.WhichOneof('computation'), 'intrinsic')
+    self.assertEqual(concrete_federated_map_proto.intrinsic.uri,
+                     concrete_federated_map.uri)
+    self._serialize_deserialize_roundtrip_test(concrete_federated_map)
 
   def test_basic_functionality_of_data_class(self):
     x = computation_building_blocks.Data(

@@ -1039,6 +1039,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_named_federated_maps(self):
+    self.skipTest('b/133169703')
     elements = (
         ('a', _create_dummy_called_federated_map()),
         ('b', _create_dummy_called_federated_map()),

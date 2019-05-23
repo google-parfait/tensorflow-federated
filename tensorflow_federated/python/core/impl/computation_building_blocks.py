@@ -28,6 +28,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
+from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
@@ -710,6 +711,15 @@ class Intrinsic(ComputationBuildingBlock):
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
     type_spec = computation_types.to_type(type_spec)
+    intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(uri)
+    if intrinsic_def:
+      typecheck = type_utils.is_concrete_instance_of(
+          type_spec, intrinsic_def.type_signature)
+      if not typecheck:
+        raise TypeError('Tried to construct an Intrinsic with bad type '
+                        'signature; Intrinsic {} expects type signature {}, '
+                        'and you tried to construct one of type {}.'.format(
+                            uri, intrinsic_def.type_signature, type_spec))
     super(Intrinsic, self).__init__(type_spec)
     self._uri = uri
 

@@ -1184,5 +1184,143 @@ class ConvertToPyContainerTest(test.TestCase):
             ], list)), expected_nested_structure)
 
 
+class IsConcreteInstanceOf(test.TestCase):
+
+  def test_is_concrete_instance_of_raises_with_int_first_argument(self):
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(1, computation_types.to_type(tf.int32))
+
+  def test_is_concrete_instance_of_raises_with_int_second_argument(self):
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(computation_types.to_type(tf.int32), 1)
+
+  def test_is_concrete_instance_of_raises_different_structures(self):
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(
+          computation_types.to_type(tf.int32),
+          computation_types.to_type([tf.int32]))
+
+  def test_is_concrete_instance_of_raises_with_abstract_type_as_first_arg(self):
+    t1 = computation_types.AbstractType('T1')
+    t2 = computation_types.TensorType(tf.int32)
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(t1, t2)
+
+  def test_is_concrete_instance_of_with_single_abstract_type_and_tensor_type(
+      self):
+    t1 = computation_types.AbstractType('T1')
+    t2 = computation_types.TensorType(tf.int32)
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_raises_with_abstract_type_in_second_argument(
+      self):
+    t1 = computation_types.AbstractType('T1')
+    t2 = computation_types.AbstractType('T2')
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(t2, t1)
+
+  def test_is_concrete_instance_of_with_single_abstract_type_and_tuple_type(
+      self):
+    t1 = computation_types.AbstractType('T1')
+    t2 = computation_types.NamedTupleType([tf.int32])
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_raises_with_conflicting_names(self):
+    t1 = computation_types.NamedTupleType(
+        [computation_types.AbstractType('T1')] * 2)
+    t2 = computation_types.NamedTupleType([('a', tf.int32), ('b', tf.int32)])
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(t2, t1)
+
+  def test_is_concrete_instance_of_raises_with_different_lengths(self):
+    t1 = computation_types.NamedTupleType(
+        [computation_types.AbstractType('T1')] * 2)
+    t2 = computation_types.NamedTupleType([tf.int32])
+    with self.assertRaises(TypeError):
+      type_utils.is_concrete_instance_of(t2, t1)
+
+  def test_is_concrete_instance_of_succeeds_under_tuple(self):
+    t1 = computation_types.NamedTupleType(
+        [computation_types.AbstractType('T1')] * 2)
+    t2 = computation_types.NamedTupleType([
+        computation_types.TensorType(tf.int32),
+        computation_types.TensorType(tf.int32)
+    ])
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_fails_under_tuple_conflicting_concrete_types(
+      self):
+    t1 = computation_types.NamedTupleType(
+        [computation_types.AbstractType('T1')] * 2)
+    t2 = computation_types.NamedTupleType([
+        computation_types.TensorType(tf.int32),
+        computation_types.TensorType(tf.float32)
+    ])
+    self.assertFalse(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_succeeds_abstract_type_under_sequence_type(
+      self):
+    t1 = computation_types.SequenceType(computation_types.AbstractType('T'))
+    t2 = computation_types.SequenceType(tf.int32)
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_fails_conflicting_concrete_types_under_sequence(
+      self):
+    t1 = computation_types.SequenceType([computation_types.AbstractType('T')] *
+                                        2)
+    t2 = computation_types.SequenceType([tf.int32, tf.float32])
+    self.assertFalse(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_succeeds_single_function_type(self):
+    t1 = computation_types.FunctionType(*[computation_types.AbstractType('T')] *
+                                        2)
+    t2 = computation_types.FunctionType(tf.int32, tf.int32)
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_succeeds_function_different_parameter_and_return_types(
+      self):
+    t1 = computation_types.FunctionType(
+        computation_types.AbstractType('T'),
+        computation_types.AbstractType('U'))
+    t2 = computation_types.FunctionType(tf.int32, tf.float32)
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_fails_conflicting_binding_in_parameter_and_result(
+      self):
+    t1 = computation_types.FunctionType(*[computation_types.AbstractType('T')] *
+                                        2)
+    t2 = computation_types.FunctionType(tf.int32, tf.float32)
+    self.assertFalse(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_abstract_federated_types_succeeds(self):
+    t1 = computation_types.FederatedType(
+        [computation_types.AbstractType('T1')] * 2,
+        placements.CLIENTS,
+        all_equal=True)
+    t2 = computation_types.FederatedType(
+        [tf.int32] * 2, placements.CLIENTS, all_equal=True)
+    self.assertTrue(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_is_concrete_instance_of_abstract_fails_on_different_federated_placements(
+      self):
+    t1 = computation_types.FederatedType(
+        [computation_types.AbstractType('T1')] * 2,
+        placements.CLIENTS,
+        all_equal=True)
+    t2 = computation_types.FederatedType(
+        [tf.int32] * 2, placements.SERVER, all_equal=True)
+    self.assertFalse(type_utils.is_concrete_instance_of(t2, t1))
+
+  def test_abstract_can_be_concretized_abstract_fails_on_different_federated_all_equal_bits(
+      self):
+    t1 = computation_types.FederatedType(
+        [computation_types.AbstractType('T1')] * 2,
+        placements.CLIENTS,
+        all_equal=True)
+    t2 = computation_types.FederatedType(
+        [tf.int32] * 2, placements.SERVER, all_equal=True)
+    self.assertFalse(type_utils.is_concrete_instance_of(t2, t1))
+
+
 if __name__ == '__main__':
   tf.test.main()
