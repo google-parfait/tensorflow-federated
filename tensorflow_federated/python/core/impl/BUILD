@@ -78,6 +78,7 @@ py_library(
     name = "computation_building_blocks",
     srcs = ["computation_building_blocks.py"],
     deps = [
+        ":intrinsic_defs",
         ":placement_literals",
         ":type_serialization",
         ":type_utils",
@@ -96,6 +97,7 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
+        ":intrinsic_defs",
         ":tensorflow_serialization",
         ":type_serialization",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

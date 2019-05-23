@@ -919,3 +919,121 @@ def convert_to_py_container(anon_tuple, type_spec):
     return container_type(**dict(elements))
   else:
     return container_type(elements)
+
+
+def is_concrete_instance_of(type_with_concrete_elements,
+                            type_with_abstract_elements):
+  """Checks whether abstract types can be concretized via a parallel structure.
+
+  This function builds up a new concrete structure via the bindings encountered
+  in `type_with_abstract_elements` in a postorder fashion. That is, it walks the
+  type trees in parallel, caching bindings for abstract types on the way. When
+  it encounters a previously bound abstract type, it simply inlines this cached
+  value. Finally, `abstract_types_can_be_concretized` delegates checking type
+  equivalence to `are_equivalent_types`, passing in the created concrete
+  structure for comparison with `type_with_concrete_elements`.
+
+  Args:
+    type_with_concrete_elements: Instance of `computation_types.Type` of
+      parallel structure to `type_with_concrete_elements`, containing only
+      concrete types, to test for equivalence with a concretization of
+      `type_with_abstract_elements`.
+    type_with_abstract_elements: Instance of `computation_types.Type` which may
+      contain abstract types, to check for possibility of concretizing according
+      to `type_with_concrete_elements`.
+
+  Returns:
+    `True` if `type_with_abstract_elements` can be concretized to
+    `type_with_concrete_elements`. Returns `False` if they are of the same
+    structure but some conflicting assignment exists in
+    `type_with_concrete_elements`.
+
+  Raises:
+    TypeError: If `type_with_abstract_elements` and
+    `type_with_concrete_elements` are not structurally equivalent; that is,
+    their type trees are of different structure; or if
+    `type_with_concrete_elements` contains abstract elements.
+  """
+  py_typecheck.check_type(type_with_abstract_elements, computation_types.Type)
+  py_typecheck.check_type(type_with_concrete_elements, computation_types.Type)
+
+  def _check_no_disallowed_type(type_to_check, disallowed_types):
+    """Checks subtree of `type_to_check` for `disallowed_types`."""
+    if isinstance(type_to_check, tuple(disallowed_types)):
+      raise TypeError('A {} has been encountered in the given type signature, '
+                      ' but {} is disallowed.'.format(type_to_check,
+                                                      disallowed_types))
+    return disallowed_types
+
+  preorder_call(type_with_concrete_elements, _check_no_disallowed_type,
+                [computation_types.AbstractType])
+
+  bound_abstract_types = {}
+  type_error_string = ('Structural mismatch encountered while concretizing '
+                       'abstract types. The structure of {} does not match the '
+                       'structure of {}').format(type_with_abstract_elements,
+                                                 type_with_concrete_elements)
+
+  def _concretize_abstract_types(abstract_type_spec, concrete_type_spec):
+    """Recursive helper function to construct concrete type spec."""
+    if isinstance(abstract_type_spec, computation_types.AbstractType):
+      bound_type = bound_abstract_types.get(str(abstract_type_spec.label))
+      if bound_type:
+        return bound_type
+      else:
+        bound_abstract_types[str(abstract_type_spec.label)] = concrete_type_spec
+        return concrete_type_spec
+    elif isinstance(abstract_type_spec, computation_types.TensorType):
+      return abstract_type_spec
+    elif isinstance(abstract_type_spec, computation_types.NamedTupleType):
+      if not isinstance(concrete_type_spec, computation_types.NamedTupleType):
+        raise TypeError(type_error_string)
+      abstract_elements = anonymous_tuple.to_elements(abstract_type_spec)
+      concrete_elements = anonymous_tuple.to_elements(concrete_type_spec)
+      if len(abstract_elements) != len(concrete_elements):
+        raise TypeError(type_error_string)
+      concretized_tuple_elements = []
+      for k in range(len(abstract_elements)):
+        if abstract_elements[k][0] != concrete_elements[k][0]:
+          raise TypeError(type_error_string)
+        concretized_tuple_elements.append(
+            (abstract_elements[k][0],
+             _concretize_abstract_types(abstract_elements[k][1],
+                                        concrete_elements[k][1])))
+      return computation_types.NamedTupleType(concretized_tuple_elements)
+    elif isinstance(abstract_type_spec, computation_types.SequenceType):
+      if not isinstance(concrete_type_spec, computation_types.SequenceType):
+        raise TypeError(type_error_string)
+      return computation_types.SequenceType(
+          _concretize_abstract_types(abstract_type_spec.element,
+                                     concrete_type_spec.element))
+    elif isinstance(abstract_type_spec, computation_types.FunctionType):
+      if not isinstance(concrete_type_spec, computation_types.FunctionType):
+        raise TypeError(type_error_string)
+      concretized_param = _concretize_abstract_types(
+          abstract_type_spec.parameter, concrete_type_spec.parameter)
+      concretized_result = _concretize_abstract_types(abstract_type_spec.result,
+                                                      concrete_type_spec.result)
+      return computation_types.FunctionType(concretized_param,
+                                            concretized_result)
+    elif isinstance(abstract_type_spec, computation_types.PlacementType):
+      if not isinstance(concrete_type_spec, computation_types.PlacementType):
+        raise TypeError(type_error_string)
+      return abstract_type_spec
+    elif isinstance(abstract_type_spec, computation_types.FederatedType):
+      if not isinstance(concrete_type_spec, computation_types.FederatedType):
+        raise TypeError(type_error_string)
+      new_member = _concretize_abstract_types(abstract_type_spec.member,
+                                              concrete_type_spec.member)
+      return computation_types.FederatedType(new_member,
+                                             abstract_type_spec.placement,
+                                             abstract_type_spec.all_equal)
+    else:
+      raise TypeError('Unexpected abstract typespec {}.'.format(
+          str(abstract_type_spec)))
+
+  concretized_abstract_type = _concretize_abstract_types(
+      type_with_abstract_elements, type_with_concrete_elements)
+
+  return are_equivalent_types(concretized_abstract_type,
+                              type_with_concrete_elements)
