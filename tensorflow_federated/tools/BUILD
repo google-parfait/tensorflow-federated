@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])  # Apache 2.0 License
 
-# The py_library data dependencies are needed otherwise bazel doesn't generate
+# The py library data labels are needed otherwise bazel doesn't generate
 # the __init__.py files, since the modules in the package are imported
 # directory, rather than the package itself.
 sh_binary(
