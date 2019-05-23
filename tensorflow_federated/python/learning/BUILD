@@ -11,6 +11,7 @@ py_library(
         ":federated_averaging",
         ":federated_evaluation",
         ":federated_sgd",
+        ":keras_utils",
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/learning/framework",
@@ -94,6 +95,7 @@ py_test(
     srcs = ["federated_sgd_test.py"],
     deps = [
         ":federated_sgd",
+        ":keras_utils",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
@@ -140,9 +142,33 @@ py_library(
 
 py_test(
     name = "model_utils_test",
-    size = "large",
     srcs = ["model_utils_test.py"],
     deps = [
+        ":model_examples",
+        ":model_utils",
+        "//tensorflow_federated/python/common_libs:test",
+    ],
+)
+
+py_library(
+    name = "keras_utils",
+    srcs = ["keras_utils.py"],
+    deps = [
+        ":model",
+        ":model_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/tensorflow_libs:graph_keys",
+    ],
+)
+
+py_test(
+    name = "keras_utils_test",
+    size = "large",
+    srcs = ["keras_utils_test.py"],
+    deps = [
+        ":keras_utils",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

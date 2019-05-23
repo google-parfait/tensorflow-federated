@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_sgd
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
@@ -154,7 +155,7 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
     def model_fn():
       # Note: we don't compile with an optimizer here; FedSGD does not use it.
       keras_model = build_keras_model_fn(feature_dims=2)
-      return model_utils.from_keras_model(
+      return keras_utils.from_keras_model(
           keras_model, dummy_batch, loss=tf.keras.losses.MeanSquaredError())
 
     iterative_process = federated_sgd.build_federated_sgd_process(
