@@ -358,7 +358,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
                      'length {} be assigned to a computation with parameter '
                      'type signature of length {}.'.format(
                          len(type_signature), len(parameter_bindings)))
-  if any(x != type_signature_elements[idx]
+  if any(x[1] != type_signature_elements[idx][1]
          for idx, x in enumerate(parameter_type_elements)):
     raise TypeError(
         'The existing elements of the parameter type signature '
@@ -388,7 +388,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
       tuple=pb.TensorFlow.NamedTupleBinding(element=parameter_bindings))
   new_graph_def = g.as_graph_def()
 
-  new_function_type = computation_types.FunctionType(parameter_type_elements,
+  new_function_type = computation_types.FunctionType(type_signature_elements,
                                                      proto_type.result)
   serialized_type = type_serialization.serialize_type(new_function_type)
 
@@ -943,3 +943,78 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
         comp.result.function, name=name)
     return _remap_graph_inputs(graph_with_wrapped_parameter,
                                [index_of_selection], comp.parameter_type)
+
+
+class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
+                                            ):
+  r"""Identifies a lambda to a called graph on a tuple of selections.
+
+  Notice the selections here must be selections from the argument of the
+  lambda itself.
+
+  Transforms the pattern:
+
+                              Lambda(arg)
+                                  |
+                                Call
+                               /    \
+            CompiledComputation(x)   Tuple
+                                    / ... \
+                          Selection(x)     Selection(y)
+                               |                |
+                            Ref(arg)           Ref(arg)
+
+  into:
+
+                       CompiledComputation
+
+  By pushing the selection and tuple creation logic into the
+  CompiledComputation.
+  """
+
+  def should_transform(self, comp):
+    if not (isinstance(comp, computation_building_blocks.Lambda) and
+            isinstance(comp.parameter_type, computation_types.NamedTupleType)):
+      return False
+    result = comp.result
+    if not (isinstance(result, computation_building_blocks.Call) and isinstance(
+        result.function, computation_building_blocks.CompiledComputation)):
+      return False
+    compiled_comp_arg = result.argument
+    if not isinstance(compiled_comp_arg, computation_building_blocks.Tuple):
+      return False
+    if not all(
+        isinstance(tuple_elem, computation_building_blocks.Selection)
+        for tuple_elem in compiled_comp_arg):
+      return False
+    if not all(
+        isinstance(tuple_elem.source, computation_building_blocks.Reference)
+        for tuple_elem in compiled_comp_arg):
+      return False
+    if not all(tuple_elem.source.name == comp.parameter_name
+               for tuple_elem in compiled_comp_arg):
+      return False
+    return True
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    if len(comp.result.argument.type_signature) > len(comp.parameter_type):
+      raise ValueError('Inputs to TF computations cannot be masked. That is, '
+                       'we cannot ask a TF computation to forget about '
+                       'any of its inputs. You have tried to replace a TF '
+                       'computation accepting {} arguments with one '
+                       ' {} arguments.'.format(
+                           len(comp.result.argument.type_signature),
+                           len(comp.parameter_type)))
+    parameter_names = [
+        x[0] for x in anonymous_tuple.to_elements(comp.parameter_type)
+    ]
+    parameter_map = []
+    for sel in comp.result.argument:
+      if sel.index is not None:
+        parameter_map.append(sel.index)
+      else:
+        parameter_map.append(parameter_names.index(sel.name))
+    return _remap_graph_inputs(comp.result.function, parameter_map,
+                               comp.parameter_type), True
