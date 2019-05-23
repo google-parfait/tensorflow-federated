@@ -53,7 +53,14 @@ Constructs a new instance from the given element types.
 __dir__()
 ```
 
-__dir__() -> list default dir() implementation
+The list of names.
+
+IMPORTANT: `len(self)` may be greater than `len(dir(self))`, since field names
+are not required by AnonymousTuple.
+
+#### Returns:
+
+A `list` of `str`.
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
