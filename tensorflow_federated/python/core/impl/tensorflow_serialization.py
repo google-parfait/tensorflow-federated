@@ -42,8 +42,8 @@ def finalize_binding(binding, tensor_info_map):
 
   Args:
     binding: A `pb.Binding` or one of its submessages.
-    tensor_info_map: A dict mapping the placeholder `tensor_name`s found
-      in `binding` to final tensor names.
+    tensor_info_map: A dict mapping the placeholder `tensor_name`s found in
+      `binding` to final tensor names.
   """
   if not binding:
     if tensor_info_map:
@@ -155,7 +155,8 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
 
   # Associate vars with unique names and explicitly attach to the Checkpoint:
   var_dict = {
-      'var{:02d}'.format(i): v for i, v in enumerate(cc_fn.graph.variables)}
+      'var{:02d}'.format(i): v for i, v in enumerate(cc_fn.graph.variables)
+  }
   saveable = tf.train.Checkpoint(fn=target_poly, **var_dict)
 
   try:

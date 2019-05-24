@@ -15,7 +15,6 @@
 """Utilities for interacting with and manipulating TensorFlow graphs."""
 # TODO(b/132704092): Rename graph_utils.py to tensorflow_utils.py
 
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -44,6 +43,7 @@ from tensorflow_federated.python.core.impl import type_utils
 
 class UniqueNameFn(object):
   """Callable which generates names that are unique across calls."""
+
   # TODO(b/133329320): Perhaps use a more general solution here.
 
   def __init__(self):

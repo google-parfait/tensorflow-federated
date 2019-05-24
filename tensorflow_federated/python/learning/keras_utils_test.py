@@ -451,5 +451,6 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
     # pylint: enable=internal-access
 
+
 if __name__ == '__main__':
   test.main()
