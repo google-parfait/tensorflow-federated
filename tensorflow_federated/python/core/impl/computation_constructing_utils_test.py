@@ -21,6 +21,7 @@ from __future__ import print_function
 from absl.testing import absltest
 from absl.testing import parameterized
 import six
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types

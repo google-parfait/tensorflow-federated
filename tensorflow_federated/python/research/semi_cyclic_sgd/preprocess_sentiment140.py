@@ -25,6 +25,7 @@ import csv
 import random
 import re
 import sys
+
 from absl import app
 
 INPUT = '/tmp/sc_paper/raw_data/training.1600000.processed.noemoticon.csv'
@@ -124,7 +125,7 @@ def main(unused_args):
 
     # Write dictionary.
     unigrams_sorted = sorted(
-        unigrams.items(), key=lambda kv: kv[1], reverse=True)
+        list(unigrams.items()), key=lambda kv: kv[1], reverse=True)
     print(unigrams_sorted[0:20])
     print('%d lines read' % len(lines))
     with open(DICT_OUTPUT, 'w') as f:
