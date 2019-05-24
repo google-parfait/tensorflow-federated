@@ -58,8 +58,8 @@ def finalize_binding(binding, tensor_info_map):
     name = binding.tensor_name
     if name not in tensor_info_map:
       raise ValueError(
-          'Did not find tensor_name {} in provided tensor_info_map with '
-          'keys {}'.format(name, str(tensor_info_map.keys())))
+          'Did not find tensor_name {} in provided tensor_info_map with keys {}'
+          .format(name, list(tensor_info_map.keys())))
     binding.tensor_name = tensor_info_map[name].name
   elif isinstance(binding, pb.TensorFlow.NamedTupleBinding):
     for sub_binding in binding.element:

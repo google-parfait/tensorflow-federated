@@ -21,7 +21,8 @@ from __future__ import print_function
 import uuid
 
 import six
-
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 
@@ -94,7 +95,7 @@ def _uniquify_shared_names(graph):
   # proto manipulation as is happening here.
   graph_def = graph.as_graph_def()
   for x in graph_def.node:
-    if 'shared_name' in x.attr.keys():
+    if 'shared_name' in list(x.attr.keys()):
       uid = tf.compat.as_bytes(str(uuid.uuid1())[:8])
       x.attr['shared_name'].s += uid
   with tf.Graph().as_default() as new_graph:
