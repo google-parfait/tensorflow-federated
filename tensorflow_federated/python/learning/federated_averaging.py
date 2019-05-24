@@ -108,6 +108,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 def build_federated_averaging_process(
     model_fn,
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
+    stateful_delta_aggregate_fn=optimizer_utils.build_stateless_mean(),
     client_weight_fn=None):
   """Builds the TFF computations for optimization using federated averaging.
 
@@ -118,6 +119,10 @@ def build_federated_averaging_process(
       to the server model. The default creates a `tf.keras.optimizers.SGD` with
       a learning rate of 1.0, which simply adds the average client delta to the
       server's model.
+    stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn` where the
+      next_fn performs a federated aggregation and upates state. That is, it has
+      TFF type (state@SERVER, value@CLIENTS) -> (state@SERVER,
+      aggregate@SERVER).
     client_weight_fn: Optional function that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If not provided, the default is
@@ -131,4 +136,5 @@ def build_federated_averaging_process(
     return ClientFedAvg(model_fn(), client_weight_fn)
 
   return optimizer_utils.build_model_delta_optimizer_process(
-      model_fn, client_fed_avg, server_optimizer_fn)
+      model_fn, client_fed_avg, server_optimizer_fn,
+      stateful_delta_aggregate_fn)

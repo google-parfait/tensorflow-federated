@@ -23,6 +23,8 @@ from __future__ import print_function
 #
 # pylint: disable=g-bad-import-order,wildcard-import
 from tensorflow_federated.python.core.api import *
+from tensorflow_federated.python.core.impl.type_utils import type_to_tf_dtypes_and_shapes
+from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
 
 # NOTE: This import must happen after the wildcard import.
 from tensorflow_federated.python.core import framework
