@@ -384,7 +384,7 @@ class ValueImplTest(parameterized.TestCase):
       return value_impl.to_value(cbb, None, context_stack_impl.context_stack)
 
     t = sequence_type(range(0, 50, 10))
-    comp, _ = transformations.replace_compiled_computations_names_with_unique_names(
+    comp, _ = transformations.uniquify_compiled_computation_names(
         value_impl.ValueImpl.get_comp(_to_value(t)))
     v = _to_value(comp)
 
