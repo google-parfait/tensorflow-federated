@@ -745,14 +745,16 @@ class SelectionFromCalledTensorFlowBlockTest(parameterized.TestCase):
   def test_transform_constructs_correct_root_node(self):
     pattern = _create_simple_selection_from_called_graph()
     logic = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock()
-    parsed_selection = logic.transform(pattern)
+    parsed_selection, mutated = logic.transform(pattern)
     self.assertIsInstance(parsed_selection, computation_building_blocks.Call)
+    self.assertTrue(mutated)
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_selection_from_called_graph()
     logic = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock()
-    parsed = logic.transform(pattern)
+    parsed, mutated = logic.transform(pattern)
     self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
 
   def test_output_selection_executes_zeroth_element(self):
     noarg_tuple = _create_compiled_computation(
@@ -762,9 +764,10 @@ class SelectionFromCalledTensorFlowBlockTest(parameterized.TestCase):
         called_noarg_tuple, index=0)
     output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
     )
-    parsed_zero = output_selector.transform(selected_zero)
+    parsed_zero, mutated = output_selector.transform(selected_zero)
     executable_zero = _to_computation_impl(parsed_zero.function)
     self.assertEqual(executable_zero(), 0.0)
+    self.assertTrue(mutated)
 
   def test_output_selection_executes_first_element(self):
     noarg_tuple = _create_compiled_computation(
@@ -774,9 +777,10 @@ class SelectionFromCalledTensorFlowBlockTest(parameterized.TestCase):
         called_noarg_tuple, index=1)
     output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
     )
-    parsed_one = output_selector.transform(selected_one)
+    parsed_one, mutated = output_selector.transform(selected_one)
     executable_one = _to_computation_impl(parsed_one.function)
     self.assertEqual(executable_one(), 1.0)
+    self.assertTrue(mutated)
 
   def test_output_selection_executes_when_selecting_by_name(self):
     # pyformat: disable
@@ -788,9 +792,10 @@ class SelectionFromCalledTensorFlowBlockTest(parameterized.TestCase):
         called_noarg_tuple, name='a')
     output_selector = compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(
     )
-    parsed_a = output_selector.transform(selected_a)
+    parsed_a, mutated = output_selector.transform(selected_a)
     executable_a = _to_computation_impl(parsed_a.function)
     self.assertEqual(executable_a(), 0.0)
+    self.assertTrue(mutated)
 
 
 def _create_simple_lambda_wrapping_graph():
@@ -818,21 +823,25 @@ class LambdaWrappingGraphTest(parameterized.TestCase):
   def test_transform_constructs_correct_root_node(self):
     pattern = _create_simple_lambda_wrapping_graph()
     logic = compiled_computation_transforms.LambdaWrappingGraph()
-    parsed_selection = logic.transform(pattern)
+    parsed_selection, mutated = logic.transform(pattern)
     self.assertIsInstance(parsed_selection,
                           computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_lambda_wrapping_graph()
     logic = compiled_computation_transforms.LambdaWrappingGraph()
-    parsed = logic.transform(pattern)
+    parsed, mutated = logic.transform(pattern)
     self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
 
   def test_unwraps_identity(self):
     integer_identity = _create_simple_lambda_wrapping_graph()
     lambda_unwrapper = compiled_computation_transforms.LambdaWrappingGraph()
-    unwrapped_identity_function = lambda_unwrapper.transform(integer_identity)
+    unwrapped_identity_function, mutated = lambda_unwrapper.transform(
+        integer_identity)
     executable_identity = _to_computation_impl(unwrapped_identity_function)
+    self.assertTrue(mutated)
     for k in range(5):
       self.assertEqual(executable_identity(k), k)
 
@@ -844,8 +853,9 @@ class LambdaWrappingGraphTest(parameterized.TestCase):
     lambda_wrap = computation_building_blocks.Lambda('x', tf.int32,
                                                      called_integer_square)
     lambda_unwrapper = compiled_computation_transforms.LambdaWrappingGraph()
-    unwrapped_square = lambda_unwrapper.transform(lambda_wrap)
+    unwrapped_square, mutated = lambda_unwrapper.transform(lambda_wrap)
     executable_square = _to_computation_impl(unwrapped_square)
+    self.assertTrue(mutated)
     for k in range(5):
       self.assertEqual(executable_square(k), k * k)
 
@@ -872,14 +882,16 @@ class TupleCalledGraphsTest(parameterized.TestCase):
   def test_transform_constructs_correct_root_node(self):
     pattern = _create_simple_tuple_of_called_graphs()
     logic = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_selection = logic.transform(pattern)
+    parsed_selection, mutated = logic.transform(pattern)
     self.assertIsInstance(parsed_selection, computation_building_blocks.Call)
+    self.assertTrue(mutated)
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_tuple_of_called_graphs()
     logic = compiled_computation_transforms.TupleCalledGraphs()
-    parsed = logic.transform(pattern)
+    parsed, mutated = logic.transform(pattern)
     self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
 
   def test_named_tuple_of_graphs_preserves_type(self):
     noarg_const_0 = _create_compiled_computation(lambda: tf.constant(0.), None)
@@ -890,9 +902,10 @@ class TupleCalledGraphsTest(parameterized.TestCase):
         ('a', called_noarg_const_0), ('b', called_noarg_const_1)
     ])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_tuple = tuple_parser.transform(tuple_of_called_graphs)
+    parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
+    self.assertTrue(mutated)
 
   def test_no_arg_functions_execute(self):
     noarg_const_0 = _create_compiled_computation(lambda: tf.constant(0.), None)
@@ -902,13 +915,14 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     tuple_of_called_graphs = computation_building_blocks.Tuple(
         [called_noarg_const_0, called_noarg_const_1])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_tuple = tuple_parser.transform(tuple_of_called_graphs)
+    parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
     lambda_wrap = computation_building_blocks.Lambda('x', tf.int32,
                                                      parsed_tuple)
     executable = _to_computation_impl(lambda_wrap)
 
+    self.assertTrue(mutated)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
     self.assertEqual(executable(10)[0], 0.)
@@ -923,13 +937,14 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     tuple_of_called_graphs = computation_building_blocks.Tuple(
         [called_noarg_const_0, called_square])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_tuple = tuple_parser.transform(tuple_of_called_graphs)
+    parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     lambda_wrap = computation_building_blocks.Lambda('x', tf.int32,
                                                      parsed_tuple)
     executable = _to_computation_impl(lambda_wrap)
 
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
+    self.assertTrue(mutated)
     for k in range(5):
       self.assertEqual(executable(k)[0], 0.)
       self.assertEqual(executable(k)[1], k**2)
@@ -944,7 +959,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     tuple_of_called_graphs = computation_building_blocks.Tuple(
         [called_cube, called_square])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_tuple = tuple_parser.transform(tuple_of_called_graphs)
+    parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     lambda_arg = computation_building_blocks.Reference('lambda_arg',
                                                        [tf.float32, tf.int32])
     block_to_result = computation_building_blocks.Block(
@@ -956,6 +971,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
                                                      block_to_result)
     executable = _to_computation_impl(lambda_wrap)
 
+    self.assertTrue(mutated)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
     self.assertRegexMatch(parsed_tuple.tff_repr,
@@ -977,7 +993,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     tuple_of_called_graphs = computation_building_blocks.Tuple(
         [called_selection, called_square])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_tuple = tuple_parser.transform(tuple_of_called_graphs)
+    parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     lambda_arg = computation_building_blocks.Reference(
         'lambda_arg', [[tf.float32, tf.float32], tf.int32])
     block_to_result = computation_building_blocks.Block(
@@ -988,6 +1004,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
         'lambda_arg', [[tf.float32, tf.float32], tf.int32], block_to_result)
     executable = _to_computation_impl(lambda_wrap)
 
+    self.assertTrue(mutated)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
     self.assertRegexMatch(parsed_tuple.tff_repr,
@@ -1010,7 +1027,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     tuple_of_called_graphs = computation_building_blocks.Tuple(
         [called_selection, called_square])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
-    parsed_tuple = tuple_parser.transform(tuple_of_called_graphs)
+    parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     lambda_arg = computation_building_blocks.Reference(
         'lambda_arg', [[('a', tf.float32), ('b', tf.float32)], tf.int32])
     block_to_result = computation_building_blocks.Block(
@@ -1022,6 +1039,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
                         ('b', tf.float32)], tf.int32], block_to_result)
     executable = _to_computation_impl(lambda_wrap)
 
+    self.assertTrue(mutated)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
     self.assertRegexMatch(parsed_tuple.tff_repr,
@@ -1223,15 +1241,17 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
   def test_transform_constructs_correct_root_node(self):
     pattern = _create_simple_lambda_call_selection_from_arg()
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
-    parsed_selection = logic.transform(pattern)
+    parsed_selection, mutated = logic.transform(pattern)
     self.assertIsInstance(parsed_selection,
                           computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_lambda_call_selection_from_arg()
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
-    parsed = logic.transform(pattern)
-    self.assertEqual(parsed.type_signature, pattern.type_signature)
+    parsed_lambda, mutated = logic.transform(pattern)
+    self.assertEqual(parsed_lambda.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
 
   def test_constructs_appropriate_type_selection_by_index(self):
     integer_identity = _create_compiled_computation(lambda x: x, tf.int32)
@@ -1244,10 +1264,12 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
     lambda_wrapping_call = computation_building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
-    parsed = logic.transform(lambda_wrapping_call)
-    self.assertEqual(parsed.type_signature, lambda_wrapping_call.type_signature)
-    self.assertIsInstance(parsed,
+    parsed_lambda, mutated = logic.transform(lambda_wrapping_call)
+    self.assertEqual(parsed_lambda.type_signature,
+                     lambda_wrapping_call.type_signature)
+    self.assertIsInstance(parsed_lambda,
                           computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
 
   def test_executes_correctly_selection_by_index(self):
     integer_identity = _create_compiled_computation(lambda x: x, tf.int32)
@@ -1260,8 +1282,9 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
     lambda_wrapping_call = computation_building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
-    parsed = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
     executable_parsed = _to_computation_impl(parsed)
+    self.assertTrue(mutated)
     for k in range(5):
       self.assertEqual(executable_parsed([k * 1., k, True]), k)
 
@@ -1276,7 +1299,8 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
     lambda_wrapping_call = computation_building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_square)
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
-    parsed = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
+    self.assertTrue(mutated)
     self.assertEqual(parsed.type_signature, lambda_wrapping_call.type_signature)
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
@@ -1292,8 +1316,9 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
     lambda_wrapping_call = computation_building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_square)
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
-    parsed = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
     executable_parsed = _to_computation_impl(parsed)
+    self.assertTrue(mutated)
     for k in range(5):
       self.assertEqual(
           executable_parsed({
@@ -1359,23 +1384,18 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     pattern = _create_simple_lambda_call_tuple_of_selections_from_arg()
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
-    parsed, _ = logic.transform(pattern)
+    parsed, mutated = logic.transform(pattern)
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-
-  def test_transform_identifies_mutation(self):
-    pattern = _create_simple_lambda_call_tuple_of_selections_from_arg()
-    logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
-    )
-    _, mutated = logic.transform(pattern)
     self.assertTrue(mutated)
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_lambda_call_tuple_of_selections_from_arg()
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
-    parsed, _ = logic.transform(pattern)
+    parsed, mutated = logic.transform(pattern)
     self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_unnamed_tuple_pad_and_permute(
       self):
@@ -1414,11 +1434,12 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
-    parsed, _ = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
     executable_parsed = _to_computation_impl(parsed)
     result = executable_parsed([0., 1, True])
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 0.)
+    self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_unnamed_tuple_permute_only(self):
     identity = _create_compiled_computation(lambda x: x,
@@ -1462,12 +1483,13 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
-    parsed, _ = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
     executable_parsed = _to_computation_impl(parsed)
     result = executable_parsed([0., 1, True])
     self.assertEqual(result[0], True)
     self.assertEqual(result[1], 1)
     self.assertEqual(result[2], 0.)
+    self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_named_tuple_name_selection_pad_and_permute(
       self):
@@ -1506,11 +1528,12 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
-    parsed, _ = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
     executable_parsed = _to_computation_impl(parsed)
     result = executable_parsed({'a': 0., 'b': 1, 'c': False})
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 0.)
+    self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_named_tuple_index_selection(self):
     identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
@@ -1548,11 +1571,12 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
-    parsed, _ = logic.transform(lambda_wrapping_call)
+    parsed, mutated = logic.transform(lambda_wrapping_call)
     executable_parsed = _to_computation_impl(parsed)
     result = executable_parsed({'a': 0., 'b': 1, 'c': False})
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 0.)
+    self.assertTrue(mutated)
 
 
 if __name__ == '__main__':
