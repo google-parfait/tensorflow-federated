@@ -272,7 +272,7 @@ class _KerasModel(model_lib.Model):
     metric_variable_type_dict = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, self.report_local_outputs())
     federated_local_outputs_type = tff.FederatedType(
-        metric_variable_type_dict, tff.CLIENTS, all_equal=False)
+        metric_variable_type_dict, tff.CLIENTS)
 
     def federated_output(local_outputs):
       results = collections.OrderedDict()
