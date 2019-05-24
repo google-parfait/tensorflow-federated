@@ -662,14 +662,12 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
                        computation_building_blocks.CompiledComputation))
 
   def transform(self, comp):
-    if comp.index is not None:
-      return computation_building_blocks.Call(
-          select_graph_output(comp.source.function, index=comp.index),
-          comp.source.argument)
-    else:
-      return computation_building_blocks.Call(
-          select_graph_output(comp.source.function, name=comp.name),
-          comp.source.argument)
+    if not self.should_transform(comp):
+      return comp, False
+    return computation_building_blocks.Call(
+        select_graph_output(
+            comp.source.function, index=comp.index, name=comp.name),
+        comp.source.argument), True
 
 
 class LambdaWrappingGraph(transformation_utils.TransformSpec):
@@ -701,7 +699,9 @@ class LambdaWrappingGraph(transformation_utils.TransformSpec):
             comp.result.argument.name == comp.parameter_name)
 
   def transform(self, comp):
-    return comp.result.function
+    if not self.should_transform(comp):
+      return comp, False
+    return comp.result.function, True
 
 
 class TupleCalledGraphs(transformation_utils.TransformSpec):
@@ -734,6 +734,8 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
             for x in comp))
 
   def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
     compiled_computation_list = []
     arg_list = []
     name_list = [x[0] for x in anonymous_tuple.to_elements(comp.type_signature)]
@@ -745,13 +747,12 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
                                                     name_list)
     non_none_arg_list = [x for x in arg_list if x is not None]
     if not non_none_arg_list:
-      return computation_building_blocks.Call(concatenated_tf, None)
+      arg = None
     elif len(non_none_arg_list) == 1:
-      return computation_building_blocks.Call(concatenated_tf,
-                                              non_none_arg_list[0])
+      arg = non_none_arg_list[0]
     else:
-      return computation_building_blocks.Call(
-          concatenated_tf, computation_building_blocks.Tuple(non_none_arg_list))
+      arg = computation_building_blocks.Tuple(non_none_arg_list)
+    return computation_building_blocks.Call(concatenated_tf, arg), True
 
 
 def _construct_padding(list_of_indices, tuple_type):
@@ -945,6 +946,8 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
             comp.result.argument.source.name == comp.parameter_name)
 
   def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
     parameter_type_elements = anonymous_tuple.to_elements(comp.parameter_type)
     if comp.result.argument.name is None:
       index_of_selection = comp.result.argument.index
@@ -957,7 +960,7 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
     graph_with_wrapped_parameter = wrap_graph_parameter_as_tuple(
         comp.result.function, name=name)
     return _remap_graph_inputs(graph_with_wrapped_parameter,
-                               [index_of_selection], comp.parameter_type)
+                               [index_of_selection], comp.parameter_type), True
 
 
 class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
