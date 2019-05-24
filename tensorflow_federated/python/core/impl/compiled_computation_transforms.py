@@ -541,7 +541,7 @@ def _construct_concatenated_type(type_list):
   return computation_types.NamedTupleType(non_none_type_list)
 
 
-def concatenate_tensorflow_blocks(tf_comp_list):
+def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
   """Concatenates inputs and outputs of its argument to a single TF block.
 
   Takes a Python `list` or `tuple` of instances of
@@ -561,6 +561,9 @@ def concatenate_tensorflow_blocks(tf_comp_list):
     tf_comp_list: Python `list` or `tuple` of
       `computation_building_blocks.CompiledComputation`s, whose inputs and
       outputs we wish to concatenate.
+    output_name_list: A list list or tuple of names to give to the result types
+      in the concatenated TF computations. The elements of this list or tuple
+      must be either string types or None
 
   Returns:
     A single instance of `computation_building_blocks.CompiledComputation`,
@@ -569,11 +572,13 @@ def concatenate_tensorflow_blocks(tf_comp_list):
 
   Raises:
     ValueError: If we are passed less than 2 computations in `tf_comp_list`. In
-      this case, the caller is likely using the wrong function.
+      this case, the caller is likely using the wrong function. Also raises if
+      `output_name_list` and `tf_comp_list` have different lengths.
     TypeError: If `tf_comp_list` is not a `list` or `tuple`, or if it
       contains anything other than TF blocks.
   """
   py_typecheck.check_type(tf_comp_list, (list, tuple))
+  py_typecheck.check_type(output_name_list, (list, tuple))
   if len(tf_comp_list) < 2:
     raise ValueError('We expect to concatenate at least two blocks of '
                      'TensorFlow; otherwise the transformation you seek '
@@ -581,6 +586,14 @@ def concatenate_tensorflow_blocks(tf_comp_list):
                      'your desired function elsewhere in '
                      '`compiled_computation_transforms`. You passed a tuple of '
                      'length {}'.format(len(tf_comp_list)))
+  if len(tf_comp_list) != len(output_name_list):
+    raise ValueError('`tf_comp_list` and `output_name_list` hav different '
+                     'lengths; `concatenate_tensorflow_blocks` must be given '
+                     'fully specified output names, even if the names are '
+                     '`None`.')
+  for name in output_name_list:
+    if name is not None:
+      py_typecheck.check_type(name, six.string_types)
   tf_proto_list = []
   for comp in tf_comp_list:
     py_typecheck.check_type(comp,
@@ -612,8 +625,8 @@ def concatenate_tensorflow_blocks(tf_comp_list):
 
   parameter_type = _construct_concatenated_type(
       [x.type_signature.parameter for x in tf_comp_list])
-  return_type = _construct_concatenated_type(
-      [x.type_signature.result for x in tf_comp_list])
+  return_type = [(output_name_list[i], x.type_signature.result)
+                 for i, x in enumerate(tf_comp_list)]
   function_type = computation_types.FunctionType(parameter_type, return_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
 
@@ -723,11 +736,13 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
   def transform(self, comp):
     compiled_computation_list = []
     arg_list = []
+    name_list = [x[0] for x in anonymous_tuple.to_elements(comp.type_signature)]
     for k in range(len(comp.type_signature)):
       compiled_computation_list.append(comp[k].function)
       arg_list.append(comp[k].argument)
 
-    concatenated_tf = concatenate_tensorflow_blocks(compiled_computation_list)
+    concatenated_tf = concatenate_tensorflow_blocks(compiled_computation_list,
+                                                    name_list)
     non_none_arg_list = [x for x in arg_list if x is not None]
     if not non_none_arg_list:
       return computation_building_blocks.Call(concatenated_tf, None)
