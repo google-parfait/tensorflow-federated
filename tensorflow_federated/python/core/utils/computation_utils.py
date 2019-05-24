@@ -87,7 +87,9 @@ class StatefulAggregateFn(StatefulFn):
   """
 
   def __call__(self, state, value, weight=None):
-    """Performs an aggregate of value@CLIENTS, with optional weight@CLIENTS.
+    """Performs an aggregate of `value@CLIENTS`, producing `value@SERVER`.
+
+    The aggregation is optionally parameterized by `weight@CLIENTS`.
 
     This is a function intended to (only) be invoked in the context
     of a `tff.federated_computation`. It shold be compatible with the
@@ -105,10 +107,11 @@ class StatefulAggregateFn(StatefulFn):
         `tff.CLIENTS`.
 
     Returns:
-       A tuple of `tff.Value`s (state@SERVER, aggregate@SERVER) where
-         * state: The updated state.
-         * aggregate: The result of the aggregation of `value` weighted by
-             `weight.
+       A tuple of `tff.Value`s `(state@SERVER, aggregate@SERVER)`, where
+
+         * `state`: The updated state.
+         * `aggregate`: The result of the aggregation of `value` weighted by
+         `weight`.
     """
     py_typecheck.check_type(state, tff.Value)
     py_typecheck.check_type(state.type_signature, tff.FederatedType)
@@ -148,7 +151,7 @@ class StatefulBroadcastFn(StatefulFn):
   """
 
   def __call__(self, state, value):
-    """Performs a broadcast of value@SERVER, producing value@CLIENTS.
+    """Performs a broadcast of `value@SERVER`, producing `value@CLIENTS`.
 
     This is a function intended to (only) be invoked in the context
     of a `tff.federated_computation`. It shold be compatible with the
@@ -161,10 +164,11 @@ class StatefulBroadcastFn(StatefulFn):
         `tff.CLIENTS`.
 
     Returns:
-       A tuple of `tff.Value`s (state@SERVER, value@CLIENTS) where
-         * state: The updated state.
-         * aggregate: The `value` now placed (communicated) to the
-           `tff.CLIENTS`.
+       A tuple of `tff.Value`s `(state@SERVER, value@CLIENTS)` where
+
+         * `state`: The updated state.
+         * `value`: The input `value` now placed (communicated) to the
+         `tff.CLIENTS`.
     """
     py_typecheck.check_type(state, tff.Value)
     py_typecheck.check_type(state.type_signature, tff.FederatedType)

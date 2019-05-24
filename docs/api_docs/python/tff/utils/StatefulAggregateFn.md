@@ -61,7 +61,9 @@ __call__(
 )
 ```
 
-Performs an aggregate of value@CLIENTS, with optional weight@CLIENTS.
+Performs an aggregate of `value@CLIENTS`, producing `value@SERVER`.
+
+The aggregation is optionally parameterized by `weight@CLIENTS`.
 
 This is a function intended to (only) be invoked in the context of a
 <a href="../../tff/federated_computation.md"><code>tff.federated_computation</code></a>.
@@ -87,8 +89,10 @@ It shold be compatible with the TFF type signature
 #### Returns:
 
 A tuple of <a href="../../tff/Value.md"><code>tff.Value</code></a>s
-(state@SERVER, aggregate@SERVER) where * state: The updated state. * aggregate:
-The result of the aggregation of `value` weighted by `weight.
+`(state@SERVER, aggregate@SERVER)`, where
+
+*   `state`: The updated state.
+*   `aggregate`: The result of the aggregation of `value` weighted by `weight`.
 
 <h3 id="initialize"><code>initialize</code></h3>
 
