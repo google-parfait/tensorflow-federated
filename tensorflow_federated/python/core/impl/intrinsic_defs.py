@@ -150,7 +150,7 @@ class IntrinsicDef(object):
 #     generic_weighted_average: <{T}@p,{U}@p,q> -> T@q
 #
 # - Transform a pair of federated values into a federated pair (technicality we
-#   expect to bury through implicit convertions, TBD).
+#   expect to bury through implicit conversions, TBD).
 #
 #     generic_zip: <{T}@p,{U}@p> -> {<T,U>}@p
 
