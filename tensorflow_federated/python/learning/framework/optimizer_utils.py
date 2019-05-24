@@ -360,8 +360,7 @@ def build_model_delta_optimizer_process(
   server_state_type = tf_init_fn.type_signature.result
 
   tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
-  federated_dataset_type = tff.FederatedType(
-      tf_dataset_type, tff.CLIENTS, all_equal=False)
+  federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
 
   @tff.federated_computation(federated_server_state_type,
                              federated_dataset_type)
