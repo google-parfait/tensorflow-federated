@@ -26,7 +26,6 @@ from absl.testing import parameterized
 import six
 import tensorflow as tf
 
-from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
@@ -49,10 +48,9 @@ class NoopIngestContextForTest(context_base.Context):
 class FuncUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_is_defun(self):
-    self.assertTrue(function_utils.is_defun(function.Defun()(lambda x: None)))
-    self.assertTrue(
-        function_utils.is_defun(function.Defun(tf.int32)(lambda x: None)))
-    self.assertFalse(function_utils.is_defun(function.Defun))
+    self.assertTrue(function_utils.is_defun(tf.function(lambda x: None)))
+    fn = tf.function(lambda x: None, (tf.TensorSpec(None, tf.int32),))
+    self.assertTrue(function_utils.is_defun(fn))
     self.assertFalse(function_utils.is_defun(lambda x: None))
     self.assertFalse(function_utils.is_defun(None))
 
@@ -60,18 +58,23 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     # In a non-eager function with a defined input signature, **kwargs or
     # default values are not allowed, but *args are, and the input signature may
     # overlap with *args.
+    fn = tf.function(lambda x, y, *z: None, (
+        tf.TensorSpec(None, tf.int32),
+        tf.TensorSpec(None, tf.bool),
+        tf.TensorSpec(None, tf.float32),
+        tf.TensorSpec(None, tf.float32),
+    ))
     self.assertEqual(
-        function_utils.get_argspec(
-            function.Defun(tf.int32, tf.bool, tf.float32,
-                           tf.float32)(lambda x, y, *z: None)),
+        function_utils.get_argspec(fn),
         inspect.ArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
   def test_get_defun_argspec_with_untyped_non_eager_defun(self):
     # In a non-eager function with no input signature, the same restrictions as
     # in a typed eager function apply.
+    fn = tf.function(lambda x, y, *z: None)
     self.assertEqual(
-        function_utils.get_argspec(function.Defun()(lambda x, y, *z: None)),
+        function_utils.get_argspec(fn),
         inspect.ArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 

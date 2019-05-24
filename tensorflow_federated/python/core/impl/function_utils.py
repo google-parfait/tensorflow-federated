@@ -25,7 +25,6 @@ import six
 from six.moves import range
 
 from tensorflow.python.framework import function
-from tensorflow.python.util import tf_inspect
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -81,23 +80,8 @@ def get_argspec(fn):
   """
   if isinstance(fn, types.FunctionType):
     return inspect.getargspec(fn)  # pylint: disable=deprecated-method
-  # TODO(b/113112885): Add support for tfe Function and PolymorphicFunction,
-  # currently omitted due to issues with visibility, using tf_inspect.getargspec
-  # that works in eager mode.
-  elif isinstance(
-      fn,
-      (
-          # There does not appear to be a robust way to distinguish between
-          # typed and polymorphic defuns, so we refer to private class names
-          # again.
-          function._DefinedFunction,  # pylint: disable=protected-access
-          function._OverloadedFunction  # pylint: disable=protected-access
-      )):
-    # On the non-eager functions, tf_inspect does not appear to work, so we peek
-    # inside to extract arguments.
-    return inspect.getargspec(fn._func)  # pylint: disable=protected-access,deprecated-method
   elif is_defun(fn):
-    return tf_inspect.getargspec(fn)
+    return inspect.getargspec(fn.python_function)  # pylint: disable=deprecated-method
   else:
     raise TypeError('Expected a Python function or a defun, found {}.'.format(
         py_typecheck.type_string(type(fn))))
