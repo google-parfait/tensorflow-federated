@@ -594,6 +594,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
         if type_utils.is_anon_tuple_with_py_container(arg, parameter_type):
           arg = type_utils.convert_to_py_container(arg, parameter_type)
         return fn(arg)
+
       # TODO(b/132888123): Consider other options to avoid possible bugs here.
       try:
         (fn, parameter_type)

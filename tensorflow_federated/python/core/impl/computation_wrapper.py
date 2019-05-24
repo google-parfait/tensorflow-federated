@@ -41,23 +41,28 @@ def _wrap(fn, parameter_type, wrapper_fn):
   treated as a concrete no-argument computation, `fn` shouldn't declare any
   arguments (even with default values).
 
+  The `wrapper_fn` must accept three arguments, and optional forth kwarg `name`:
+
+  * `target_fn'`, the Python function that to be wrapped, accepting possibly
+    *args and **kwargs.
+
+  * Either None for a no-parameter computation, or the type of the computation's
+    parameter (an instance of `computation_types.Type`) if the computation has
+    one.
+
+  * `unpack`, an argument which will be passed on to
+    `function_utils.wrap_as_zero_or_one_arg_callable` when wrapping `target_fn`.
+    See that function for details.
+
+  * Optional `name`, the name of the function that is being wrapped (only for
+    debugging purposes).
+
   Args:
     fn: The function or defun to wrap as a computation.
     parameter_type: The parameter type accepted by the computation, or None if
       there is no parameter.
-    wrapper_fn: The Python callable that performs actual wrapping. It must
-      accept three arguments, and optional forth kwarg `name`:
-          - `target_fn'`, the Python function that to be wrapped,
-            accepting possibly *args and **kwargs.
-          - Either None for a no-parameter computation, or the type of the
-            computation's parameter (an instance of `computation_types.Type`)
-            if the computation has one.
-          - `unpack`, an argument which will be passed on to
-            `function_utils.wrap_as_zero_or_one_arg_callable` when
-            wrapping `target_fn`. See that function for details.
-          - Optional `name`, the name of the function that is
-            being wrapped (only for debugging purposes).
-      The object to be returned by this function should be an instance of a
+    wrapper_fn: The Python callable that performs actual wrapping. The object to
+      be returned by this function should be an instance of a
       `ConcreteFunction`.
 
   Returns:

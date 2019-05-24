@@ -462,9 +462,8 @@ def create_federated_broadcast(value):
   """
   py_typecheck.check_type(value,
                           computation_building_blocks.ComputationBuildingBlock)
-  result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.CLIENTS,
-                                                all_equal=True)
+  result_type = computation_types.FederatedType(
+      value.type_signature.member, placement_literals.CLIENTS, all_equal=True)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = computation_building_blocks.Intrinsic(
@@ -765,8 +764,8 @@ def create_federated_value(value, placement):
     uri = intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri
   else:
     raise TypeError('Unsupported placement {}.'.format(placement))
-  result_type = computation_types.FederatedType(value.type_signature, placement,
-                                                all_equal=True)
+  result_type = computation_types.FederatedType(
+      value.type_signature, placement, all_equal=True)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = computation_building_blocks.Intrinsic(uri, intrinsic_type)

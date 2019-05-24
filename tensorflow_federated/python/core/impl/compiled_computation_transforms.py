@@ -237,8 +237,8 @@ def wrap_graph_parameter_as_tuple(comp, name=None):
   Args:
     comp: Instance of `computation_building_blocks.CompiledComputation` whose
       parameter we wish to wrap in a tuple binding.
-    name: Optional string argument, the name to assign to the element type
-      in the constructed tuple. Defaults to `None`.
+    name: Optional string argument, the name to assign to the element type in
+      the constructed tuple. Defaults to `None`.
 
   Returns:
     A transformed version of comp representing exactly the same computation,
