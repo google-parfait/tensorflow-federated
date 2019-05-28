@@ -78,7 +78,6 @@ __eq__(other)
 
 Return self==value.
 
-
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
 ```python

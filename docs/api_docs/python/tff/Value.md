@@ -52,7 +52,6 @@ __call__(
 
 For values of functional types, invokes this value on given arguments.
 
-
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
 ```python
