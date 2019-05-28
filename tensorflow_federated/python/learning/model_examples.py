@@ -266,3 +266,18 @@ def build_multiple_inputs_keras_model():
           l.Dense(1)(b),
       ]))
   return tf.keras.Model(inputs=[a, b], outputs=[output])
+
+def build_multiple_outputs_keras_model():
+  l = tf.keras.layers
+  a = l.Input((1, ))
+  b = l.Input((1, ))
+
+  output_a = l.Dense(1)(a)
+  output_b = l.Dense(1)(b)
+  output_c = l.Dense(1)(
+      l.concatenate([
+          l.Dense(1)(a),
+          l.Dense(1)(b)
+      ]))
+
+  return tf.keras.Model(inputs=[a, b], outputs=[output_a, output_b, output_c])
