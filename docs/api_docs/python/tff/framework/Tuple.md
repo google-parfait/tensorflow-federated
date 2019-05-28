@@ -4,9 +4,7 @@
 <meta itemprop="property" content="proto"/>
 <meta itemprop="property" content="tff_repr"/>
 <meta itemprop="property" content="type_signature"/>
-<meta itemprop="property" content="__dir__"/>
 <meta itemprop="property" content="__eq__"/>
-<meta itemprop="property" content="__getattr__"/>
 <meta itemprop="property" content="__getitem__"/>
 <meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="__iter__"/>
@@ -72,21 +70,6 @@ Returns the TFF type of this object (an instance of
 
 ## Methods
 
-<h3 id="__dir__"><code>__dir__</code></h3>
-
-```python
-__dir__()
-```
-
-The list of names.
-
-IMPORTANT: `len(self)` may be greater than `len(dir(self))`, since field names
-are not required by AnonymousTuple.
-
-#### Returns:
-
-A `list` of `str`.
-
 <h3 id="__eq__"><code>__eq__</code></h3>
 
 ```python
@@ -95,11 +78,6 @@ __eq__(other)
 
 Return self==value.
 
-<h3 id="__getattr__"><code>__getattr__</code></h3>
-
-```python
-__getattr__(name)
-```
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 

@@ -5,7 +5,6 @@
 <meta itemprop="property" content="weights_delta_weight"/>
 <meta itemprop="property" content="model_output"/>
 <meta itemprop="property" content="optimizer_output"/>
-<meta itemprop="property" content="__new__"/>
 </div>
 
 # tff.learning.framework.ClientOutput
@@ -29,21 +28,6 @@ Defined in
     reflecting the results of training on the input dataset.
 -   `optimizer_output`: additional metrics or other outputs defined by the
     optimizer.
-
-<h2 id="__new__"><code>__new__</code></h2>
-
-```python
-__new__(
-    _cls,
-    weights_delta,
-    weights_delta_weight,
-    model_output,
-    optimizer_output
-)
-```
-
-Create new instance of ClientOutput(weights_delta, weights_delta_weight,
-model_output, optimizer_output)
 
 ## Properties
 
