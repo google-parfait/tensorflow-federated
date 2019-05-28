@@ -3,8 +3,6 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="type_signature"/>
 <meta itemprop="property" content="__call__"/>
-<meta itemprop="property" content="__dir__"/>
-<meta itemprop="property" content="__getattr__"/>
 <meta itemprop="property" content="__getitem__"/>
 <meta itemprop="property" content="__iter__"/>
 <meta itemprop="property" content="__len__"/>
@@ -54,21 +52,6 @@ __call__(
 
 For values of functional types, invokes this value on given arguments.
 
-<h3 id="__dir__"><code>__dir__</code></h3>
-
-```python
-__dir__()
-```
-
-For values of a named tuple type, returns the list of named members.
-
-<h3 id="__getattr__"><code>__getattr__</code></h3>
-
-```python
-__getattr__(name)
-```
-
-For values of a named tuple type, returns the element named `name`.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
