@@ -451,6 +451,29 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
     # pylint: enable=internal-access
 
+  def test_keras_model_multiple_outputs(self):
+    keras_model = model_examples.build_multiple_outputs_keras_model()
+    dummy_batch = collections.OrderedDict([
+      ('x', [
+        np.zeros([1, 1], dtype=np.float32),
+        np.zeros([1, 1], dtype=np.float32)
+      ]),
+      ('y', [
+        np.zeros([1, 1], dtype=np.float32),
+        np.zeros([1, 1], dtype=np.float32),
+        np.ones([1, 1], dtype=np.float32)
+      ]),
+    ])
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        dummy_batch=dummy_batch,
+        loss=[tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()])
+
+    output = tff_model.forward_pass(dummy_batch)
+
+    self.assertAllClose(output.loss, 0.3333333)
 
 if __name__ == '__main__':
   test.main()
