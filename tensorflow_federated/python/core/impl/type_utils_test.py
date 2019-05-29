@@ -1332,5 +1332,57 @@ class IsConcreteInstanceOf(test.TestCase):
     self.assertFalse(type_utils.is_concrete_instance_of(t2, t1))
 
 
+class TypeTreeContainsTest(parameterized.TestCase):
+
+  def test_raises_bad_first_arg(self):
+    with self.assertRaises(TypeError):
+      type_utils.type_tree_contains(1, computation_types.AbstractType)
+
+  def test_raises_none_second_arg(self):
+    with self.assertRaises(TypeError):
+      type_utils.type_tree_contains(computation_types.AbstractType('T'), None)
+
+  def test_raises_bad_tuple_second_arg(self):
+    with self.assertRaises(TypeError):
+      type_utils.type_tree_contains(
+          computation_types.AbstractType('T'),
+          (1, computation_types.AbstractType))
+
+  def test_detects_type_of_root(self):
+    self.assertTrue(
+        type_utils.type_tree_contains(
+            computation_types.AbstractType('T'),
+            computation_types.AbstractType))
+
+  def test_detects_federated_under_function(self):
+    function_federated = computation_types.FunctionType(
+        tf.int32, computation_types.FederatedType(tf.int32, placements.SERVER))
+    self.assertTrue(
+        type_utils.type_tree_contains(function_federated,
+                                      computation_types.FederatedType))
+    self.assertTrue(
+        type_utils.type_tree_contains(
+            function_federated,
+            (computation_types.FederatedType, computation_types.AbstractType)))
+    self.assertTrue(
+        type_utils.type_tree_contains(
+            function_federated,
+            (computation_types.AbstractType, computation_types.FederatedType)))
+
+  def test_does_not_detect_no_federated_under_function(self):
+    function_no_federated = computation_types.FunctionType(tf.int32, tf.int32)
+    self.assertFalse(
+        type_utils.type_tree_contains(function_no_federated,
+                                      computation_types.FederatedType))
+    self.assertFalse(
+        type_utils.type_tree_contains(
+            function_no_federated,
+            (computation_types.FederatedType, computation_types.AbstractType)))
+    self.assertFalse(
+        type_utils.type_tree_contains(
+            function_no_federated,
+            (computation_types.AbstractType, computation_types.FederatedType)))
+
+
 if __name__ == '__main__':
   tf.test.main()
