@@ -194,6 +194,104 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
     self.assertEqual(executable_identity(seq), seq)
 
 
+class ConstructCompiledInputDuplicationTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_compiled_input_duplication(None)
+
+  def test_raises_on_federated_type(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_compiled_input_duplication(
+          computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+
+  def test_integer_input_duplicate_type_signature(self):
+    int_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        tf.int32)
+    self.assertIsInstance(int_duplicate_input,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        tf.int32, [tf.int32, tf.int32])
+    self.assertEqual(int_duplicate_input.type_signature,
+                     expected_type_signature)
+
+  def test_integer_input_duplicate_duplicates_input(self):
+    int_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        tf.int32)
+    executable_duplicate_input = _to_computation_impl(int_duplicate_input)
+    for k in range(10):
+      self.assertEqual(executable_duplicate_input(k)[0], k)
+      self.assertEqual(executable_duplicate_input(k)[1], k)
+      self.assertLen(executable_duplicate_input(k), 2)
+
+  def test_unnamed_tuple_input_duplicate_type_signature(self):
+    tuple_type = [tf.int32, tf.float32]
+    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        tuple_type)
+    self.assertIsInstance(tuple_duplicate_input,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        tuple_type, [tuple_type, tuple_type])
+    self.assertEqual(tuple_duplicate_input.type_signature,
+                     expected_type_signature)
+
+  def test_unnamed_tuple_input_duplicate_duplicates_input(self):
+    tuple_type = [tf.int32, tf.float32]
+    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        tuple_type)
+    executable_duplicate_input = _to_computation_impl(tuple_duplicate_input)
+    for k in range(10):
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[0][0], k)
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[1][0], k)
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[0][1], 10. - k)
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[1][1], 10. - k)
+      self.assertLen(executable_duplicate_input([k, 10. - k]), 2)
+
+  def test_named_tuple_input_duplicate_type_signature(self):
+    tuple_type = [('a', tf.int32), ('b', tf.float32)]
+    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        tuple_type)
+    self.assertIsInstance(tuple_duplicate_input,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        tuple_type, [tuple_type, tuple_type])
+    self.assertEqual(tuple_duplicate_input.type_signature,
+                     expected_type_signature)
+
+  def test_named_tuple_input_duplicate_duplicates_input(self):
+    tuple_type = [('a', tf.int32), ('b', tf.float32)]
+    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        tuple_type)
+    executable_duplicate_input = _to_computation_impl(tuple_duplicate_input)
+    for k in range(10):
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[0].a, k)
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[1].a, k)
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[0].b, 10. - k)
+      self.assertEqual(executable_duplicate_input([k, 10. - k])[1].b, 10. - k)
+      self.assertLen(executable_duplicate_input([k, 10. - k]), 2)
+
+  def test_sequence_input_duplicate_type_signature(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    sequence_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        sequence_type)
+    self.assertIsInstance(sequence_duplicate_input,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        sequence_type, [sequence_type, sequence_type])
+    self.assertEqual(sequence_duplicate_input.type_signature,
+                     expected_type_signature)
+
+  def test_sequence_input_duplicate_duplicates_input(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    sequence_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
+        sequence_type)
+    executable_duplicate_input = _to_computation_impl(sequence_duplicate_input)
+    seq = list(range(10))
+    self.assertEqual(executable_duplicate_input(seq)[0], seq)
+    self.assertEqual(executable_duplicate_input(seq)[1], seq)
+    self.assertLen(executable_duplicate_input(seq), 2)
+
+
 class ConstructFederatedGetitemCompTest(parameterized.TestCase):
 
   def test_fails_value(self):
