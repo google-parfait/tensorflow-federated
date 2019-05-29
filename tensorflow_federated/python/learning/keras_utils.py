@@ -98,10 +98,7 @@ def from_keras_model(keras_model,
     dummy_batch: A nested structure of values that are convertible to *batched*
       tensors with the same shapes and types as would be input to `keras_model`.
       The values of the tensors are not important and can be filled with any
-      reasonable input value. If the model has multiple outputs, you can use
-      a different loss on each output by passing a dictionary or a list of losses.
-      The loss value that will be minimized by the model will then be the sum of
-      all individual losses.
+      reasonable input value.
     loss: A callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss. If the model has multiple outputs, you
       can use a different loss on each output by passing a dictionary or a list
@@ -409,8 +406,6 @@ class _KerasModel(model_lib.Model):
                      'Instead have keys {}'.format(list(batch_input.keys())))
     predictions = self._keras_model(inputs=inputs, training=training)
     y_true = batch_input.get('y')
-
-
     if y_true is not None:
       if len(self._loss_fns) == 1:
         loss_fn = self._loss_fns[0]
