@@ -97,7 +97,10 @@ def from_keras_model(keras_model,
     dummy_batch: A nested structure of values that are convertible to *batched*
       tensors with the same shapes and types as would be input to `keras_model`.
       The values of the tensors are not important and can be filled with any
-      reasonable input value.
+      reasonable input value. If the model has multiple outputs, you can use
+      a different loss on each output by passing a dictionary or a list of losses.
+      The loss value that will be minimized by the model will then be the sum of
+      all individual losses.
     loss: A callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
@@ -116,7 +119,7 @@ def from_keras_model(keras_model,
                                  collections.Sequence,
                                  collections.Mapping))
 
-  if not isinstance(loss, tf.keras.losses.Loss):
+  if isinstance(loss, collections.Sequence):
     if len(loss) != len(keras_model.outputs):
       raise ValueError('`keras_model` must have equal number of '
                        'outputs and losses')
@@ -297,7 +300,6 @@ class _KerasModel(model_lib.Model):
             batch_loss = self._loss_fns[i](y_t, y_p)
 
           batch_size = tf.cast(tf.shape(y_pred[0])[0], self._dtype)
-          batch_loss /= len(self._loss_fns)
 
         return super(_WeightedMeanLossMetric,
                      self).update_state(batch_loss, batch_size)
@@ -378,7 +380,6 @@ class _KerasModel(model_lib.Model):
         for i in range(len(self._loss_fns)):
           loss_fn = self._loss_fns[i]
           batch_loss += loss_fn(y_true=y_true[i], y_pred=predictions[i])
-        batch_loss /= len(self._loss_fns)
 
     else:
       batch_loss = None

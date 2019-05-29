@@ -464,16 +464,60 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
         np.ones([1, 1], dtype=np.float32)
       ]),
     ])
-    tff_model = keras_utils.from_keras_model(
+
+    with self.subTest("loss_output_len_mismatch"):
+      with self.assertRaises(ValueError):
+        _ = keras_utils.from_keras_model(
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss=[tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()])
+
+    with self.subTest("invalid_loss"):
+      with self.assertRaises(TypeError):
+        _ = keras_utils.from_keras_model(
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss = 3)
+
+    with self.subTest("loss_list_no_opt"):
+      tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
         dummy_batch=dummy_batch,
         loss=[tf.keras.losses.MeanSquaredError(),
               tf.keras.losses.MeanSquaredError(),
               tf.keras.losses.MeanSquaredError()])
 
-    output = tff_model.forward_pass(dummy_batch)
+      self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+      output = tff_model.forward_pass(dummy_batch)
+      self.assertAllClose(output.loss, 1.0)
 
-    self.assertAllClose(output.loss, 0.3333333)
+    with self.subTest("loss_dict_no_opt"):
+      tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        dummy_batch=dummy_batch,
+        loss={'dense': tf.keras.losses.MeanSquaredError(),
+              'dense_1': tf.keras.losses.MeanSquaredError(),
+              'dense_2': tf.keras.losses.MeanSquaredError()})
+
+      self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+      output = tff_model.forward_pass(dummy_batch)
+      self.assertAllClose(output.loss, 1.0)
+
+    with self.subTest("trainable_model"):
+      tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        dummy_batch=dummy_batch,
+        loss=[tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()],
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01))
+
+      self.assertIsInstance(tff_model, model_utils.EnhancedTrainableModel)
+      self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
+      output = tff_model.forward_pass(dummy_batch)
+      self.assertAllClose(output.loss, 1.0)
+
 
 if __name__ == '__main__':
   test.main()
