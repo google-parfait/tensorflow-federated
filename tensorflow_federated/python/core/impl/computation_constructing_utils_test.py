@@ -28,11 +28,17 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+
+
+def _to_computation_impl(building_block):
+  return computation_impl.ComputationImpl(building_block.proto,
+                                          context_stack_impl.context_stack)
 
 
 class UniqueNameGeneratorTest(absltest.TestCase):
@@ -103,6 +109,89 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     prefix = first_name[:3]
     self.assertNotEqual(prefix, '_test')
     self.assertTrue(all(n.startswith(prefix) for n in names))
+
+
+class ConstructCompiledIdentityTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_compiled_identity(None)
+
+  def test_raises_on_federated_type(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_compiled_identity(
+          computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+
+  def test_integer_identity_type_signature(self):
+    int_identity = computation_constructing_utils.construct_compiled_identity(
+        tf.int32)
+    self.assertIsInstance(int_identity,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(tf.int32, tf.int32)
+    self.assertEqual(int_identity.type_signature, expected_type_signature)
+
+  def test_integer_identity_acts_as_identity(self):
+    int_identity = computation_constructing_utils.construct_compiled_identity(
+        tf.int32)
+    executable_identity = _to_computation_impl(int_identity)
+    for k in range(10):
+      self.assertEqual(executable_identity(k), k)
+
+  def test_unnamed_tuple_identity_type_signature(self):
+    tuple_type = [tf.int32, tf.float32]
+    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+        tuple_type)
+    self.assertIsInstance(tuple_identity,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        tuple_type, tuple_type)
+    self.assertEqual(tuple_identity.type_signature, expected_type_signature)
+
+  def test_unnamed_tuple_identity_acts_as_identity(self):
+    tuple_type = [tf.int32, tf.float32]
+    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+        tuple_type)
+    executable_identity = _to_computation_impl(tuple_identity)
+    for k in range(10):
+      self.assertEqual(executable_identity([k, 10. - k])[0], k)
+      self.assertEqual(executable_identity([k, 10. - k])[1], 10. - k)
+
+  def test_named_tuple_identity_type_signature(self):
+    tuple_type = [('a', tf.int32), ('b', tf.float32)]
+    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+        tuple_type)
+    self.assertIsInstance(tuple_identity,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        tuple_type, tuple_type)
+    self.assertEqual(tuple_identity.type_signature, expected_type_signature)
+
+  def test_named_tuple_identity_acts_as_identity(self):
+    tuple_type = [('a', tf.int32), ('b', tf.float32)]
+    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+        tuple_type)
+    executable_identity = _to_computation_impl(tuple_identity)
+    for k in range(10):
+      self.assertEqual(executable_identity({'a': k, 'b': 10. - k}).a, k)
+      self.assertEqual(executable_identity({'a': k, 'b': 10. - k}).b, 10. - k)
+
+  def test_sequence_identity_type_signature(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    sequence_identity = computation_constructing_utils.construct_compiled_identity(
+        sequence_type)
+    self.assertIsInstance(sequence_identity,
+                          computation_building_blocks.CompiledComputation)
+    expected_type_signature = computation_types.FunctionType(
+        sequence_type, sequence_type)
+    self.assertEqual(sequence_identity.type_signature, expected_type_signature)
+
+  def test_sequence_identity_acts_as_identity(self):
+    sequence_type = computation_types.SequenceType(tf.int32)
+    sequence_identity = computation_constructing_utils.construct_compiled_identity(
+        sequence_type)
+    executable_identity = _to_computation_impl(sequence_identity)
+    seq = list(range(10))
+    self.assertEqual(executable_identity(seq), seq)
 
 
 class ConstructFederatedGetitemCompTest(parameterized.TestCase):
