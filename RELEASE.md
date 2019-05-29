@@ -1,23 +1,45 @@
+# Release 0.5.0
+
+## Major Features and Improvements
+
+* Removed source level TF dependencies and switched from `tensorflow` to
+  `tf-nightly` dependency.
+* Add support for `attr` module in TFF type system.
+* Introduced new `tff.framework` interface layer.
+* New AST transformations and optimizations.
+* Preserve Python container usage in `tff.tf_computation`.
+
+## Bug Fixes
+
+* Updated TFF model to reflect Keras `tf.keras.model.weights` order.
+* Keras model with multiple inputs. #416
+
 # Release 0.4.0
 
 ## Major Features and Improvements
 
-* New `tff.simulation.TransformingClientData` API and associated inifinite EMNIST dataset (see tensorflow.org/federated/api\_docs/python/tff for details)
+* New `tff.simulation.TransformingClientData` API and associated inifinite
+  EMNIST dataset (see http://tensorflow.org/federated/api_docs/python/tff for
+  details)
 
 ## Breaking Change
 
-* Normalized `func` to `fn` across the repository (rename some parameters and functions)
+* Normalized `func` to `fn` across the repository (rename some parameters and
+  functions)
 
 ## Bug Fixes
 
-* Wrapped Keras models can now be used with `tff.learning.build_federated_evaluation`
-* Keras models with non-trainable variables in intermediate layers (e.g.  BatchNormalization) can be assigned back to Keras models with `tff.learning.ModelWeights.assign_weights_to`
+* Wrapped Keras models can now be used with
+  `tff.learning.build_federated_evaluation`
+* Keras models with non-trainable variables in intermediate layers (e.g.
+  BatchNormalization) can be assigned back to Keras models with
+  `tff.learning.ModelWeights.assign_weights_to`
 
 # Release 0.3.0
 
 ## Breaking Changes
 
-* Rename tff.learning.federated\_average to tff.learning.federated\_mean.
+* Rename `tff.learning.federated_average` to `tff.learning.federated_mean`.
 * Rename 'func' arguments to 'fn' throughout the API.
 
 ## Bug Fixes
@@ -33,13 +55,17 @@
 
 ## Breaking Changes
 
-* `next()` function of `tff.utils.IteratedProcess`s returned by `build_federated_*_process()` no longer unwraps single value tuples (always returns a tuple).
+* `next()` function of `tff.utils.IteratedProcess`s returned by
+  `build_federated_*_process()` no longer unwraps single value tuples
+  (always returns a tuple).
 
 ## Bug Fixes
 
 * Modify setup.py to require TensorFlow 1.x and not upgrade to 2.0 alpha.
-* Stop unpacking single value tuples in `next()` function of objects returned by `build_federated_*_process()`.
-* Clear cached Keras sessions when wrapping Keras models to avoid referencing stale graphs.
+* Stop unpacking single value tuples in `next()` function of objects returned by
+  `build_federated_*_process()`.
+* Clear cached Keras sessions when wrapping Keras models to avoid referencing
+  stale graphs.
 
 # Release 0.1.0
 
