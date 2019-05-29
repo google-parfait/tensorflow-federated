@@ -23,14 +23,19 @@ import string
 
 import six
 from six.moves import range
+import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -54,6 +59,52 @@ def unique_name_generator(comp, prefix='_var'):
   while True:
     yield '{}{}'.format(prefix, index)
     index += 1
+
+
+def construct_compiled_identity(type_signature):
+  """Constructs CompiledComputation representing identity function.
+
+  Args:
+    type_signature: Argument convertible to instance of `computation_types.Type`
+      via `computation_types.to_type`.
+
+  Returns:
+    An instance of `computation_building_blocks.CompiledComputation`
+    representing the identity function taking an argument of type
+    `type_signature` and returning the same value.
+
+  Raises:
+    TypeError: If `type_signature` is not a tensor, sequence or tuple type.
+    Notice that `construct_compiled_identity` is not completely type safe,
+    as there could be some disallowed types hidden in the leaves of a tuple.
+  """
+  type_spec = computation_types.to_type(type_signature)
+
+  if not isinstance(
+      type_spec, (computation_types.TensorType, computation_types.SequenceType,
+                  computation_types.NamedTupleType)):
+    raise TypeError(
+        'Can only construct a TF block with types which only contain tensor, '
+        'sequence or tuple types; you have tried to construct a TF block with '
+        'parameter of type {}'.format(type_spec))
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  with tf.Graph().as_default() as graph:
+    parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+        'x', type_spec, graph)
+    result_type, result_binding = graph_utils.capture_result_from_graph(
+        parameter_value, graph)
+
+  function_type = computation_types.FunctionType(type_spec, result_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  proto = pb.Computation(
+      type=serialized_function_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          parameter=parameter_binding,
+          result=result_binding))
+
+  return computation_building_blocks.CompiledComputation(proto)
 
 
 def construct_federated_getitem_call(arg, idx):
