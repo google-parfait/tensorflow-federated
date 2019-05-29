@@ -45,11 +45,11 @@ main() {
     die "Could not find bazel-bin. Did you run from the root of the build tree?"
   fi
 
-  local temp_dir="$(mktemp --directory)"
+  local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
 
   local runfiles="bazel-bin/tensorflow_federated/tools/build_pip_package.runfiles"
-  cp --dereference --recursive \
+  cp -LR \
       "${runfiles}/org_tensorflow_federated/tensorflow_federated" \
       "${temp_dir}"
   cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/setup.py" \
