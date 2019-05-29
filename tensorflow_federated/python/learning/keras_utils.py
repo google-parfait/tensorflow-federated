@@ -88,6 +88,7 @@ def _preprocess_dummy_batch(dummy_batch):
 def from_keras_model(keras_model,
                      dummy_batch,
                      loss,
+                     loss_weights=None,
                      metrics=None,
                      optimizer=None):
   """Builds a `tff.learning.Model` for an example mini batch.
@@ -102,7 +103,17 @@ def from_keras_model(keras_model,
       The loss value that will be minimized by the model will then be the sum of
       all individual losses.
     loss: A callable that takes two batched tensor parameters, `y_true` and
-      `y_pred`, and returns the loss.
+      `y_pred`, and returns the loss. If the model has multiple outputs, you
+      can use a different loss on each output by passing a dictionary or a list
+      of losses. The loss value that will be minimized by the model will then
+      be the sum of all individual losses.
+    loss_weights: (Optional) a list or dictionary specifying scalar coefficients
+      (Python floats) to weight the loss contributions of different model
+      outputs. The loss value that will be minimized by the model will then
+      be the *weighted sum* of all individual losses, weighted by the
+      `loss_weights` coefficients. If a list, it is expected to have a 1:1
+      mapping to the model's outputs. If a tensor, it is expected to map
+      output names (strings) to scalar coefficients.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
     optimizer: (Optional) a `tf.keras.optimizer.Optimizer`. If None, returned
       model cannot be used for training.
@@ -119,10 +130,18 @@ def from_keras_model(keras_model,
                                  collections.Sequence,
                                  collections.Mapping))
 
+  if loss_weights is not None:
+    py_typecheck.check_type(loss, (collections.Sequence,
+                                   collections.Mapping))
+
   if isinstance(loss, collections.Sequence):
     if len(loss) != len(keras_model.outputs):
       raise ValueError('`keras_model` must have equal number of '
                        'outputs and losses')
+
+    if loss_weights is not None and len(loss) != len(loss_weights):
+      raise ValueError('`keras_model` must have equal number of '
+                       'losses and loss weights')
 
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled. Use '
@@ -139,14 +158,17 @@ def from_keras_model(keras_model,
               'this was done on purpose. The fit and evaluate APIs will not be '
               'expecting any data to be passed to {0}.'.format(name))
         loss_functions.append(loss[name])
+
     elif isinstance(loss, collections.Sequence):
       loss_functions = loss
+
     else:
       loss_functions = [loss]
-    return model_utils.enhance(
-        _KerasModel(keras_model, dummy_tensors, loss_functions, metrics))
 
-  keras_model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+    return model_utils.enhance(
+        _KerasModel(keras_model, dummy_tensors, loss_functions, loss_weights, metrics))
+
+  keras_model.compile(loss=loss, optimizer=optimizer, loss_weights=loss_weights, metrics=metrics)
   # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
   # until the model has been called on input. The work-around is to call
   # Model.test_on_batch() once before asking for metrics.
@@ -258,7 +280,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
-  def __init__(self, inner_model, dummy_batch, loss_fns, metrics):
+  def __init__(self, inner_model, dummy_batch, loss_fns, loss_weights, metrics):
 
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. We forced that here.
@@ -275,6 +297,23 @@ class _KerasModel(model_lib.Model):
 
     self._keras_model = inner_model
     self._loss_fns = loss_fns
+
+    if isinstance(loss_weights, collections.Mapping):
+      print(inner_model.output_names)
+      print(loss_weights.keys())
+      self._loss_weights = []
+      for name in inner_model.output_names:
+        if name not in loss_weights:
+          self._loss_weights.append(1.0)
+        else:
+          self._loss_weights.append(loss_weights[name])
+    else:
+      if loss_weights is None:
+        self._loss_weights = [1.0 for _ in range(len(loss_fns))]
+      else:
+        self._loss_weights = loss_weights
+
+    loss_weights = self._loss_weights
     self._metrics = metrics if metrics is not None else []
 
     # This is defined here so that it closes over the `loss_fn`.
@@ -284,6 +323,7 @@ class _KerasModel(model_lib.Model):
       def __init__(self, name='loss', dtype=tf.float32):
         super(_WeightedMeanLossMetric, self).__init__(name, dtype)
         self._loss_fns = loss_fns
+        self._loss_weights = loss_weights
 
       def update_state(self, y_true, y_pred, sample_weight=None):
         if len(self._loss_fns) == 1:
@@ -297,7 +337,7 @@ class _KerasModel(model_lib.Model):
           for i in range(len(self._loss_fns)):
             y_t = tf.cast(y_true[i], self._dtype)
             y_p = tf.cast(y_pred[i], self._dtype)
-            batch_loss = self._loss_fns[i](y_t, y_p)
+            batch_loss += self._loss_weights[i] * self._loss_fns[i](y_t, y_p)
 
           batch_size = tf.cast(tf.shape(y_pred[0])[0], self._dtype)
 
@@ -370,6 +410,7 @@ class _KerasModel(model_lib.Model):
     predictions = self._keras_model(inputs=inputs, training=training)
     y_true = batch_input.get('y')
 
+
     if y_true is not None:
       if len(self._loss_fns) == 1:
         loss_fn = self._loss_fns[0]
@@ -379,7 +420,8 @@ class _KerasModel(model_lib.Model):
         batch_loss = tf.zeros(())
         for i in range(len(self._loss_fns)):
           loss_fn = self._loss_fns[i]
-          batch_loss += loss_fn(y_true=y_true[i], y_pred=predictions[i])
+          loss_wt = self._loss_weights[i]
+          batch_loss += loss_wt * loss_fn(y_true=y_true[i], y_pred=predictions[i])
 
     else:
       batch_loss = None
@@ -422,7 +464,9 @@ class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
   def __init__(self, inner_model, dummy_batch):
     super(_TrainableKerasModel,
           self).__init__(inner_model, dummy_batch,
-                         inner_model.loss_functions, inner_model.metrics)
+                         inner_model.loss_functions,
+                         inner_model.loss_weights,
+                         inner_model.metrics)
 
   @property
   def local_variables(self):
