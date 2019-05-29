@@ -19,8 +19,8 @@ Follow either of the two links above to access the appropriate CLA and
 instructions for how to sign and return it. Once we receive it, we'll be able to
 accept your pull requests.
 
-***NOTE***: Only original source code from you and other people that have signed
-the CLA can be accepted into the main repository.
+NOTE: Only original source code from you and other people that have signed the
+CLA can be accepted into the main repository.
 
 ## Community Guidelines
 
