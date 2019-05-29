@@ -18,9 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import uuid
 
 import six
+
 from six.moves import range
 from six.moves import zip
 import tensorflow as tf
@@ -88,19 +90,16 @@ class GraphSpec(object):
     self.out_names = out_names
 
 
-def _uniquify_shared_names(graph):
+def _uniquify_shared_names(graph_def):
   """Appends unique identifier to any shared names present in `graph`."""
   # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
   # unblock using more modern TF compositional constructs, and avoid direct
   # proto manipulation as is happening here.
-  graph_def = graph.as_graph_def()
   for x in graph_def.node:
     if 'shared_name' in list(x.attr.keys()):
       uid = tf.compat.as_bytes(str(uuid.uuid1())[:8])
       x.attr['shared_name'].s += uid
-  with tf.Graph().as_default() as new_graph:
-    tf.import_graph_def(graph_def, name='')
-  return new_graph
+  return graph_def
 
 
 def _concat_graphs(graph_def_list, graph_names_list):
@@ -124,11 +123,11 @@ def _concat_graphs(graph_def_list, graph_names_list):
   """
   merged_graph = tf.Graph()
   for k in range(len(graph_names_list)):
-    # merged_graph must be overwritten here with unique shared_names to prevent
-    # variables being wired together incorrectly.
-    merged_graph = _uniquify_shared_names(merged_graph)
+    # The GraphDef we are about to import must have its shared name attributes
+    # set to unique values to avoid variables being wired together incorrectly.
+    graph_def_to_merge = _uniquify_shared_names(graph_def_list[k])
     with merged_graph.as_default():
-      tf.import_graph_def(graph_def_list[k], name=graph_names_list[k])
+      tf.import_graph_def(graph_def_to_merge, name=graph_names_list[k])
   return merged_graph
 
 
@@ -158,8 +157,11 @@ def concatenate_inputs_and_outputs(arg_list):
       out_name_maps: Similar to `in_name_maps`.
 
   """
+  if not isinstance(arg_list, collections.Iterable):
+    raise TypeError('Please pass an iterable to '
+                    '`concatenate_inputs_and_outputs`.')
   (graph_def_list, init_op_names_list, in_names_list, out_names_list,
-   graph_names_list) = _parse_concatenate_args(arg_list)
+   graph_names_list) = _parse_graph_spec_list(arg_list)
 
   merged_graph = _concat_graphs(graph_def_list, graph_names_list)
 
@@ -194,11 +196,10 @@ def _get_merged_init_op_name(merged_graph, graph_names_list,
   return init_op.name
 
 
-def _parse_concatenate_args(arg_list):
+def _parse_graph_spec_list(arg_list):
   """Flattens list of `GraphSpec` instances."""
   if not all(isinstance(x, GraphSpec) for x in arg_list):
-    raise TypeError('Please pass an iterable of `GraphSpec`s to '
-                    '`concatenate_inputs_and_outputs`.')
+    raise TypeError('Please pass an iterable of `GraphSpec`s.')
   graph_defs = [x.graph_def for x in arg_list]
   init_op_names = [x.init_op for x in arg_list]
   in_names = [x.in_names for x in arg_list]
@@ -206,3 +207,93 @@ def _parse_concatenate_args(arg_list):
   graph_names = ['graph_{}'.format(k) for k in range(len(arg_list))]
 
   return (graph_defs, init_op_names, in_names, out_names, graph_names)
+
+
+def compose_graph_specs(graph_spec_list):
+  """Composes `GraphSpec` list in order, wiring output of k to input of k+1.
+
+  We enforce the invariant that each element of `graph_spec_list` must declare
+  exactly as many outputs as the next element declares inputs. This removes
+  any possibility of ambiguity in identifying inputs and outputs of the
+  resulting composed graph.
+
+  Args:
+    graph_spec_list: Python list or tuple of instances of `GraphSpec`. Notice
+      not all iterables can work here, since composition is inherently a
+      noncommutative operation.
+
+  Returns:
+    A four-tuple:
+      composed_graph: An instance of `tf.Graph` representing outputs of the
+        elements of `graph_spec_list` wired to the inputs of the next
+        element. That is, represents the dataflow graphs composed as functions.
+      init_op_name: A string representing the op in `composed_graph` that runs
+        any initializers passed in with `arg_list`.
+      in_name_map: A `dict` mapping the input names of the first element of
+        `graph_spec_list` to their new names in `composed_graph`.
+      out_name_map: A `dict` mapping the output names of the last element of
+        `graph_spec_list` to their new names in `composed_graph`.
+
+  Raises:
+    TypeError: If we are not passed a list or tuple of `GraphSpec`s.
+    ValueError: If the `GraphSpec`s passed in do not respect the requirement
+      that number of outputs of element k must match the number of inputs to
+      element k+1.
+  """
+  if not isinstance(graph_spec_list, (list, tuple)):
+    raise TypeError('Please pass a list or tuple to ' '`compose_graph_specs`.')
+  (graph_def_list, init_op_names_list, in_names_list, out_names_list,
+   graph_names_list) = _parse_graph_spec_list(graph_spec_list)
+  for out_names, in_names in zip(in_names_list[1:], out_names_list[:-1]):
+    if len(out_names) != len(in_names):
+      raise ValueError(
+          'Attempted to compose graphs with a mismatched number of elements in '
+          'and out; attempted to pass {} in to {}'.format(out_names, in_names))
+
+  def _compose_graphs(graph_def_list, in_names, out_names, graph_names_list):
+    """Imports graphs in `graph_def_list` wiring inputs and outputs as declared.
+
+    Args:
+      graph_def_list: Python iterable of `tf.GraphDef` objects.
+      in_names: Parallel Python iterable whose kth element specifies the input
+        names in element k from `graph_def_list`.
+      out_names: Parallel Python iterable whose kth element specifies the output
+        names in element k from `graph_def_list`.
+      graph_names_list: Parallel Python iterable containing the names under
+        which we wish to import the elements from `graph_def_list` into the
+        newly created `tf.Graph`.
+
+    Returns:
+      An instance of `tf.Graph` containing the composed logic.
+    """
+    with tf.Graph().as_default() as composed_graph:
+      output_elements = tf.import_graph_def(
+          graph_def_list[0],
+          return_elements=out_names[0],
+          name=graph_names_list[0])
+    for k in range(1, len(graph_names_list)):
+      # The GraphDef we are about to import must have its shared name
+      # attributes set to unique values to avoid variables being wired together
+      # incorrectly.
+      graph_def_to_merge = _uniquify_shared_names(graph_def_list[k])
+      input_map = dict(zip(in_names[k], output_elements))
+      with composed_graph.as_default():
+        output_elements = tf.import_graph_def(
+            graph_def_to_merge,
+            input_map=input_map,
+            return_elements=out_names[k],
+            name=graph_names_list[k])
+    output_map = dict(zip(out_names[-1], [x.name for x in output_elements]))
+    return composed_graph, output_map
+
+  composed_graph, out_name_map = _compose_graphs(graph_def_list, in_names_list,
+                                                 out_names_list,
+                                                 graph_names_list)
+
+  in_name_map = {
+      x: '{}/{}'.format(graph_names_list[0], x) for x in in_names_list[0]
+  }
+  merged_init_op_name = _get_merged_init_op_name(composed_graph,
+                                                 graph_names_list,
+                                                 init_op_names_list)
+  return composed_graph, merged_init_op_name, in_name_map, out_name_map
