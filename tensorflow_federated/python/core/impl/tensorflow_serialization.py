@@ -95,7 +95,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   py_typecheck.check_callable(target)
   parameter_type = computation_types.to_type(parameter_type)
   argspec = function_utils.get_argspec(target)
-  if argspec.args and not parameter_type:
+  if argspec.args and parameter_type is None:
     raise ValueError(
         'Expected the target to declare no parameters, found {}.'.format(
             repr(argspec.args)))
@@ -248,7 +248,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
 
   with tf.Graph().as_default() as graph:
     args = []
-    if parameter_type:
+    if parameter_type is not None:
       if len(argspec.args) != 1:
         raise ValueError(
             'Expected the target to declare exactly one parameter, '
