@@ -359,8 +359,8 @@ def merge_chained_blocks(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def merge_chained_federated_maps(comp):
-  r"""Merges all the chained federated maps in `comp` into one federated map.
+def merge_chained_federated_maps_or_applys(comp):
+  r"""Merges all the chained federated maps or federated apply in `comp`.
 
   This transform traverses `comp` postorder, matches the following pattern, and
   replaces the following computation containing two federated map intrinsics:
@@ -375,9 +375,10 @@ def merge_chained_federated_maps(comp):
                                 |
                                 [Comp(y), Comp(z)]
 
-  federated_map(<x, federated_map(<y, z>)>)
+  intrinsic(<x, intrinsic(<y, z>)>)
 
-  with the following computation containing one federated map intrinsic:
+  with the following computation containing one federated map or apply
+  intrinsic:
 
 
             Call
@@ -396,7 +397,7 @@ def merge_chained_federated_maps(comp):
                                  /
                           Ref(fn)
 
-  federated_map(<(let fn=<y, x> in (arg -> fn[1](fn[0](arg)))), z>)
+  intrinsic(<(let fn=<y, x> in (arg -> fn[1](fn[0](arg)))), z>)
 
   The functional computations `x` and `y`, and the argument `z` are retained;
   the other computations are replaced.
@@ -415,10 +416,12 @@ def merge_chained_federated_maps(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a chained federated map."""
-    uri = intrinsic_defs.FEDERATED_MAP.uri
-    if _is_called_intrinsic(comp, uri):
+    if _is_called_intrinsic(comp, (
+        intrinsic_defs.FEDERATED_APPLY.uri,
+        intrinsic_defs.FEDERATED_MAP.uri,
+    )):
       outer_arg = comp.argument[1]
-      if _is_called_intrinsic(outer_arg, uri):
+      if _is_called_intrinsic(outer_arg, comp.function.uri):
         return True
     return False
 
@@ -669,8 +672,8 @@ def merge_tuple_intrinsics(comp):
 
   def _should_transform(comp):
     uri = (
-        intrinsic_defs.FEDERATED_MAP.uri,
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.FEDERATED_MAP.uri,
     )
     return (isinstance(comp, computation_building_blocks.Tuple) and
             _is_called_intrinsic(comp[0], uri) and all(

@@ -82,7 +82,7 @@ def _wrap(fn, parameter_type, wrapper_fn):
     fn_name = None
   argspec = function_utils.get_argspec(fn)
   parameter_type = computation_types.to_type(parameter_type)
-  if not parameter_type:
+  if parameter_type is None:
     if (argspec.args or argspec.varargs or argspec.keywords):
       # There is no TFF type specification, and the function/defun declares
       # parameters. Create a polymorphic template.

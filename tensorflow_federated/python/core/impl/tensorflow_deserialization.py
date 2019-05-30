@@ -76,7 +76,7 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
   py_typecheck.check_type(graph, tf.Graph)
   with graph.as_default():
     type_spec = type_serialization.deserialize_type(computation_proto.type)
-    if not type_spec.parameter:
+    if type_spec.parameter is None:
       if arg is None:
         input_map = None
       else:
