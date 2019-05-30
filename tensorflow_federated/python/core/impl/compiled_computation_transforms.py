@@ -719,6 +719,26 @@ def compose_tensorflow_blocks(tf_comps):
   return computation_building_blocks.CompiledComputation(constructed_proto)
 
 
+class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
+  r"""`TransformSpec` representing a composition of TF blocks."""
+
+  def should_transform(self, comp):
+    return (isinstance(comp, computation_building_blocks.Call) and isinstance(
+        comp.function, computation_building_blocks.CompiledComputation) and
+            isinstance(comp.argument, computation_building_blocks.Call) and
+            isinstance(comp.argument.function,
+                       computation_building_blocks.CompiledComputation))
+
+  def transform(self, comp):
+    if self.should_transform(comp):
+      bottom_arg = comp.argument.argument
+      function_1 = comp.function
+      function_2 = comp.argument.function
+      composed_fn = compose_tensorflow_blocks([function_1, function_2])
+      return computation_building_blocks.Call(composed_fn, bottom_arg), True
+    return comp, False
+
+
 class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
   r"""`TransformSpec` representing a selection from the result of a TF block.
 

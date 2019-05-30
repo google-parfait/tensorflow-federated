@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl import transformation_utils
 
 
 def _create_compiled_computation(py_fn, arg_type):
@@ -1775,6 +1776,200 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
 
     executable_reduce = _to_computation_impl(integer_result)
     self.assertEqual(executable_reduce(), 10)
+
+
+def _create_simple_called_composition_of_tf_blocks():
+  zero_fn = _create_compiled_computation(lambda: 0, None)
+  zero = computation_building_blocks.Call(zero_fn, None)
+  add_one = _create_compiled_computation(lambda x: x + 1, tf.int32)
+  one = computation_building_blocks.Call(add_one, zero)
+  return one
+
+
+def _count_compiled_computations_under(comp):
+  count = [0]
+
+  def _count(comp):
+    if isinstance(comp, computation_building_blocks.CompiledComputation):
+      count[0] += 1
+    return comp, False
+
+  transformation_utils.transform_postorder(comp, _count)
+
+  return count[0]
+
+
+class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
+
+  def test_should_transform_identifies_correct_pattern(self):
+    pattern = _create_simple_called_composition_of_tf_blocks()
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    self.assertTrue(logic.should_transform(pattern))
+
+  def test_should_not_transform_compiled_computation(self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    self.assertFalse(logic.should_transform(integer_square))
+
+  def test_should_not_transform_single_called_compiled_computation(self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    int_ref = computation_building_blocks.Reference('x', tf.int32)
+    called_square = computation_building_blocks.Call(integer_square, int_ref)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    self.assertFalse(logic.should_transform(called_square))
+
+  def test_should_not_transform_called_lambda_on_called_compiled_computation(
+      self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    int_ref = computation_building_blocks.Reference('x', tf.int32)
+    called_square = computation_building_blocks.Call(integer_square, int_ref)
+    lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32,
+                                                        called_square)
+    outer_int_ref = computation_building_blocks.Reference('y', tf.int32)
+    called_lambda = computation_building_blocks.Call(lambda_wrapper,
+                                                     outer_int_ref)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    self.assertFalse(logic.should_transform(called_lambda))
+
+  def test_does_not_transform_compiled_computation(self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, mutated = logic.transform(integer_square)
+    self.assertEqual(parsed, integer_square)
+    self.assertFalse(mutated)
+
+  def test_transform_constructs_correct_root_node(self):
+    pattern = _create_simple_called_composition_of_tf_blocks()
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, mutated = logic.transform(pattern)
+    self.assertIsInstance(parsed, computation_building_blocks.Call)
+    self.assertIsInstance(parsed.function,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+
+  def test_transform_reduces_number_of_compiled_computations(self):
+    pattern = _create_simple_called_composition_of_tf_blocks()
+    original_count = _count_compiled_computations_under(pattern)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, _ = logic.transform(pattern)
+    new_count = _count_compiled_computations_under(parsed)
+    self.assertLess(new_count, original_count)
+
+  def test_leaves_type_signature_alone(self):
+    pattern = _create_simple_called_composition_of_tf_blocks()
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, mutated = logic.transform(pattern)
+    self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
+
+  def test_executes_correctly(self):
+    pattern = _create_simple_called_composition_of_tf_blocks()
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, _ = logic.transform(pattern)
+    lambda_wrapping_parsed = computation_building_blocks.Lambda(
+        'x', tf.int32, parsed)
+    executable = _to_computation_impl(lambda_wrapping_parsed)
+    self.assertEqual(executable(0), 1)
+    self.assertEqual(executable(1), 1)
+    self.assertEqual(executable(2), 1)
+
+  def test_constructs_correct_type_signature_named_tuple_argument(self):
+    identity = _create_compiled_computation(lambda x: x, [('a', tf.int32),
+                                                          ('b', tf.float32)])
+    sel_int = _create_compiled_computation(lambda x: x.a, [('a', tf.int32),
+                                                           ('b', tf.float32)])
+
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [('a', tf.int32), ('b', tf.float32)])
+
+    called_identity = computation_building_blocks.Call(identity,
+                                                       tuple_reference)
+    called_integer_selection = computation_building_blocks.Call(
+        sel_int, called_identity)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, mutated = logic.transform(called_integer_selection)
+    self.assertEqual(parsed.type_signature,
+                     called_integer_selection.type_signature)
+    self.assertEqual(parsed.argument.type_signature,
+                     tuple_reference.type_signature)
+    self.assertTrue(mutated)
+
+  def test_executes_named_tuple_argument(self):
+    identity = _create_compiled_computation(lambda x: x, [('a', tf.int32),
+                                                          ('b', tf.float32)])
+    sel_int = _create_compiled_computation(lambda x: x.a, [('a', tf.int32),
+                                                           ('b', tf.float32)])
+
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [('a', tf.int32), ('b', tf.float32)])
+
+    called_identity = computation_building_blocks.Call(identity,
+                                                       tuple_reference)
+    called_integer_selection = computation_building_blocks.Call(
+        sel_int, called_identity)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, _ = logic.transform(called_integer_selection)
+    lambda_wrapping_parsed = computation_building_blocks.Lambda(
+        'x', tuple_reference.type_signature, parsed)
+    executable = _to_computation_impl(lambda_wrapping_parsed)
+    self.assertEqual(executable({'a': 1, 'b': 0.}), 1)
+    self.assertEqual(executable({'a': 0, 'b': 1.}), 0)
+
+  def test_constructs_correct_type_signature_named_tuple_result(self):
+    namer = _create_compiled_computation(
+        lambda x: collections.OrderedDict([('a', x[0]), ('b', x[1])]),
+        [tf.int32, tf.float32])
+    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [tf.int32, tf.float32])
+
+    called_identity = computation_building_blocks.Call(identity,
+                                                       tuple_reference)
+    called_namer = computation_building_blocks.Call(namer, called_identity)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, mutated = logic.transform(called_namer)
+    self.assertEqual(parsed.type_signature, called_namer.type_signature)
+    self.assertTrue(mutated)
+
+  def test_executes_correctly_named_tuple_result(self):
+    namer = _create_compiled_computation(
+        lambda x: collections.OrderedDict([('a', x[0]), ('b', x[1])]),
+        [tf.int32, tf.float32])
+    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [tf.int32, tf.float32])
+
+    called_identity = computation_building_blocks.Call(identity,
+                                                       tuple_reference)
+    called_namer = computation_building_blocks.Call(namer, called_identity)
+    logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
+    )
+    parsed, _ = logic.transform(called_namer)
+    lambda_wrapping_parsed = computation_building_blocks.Lambda(
+        'x', tuple_reference.type_signature, parsed)
+    executable = _to_computation_impl(lambda_wrapping_parsed)
+    self.assertEqual(executable([1, 0.])[0], 1)
+    self.assertEqual(executable([1, 0.]).a, 1)
+    self.assertEqual(executable([1, 0.])[1], 0.)
+    self.assertEqual(executable([1, 0.]).b, 0.)
+    self.assertEqual(executable([0, 1.])[0], 0)
+    self.assertEqual(executable([0, 1.]).a, 0)
+    self.assertEqual(executable([0, 1.])[1], 1.)
+    self.assertEqual(executable([0, 1.]).b, 1.)
 
 
 if __name__ == '__main__':
