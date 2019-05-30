@@ -11,7 +11,7 @@ py_library(
 py_library(
     name = "models",
     srcs = ["models.py"],
-    deps = ["//tensorflow_federated/python"],
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(
@@ -20,6 +20,6 @@ py_test(
     srcs = ["models_test.py"],
     deps = [
         ":models",
-        "//tensorflow_federated/python",
+        "//tensorflow_federated",
     ],
 )

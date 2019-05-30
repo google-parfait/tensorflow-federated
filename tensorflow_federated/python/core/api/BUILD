@@ -1,4 +1,4 @@
-package(default_visibility = ["//tensorflow_federated/python/core:__subpackages__"])
+package(default_visibility = ["//tensorflow_federated:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
