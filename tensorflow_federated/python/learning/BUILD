@@ -13,7 +13,6 @@ py_library(
         ":federated_sgd",
         ":keras_utils",
         ":model",
-        ":model_utils",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
     ],
