@@ -33,8 +33,6 @@ from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 
-RENAME_PREFIX = '_variable'
-
 
 def _create_chained_calls(functions, arg):
   r"""Creates a chain of `n` calls.
@@ -165,14 +163,14 @@ def _create_lambda_to_dummy_cast(parameter_type, result_type):
   """
   py_typecheck.check_type(parameter_type, tf.dtypes.DType)
   py_typecheck.check_type(result_type, tf.dtypes.DType)
-  arg = computation_building_blocks.Data('y', result_type)
+  arg = computation_building_blocks.Data('data', result_type)
   return computation_building_blocks.Lambda('x', parameter_type, arg)
 
 
 def _create_dummy_block(comp, variable_name='v', variable_type=tf.int32):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
-  data = computation_building_blocks.Data('x', variable_type)
+  data = computation_building_blocks.Data('data', variable_type)
   return computation_building_blocks.Block([(variable_name, data)], comp)
 
 
@@ -1103,8 +1101,7 @@ class InlineBlockLocalsTest(absltest.TestCase):
     inlined = transformations.inline_block_locals(renamed)
 
     self.assertEqual(str(lam), '(arg -> (let y=arg[0],arg=arg[1] in <y,arg>))')
-    self.assertEqual(
-        str(inlined), '({0}1 -> <{0}1[0],{0}1[1]>)'.format(RENAME_PREFIX))
+    self.assertEqual(str(inlined), '(_var1 -> <_var1[0],_var1[1]>)')
     self.assertEqual(inlined.type_signature, lam.type_signature)
 
   def test_inline_block_locals_inlines_differently_in_different_scopes(self):
@@ -1289,7 +1286,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
   def test_merges_federated_maps_with_different_types(self):
     fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     fn_2 = _create_lambda_to_identity('x', tf.float32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
@@ -1297,11 +1294,12 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
-    self.assertEqual(comp.tff_repr,
-                     'federated_map(<(x -> x),federated_map(<(x -> y),y>)>)')
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_map(<(x -> x),federated_map(<(x -> data),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> y),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+        'federated_map(<(let fn=<(x -> data),(x -> x)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -1361,10 +1359,10 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        '(let v=x in federated_map(<(x -> x),federated_map(<(x -> x),y>)>))')
+        '(let v=data in federated_map(<(x -> x),federated_map(<(x -> x),y>)>))')
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let v=x in federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>))'
+        '(let v=data in federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -1430,7 +1428,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(x -> x),(let v=x in federated_map(<(x -> x),y>))>)')
+        'federated_map(<(x -> x),(let v=data in federated_map(<(x -> x),y>))>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -1715,13 +1713,13 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        '(let v=x in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
+        '(let v=data in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
     )
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let v=x in (let value=federated_map(<'
+        '(let v=data in (let value=federated_map(<'
             '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
             'federated_map(<'
               '(x -> <x[0],x[1]>),federated_map(<'
@@ -1907,8 +1905,9 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(let v=x in federated_map(<(x -> x),y>))')
-    self.assertEqual(transformed_comp.tff_repr, '(let v=x in y)')
+    self.assertEqual(comp.tff_repr,
+                     '(let v=data in federated_map(<(x -> x),y>))')
+    self.assertEqual(transformed_comp.tff_repr, '(let v=data in y)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1984,8 +1983,9 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(let v=x in (x -> x)(y))')
-    self.assertEqual(transformed_comp.tff_repr, '(let v=x in (let x=y in x))')
+    self.assertEqual(comp.tff_repr, '(let v=data in (x -> x)(y))')
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let v=data in (let x=y in x))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2026,7 +2026,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(let v=x in (x -> x))(y)')
+    self.assertEqual(transformed_comp.tff_repr, '(let v=data in (x -> x))(y)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2089,9 +2089,10 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr, '(let b=x in (a -> intrinsic(a)))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=x in (a -> (intrinsic_arg -> intrinsic_arg)(a)))')
+    self.assertEqual(comp.tff_repr, '(let b=data in (a -> intrinsic(a)))')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(let b=data in (a -> (intrinsic_arg -> intrinsic_arg)(a)))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2266,9 +2267,8 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
                                                ('x', x_ref)], x_ref)
     self.assertEqual(block.tff_repr, '(let x=data,x=x,x=x in x)')
     renamed = transformations.uniquify_reference_names(block)
-    self.assertEqual(
-        renamed.tff_repr,
-        '(let {0}1=data,{0}2={0}1,{0}3={0}2 in {0}3)'.format(RENAME_PREFIX))
+    self.assertEqual(renamed.tff_repr,
+                     '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
 
   def test_nested_blocks(self):
     x_ref = computation_building_blocks.Reference('x', tf.int32)
@@ -2284,8 +2284,8 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     self.assertTrue(transformation_utils.has_unique_names(renamed))
     self.assertEqual(
         renamed.tff_repr,
-        '(let {0}1=input2,{0}2={0}1 in (let {0}3=input1,{0}4={0}3 in {0}4))'
-        .format(RENAME_PREFIX))
+        '(let _var1=input2,_var2=_var1 in (let _var3=input1,_var4=_var3 in _var4))'
+    )
 
   def test_nested_lambdas(self):
     comp = computation_building_blocks.Data('test', tf.int32)
@@ -2301,9 +2301,8 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
                                            input2), first_level_call)
     renamed = transformations.uniquify_reference_names(second_level_call)
     self.assertTrue(transformation_utils.has_unique_names(renamed))
-    self.assertEqual(
-        renamed.tff_repr,
-        '({0}1 -> {0}1)(({0}2 -> {0}2)(test))'.format(RENAME_PREFIX))
+    self.assertEqual(renamed.tff_repr,
+                     '(_var1 -> _var1)((_var2 -> _var2)(test))')
 
   def test_block_lambda_block_lambda(self):
     x_ref = computation_building_blocks.Reference('x', tf.int32)
@@ -2325,8 +2324,8 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     self.assertTrue(transformation_utils.has_unique_names(renamed))
     self.assertEqual(
         renamed.tff_repr,
-        '(let {0}1=test_data,{0}2={0}1 in ({0}3 -> (let {0}4={0}3,{0}5={0}4 in ({0}6 -> {0}6)({0}5)))({0}2))'
-        .format(RENAME_PREFIX))
+        '(let _var1=test_data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
+    )
 
   def test_blocks_nested_inside_of_locals(self):
     x_data = computation_building_blocks.Data('x', tf.int32)
@@ -2354,20 +2353,16 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
                      '(let y=(let y=(let y=data in x) in x) in x)')
     self.assertEqual(higher_block_with_y_ref.tff_repr,
                      '(let y=(let y=(let y=y in x) in x) in x)')
-    self.assertEqual(renamed.locals[0][0], '{}4'.format(RENAME_PREFIX))
-    self.assertEqual(
-        renamed.locals[0][1].tff_repr,
-        '(let {0}3=(let {0}2=(let {0}1=data in x) in x) in x)'.format(
-            RENAME_PREFIX))
-    self.assertEqual(renamed.locals[1][0], '{}8'.format(RENAME_PREFIX))
+    self.assertEqual(renamed.locals[0][0], '_var4')
+    self.assertEqual(renamed.locals[0][1].tff_repr,
+                     '(let _var3=(let _var2=(let _var1=data in x) in x) in x)')
+    self.assertEqual(renamed.locals[1][0], '_var8')
     self.assertEqual(
         renamed.locals[1][1].tff_repr,
-        '(let {0}7=(let {0}6=(let {0}5={0}4 in x) in x) in x)'.format(
-            RENAME_PREFIX))
+        '(let _var7=(let _var6=(let _var5=_var4 in x) in x) in x)')
     self.assertEqual(
         renamed.result.tff_repr,
-        '(let {0}11=(let {0}10=(let {0}9={0}8 in x) in x) in x)'.format(
-            RENAME_PREFIX))
+        '(let _var11=(let _var10=(let _var9=_var8 in x) in x) in x)')
     self.assertTrue(transformation_utils.has_unique_names(renamed))
 
 

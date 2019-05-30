@@ -933,7 +933,8 @@ def uniquify_compiled_computation_names(comp):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
-  name_generator = itertools.count(start=1)
+  name_generator = computation_constructing_utils.unique_name_generator(
+      None, prefix='')
 
   def _should_transform(comp):
     return isinstance(comp, computation_building_blocks.CompiledComputation)
@@ -942,7 +943,7 @@ def uniquify_compiled_computation_names(comp):
     if not _should_transform(comp):
       return comp, False
     transformed_comp = computation_building_blocks.CompiledComputation(
-        comp.proto, str(six.next(name_generator)))
+        comp.proto, six.next(name_generator))
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
@@ -959,7 +960,7 @@ def uniquify_reference_names(comp):
       are guaranteed to be unique.
   """
 
-  int_sequence = itertools.count(start=1)
+  name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""
@@ -967,7 +968,7 @@ def uniquify_reference_names(comp):
     def __init__(self, name, value):
       super(_RenameNode, self).__init__(name, value)
       py_typecheck.check_type(name, str)
-      self.new_name = '_variable{}'.format(six.next(int_sequence))
+      self.new_name = six.next(name_generator)
 
     def __str__(self):
       return 'Value: {}, name: {}, new_name: {}'.format(self.value, self.name,
