@@ -122,6 +122,12 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
       computation_constructing_utils.construct_compiled_identity(
           computation_types.FederatedType(tf.int32, placement_literals.SERVER))
 
+  def test_raises_on_federated_type_under_tuple(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_compiled_identity([
+          computation_types.FederatedType(tf.int32, placement_literals.SERVER)
+      ])
+
   def test_integer_identity_type_signature(self):
     int_identity = computation_constructing_utils.construct_compiled_identity(
         tf.int32)
@@ -204,6 +210,12 @@ class ConstructCompiledInputDuplicationTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       computation_constructing_utils.construct_compiled_input_duplication(
           computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+
+  def test_raises_on_federated_type_under_tuple(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_compiled_input_duplication([
+          computation_types.FederatedType(tf.int32, placement_literals.SERVER)
+      ])
 
   def test_integer_input_duplicate_type_signature(self):
     int_duplicate_input = computation_constructing_utils.construct_compiled_input_duplication(
