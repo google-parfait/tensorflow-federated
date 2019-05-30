@@ -147,27 +147,14 @@ def _create_lambda_to_dummy_intrinsic(parameter_name, parameter_type=tf.int32):
                                             call)
 
 
-def _create_lambda_to_dummy_cast(parameter_type, result_type):
-  r"""Creates a lambda to cast from `parameter_type` to `result_type`.
-
-  Lambda(x)
-           \
-            Data(y)
-
-  Args:
-    parameter_type: The type of the argument.
-    result_type: The type to cast the argument to.
-
-  Returns:
-    A `computation_building_blocks.Lambda`.
-  """
+def _create_lambda_to_dummy_cast(parameter_name, parameter_type, result_type):
   py_typecheck.check_type(parameter_type, tf.dtypes.DType)
   py_typecheck.check_type(result_type, tf.dtypes.DType)
   arg = computation_building_blocks.Data('data', result_type)
-  return computation_building_blocks.Lambda('x', parameter_type, arg)
+  return computation_building_blocks.Lambda(parameter_name, parameter_type, arg)
 
 
-def _create_dummy_block(comp, variable_name='v', variable_type=tf.int32):
+def _create_dummy_block(comp, variable_name, variable_type=tf.int32):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
   data = computation_building_blocks.Data('data', variable_type)
@@ -228,32 +215,23 @@ def _create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
   return computation_building_blocks.Call(intrinsic, ref)
 
 
-def _create_block_wrapping_data(type_signature):
-  r"""Creates a block representing a noop on a data node of type `tff_type`.
-
-         Block
-        /     \
-    x=Data    Ref(x)
-
-  Args:
-    type_signature: Argument convertible to `computation_types.Type` via
-      `computation_types.to_type`.
-
-  Returns:
-    A `computation_building_blocks.Block` representing data object of name
-      `data` and type `tff_type`.
-  """
-  tff_type = computation_types.to_type(type_signature)
-  data = computation_building_blocks.Data('data', tff_type)
-  ref = computation_building_blocks.Reference('x', tff_type)
-  return computation_building_blocks.Block([('x', data)], ref)
+def _create_block_wrapping_data(variable_name, variable_type=tf.int32):
+  data = computation_building_blocks.Data('data', variable_type)
+  ref = computation_building_blocks.Reference(variable_name, variable_type)
+  return computation_building_blocks.Block([(variable_name, data)], ref)
 
 
 class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.extract_intrinsics(None, intrinsic_defs.FEDERATED_MAP.uri)
+      transformations.extract_intrinsics(None)
+
+  def test_raises_value_error_with_non_unique_variable_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('a', data), ('a', data)], data)
+    with self.assertRaises(ValueError):
+      transformations.extract_intrinsics(block)
 
   def test_extracts_from_block_result_intrinsic(self):
     data = computation_building_blocks.Data('data', tf.int32)
@@ -991,160 +969,95 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
 class InlineBlockLocalsTest(absltest.TestCase):
 
-  def test_inline_block_locals_raises_on_none(self):
+  def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.inline_block_locals(None)
 
-  def test_inline_block_locals_raises_with_non_unique_variable_names(self):
+  def test_raises_value_error_with_non_unique_variable_names(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    bad_comp = computation_building_blocks.Block([('x', data), ('x', data)],
-                                                 data)
+    block = computation_building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
-      transformations.inline_block_locals(bad_comp)
+      transformations.inline_block_locals(block)
 
-  def test_inline_block_locals_noops_on_lambda(self):
-    lam = _create_lambda_to_identity('x', tf.int32)
-    inlined = transformations.inline_block_locals(lam)
-    self.assertEqual(lam.tff_repr, inlined.tff_repr)
-    self.assertEqual(lam.type_signature, inlined.type_signature)
+  def test_inlines_one_variable(self):
+    block = _create_block_wrapping_data(variable_name='a')
+    comp = block
 
-  def test_inline_block_locals_inlines_single_reference(self):
-    simple_block = _create_block_wrapping_data(tf.int32)
+    transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    renamed = transformations.uniquify_reference_names(simple_block)
-    inlined = transformations.inline_block_locals(renamed)
+    self.assertEqual(comp.tff_repr, '(let a=data in a)')
+    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
 
-    self.assertEqual(simple_block.tff_repr, '(let x=data in x)')
-    self.assertEqual(inlined.tff_repr, 'data')
-    self.assertEqual(inlined.type_signature, simple_block.type_signature)
-
-  def test_inline_block_locals_inlines_variable_referenced_once(self):
-    simple_block = _create_block_wrapping_data(tf.int32)
-    result_tuple = computation_building_blocks.Tuple([simple_block.result] * 2)
-    block_wrapping_tuple = computation_building_blocks.Block(
-        simple_block.locals, result_tuple)
-
-    renamed = transformations.uniquify_reference_names(block_wrapping_tuple)
-    inlined = transformations.inline_block_locals(renamed)
-
-    self.assertEqual(block_wrapping_tuple.tff_repr, '(let x=data in <x,x>)')
-    self.assertEqual(inlined.tff_repr, '<data,data>')
-    self.assertEqual(inlined.type_signature,
-                     block_wrapping_tuple.type_signature)
-
-  def test_inline_block_locals_propogates_inline_out_of_locals_block(self):
-    simple_block = _create_block_wrapping_data(tf.int32)
-    simple_block_local_name = simple_block.locals[0][0]
-    outer_block_result = computation_building_blocks.Reference(
-        simple_block_local_name, simple_block.type_signature)
-    conflicting_name_outer_block = computation_building_blocks.Block(
-        [(simple_block.locals[0][0], simple_block)], outer_block_result)
-
-    renamed = transformations.uniquify_reference_names(
-        conflicting_name_outer_block)
-    inlined = transformations.inline_block_locals(renamed)
-
-    self.assertEqual(
-        str(conflicting_name_outer_block), '(let x=(let x=data in x) in x)')
-    self.assertEqual(str(inlined), 'data')
-    self.assertEqual(inlined.type_signature,
-                     conflicting_name_outer_block.type_signature)
-
-  def test_inline_block_locals_propogates_inline_into_result_block(self):
-    used_ref = computation_building_blocks.Reference('used_ref', tf.int32)
+  def test_inlines_two_variables(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    ref = computation_building_blocks.Reference('x', used_ref.type_signature)
-    lower_block = computation_building_blocks.Block([('x', used_ref)], ref)
-    higher_block = computation_building_blocks.Block([('used_ref', data)],
-                                                     lower_block)
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    tup = computation_building_blocks.Tuple((ref, ref))
+    block = computation_building_blocks.Block((('a', data),), tup)
+    comp = block
 
-    renamed = transformations.uniquify_reference_names(higher_block)
-    inlined = transformations.inline_block_locals(renamed)
+    transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(
-        str(higher_block), '(let used_ref=data in (let x=used_ref in x))')
-    self.assertEqual(str(inlined), 'data')
-    self.assertEqual(inlined.type_signature, higher_block.type_signature)
+    self.assertEqual(comp.tff_repr, '(let a=data in <a,a>)')
+    self.assertEqual(transformed_comp.tff_repr, '<data,data>')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
 
-  def test_inline_block_locals_ignores_conflicting_name_in_higher_scope(self):
-    lower_block = _create_block_wrapping_data(tf.bool)
-    red_herring_arg = computation_building_blocks.Data(
-        'redherring', lower_block.locals[0][1].type_signature)
-    higher_block = computation_building_blocks.Block([('x', red_herring_arg)],
-                                                     lower_block)
+  def test_inlines_variables_in_block_variables(self):
+    block_1 = _create_block_wrapping_data(variable_name='a')
+    ref = computation_building_blocks.Reference('b', block_1.type_signature)
+    block_2 = computation_building_blocks.Block((('b', block_1),), ref)
+    comp = block_2
 
-    renamed = transformations.uniquify_reference_names(higher_block)
-    inlined = transformations.inline_block_locals(renamed)
+    transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(
-        str(higher_block), '(let x=redherring in (let x=data in x))')
-    self.assertEqual(str(inlined), 'data')
-    self.assertEqual(inlined.type_signature, higher_block.type_signature)
+    self.assertEqual(comp.tff_repr, '(let b=(let a=data in a) in b)')
+    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
 
-  def test_inline_block_locals_if_block_local_uses_and_overwrites_bound_variable(
-      self):
-    arg_comp = computation_building_blocks.Reference('arg',
-                                                     [tf.int32, tf.int32])
-    first_selected = computation_building_blocks.Selection(arg_comp, index=0)
-    second_selected = computation_building_blocks.Selection(arg_comp, index=1)
-    internal_arg = computation_building_blocks.Reference('arg', tf.int32)
-    internal_y = computation_building_blocks.Reference('y', tf.int32)
-    identity_tuple = computation_building_blocks.Tuple(
-        [internal_y, internal_arg])
-    block = computation_building_blocks.Block([('y', first_selected),
-                                               ('arg', second_selected)],
-                                              identity_tuple)
-    lam = computation_building_blocks.Lambda('arg', arg_comp.type_signature,
-                                             block)
+  def test_inlines_variables_in_block_results(self):
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    ref_2 = computation_building_blocks.Reference('b', tf.int32)
+    block_1 = computation_building_blocks.Block([('b', ref_1)], ref_2)
+    block_2 = computation_building_blocks.Block([('a', data)], block_1)
+    comp = block_2
 
-    renamed = transformations.uniquify_reference_names(lam)
-    inlined = transformations.inline_block_locals(renamed)
+    transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(str(lam), '(arg -> (let y=arg[0],arg=arg[1] in <y,arg>))')
-    self.assertEqual(str(inlined), '(_var1 -> <_var1[0],_var1[1]>)')
-    self.assertEqual(inlined.type_signature, lam.type_signature)
+    self.assertEqual(comp.tff_repr, '(let a=data in (let b=a in b))')
+    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
 
-  def test_inline_block_locals_inlines_differently_in_different_scopes(self):
-    x_ref = computation_building_blocks.Reference('x', tf.int32)
-    y_ref = computation_building_blocks.Reference('y', tf.int32)
-    lower_block = computation_building_blocks.Block([('x', y_ref)], x_ref)
-    middle_tuple = computation_building_blocks.Tuple([x_ref, lower_block])
-    used = computation_building_blocks.Data('used', tf.int32)
-    used1 = computation_building_blocks.Data('used1', tf.int32)
-    outer_block = computation_building_blocks.Block([('x', used), ('y', used1)],
-                                                    middle_tuple)
+  def test_inlines_variables_bound_sequentially(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    ref_2 = computation_building_blocks.Reference('b', tf.int32)
+    ref_3 = computation_building_blocks.Reference('c', tf.int32)
+    block = computation_building_blocks.Block(
+        (('b', data), ('c', ref_2), ('a', ref_3)), ref_1)
+    comp = block
 
-    renamed = transformations.uniquify_reference_names(outer_block)
-    inlined = transformations.inline_block_locals(renamed)
+    transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(
-        str(outer_block), '(let x=used,y=used1 in <x,(let x=y in x)>)')
-    self.assertEqual(str(inlined), '<used,used1>')
-    self.assertEqual(inlined.type_signature, outer_block.type_signature)
+    self.assertEqual(comp.tff_repr, '(let b=data,c=b,a=c in a)')
+    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
 
-  def test_inline_block_locals_resolves_sequential_binding_in_block_locals(
-      self):
-    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
-    data_a = computation_building_blocks.Data('a', tf.int32)
-    data_b = computation_building_blocks.Data('b', tf.int32)
-    tuple_with_b = computation_building_blocks.Tuple([ref_to_x, data_b])
-    redefined_x = computation_building_blocks.Reference(
-        'x', tuple_with_b.type_signature)
-    data_c = computation_building_blocks.Data('c', tf.int32)
-    tuple_with_c = computation_building_blocks.Tuple([redefined_x, data_c])
-    ref_to_new_x = computation_building_blocks.Reference(
-        'x', tuple_with_c.type_signature)
-    flattened_block = computation_building_blocks.Block([('x', data_a),
-                                                         ('x', tuple_with_b),
-                                                         ('x', tuple_with_c)],
-                                                        ref_to_new_x)
+  def test_does_not_inline_lambda(self):
+    fn = _create_lambda_to_identity('a', tf.int32)
+    comp = fn
 
-    renamed = transformations.uniquify_reference_names(flattened_block)
-    inlined = transformations.inline_block_locals(renamed)
+    transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(flattened_block.tff_repr, '(let x=a,x=<x,b>,x=<x,c> in x)')
-    self.assertEqual(inlined.tff_repr, '<<a,b>,c>')
-    self.assertEqual(inlined.type_signature, flattened_block.type_signature)
+    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
+    self.assertEqual(transformed_comp.tff_repr, '(a -> a)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertFalse(modified)
 
 
 class MergeChainedBlocksTest(absltest.TestCase):
@@ -1284,10 +1197,10 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_different_types(self):
-    fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
+    fn_1 = _create_lambda_to_dummy_cast('a', tf.int32, tf.float32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
-    fn_2 = _create_lambda_to_identity('x', tf.float32)
+    fn_2 = _create_lambda_to_identity('b', tf.float32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
@@ -1296,10 +1209,10 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        'federated_map(<(x -> x),federated_map(<(x -> data),data>)>)')
+        'federated_map(<(b -> b),federated_map(<(a -> data),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> data),(x -> x)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_map(<(let fn=<(a -> data),(b -> b)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -1347,11 +1260,11 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_merges_nested_federated_maps(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
-    block = _create_dummy_block(call)
+    block = _create_dummy_block(call, variable_name='b')
     comp = block
 
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
@@ -1359,10 +1272,11 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        '(let v=data in federated_map(<(x -> x),federated_map(<(x -> x),y>)>))')
+        '(let b=data in federated_map(<(a -> a),federated_map(<(a -> a),data>)>))'
+    )
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let v=data in federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>))'
+        '(let b=data in federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -1414,11 +1328,11 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_merge_separated_federated_maps(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call_1 = computation_constructing_utils.create_federated_map(fn, arg)
-    block = _create_dummy_block(call_1)
+    block = _create_dummy_block(call_1, variable_name='b')
     call_2 = computation_constructing_utils.create_federated_map(fn, block)
     comp = call_2
 
@@ -1428,7 +1342,8 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(x -> x),(let v=data in federated_map(<(x -> x),y>))>)')
+        'federated_map(<(a -> a),(let b=data in federated_map(<(a -> a),data>))>)'
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -1706,20 +1621,20 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
   def test_merges_nested_federated_maps(self):
     elements = [_create_dummy_called_federated_map() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
-    block = _create_dummy_block(calls)
+    block = _create_dummy_block(calls, variable_name='a')
     comp = block
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
-        '(let v=data in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
+        '(let a=data in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
     )
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let v=data in (let value=federated_map(<'
+        '(let a=data in (let value=federated_map(<'
             '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
             'federated_map(<'
               '(x -> <x[0],x[1]>),federated_map(<'
@@ -1899,15 +1814,15 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_removes_nested_federated_map(self):
     call = _create_dummy_called_federated_map()
-    block = _create_dummy_block(call)
+    block = _create_dummy_block(call, variable_name='a')
     comp = block
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(comp.tff_repr,
-                     '(let v=data in federated_map(<(x -> x),y>))')
-    self.assertEqual(transformed_comp.tff_repr, '(let v=data in y)')
+                     '(let a=data in federated_map(<(x -> x),y>))')
+    self.assertEqual(transformed_comp.tff_repr, '(let a=data in y)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1974,18 +1889,18 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_nested_called_lambda(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
-    arg = computation_building_blocks.Data('y', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
+    arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
-    block = _create_dummy_block(call)
+    block = _create_dummy_block(call, variable_name='b')
     comp = block
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(let v=data in (x -> x)(y))')
+    self.assertEqual(comp.tff_repr, '(let b=data in (a -> a)(data))')
     self.assertEqual(transformed_comp.tff_repr,
-                     '(let v=data in (let x=y in x))')
+                     '(let b=data in (let a=data in a))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2016,9 +1931,9 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_replace_separated_called_lambda(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
-    block = _create_dummy_block(fn)
-    arg = computation_building_blocks.Data('y', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
+    block = _create_dummy_block(fn, variable_name='b')
+    arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(block, arg)
     comp = call
 
@@ -2026,7 +1941,8 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(let v=data in (x -> x))(y)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let b=data in (a -> a))(data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2260,110 +2176,127 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
 
 class UniquifyReferenceNamesTest(absltest.TestCase):
 
+  def test_raises_type_error(self):
+    with self.assertRaises(TypeError):
+      transformations.uniquify_reference_names(None)
+
   def test_single_level_block(self):
-    x_ref = computation_building_blocks.Reference('x', tf.int32)
+    ref = computation_building_blocks.Reference('a', tf.int32)
     data = computation_building_blocks.Data('data', tf.int32)
-    block = computation_building_blocks.Block([('x', data), ('x', x_ref),
-                                               ('x', x_ref)], x_ref)
-    self.assertEqual(block.tff_repr, '(let x=data,x=x,x=x in x)')
-    renamed = transformations.uniquify_reference_names(block)
-    self.assertEqual(renamed.tff_repr,
+    block = computation_building_blocks.Block(
+        (('a', data), ('a', ref), ('a', ref)), ref)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(block)
+
+    self.assertEqual(block.tff_repr, '(let a=data,a=a,a=a in a)')
+    self.assertEqual(transformed_comp.tff_repr,
                      '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
+    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    self.assertTrue(modified)
 
   def test_nested_blocks(self):
-    x_ref = computation_building_blocks.Reference('x', tf.int32)
-    input1 = computation_building_blocks.Data('input1', tf.int32)
-    block1 = computation_building_blocks.Block([('x', input1), ('x', x_ref)],
+    x_ref = computation_building_blocks.Reference('a', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    block1 = computation_building_blocks.Block([('a', data), ('a', x_ref)],
                                                x_ref)
-    input2 = computation_building_blocks.Data('input2', tf.int32)
-    block2 = computation_building_blocks.Block([('x', input2), ('x', x_ref)],
+    block2 = computation_building_blocks.Block([('a', data), ('a', x_ref)],
                                                block1)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(
+        block2)
+
+    self.assertEqual(block2.tff_repr,
+                     '(let a=data,a=a in (let a=data,a=a in a))')
     self.assertEqual(
-        str(block2), '(let x=input2,x=x in (let x=input1,x=x in x))')
-    renamed = transformations.uniquify_reference_names(block2)
-    self.assertTrue(transformation_utils.has_unique_names(renamed))
-    self.assertEqual(
-        renamed.tff_repr,
-        '(let _var1=input2,_var2=_var1 in (let _var3=input1,_var4=_var3 in _var4))'
-    )
+        transformed_comp.tff_repr,
+        '(let _var1=data,_var2=_var1 in (let _var3=data,_var4=_var3 in _var4))')
+    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    self.assertTrue(modified)
 
   def test_nested_lambdas(self):
-    comp = computation_building_blocks.Data('test', tf.int32)
-    input1 = computation_building_blocks.Reference('input1',
-                                                   comp.type_signature)
+    data = computation_building_blocks.Data('data', tf.int32)
+    input1 = computation_building_blocks.Reference('a', data.type_signature)
     first_level_call = computation_building_blocks.Call(
-        computation_building_blocks.Lambda('input1', input1.type_signature,
-                                           input1), comp)
+        computation_building_blocks.Lambda('a', input1.type_signature, input1),
+        data)
     input2 = computation_building_blocks.Reference(
-        'input2', first_level_call.type_signature)
+        'b', first_level_call.type_signature)
     second_level_call = computation_building_blocks.Call(
-        computation_building_blocks.Lambda('input2', input2.type_signature,
-                                           input2), first_level_call)
-    renamed = transformations.uniquify_reference_names(second_level_call)
-    self.assertTrue(transformation_utils.has_unique_names(renamed))
-    self.assertEqual(renamed.tff_repr,
-                     '(_var1 -> _var1)((_var2 -> _var2)(test))')
+        computation_building_blocks.Lambda('b', input2.type_signature, input2),
+        first_level_call)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(
+        second_level_call)
+
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(_var1 -> _var1)((_var2 -> _var2)(data))')
+    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    self.assertTrue(modified)
 
   def test_block_lambda_block_lambda(self):
-    x_ref = computation_building_blocks.Reference('x', tf.int32)
-    inner_lambda = computation_building_blocks.Lambda('x', tf.int32, x_ref)
+    x_ref = computation_building_blocks.Reference('a', tf.int32)
+    inner_lambda = computation_building_blocks.Lambda('a', tf.int32, x_ref)
     called_lambda = computation_building_blocks.Call(inner_lambda, x_ref)
-    lower_block = computation_building_blocks.Block([('x', x_ref),
-                                                     ('x', x_ref)],
+    lower_block = computation_building_blocks.Block([('a', x_ref),
+                                                     ('a', x_ref)],
                                                     called_lambda)
-    second_lambda = computation_building_blocks.Lambda('x', tf.int32,
+    second_lambda = computation_building_blocks.Lambda('a', tf.int32,
                                                        lower_block)
     second_call = computation_building_blocks.Call(second_lambda, x_ref)
-    final_input = computation_building_blocks.Data('test_data', tf.int32)
-    last_block = computation_building_blocks.Block([('x', final_input),
-                                                    ('x', x_ref)], second_call)
-    renamed = transformations.uniquify_reference_names(last_block)
+    data = computation_building_blocks.Data('data', tf.int32)
+    last_block = computation_building_blocks.Block([('a', data), ('a', x_ref)],
+                                                   second_call)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(
+        last_block)
+
     self.assertEqual(
         last_block.tff_repr,
-        '(let x=test_data,x=x in (x -> (let x=x,x=x in (x -> x)(x)))(x))')
-    self.assertTrue(transformation_utils.has_unique_names(renamed))
+        '(let a=data,a=a in (a -> (let a=a,a=a in (a -> a)(a)))(a))')
     self.assertEqual(
-        renamed.tff_repr,
-        '(let _var1=test_data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
+        transformed_comp.tff_repr,
+        '(let _var1=data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
     )
+    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    self.assertTrue(modified)
 
   def test_blocks_nested_inside_of_locals(self):
-    x_data = computation_building_blocks.Data('x', tf.int32)
     data = computation_building_blocks.Data('data', tf.int32)
-    lower_block = computation_building_blocks.Block([('y', data)], x_data)
-    middle_block = computation_building_blocks.Block([('y', lower_block)],
-                                                     x_data)
-    higher_block = computation_building_blocks.Block([('y', middle_block)],
-                                                     x_data)
-
-    y_ref = computation_building_blocks.Reference('y', tf.int32)
-    lower_block_with_y_ref = computation_building_blocks.Block([('y', y_ref)],
-                                                               x_data)
+    lower_block = computation_building_blocks.Block([('a', data)], data)
+    middle_block = computation_building_blocks.Block([('a', lower_block)], data)
+    higher_block = computation_building_blocks.Block([('a', middle_block)],
+                                                     data)
+    y_ref = computation_building_blocks.Reference('a', tf.int32)
+    lower_block_with_y_ref = computation_building_blocks.Block([('a', y_ref)],
+                                                               data)
     middle_block_with_y_ref = computation_building_blocks.Block(
-        [('y', lower_block_with_y_ref)], x_data)
+        [('a', lower_block_with_y_ref)], data)
     higher_block_with_y_ref = computation_building_blocks.Block(
-        [('y', middle_block_with_y_ref)], x_data)
-
+        [('a', middle_block_with_y_ref)], data)
     multiple_bindings_highest_block = computation_building_blocks.Block(
-        [('y', higher_block),
-         ('y', higher_block_with_y_ref)], higher_block_with_y_ref)
-    renamed = transformations.uniquify_reference_names(
+        [('a', higher_block),
+         ('a', higher_block_with_y_ref)], higher_block_with_y_ref)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(
         multiple_bindings_highest_block)
+
     self.assertEqual(higher_block.tff_repr,
-                     '(let y=(let y=(let y=data in x) in x) in x)')
+                     '(let a=(let a=(let a=data in data) in data) in data)')
     self.assertEqual(higher_block_with_y_ref.tff_repr,
-                     '(let y=(let y=(let y=y in x) in x) in x)')
-    self.assertEqual(renamed.locals[0][0], '_var4')
-    self.assertEqual(renamed.locals[0][1].tff_repr,
-                     '(let _var3=(let _var2=(let _var1=data in x) in x) in x)')
-    self.assertEqual(renamed.locals[1][0], '_var8')
+                     '(let a=(let a=(let a=a in data) in data) in data)')
+    self.assertEqual(transformed_comp.locals[0][0], '_var4')
     self.assertEqual(
-        renamed.locals[1][1].tff_repr,
-        '(let _var7=(let _var6=(let _var5=_var4 in x) in x) in x)')
+        transformed_comp.locals[0][1].tff_repr,
+        '(let _var3=(let _var2=(let _var1=data in data) in data) in data)')
+    self.assertEqual(transformed_comp.locals[1][0], '_var8')
     self.assertEqual(
-        renamed.result.tff_repr,
-        '(let _var11=(let _var10=(let _var9=_var8 in x) in x) in x)')
-    self.assertTrue(transformation_utils.has_unique_names(renamed))
+        transformed_comp.locals[1][1].tff_repr,
+        '(let _var7=(let _var6=(let _var5=_var4 in data) in data) in data)')
+    self.assertEqual(
+        transformed_comp.result.tff_repr,
+        '(let _var11=(let _var10=(let _var9=_var8 in data) in data) in data)')
+    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    self.assertTrue(modified)
 
 
 if __name__ == '__main__':

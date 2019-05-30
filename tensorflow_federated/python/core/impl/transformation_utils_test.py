@@ -259,7 +259,7 @@ def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
     del ctxt_tree
     if predicate is None or predicate(comp):
       count[0] += 1
-    return comp
+    return comp, False
 
   transformation_utils.transform_postorder_with_symbol_bindings(
       comp, fn, empty_context_tree)
@@ -419,7 +419,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      return comp
+      return comp, False
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
@@ -440,7 +440,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      return comp
+      return comp, False
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
@@ -454,31 +454,31 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform_noop(comp, ctxt_tree):
       del ctxt_tree
-      return comp
+      return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
-    same_comp = transformation_utils.transform_postorder_with_symbol_bindings(
+    same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
         comp, transform_noop, empty_context_tree)
     self.assertEqual(same_comp.tff_repr, comp.tff_repr)
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks())
-  def test_transform_postorder_with_symbol_bindings_constructs_new_internal_nodes(
+  def test_transform_postorder_with_symbol_bindings_does_not_constructs_new_internal_nodes(
       self, comp):
 
     def transform_noop(comp, ctxt_tree):
       del ctxt_tree
-      return comp
+      return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
-    same_comp = transformation_utils.transform_postorder_with_symbol_bindings(
+    same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
         comp, transform_noop, empty_context_tree)
     if not isinstance(comp, (computation_building_blocks.CompiledComputation,
                              computation_building_blocks.Data,
                              computation_building_blocks.Intrinsic,
                              computation_building_blocks.Placement,
                              computation_building_blocks.Reference)):
-      self.assertNotEqual(id(comp), id(same_comp))
+      self.assertEqual(id(comp), id(same_comp))
 
   def test_transform_postorder_with_symbol_bindings_hits_all_nodes_once(self):
     complex_ast = _construct_nested_tree()
@@ -519,7 +519,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       del ctxt_tree
       if isinstance(comp, computation_building_blocks.Data):
         leaf_order.append(comp.uri)
-      return comp
+      return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
@@ -536,7 +536,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, computation_building_blocks.Block):
         for name, _ in comp.locals:
           block_locals_order.append(name)
-      return comp
+      return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
@@ -564,7 +564,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     empty_context_tree = transformation_utils.SymbolTree(PreorderHookTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
-        outer_comp, lambda x, y: x, empty_context_tree)
+        outer_comp, lambda x, y: (x, False), empty_context_tree)
     self.assertEqual(variable_binding_order,
                      ['arg', 'y', 'z', 't', 'u', 'v', 'x', 'w'])
 
@@ -579,7 +579,7 @@ class TransformationUtilsTest(parameterized.TestCase):
           named_node_order.append(name)
       elif isinstance(comp, computation_building_blocks.Data):
         named_node_order.append(comp.uri)
-      return comp
+      return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
@@ -600,9 +600,9 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, computation_building_blocks.Reference):
         ctxt_tree.update_payload_tracking_reference(comp)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
-      return comp
+      return comp, False
 
-    _ = transformation_utils.transform_postorder_with_symbol_bindings(
+    transformation_utils.transform_postorder_with_symbol_bindings(
         lam, transform, empty_symbol_tree)
 
     self.assertEqual(value_holder[0].count, 1)
@@ -621,9 +621,9 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, computation_building_blocks.Reference):
         ctxt_tree.update_payload_tracking_reference(comp)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
-      return comp
+      return comp, False
 
-    _ = transformation_utils.transform_postorder_with_symbol_bindings(
+    transformation_utils.transform_postorder_with_symbol_bindings(
         block, transform, empty_symbol_tree)
 
     self.assertEqual(value_holder[0].count, 1)
@@ -643,9 +643,9 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, computation_building_blocks.Reference):
         ctxt_tree.update_payload_tracking_reference(comp)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
-      return comp
+      return comp, False
 
-    _ = transformation_utils.transform_postorder_with_symbol_bindings(
+    transformation_utils.transform_postorder_with_symbol_bindings(
         block, transform, empty_symbol_tree)
 
     self.assertEqual(value_holder[0].count, 1)

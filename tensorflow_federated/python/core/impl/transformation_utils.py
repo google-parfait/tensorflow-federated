@@ -23,7 +23,6 @@ import collections
 import itertools
 
 import six
-from six.moves import range
 from six.moves import zip
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -114,17 +113,17 @@ def transform_postorder(comp, transform):
     comp, comp_modified = transform(comp)
     return comp, comp_modified or result_modified
   elif isinstance(comp, computation_building_blocks.Block):
-    local_symbols = []
-    locals_modified = False
+    variables = []
+    variables_modified = False
     for key, value in comp.locals:
       value, value_modified = transform_postorder(value, transform)
-      local_symbols.append((key, value))
-      locals_modified = locals_modified or value_modified
+      variables.append((key, value))
+      variables_modified = variables_modified or value_modified
     result, result_modified = transform_postorder(comp.result, transform)
-    if locals_modified or result_modified:
-      comp = computation_building_blocks.Block(local_symbols, result)
+    if variables_modified or result_modified:
+      comp = computation_building_blocks.Block(variables, result)
     comp, comp_modified = transform(comp)
-    return comp, comp_modified or locals_modified or result_modified
+    return comp, comp_modified or variables_modified or result_modified
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
@@ -220,74 +219,79 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   def _traverse_selection(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for selection nodes."""
     _ = six.next(identifier_seq)
-    transformed_source = _transform_postorder_with_symbol_bindings_switch(
+    source, source_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.source, transform, context_tree, identifier_seq)
-    transformed_comp = transform(
-        computation_building_blocks.Selection(transformed_source, comp.name,
-                                              comp.index), context_tree)
-    return transformed_comp
+    if source_modified:
+      comp = computation_building_blocks.Selection(source, comp.name,
+                                                   comp.index)
+    comp, comp_modified = transform(comp, context_tree)
+    return comp, comp_modified or source_modified
 
   def _traverse_tuple(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for tuple nodes."""
     _ = six.next(identifier_seq)
-    new_elems = []
-    for k, v in anonymous_tuple.to_elements(comp):
-      transformed_elem = _transform_postorder_with_symbol_bindings_switch(
-          v, transform, context_tree, identifier_seq)
-      new_elems.append((k, transformed_elem))
-    transformed_comp = transform(
-        computation_building_blocks.Tuple(new_elems), context_tree)
-    return transformed_comp
+    elements = []
+    elements_modified = False
+    for key, value in anonymous_tuple.to_elements(comp):
+      value, value_modified = _transform_postorder_with_symbol_bindings_switch(
+          value, transform, context_tree, identifier_seq)
+      elements.append((key, value))
+      elements_modified = elements_modified or value_modified
+    if elements_modified:
+      comp = computation_building_blocks.Tuple(elements)
+    comp, comp_modified = transform(comp, context_tree)
+    return comp, comp_modified or elements_modified
 
   def _traverse_call(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for call nodes."""
     _ = six.next(identifier_seq)
-    transformed_func = _transform_postorder_with_symbol_bindings_switch(
+    fn, fn_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.function, transform, context_tree, identifier_seq)
     if comp.argument is not None:
-      transformed_arg = _transform_postorder_with_symbol_bindings_switch(
+      arg, arg_modified = _transform_postorder_with_symbol_bindings_switch(
           comp.argument, transform, context_tree, identifier_seq)
     else:
-      transformed_arg = None
-    transformed_comp = transform(
-        computation_building_blocks.Call(transformed_func, transformed_arg),
-        context_tree)
-    return transformed_comp
+      arg, arg_modified = (None, False)
+    if fn_modified or arg_modified:
+      comp = computation_building_blocks.Call(fn, arg)
+    comp, comp_modified = transform(comp, context_tree)
+    return comp, comp_modified or fn_modified or arg_modified
 
   def _traverse_lambda(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for lambda nodes."""
     comp_id = six.next(identifier_seq)
     context_tree.drop_scope_down(comp_id)
     context_tree.ingest_variable_binding(name=comp.parameter_name, value=None)
-    transformed_result = _transform_postorder_with_symbol_bindings_switch(
+    result, result_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.result, transform, context_tree, identifier_seq)
     context_tree.walk_to_scope_beginning()
-    transformed_comp = transform(
-        computation_building_blocks.Lambda(comp.parameter_name,
-                                           comp.parameter_type,
-                                           transformed_result), context_tree)
+    if result_modified:
+      comp = computation_building_blocks.Lambda(comp.parameter_name,
+                                                comp.parameter_type, result)
+    comp, comp_modified = transform(comp, context_tree)
     context_tree.pop_scope_up()
-    return transformed_comp
+    return comp, comp_modified or result_modified
 
   def _traverse_block(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for block nodes."""
     comp_id = six.next(identifier_seq)
-    transformed_locals = []
     context_tree.drop_scope_down(comp_id)
-    for k in range(len(comp.locals)):
-      new_value = _transform_postorder_with_symbol_bindings_switch(
-          comp.locals[k][1], transform, context_tree, identifier_seq)
-      context_tree.ingest_variable_binding(
-          name=comp.locals[k][0], value=new_value)
-      transformed_locals.append((comp.locals[k][0], new_value))
-    transformed_result = _transform_postorder_with_symbol_bindings_switch(
+    variables = []
+    variables_modified = False
+    for key, value in comp.locals:
+      value, value_modified = _transform_postorder_with_symbol_bindings_switch(
+          value, transform, context_tree, identifier_seq)
+      context_tree.ingest_variable_binding(name=key, value=value)
+      variables.append((key, value))
+      variables_modified = variables_modified or value_modified
+    result, result_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.result, transform, context_tree, identifier_seq)
     context_tree.walk_to_scope_beginning()
-    transformed_comp = transform(
-        computation_building_blocks.Block(transformed_locals,
-                                          transformed_result), context_tree)
+    if variables_modified or result_modified:
+      comp = computation_building_blocks.Block(variables, result)
+    comp, comp_modified = transform(comp, context_tree)
     context_tree.pop_scope_up()
-    return transformed_comp
+    return comp, comp_modified or variables_modified or result_modified
 
   return _transform_postorder_with_symbol_bindings_switch(
       comp, transform, symbol_tree, identifier_seq)
@@ -949,7 +953,7 @@ def get_count_of_references_to_variables(comp):
   def transform_fn(comp, context_tree):
     if _should_transform(comp, context_tree):
       context_tree.update_payload_tracking_reference(comp)
-    return comp
+    return comp, False
 
   transform_postorder_with_symbol_bindings(comp, transform_fn,
                                            reference_counter)
