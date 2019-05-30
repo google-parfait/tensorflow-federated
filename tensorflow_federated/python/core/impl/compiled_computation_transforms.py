@@ -635,6 +635,90 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
   return computation_building_blocks.CompiledComputation(constructed_proto)
 
 
+def compose_tensorflow_blocks(tf_comps):
+  """Composes TensorFlow blocks from `tf_comps`.
+
+  Args:
+    tf_comps: List or tuple of instances of
+      `computation_building_blocks.CompiledComputation` representing the
+      functions we wish to compose. Notice that these must obey a certain
+      invariant; the result type of computation k in this list must be identical
+      to the parameter type of computation k-1. Notice also that the order of
+      this list is quite important, as composition is completely noncommutative.
+      This function represents the standard mathematical convention for
+      composition; IE, compose(f1, f2) represents the function which first calls
+      f2 on its argument, then f1 on the result of this call.
+
+  Returns:
+    Instance of `computation_building_blocks.CompiledComputation` representing
+    the composition of the functions in `tf_comps`.
+
+  Raises:
+    TypeError: If `tf_comps` is not a `tuple` or `list`, or if the parameter
+      and return types of `tf_comps` do not respect the invariant mentioned
+      in the args section of this docstring.
+    ValueError: If we are passed a `tf_comps` with fewer than 2 elements;
+      the user likely does not want this function in that case.
+  """
+  py_typecheck.check_type(tf_comps, (list, tuple))
+  if len(tf_comps) < 2:
+    raise ValueError('Encountered a `tf_comps` of fewer than 2 elements; '
+                     'in this case, likely you do not want '
+                     '`compose_tensorflow_blocks`.')
+  tf_protos = []
+  previous_param_type = None
+  for comp in tf_comps:
+    py_typecheck.check_type(comp,
+                            computation_building_blocks.CompiledComputation)
+    if previous_param_type is not None:
+      if previous_param_type != comp.type_signature.result:
+        raise TypeError('The result type of computation k should match the '
+                        'parameter type of computation k-1 in `tf_comps`, '
+                        'as we are attempting to compose; we have encountered '
+                        'a result of type {} attempting to match a parameter '
+                        'of type {}'.format(comp.type_signature.result,
+                                            previous_param_type))
+    previous_param_type = comp.type_signature.parameter
+    tf_protos.append(comp.proto)
+
+  (composed_graph, init_op_name, in_name_map,
+   out_name_map) = graph_merge.compose_graph_specs(
+       [_unpack_proto_into_graph_spec(x) for x in tf_protos])
+
+  last_tf_proto = tf_protos[-1]
+  first_tf_proto = tf_protos[0]
+
+  if last_tf_proto.tensorflow.parameter.WhichOneof('binding') is not None:
+    parameter_binding = _repack_binding_with_new_name(
+        last_tf_proto.tensorflow.parameter, in_name_map)
+  else:
+    parameter_binding = None
+
+  graph_def = serialization_utils.pack_graph_def(composed_graph.as_graph_def())
+  result_binding = _repack_binding_with_new_name(
+      first_tf_proto.tensorflow.result, out_name_map)
+
+  if parameter_binding:
+    tf_result_proto = pb.TensorFlow(
+        graph_def=graph_def,
+        initialize_op=init_op_name,
+        parameter=parameter_binding,
+        result=result_binding)
+  else:
+    tf_result_proto = pb.TensorFlow(
+        graph_def=graph_def, initialize_op=init_op_name, result=result_binding)
+
+  parameter_type = tf_comps[-1].type_signature.parameter
+  return_type = tf_comps[0].type_signature.result
+
+  function_type = computation_types.FunctionType(parameter_type, return_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  constructed_proto = pb.Computation(
+      type=serialized_function_type, tensorflow=tf_result_proto)
+  return computation_building_blocks.CompiledComputation(constructed_proto)
+
+
 class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
   r"""`TransformSpec` representing a selection from the result of a TF block.
 

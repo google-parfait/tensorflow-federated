@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from absl.testing import absltest
 from absl.testing import parameterized
 from six.moves import range
@@ -1577,6 +1579,202 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 0.)
     self.assertTrue(mutated)
+
+
+class ComposeTensorFlowBlocksTest(parameterized.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.compose_tensorflow_blocks(None)
+
+  def test_raises_on_single_computation(self):
+    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.compose_tensorflow_blocks(identity)
+
+  def test_raises_bad_arg_in_list(self):
+    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.compose_tensorflow_blocks([identity, 0])
+
+  def test_raises_mismatched_parameter_and_result_types(self):
+    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    bad_type_identity = _create_compiled_computation(lambda x: x,
+                                                     [tf.float32, tf.int32])
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.compose_tensorflow_blocks(
+          [identity, bad_type_identity])
+
+  def test_composes_no_arg_fn_with_add_one_types_correctly(self):
+    noarg_fn = _create_compiled_computation(lambda: 0, None)
+    add_one_fn = _create_compiled_computation(lambda x: x + 1, tf.int32)
+    composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
+        [add_one_fn, noarg_fn])
+    expected_type = computation_types.FunctionType(None, tf.int32)
+    self.assertEqual(composed_fn.type_signature, expected_type)
+
+  def test_composes_no_arg_fn_with_add_one_executes_correctly(self):
+    noarg_fn = _create_compiled_computation(lambda: 0, None)
+    add_one_fn = _create_compiled_computation(lambda x: x + 1, tf.int32)
+    composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
+        [add_one_fn, noarg_fn])
+    executable_constant_one = _to_computation_impl(composed_fn)
+    self.assertEqual(executable_constant_one(), 1)
+
+  def test_composes_tensor_functions_types_correctly(self):
+    int_to_float_fn = _create_compiled_computation(
+        lambda x: tf.cast(x, tf.float32) * 2.0, tf.int32)
+    float_to_float_fn = _create_compiled_computation(lambda x: x * 2.0,
+                                                     tf.float32)
+    composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
+        [float_to_float_fn, int_to_float_fn])
+    expected_type = computation_types.FunctionType(tf.int32, tf.float32)
+    self.assertEqual(composed_fn.type_signature, expected_type)
+
+  def test_composes_tensor_function_executes_correctly(self):
+    int_to_float_fn = _create_compiled_computation(
+        lambda x: tf.cast(x, tf.float32) * 2.0, tf.int32)
+    float_to_float_fn = _create_compiled_computation(lambda x: x * 2.0,
+                                                     tf.float32)
+    composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
+        [float_to_float_fn, int_to_float_fn])
+    executable_mult_by_four = _to_computation_impl(composed_fn)
+    for k in range(5):
+      self.assertEqual(executable_mult_by_four(k), k * 4.)
+
+  def test_compose_integer_identities_executes_correctly(self):
+    identity = _create_compiled_computation(lambda x: x, tf.int32)
+    composed = compiled_computation_transforms.compose_tensorflow_blocks(
+        [identity, identity])
+    executable = _to_computation_impl(composed)
+    self.assertEqual(executable(0), 0)
+
+  def test_composes_unnamed_tuple_functions_types_correctly(self):
+    int_float_flip = _create_compiled_computation(lambda x: [x[1], x[0]],
+                                                  [tf.int32, tf.float32])
+    float_int_flip = _create_compiled_computation(lambda x: [x[1], x[0]],
+                                                  [tf.float32, tf.int32])
+    composed_fn_float_int = compiled_computation_transforms.compose_tensorflow_blocks(
+        [int_float_flip, float_int_flip])
+    composed_fn_int_float = compiled_computation_transforms.compose_tensorflow_blocks(
+        [float_int_flip, int_float_flip])
+    expected_type_int_float = computation_types.FunctionType(
+        [tf.int32, tf.float32], [tf.int32, tf.float32])
+    expected_type_float_int = computation_types.FunctionType(
+        [tf.float32, tf.int32], [tf.float32, tf.int32])
+    self.assertEqual(composed_fn_float_int.type_signature,
+                     expected_type_float_int)
+    self.assertEqual(composed_fn_int_float.type_signature,
+                     expected_type_int_float)
+
+  def test_composes_unnamed_tuple_functions_executes_correctly(self):
+    int_float_flip = _create_compiled_computation(lambda x: [x[1], x[0]],
+                                                  [tf.int32, tf.float32])
+    float_int_flip = _create_compiled_computation(lambda x: [x[1], x[0]],
+                                                  [tf.float32, tf.int32])
+    composed_fn_float_int = compiled_computation_transforms.compose_tensorflow_blocks(
+        [int_float_flip, float_int_flip])
+    composed_fn_int_float = compiled_computation_transforms.compose_tensorflow_blocks(
+        [float_int_flip, int_float_flip])
+    executable_float_int = _to_computation_impl(composed_fn_float_int)
+    executable_int_float = _to_computation_impl(composed_fn_int_float)
+    self.assertEqual(executable_float_int([10., 0])[0], 10.)
+    self.assertEqual(executable_float_int([10., 0])[1], 0)
+    self.assertLen(executable_float_int([10., 0]), 2)
+    self.assertEqual(executable_int_float(10, 0.)[0], 10)
+    self.assertEqual(executable_int_float(10, 0.)[1], 0.)
+    self.assertLen(executable_int_float([10, 0.]), 2)
+
+  def test_composes_named_tuple_function_with_unnamed_tuple_function_types_correctly(
+      self):
+    drop_names = _create_compiled_computation(lambda x: [x[0], x[1]],
+                                              [('a', tf.int32),
+                                               ('b', tf.float32)])
+    unnamed_identity = _create_compiled_computation(lambda x: x,
+                                                    [tf.int32, tf.float32])
+    composed = compiled_computation_transforms.compose_tensorflow_blocks(
+        [unnamed_identity, drop_names])
+    expected_type = computation_types.FunctionType([('a', tf.int32),
+                                                    ('b', tf.float32)],
+                                                   [tf.int32, tf.float32])
+    self.assertEqual(composed.type_signature, expected_type)
+
+  def test_composes_named_tuple_function_with_unnamed_tuple_function_executes_correctly(
+      self):
+    drop_names = _create_compiled_computation(lambda x: [x[0], x[1]],
+                                              [('a', tf.int32),
+                                               ('b', tf.float32)])
+    unnamed_identity = _create_compiled_computation(lambda x: x,
+                                                    [tf.int32, tf.float32])
+    composed = compiled_computation_transforms.compose_tensorflow_blocks(
+        [unnamed_identity, drop_names])
+    executable_drop_names = _to_computation_impl(composed)
+    self.assertEqual(executable_drop_names({'a': 0, 'b': 1.})[0], 0)
+    self.assertEqual(executable_drop_names({'a': 0, 'b': 1.})[1], 1.)
+    self.assertLen(executable_drop_names({'a': 0, 'b': 1.}), 2)
+
+  def test_composes_named_tuple_functions_types_correctly(self):
+    flip_order = _create_compiled_computation(
+        lambda x: collections.OrderedDict([('b', x.b), ('a', x.a)]),
+        [('a', tf.int32), ('b', tf.float32)])
+    identity = _create_compiled_computation(
+        lambda x: collections.OrderedDict([('b', x.b), ('a', x.a)]),
+        [('b', tf.float32), ('a', tf.int32)])
+    composed = compiled_computation_transforms.compose_tensorflow_blocks(
+        [identity, flip_order])
+    expected_type = computation_types.FunctionType([('a', tf.int32),
+                                                    ('b', tf.float32)],
+                                                   [('b', tf.float32),
+                                                    ('a', tf.int32)])
+    self.assertEqual(str(composed.type_signature), str(expected_type))
+
+  def test_composes_named_tuple_functions_executes_correctly(self):
+    flip_order = _create_compiled_computation(
+        lambda x: collections.OrderedDict([('b', x.b), ('a', x.a)]),
+        [('a', tf.int32), ('b', tf.float32)])
+    identity = _create_compiled_computation(
+        lambda x: collections.OrderedDict([('b', x.b), ('a', x.a)]),
+        [('b', tf.float32), ('a', tf.int32)])
+    composed = compiled_computation_transforms.compose_tensorflow_blocks(
+        [identity, flip_order])
+    executable = _to_computation_impl(composed)
+    self.assertEqual(
+        executable(collections.OrderedDict({
+            'a': 0,
+            'b': 1.
+        }))[0], 1.)
+    self.assertEqual(
+        executable(collections.OrderedDict({
+            'a': 0,
+            'b': 1.
+        }))[1], 0)
+    self.assertLen(executable(collections.OrderedDict({'a': 0, 'b': 1.})), 2)
+
+  def test_composes_sequence_functions_types_correctly(self):
+    reduce_ds = _create_compiled_computation(
+        lambda ds: ds.reduce(tf.constant(0, tf.int64), lambda x, y: x + y),
+        computation_types.SequenceType(tf.int64))
+
+    produce_ds = _create_compiled_computation(lambda: tf.data.Dataset.range(5),
+                                              None)
+    integer_result = compiled_computation_transforms.compose_tensorflow_blocks(
+        [reduce_ds, produce_ds])
+
+    self.assertEqual(integer_result.type_signature,
+                     computation_types.FunctionType(None, tf.int64))
+
+  def test_composes_sequence_functions_executes_correctly(self):
+    reduce_ds = _create_compiled_computation(
+        lambda ds: ds.reduce(tf.constant(0, tf.int64), lambda x, y: x + y),
+        computation_types.SequenceType(tf.int64))
+
+    produce_ds = _create_compiled_computation(lambda: tf.data.Dataset.range(5),
+                                              None)
+    integer_result = compiled_computation_transforms.compose_tensorflow_blocks(
+        [reduce_ds, produce_ds])
+
+    executable_reduce = _to_computation_impl(integer_result)
+    self.assertEqual(executable_reduce(), 10)
 
 
 if __name__ == '__main__':
