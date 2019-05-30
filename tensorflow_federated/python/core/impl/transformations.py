@@ -549,6 +549,16 @@ def merge_tuple_intrinsics(comp):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
+  def _should_transform(comp):
+    uri = (
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.FEDERATED_MAP.uri,
+    )
+    return (isinstance(comp, computation_building_blocks.Tuple) and
+            _is_called_intrinsic(comp[0], uri) and all(
+                _is_called_intrinsic(element, comp[0].function.uri)
+                for element in comp))
+
   def _get_comps(comp):
     """Constructs a 2 dimentional Python list of computations.
 
@@ -669,16 +679,6 @@ def merge_tuple_intrinsics(comp):
         arg = _transform_non_functional_args(names, comps)
       args.append(arg)
     return args
-
-  def _should_transform(comp):
-    uri = (
-        intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_MAP.uri,
-    )
-    return (isinstance(comp, computation_building_blocks.Tuple) and
-            _is_called_intrinsic(comp[0], uri) and all(
-                _is_called_intrinsic(element, comp[0].function.uri)
-                for element in comp))
 
   def _transform(comp):
     """Returns a new transformed computation or `comp`."""
@@ -894,10 +894,8 @@ def replace_selection_from_tuple_with_element(comp):
                           computation_building_blocks.ComputationBuildingBlock)
 
   def _should_transform(comp):
-    if (isinstance(comp, computation_building_blocks.Selection) and
-        isinstance(comp.source, computation_building_blocks.Tuple)):
-      return True
-    return False
+    return (isinstance(comp, computation_building_blocks.Selection) and
+            isinstance(comp.source, computation_building_blocks.Tuple))
 
   def _get_index_from_name(selection_name, tuple_type_signature):
     type_elements = anonymous_tuple.to_elements(tuple_type_signature)
