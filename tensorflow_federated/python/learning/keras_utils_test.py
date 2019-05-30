@@ -543,7 +543,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
       output = tff_model.forward_pass(dummy_batch)
       self.assertAllClose(output.loss, 0.5)
 
-    with self.subTest("loss_weights_assert_fail"):
+    with self.subTest("loss_weights_assert_fail_list"):
       with self.assertRaises(ValueError):
         _ = keras_utils.from_keras_model(
           keras_model=keras_model,
@@ -552,6 +552,16 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
                 tf.keras.losses.MeanSquaredError(),
                 tf.keras.losses.MeanSquaredError()],
           loss_weights=[0.1, 0.2])
+
+    with self.subTest("loss_weights_assert_fail_dict"):
+      with self.assertRaises(KeyError):
+        _ = keras_utils.from_keras_model(
+          keras_model = keras_model,
+          dummy_batch = dummy_batch,
+          loss = [tf.keras.losses.MeanSquaredError(),
+                  tf.keras.losses.MeanSquaredError(),
+                  tf.keras.losses.MeanSquaredError()],
+          loss_weights = {'dense_5': 0.1, 'dense_6': 0.2, 'dummy': 0.4})
 
 
 if __name__ == '__main__':
