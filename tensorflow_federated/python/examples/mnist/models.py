@@ -22,7 +22,7 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated import python as tff
+import tensorflow_federated as tff
 
 
 def create_simple_keras_model(learning_rate=0.1):
