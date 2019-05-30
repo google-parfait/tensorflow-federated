@@ -74,35 +74,24 @@ def _create_chained_calls(functions, arg):
   return call
 
 
-def _create_chained_called_federated_map(functions, arg):
-  r"""Creates a chain of `n` calls to federated map.
+def _create_chained_dummy_federated_applys(functions, arg):
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  for fn in functions:
+    py_typecheck.check_type(
+        fn, computation_building_blocks.ComputationBuildingBlock)
+    if not type_utils.is_assignable_from(fn.parameter_type,
+                                         arg.type_signature.member):
+      raise TypeError(
+          'The parameter of the function is of type {}, and the argument is of '
+          'an incompatible type {}.'.format(
+              str(fn.parameter_type), str(arg.type_signature.member)))
+    call = computation_constructing_utils.create_federated_apply(fn, arg)
+    arg = call
+  return call
 
-            Call
-           /    \
-  Intrinsic      Tuple
-                 |
-                 [Comp, Comp]
-                            \
-                             ...
-                                \
-                                 Call
-                                /    \
-                       Intrinsic      Tuple
-                                      |
-                                      [Comp, Comp]
 
-  The first functional computation in `functions` must have a parameter type
-  that is assignable from the type of `arg`, each other functional computation
-  in `functions` must have a parameter type that is assignable from the previous
-  functional computations result type.
-
-  Args:
-    functions: A Python list of functional computations.
-    arg: A `computation_building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A `computation_building_blocks.Call`.
-  """
+def _create_chained_dummy_federated_maps(functions, arg):
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
   for fn in functions:
@@ -1232,20 +1221,40 @@ class MergeChainedBlocksTest(absltest.TestCase):
     self.assertTrue(modified)
 
 
-class MergeChainedFederatedMapsTest(absltest.TestCase):
+class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.merge_chained_federated_maps(None)
+      transformations.merge_chained_federated_maps_or_applys(None)
 
-  def test_replaces_federated_maps(self):
+  def test_merges_federated_applys(self):
+    fn = _create_lambda_to_identity('x', tf.int32)
+    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    arg = computation_building_blocks.Data('y', arg_type)
+    call = _create_chained_dummy_federated_applys([fn, fn], arg)
+    comp = call
+
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_apply(<(x -> x),federated_apply(<(x -> x),y>)>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_apply(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_merges_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map([fn, fn], arg)
+    call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(comp.tff_repr,
@@ -1257,15 +1266,15 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_different_names(self):
+  def test_merges_federated_maps_with_different_names(self):
     fn_1 = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('b', arg_type)
     fn_2 = _create_lambda_to_identity('c', tf.int32)
-    call = _create_chained_called_federated_map([fn_1, fn_2], arg)
+    call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(comp.tff_repr,
@@ -1277,15 +1286,15 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_different_types(self):
+  def test_merges_federated_maps_with_different_types(self):
     fn_1 = _create_lambda_to_dummy_cast(tf.int32, tf.float32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     fn_2 = _create_lambda_to_identity('x', tf.float32)
-    call = _create_chained_called_federated_map([fn_1, fn_2], arg)
+    call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(comp.tff_repr,
@@ -1297,16 +1306,16 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_named_result(self):
+  def test_merges_federated_maps_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map([fn, fn], arg)
+    call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(comp.tff_repr,
@@ -1318,15 +1327,15 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_unbound_references(self):
+  def test_merges_federated_maps_with_unbound_references(self):
     ref = computation_building_blocks.Reference('arg', tf.int32)
     fn = computation_building_blocks.Lambda('x', tf.int32, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map([fn, fn], arg)
+    call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1339,15 +1348,15 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_nested_federated_maps(self):
+  def test_merges_nested_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map([fn, fn], arg)
+    call = _create_chained_dummy_federated_maps([fn, fn], arg)
     block = _create_dummy_block(call)
     comp = block
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1360,14 +1369,14 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_multiple_chained_federated_maps(self):
+  def test_merges_multiple_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map([fn, fn, fn], arg)
+    call = _create_chained_dummy_federated_maps([fn, fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1391,14 +1400,14 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_does_not_replace_one_federated_map(self):
+  def test_does_not_merge_one_federated_map(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
@@ -1406,7 +1415,7 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
-  def test_does_not_replace_separated_federated_maps(self):
+  def test_does_not_merge_separated_federated_maps(self):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
@@ -1415,7 +1424,7 @@ class MergeChainedFederatedMapsTest(absltest.TestCase):
     call_2 = computation_constructing_utils.create_federated_map(fn, block)
     comp = call_2
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps(
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
@@ -1432,7 +1441,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       transformations.merge_tuple_intrinsics(None)
 
-  def test_replaces_federated_aggregates(self):
+  def test_merges_federated_aggregates(self):
     elements = [_create_dummy_called_federated_aggregate() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -1469,7 +1478,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         str(transformed_comp.type_signature), '<int32@SERVER,int32@SERVER>')
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps(self):
+  def test_merges_federated_maps(self):
     elements = [_create_dummy_called_federated_map() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -1503,7 +1512,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_different_names(self):
+  def test_merges_federated_maps_with_different_names(self):
     elements = (
         _create_dummy_called_federated_map(
             parameter_name='a', argument_name='b'),
@@ -1542,7 +1551,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_different_types(self):
+  def test_merges_federated_maps_with_different_types(self):
     elements = (
         _create_dummy_called_federated_map(parameter_type=tf.int32),
         _create_dummy_called_federated_map(parameter_type=tf.float32),
@@ -1579,7 +1588,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{float32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_named_result(self):
+  def test_merges_federated_maps_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
@@ -1619,7 +1628,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{<a=int32,b=int32>}@CLIENTS,{<a=int32,b=int32>}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_unbound_reference(self):
+  def test_merges_federated_maps_with_unbound_reference(self):
     ref = computation_building_blocks.Reference('arg', tf.int32)
     fn = computation_building_blocks.Lambda('x', tf.int32, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
@@ -1658,7 +1667,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_named_federated_maps(self):
+  def test_merges_named_federated_maps(self):
     self.skipTest('b/133169703')
     elements = (
         ('a', _create_dummy_called_federated_map()),
@@ -1696,7 +1705,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<a={int32}@CLIENTS,b={int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_nested_federated_maps(self):
+  def test_merges_nested_federated_maps(self):
     elements = [_create_dummy_called_federated_map() for _ in range(2)]
     calls = computation_building_blocks.Tuple(elements)
     block = _create_dummy_block(calls)
@@ -1732,7 +1741,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_replaces_multiple_federated_maps(self):
+  def test_merges_multiple_federated_maps(self):
     comp_elements = []
     for _ in range(2):
       call_elements = [_create_dummy_called_federated_map() for _ in range(2)]
@@ -1784,7 +1793,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<<{int32}@CLIENTS,{int32}@CLIENTS>,<{int32}@CLIENTS,{int32}@CLIENTS>>')
     self.assertTrue(modified)
 
-  def test_replaces_one_federated_map(self):
+  def test_merges_one_federated_map(self):
     elements = (_create_dummy_called_federated_map(),)
     calls = computation_building_blocks.Tuple(elements)
     comp = calls
@@ -1807,7 +1816,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(str(transformed_comp.type_signature), '<{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_does_not_replace_different_intrinsics(self):
+  def test_does_not_merge_different_federated_maps(self):
     elements = (
         _create_dummy_called_federated_aggregate(),
         _create_dummy_called_federated_map(),
@@ -1827,7 +1836,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         str(transformed_comp.type_signature), '<int32@SERVER,{int32}@CLIENTS>')
     self.assertFalse(modified)
 
-  def test_does_not_replace_dummy_intrinsics(self):
+  def test_does_not_merge_dummy_federated_maps(self):
     elements = [
         _create_dummy_called_intrinsic(parameter_name='a') for _ in range(2)
     ]
@@ -1861,8 +1870,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
        intrinsic_defs.SEQUENCE_MAP.uri,
        _create_dummy_called_sequence_map))
   # pyformat: enable
-  def test_removes_identity(self, uri, comp_factory):
-    call = comp_factory()
+  def test_removes_intrinsic(self, uri, factory):
+    call = factory()
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
@@ -1873,7 +1882,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_replaces_federated_maps_with_named_result(self):
+  def test_removes_federated_map_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = _create_lambda_to_identity('x', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
@@ -1907,7 +1916,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     fn = _create_lambda_to_identity('x', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_called_federated_map([fn, fn], arg)
+    call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(

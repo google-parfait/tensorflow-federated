@@ -408,7 +408,7 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
   unpack = should_unpack  # Default return value.
   argspec = get_argspec(fn)
 
-  if not parameter_type:
+  if parameter_type is None:
     if is_argspec_compatible_with_types(argspec):
       if should_unpack:
         raise ValueError('Requested unpacking of a no-arg function.')
@@ -515,7 +515,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
         repr(unpack)))
   argspec = get_argspec(fn)
   parameter_type = computation_types.to_type(parameter_type)
-  if not parameter_type:
+  if parameter_type is None:
     if is_argspec_compatible_with_types(argspec):
       # Deliberate wrapping to isolate the caller from `fn`, e.g., to prevent
       # the caller from mistakenly specifying args that match fn's defaults.

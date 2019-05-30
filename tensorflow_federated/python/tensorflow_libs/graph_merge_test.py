@@ -99,6 +99,14 @@ class GraphSpecTest(test.TestCase):
 
 class ConcatenateInputsAndOutputsTest(test.TestCase):
 
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      graph_merge.concatenate_inputs_and_outputs(None)
+
+  def test_raises_on_non_iterable(self):
+    with self.assertRaises(TypeError):
+      graph_merge.concatenate_inputs_and_outputs(1)
+
   def test_concatenate_inputs_and_outputs_two_add_one_graphs(self):
     graph1, input_name_1, output_name_1 = _make_add_one_graph()
     graph2, input_name_2, output_name_2 = _make_add_one_graph()
@@ -275,6 +283,172 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         tens = sess.run(
             [out_name_maps[0][out_name_1], out_name_maps[1][out_name_2]])
     self.assertEqual(tens, [10, 10])
+
+
+class ComposeGraphSpecTest(test.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      graph_merge.compose_graph_specs(None)
+
+  def test_raises_on_graph_spec_set(self):
+    graph1, input_name_1, output_name_1 = _make_add_one_graph()
+    graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), '',
+                                         [input_name_1], [output_name_1])
+    with self.assertRaises(TypeError):
+      graph_merge.compose_graph_specs(set(graph_spec_1))
+
+  def test_raises_on_list_of_ints(self):
+    with self.assertRaises(TypeError):
+      graph_merge.compose_graph_specs([0, 1])
+
+  def test_compose_no_input_graphs_raises(self):
+    graph1 = tf.Graph()
+    with graph1.as_default():
+      out1 = tf.constant(1.0)
+      init_op_name_1 = tf.initializers.global_variables().name
+    graph2 = tf.Graph()
+    with graph2.as_default():
+      out2 = tf.constant(2.0)
+      init_op_name_2 = tf.initializers.global_variables().name
+
+    graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                         [], [out1.name])
+    graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                         [], [out2.name])
+    arg_list = [graph_spec_1, graph_spec_2]
+    with self.assertRaisesRegex(ValueError, 'mismatch'):
+      graph_merge.compose_graph_specs(arg_list)
+
+  def test_compose_two_add_one_graphs_adds_two(self):
+    graph1, input_name_1, output_name_1 = _make_add_one_graph()
+    graph2, input_name_2, output_name_2 = _make_add_one_graph()
+    with graph1.as_default():
+      init_op_name_1 = tf.initializers.global_variables().name
+    with graph2.as_default():
+      init_op_name_2 = tf.initializers.global_variables().name
+    graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                         [input_name_1], [output_name_1])
+    graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                         [input_name_2], [output_name_2])
+    arg_list = [graph_spec_1, graph_spec_2]
+    composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
+        arg_list)
+
+    with composed_graph.as_default():
+      with tf.Session() as sess:
+        sess.run(init_op_name)
+        outputs = sess.run(
+            out_name_map[output_name_2],
+            feed_dict={
+                in_name_map[input_name_1]: 0.0,
+            })
+
+    self.assertAllClose(outputs, np.array(2.))
+
+  def test_compose_three_add_one_graphs_adds_three(self):
+    graph1, input_name_1, output_name_1 = _make_add_one_graph()
+    graph2, input_name_2, output_name_2 = _make_add_one_graph()
+    graph3, input_name_3, output_name_3 = _make_add_one_graph()
+    with graph1.as_default():
+      init_op_name_1 = tf.initializers.global_variables().name
+    with graph2.as_default():
+      init_op_name_2 = tf.initializers.global_variables().name
+    with graph3.as_default():
+      init_op_name_3 = tf.initializers.global_variables().name
+    graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                         [input_name_1], [output_name_1])
+    graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                         [input_name_2], [output_name_2])
+    graph_spec_3 = graph_merge.GraphSpec(graph3.as_graph_def(), init_op_name_3,
+                                         [input_name_3], [output_name_3])
+    arg_list = [graph_spec_1, graph_spec_2, graph_spec_3]
+    composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
+        arg_list)
+
+    with composed_graph.as_default():
+      with tf.Session() as sess:
+        sess.run(init_op_name)
+        outputs = sess.run(
+            out_name_map[output_name_3],
+            feed_dict={
+                in_name_map[input_name_1]: 0.0,
+            })
+
+    self.assertAllClose(outputs, np.array(3.))
+
+  def test_compose_two_add_variable_number_graphs_executes_correctly(self):
+    graph1, input_name_1, output_name_1 = _make_add_variable_number_graph()
+    graph2, input_name_2, output_name_2 = _make_add_variable_number_graph()
+    with graph1.as_default():
+      init_op_name_1 = tf.initializers.global_variables().name
+    with graph2.as_default():
+      init_op_name_2 = tf.initializers.global_variables().name
+    graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                         [input_name_1], [output_name_1])
+    graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                         [input_name_2], [output_name_2])
+    arg_list = [graph_spec_1, graph_spec_2]
+    composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
+        arg_list)
+
+    with composed_graph.as_default():
+      with tf.Session() as sess:
+        sess.run(init_op_name)
+        output_one = sess.run(
+            out_name_map[output_name_2],
+            feed_dict={
+                in_name_map[input_name_1]: 0.0,
+            })
+        output_two = sess.run(
+            out_name_map[output_name_2],
+            feed_dict={
+                in_name_map[input_name_1]: 0.0,
+            })
+        output_three = sess.run(
+            out_name_map[output_name_2],
+            feed_dict={
+                in_name_map[input_name_1]: 0.0,
+            })
+
+    self.assertAllClose(output_one, np.array(2.))
+    self.assertAllClose(output_two, np.array(4.))
+    self.assertAllClose(output_three, np.array(6.))
+
+  def test_compose_with_dataset_wires_correctly(self):
+    with tf.Graph().as_default() as dataset_graph:
+      d1 = tf.data.Dataset.range(5)
+      v1 = tf.data.experimental.to_variant(d1)
+
+    ds_out_name = v1.name
+    variant_type = v1.dtype
+
+    with tf.Graph().as_default() as reduce_graph:
+      variant = tf.placeholder(variant_type)
+      structure = tf.data.experimental.TensorStructure(tf.int64, shape=[])
+      ds1 = tf.data.experimental.from_variant(variant, structure=structure)
+      out = ds1.reduce(tf.constant(0, dtype=tf.int64), lambda x, y: x + y)
+
+    ds_in_name = variant.name
+    reduce_out_name = out.name
+
+    with dataset_graph.as_default():
+      init_op_name_1 = tf.initializers.global_variables().name
+    with reduce_graph.as_default():
+      init_op_name_2 = tf.initializers.global_variables().name
+    graph_spec_1 = graph_merge.GraphSpec(dataset_graph.as_graph_def(),
+                                         init_op_name_1, [], [ds_out_name])
+    graph_spec_2 = graph_merge.GraphSpec(reduce_graph.as_graph_def(),
+                                         init_op_name_2, [ds_in_name],
+                                         [reduce_out_name])
+    arg_list = [graph_spec_1, graph_spec_2]
+    composed_graph, _, _, out_name_map = graph_merge.compose_graph_specs(
+        arg_list)
+
+    with composed_graph.as_default():
+      with tf.Session() as sess:
+        ten = sess.run(out_name_map[reduce_out_name])
+    self.assertEqual(ten, 10)
 
 
 if __name__ == '__main__':

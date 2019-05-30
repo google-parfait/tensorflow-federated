@@ -126,6 +126,20 @@ class TensorFlowComputationsV2OnlyTest(test.TestCase):
 class TensorFlowComputationsTest(test.TestCase):
 
   @tf1_and_tf2_test
+  def test_tf_fn_with_empty_tuple_type_trivial_logic(self, tf_computation):
+
+    pass_through = tf_computation(lambda x: x, [])
+
+    self.assertEqual(pass_through([]), [])
+
+  @tf1_and_tf2_test
+  def test_tf_fn_with_empty_tuple_type_nontrivial_logic(self, tf_computation):
+
+    nontrivial_manipulation = tf_computation(lambda x: [x, x], [])
+
+    self.assertEqual(nontrivial_manipulation([]), [[], []])
+
+  @tf1_and_tf2_test
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(
       self, tf_computation):
     # Wrapping a lambda with a parameter.

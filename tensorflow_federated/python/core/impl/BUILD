@@ -111,12 +111,16 @@ py_library(
     srcs = ["computation_constructing_utils.py"],
     deps = [
         ":computation_building_blocks",
+        ":graph_utils",
         ":intrinsic_defs",
         ":placement_literals",
         ":transformation_utils",
+        ":type_serialization",
         ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
@@ -128,6 +132,7 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
+        ":computation_impl",
         ":context_stack_impl",
         ":intrinsic_defs",
         ":placement_literals",
