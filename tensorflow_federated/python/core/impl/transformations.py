@@ -295,22 +295,20 @@ def inline_block_locals(comp):
   def _transform(comp, symbol_tree):
     """Inline transform function."""
     if isinstance(comp, computation_building_blocks.Reference):
-      value_to_use = symbol_tree.get_payload_with_name(comp.name).value
-      if value_to_use is not None:
-        # This identifies a variable bound by a Block as opposed to a Lambda.
-        return value_to_use
+      value = symbol_tree.get_payload_with_name(comp.name).value
+      # This identifies a variable bound by a Block as opposed to a Lambda.
+      if value is not None:
+        return value, True
       else:
-        return comp
+        return comp, False
     elif isinstance(comp, computation_building_blocks.Block):
-      # All locals have been inlined, so the block is equivalent to its result.
-      return comp.result
-    return comp
+      return comp.result, True
+    return comp, False
 
-  empty_tree = transformation_utils.SymbolTree(
+  symbol_tree = transformation_utils.SymbolTree(
       transformation_utils.ReferenceCounter)
-
   return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform, empty_tree)
+      comp, _transform, symbol_tree)
 
 
 def merge_chained_blocks(comp):
@@ -957,7 +955,6 @@ def uniquify_reference_names(comp):
     Returns a transformed version of comp inside of which all variable names
       are guaranteed to be unique.
   """
-
   name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
@@ -972,32 +969,31 @@ def uniquify_reference_names(comp):
       return 'Value: {}, name: {}, new_name: {}'.format(self.value, self.name,
                                                         self.new_name)
 
-  def transform(comp, context_tree):
+  def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
     if isinstance(comp, computation_building_blocks.Reference):
       new_name = context_tree.get_payload_with_name(comp.name).new_name
       return computation_building_blocks.Reference(new_name,
                                                    comp.type_signature,
-                                                   comp.context)
+                                                   comp.context), True
     elif isinstance(comp, computation_building_blocks.Block):
       new_locals = []
       for name, val in comp.locals:
         context_tree.walk_down_one_variable_binding()
         new_name = context_tree.get_payload_with_name(name).new_name
         new_locals.append((new_name, val))
-      return computation_building_blocks.Block(new_locals, comp.result)
+      return computation_building_blocks.Block(new_locals, comp.result), True
     elif isinstance(comp, computation_building_blocks.Lambda):
       context_tree.walk_down_one_variable_binding()
       new_name = context_tree.get_payload_with_name(
           comp.parameter_name).new_name
       return computation_building_blocks.Lambda(new_name, comp.parameter_type,
-                                                comp.result)
-    return comp
+                                                comp.result), True
+    return comp, False
 
-  rename_tree = transformation_utils.SymbolTree(_RenameNode)
-  new_comp = transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, transform, rename_tree)
-  return new_comp
+  symbol_tree = transformation_utils.SymbolTree(_RenameNode)
+  return transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, _transform, symbol_tree)
 
 
 def _is_called_intrinsic(comp, uri=None):
