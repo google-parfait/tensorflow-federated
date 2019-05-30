@@ -346,6 +346,43 @@ class ComposeGraphSpecTest(test.TestCase):
 
     self.assertAllClose(outputs, np.array(2.))
 
+  def test_composition_happens_in_mathematical_composition_order(self):
+    graph1, input_name_1, output_name_1 = _make_add_one_graph()
+
+    def _make_cast_to_int_graph():
+      with tf.Graph().as_default() as graph:
+        input_val = tf.placeholder(tf.float32, name='input')
+        out = tf.cast(input_val, tf.int32)
+      return graph, input_val.name, out.name
+
+    graph2, input_name_2, output_name_2 = _make_cast_to_int_graph()
+
+    with graph1.as_default():
+      init_op_name_1 = tf.initializers.global_variables().name
+    with graph2.as_default():
+      init_op_name_2 = tf.initializers.global_variables().name
+    graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                         [input_name_1], [output_name_1])
+    graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                         [input_name_2], [output_name_2])
+    arg_list = [graph_spec_2, graph_spec_1]
+
+    composed_graph, _, in_name_map, out_name_map = graph_merge.compose_graph_specs(
+        arg_list)
+
+    with composed_graph.as_default():
+      with tf.Session() as sess:
+        outputs = sess.run(
+            out_name_map[output_name_2],
+            feed_dict={
+                in_name_map[input_name_1]: 0.0,
+            })
+
+    self.assertEqual(outputs, 1)
+
+    with self.assertRaises(ValueError):
+      graph_merge.compose_graph_specs(list(reversed(arg_list)))
+
   def test_compose_three_add_one_graphs_adds_three(self):
     graph1, input_name_1, output_name_1 = _make_add_one_graph()
     graph2, input_name_2, output_name_2 = _make_add_one_graph()
@@ -436,12 +473,13 @@ class ComposeGraphSpecTest(test.TestCase):
       init_op_name_1 = tf.initializers.global_variables().name
     with reduce_graph.as_default():
       init_op_name_2 = tf.initializers.global_variables().name
-    graph_spec_1 = graph_merge.GraphSpec(dataset_graph.as_graph_def(),
-                                         init_op_name_1, [], [ds_out_name])
-    graph_spec_2 = graph_merge.GraphSpec(reduce_graph.as_graph_def(),
-                                         init_op_name_2, [ds_in_name],
-                                         [reduce_out_name])
-    arg_list = [graph_spec_1, graph_spec_2]
+    dataset_graph_spec = graph_merge.GraphSpec(dataset_graph.as_graph_def(),
+                                               init_op_name_1, [],
+                                               [ds_out_name])
+    reduce_graph_spec = graph_merge.GraphSpec(reduce_graph.as_graph_def(),
+                                              init_op_name_2, [ds_in_name],
+                                              [reduce_out_name])
+    arg_list = [reduce_graph_spec, dataset_graph_spec]
     composed_graph, _, _, out_name_map = graph_merge.compose_graph_specs(
         arg_list)
 

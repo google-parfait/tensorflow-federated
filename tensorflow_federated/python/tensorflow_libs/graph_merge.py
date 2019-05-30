@@ -212,8 +212,14 @@ def _parse_graph_spec_list(arg_list):
 def compose_graph_specs(graph_spec_list):
   """Composes `GraphSpec` list in order, wiring output of k to input of k+1.
 
+  Notice that due to the semantics of composition (e.g., compose(f1, f2)
+  represents first calling f2 on the argument of x, then calling f1 on the
+  result), we will reverse `graph_spec_list` before wiring inputs and outputs
+  together,since `tf.import_graph_def` works in the opposite way, that is, we
+  must have tensors to map as inputs to the graph we are importing.
+
   We enforce the invariant that each element of `graph_spec_list` must declare
-  exactly as many outputs as the next element declares inputs. This removes
+  exactly as many inputs as the next element declares outputs. This removes
   any possibility of ambiguity in identifying inputs and outputs of the
   resulting composed graph.
 
@@ -242,6 +248,7 @@ def compose_graph_specs(graph_spec_list):
   """
   if not isinstance(graph_spec_list, (list, tuple)):
     raise TypeError('Please pass a list or tuple to ' '`compose_graph_specs`.')
+  graph_spec_list = list(reversed(graph_spec_list))
   (graph_def_list, init_op_names_list, in_names_list, out_names_list,
    graph_names_list) = _parse_graph_spec_list(graph_spec_list)
   for out_names, in_names in zip(in_names_list[1:], out_names_list[:-1]):
