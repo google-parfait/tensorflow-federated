@@ -30,12 +30,6 @@ from tensorflow_federated.python.learning import model_examples
 
 class ModelExamplesTest(test.TestCase, parameterized.TestCase):
 
-  def setUp(self):
-    super(ModelExamplesTest, self).setUp()
-    # Required since we use defuns.
-    print('TF version', tf.VERSION)
-    tf.enable_resource_variables()
-
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
   @test.graph_mode_test
   def test_linear_regression(self, feature_dim):
