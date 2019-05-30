@@ -454,39 +454,41 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
   def test_keras_model_multiple_outputs(self):
     keras_model = model_examples.build_multiple_outputs_keras_model()
     dummy_batch = collections.OrderedDict([
-      ('x', [
-        np.zeros([1, 1], dtype=np.float32),
-        np.zeros([1, 1], dtype=np.float32)
-      ]),
-      ('y', [
-        np.zeros([1, 1], dtype=np.float32),
-        np.ones([1, 1], dtype=np.float32),
-        np.ones([1, 1], dtype=np.float32)
-      ]),
+        ('x', [
+            np.zeros([1, 1], dtype=np.float32),
+            np.zeros([1, 1], dtype=np.float32)
+        ]),
+        ('y', [
+            np.zeros([1, 1], dtype=np.float32),
+            np.ones([1, 1], dtype=np.float32),
+            np.ones([1, 1], dtype=np.float32)
+        ]),
     ])
 
     with self.subTest("loss_output_len_mismatch"):
       with self.assertRaises(ValueError):
         _ = keras_utils.from_keras_model(
-          keras_model=keras_model,
-          dummy_batch=dummy_batch,
-          loss=[tf.keras.losses.MeanSquaredError(),
-                tf.keras.losses.MeanSquaredError()])
+            keras_model=keras_model,
+            dummy_batch=dummy_batch,
+            loss=[
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()
+            ])
 
     with self.subTest("invalid_loss"):
       with self.assertRaises(TypeError):
         _ = keras_utils.from_keras_model(
-          keras_model=keras_model,
-          dummy_batch=dummy_batch,
-          loss = 3)
+            keras_model=keras_model, dummy_batch=dummy_batch, loss=3)
 
     with self.subTest("loss_list_no_opt"):
       tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        dummy_batch=dummy_batch,
-        loss=[tf.keras.losses.MeanSquaredError(),
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss=[
               tf.keras.losses.MeanSquaredError(),
-              tf.keras.losses.MeanSquaredError()])
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()
+          ])
 
       self.assertIsInstance(tff_model, model_utils.EnhancedModel)
       output = tff_model.forward_pass(dummy_batch)
@@ -494,11 +496,13 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
     with self.subTest("loss_dict_no_opt"):
       tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        dummy_batch=dummy_batch,
-        loss={'dense': tf.keras.losses.MeanSquaredError(),
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss={
+              'dense': tf.keras.losses.MeanSquaredError(),
               'dense_1': tf.keras.losses.MeanSquaredError(),
-              'dense_2': tf.keras.losses.MeanSquaredError()})
+              'dense_2': tf.keras.losses.MeanSquaredError()
+          })
 
       self.assertIsInstance(tff_model, model_utils.EnhancedModel)
       output = tff_model.forward_pass(dummy_batch)
@@ -506,12 +510,14 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
     with self.subTest("trainable_model"):
       tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        dummy_batch=dummy_batch,
-        loss=[tf.keras.losses.MeanSquaredError(),
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss=[
               tf.keras.losses.MeanSquaredError(),
-              tf.keras.losses.MeanSquaredError()],
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01))
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()
+          ],
+          optimizer=tf.keras.optimizers.SGD(learning_rate=0.01))
 
       self.assertIsInstance(tff_model, model_utils.EnhancedTrainableModel)
       self.assertTrue(hasattr(tff_model._model._keras_model, 'optimizer'))
@@ -521,24 +527,32 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_examples.build_multiple_outputs_keras_model()
     with self.subTest("loss_weights_as_list"):
       tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        dummy_batch=dummy_batch,
-        loss=[tf.keras.losses.MeanSquaredError(),
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss=[
               tf.keras.losses.MeanSquaredError(),
-              tf.keras.losses.MeanSquaredError()],
-        loss_weights=[0.1, 0.2, 0.3])
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()
+          ],
+          loss_weights=[0.1, 0.2, 0.3])
 
       output = tff_model.forward_pass(dummy_batch)
       self.assertAllClose(output.loss, 0.5)
 
     with self.subTest("loss_weights_as_dict"):
       tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        dummy_batch=dummy_batch,
-        loss=[tf.keras.losses.MeanSquaredError(),
+          keras_model=keras_model,
+          dummy_batch=dummy_batch,
+          loss=[
               tf.keras.losses.MeanSquaredError(),
-              tf.keras.losses.MeanSquaredError()],
-        loss_weights={'dense_5': 0.1, 'dense_6': 0.2, 'dense_7': 0.3})
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()
+          ],
+          loss_weights={
+              'dense_5': 0.1,
+              'dense_6': 0.2,
+              'dense_7': 0.3
+          })
 
       output = tff_model.forward_pass(dummy_batch)
       self.assertAllClose(output.loss, 0.5)
@@ -546,22 +560,30 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     with self.subTest("loss_weights_assert_fail_list"):
       with self.assertRaises(ValueError):
         _ = keras_utils.from_keras_model(
-          keras_model=keras_model,
-          dummy_batch=dummy_batch,
-          loss=[tf.keras.losses.MeanSquaredError(),
+            keras_model=keras_model,
+            dummy_batch=dummy_batch,
+            loss=[
                 tf.keras.losses.MeanSquaredError(),
-                tf.keras.losses.MeanSquaredError()],
-          loss_weights=[0.1, 0.2])
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()
+            ],
+            loss_weights=[0.1, 0.2])
 
     with self.subTest("loss_weights_assert_fail_dict"):
       with self.assertRaises(KeyError):
         _ = keras_utils.from_keras_model(
-          keras_model = keras_model,
-          dummy_batch = dummy_batch,
-          loss = [tf.keras.losses.MeanSquaredError(),
-                  tf.keras.losses.MeanSquaredError(),
-                  tf.keras.losses.MeanSquaredError()],
-          loss_weights = {'dense_5': 0.1, 'dense_6': 0.2, 'dummy': 0.4})
+            keras_model=keras_model,
+            dummy_batch=dummy_batch,
+            loss=[
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()
+            ],
+            loss_weights={
+                'dense_5': 0.1,
+                'dense_6': 0.2,
+                'dummy': 0.4
+            })
 
 
 if __name__ == '__main__':
