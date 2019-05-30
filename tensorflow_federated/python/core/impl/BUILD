@@ -68,6 +68,7 @@ py_test(
         ":computation_impl",
         ":context_stack_impl",
         ":tensorflow_serialization",
+        ":transformation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
