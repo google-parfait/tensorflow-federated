@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import collections
 import itertools
-import logging
 
 import six
 from six.moves import zip
@@ -103,7 +102,7 @@ def from_keras_model(keras_model,
       `y_pred`, and returns the loss. If the model has multiple outputs, you
       can use a different loss on each output by passing a dictionary or a list
       of losses. The loss value that will be minimized by the model will then
-      be the sum of all individual losses.
+      be the sum of all individual losses, each weighted by `loss_weights`.
     loss_weights: (Optional) a list or dictionary specifying scalar coefficients
       (Python floats) to weight the loss contributions of different model
       outputs. The loss value that will be minimized by the model will then
@@ -131,14 +130,15 @@ def from_keras_model(keras_model,
     py_typecheck.check_type(loss, (collections.Sequence,
                                    collections.Mapping))
 
-  if isinstance(loss, collections.Sequence):
+  if isinstance(loss, (collections.Mapping, collections.Sequence)):
     if len(loss) != len(keras_model.outputs):
       raise ValueError('`keras_model` must have equal number of '
-                       'outputs and losses')
-
+                       'outputs and losses.\nloss: {}\noutputs: {}'.format(
+                            loss,  keras_model.outputs))
     if loss_weights is not None and len(loss) != len(loss_weights):
       raise ValueError('`keras_model` must have equal number of '
-                       'losses and loss weights')
+                       'losses and loss_weights.\nloss: {} \nloss_weights:{}'.format(
+                            loss, loss_weights))
 
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled. Use '
@@ -150,15 +150,12 @@ def from_keras_model(keras_model,
       loss_functions = []
       for name in keras_model.output_names:
         if name not in loss:
-          logging.warning(
-              'Output {0} missing from loss dictionary. We assume '
-              'this was done on purpose. The fit and evaluate APIs will not be '
-              'expecting any data to be passed to {0}.'.format(name))
+          raise KeyError('Output missing from loss dictionary'
+                         '\nlosses: {}\noutputs: {}'.format(
+                              loss.keys(), keras_model.output_names))
         loss_functions.append(loss[name])
-
     elif isinstance(loss, collections.Sequence):
       loss_functions = loss
-
     else:
       loss_functions = [loss]
 
@@ -277,7 +274,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
-  def __init__(self, inner_model, dummy_batch, loss_fns, loss_weights, metrics):
+  def __init__(self, inner_model, dummy_batch, loss_fns, loss_weights=None, metrics=None):
 
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. We forced that here.
@@ -296,12 +293,12 @@ class _KerasModel(model_lib.Model):
     self._loss_fns = loss_fns
 
     if isinstance(loss_weights, collections.Mapping):
-      print(inner_model.output_names)
-      print(loss_weights.keys())
       self._loss_weights = []
       for name in inner_model.output_names:
         if name not in loss_weights:
-          self._loss_weights.append(1.0)
+          raise KeyError('Output missing from loss_weights dictionary'
+                        '\nloss_weights: {}\noutputs: {}'.format(
+                            loss_weights.keys(), inner_model.output_names))
         else:
           self._loss_weights.append(loss_weights[name])
     else:
@@ -450,7 +447,6 @@ class _KerasModel(model_lib.Model):
   @classmethod
   def make_batch(cls, x, y):
     return cls.Batch(x=x, y=y)
-
 
 
 class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
