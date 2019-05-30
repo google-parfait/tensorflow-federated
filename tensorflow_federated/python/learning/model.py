@@ -30,7 +30,8 @@ class BatchOutput(
 
   NOTE: All fields are optional (may be None).
 
-  -   `loss`: The scalar mean loss on the examples in the batch.
+  -   `loss`: The scalar mean loss on the examples in the batch. If the model
+      has multiple losses, it is the sum of all the individual losses.
   -   `predictions`: Tensor of predictions on the examples. The first dimension
       must be the same size (the size of the batch).
   """
