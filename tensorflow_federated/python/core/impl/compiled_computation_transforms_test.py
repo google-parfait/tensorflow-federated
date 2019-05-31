@@ -350,21 +350,21 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
 
 class WrapParameterAsTupleTest(parameterized.TestCase):
 
-  def test_wrap_graph_parameter_as_tuple_raises_on_none(self):
+  def test_bind_graph_parameter_as_tuple_raises_on_none(self):
     with self.assertRaises(TypeError):
-      compiled_computation_transforms.wrap_graph_parameter_as_tuple(None)
+      compiled_computation_transforms.bind_graph_parameter_as_tuple(None)
 
-  def test_wrap_graph_parameter_as_tuple_raises_on_non_string_name(self):
+  def test_bind_graph_parameter_as_tuple_raises_on_non_string_name(self):
     computation_arg_type = computation_types.to_type([tf.int32])
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
     with self.assertRaises(TypeError):
-      compiled_computation_transforms.wrap_graph_parameter_as_tuple(foo, name=1)
+      compiled_computation_transforms.bind_graph_parameter_as_tuple(foo, name=1)
 
-  def test_wrap_graph_parameter_as_tuple_wraps_tuple(self):
+  def test_bind_graph_parameter_as_tuple_wraps_tuple(self):
     computation_arg_type = computation_types.to_type([tf.int32])
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
 
-    wrapped_inputs = compiled_computation_transforms.wrap_graph_parameter_as_tuple(
+    wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
     expected_type_signature = computation_types.FunctionType(
         [foo.type_signature.parameter], foo.type_signature.result)
@@ -374,11 +374,11 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     self.assertEqual(executable_wrapped_inputs([[1]]), executable_foo([1]))
 
-  def test_wrap_graph_parameter_as_tuple_wraps_sequence(self):
+  def test_bind_graph_parameter_as_tuple_wraps_sequence(self):
     computation_arg_type = computation_types.SequenceType(tf.int32)
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
 
-    wrapped_inputs = compiled_computation_transforms.wrap_graph_parameter_as_tuple(
+    wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
     expected_type_signature = computation_types.FunctionType(
         [foo.type_signature.parameter], foo.type_signature.result)
@@ -388,11 +388,11 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     self.assertEqual(executable_wrapped_inputs([[1]]), executable_foo([1]))
 
-  def test_wrap_graph_parameter_as_tuple_wraps_tensor(self):
+  def test_bind_graph_parameter_as_tuple_wraps_tensor(self):
     computation_arg_type = computation_types.to_type(tf.int32)
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
 
-    wrapped_inputs = compiled_computation_transforms.wrap_graph_parameter_as_tuple(
+    wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
     expected_type_signature = computation_types.FunctionType(
         [foo.type_signature.parameter], foo.type_signature.result)
@@ -402,11 +402,11 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     self.assertEqual(executable_wrapped_inputs([1]), executable_foo(1))
 
-  def test_wrap_graph_parameter_as_tuple_adds_name(self):
+  def test_bind_graph_parameter_as_tuple_adds_name(self):
     computation_arg_type = computation_types.to_type(tf.int32)
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
 
-    wrapped_inputs = compiled_computation_transforms.wrap_graph_parameter_as_tuple(
+    wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo, name='a')
     expected_type_signature = computation_types.FunctionType(
         [('a', foo.type_signature.parameter)], foo.type_signature.result)
@@ -415,6 +415,77 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
 
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     self.assertEqual(executable_wrapped_inputs([1]), executable_foo(1))
+
+
+class WrapResultAsTupleTest(parameterized.TestCase):
+
+  def test_bind_graph_result_as_tuple_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.bind_graph_result_as_tuple(None)
+
+  def test_bind_graph_result_as_tuple_raises_on_non_string_name(self):
+    computation_arg_type = computation_types.to_type([tf.int32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    with self.assertRaises(TypeError):
+      compiled_computation_transforms.bind_graph_result_as_tuple(foo, name=1)
+
+  def test_bind_graph_result_as_tuple_wraps_tuple(self):
+    computation_arg_type = computation_types.to_type([tf.int32])
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
+        foo)
+    expected_type_signature = computation_types.FunctionType(
+        foo.type_signature.parameter, [foo.type_signature.result])
+    executable_wrapped_output = _to_computation_impl(wrapped_output)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_output.type_signature, expected_type_signature)
+    self.assertEqual(executable_wrapped_output([1])[0], executable_foo([1]))
+
+  def test_bind_graph_result_as_tuple_wraps_sequence(self):
+    computation_arg_type = computation_types.SequenceType(tf.int32)
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
+        foo)
+    expected_type_signature = computation_types.FunctionType(
+        foo.type_signature.parameter, [foo.type_signature.result])
+    executable_wrapped_output = _to_computation_impl(wrapped_output)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_output.type_signature, expected_type_signature)
+    self.assertEqual(executable_wrapped_output([1])[0], executable_foo([1]))
+
+  def test_bind_graph_result_as_tuple_wraps_tensor(self):
+    computation_arg_type = computation_types.to_type(tf.int32)
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
+        foo)
+    expected_type_signature = computation_types.FunctionType(
+        foo.type_signature.parameter, [foo.type_signature.result])
+    executable_wrapped_output = _to_computation_impl(wrapped_output)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_output.type_signature, expected_type_signature)
+    self.assertEqual(executable_wrapped_output(1)[0], executable_foo(1))
+
+  def test_bind_graph_result_as_tuple_adds_name(self):
+    computation_arg_type = computation_types.to_type(tf.int32)
+    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+
+    wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
+        foo, name='a')
+    expected_type_signature = computation_types.FunctionType(
+        foo.type_signature.parameter, [('a', foo.type_signature.result)])
+    executable_wrapped_output = _to_computation_impl(wrapped_output)
+    executable_foo = _to_computation_impl(foo)
+
+    self.assertEqual(wrapped_output.type_signature, expected_type_signature)
+    self.assertEqual(
+        executable_wrapped_output(1),
+        anonymous_tuple.AnonymousTuple([('a', executable_foo(1))]))
 
 
 class GraphInputPaddingTest(parameterized.TestCase):
@@ -550,11 +621,9 @@ class ConcatenateTFBlocksTest(parameterized.TestCase):
       compiled_computation_transforms.concatenate_tensorflow_blocks(
           [foo, bad_comp], [None, None])
 
-  def test_concatenate_tensorflow_blocks_raises_list_of_one(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+  def test_concatenate_tensorflow_blocks_fails_empty_list(self):
     with self.assertRaises(ValueError):
-      compiled_computation_transforms.concatenate_tensorflow_blocks([foo],
-                                                                    [None])
+      compiled_computation_transforms.concatenate_tensorflow_blocks([], [None])
 
   def test_concatenate_tensorflow_blocks_raises_bad_names_list_length(self):
     foo = _create_compiled_computation(lambda: tf.constant(0.0), None)

@@ -225,10 +225,10 @@ def permute_graph_inputs(comp, input_permutation):
   return computation_building_blocks.CompiledComputation(permuted_proto)
 
 
-def wrap_graph_parameter_as_tuple(comp, name=None):
+def bind_graph_parameter_as_tuple(comp, name=None):
   """Wraps the parameter of `comp` in a tuple binding.
 
-  `wrap_graph_parameter_as_tuple` is intended as a preprocessing step
+  `bind_graph_parameter_as_tuple` is intended as a preprocessing step
   to `pad_graph_inputs_to_match_type`, so that `pad_graph_inputs_to_match_type`
   can
   make the assumption that its argument `comp` always has a tuple binding,
@@ -273,6 +273,56 @@ def wrap_graph_parameter_as_tuple(comp, name=None):
           result=proto.tensorflow.result))
 
   return computation_building_blocks.CompiledComputation(input_padded_proto)
+
+
+def bind_graph_result_as_tuple(comp, name=None):
+  """Wraps the result of `comp` in a tuple binding.
+
+  `bind_graph_result_as_tuple` is used when a
+  `computation_building_blocks.Tuple` of length 1 containing a called graph is
+  encountered; this is an equivalent construct to simply calling the graph
+  with the same argument, but wrapping the result in as a tuple. This can
+  be accomplished purely by manipulating proto bindings, which is the purpose
+  of this function.
+
+  Args:
+    comp: Instance of `computation_building_blocks.CompiledComputation` whose
+      parameter we wish to wrap in a tuple binding.
+    name: Optional string argument, the name to assign to the element type in
+      the constructed tuple. Defaults to `None`.
+
+  Returns:
+    A transformed version of comp representing exactly the same computation,
+    but returning a tuple containing one element--the parameter of `comp`.
+
+  Raises:
+    TypeError: If `comp` is not a
+      `computation_building_blocks.CompiledComputation`.
+  """
+  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  if name is not None:
+    py_typecheck.check_type(name, six.string_types)
+  proto = comp.proto
+  proto_type = type_serialization.deserialize_type(proto.type)
+
+  result_binding = [proto.tensorflow.result]
+  result_type_list = [(name, proto_type.result)]
+  new_result_binding = pb.TensorFlow.Binding(
+      tuple=pb.TensorFlow.NamedTupleBinding(element=result_binding))
+
+  new_function_type = computation_types.FunctionType(proto_type.parameter,
+                                                     result_type_list)
+  serialized_type = type_serialization.serialize_type(new_function_type)
+
+  result_as_tuple_proto = pb.Computation(
+      type=serialized_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=proto.tensorflow.graph_def,
+          initialize_op=proto.tensorflow.initialize_op,
+          parameter=proto.tensorflow.parameter,
+          result=new_result_binding))
+
+  return computation_building_blocks.CompiledComputation(result_as_tuple_proto)
 
 
 def pad_graph_inputs_to_match_type(comp, type_signature):
@@ -572,15 +622,17 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
     side-by-side.
 
   Raises:
-    ValueError: If we are passed less than 2 computations in `tf_comp_list`. In
-      this case, the caller is likely using the wrong function. Also raises if
-      `output_name_list` and `tf_comp_list` have different lengths.
+    ValueError: If we are passed less than 1 computation in `tf_comp_list`.
+      Also raises if `output_name_list` and `tf_comp_list` have different
+      lengths.
     TypeError: If `tf_comp_list` is not a `list` or `tuple`, or if it
       contains anything other than TF blocks.
   """
   py_typecheck.check_type(tf_comp_list, (list, tuple))
   py_typecheck.check_type(output_name_list, (list, tuple))
-  if len(tf_comp_list) < 2:
+  if len(tf_comp_list) == 1:
+    return bind_graph_result_as_tuple(tf_comp_list[0], output_name_list[0])
+  elif len(tf_comp_list) < 2:
     raise ValueError('We expect to concatenate at least two blocks of '
                      'TensorFlow; otherwise the transformation you seek '
                      'represents simply type manipulation, and you will find '
@@ -1096,7 +1148,7 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
 
     name = parameter_type_elements[index_of_selection][0]
 
-    graph_with_wrapped_parameter = wrap_graph_parameter_as_tuple(
+    graph_with_wrapped_parameter = bind_graph_parameter_as_tuple(
         comp.result.function, name=name)
     return _remap_graph_inputs(graph_with_wrapped_parameter,
                                [index_of_selection], comp.parameter_type), True
