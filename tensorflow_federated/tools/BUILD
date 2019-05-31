@@ -13,6 +13,7 @@ sh_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
+        "//tensorflow_federated/python",
         "//tensorflow_federated/python/common_libs",
         "//tensorflow_federated/python/core/impl",
         "//tensorflow_federated/python/tensorflow_libs",
