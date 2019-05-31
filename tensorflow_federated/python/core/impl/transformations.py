@@ -955,7 +955,7 @@ def uniquify_reference_names(comp):
     Returns a transformed version of comp inside of which all variable names
       are guaranteed to be unique.
   """
-  name_generator = computation_constructing_utils.unique_name_generator(comp)
+  name_generator = computation_constructing_utils.unique_name_generator(None)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""
