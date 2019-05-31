@@ -64,11 +64,11 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
     client_tf = federated_sgd.ClientSgd(model)
     init_op = tf.group(
         model_utils.model_initializer(model),
-        tf.variables_initializer(client_tf.variables),
+        tf.compat.v1.initializers.variables(client_tf.variables),
         name='fedsgd_initializer')
     client_outputs = client_tf(dataset, self.initial_weights())
 
-    tf.get_default_graph().finalize()
+    tf.compat.v1.get_default_graph().finalize()
     with self.session() as sess:
       sess.run(init_op)
       out = sess.run(client_outputs)

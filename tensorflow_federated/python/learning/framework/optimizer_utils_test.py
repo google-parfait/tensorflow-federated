@@ -173,8 +173,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     with tf.Graph().as_default() as g:
       server_state_op = optimizer_utils.server_init(model_fn, optimizer_fn, (),
                                                     ())
-      init_op = tf.group(tf.global_variables_initializer(),
-                         tf.local_variables_initializer())
+      init_op = tf.group(tf.compat.v1.global_variables_initializer(),
+                         tf.compat.v1.local_variables_initializer())
       g.finalize()
       with self.session() as sess:
         sess.run(init_op)
@@ -194,8 +194,8 @@ class ServerTest(test.TestCase, parameterized.TestCase):
       update_op = optimizer_utils.server_update_model(server_state,
                                                       weights_delta, model_fn,
                                                       optimizer_fn)
-      init_op = tf.group(tf.global_variables_initializer(),
-                         tf.local_variables_initializer())
+      init_op = tf.group(tf.compat.v1.global_variables_initializer(),
+                         tf.compat.v1.local_variables_initializer())
       g.finalize()
       with self.session() as sess:
         sess.run(init_op)

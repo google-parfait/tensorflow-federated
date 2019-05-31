@@ -208,7 +208,7 @@ class TensorUtilsTest(test.TestCase):
     with self.session() as sess:
       v = tf.compat.v1.placeholder(tf.float32)
       sum_tensor, update_op = tensor_utils.metrics_sum(v)
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       sess.run(update_op, feed_dict={v: [1.0, 2.0]})
       self.assertEqual(sess.run(sum_tensor), 3.0)
       sess.run(update_op, feed_dict={v: [3.0]})

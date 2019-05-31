@@ -109,7 +109,7 @@ class GraphUtilsTest(test.TestCase):
 
   def _checked_capture_result(self, result):
     """Returns the captured result type after first verifying the binding."""
-    graph = tf.get_default_graph()
+    graph = tf.compat.v1.get_default_graph()
     type_spec, binding = graph_utils.capture_result_from_graph(result, graph)
     self._assert_binding_matches_type_and_value(binding, type_spec, result,
                                                 graph)
@@ -118,7 +118,7 @@ class GraphUtilsTest(test.TestCase):
   def _checked_stamp_parameter(self, name, spec, graph=None):
     """Returns object stamped in the graph after verifying its bindings."""
     if graph is None:
-      graph = tf.get_default_graph()
+      graph = tf.compat.v1.get_default_graph()
     val, binding = graph_utils.stamp_parameter_in_graph(name, spec, graph)
     self._assert_binding_matches_type_and_value(binding,
                                                 computation_types.to_type(spec),
@@ -350,7 +350,7 @@ class GraphUtilsTest(test.TestCase):
       x = attr.ib()
       y = attr.ib()
 
-    graph = tf.get_default_graph()
+    graph = tf.compat.v1.get_default_graph()
     type_spec, _ = graph_utils.capture_result_from_graph(
         TestFoo(tf.constant(1), tf.constant(True)), graph)
     self.assertEqual(str(type_spec), '<x=int32,y=bool>')
@@ -545,8 +545,8 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [],
-                                                 tf.float32)
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [], tf.float32)
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
@@ -554,7 +554,7 @@ class GraphUtilsTest(test.TestCase):
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list_definite_tensor(self):
     ds = graph_utils.make_data_set_from_elements(
-        tf.get_default_graph(), [],
+        tf.compat.v1.get_default_graph(), [],
         computation_types.TensorType(tf.float32, [None, 10]))
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(ds.output_shapes.as_list(),
@@ -564,30 +564,32 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list_definite_tuple(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [], [
-        computation_types.TensorType(tf.float32, [None, 10]),
-        computation_types.TensorType(tf.float32, [None, 5])
-    ])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [], [
+            computation_types.TensorType(tf.float32, [None, 10]),
+            computation_types.TensorType(tf.float32, [None, 5])
+        ])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(ds.output_shapes, ([1, 10], [1, 5]))
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ints(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(),
-                                                 [1, 2, 3, 4], tf.int32)
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [1, 2, 3, 4], tf.int32)
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(ds.reduce(0, lambda x, y: x + y)), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
-        'a': 1,
-        'b': 2,
-    }, {
-        'a': 3,
-        'b': 4,
-    }], [('a', tf.int32), ('b', tf.int32)])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [{
+            'a': 1,
+            'b': 2,
+        }, {
+            'a': 3,
+            'b': 4,
+        }], [('a', tf.int32), ('b', tf.int32)])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
@@ -595,16 +597,17 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ordered_dicts(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
-        collections.OrderedDict([
-            ('a', 1),
-            ('b', 2),
-        ]),
-        collections.OrderedDict([
-            ('a', 3),
-            ('b', 4),
-        ]),
-    ], [('a', tf.int32), ('b', tf.int32)])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [
+            collections.OrderedDict([
+                ('a', 1),
+                ('b', 2),
+            ]),
+            collections.OrderedDict([
+                ('a', 3),
+                ('b', 4),
+            ]),
+        ], [('a', tf.int32), ('b', tf.int32)])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
@@ -612,10 +615,11 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_lists(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
-        [[1], [2]],
-        [[3], [4]],
-    ], [[tf.int32], [tf.int32]])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [
+            [[1], [2]],
+            [[3], [4]],
+        ], [[tf.int32], [tf.int32]])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
@@ -623,16 +627,17 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_anonymous_tuples(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [
-        anonymous_tuple.AnonymousTuple([
-            ('a', 1),
-            ('b', 2),
-        ]),
-        anonymous_tuple.AnonymousTuple([
-            ('a', 3),
-            ('b', 4),
-        ]),
-    ], [('a', tf.int32), ('b', tf.int32)])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [
+            anonymous_tuple.AnonymousTuple([
+                ('a', 1),
+                ('b', 2),
+            ]),
+            anonymous_tuple.AnonymousTuple([
+                ('a', 3),
+                ('b', 4),
+            ]),
+        ], [('a', tf.int32), ('b', tf.int32)])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
@@ -640,13 +645,14 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_lists(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
-        'a': [1],
-        'b': [2],
-    }, {
-        'a': [3],
-        'b': [4],
-    }], [('a', [tf.int32]), ('b', [tf.int32])])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [{
+            'a': [1],
+            'b': [2],
+        }, {
+            'a': [3],
+            'b': [4],
+        }], [('a', [tf.int32]), ('b', [tf.int32])])
 
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
@@ -657,13 +663,14 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_tensors(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
-        'a': 1,
-        'b': 2,
-    }, {
-        'a': 3,
-        'b': 4,
-    }], [('a', tf.int32), ('b', tf.int32)])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [{
+            'a': 1,
+            'b': 2,
+        }, {
+            'a': 3,
+            'b': 4,
+        }], [('a', tf.int32), ('b', tf.int32)])
 
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
@@ -674,13 +681,14 @@ class GraphUtilsTest(test.TestCase):
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_np_array(self):
-    ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
-        'a': np.array([1], dtype=np.int32),
-        'b': np.array([2], dtype=np.int32),
-    }, {
-        'a': np.array([3], dtype=np.int32),
-        'b': np.array([4], dtype=np.int32),
-    }], [('a', (tf.int32, [1])), ('b', (tf.int32, [1]))])
+    ds = graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), [{
+            'a': np.array([1], dtype=np.int32),
+            'b': np.array([2], dtype=np.int32),
+        }, {
+            'a': np.array([3], dtype=np.int32),
+            'b': np.array([4], dtype=np.int32),
+        }], [('a', (tf.int32, [1])), ('b', (tf.int32, [1]))])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
 
     def reduce_fn(x, y):
@@ -853,18 +861,19 @@ class GraphUtilsTest(test.TestCase):
 
   def test_make_data_set_from_elements_with_wrong_elements(self):
     with self.assertRaises(TypeError):
-      graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
-          'a': 1
-      }, {
-          'a': 2
-      }], tf.int32)
+      graph_utils.make_data_set_from_elements(tf.compat.v1.get_default_graph(),
+                                              [{
+                                                  'a': 1
+                                              }, {
+                                                  'a': 2
+                                              }], tf.int32)
 
   def test_make_data_set_from_elements_with_odd_last_batch(self):
     graph_utils.make_data_set_from_elements(
-        tf.get_default_graph(),
+        tf.compat.v1.get_default_graph(),
         [np.array([1, 2]), np.array([3])],
         computation_types.TensorType(tf.int32, tf.TensorShape([None])))
-    graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+    graph_utils.make_data_set_from_elements(tf.compat.v1.get_default_graph(), [{
         'x': np.array([1, 2])
     }, {
         'x': np.array([3])
@@ -872,13 +881,13 @@ class GraphUtilsTest(test.TestCase):
 
   def test_make_data_set_from_elements_with_odd_all_batches(self):
     graph_utils.make_data_set_from_elements(
-        tf.get_default_graph(), [
+        tf.compat.v1.get_default_graph(), [
             np.array([1, 2]),
             np.array([3]),
             np.array([4, 5, 6]),
             np.array([7, 8])
         ], computation_types.TensorType(tf.int32, tf.TensorShape([None])))
-    graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+    graph_utils.make_data_set_from_elements(tf.compat.v1.get_default_graph(), [{
         'x': np.array([1, 2])
     }, {
         'x': np.array([3])
@@ -890,9 +899,9 @@ class GraphUtilsTest(test.TestCase):
 
   def test_make_data_set_from_elements_with_just_one_batch(self):
     graph_utils.make_data_set_from_elements(
-        tf.get_default_graph(), [np.array([1])],
+        tf.compat.v1.get_default_graph(), [np.array([1])],
         computation_types.TensorType(tf.int32, tf.TensorShape([None])))
-    graph_utils.make_data_set_from_elements(tf.get_default_graph(), [{
+    graph_utils.make_data_set_from_elements(tf.compat.v1.get_default_graph(), [{
         'x': np.array([1])
     }], [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))])
 
