@@ -141,10 +141,13 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
       self.assertLess(metric_outputs.loss, prev_loss)
       prev_loss = metric_outputs.loss
 
-  @parameterized.parameters([
-      model_examples.build_linear_regresion_keras_functional_model,
-      model_examples.build_linear_regresion_keras_sequential_model,
-      model_examples.build_linear_regresion_keras_subclass_model,
+  @parameterized.named_parameters([
+      ('functional_model',
+       model_examples.build_linear_regresion_keras_functional_model),
+      ('sequential_model',
+       model_examples.build_linear_regresion_keras_sequential_model),
+      ('subclass_model',
+       model_examples.build_linear_regresion_keras_subclass_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
     dummy_batch = collections.OrderedDict([

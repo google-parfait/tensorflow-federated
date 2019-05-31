@@ -22,7 +22,6 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import itertools
 
 from absl.testing import parameterized
 import numpy as np
@@ -66,6 +65,45 @@ def _create_dummy_batch(feature_dims):
                                   ('y', tf.zeros([1]))])
 
 
+def _create_tff_model_from_keras_model_tuples():
+  tuples = []
+  for n_dims in [1, 3]:
+    for name, model_fn in [
+        ('functional',
+         model_examples.build_linear_regresion_keras_functional_model),
+        ('sequential',
+         model_examples.build_linear_regresion_keras_sequential_model),
+        ('sublclass',
+         model_examples.build_linear_regresion_keras_subclass_model),
+    ]:
+      tuples.append(('{}_model_{}_dims'.format(name, n_dims), n_dims, model_fn))
+  return tuples
+
+
+def _create_tff_model_from_compiled_keras_model_tuples():
+  tuples = []
+  for n_dims in [1, 3]:
+    for model_name, model_fn in [
+        ('functional',
+         model_examples.build_linear_regresion_keras_functional_model),
+        ('sequential',
+         model_examples.build_linear_regresion_keras_sequential_model),
+        ('sublclass',
+         model_examples.build_linear_regresion_keras_subclass_model),
+    ]:
+      for loss_name, loss in [
+          ('tf.keras.losses_instance', tf.keras.losses.MeanSquaredError()),
+          ('string_handle', 'mean_squared_error'),
+          # TODO(b/124534248): enable after designing weighted losses.
+          # ('tf.keras.losses_function', tf.keras.losses.mean_squared_error),
+      ]:
+        tuples.append(
+            ('{}_model_{}_loss_fn_{}_dims'.format(model_name, loss_name,
+                                                  n_dims), n_dims, model_fn,
+             loss))
+  return tuples
+
+
 class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def setUp(self):
@@ -82,17 +120,13 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
   # Test class for batches using namedtuple.
   _make_test_batch = collections.namedtuple('TestBatch', ['x', 'y'])
 
-  @parameterized.parameters(
-      {
-          'dummy_batch':
-              collections.OrderedDict([('x', np.ones([1, 1], np.float32)),
-                                       ('y', np.zeros([1, 1], np.float32))])
-      },
-      {
-          'dummy_batch':
-              _make_test_batch(
-                  x=np.ones([1, 1], np.float32), y=np.zeros([1, 1], np.float32))
-      },
+  @parameterized.named_parameters(
+      ('container',
+       collections.OrderedDict([('x', np.ones([1, 1], np.float32)),
+                                ('y', np.zeros([1, 1], np.float32))])),
+      ('container_fn',
+       _make_test_batch(
+           x=np.ones([1, 1], np.float32), y=np.zeros([1, 1], np.float32))),
   )
   def test_dummy_batch_types(self, dummy_batch):
     keras_model = model_examples.build_linear_regresion_keras_functional_model(
@@ -103,16 +137,9 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError())
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
 
-  @parameterized.parameters(
+  @parameterized.named_parameters(
       # Test cases for the cartesian product of all parameter values.
-      itertools.product(
-          [1, 3],
-          [
-              model_examples.build_linear_regresion_keras_functional_model,
-              model_examples.build_linear_regresion_keras_sequential_model,
-              model_examples.build_linear_regresion_keras_subclass_model,
-          ],
-      ))
+      *_create_tff_model_from_keras_model_tuples())
   def test_tff_model_from_keras_model(self, feature_dims, model_fn):
     keras_model = model_fn(feature_dims)
     tff_model = keras_utils.from_keras_model(
@@ -162,20 +189,8 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
 
-  @parameterized.parameters(
-      itertools.product(
-          [1, 3],
-          [
-              model_examples.build_linear_regresion_keras_functional_model,
-              model_examples.build_linear_regresion_keras_sequential_model,
-              model_examples.build_linear_regresion_keras_subclass_model,
-          ],
-          [
-              tf.keras.losses.MeanSquaredError(),
-              'mean_squared_error',
-              # TODO(b/124534248): enable after designign weighted losses.
-              # tf.keras.losses.mean_squared_error,
-          ]))
+  @parameterized.named_parameters(
+      *_create_tff_model_from_compiled_keras_model_tuples())
   def test_tff_model_from_compiled_keras_model(self, feature_dims, model_fn,
                                                loss_fn):
     keras_model = model_fn(feature_dims)
