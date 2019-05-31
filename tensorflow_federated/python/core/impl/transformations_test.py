@@ -161,18 +161,23 @@ def _create_dummy_block(comp, variable_name, variable_type=tf.int32):
   return computation_building_blocks.Block([(variable_name, data)], comp)
 
 
-def _create_dummy_called_federated_aggregate():
+def _create_dummy_called_federated_aggregate(accumulate_parameter_name,
+                                             merge_parameter_name,
+                                             report_parameter_name):
   value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  value = computation_building_blocks.Data('v', value_type)
-  zero = computation_building_blocks.Data('z', tf.int32)
+  value = computation_building_blocks.Data('data', value_type)
+  zero = computation_building_blocks.Data('data', tf.int32)
   accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-  accumulate_result = computation_building_blocks.Data('a', tf.int32)
-  accumulate = computation_building_blocks.Lambda('x', accumulate_type,
+  accumulate_result = computation_building_blocks.Data('data', tf.int32)
+  accumulate = computation_building_blocks.Lambda(accumulate_parameter_name,
+                                                  accumulate_type,
                                                   accumulate_result)
   merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-  merge_result = computation_building_blocks.Data('m', tf.int32)
-  merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
-  report_ref = computation_building_blocks.Reference('r', tf.int32)
+  merge_result = computation_building_blocks.Data('data', tf.int32)
+  merge = computation_building_blocks.Lambda(merge_parameter_name, merge_type,
+                                             merge_result)
+  report_ref = computation_building_blocks.Reference(report_parameter_name,
+                                                     tf.int32)
   report = computation_building_blocks.Lambda(report_ref.name,
                                               report_ref.type_signature,
                                               report_ref)
@@ -180,30 +185,25 @@ def _create_dummy_called_federated_aggregate():
       value, zero, accumulate, merge, report)
 
 
-def _create_dummy_called_federated_apply(parameter_name='x',
-                                         parameter_type=tf.int32,
-                                         argument_name='y'):
+def _create_dummy_called_federated_apply(parameter_name,
+                                         parameter_type=tf.int32):
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
-  arg = computation_building_blocks.Data(argument_name, arg_type)
+  arg = computation_building_blocks.Data('data', arg_type)
   return computation_constructing_utils.create_federated_apply(fn, arg)
 
 
-def _create_dummy_called_federated_map(parameter_name='x',
-                                       parameter_type=tf.int32,
-                                       argument_name='y'):
+def _create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
-  arg = computation_building_blocks.Data(argument_name, arg_type)
+  arg = computation_building_blocks.Data('data', arg_type)
   return computation_constructing_utils.create_federated_map(fn, arg)
 
 
-def _create_dummy_called_sequence_map(parameter_name='x',
-                                      parameter_type=tf.int32,
-                                      argument_name='y'):
+def _create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
   arg_type = computation_types.SequenceType(parameter_type)
-  arg = computation_building_blocks.Data(argument_name, arg_type)
+  arg = computation_building_blocks.Data('data', arg_type)
   return computation_constructing_utils.create_sequence_map(fn, arg)
 
 
@@ -1138,9 +1138,9 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
       transformations.merge_chained_federated_maps_or_applys(None)
 
   def test_merges_federated_applys(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_applys([fn, fn], arg)
     comp = call
 
@@ -1149,51 +1149,56 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        'federated_apply(<(x -> x),federated_apply(<(x -> x),y>)>)')
+        'federated_apply(<(a -> a),federated_apply(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_apply(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+        'federated_apply(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), 'int32@SERVER')
     self.assertTrue(modified)
 
   def test_merges_federated_maps(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
-    self.assertEqual(comp.tff_repr,
-                     'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
+        'federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_different_names(self):
     fn_1 = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('b', arg_type)
-    fn_2 = _create_lambda_to_identity('c', tf.int32)
+    arg = computation_building_blocks.Data('data', arg_type)
+    fn_2 = _create_lambda_to_identity('b', tf.int32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
-    self.assertEqual(comp.tff_repr,
-                     'federated_map(<(c -> c),federated_map(<(a -> a),b>)>)')
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_map(<(b -> b),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(a -> a),(c -> c)> in (arg -> fn[1](fn[0](arg)))),b>)'
+        'federated_map(<(let fn=<(a -> a),(b -> b)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_different_types(self):
@@ -1215,34 +1220,15 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(let fn=<(a -> data),(b -> b)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{float32}@CLIENTS')
     self.assertTrue(modified)
 
-  def test_merges_federated_maps_with_named_result(self):
-    parameter_type = [('a', tf.int32), ('b', tf.int32)]
-    fn = _create_lambda_to_identity('x', parameter_type)
+  def test_merges_federated_maps_with_named_parameter_type(self):
+    parameter_type = [('b', tf.int32), ('c', tf.int32)]
+    fn = _create_lambda_to_identity('a', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
-    call = _create_chained_dummy_federated_maps([fn, fn], arg)
-    comp = call
-
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
-        comp)
-
-    self.assertEqual(comp.tff_repr,
-                     'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),y>)'
-    )
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
-
-  def test_merges_federated_maps_with_unbound_references(self):
-    ref = computation_building_blocks.Reference('arg', tf.int32)
-    fn = computation_building_blocks.Lambda('x', tf.int32, ref)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
@@ -1251,12 +1237,36 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        'federated_map(<(x -> arg),federated_map(<(x -> arg),y>)>)')
+        'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(x -> arg),(x -> arg)> in (arg -> fn[1](fn[0](arg)))),y>)'
+        'federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature), '{<b=int32,c=int32>}@CLIENTS')
+    self.assertTrue(modified)
+
+  def test_merges_federated_maps_with_unbound_references(self):
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    fn = computation_building_blocks.Lambda('b', tf.int32, ref)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg = computation_building_blocks.Data('data', arg_type)
+    call = _create_chained_dummy_federated_maps([fn, fn], arg)
+    comp = call
+
+    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+        comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_map(<(b -> a),federated_map(<(b -> a),data>)>)')
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        'federated_map(<(let fn=<(b -> a),(b -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertTrue(modified)
 
   def test_merges_nested_federated_maps(self):
@@ -1279,12 +1289,13 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         '(let b=data in federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertTrue(modified)
 
   def test_merges_multiple_federated_maps(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn, fn], arg)
     comp = call
 
@@ -1293,7 +1304,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        'federated_map(<(x -> x),federated_map(<(x -> x),federated_map(<(x -> x),y>)>)>)'
+        'federated_map(<(a -> a),federated_map(<(a -> a),federated_map(<(a -> a),data>)>)>)'
     )
     # pyformat: disable
     # pylint: disable=bad-continuation
@@ -1301,21 +1312,22 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         transformed_comp.tff_repr,
         'federated_map(<'
             '(let fn=<'
-                '(let fn=<(x -> x),(x -> x)> in (arg -> fn[1](fn[0](arg)))),'
-                '(x -> x)'
+                '(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),'
+                '(a -> a)'
             '> in (arg -> fn[1](fn[0](arg)))),'
-            'y'
+            'data'
         '>)'
     )
     # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertTrue(modified)
 
   def test_does_not_merge_one_federated_map(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
 
@@ -1323,8 +1335,10 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, 'federated_map(<(x -> x),y>)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     'federated_map(<(a -> a),data>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertFalse(modified)
 
   def test_does_not_merge_separated_federated_maps(self):
@@ -1345,6 +1359,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(a -> a),(let b=data in federated_map(<(a -> a),data>))>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertFalse(modified)
 
 
@@ -1355,34 +1370,39 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
       transformations.merge_tuple_intrinsics(None)
 
   def test_merges_federated_aggregates(self):
-    elements = [_create_dummy_called_federated_aggregate() for _ in range(2)]
-    calls = computation_building_blocks.Tuple(elements)
+    called_intrinsic = _create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
-        '<federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>),federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)>'
+        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> c)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> c)>)>'
     )
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let value=federated_aggregate(<'
-        'federated_map(<(x -> <x[0],x[1]>),'
-          'federated_map(<'
-                  '(arg -> arg),'
-                  '(let value=<v,v> in federated_zip_at_clients(<value[0],value[1]>))'
-                  '>)>),'
-              '<z,z>,'
-              '(let fn=<(x -> a),(x -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-              '(let fn=<(x -> m),(x -> m)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-              '(let fn=<(r -> r),(r -> r)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))'
-          '>) in <'
-              'federated_apply(<(arg -> arg[0]),value>),'
-              'federated_apply(<(arg -> arg[1]),value>)'
-          '>)'
+        '(x -> <x[0],x[1]>)((let value=federated_aggregate(<'
+            'federated_map(<(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>),'
+            '<data,data>,'
+            '(let fn=<(a -> data),(a -> data)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let fn=<(b -> data),(b -> data)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let fn=<(c -> c),(c -> c)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))'
+        '>) in <'
+            'federated_apply(<(arg -> arg[0]),value>),'
+            'federated_apply(<(arg -> arg[1]),value>)'
+        '>))'
     )
     # pylint: enable=bad-continuation
     # pyformat: enable
@@ -1392,255 +1412,29 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps(self):
-    elements = [_create_dummy_called_federated_map() for _ in range(2)]
-    calls = computation_building_blocks.Tuple(elements)
+    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
-        '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
+        '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>')
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+        '(x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
             'federated_map(<'
-              '(x -> <x[0],x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
-        '>)'
-    )
-    # pylint: enable=bad-continuation
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertEqual(
-        str(transformed_comp.type_signature),
-        '<{int32}@CLIENTS,{int32}@CLIENTS>')
-    self.assertTrue(modified)
-
-  def test_merges_federated_maps_with_different_names(self):
-    elements = (
-        _create_dummy_called_federated_map(
-            parameter_name='a', argument_name='b'),
-        _create_dummy_called_federated_map(
-            parameter_name='c', argument_name='d'),
-    )
-    calls = computation_building_blocks.Tuple(elements)
-    comp = calls
-
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
-
-    self.assertEqual(
-        comp.tff_repr,
-        '<federated_map(<(a -> a),b>),federated_map(<(c -> c),d>)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-            '(let fn=<(a -> a),(c -> c)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            'federated_map(<'
-              '(x -> <x[0],x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<b,d> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
-        '>)'
-    )
-    # pylint: enable=bad-continuation
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertEqual(
-        str(transformed_comp.type_signature),
-        '<{int32}@CLIENTS,{int32}@CLIENTS>')
-    self.assertTrue(modified)
-
-  def test_merges_federated_maps_with_different_types(self):
-    elements = (
-        _create_dummy_called_federated_map(parameter_type=tf.int32),
-        _create_dummy_called_federated_map(parameter_type=tf.float32),
-    )
-    calls = computation_building_blocks.Tuple(elements)
-    comp = calls
-
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
-
-    self.assertEqual(
-        comp.tff_repr,
-        '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            'federated_map(<'
-              '(x -> <x[0],x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
-        '>)'
-    )
-    # pylint: enable=bad-continuation
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertEqual(
-        str(transformed_comp.type_signature),
-        '<{int32}@CLIENTS,{float32}@CLIENTS>')
-    self.assertTrue(modified)
-
-  def test_merges_federated_maps_with_named_result(self):
-    parameter_type = [('a', tf.int32), ('b', tf.int32)]
-    fn = _create_lambda_to_identity('x', parameter_type)
-    arg_type = computation_types.FederatedType(parameter_type,
-                                               placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
-    call = computation_constructing_utils.create_federated_map(fn, arg)
-    elements = [call for _ in range(2)]
-    calls = computation_building_blocks.Tuple(elements)
-    comp = calls
-
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
-
-    self.assertEqual(
-        comp.tff_repr,
-        '<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            'federated_map(<'
-              '(x -> <x[0],x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
-        '>)'
-    )
-    # pylint: enable=bad-continuation
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertEqual(
-        str(transformed_comp.type_signature),
-        '<{<a=int32,b=int32>}@CLIENTS,{<a=int32,b=int32>}@CLIENTS>')
-    self.assertTrue(modified)
-
-  def test_merges_federated_maps_with_unbound_reference(self):
-    ref = computation_building_blocks.Reference('arg', tf.int32)
-    fn = computation_building_blocks.Lambda('x', tf.int32, ref)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
-    call = computation_constructing_utils.create_federated_map(fn, arg)
-    elements = [call, call]
-    calls = computation_building_blocks.Tuple(elements)
-    comp = calls
-
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
-
-    self.assertEqual(
-        comp.tff_repr,
-        '<federated_map(<(x -> arg),y>),federated_map(<(x -> arg),y>)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-            '(let fn=<(x -> arg),(x -> arg)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            'federated_map(<'
-              '(x -> <x[0],x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
-        '>)'
-    )
-    # pylint: enable=bad-continuation
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertEqual(
-        str(transformed_comp.type_signature),
-        '<{int32}@CLIENTS,{int32}@CLIENTS>')
-    self.assertTrue(modified)
-
-  def test_merges_named_federated_maps(self):
-    self.skipTest('b/133169703')
-    elements = (
-        ('a', _create_dummy_called_federated_map()),
-        ('b', _create_dummy_called_federated_map()),
-    )
-    calls = computation_building_blocks.Tuple(elements)
-    comp = calls
-
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
-
-    self.assertEqual(
-        comp.tff_repr,
-        '<a=federated_map(<(x -> x),y>),b=federated_map(<(x -> x),y>)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-            '(let fn=<a=(x -> x),b=(x -> x)> in (arg -> <a=fn[0](arg[0]),b=fn[1](arg[1])>)),'
-            'federated_map(<'
-              '(x -> <a=x[0],b=x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<a=y,b=y> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
-        '>) in <'
-            'a=federated_map(<(arg -> arg[0]),value>),'
-            'b=federated_map(<(arg -> arg[1]),value>)'
-        '>)'
-    )
-    # pylint: enable=bad-continuation
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertEqual(
-        str(transformed_comp.type_signature),
-        '<a={int32}@CLIENTS,b={int32}@CLIENTS>')
-    self.assertTrue(modified)
-
-  def test_merges_nested_federated_maps(self):
-    elements = [_create_dummy_called_federated_map() for _ in range(2)]
-    calls = computation_building_blocks.Tuple(elements)
-    block = _create_dummy_block(calls, variable_name='a')
-    comp = block
-
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
-
-    self.assertEqual(
-        comp.tff_repr,
-        '(let a=data in <federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>)'
-    )
-    # pyformat: disable
-    # pylint: disable=bad-continuation
-    self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let a=data in (let value=federated_map(<'
-            '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            'federated_map(<'
-              '(x -> <x[0],x[1]>),federated_map(<'
-                '(arg -> arg),'
-                '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)>)'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
         '>) in <'
             'federated_map(<(arg -> arg[0]),value>),'
             'federated_map(<(arg -> arg[1]),value>)'
@@ -1654,74 +1448,296 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_merges_multiple_federated_maps(self):
-    comp_elements = []
-    for _ in range(2):
-      call_elements = [_create_dummy_called_federated_map() for _ in range(2)]
-      calls = computation_building_blocks.Tuple(call_elements)
-      comp_elements.append(calls)
-    comps = computation_building_blocks.Tuple(comp_elements)
-    comp = comps
+  def test_merges_federated_maps_with_different_names(self):
+    called_intrinsic_1 = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic_2 = _create_dummy_called_federated_map(parameter_name='b')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic_1, called_intrinsic_2))
+    comp = calls
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
     self.assertEqual(
         comp.tff_repr,
-        '<<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>,<federated_map(<(x -> x),y>),federated_map(<(x -> x),y>)>>'
-    )
+        '<federated_map(<(a -> a),data>),federated_map(<(b -> b),data>)>')
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '<'
-            '(let value=federated_map(<'
-                '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+        '(x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(b -> b)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
                 'federated_map(<'
-                  '(x -> <x[0],x[1]>),federated_map(<'
                     '(arg -> arg),'
-                    '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                    '>)>)'
-            '>) in <'
-                'federated_map(<(arg -> arg[0]),value>),'
-                'federated_map(<(arg -> arg[1]),value>)'
-            '>),'
-            '(let value=federated_map(<'
-                '(let fn=<(x -> x),(x -> x)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-                'federated_map(<'
-                  '(x -> <x[0],x[1]>),federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<y,y> in federated_zip_at_clients(<value[0],value[1]>))'
-                    '>)>)'
-            '>) in <'
-                'federated_map(<(arg -> arg[0]),value>),'
-                'federated_map(<(arg -> arg[1]),value>)'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
             '>)'
-        '>'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
     )
     # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
         str(transformed_comp.type_signature),
-        '<<{int32}@CLIENTS,{int32}@CLIENTS>,<{int32}@CLIENTS,{int32}@CLIENTS>>')
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_merges_one_federated_map(self):
-    elements = (_create_dummy_called_federated_map(),)
-    calls = computation_building_blocks.Tuple(elements)
+  def test_merges_federated_maps_with_different_types(self):
+    called_intrinsic_1 = _create_dummy_called_federated_map(
+        parameter_name='a', parameter_type=tf.int32)
+    called_intrinsic_2 = _create_dummy_called_federated_map(
+        parameter_name='b', parameter_type=tf.float32)
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '<federated_map(<(x -> x),y>)>')
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(a -> a),data>),federated_map(<(b -> b),data>)>')
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let value=federated_map(<'
-           '(let fn=<(x -> x)> in (arg -> <fn[0](arg[0])>)),'
-           'federated_map(<(arg -> <arg>),<y>[0]>)'
-        '>) in <federated_map(<(arg -> arg[0]),value>)>)'
+        '(x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(b -> b)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{float32}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_federated_maps_with_named_parameter_type(self):
+    parameter_type = [('b', tf.int32), ('c', tf.int32)]
+    called_intrinsic = _create_dummy_called_federated_map(
+        parameter_name='a', parameter_type=parameter_type)
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{<b=int32,c=int32>}@CLIENTS,{<b=int32,c=int32>}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_federated_maps_with_unbound_reference(self):
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    fn = computation_building_blocks.Lambda('b', tf.int32, ref)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg = computation_building_blocks.Data('data', arg_type)
+    called_intrinsic = computation_constructing_utils.create_federated_map(
+        fn, arg)
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(b -> a),data>),federated_map(<(b -> a),data>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let fn=<(b -> a),(b -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_named_federated_maps(self):
+    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (('b', called_intrinsic), ('c', called_intrinsic)))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<b=federated_map(<(a -> a),data>),c=federated_map(<(a -> a),data>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <b=x[0],c=x[1]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<b={int32}@CLIENTS,c={int32}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_nested_federated_maps(self):
+    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    block = _create_dummy_block(calls, variable_name='a')
+    comp = block
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '(let a=data in <federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>)'
+    )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(let a=data in (x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>)))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_multiple_federated_maps(self):
+    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>'
+    )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0],x[1],x[2]>)((let value=federated_map(<'
+            '(let fn=<(a -> a),(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1]),fn[2](arg[2])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1],x[2]>),'
+                'federated_map(<'
+                    '(arg -> (let comps=<(arg -> arg)(arg[0]),arg[1]> in <comps[0][0],comps[0][1],comps[1]>)),'
+                    '(let value=<data,data,data> in federated_zip_at_clients(<federated_zip_at_clients(<value[0],value[1]>),value[2]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>),'
+            'federated_map(<(arg -> arg[2]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{int32}@CLIENTS,{int32}@CLIENTS,{int32}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_one_federated_map(self):
+    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    calls = computation_building_blocks.Tuple((called_intrinsic,))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
+
+    self.assertEqual(comp.tff_repr, '<federated_map(<(a -> a),data>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0]>)((let value=federated_map(<'
+            '(let fn=<(a -> a)> in (arg -> <fn[0](arg[0])>)),'
+            'federated_map(<(arg -> <arg>),<data>[0]>)'
+        '>) in <federated_map(<(arg -> arg[0]),value>)>))'
     )
     # pylint: enable=bad-continuation
     # pyformat: enable
@@ -1730,11 +1746,13 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_merge_different_federated_maps(self):
-    elements = (
-        _create_dummy_called_federated_aggregate(),
-        _create_dummy_called_federated_map(),
-    )
-    calls = computation_building_blocks.Tuple(elements)
+    called_intrinsic_1 = _create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsic_2 = _create_dummy_called_federated_map(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
@@ -1742,18 +1760,17 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
         transformed_comp.tff_repr,
-        '<federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>),federated_map(<(x -> x),y>)>'
+        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> c)>),federated_map(<(a -> a),data>)>'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
         str(transformed_comp.type_signature), '<int32@SERVER,{int32}@CLIENTS>')
     self.assertFalse(modified)
 
-  def test_does_not_merge_dummy_federated_maps(self):
-    elements = [
-        _create_dummy_called_intrinsic(parameter_name='a') for _ in range(2)
-    ]
-    calls = computation_building_blocks.Tuple(elements)
+  def test_does_not_merge_dummy_intrinsics(self):
+    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(comp)
@@ -1784,61 +1801,62 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
        _create_dummy_called_sequence_map))
   # pyformat: enable
   def test_removes_intrinsic(self, uri, factory):
-    call = factory()
+    call = factory(parameter_name='a')
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr, '{}(<(x -> x),y>)'.format(uri))
-    self.assertEqual(transformed_comp.tff_repr, 'y')
+    self.assertEqual(comp.tff_repr, '{}(<(a -> a),data>)'.format(uri))
+    self.assertEqual(transformed_comp.tff_repr, 'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
   def test_removes_federated_map_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
-    fn = _create_lambda_to_identity('x', parameter_type)
+    fn = _create_lambda_to_identity('c', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr, 'federated_map(<(x -> x),y>)')
-    self.assertEqual(transformed_comp.tff_repr, 'y')
+    self.assertEqual(comp.tff_repr, 'federated_map(<(c -> c),data>)')
+    self.assertEqual(transformed_comp.tff_repr, 'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
   def test_removes_nested_federated_map(self):
-    call = _create_dummy_called_federated_map()
-    block = _create_dummy_block(call, variable_name='a')
+    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    block = _create_dummy_block(called_intrinsic, variable_name='b')
     comp = block
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(comp.tff_repr,
-                     '(let a=data in federated_map(<(x -> x),y>))')
-    self.assertEqual(transformed_comp.tff_repr, '(let a=data in y)')
+                     '(let b=data in federated_map(<(a -> a),data>))')
+    self.assertEqual(transformed_comp.tff_repr, '(let b=data in data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
   def test_removes_chained_federated_maps(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr,
-                     'federated_map(<(x -> x),federated_map(<(x -> x),y>)>)')
-    self.assertEqual(transformed_comp.tff_repr, 'y')
+    self.assertEqual(
+        comp.tff_repr,
+        'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
+    self.assertEqual(transformed_comp.tff_repr, 'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1854,8 +1872,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_remove_called_lambda(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
-    arg = computation_building_blocks.Data('y', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
+    arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
 
@@ -1863,7 +1881,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(x -> x)(y)')
+    self.assertEqual(transformed_comp.tff_repr, '(a -> a)(data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -1875,16 +1893,16 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
       transformations.replace_called_lambda_with_block(None)
 
   def test_replaces_called_lambda(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
-    arg = computation_building_blocks.Data('y', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
+    arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(x -> x)(y)')
-    self.assertEqual(transformed_comp.tff_repr, '(let x=y in x)')
+    self.assertEqual(comp.tff_repr, '(a -> a)(data)')
+    self.assertEqual(transformed_comp.tff_repr, '(let a=data in a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1905,28 +1923,29 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_chained_called_lambdas(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
-    arg = computation_building_blocks.Data('y', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
+    arg = computation_building_blocks.Data('data', tf.int32)
     call = _create_chained_calls([fn, fn], arg)
     comp = call
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(x -> x)((x -> x)(y))')
-    self.assertEqual(transformed_comp.tff_repr, '(let x=(let x=y in x) in x)')
+    self.assertEqual(comp.tff_repr, '(a -> a)((a -> a)(data))')
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let a=(let a=data in a) in a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
   def test_does_not_replace_uncalled_lambda(self):
-    fn = _create_lambda_to_identity('x', tf.int32)
+    fn = _create_lambda_to_identity('a', tf.int32)
     comp = fn
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(x -> x)')
+    self.assertEqual(transformed_comp.tff_repr, '(a -> a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2176,24 +2195,6 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
 
 class UniquifyReferenceNamesTest(absltest.TestCase):
 
-  def test_renames_names_ignores_existing_names(self):
-    data = computation_building_blocks.Data('data', tf.int32)
-    block = computation_building_blocks.Block([('a', data), ('a', data)], data)
-    comp = block
-
-    transformed_comp, modified = transformations.uniquify_reference_names(comp)
-
-    self.assertEqual(block.tff_repr, '(let a=data,a=data in data)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=data,_var2=data in data)')
-    self.assertTrue(modified)
-
-    transformed_comp, modified = transformations.uniquify_reference_names(comp)
-
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=data,_var2=data in data)')
-    self.assertTrue(modified)
-
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.uniquify_reference_names(None)
@@ -2314,6 +2315,24 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
         transformed_comp.result.tff_repr,
         '(let _var11=(let _var10=(let _var9=_var8 in data) in data) in data)')
     self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    self.assertTrue(modified)
+
+  def test_renames_names_ignores_existing_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('a', data), ('b', data)], data)
+    comp = block
+
+    transformed_comp, modified = transformations.uniquify_reference_names(comp)
+
+    self.assertEqual(block.tff_repr, '(let a=data,b=data in data)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let _var1=data,_var2=data in data)')
+    self.assertTrue(modified)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(comp)
+
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let _var1=data,_var2=data in data)')
     self.assertTrue(modified)
 
 
