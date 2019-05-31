@@ -108,7 +108,7 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     # N. B. Unlike MetaGraphDef, the GraphDef alone contains no information
     # about collections, and hence, when we import a graph with Variables,
     # those Variables are not added to global collections, and hence
-    # functions like tf.global_variables_initializers() will not
+    # functions like tf.compat.v1.global_variables_initializers() will not
     # contain their initialization ops.
     output_tensors = tf.import_graph_def(
         serialization_utils.unpack_graph_def(

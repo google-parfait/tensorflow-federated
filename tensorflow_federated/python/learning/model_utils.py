@@ -36,7 +36,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 def model_initializer(model, name=None):
   """Creates an initializer op for all of the model's variables."""
   py_typecheck.check_type(model, model_lib.Model)
-  return tf.variables_initializer(
+  return tf.compat.v1.initializers.variables(
       model.trainable_variables + model.non_trainable_variables +
       model.local_variables,
       name=(name or 'model_initializer'))

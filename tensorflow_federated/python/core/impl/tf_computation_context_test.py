@@ -38,7 +38,7 @@ class TensorFlowComputationContextTest(test.TestCase):
       return intrinsics.federated_broadcast(x)
 
     context = tf_computation_context.TensorFlowComputationContext(
-        tf.get_default_graph())
+        tf.compat.v1.get_default_graph())
     with self.assertRaisesRegexp(ValueError,
                                  'Expected a TensorFlow computation.'):
       context.invoke(foo, None)

@@ -34,16 +34,16 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
   @test.graph_mode_test
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
-    init_op = tf.variables_initializer(model.trainable_variables +
-                                       model.non_trainable_variables +
-                                       model.local_variables)
+    init_op = tf.compat.v1.initializers.variables(
+        model.trainable_variables + model.non_trainable_variables +
+        model.local_variables)
     batch = model.make_batch(
         x=tf.compat.v1.placeholder(tf.float32, shape=(None, feature_dim)),
         y=tf.compat.v1.placeholder(tf.float32, shape=(None, 1)))
     output_op = model.forward_pass(batch)
     metrics = model.report_local_outputs()
 
-    tf.get_default_graph().finalize()
+    tf.compat.v1.get_default_graph().finalize()
     with self.session() as sess:
       sess.run(init_op)
       output = sess.run(
@@ -65,9 +65,9 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
   def test_trainable_linear_regression(self):
     dim = 1
     model = model_examples.TrainableLinearRegression(feature_dim=dim)
-    init_op = tf.variables_initializer(model.trainable_variables +
-                                       model.non_trainable_variables +
-                                       model.local_variables)
+    init_op = tf.compat.v1.initializers.variables(
+        model.trainable_variables + model.non_trainable_variables +
+        model.local_variables)
     batch = model.make_batch(
         x=tf.compat.v1.placeholder(tf.float32, shape=(None, dim)),
         y=tf.compat.v1.placeholder(tf.float32, shape=(None, 1)))
@@ -97,9 +97,9 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
     def forward_pass_and_output():
       feature_dim = 2
       model = model_examples.LinearRegression(feature_dim)
-      init_op = tf.variables_initializer(model.trainable_variables +
-                                         model.non_trainable_variables +
-                                         model.local_variables)
+      init_op = tf.compat.v1.initializers.variables(
+          model.trainable_variables + model.non_trainable_variables +
+          model.local_variables)
       batch = model.make_batch(
           x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
           y=tf.constant([[0.0], [1.0]]))

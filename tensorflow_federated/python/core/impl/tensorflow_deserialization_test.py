@@ -35,7 +35,8 @@ class TensorFlowDeserializationTest(test.TestCase):
         lambda x: tf.add(x, 1, name='the_add'), tf.int32, ctx_stack)
     init_op, result = (
         tensorflow_deserialization.deserialize_and_call_tf_computation(
-            add_one, tf.constant(10, name='the_ten'), tf.get_default_graph()))
+            add_one, tf.constant(10, name='the_ten'),
+            tf.compat.v1.get_default_graph()))
     self.assertTrue(tf.is_tensor(result))
     with tf.compat.v1.Session() as sess:
       if init_op:
