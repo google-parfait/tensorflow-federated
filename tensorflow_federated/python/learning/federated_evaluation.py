@@ -52,25 +52,25 @@ def build_federated_evaluation(model_fn):
   @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
+
     model = model_utils.enhance(model_fn())
 
-    # TODO(b/124477598): Remove dummy when b/121400757 has been fixed.
     @tf.function
-    def reduce_fn(dummy, batch):
-      model_output = model.forward_pass(batch, training=False)
-      return dummy + tf.cast(model_output.loss, tf.float64)
+    def _tf_client_eval(incoming_model_weights, dataset):
+      """Evaluation TF work."""
 
-    # TODO(b/123898430): The control dependencies below have been inserted as a
-    # temporary workaround. These control dependencies need to be removed, and
-    # defuns and datasets supported together fully.
-    with tf.control_dependencies(
-        [tff.utils.assign(model.weights, incoming_model_weights)]):
-      dummy = dataset.reduce(tf.constant(0.0, dtype=tf.float64), reduce_fn)
+      tff.utils.assign(model.weights, incoming_model_weights)
 
-    with tf.control_dependencies([dummy]):
+      def reduce_fn(prev_loss, batch):
+        model_output = model.forward_pass(batch, training=False)
+        return prev_loss + tf.cast(model_output.loss, tf.float64)
+
+      dataset.reduce(tf.constant(0.0, dtype=tf.float64), reduce_fn)
+
       return collections.OrderedDict([('local_outputs',
-                                       model.report_local_outputs()),
-                                      ('workaround for b/121400757', dummy)])
+                                       model.report_local_outputs())])
+
+    return _tf_client_eval(incoming_model_weights, dataset)
 
   @tff.federated_computation(
       tff.FederatedType(model_weights_type, tff.SERVER),
