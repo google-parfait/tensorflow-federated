@@ -279,9 +279,10 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       # always in the collections we expect. tff.learning._KerasModel tries to
       # pull Keras variables (that may or may not be in GLOBAL_VARIABLES) into
       # TFF_MODEL_VARIABLES for now.
-      all_variables = set(
-          tf.global_variables() + tf.local_variables() +
-          tf.get_collection(graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE))
+      all_variables = set(tf.compat.v1.global_variables() +
+                          tf.compat.v1.local_variables() +
+                          tf.compat.v1.get_collection(
+                              graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE))
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
         name = 'init_op_for_' + '_'.join(

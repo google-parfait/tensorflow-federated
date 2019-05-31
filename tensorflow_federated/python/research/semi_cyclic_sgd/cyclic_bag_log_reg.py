@@ -418,7 +418,7 @@ def main(unused_args):
     })
 
   with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
     for d in range(0, FLAGS.num_days):
       for g in range(0, FLAGS.num_groups):
         if FLAGS.mode == 'sep':

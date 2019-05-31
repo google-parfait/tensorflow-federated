@@ -281,8 +281,8 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
 
   # Defines a no-arg function that builds a `tf.data.Dataset` from the elements.
   def _create_dataset_from_elements():
-    return graph_utils.make_data_set_from_elements(tf.get_default_graph(),
-                                                   elements, element_type)
+    return graph_utils.make_data_set_from_elements(
+        tf.compat.v1.get_default_graph(), elements, element_type)
 
   # Wraps the dataset as a value backed by a no-argument TensorFlow computation.
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
