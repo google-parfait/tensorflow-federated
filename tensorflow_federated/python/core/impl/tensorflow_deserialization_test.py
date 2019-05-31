@@ -37,7 +37,7 @@ class TensorFlowDeserializationTest(test.TestCase):
         tensorflow_deserialization.deserialize_and_call_tf_computation(
             add_one, tf.constant(10, name='the_ten'), tf.get_default_graph()))
     self.assertTrue(tf.is_tensor(result))
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       if init_op:
         sess.run(init_op)
       result_val = sess.run(result)

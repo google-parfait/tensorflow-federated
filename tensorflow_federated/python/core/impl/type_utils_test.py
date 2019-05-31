@@ -595,7 +595,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     structure = type_utils.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
-          tf.placeholder(tf.variant, shape=[]), structure=structure)
+          tf.compat.v1.placeholder(tf.variant, shape=[]), structure=structure)
       ds_dtypes = tf.compat.v1.data.get_output_types(ds)
       ds_shapes = tf.compat.v1.data.get_output_shapes(ds)
       test.assert_nested_struct_eq(ds_dtypes, dtypes)
@@ -607,7 +607,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     structure = type_utils.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
-          tf.placeholder(tf.variant, shape=[]), structure=structure)
+          tf.compat.v1.placeholder(tf.variant, shape=[]), structure=structure)
       ds_dtypes = tf.compat.v1.data.get_output_types(ds)
       ds_shapes = tf.compat.v1.data.get_output_shapes(ds)
       test.assert_nested_struct_eq(ds_dtypes, dtypes)

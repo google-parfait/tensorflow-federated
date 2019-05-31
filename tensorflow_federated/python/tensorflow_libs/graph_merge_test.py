@@ -27,7 +27,7 @@ from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 def _make_add_one_graph():
   with tf.Graph().as_default() as graph:
-    input_val = tf.placeholder(tf.float32, name='input')
+    input_val = tf.compat.v1.placeholder(tf.float32, name='input')
     const = tf.constant(1.0)
     out = tf.add(input_val, const)
   return graph, input_val.name, out.name
@@ -35,7 +35,7 @@ def _make_add_one_graph():
 
 def _make_add_variable_number_graph(var_name=None):
   with tf.Graph().as_default() as graph:
-    input_val = tf.placeholder(tf.float32, name='input')
+    input_val = tf.compat.v1.placeholder(tf.float32, name='input')
     var = tf.Variable(initial_value=0.0, name=var_name, import_scope='')
     assign_op = tf.assign_add(var, tf.constant(1.0))
     out = tf.add(input_val, assign_op)
@@ -123,7 +123,7 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         arg_list)
 
     with merged_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs = sess.run(
             [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
@@ -155,7 +155,7 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         arg_list)
 
     with merged_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs = sess.run(
             [
@@ -189,7 +189,7 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         arg_list)
 
     with merged_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs = sess.run(
             [out_name_maps[0][out1.name], out_name_maps[1][out2.name]])
@@ -208,7 +208,7 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         arg_list)
 
     with merged_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs = sess.run(
             [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
@@ -235,7 +235,7 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         arg_list)
 
     with merged_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs_1 = sess.run(
             [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
@@ -278,7 +278,7 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
         arg_list)
 
     with merged_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         tens = sess.run(
             [out_name_maps[0][out_name_1], out_name_maps[1][out_name_2]])
@@ -336,7 +336,7 @@ class ComposeGraphSpecTest(test.TestCase):
         arg_list)
 
     with composed_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs = sess.run(
             out_name_map[output_name_2],
@@ -351,7 +351,7 @@ class ComposeGraphSpecTest(test.TestCase):
 
     def _make_cast_to_int_graph():
       with tf.Graph().as_default() as graph:
-        input_val = tf.placeholder(tf.float32, name='input')
+        input_val = tf.compat.v1.placeholder(tf.float32, name='input')
         out = tf.cast(input_val, tf.int32)
       return graph, input_val.name, out.name
 
@@ -371,7 +371,7 @@ class ComposeGraphSpecTest(test.TestCase):
         arg_list)
 
     with composed_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         outputs = sess.run(
             out_name_map[output_name_2],
             feed_dict={
@@ -404,7 +404,7 @@ class ComposeGraphSpecTest(test.TestCase):
         arg_list)
 
     with composed_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         outputs = sess.run(
             out_name_map[output_name_3],
@@ -430,7 +430,7 @@ class ComposeGraphSpecTest(test.TestCase):
         arg_list)
 
     with composed_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         sess.run(init_op_name)
         output_one = sess.run(
             out_name_map[output_name_2],
@@ -461,7 +461,7 @@ class ComposeGraphSpecTest(test.TestCase):
     variant_type = v1.dtype
 
     with tf.Graph().as_default() as reduce_graph:
-      variant = tf.placeholder(variant_type)
+      variant = tf.compat.v1.placeholder(variant_type)
       structure = tf.data.experimental.TensorStructure(tf.int64, shape=[])
       ds1 = tf.data.experimental.from_variant(variant, structure=structure)
       out = ds1.reduce(tf.constant(0, dtype=tf.int64), lambda x, y: x + y)
@@ -484,7 +484,7 @@ class ComposeGraphSpecTest(test.TestCase):
         arg_list)
 
     with composed_graph.as_default():
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         ten = sess.run(out_name_map[reduce_out_name])
     self.assertEqual(ten, 10)
 

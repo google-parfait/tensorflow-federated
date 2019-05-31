@@ -98,7 +98,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(binding.WhichOneof('binding'), 'tensor')
 
   def _assert_is_placeholder(self, x, name, dtype, shape, graph):
-    """Verifies that 'x' is a tf.placeholder with the given attributes."""
+    """Verifies that 'x' is a placeholder with the given attributes."""
     self.assertEqual(x.name, name)
     self.assertEqual(x.dtype, dtype)
     self.assertEqual(x.shape.ndims, len(shape))
@@ -259,8 +259,9 @@ class GraphUtilsTest(test.TestCase):
   @test.graph_mode_test
   def test_capture_result_with_int_placeholder(self):
     self.assertEqual(
-        str(self._checked_capture_result(tf.placeholder(tf.int32, shape=[]))),
-        'int32')
+        str(
+            self._checked_capture_result(
+                tf.compat.v1.placeholder(tf.int32, shape=[]))), 'int32')
 
   @test.graph_mode_test
   def test_capture_result_with_int_variable(self):
@@ -547,7 +548,8 @@ class GraphUtilsTest(test.TestCase):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(), [],
                                                  tf.float32)
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
-    self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
+    self.assertEqual(
+        tf.compat.v1.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list_definite_tensor(self):
@@ -557,7 +559,8 @@ class GraphUtilsTest(test.TestCase):
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(ds.output_shapes.as_list(),
                      tf.TensorShape([1, 10]).as_list())
-    self.assertEqual(tf.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
+    self.assertEqual(
+        tf.compat.v1.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list_definite_tuple(self):
@@ -573,7 +576,8 @@ class GraphUtilsTest(test.TestCase):
     ds = graph_utils.make_data_set_from_elements(tf.get_default_graph(),
                                                  [1, 2, 3, 4], tf.int32)
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
-    self.assertEqual(tf.Session().run(ds.reduce(0, lambda x, y: x + y)), 10)
+    self.assertEqual(
+        tf.compat.v1.Session().run(ds.reduce(0, lambda x, y: x + y)), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts(self):
@@ -586,7 +590,8 @@ class GraphUtilsTest(test.TestCase):
     }], [('a', tf.int32), ('b', tf.int32)])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
+        tf.compat.v1.Session().run(
+            ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ordered_dicts(self):
@@ -602,7 +607,8 @@ class GraphUtilsTest(test.TestCase):
     ], [('a', tf.int32), ('b', tf.int32)])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
+        tf.compat.v1.Session().run(
+            ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_lists(self):
@@ -612,7 +618,8 @@ class GraphUtilsTest(test.TestCase):
     ], [[tf.int32], [tf.int32]])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        tf.Session().run(ds.reduce(0, lambda x, y: x + tf.reduce_sum(y))), 10)
+        tf.compat.v1.Session().run(
+            ds.reduce(0, lambda x, y: x + tf.reduce_sum(y))), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_anonymous_tuples(self):
@@ -628,7 +635,8 @@ class GraphUtilsTest(test.TestCase):
     ], [('a', tf.int32), ('b', tf.int32)])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        tf.Session().run(ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
+        tf.compat.v1.Session().run(
+            ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_lists(self):
@@ -645,7 +653,7 @@ class GraphUtilsTest(test.TestCase):
     def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
 
-    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
+    self.assertEqual(tf.compat.v1.Session().run(ds.reduce(0, reduce_fn)), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_tensors(self):
@@ -662,7 +670,7 @@ class GraphUtilsTest(test.TestCase):
     def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
 
-    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
+    self.assertEqual(tf.compat.v1.Session().run(ds.reduce(0, reduce_fn)), 10)
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_dicts_with_np_array(self):
@@ -678,12 +686,12 @@ class GraphUtilsTest(test.TestCase):
     def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
 
-    self.assertEqual(tf.Session().run(ds.reduce(0, reduce_fn)), 10)
+    self.assertEqual(tf.compat.v1.Session().run(ds.reduce(0, reduce_fn)), 10)
 
   @test.graph_mode_test
   def test_fetch_value_in_session_with_string(self):
     x = tf.constant('abc')
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       y = graph_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), 'abc')
 
@@ -694,7 +702,7 @@ class GraphUtilsTest(test.TestCase):
             ('b', tf.constant(10)),
         ])),
     ])
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       y = graph_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=10>>')
 
@@ -910,7 +918,7 @@ class GraphUtilsTest(test.TestCase):
 
       result = foo()
 
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       self.assertEqual(sess.run(result), 2)
 
   def test_make_dataset_from_variant_tensor_constructs_dataset(self):
@@ -919,7 +927,7 @@ class GraphUtilsTest(test.TestCase):
           tf.data.experimental.to_variant(tf.data.Dataset.range(5)), tf.int64)
       self.assertIsInstance(ds, tf.compat.v2.data.Dataset)
       result = ds.reduce(np.int64(0), lambda x, y: x + y)
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         self.assertEqual(sess.run(result), 10)
 
   def test_make_dataset_from_variant_tensor_fails_with_bad_tensor(self):

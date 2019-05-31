@@ -47,13 +47,13 @@ class ComputationWrapperInstancesTest(test.TestCase):
     comp = foo._computation_proto  # pylint: disable=protected-access
 
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    x = tf.placeholder(tf.int32)
+    x = tf.compat.v1.placeholder(tf.int32)
     result = tf.import_graph_def(
         serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
         {comp.tensorflow.parameter.tensor.tensor_name: x},
         [comp.tensorflow.result.tensor.tensor_name])
     self.assertEqual(
-        list(tf.Session().run(result, feed_dict={x: n})
+        list(tf.compat.v1.Session().run(result, feed_dict={x: n})
              for n in [1, 20, 5, 10, 30]),
         [[False], [True], [False], [False], [True]])
 
@@ -67,8 +67,8 @@ class ComputationWrapperInstancesTest(test.TestCase):
     comp = foo._computation_proto  # pylint: disable=protected-access
 
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    x = tf.placeholder(tf.int32)
-    y = tf.placeholder(tf.int32)
+    x = tf.compat.v1.placeholder(tf.int32)
+    y = tf.compat.v1.placeholder(tf.int32)
     result = tf.import_graph_def(
         serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
             comp.tensorflow.parameter.tuple.element[0].tensor.tensor_name: x,

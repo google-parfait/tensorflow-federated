@@ -206,7 +206,7 @@ class TensorUtilsTest(test.TestCase):
   @test.graph_mode_test
   def test_metrics_sum(self):
     with self.session() as sess:
-      v = tf.placeholder(tf.float32)
+      v = tf.compat.v1.placeholder(tf.float32)
       sum_tensor, update_op = tensor_utils.metrics_sum(v)
       sess.run(tf.local_variables_initializer())
       sess.run(update_op, feed_dict={v: [1.0, 2.0]})
