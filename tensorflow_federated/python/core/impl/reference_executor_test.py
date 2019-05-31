@@ -145,7 +145,7 @@ class ReferenceExecutorTest(test.TestCase):
     v = reference_executor.ComputedValue(v_value, v_type)
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
-      with tf.Session(graph=graph) as sess:
+      with tf.compat.v1.Session(graph=graph) as sess:
         v_result = graph_utils.fetch_value_in_session(sess, stamped_v)
     self.assertTrue(np.array_equal(v_result, np.array([1, 2, 3])))
 
@@ -158,7 +158,7 @@ class ReferenceExecutorTest(test.TestCase):
         reference_executor.to_representation_for_type(v_val, v_type), v_type)
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
-      with tf.Session(graph=graph) as sess:
+      with tf.compat.v1.Session(graph=graph) as sess:
         v_val = graph_utils.fetch_value_in_session(sess, stamped_v)
     self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
 

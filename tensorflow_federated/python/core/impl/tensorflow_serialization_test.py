@@ -40,7 +40,7 @@ class TensorFlowSerializationTest(test.TestCase):
         str(type_serialization.deserialize_type(comp.type)), '( -> int32)')
     self.assertEqual(str(extra_type_spec), '( -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    results = tf.Session().run(
+    results = tf.compat.v1.Session().run(
         tf.import_graph_def(
             serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
             None, [comp.tensorflow.result.tensor.tensor_name]))
@@ -55,7 +55,7 @@ class TensorFlowSerializationTest(test.TestCase):
     self.assertEqual(str(extra_type_spec), '(int32 -> int32)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     parameter = tf.constant(1000)
-    results = tf.Session().run(
+    results = tf.compat.v1.Session().run(
         tf.import_graph_def(
             serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
             {comp.tensorflow.parameter.tensor.tensor_name: parameter},
@@ -104,7 +104,7 @@ class TensorFlowSerializationTest(test.TestCase):
     self.assertEqual(str(extra_type_spec), '(int64* -> int64)')
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     parameter = tf.data.Dataset.range(5)
-    results = tf.Session().run(
+    results = tf.compat.v1.Session().run(
         tf.import_graph_def(
             serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
                 comp.tensorflow.parameter.sequence.variant_tensor_name:

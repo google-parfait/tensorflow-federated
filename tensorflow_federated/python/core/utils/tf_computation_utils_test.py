@@ -57,7 +57,7 @@ class TfComputationUtilsTest(test.TestCase):
       v_dict = {'bar': v}
       c_dict = {'bar': c}
       op = tf_computation_utils.assign(v_dict, c_dict)
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       sess.run(v.initializer)
       sess.run(op)
       result = sess.run(v)
@@ -70,7 +70,7 @@ class TfComputationUtilsTest(test.TestCase):
       v_tuple = anonymous_tuple.AnonymousTuple([('bar', v)])
       c_tuple = anonymous_tuple.AnonymousTuple([('bar', c)])
       op = tf_computation_utils.assign(v_tuple, c_tuple)
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       sess.run(v.initializer)
       sess.run(op)
       result = sess.run(v)
@@ -81,7 +81,7 @@ class TfComputationUtilsTest(test.TestCase):
       v = tf.get_variable('foo', dtype=tf.int32, shape=[])
       c = tf.constant(10, dtype=tf.int32, shape=[])
       op = tf_computation_utils.assign(v, c)
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       sess.run(v.initializer)
       sess.run(op)
       result = sess.run(v)
@@ -92,7 +92,7 @@ class TfComputationUtilsTest(test.TestCase):
       c1 = {'foo': tf.constant(10, dtype=tf.int32, shape=[])}
       c2 = tf_computation_utils.identity(c1)
     self.assertIsNot(c2, c1)
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       result = sess.run(c2['foo'])
     self.assertEqual(result, 10)
 
@@ -103,7 +103,7 @@ class TfComputationUtilsTest(test.TestCase):
       ])
       c2 = tf_computation_utils.identity(c1)
     self.assertIsNot(c2, c1)
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       result = sess.run(c2.foo)
     self.assertEqual(result, 10)
 
@@ -112,7 +112,7 @@ class TfComputationUtilsTest(test.TestCase):
       c1 = tf.constant(10, dtype=tf.int32, shape=[])
       c2 = tf_computation_utils.identity(c1)
     self.assertIsNot(c2, c1)
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       result = sess.run(c2)
     self.assertEqual(result, 10)
 

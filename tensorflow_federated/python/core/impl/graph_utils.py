@@ -316,7 +316,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   parameter_type = computation_types.to_type(parameter_type)
   if isinstance(parameter_type, computation_types.TensorType):
     with graph.as_default():
-      placeholder = tf.placeholder(
+      placeholder = tf.compat.v1.placeholder(
           dtype=parameter_type.dtype,
           shape=parameter_type.shape,
           name=parameter_name)
@@ -344,7 +344,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
                     element=element_bindings)))
   elif isinstance(parameter_type, computation_types.SequenceType):
     with graph.as_default():
-      variant_tensor = tf.placeholder(tf.variant, shape=[])
+      variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
       ds = make_dataset_from_variant_tensor(variant_tensor,
                                             parameter_type.element)
     return (ds,
@@ -1101,7 +1101,7 @@ def fetch_value_in_session(sess, value):
     ValueError: If `value` is not a `tf.data.Dataset` or not a structure of
       tensors and anonoymous tuples.
   """
-  py_typecheck.check_type(sess, tf.Session)
+  py_typecheck.check_type(sess, tf.compat.v1.Session)
   # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
   # `tf.data.Dataset`s and what the API would look like to support this.
   if isinstance(value, DATASET_REPRESENTATION_TYPES):

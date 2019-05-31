@@ -338,7 +338,7 @@ def run_tensorflow(comp, arg):
     init_op, result = (
         tensorflow_deserialization.deserialize_and_call_tf_computation(
             comp.proto, stamped_arg, graph))
-  with tf.Session(graph=graph) as sess:
+  with tf.compat.v1.Session(graph=graph) as sess:
     if init_op:
       sess.run(init_op)
     result_val = graph_utils.fetch_value_in_session(sess, result)
@@ -970,7 +970,7 @@ class ReferenceExecutor(context_base.Context):
       # calling some helper method from Numpy.
       with tf.Graph().as_default() as graph:
         zeros = tf.constant(0, type_spec.dtype, type_spec.shape)
-        with tf.Session(graph=graph) as sess:
+        with tf.compat.v1.Session(graph=graph) as sess:
           zeros_val = sess.run(zeros)
       return ComputedValue(zeros_val, type_spec)
     elif isinstance(type_spec, computation_types.NamedTupleType):

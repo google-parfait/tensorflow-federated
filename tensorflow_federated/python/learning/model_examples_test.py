@@ -38,8 +38,8 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
                                        model.non_trainable_variables +
                                        model.local_variables)
     batch = model.make_batch(
-        x=tf.placeholder(tf.float32, shape=(None, feature_dim)),
-        y=tf.placeholder(tf.float32, shape=(None, 1)))
+        x=tf.compat.v1.placeholder(tf.float32, shape=(None, feature_dim)),
+        y=tf.compat.v1.placeholder(tf.float32, shape=(None, 1)))
     output_op = model.forward_pass(batch)
     metrics = model.report_local_outputs()
 
@@ -69,8 +69,8 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
                                        model.non_trainable_variables +
                                        model.local_variables)
     batch = model.make_batch(
-        x=tf.placeholder(tf.float32, shape=(None, dim)),
-        y=tf.placeholder(tf.float32, shape=(None, 1)))
+        x=tf.compat.v1.placeholder(tf.float32, shape=(None, dim)),
+        y=tf.compat.v1.placeholder(tf.float32, shape=(None, 1)))
 
     train_op = model.train_on_batch(batch)
     metrics = model.report_local_outputs()

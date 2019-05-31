@@ -170,7 +170,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
     tf.saved_model.save(saveable, outdir, signatures=cc_fn)
 
     graph = tf.Graph()
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       mgd = tf.saved_model.loader.load(
           sess, tags=[tf.saved_model.tag_constants.SERVING], export_dir=outdir)
   finally:
