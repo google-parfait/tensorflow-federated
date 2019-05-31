@@ -2176,6 +2176,24 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
 
 class UniquifyReferenceNamesTest(absltest.TestCase):
 
+  def test_renames_names_ignores_existing_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('a', data), ('a', data)], data)
+    comp = block
+
+    transformed_comp, modified = transformations.uniquify_reference_names(comp)
+
+    self.assertEqual(block.tff_repr, '(let a=data,a=data in data)')
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let _var1=data,_var2=data in data)')
+    self.assertTrue(modified)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(comp)
+
+    self.assertEqual(transformed_comp.tff_repr,
+                     '(let _var1=data,_var2=data in data)')
+    self.assertTrue(modified)
+
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       transformations.uniquify_reference_names(None)
