@@ -46,6 +46,7 @@ py_library(
     srcs = ["compiled_computation_transforms.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_constructing_utils",
         ":graph_utils",
         ":transformation_utils",
         ":type_serialization",

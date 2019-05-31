@@ -117,30 +117,33 @@ def construct_compiled_identity(type_signature):
   return computation_building_blocks.CompiledComputation(proto)
 
 
-def construct_compiled_input_duplication(type_signature):
-  """Constructs a compiled computation which duplicates its argument.
+def construct_compiled_input_replication(type_signature, n_replicas):
+  """Constructs a compiled computation which replicates its argument.
 
   Args:
     type_signature: Value convertible to `computation_types.Type` via
       `computation_types.to_type`. The type of the parameter of the constructed
       computation.
+    n_replicas: Integer, the number of times the argument is intended to be
+      replicated.
 
   Returns:
     An instance of `computation_building_blocks.CompiledComputation` encoding
     a function taking a single argument fo type `type_signature` and returning
-    two identical copies of this argument.
+    `n_replicas` identical copies of this argument.
 
   Raises:
     TypeError: If `type_signature` contains any types which cannot appear in
-      TensorFlow bindings.
+      TensorFlow bindings, or if `n_replicas` is not an integer.
   """
   type_spec = computation_types.to_type(type_signature)
   _check_allowed_in_tensorflow_bindings(type_spec)
+  py_typecheck.check_type(n_replicas, int)
   py_typecheck.check_type(type_spec, computation_types.Type)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
         'x', type_signature, graph)
-    result = [parameter_value, parameter_value]
+    result = [parameter_value] * n_replicas
     result_type, result_binding = graph_utils.capture_result_from_graph(
         result, graph)
 

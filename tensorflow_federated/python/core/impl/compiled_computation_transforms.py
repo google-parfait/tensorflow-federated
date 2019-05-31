@@ -29,6 +29,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
@@ -720,7 +721,7 @@ def compose_tensorflow_blocks(tf_comps):
 
 
 class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
-  r"""`TransformSpec` representing a composition of TF blocks."""
+  """`TransformSpec` representing a composition of TF blocks."""
 
   def should_transform(self, comp):
     return (isinstance(comp, computation_building_blocks.Call) and isinstance(
@@ -737,6 +738,40 @@ class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
       composed_fn = compose_tensorflow_blocks([function_1, function_2])
       return computation_building_blocks.Call(composed_fn, bottom_arg), True
     return comp, False
+
+
+class LambdaToCalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
+  """`TransformSpec`: Lambda calling a graph with replication of its argument.
+
+  This patterns comes about during TFF-to-TF parsing, as unnatural as it seems.
+  This will eventually be handled in full generality, but for now this is the
+  only instance of this particular evil pattern we need to deal with.
+  """
+
+  def should_transform(self, comp):
+    if not (isinstance(comp, computation_building_blocks.Lambda) and
+            isinstance(comp.result, computation_building_blocks.Call)):
+      return False
+    function = comp.result.function
+    argument = comp.result.argument
+    if not isinstance(function,
+                      computation_building_blocks.CompiledComputation):
+      return False
+    if not (isinstance(argument, computation_building_blocks.Tuple) and all(
+        isinstance(x, computation_building_blocks.Reference)
+        for x in argument)):
+      return False
+    return all(x.name == comp.parameter_name for x in argument)
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    preprocess_arg_comp = computation_constructing_utils.construct_compiled_input_replication(
+        comp.parameter_type, len(comp.result.argument))
+    logic_of_tf_comp = comp.result.function
+    composed_tf = compose_tensorflow_blocks(
+        [logic_of_tf_comp, preprocess_arg_comp])
+    return composed_tf, True
 
 
 class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
