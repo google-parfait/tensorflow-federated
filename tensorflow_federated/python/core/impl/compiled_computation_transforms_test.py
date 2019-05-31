@@ -1972,5 +1972,146 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
     self.assertEqual(executable([0, 1.]).b, 1.)
 
 
+def _create_simple_called_graph_on_replicated_arg(n_replicates=2):
+  tuple_identity = _create_compiled_computation(lambda x: x,
+                                                [tf.int32] * n_replicates)
+  ref_to_int = computation_building_blocks.Reference('x', tf.int32)
+  called_tuple_id = computation_building_blocks.Call(
+      tuple_identity,
+      computation_building_blocks.Tuple([ref_to_int] * n_replicates))
+  return computation_building_blocks.Lambda('x', tf.int32, called_tuple_id)
+
+
+class LambdaToCalledGraphOnReplicatedArgTest(absltest.TestCase):
+
+  def test_should_transform_identifies_correct_pattern(self):
+    pattern = _create_simple_called_graph_on_replicated_arg()
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    self.assertTrue(logic.should_transform(pattern))
+
+  def test_should_transform_identifies_longer_pattern(self):
+    pattern = _create_simple_called_graph_on_replicated_arg(n_replicates=5)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    self.assertTrue(logic.should_transform(pattern))
+
+  def test_should_not_transform_compiled_computation(self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    self.assertFalse(logic.should_transform(integer_square))
+
+  def test_should_not_transform_non_tuple_wrapped_lambda_to_called_graph(self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    int_ref = computation_building_blocks.Reference('x', tf.int32)
+    called_square = computation_building_blocks.Call(integer_square, int_ref)
+    lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32,
+                                                        called_square)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    self.assertFalse(logic.should_transform(lambda_wrapper))
+
+  def test_does_not_transform_compiled_computation(self):
+    integer_square = _create_compiled_computation(lambda x: x * x, tf.int32)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, mutated = logic.transform(integer_square)
+    self.assertEqual(parsed, integer_square)
+    self.assertFalse(mutated)
+
+  def test_transform_constructs_correct_root_node(self):
+    pattern = _create_simple_called_graph_on_replicated_arg()
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, mutated = logic.transform(pattern)
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+
+  def test_leaves_type_signature_alone(self):
+    pattern = _create_simple_called_graph_on_replicated_arg()
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, mutated = logic.transform(pattern)
+    self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
+
+  def test_executes_correctly_simple_case(self):
+    pattern = _create_simple_called_graph_on_replicated_arg()
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, _ = logic.transform(pattern)
+    executable = _to_computation_impl(parsed)
+    self.assertEqual(
+        executable(0), anonymous_tuple.AnonymousTuple([(None, 0), (None, 0)]))
+    self.assertEqual(
+        executable(1), anonymous_tuple.AnonymousTuple([(None, 1), (None, 1)]))
+    self.assertEqual(
+        executable(2), anonymous_tuple.AnonymousTuple([(None, 2), (None, 2)]))
+
+  def test_executes_correctly_several_replicates(self):
+    pattern = _create_simple_called_graph_on_replicated_arg(n_replicates=5)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, _ = logic.transform(pattern)
+    executable = _to_computation_impl(parsed)
+    result_on_0 = executable(0)
+
+    for k in range(5):
+      self.assertEqual(result_on_0[k], 0)
+    result_on_1 = executable(1)
+    for k in range(5):
+      self.assertEqual(result_on_1[k], 1)
+    self.assertLen(result_on_0, 5)
+    self.assertLen(result_on_1, 5)
+
+  def test_constructs_correct_type_signature_nested_tuple_argument(self):
+    slicer = _create_compiled_computation(lambda x: [x[0][0], x[1][1]],
+                                          [[tf.int32, tf.float32],
+                                           [tf.int32, tf.float32]])
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [tf.int32, tf.float32])
+
+    called_slicer = computation_building_blocks.Call(
+        slicer,
+        computation_building_blocks.Tuple([tuple_reference, tuple_reference]))
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [tf.int32, tf.float32],
+                                                        called_slicer)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, mutated = logic.transform(lambda_wrapper)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertTrue(mutated)
+
+  def test_constructs_correct_type_signature_nested_named_tuple_argument(self):
+    slicer = _create_compiled_computation(lambda x: [x[0][0], x[1][1]], [[
+        ('a', tf.int32), ('b', tf.float32)
+    ], [('a', tf.int32), ('b', tf.float32)]])
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [('a', tf.int32), ('b', tf.float32)])
+
+    called_slicer = computation_building_blocks.Call(
+        slicer,
+        computation_building_blocks.Tuple([tuple_reference, tuple_reference]))
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [('a', tf.int32),
+                                                         ('b', tf.float32)],
+                                                        called_slicer)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, mutated = logic.transform(lambda_wrapper)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertTrue(mutated)
+
+  def test_execution_nested_tuple_argument(self):
+    slicer = _create_compiled_computation(lambda x: [x[0][0], x[1][1]],
+                                          [[tf.int32, tf.float32],
+                                           [tf.int32, tf.float32]])
+    tuple_reference = computation_building_blocks.Reference(
+        'x', [tf.int32, tf.float32])
+
+    called_slicer = computation_building_blocks.Call(
+        slicer,
+        computation_building_blocks.Tuple([tuple_reference, tuple_reference]))
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [tf.int32, tf.float32],
+                                                        called_slicer)
+    logic = compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg()
+    parsed, mutated = logic.transform(lambda_wrapper)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertTrue(mutated)
+
+
 if __name__ == '__main__':
   absltest.main()
