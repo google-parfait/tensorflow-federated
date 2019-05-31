@@ -22,7 +22,6 @@ import itertools
 
 import six
 from six.moves import range
-from six.moves import zip
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -81,9 +80,8 @@ def extract_intrinsics(comp):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
   _check_has_unique_names(comp)
-
-  unbound_references = _get_unbound_references(comp)
   name_generator = computation_constructing_utils.unique_name_generator(comp)
+  unbound_references = _get_unbound_references(comp)
 
   def _contains_unbound_reference(comp, names):
     """Returns `True` if `comp` contains unbound references to `names`.
@@ -239,15 +237,15 @@ def extract_intrinsics(comp):
     """Returns a new computation with all intrinsics extracted."""
     variables = []
     elements = []
-    for element_name, element in anonymous_tuple.to_elements(comp):
+    for name, element in anonymous_tuple.to_elements(comp):
       if _is_called_intrinsic_or_block(element):
         variable_name = six.next(name_generator)
         variables.append((variable_name, element))
         ref = computation_building_blocks.Reference(variable_name,
                                                     element.type_signature)
-        elements.append((element_name, ref))
+        elements.append((name, ref))
       else:
-        elements.append((element_name, element))
+        elements.append((name, element))
     tup = computation_building_blocks.Tuple(elements)
     block = computation_building_blocks.Block(variables, tup)
     return _extract_from_block(block)
@@ -574,7 +572,7 @@ def merge_tuple_intrinsics(comp):
         comps[index].append(arg)
     return comps
 
-  def _transform_functional_args(names, comps):
+  def _transform_functional_args(comps):
     r"""Transforms the functional computations `comps`.
 
     Given a computation containing `n` called intrinsics with `m` arguments,
@@ -598,28 +596,27 @@ def merge_tuple_intrinsics(comp):
     transformed computation.
 
     Args:
-      names: a Python list of names.
       comps: a Python list of computations.
 
     Returns:
       A `computation_building_blocks.Block`.
     """
-    functions = computation_building_blocks.Tuple(zip(names, comps))
+    functions = computation_building_blocks.Tuple(comps)
     fn = computation_building_blocks.Reference('fn', functions.type_signature)
     arg_type = [element.type_signature.parameter for element in comps]
     arg = computation_building_blocks.Reference('arg', arg_type)
     elements = []
-    for index, name in enumerate(names):
+    for index in range(len(comps)):
       sel_fn = computation_building_blocks.Selection(fn, index=index)
       sel_arg = computation_building_blocks.Selection(arg, index=index)
       call = computation_building_blocks.Call(sel_fn, sel_arg)
-      elements.append((name, call))
+      elements.append(call)
     calls = computation_building_blocks.Tuple(elements)
     lam = computation_building_blocks.Lambda(arg.name, arg.type_signature,
                                              calls)
     return computation_building_blocks.Block([('fn', functions)], lam)
 
-  def _transform_non_functional_args(names, comps):
+  def _transform_non_functional_args(comps):
     r"""Transforms the non-functional computations `comps`.
 
     Given a computation containing `n` called intrinsics with `m` arguments,
@@ -635,20 +632,19 @@ def merge_tuple_intrinsics(comp):
     to the call of the transformed computation.
 
     Args:
-      names: A Python list of names.
       comps: A Python list of computations.
 
     Returns:
       A `computation_building_blocks.Block`.
     """
-    values = computation_building_blocks.Tuple(zip(names, comps))
+    values = computation_building_blocks.Tuple(comps)
     first_comp = comps[0]
     if isinstance(first_comp.type_signature, computation_types.FederatedType):
       return computation_constructing_utils.create_federated_zip(values)
     else:
       return values
 
-  def _transform_comps(names, elements):
+  def _transform_comps(elements):
     """Constructs a Python list of transformed computations.
 
     Given a computation containing `n` called intrinsics with `m` arguments,
@@ -663,7 +659,6 @@ def merge_tuple_intrinsics(comp):
     to the call of the transformed computation.
 
     Args:
-      names: A Python list of names.
       elements: A 2 dimentional Python list of computations.
 
     Returns:
@@ -672,9 +667,9 @@ def merge_tuple_intrinsics(comp):
     args = []
     for comps in elements:
       if isinstance(comps[0].type_signature, computation_types.FunctionType):
-        arg = _transform_functional_args(names, comps)
+        arg = _transform_functional_args(comps)
       else:
-        arg = _transform_non_functional_args(names, comps)
+        arg = _transform_non_functional_args(comps)
       args.append(arg)
     return args
 
@@ -683,23 +678,22 @@ def merge_tuple_intrinsics(comp):
     if not _should_transform(comp):
       return comp, False
     named_comps = anonymous_tuple.to_elements(comp)
-    names = [name for name, _ in named_comps]
     elements = _get_comps(comp)
-    comps = _transform_comps(names, elements)
+    comps = _transform_comps(elements)
     arg = computation_building_blocks.Tuple(comps)
     first_comp = comp[0]
     parameter_type = computation_types.to_type(arg.type_signature)
-    type_signature = [
-        (name, call.type_signature.member) for name, call in named_comps
-    ]
+    type_signature = [call.type_signature.member for _, call in named_comps]
     result_type = computation_types.FederatedType(
         type_signature, first_comp.type_signature.placement)
     intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
     intrinsic = computation_building_blocks.Intrinsic(first_comp.function.uri,
                                                       intrinsic_type)
     call = computation_building_blocks.Call(intrinsic, arg)
-    transformed_comp = computation_constructing_utils.create_federated_unzip(
-        call)
+    tup = computation_constructing_utils.create_federated_unzip(call)
+    names = [name for name, _ in named_comps]
+    transformed_comp = computation_constructing_utils.create_named_tuple(
+        tup, names)
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
@@ -896,8 +890,8 @@ def replace_selection_from_tuple_with_element(comp):
             isinstance(comp.source, computation_building_blocks.Tuple))
 
   def _get_index_from_name(selection_name, tuple_type_signature):
-    type_elements = anonymous_tuple.to_elements(tuple_type_signature)
-    return [x[0] for x in type_elements].index(selection_name)
+    named_type_signatures = anonymous_tuple.to_elements(tuple_type_signature)
+    return [x[0] for x in named_type_signatures].index(selection_name)
 
   def _transform(comp):
     if not _should_transform(comp):
@@ -928,7 +922,6 @@ def uniquify_compiled_computation_names(comp):
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
-
   name_generator = computation_constructing_utils.unique_name_generator(
       None, prefix='')
 
@@ -955,6 +948,8 @@ def uniquify_reference_names(comp):
     Returns a transformed version of comp inside of which all variable names
       are guaranteed to be unique.
   """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
   name_generator = computation_constructing_utils.unique_name_generator(None)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
@@ -1054,7 +1049,7 @@ def _get_unbound_references(comp):
   def _update(comp):
     """Updates the Python dict of references."""
     if isinstance(comp, computation_building_blocks.Reference):
-      references[comp] = set(comp.name)
+      references[comp] = set((comp.name,))
     elif isinstance(comp, computation_building_blocks.Block):
       references[comp] = set()
       names = []

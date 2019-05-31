@@ -1269,7 +1269,7 @@ def construct_named_federated_tuple(tuple_to_name, names_to_add):
       `computation_types.FederatedType` with `computation_types.NamedTupleType`
       member, to populate with names from `names_to_add`.
     names_to_add: Python `tuple` or `list` containing instances of type `str` or
-      `None`, the names to give to `tuple_type_to_name`.
+      `None`, the names to give to `tuple_to_name`.
 
   Returns:
     An instance of `computation_building_blocks.ComputationBuildingBlock`
@@ -1294,3 +1294,31 @@ def construct_named_federated_tuple(tuple_to_name, names_to_add):
   naming_fn = _construct_naming_function(tuple_to_name.type_signature.member,
                                          names_to_add)
   return create_federated_map_or_apply(naming_fn, tuple_to_name)
+
+
+def create_named_tuple(comp, names):
+  """Creates a computation that applies `names` to `comp`.
+
+  Args:
+    comp: A `computation_building_blocks.ComputationBuildingBlock` with a
+      `type_signature` of type `computation_types.NamedTupleType`.
+    names: Python `tuple` or `list` containing instances of type `str` or
+      `None`, the names to apply to `comp`.
+
+  Returns:
+    A `computation_building_blocks.ComputationBuildingBlock` representing a
+    tuple with the elements from `comp` and the names from `names` attached to
+    the `type_signature` of those elements.
+
+  Raises:
+    TypeError: If the types do not match.
+  """
+  py_typecheck.check_type(names, (list, tuple))
+  if not all(isinstance(x, (six.string_types, type(None))) for x in names):
+    raise TypeError('Expected `names` containing only instances of `str` or '
+                    '`None`, found {}'.format(names))
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp.type_signature, computation_types.NamedTupleType)
+  fn = _construct_naming_function(comp.type_signature, names)
+  return computation_building_blocks.Call(fn, comp)

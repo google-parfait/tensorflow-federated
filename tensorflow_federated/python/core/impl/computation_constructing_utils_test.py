@@ -1677,7 +1677,7 @@ class CreateSequenceSumTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
-class NameFederatedTupleTest(parameterized.TestCase):
+class ConstructNamedFederatedTupleTest(parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -1779,6 +1779,55 @@ class NameFederatedTupleTest(parameterized.TestCase):
     self.assertRegexMatch(
         named_tuple.tff_repr,
         [r'federated_(map|apply)\(<\(x -> <a=x\[0\],b=x\[1\]>\),data>\)'])
+
+
+class CreateNamedTupleTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_comp(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_named_tuple(None, ('a',))
+
+  def test_raises_type_error_with_wrong_comp_type(self):
+    comp = computation_building_blocks.Data('data', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_named_tuple(comp, ('a',))
+
+  def test_raises_type_error_with_wrong_names_type_string(self):
+    type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
+    comp = computation_building_blocks.Data('data', type_signature)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_named_tuple(comp, 'a')
+
+  def test_raises_type_error_with_wrong_names_type_ints(self):
+    type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
+    comp = computation_building_blocks.Data('data', type_signature)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_named_tuple(comp, 'a')
+
+  def test_raises_value_error_with_wrong_lengths(self):
+    type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
+    comp = computation_building_blocks.Data('data', type_signature)
+    with self.assertRaises(ValueError):
+      computation_constructing_utils.create_named_tuple(comp, ('a',))
+
+  def test_creates_named_tuple_from_unamed_tuple(self):
+    type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
+    comp = computation_building_blocks.Data('data', type_signature)
+    named_comp = computation_constructing_utils.create_named_tuple(
+        comp, ('a', 'b'))
+    expected_type_signature = computation_types.NamedTupleType(
+        (('a', tf.int32), ('b', tf.int32)))
+    self.assertEqual(named_comp.type_signature, expected_type_signature)
+
+  def test_creates_named_tuple_from_named_tuple(self):
+    type_signature = computation_types.NamedTupleType(
+        (('a', tf.int32), ('b', tf.int32)))
+    comp = computation_building_blocks.Data('data', type_signature)
+    named_comp = computation_constructing_utils.create_named_tuple(
+        comp, ('c', 'd'))
+    expected_type_signature = computation_types.NamedTupleType(
+        (('c', tf.int32), ('d', tf.int32)))
+    self.assertEqual(named_comp.type_signature, expected_type_signature)
 
 
 if __name__ == '__main__':
