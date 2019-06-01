@@ -26,6 +26,7 @@ import tensorflow as tf
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_evaluation
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 
@@ -114,7 +115,7 @@ class FederatedEvaluationTest(test.TestCase):
           loss='mean_squared_error',
           optimizer='sgd',
           metrics=[tf.keras.metrics.Accuracy()])
-      return model_utils.from_compiled_keras_model(
+      return keras_utils.from_compiled_keras_model(
           keras_model,
           dummy_batch={
               'x': np.zeros((1, 1), np.float32),
