@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
@@ -154,7 +155,7 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
           optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[])
-      return model_utils.from_compiled_keras_model(keras_model, dummy_batch)
+      return keras_utils.from_compiled_keras_model(keras_model, dummy_batch)
 
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_fn)

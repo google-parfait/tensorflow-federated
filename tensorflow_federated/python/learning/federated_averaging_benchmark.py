@@ -28,8 +28,8 @@ import tensorflow as tf
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
 
 BATCH_SIZE = 100
 
@@ -218,7 +218,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
           loss=tf.keras.losses.SparseCategoricalCrossentropy(),
           optimizer=tf.keras.optimizers.SGD(0.1))
 
-      return model_utils.from_compiled_keras_model(model,
+      return keras_utils.from_compiled_keras_model(model,
                                                    federated_train_data[0][0])
 
     iterative_process = federated_averaging.build_federated_averaging_process(
