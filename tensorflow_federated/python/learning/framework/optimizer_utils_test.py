@@ -144,10 +144,12 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
 
     server_state = optimizer_utils.server_init(model_fn, optimizer_fn, (), ())
-    train_vars = server_state.model.trainable
-    self.assertAllClose(train_vars['a'].numpy(), np.array([[0.0], [0.0]]))
-    self.assertEqual(train_vars['b'].numpy(), 0.0)
-    self.assertEqual(server_state.model.non_trainable['c'].numpy(), 0.0)
+    model_vars = self.evaluate(server_state.model)
+    train_vars = model_vars.trainable
+    self.assertLen(train_vars, 2)
+    self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
+    self.assertEqual(train_vars['b'], 0.0)
+    self.assertDictEqual(model_vars.non_trainable, {'c': 0.0})
     self.assertLen(server_state.optimizer_state, num_optimizer_vars)
     weights_delta = tensor_utils.to_odict({
         'a': tf.constant([[1.0], [0.0]]),
@@ -157,12 +159,14 @@ class ServerTest(test.TestCase, parameterized.TestCase):
                                                        weights_delta, model_fn,
                                                        optimizer_fn)
 
-    train_vars = server_state.model.trainable
+    model_vars = self.evaluate(server_state.model)
+    train_vars = model_vars.trainable
     # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
     # so updated_val=0.1
-    self.assertAllClose(train_vars['a'].numpy(), [[updated_val], [0.0]])
-    self.assertAllClose(train_vars['b'].numpy(), updated_val)
-    self.assertEqual(server_state.model.non_trainable['c'].numpy(), 0.0)
+    self.assertLen(train_vars, 2)
+    self.assertAllClose(train_vars['a'], [[updated_val], [0.0]])
+    self.assertAllClose(train_vars['b'], updated_val)
+    self.assertDictEqual(model_vars.non_trainable, {'c': 0.0})
 
   @test.graph_mode_test
   def test_server_graph_mode(self):

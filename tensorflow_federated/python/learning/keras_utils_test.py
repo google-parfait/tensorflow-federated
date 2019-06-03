@@ -340,8 +340,9 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
     orig_model_output = tff_model.forward_pass(batch)
     loaded_model_output = loaded_model.forward_pass(batch)
-    self.assertAlmostEqual(orig_model_output.loss.numpy(),
-                           loaded_model_output.loss.numpy())
+    self.assertAlmostEqual(
+        self.evaluate(orig_model_output.loss),
+        self.evaluate(loaded_model_output.loss))
 
   def test_keras_model_using_batch_norm(self):
     model = model_examples.build_conv_batch_norm_keras_model()

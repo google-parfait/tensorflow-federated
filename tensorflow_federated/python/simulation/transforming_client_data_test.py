@@ -141,11 +141,12 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       client = match.group(1)
       index = int(match.group(2))
       for i, actual in enumerate(tf_dataset):
+        actual = self.evaluate(actual)
         expected = {k: v[i] for k, v in six.iteritems(TEST_DATA[client])}
         expected['x'] = expected['x'] + 10 * index
         self.assertCountEqual(actual, expected)
         for k, v in six.iteritems(actual):
-          self.assertAllEqual(v.numpy(), expected[k])
+          self.assertAllEqual(v, expected[k])
 
   def test_create_tf_dataset_from_all_clients(self):
     client_data = hdf5_client_data.HDF5ClientData(
@@ -168,8 +169,8 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
           expected_examples.append(example)
 
     for actual in tf_dataset:
+      actual = self.evaluate(actual)
       expected = expected_examples.pop(0)
-      actual = tf.nest.map_structure(lambda t: t.numpy(), actual)
       self.assertCountEqual(actual, expected)
     self.assertEmpty(expected_examples)
 

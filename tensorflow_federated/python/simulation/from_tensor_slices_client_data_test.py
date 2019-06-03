@@ -34,7 +34,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
     self.assertEqual(client_data.output_shapes, ())
 
     def as_list(dataset):
-      return [x.numpy() for x in dataset]
+      return [self.evaluate(x) for x in dataset]
 
     self.assertEqual(
         as_list(client_data.create_tf_dataset_for_client('a')), [1, 2, 3])

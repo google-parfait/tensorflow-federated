@@ -190,7 +190,8 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
       actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
-      self.assertEqual(actual_num_examples.numpy(), expected_num_examples)
+      self.assertEqual(
+          self.evaluate(actual_num_examples), expected_num_examples)
 
       # Assert the actual examples provided are the same.
       expected_examples = [
@@ -198,12 +199,13 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       ]
       for actual in tf_dataset:
         expected = expected_examples.pop(0)
+        actual = self.evaluate(actual)
         self.assertLen(actual, len(expected))
         for i, e in enumerate(expected):
           if isinstance(e, list):
-            self.assertSequenceAlmostEqual(actual[i].numpy(), e, places=4)
+            self.assertSequenceAlmostEqual(actual[i], e, places=4)
           else:
-            self.assertAlmostEqual(actual[i].numpy(), e, places=4)
+            self.assertAlmostEqual(actual[i], e, places=4)
       self.assertEmpty(expected_examples)
 
   def test_create_tf_dataset_from_all_clients(self):
@@ -215,12 +217,13 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     # Assert the actual examples provided are the same.
     for actual in tf_dataset:
       expected = expected_examples.pop(0)
+      actual = self.evaluate(actual)
       self.assertLen(actual, len(expected))
       for i, e in enumerate(expected):
         if isinstance(e, list):
-          self.assertSequenceAlmostEqual(actual[i].numpy(), e, places=4)
+          self.assertSequenceAlmostEqual(actual[i], e, places=4)
         else:
-          self.assertAlmostEqual(actual[i].numpy(), e, places=4)
+          self.assertAlmostEqual(actual[i], e, places=4)
     self.assertEmpty(expected_examples)
 
   def test_build_client_file_dict(self):

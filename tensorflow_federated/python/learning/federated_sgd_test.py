@@ -199,8 +199,8 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
     first_state, metric_outputs = iterative_process.next(
         server_state, federated_ds)
     self.assertEqual(
-        tf.reduce_sum(first_state.model.trainable.a).numpy() +
-        tf.reduce_sum(first_state.model.trainable.b).numpy(), 0)
+        self.evaluate(tf.reduce_sum(first_state.model.trainable.a)) +
+        self.evaluate(tf.reduce_sum(first_state.model.trainable.b)), 0)
     self.assertEqual(metric_outputs.num_examples, 0)
     self.assertTrue(tf.is_nan(metric_outputs.loss))
 
