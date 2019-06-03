@@ -62,7 +62,8 @@ class TestModel(model.Model):
   def forward_pass(self, batch, training=True):
     assert not training
     num_over = tf.reduce_sum(
-        tf.to_float(tf.greater(batch['temp'], self._variables.max_temp)))
+        tf.cast(
+            tf.greater(batch['temp'], self._variables.max_temp), tf.float32))
     tf.assign_add(self._variables.num_over, num_over)
     loss = tf.constant(0.0)
     predictions = tf.zeros_like(batch['temp'])
