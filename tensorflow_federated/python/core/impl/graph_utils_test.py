@@ -516,8 +516,8 @@ class GraphUtilsTest(test.TestCase):
     type_spec = computation_types.TensorType(tf.float32,
                                              [None, 10, None, 10, 10])
     elem = graph_utils._make_dummy_element_for_type_spec(type_spec)
-    correct_elem = np.zeros([1, 10, 1, 10, 10], np.float32)
-    self.assertEqual(elem.tolist(), correct_elem.tolist())
+    correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
+    self.assertTrue(np.array_equal(elem, correct_elem))
 
   def test_make_dummy_element_NamedTupleType(self):
     tensor1 = computation_types.TensorType(tf.float32, [None, 10, None, 10, 10])
@@ -528,16 +528,16 @@ class GraphUtilsTest(test.TestCase):
                                                      ('y', tensor2)])
     elem = graph_utils._make_dummy_element_for_type_spec(namedtuple)
     correct_list = [
-        np.zeros([1, 10, 1, 10, 10], np.float32),
-        np.zeros([10, 1, 10], np.int32)
+        np.zeros([0, 10, 0, 10, 10], np.float32),
+        np.zeros([10, 0, 10], np.int32)
     ]
     self.assertEqual(len(elem), len(correct_list))
     for k in range(len(elem)):
-      self.assertEqual(elem[k].tolist(), correct_list[k].tolist())
+      self.assertTrue(np.array_equal(elem[k], correct_list[k]))
     unnamed_elem = graph_utils._make_dummy_element_for_type_spec(unnamedtuple)
     self.assertEqual(len(unnamed_elem), len(correct_list))
     for k in range(len(unnamed_elem)):
-      self.assertEqual(unnamed_elem[k].tolist(), correct_list[k].tolist())
+      self.assertTrue(np.array_equal(unnamed_elem[k], correct_list[k]))
 
   def test_nested_structures_equal(self):
     self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
@@ -558,7 +558,7 @@ class GraphUtilsTest(test.TestCase):
         computation_types.TensorType(tf.float32, [None, 10]))
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(ds.output_shapes.as_list(),
-                     tf.TensorShape([1, 10]).as_list())
+                     tf.TensorShape([0, 10]).as_list())
     self.assertEqual(
         tf.compat.v1.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
@@ -570,7 +570,7 @@ class GraphUtilsTest(test.TestCase):
             computation_types.TensorType(tf.float32, [None, 5])
         ])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
-    self.assertEqual(ds.output_shapes, ([1, 10], [1, 5]))
+    self.assertEqual(ds.output_shapes, ([0, 10], [0, 5]))
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ints(self):
@@ -997,6 +997,40 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(x[0], 0)
     self.assertEqual(x[1][0], list(range(5)))
     self.assertEqual(x[1][1], list(range(5)))
+
+  def test_fetch_value_with_empty_dataset_and_tensors(self):
+
+    def return_dataset():
+      ds1 = tf.data.Dataset.from_tensor_slices([[1, 1], [1, 1]])
+      return [tf.constant([0., 0.]), ds1.batch(5).take(0)]
+
+    executable_return_dataset = computation_impl.ComputationImpl(
+        tensorflow_serialization.serialize_py_fn_as_tf_computation(
+            return_dataset, None, context_stack_impl.context_stack)[0],
+        context_stack_impl.context_stack)
+
+    x = executable_return_dataset()
+    self.assertEqual(x[0][0], 0.)
+    self.assertEqual(x[0][1], 0.)
+    self.assertEqual(str(x[1][0]), str(np.zeros([0, 2], dtype=np.int32)))
+
+  def test_fetch_value_with_empty_structured_dataset_and_tensors(self):
+
+    def return_dataset():
+      ds1 = tf.data.Dataset.from_tensor_slices(
+          collections.OrderedDict([('a', [1, 1]), ('b', [1, 1])]))
+      return [tf.constant([0., 0.]), ds1.batch(5).take(0)]
+
+    executable_return_dataset = computation_impl.ComputationImpl(
+        tensorflow_serialization.serialize_py_fn_as_tf_computation(
+            return_dataset, None, context_stack_impl.context_stack)[0],
+        context_stack_impl.context_stack)
+
+    x = executable_return_dataset()
+    self.assertEqual(x[0][0], 0.)
+    self.assertEqual(x[0][1], 0.)
+    self.assertTrue(np.array_equal(x[1][0].a, np.zeros([0], dtype=np.int32)))
+    self.assertTrue(np.array_equal(x[1][0].b, np.zeros([0], dtype=np.int32)))
 
 
 if __name__ == '__main__':

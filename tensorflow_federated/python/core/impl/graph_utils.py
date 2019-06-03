@@ -847,8 +847,8 @@ def _make_dummy_element_for_type_spec(type_spec):
   to signify compatibility with batches of any size). However a concrete
   structure (like the ndarray) must have specified sizes for its dimensions.
   So we construct a dummy element where any `None` dimensions of the shape
-  of `type_spec` are replaced with the value 1. This function therefore
-  returns a dummy element of minimal nonzero size which matches `type_spec`.
+  of `type_spec` are replaced with the value 0. This function therefore
+  returns a dummy element of minimal size which matches `type_spec`.
 
   Args:
     type_spec: Instance of `computation_types.Type`, or something convertible to
@@ -858,13 +858,13 @@ def _make_dummy_element_for_type_spec(type_spec):
     Returns possibly nested `numpy ndarray`s containing all zeros: a single
     `ndarray` if `type_spec` is a `computation_types.TensorType` and a list
     of such arrays if  `type_spec` is `computation_types.NamedTupleType`.
-    This data structure is of the minimal nonzero size necessary in order to be
+    This data structure is of the minimal size necessary in order to be
     compatible with `type_spec`.
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    dummy_shape = [x if x is not None else 1 for x in type_spec.shape]
+    dummy_shape = [x if x is not None else 0 for x in type_spec.shape]
     return np.zeros(dummy_shape, type_spec.dtype.as_numpy_dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
@@ -1121,7 +1121,17 @@ def fetch_value_in_session(sess, value):
     flat_tensors = []
     for idx, v in enumerate(flattened_value):
       if isinstance(v, DATASET_REPRESENTATION_TYPES):
-        dataset_results[idx] = fetch_value_in_session(sess, v)
+        dataset_tensors = fetch_value_in_session(sess, v)
+        if not dataset_tensors:
+          # An empty list has been returned; we must pack the shape information
+          # back in or the result won't typecheck.
+          output_shapes = tf.compat.v1.data.get_output_shapes(v)
+          output_types = tf.compat.v1.data.get_output_types(v)
+          zipped_elems = tf.nest.map_structure(lambda x, y: (x, y),
+                                               output_types, output_shapes)
+          dummy_elem = _make_dummy_element_for_type_spec(zipped_elems)
+          dataset_tensors = [dummy_elem]
+        dataset_results[idx] = dataset_tensors
       elif tf.is_tensor(v):
         flat_tensors.append(v)
       else:
