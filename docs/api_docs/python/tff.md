@@ -7,10 +7,10 @@
 
 # Module: tff
 
-TensorFlow Federated library.
+TensorFlow Federated Library.
 
 Defined in
-[`__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/__init__.py).
+[`__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -124,6 +124,5 @@ the abstract class <a href="./tff/Value.md"><code>tff.Value</code></a>.
 
 ## Other Members
 
-<h3 id="CLIENTS"><code>CLIENTS</code></h3>
-
-<h3 id="SERVER"><code>SERVER</code></h3>
+*   `CLIENTS` <a id="CLIENTS"></a>
+*   `SERVER` <a id="SERVER"></a>

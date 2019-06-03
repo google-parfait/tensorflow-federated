@@ -8,7 +8,7 @@
 Interfaces for extensions, selectively lifted out of `impl`.
 
 Defined in
-[`core/framework/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/framework/__init__.py).
+[`python/core/framework/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/framework/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 

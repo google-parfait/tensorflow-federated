@@ -15,7 +15,7 @@
 A container for the trainable and non-trainable variables of a `Model`.
 
 Defined in
-[`learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+[`python/learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
 
 <!-- Placeholder for "Used in" -->
 

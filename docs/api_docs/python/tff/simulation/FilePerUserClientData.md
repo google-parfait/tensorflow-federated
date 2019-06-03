@@ -19,7 +19,7 @@ A `tf.simulation.ClientData` that maps a set of files to a dataset.
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
 Defined in
-[`simulation/file_per_user_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py).
+[`python/simulation/file_per_user_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py).
 
 <!-- Placeholder for "Used in" -->
 

@@ -18,7 +18,7 @@ ClientData based on `tf.data.Dataset.from_tensor_slices`.
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
 Defined in
-[`simulation/from_tensor_slices_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/from_tensor_slices_client_data.py).
+[`python/simulation/from_tensor_slices_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/from_tensor_slices_client_data.py).
 
 <!-- Placeholder for "Used in" -->
 

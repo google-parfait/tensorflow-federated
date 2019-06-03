@@ -16,7 +16,7 @@ tff.learning.build_federated_averaging_process(
 ```
 
 Defined in
-[`learning/federated_averaging.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py).
+[`python/learning/federated_averaging.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py).
 
 <!-- Placeholder for "Used in" -->
 

@@ -15,7 +15,7 @@ tff.utils.assign(
 ```
 
 Defined in
-[`core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
+[`python/core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
 

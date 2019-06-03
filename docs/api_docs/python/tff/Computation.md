@@ -14,7 +14,7 @@ An abstract interface for all classes that represent computations.
 Inherits From: [`TypedObject`](../tff/TypedObject.md)
 
 Defined in
-[`core/api/computation_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py).
+[`python/core/api/computation_base.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py).
 
 <!-- Placeholder for "Used in" -->
 

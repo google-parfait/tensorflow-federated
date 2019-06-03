@@ -13,7 +13,7 @@
 A process that includes an initialization and iterated computation.
 
 Defined in
-[`core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
+[`python/core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
 
 <!-- Placeholder for "Used in" -->
 

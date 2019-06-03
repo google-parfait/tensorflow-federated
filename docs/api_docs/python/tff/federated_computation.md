@@ -12,7 +12,7 @@ tff.federated_computation(*args)
 ```
 
 Defined in
-[`core/api/computations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py).
+[`python/core/api/computations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py).
 
 <!-- Placeholder for "Used in" -->
 
