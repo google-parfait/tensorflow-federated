@@ -15,7 +15,7 @@ tff.framework.is_assignable_from(
 ```
 
 Defined in
-[`core/impl/type_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py).
+[`python/core/impl/type_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py).
 
 <!-- Placeholder for "Used in" -->
 

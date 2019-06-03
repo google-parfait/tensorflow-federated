@@ -15,7 +15,7 @@
 Object to hold a dataset and a mapping of clients to examples.
 
 Defined in
-[`simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
+[`python/simulation/client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py).
 
 <!-- Placeholder for "Used in" -->
 

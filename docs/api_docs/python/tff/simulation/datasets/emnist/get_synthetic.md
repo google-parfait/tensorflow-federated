@@ -12,7 +12,7 @@ tff.simulation.datasets.emnist.get_synthetic(num_clients=2)
 ```
 
 Defined in
-[`simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
+[`python/simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
 
 <!-- Placeholder for "Used in" -->
 

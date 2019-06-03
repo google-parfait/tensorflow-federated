@@ -20,7 +20,7 @@ backed by an HDF5 file.
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
 Defined in
-[`simulation/hdf5_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py).
+[`python/simulation/hdf5_client_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py).
 
 <!-- Placeholder for "Used in" -->
 

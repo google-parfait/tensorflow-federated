@@ -12,7 +12,7 @@ tff.simulation.datasets.shakespeare.load_data(cache_dir=None)
 ```
 
 Defined in
-[`simulation/datasets/shakespeare/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/load_data.py).
+[`python/simulation/datasets/shakespeare/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/load_data.py).
 
 <!-- Placeholder for "Used in" -->
 

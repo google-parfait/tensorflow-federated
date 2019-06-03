@@ -14,7 +14,7 @@
 Structure for outputs returned from clients during federated optimization.
 
 Defined in
-[`learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
+[`python/learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
 
 <!-- Placeholder for "Used in" -->
 

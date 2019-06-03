@@ -13,13 +13,14 @@ A structure that holds the output of a
 <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
 Defined in
-[`learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
+[`python/learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
 
 <!-- Placeholder for "Used in" -->
 
 NOTE: All fields are optional (may be None).
 
--   `loss`: The scalar mean loss on the examples in the batch.
+-   `loss`: The scalar mean loss on the examples in the batch. If the model has
+    multiple losses, it is the sum of all the individual losses.
 -   `predictions`: Tensor of predictions on the examples. The first dimension
     must be the same size (the size of the batch).
 

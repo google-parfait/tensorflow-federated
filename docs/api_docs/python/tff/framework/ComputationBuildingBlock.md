@@ -17,7 +17,7 @@ The abstract base class for abstractions in the TFF's internal language.
 Inherits From: [`TypedObject`](../../tff/TypedObject.md)
 
 Defined in
-[`core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
+[`python/core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
 
 <!-- Placeholder for "Used in" -->
 
