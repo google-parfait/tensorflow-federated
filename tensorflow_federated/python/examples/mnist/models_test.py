@@ -50,10 +50,8 @@ class MnistTest(tf.test.TestCase):
     keras_model = models.create_keras_model(compile_model=True)
     server_state = tff.learning.state_with_new_model_weights(
         server_state,
-        trainable_weights=[v.numpy() for v in keras_model.trainable_weights],
-        non_trainable_weights=[
-            v.numpy() for v in keras_model.non_trainable_weights
-        ])
+        trainable_weights=self.evaluate(keras_model.trainable_weights),
+        non_trainable_weights=self.evaluate(keras_model.non_trainable_weights))
 
     def deterministic_batch():
       return Batch(
@@ -100,8 +98,7 @@ class MnistTest(tf.test.TestCase):
       return models.keras_dataset_from_emnist(dataset).repeat(2).batch(2)
 
     train_data = [client_data()]
-    sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                         next(iter(train_data[0])))
+    sample_batch = self.evaluate(next(iter(train_data[0])))
 
     def model_fn():
       return tff.learning.from_compiled_keras_model(

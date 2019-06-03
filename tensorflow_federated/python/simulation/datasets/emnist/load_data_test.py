@@ -41,9 +41,10 @@ class LoadDataTest(tf.test.TestCase, absltest.TestCase):
         collections.OrderedDict([('pixels', (28, 28)), ('label', ())]))
 
     for client_id in client_data.client_ids:
-      data = list(client_data.create_tf_dataset_for_client(client_id))
-      images = [x['pixels'].numpy() for x in data]
-      labels = [x['label'].numpy() for x in data]
+      data = self.evaluate(
+          list(client_data.create_tf_dataset_for_client(client_id)))
+      images = [x['pixels'] for x in data]
+      labels = [x['label'] for x in data]
       self.assertLen(labels, 10)
       self.assertCountEqual(labels, list(range(10)))
       self.assertLen(images, 10)
