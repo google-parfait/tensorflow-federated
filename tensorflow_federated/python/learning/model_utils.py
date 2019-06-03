@@ -100,6 +100,7 @@ class ModelWeights(
     assign_weights(keras_model.non_trainable_weights, self.non_trainable)
 
 
+# TODO(b/135639523): Update visibility of this target for use by internal users.
 def enhance(model):
   """Wraps a `tff.learning.Model` as an `EnhancedModel`.
 

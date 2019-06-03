@@ -133,6 +133,7 @@ py_test(
 py_library(
     name = "model_utils",
     srcs = ["model_utils.py"],
+    visibility = ["//third_party/tensorflow_federated/python/learning:__subpackages__"],
     deps = [
         ":model",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
