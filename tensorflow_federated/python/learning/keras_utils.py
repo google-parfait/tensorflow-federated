@@ -73,8 +73,7 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
 
 
 def _preprocess_dummy_batch(dummy_batch):
-  dummy_tensors = tf.nest.map_structure(tf.convert_to_tensor_or_sparse_tensor,
-                                        dummy_batch)
+  dummy_tensors = tf.nest.map_structure(tf.convert_to_tensor, dummy_batch)
   if py_typecheck.is_named_tuple(dummy_tensors):
     dummy_tensors = dummy_tensors._asdict()
   if not isinstance(dummy_tensors, collections.OrderedDict):
