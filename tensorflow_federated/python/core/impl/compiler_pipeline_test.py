@@ -45,7 +45,7 @@ class CompilerPipelineTest(absltest.TestCase):
       return intrinsics.federated_sum(
           intrinsics.federated_map(
               computations.tf_computation(
-                  lambda x, y: tf.to_int32(tf.greater(x, y)),
+                  lambda x, y: tf.cast(tf.greater(x, y), tf.int32),
                   [tf.float32, tf.float32]),
               [temperatures,
                intrinsics.federated_broadcast(threshold)]))

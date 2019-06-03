@@ -896,7 +896,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.tf_computation(tf.int32, tf.float32)
     def foo(x, y):
-      return x + tf.to_int32(y > 0.5)
+      return x + tf.cast(y > 0.5, tf.int32)
 
     @computations.federated_computation(
         computation_types.SequenceType(tf.float32))
@@ -929,7 +929,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.tf_computation(tf.int32, tf.float32)
     def foo(x, y):
-      return x + tf.to_int32(y > 0.5)
+      return x + tf.cast(y > 0.5, tf.int32)
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
@@ -1022,7 +1022,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.tf_computation(accu_type)
     def report(a):
-      return tf.to_float(a.sum) / tf.to_float(a.n)
+      return tf.cast(a.sum, tf.float32) / tf.cast(a.n, tf.float32)
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))

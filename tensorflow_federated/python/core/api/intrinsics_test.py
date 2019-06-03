@@ -317,7 +317,7 @@ class IntrinsicsTest(parameterized.TestCase):
     # The operator to use during the final stage simply computes the ratio.
     @tff.tf_computation(accumulator_type)
     def report(accu):
-      return tf.to_float(accu.total) / tf.to_float(accu.count)
+      return tf.cast(accu.total, tf.float32) / tf.cast(accu.count, tf.float32)
 
     @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
     def foo(x):
@@ -346,8 +346,9 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(temperatures, threshold):
       return tff.federated_sum(
           tff.federated_map(
-              tff.tf_computation(lambda x, y: tf.to_int32(tf.greater(x, y)),
-                                 [tf.float32, tf.float32]),
+              tff.tf_computation(
+                  lambda x, y: tf.cast(tf.greater(x, y), tf.int32),
+                  [tf.float32, tf.float32]),
               [temperatures, tff.federated_broadcast(threshold)]))
 
     self.assertEqual(
