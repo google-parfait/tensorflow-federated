@@ -926,6 +926,31 @@ class CreateFederatedMapTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
+class CreateFederatedMapAllEqualTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_fn(self):
+    arg = computation_building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_map_all_equal(None, arg)
+
+  def test_raises_type_error_with_none_arg(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_federated_map_all_equal(fn, None)
+
+  def test_returns_federated_map_all_equal(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    arg_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    arg = computation_building_blocks.Data('y', arg_type)
+    comp = computation_constructing_utils.create_federated_map_all_equal(
+        fn, arg)
+    self.assertEqual(comp.tff_repr, 'federated_map_all_equal(<(x -> x),y>)')
+    self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
+
+
 class CreateFederatedMapOrApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):

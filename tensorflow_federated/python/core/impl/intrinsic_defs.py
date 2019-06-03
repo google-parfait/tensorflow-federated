@@ -224,7 +224,7 @@ FEDERATED_BROADCAST = IntrinsicDef(
         parameter=type_constructors.at_server(
             computation_types.AbstractType('T')),
         result=type_constructors.at_clients(
-            computation_types.AbstractType('T'), True)))
+            computation_types.AbstractType('T'), all_equal=True)))
 
 # Materializes client items as a sequence on the server.
 #
@@ -253,6 +253,25 @@ FEDERATED_MAP = IntrinsicDef(
         ],
         result=type_constructors.at_clients(
             computation_types.AbstractType('U'))))
+
+# Maps member constituents of a client all equal value pointwise using a given
+# mapping function that operates independently on each client, as a result of
+# this independence, the value is only garunteed to be all equal if the function
+# is deterministic.
+#
+# Type signature: <(T->U),T@CLIENTS> -> U@CLIENTS
+FEDERATED_MAP_ALL_EQUAL = IntrinsicDef(
+    'FEDERATED_MAP_ALL_EQUAL', 'federated_map_all_equal',
+    computation_types.FunctionType(
+        parameter=[
+            computation_types.FunctionType(
+                computation_types.AbstractType('T'),
+                computation_types.AbstractType('U')),
+            type_constructors.at_clients(
+                computation_types.AbstractType('T'), all_equal=True),
+        ],
+        result=type_constructors.at_clients(
+            computation_types.AbstractType('U'), all_equal=True)))
 
 # Computes a simple (equally weighted) mean of client items. Only supported
 # for numeric tensor types, or composite structures made up of numeric types.

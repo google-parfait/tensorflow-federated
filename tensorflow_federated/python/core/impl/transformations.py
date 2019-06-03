@@ -67,8 +67,9 @@ def extract_intrinsics(comp):
   bound.
 
   Args:
-    comp: The computation building block in which to perform the extraction. The
-      names of lambda parameters and locals in blocks in `comp` must be unique.
+    comp: The computation building block in which to perform the extractions.
+      The names of lambda parameters and locals in blocks in `comp` must be
+      unique.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
@@ -481,7 +482,7 @@ def merge_chained_federated_maps_or_applys(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def merge_tuple_intrinsics(comp):
+def merge_tuple_intrinsics(comp, uri):
   r"""Merges all the tuples of intrinsics in `comp` into one intrinsic.
 
   This transform traverses `comp` postorder, matches the following pattern, and
@@ -528,13 +529,15 @@ def merge_tuple_intrinsics(comp):
   applied to a tuple of federated maps. The components `f1`, `f2`, `v1`, and
   `v2` and the number of those components are not important.
 
-  NOTE: This transformation is implemented to match the following intrinsics:
+  This transformation is implemented to match the following intrinsics:
 
-  * intrinsic_defs.FEDERATED_MAP.uri
   * intrinsic_defs.FEDERATED_AGGREGATE.uri
+  * intrinsic_defs.FEDERATED_BROADCAST.uri
+  * intrinsic_defs.FEDERATED_MAP.uri
 
   Args:
     comp: The computation building block in which to perform the merges.
+    uri: The URI of the intrinsic to merge.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
@@ -544,40 +547,29 @@ def merge_tuple_intrinsics(comp):
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(uri, six.string_types)
+  expected_uri = (
+      intrinsic_defs.FEDERATED_AGGREGATE.uri,
+      intrinsic_defs.FEDERATED_BROADCAST.uri,
+      intrinsic_defs.FEDERATED_MAP.uri,
+  )
+  if uri not in expected_uri:
+    raise ValueError(
+        'The value of `uri` is expected to be on of {}, found {}'.format(
+            expected_uri, uri))
 
   def _should_transform(comp):
-    uri = (
-        intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_MAP.uri,
-    )
     return (isinstance(comp, computation_building_blocks.Tuple) and
             _is_called_intrinsic(comp[0], uri) and all(
                 _is_called_intrinsic(element, comp[0].function.uri)
                 for element in comp))
-
-  def _get_comps(comp):
-    """Constructs a 2 dimentional Python list of computations.
-
-    Args:
-      comp: A `computation_building_blocks.Tuple` containing `n` called
-        intrinsics with `m` arguments.
-
-    Returns:
-      A 2 dimentional Python list of computations.
-    """
-    first_call = comp[0]
-    comps = [[] for _ in range(len(first_call.argument))]
-    for _, call in anonymous_tuple.to_elements(comp):
-      for index, arg in enumerate(call.argument):
-        comps[index].append(arg)
-    return comps
 
   def _transform_functional_args(comps):
     r"""Transforms the functional computations `comps`.
 
     Given a computation containing `n` called intrinsics with `m` arguments,
     this function constructs the following computation from the functional
-    arguments to the called intrinsic:
+    arguments of the called intrinsic:
 
                     Block
                    /     \
@@ -614,18 +606,24 @@ def merge_tuple_intrinsics(comp):
     calls = computation_building_blocks.Tuple(elements)
     lam = computation_building_blocks.Lambda(arg.name, arg.type_signature,
                                              calls)
-    return computation_building_blocks.Block([('fn', functions)], lam)
+    return computation_building_blocks.Block((('fn', functions),), lam)
 
   def _transform_non_functional_args(comps):
     r"""Transforms the non-functional computations `comps`.
 
     Given a computation containing `n` called intrinsics with `m` arguments,
     this function constructs the following computation from the non-functional
-    arguments to the called intrinsic:
+    arguments of the called intrinsic:
 
     federated_zip(Tuple)
                   |
                   [Comp, Comp, ...]
+
+    or
+
+    Tuple
+    |
+    [Comp, Comp, ...]
 
     with one `computation_building_blocks.ComputationBuildignBlock` for each
     `n`. This computation represents one of `m` arguments that should be passed
@@ -644,48 +642,64 @@ def merge_tuple_intrinsics(comp):
     else:
       return values
 
-  def _transform_comps(elements):
-    """Constructs a Python list of transformed computations.
+  def _transform_args(comp):
+    """Transforms the arguments from `comp`.
 
-    Given a computation containing `n` called intrinsics with `m` arguments,
-    this function constructs the following Python list of computations:
+    Given a computation containing a tuple of intrinsics that can be merged,
+    this function constructs the follwing computation from the arguments of the
+    called intrinsic:
 
+    Tuple
+    |
     [Block, federated_zip(Tuple), ...]
 
     with one `computation_building_blocks.Block` for each functional computation
-    in `m` and one called federated zip for each non-functional computation in
-    `m`. This list of computations represent the `m` arguments that should be
-    passed
-    to the call of the transformed computation.
+    in `m` and one called federated zip (or Tuple) for each non-functional
+    computation in `m`. This list of computations represent the `m` arguments
+    that should be passed to the call of the transformed computation.
 
     Args:
-      elements: A 2 dimentional Python list of computations.
+      comp: The computation building block in which to perform the merges.
 
     Returns:
-      A Python list of computations.
+      A `computation_building_blocks.ComputationBuildingBlock` representing the
+      transformed arguments from `comp`.
     """
-    args = []
-    for comps in elements:
-      if isinstance(comps[0].type_signature, computation_types.FunctionType):
-        arg = _transform_functional_args(comps)
+    first_comp = comp[0]
+    if isinstance(first_comp.argument, computation_building_blocks.Tuple):
+      comps = [[] for _ in range(len(first_comp.argument))]
+      for _, call in anonymous_tuple.to_elements(comp):
+        for index, arg in enumerate(call.argument):
+          comps[index].append(arg)
+    else:
+      comps = [[]]
+      for _, call in anonymous_tuple.to_elements(comp):
+        comps[0].append(call.argument)
+    elements = []
+    for args in comps:
+      first_args = args[0]
+      if isinstance(first_args.type_signature, computation_types.FunctionType):
+        transformed_args = _transform_functional_args(args)
       else:
-        arg = _transform_non_functional_args(comps)
-      args.append(arg)
-    return args
+        transformed_args = _transform_non_functional_args(args)
+      elements.append(transformed_args)
+    if isinstance(first_comp.argument, computation_building_blocks.Tuple):
+      return computation_building_blocks.Tuple(elements)
+    else:
+      return elements[0]
 
   def _transform(comp):
     """Returns a new transformed computation or `comp`."""
     if not _should_transform(comp):
       return comp, False
-    named_comps = anonymous_tuple.to_elements(comp)
-    elements = _get_comps(comp)
-    comps = _transform_comps(elements)
-    arg = computation_building_blocks.Tuple(comps)
+    arg = _transform_args(comp)
     first_comp = comp[0]
+    named_comps = anonymous_tuple.to_elements(comp)
     parameter_type = computation_types.to_type(arg.type_signature)
     type_signature = [call.type_signature.member for _, call in named_comps]
     result_type = computation_types.FederatedType(
-        type_signature, first_comp.type_signature.placement)
+        type_signature, first_comp.type_signature.placement,
+        first_comp.type_signature.all_equal)
     intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
     intrinsic = computation_building_blocks.Intrinsic(first_comp.function.uri,
                                                       intrinsic_type)
@@ -871,8 +885,7 @@ def replace_selection_from_tuple_with_element(comp):
   `Selection`.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
-      transform.
+    comp: The computation building block in which to perform the replacements.
 
   Returns:
     A possibly modified version of comp, without any occurrences of selections

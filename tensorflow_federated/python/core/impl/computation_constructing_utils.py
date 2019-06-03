@@ -641,6 +641,46 @@ def create_federated_map(fn, arg):
   return computation_building_blocks.Call(intrinsic, values)
 
 
+def create_federated_map_all_equal(fn, arg):
+  r"""Creates a called federated map of equal values.
+
+            Call
+           /    \
+  Intrinsic      Tuple
+                 |
+                 [Comp, Comp]
+
+  NOTE: The `fn` is required to be deterministic and therefore should contain no
+  `computation_building_blocks.CompiledComputations`.
+
+  Args:
+    fn: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      function.
+    arg: A `computation_building_blocks.ComputationBuildingBlock` to use as the
+      argument.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(arg,
+                          computation_building_blocks.ComputationBuildingBlock)
+  parameter_type = computation_types.FederatedType(
+      arg.type_signature.member, placement_literals.CLIENTS, all_equal=True)
+  result_type = computation_types.FederatedType(
+      fn.type_signature.result, placement_literals.CLIENTS, all_equal=True)
+  intrinsic_type = computation_types.FunctionType(
+      (fn.type_signature, parameter_type), result_type)
+  intrinsic = computation_building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri, intrinsic_type)
+  values = computation_building_blocks.Tuple((fn, arg))
+  return computation_building_blocks.Call(intrinsic, values)
+
+
 def create_federated_map_or_apply(fn, arg):
   r"""Creates a called federated map or apply depending on `arg`s placement.
 
@@ -667,7 +707,10 @@ def create_federated_map_or_apply(fn, arg):
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
   if arg.type_signature.placement is placement_literals.CLIENTS:
-    return create_federated_map(fn, arg)
+    if arg.type_signature.all_equal:
+      return create_federated_map_all_equal(fn, arg)
+    else:
+      return create_federated_map(fn, arg)
   elif arg.type_signature.placement is placement_literals.SERVER:
     return create_federated_apply(fn, arg)
   else:
