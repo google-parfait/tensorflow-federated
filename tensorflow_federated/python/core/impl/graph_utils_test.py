@@ -517,7 +517,7 @@ class GraphUtilsTest(test.TestCase):
                                              [None, 10, None, 10, 10])
     elem = graph_utils._make_dummy_element_for_type_spec(type_spec)
     correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
-    self.assertTrue(np.array_equal(elem, correct_elem))
+    self.assertAllClose(elem, correct_elem)
 
   def test_make_dummy_element_NamedTupleType(self):
     tensor1 = computation_types.TensorType(tf.float32, [None, 10, None, 10, 10])
@@ -533,11 +533,11 @@ class GraphUtilsTest(test.TestCase):
     ]
     self.assertEqual(len(elem), len(correct_list))
     for k in range(len(elem)):
-      self.assertTrue(np.array_equal(elem[k], correct_list[k]))
+      self.assertAllClose(elem[k], correct_list[k])
     unnamed_elem = graph_utils._make_dummy_element_for_type_spec(unnamedtuple)
     self.assertEqual(len(unnamed_elem), len(correct_list))
     for k in range(len(unnamed_elem)):
-      self.assertTrue(np.array_equal(unnamed_elem[k], correct_list[k]))
+      self.assertAllClose(unnamed_elem[k], correct_list[k])
 
   def test_nested_structures_equal(self):
     self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
@@ -1029,6 +1029,8 @@ class GraphUtilsTest(test.TestCase):
     x = executable_return_dataset()
     self.assertEqual(x[0][0], 0.)
     self.assertEqual(x[0][1], 0.)
+    self.assertAllClose(x[1][0].a, np.zeros([0], dtype=np.int32))
+    self.assertAllClose(x[1][0].b, np.zeros([0], dtype=np.int32))
     self.assertTrue(np.array_equal(x[1][0].a, np.zeros([0], dtype=np.int32)))
     self.assertTrue(np.array_equal(x[1][0].b, np.zeros([0], dtype=np.int32)))
 
