@@ -61,24 +61,6 @@ def unique_name_generator(comp, prefix='_var'):
     index += 1
 
 
-def _check_allowed_in_tensorflow_bindings(type_spec):
-  """Checks that `type_spec` can be bound as a TensorFlow parameter."""
-  # TODO(b/134058900): Move this functionality into type_utils, and push
-  # through a different function, type_tree_contains_only.
-  types_disallowed_in_tf_bindings = (
-      computation_types.FunctionType,
-      computation_types.AbstractType,
-      computation_types.PlacementType,
-      computation_types.FederatedType,
-  )
-
-  if type_utils.type_tree_contains(type_spec, types_disallowed_in_tf_bindings):
-    raise TypeError(
-        'Can only construct a TF block with types which only contain tensor, '
-        'sequence or tuple types; you have tried to construct a TF block with '
-        'parameter of type {}'.format(type_spec))
-
-
 def construct_compiled_identity(type_signature):
   """Constructs CompiledComputation representing identity function.
 
@@ -96,8 +78,12 @@ def construct_compiled_identity(type_signature):
       TensorFlow bindings.
   """
   type_spec = computation_types.to_type(type_signature)
-  _check_allowed_in_tensorflow_bindings(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
+  if not type_utils.check_tf_comp_whitelisted(type_spec):
+    raise TypeError(
+        'Can only construct a TF block with types which only contain tensor, '
+        'sequence or tuple types; you have tried to construct a TF block with '
+        'parameter of type {}'.format(type_spec))
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
@@ -137,12 +123,16 @@ def construct_compiled_input_replication(type_signature, n_replicas):
       TensorFlow bindings, or if `n_replicas` is not an integer.
   """
   type_spec = computation_types.to_type(type_signature)
-  _check_allowed_in_tensorflow_bindings(type_spec)
-  py_typecheck.check_type(n_replicas, int)
   py_typecheck.check_type(type_spec, computation_types.Type)
+  if not type_utils.check_tf_comp_whitelisted(type_spec):
+    raise TypeError(
+        'Can only construct a TF block with types which only contain tensor, '
+        'sequence or tuple types; you have tried to construct a TF block with '
+        'parameter of type {}'.format(type_spec))
+  py_typecheck.check_type(n_replicas, int)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
-        'x', type_signature, graph)
+        'x', type_spec, graph)
     result = [parameter_value] * n_replicas
     result_type, result_binding = graph_utils.capture_result_from_graph(
         result, graph)

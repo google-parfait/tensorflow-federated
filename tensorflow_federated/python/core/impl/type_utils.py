@@ -967,47 +967,6 @@ def convert_to_py_container(value, type_spec):
     return container_type(elements)
 
 
-def type_tree_contains(type_tree, types_to_check_for):
-  """Indicates whether the `type_ree` contains any `types_to_check_for`.
-
-  Args:
-    type_tree: Instance of `computation_types.Type`, the type whose tree we
-      wish to check for the presence of `types_to_check_for`.
-    types_to_check_for: The types we are looking for. Similar semantics as the
-      second argument to `isinstance`; can be a single subclass of
-      `computation_types.Type` or a tuple thereof.
-
-  Returns:
-    Boolean indicating whether or not there are any instances of
-    `types_to_check_for` in the type tree under `type_tree`.
-
-  Raises:
-    TypeError: If `types_to_check_for` is not a subclass or tuple of subclasses
-    of `computation_types.Type`, or `type_tree` is not an instance of
-    `computation_types.Type`.
-  """
-
-  py_typecheck.check_type(type_tree, computation_types.Type)
-  if isinstance(types_to_check_for, tuple):
-    for t in types_to_check_for:
-      py_typecheck.check_subclass(t, computation_types.Type)
-  else:
-    py_typecheck.check_subclass(types_to_check_for, computation_types.Type)
-
-  # TODO(b/129791812): Clean up Python 2 and 3 compatibility issues.
-  contains = [False]
-
-  def _track_types(type_tree, types_to_check_for):
-    """Checks subtree of `type_tree` for `types_to_check_for`."""
-    if isinstance(type_tree, types_to_check_for):
-      contains[0] = True
-    return types_to_check_for
-
-  preorder_call(type_tree, _track_types, types_to_check_for)
-
-  return contains[0]
-
-
 def is_concrete_instance_of(type_with_concrete_elements,
                             type_with_abstract_elements):
   """Checks whether abstract types can be concretized via a parallel structure.
@@ -1044,8 +1003,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
   py_typecheck.check_type(type_with_abstract_elements, computation_types.Type)
   py_typecheck.check_type(type_with_concrete_elements, computation_types.Type)
 
-  if type_tree_contains(type_with_concrete_elements,
-                        computation_types.AbstractType):
+  if check_blacklisted(type_with_concrete_elements,
+                       computation_types.AbstractType):
     raise TypeError(
         '`type_with_concrete_elements` must contain no abstract types. You have passed {}'
         .format(type_with_concrete_elements))
