@@ -162,6 +162,10 @@ toc:
       path: /federated/api_docs/python/tff/utils
     - title: assign
       path: /federated/api_docs/python/tff/utils/assign
+    - title: federated_max
+      path: /federated/api_docs/python/tff/utils/federated_max
+    - title: federated_min
+      path: /federated/api_docs/python/tff/utils/federated_min
     - title: get_variables
       path: /federated/api_docs/python/tff/utils/get_variables
     - title: identity

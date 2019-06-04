@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.utils.computation_utils import IterativePr
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_federated.python.core.utils.computation_utils import update_state
+from tensorflow_federated.python.core.utils.federated_aggregations import federated_max
+from tensorflow_federated.python.core.utils.federated_aggregations import federated_min
 from tensorflow_federated.python.core.utils.tf_computation_utils import assign
 from tensorflow_federated.python.core.utils.tf_computation_utils import get_variables
 from tensorflow_federated.python.core.utils.tf_computation_utils import identity
@@ -38,6 +40,8 @@ _allowed_symbols = [
     "StatefulBroadcastFn",
     "IterativeProcess",
     "assign",
+    "federated_max",
+    "federated_min",
     "get_variables",
     "identity",
     "update_state",
