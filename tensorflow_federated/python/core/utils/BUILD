@@ -10,6 +10,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":computation_utils",
+        ":federated_aggregations",
         ":tf_computation_utils",
     ],
 )
@@ -50,6 +51,26 @@ py_test(
     srcs = ["computation_utils_test.py"],
     deps = [
         ":computation_utils",
+        "//tensorflow_federated/python/core/api",
+    ],
+)
+
+py_library(
+    name = "federated_aggregations",
+    srcs = ["federated_aggregations.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api",
+    ],
+)
+
+py_test(
+    name = "federated_aggregations_test",
+    size = "small",
+    srcs = ["federated_aggregations_test.py"],
+    deps = [
+        ":federated_aggregations",
         "//tensorflow_federated/python/core/api",
     ],
 )
