@@ -33,6 +33,7 @@
 *   <a href="./tff/framework/Selection.md"><code>tff.framework.Selection</code></a>
 *   <a href="./tff/framework/Tuple.md"><code>tff.framework.Tuple</code></a>
 *   <a href="./tff/framework/is_assignable_from.md"><code>tff.framework.is_assignable_from</code></a>
+*   <a href="./tff/framework/type_to_tf_tensor_specs.md"><code>tff.framework.type_to_tf_tensor_specs</code></a>
 *   <a href="./tff/learning.md"><code>tff.learning</code></a>
 *   <a href="./tff/learning/BatchOutput.md"><code>tff.learning.BatchOutput</code></a>
 *   <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>

@@ -48,3 +48,6 @@ elements in TFF's internal language.
 
 [`is_assignable_from(...)`](../tff/framework/is_assignable_from.md): Determines
 whether `target_type` is assignable from `source_type`.
+
+[`type_to_tf_tensor_specs(...)`](../tff/framework/type_to_tf_tensor_specs.md):
+Returns nested structure of `tf.TensorSpec`s for a given TFF type.
