@@ -411,8 +411,10 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(type_signature, computation_types.FederatedType)
       if type_signature.placement is not first_type_signature.placement:
         raise TypeError(
-            'The elements of the named tuple to zip must be placed at {}.'
-            .format(first_type_signature.placement))
+            'The elements of the named tuple to zip must be placed at {!s}. '
+            'Element placements: ({})'.format(
+                first_type_signature.placement,
+                ','.join(str(type.placement) for type in value.type_signature)))
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = computation_constructing_utils.create_federated_zip(value)
