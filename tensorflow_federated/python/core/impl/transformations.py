@@ -410,6 +410,7 @@ def merge_chained_federated_maps_or_applys(comp):
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
+  name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a chained federated map."""
@@ -451,18 +452,22 @@ def merge_chained_federated_maps_or_applys(comp):
         A `computation_building_blocks.Block`.
       """
       functions = computation_building_blocks.Tuple(comps)
-      fn_ref = computation_building_blocks.Reference('fn',
-                                                     functions.type_signature)
+      functions_name = six.next(name_generator)
+      functions_ref = computation_building_blocks.Reference(
+          functions_name, functions.type_signature)
+      arg_name = six.next(name_generator)
       arg_type = comps[0].type_signature.parameter
-      arg_ref = computation_building_blocks.Reference('arg', arg_type)
+      arg_ref = computation_building_blocks.Reference(arg_name, arg_type)
       arg = arg_ref
       for index, _ in enumerate(comps):
-        fn_sel = computation_building_blocks.Selection(fn_ref, index=index)
+        fn_sel = computation_building_blocks.Selection(
+            functions_ref, index=index)
         call = computation_building_blocks.Call(fn_sel, arg)
         arg = call
-      lam = computation_building_blocks.Lambda(arg_ref.name,
-                                               arg_ref.type_signature, call)
-      return computation_building_blocks.Block([('fn', functions)], lam)
+      fn = computation_building_blocks.Lambda(arg_ref.name,
+                                              arg_ref.type_signature, call)
+      return computation_building_blocks.Block(
+          ((functions_ref.name, functions),), fn)
 
     block = _create_block_to_chained_calls((
         comp.argument[1].argument[0],
@@ -557,6 +562,7 @@ def merge_tuple_intrinsics(comp, uri):
     raise ValueError(
         'The value of `uri` is expected to be on of {}, found {}'.format(
             expected_uri, uri))
+  name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   def _should_transform(comp):
     return (isinstance(comp, computation_building_blocks.Tuple) and
@@ -594,19 +600,23 @@ def merge_tuple_intrinsics(comp, uri):
       A `computation_building_blocks.Block`.
     """
     functions = computation_building_blocks.Tuple(comps)
-    fn = computation_building_blocks.Reference('fn', functions.type_signature)
+    functions_name = six.next(name_generator)
+    functions_ref = computation_building_blocks.Reference(
+        functions_name, functions.type_signature)
+    arg_name = six.next(name_generator)
     arg_type = [element.type_signature.parameter for element in comps]
-    arg = computation_building_blocks.Reference('arg', arg_type)
+    arg_ref = computation_building_blocks.Reference(arg_name, arg_type)
     elements = []
     for index in range(len(comps)):
-      sel_fn = computation_building_blocks.Selection(fn, index=index)
-      sel_arg = computation_building_blocks.Selection(arg, index=index)
+      sel_fn = computation_building_blocks.Selection(functions_ref, index=index)
+      sel_arg = computation_building_blocks.Selection(arg_ref, index=index)
       call = computation_building_blocks.Call(sel_fn, sel_arg)
       elements.append(call)
     calls = computation_building_blocks.Tuple(elements)
-    lam = computation_building_blocks.Lambda(arg.name, arg.type_signature,
-                                             calls)
-    return computation_building_blocks.Block((('fn', functions),), lam)
+    fn = computation_building_blocks.Lambda(arg_ref.name,
+                                            arg_ref.type_signature, calls)
+    return computation_building_blocks.Block(((functions_ref.name, functions),),
+                                             fn)
 
   def _transform_non_functional_args(comps):
     r"""Transforms the non-functional computations `comps`.
