@@ -1159,7 +1159,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_apply(<(a -> a),federated_apply(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_apply(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_apply(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), 'int32@SERVER')
@@ -1180,7 +1180,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_map(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
@@ -1202,7 +1202,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(b -> b),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(a -> a),(b -> b)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_map(<(let _var1=<(a -> a),(b -> b)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
@@ -1224,7 +1224,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(b -> b),federated_map(<(a -> data),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(a -> data),(b -> b)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_map(<(let _var1=<(a -> data),(b -> b)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{float32}@CLIENTS')
@@ -1247,7 +1247,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_map(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1270,7 +1270,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
         'federated_map(<(b -> a),federated_map(<(b -> a),data>)>)')
     self.assertEqual(
         transformed_comp.tff_repr,
-        'federated_map(<(let fn=<(b -> a),(b -> a)> in (arg -> fn[1](fn[0](arg)))),data>)'
+        'federated_map(<(let _var1=<(b -> a),(b -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
@@ -1293,7 +1293,7 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     )
     self.assertEqual(
         transformed_comp.tff_repr,
-        '(let b=data in federated_map(<(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),data>))'
+        '(let b=data in federated_map(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
@@ -1318,10 +1318,10 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         'federated_map(<'
-            '(let fn=<'
-                '(let fn=<(a -> a),(a -> a)> in (arg -> fn[1](fn[0](arg)))),'
+            '(let _var3=<'
+                '(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),'
                 '(a -> a)'
-            '> in (arg -> fn[1](fn[0](arg)))),'
+            '> in (_var4 -> _var3[1](_var3[0](_var4)))),'
             'data'
         '>)'
     )
@@ -1421,9 +1421,9 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
                 '>)'
             '>),'
             '<data,data>,'
-            '(let fn=<(a -> data),(a -> data)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            '(let fn=<(b -> data),(b -> data)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
-            '(let fn=<(c -> c),(c -> c)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>))'
+            '(let _var1=<(a -> data),(a -> data)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
+            '(let _var3=<(b -> data),(b -> data)> in (_var4 -> <_var3[0](_var4[0]),_var3[1](_var4[1])>)),'
+            '(let _var5=<(c -> c),(c -> c)> in (_var6 -> <_var5[0](_var6[0]),_var5[1](_var6[1])>))'
         '>) in <'
             'federated_apply(<(arg -> arg[0]),value>),'
             'federated_apply(<(arg -> arg[1]),value>)'
@@ -1489,7 +1489,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1528,7 +1528,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(b -> b)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(a -> a),(b -> b)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1569,7 +1569,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(b -> b)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(a -> a),(b -> b)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1609,7 +1609,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1652,7 +1652,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let fn=<(b -> a),(b -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(b -> a),(b -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1690,7 +1690,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <b=x[0],c=x[1]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1730,7 +1730,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(let a=data in (x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1])>)),'
+            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1]>),'
                 'federated_map(<'
@@ -1769,7 +1769,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1],x[2]>)((let value=federated_map(<'
-            '(let fn=<(a -> a),(a -> a),(a -> a)> in (arg -> <fn[0](arg[0]),fn[1](arg[1]),fn[2](arg[2])>)),'
+            '(let _var1=<(a -> a),(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1]),_var1[2](_var2[2])>)),'
             'federated_map(<'
                 '(x -> <x[0],x[1],x[2]>),'
                 'federated_map(<'
@@ -1805,7 +1805,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0]>)((let value=federated_map(<'
-            '(let fn=<(a -> a)> in (arg -> <fn[0](arg[0])>)),'
+            '(let _var1=<(a -> a)> in (_var2 -> <_var1[0](_var2[0])>)),'
             'federated_map(<(arg -> <arg>),<data>[0]>)'
         '>) in <federated_map(<(arg -> arg[0]),value>)>))'
     )
