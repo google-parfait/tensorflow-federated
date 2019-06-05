@@ -238,6 +238,18 @@ class IntrinsicsTest(parameterized.TestCase):
         str(foo.type_signature),
         '(<a=int32@SERVER,b=bool@SERVER> -> <a=int32,b=bool>@SERVER)')
 
+  def test_federated_zip_error_different_placements(self):
+    with self.assertRaisesRegex(
+        TypeError, r'The elements .* must be placed at SERVER. '
+        r'Element placements: \(SERVER,CLIENTS\)'):
+
+      @tff.federated_computation([
+          ('a', tff.FederatedType(tf.int32, tff.SERVER)),
+          ('b', tff.FederatedType(tf.bool, tff.CLIENTS)),
+      ])
+      def _(arg):
+        return tff.federated_zip(arg)
+
   def test_federated_collect_with_client_int(self):
 
     @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
