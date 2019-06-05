@@ -581,6 +581,53 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             }
         })
 
+  def test_type_to_tf_tensor_specs_with_int_scalar(self):
+    tensor_specs = type_utils.type_to_tf_tensor_specs(tf.int32)
+    test.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([], tf.int32))
+
+  def test_type_to_tf_tensor_specs_with_int_vector(self):
+    tensor_specs = type_utils.type_to_tf_tensor_specs((tf.int32, [10]))
+    test.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([10], tf.int32))
+
+  def test_type_to_tf_tensor_specs_with_tensor_triple(self):
+    tensor_specs = type_utils.type_to_tf_tensor_specs(
+        collections.OrderedDict([('a', (tf.int32, [5])), ('b', tf.bool),
+                                 ('c', (tf.float32, [3]))]))
+    test.assert_nested_struct_eq(
+        tensor_specs, {
+            'a': tf.TensorSpec([5], tf.int32),
+            'b': tf.TensorSpec([], tf.bool),
+            'c': tf.TensorSpec([3], tf.float32)
+        })
+
+  def test_type_to_tf_tensor_specs_with_two_level_tuple(self):
+    tensor_specs = type_utils.type_to_tf_tensor_specs(
+        collections.OrderedDict([
+            ('a', tf.bool),
+            ('b',
+             collections.OrderedDict([
+                 ('c', tf.float32),
+                 ('d', (tf.int32, [20])),
+             ])),
+        ]))
+    test.assert_nested_struct_eq(
+        tensor_specs, {
+            'a': tf.TensorSpec([], tf.bool),
+            'b': {
+                'c': tf.TensorSpec([], tf.float32),
+                'd': tf.TensorSpec([20], tf.int32)
+            }
+        })
+
+  def test_type_to_tf_tensor_specs_with_invalid_type(self):
+    with self.assertRaises(TypeError):
+      type_utils.type_to_tf_tensor_specs(tf.constant([0.0]))
+
+  def test_type_to_tf_tensor_specs_with_unnamed_element(self):
+    tensor_specs = type_utils.type_to_tf_tensor_specs(
+        computation_types.NamedTupleType([tf.int32]))
+    test.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
+
   def test_type_to_tf_structure_with_names(self):
     type_spec = computation_types.to_type(
         collections.OrderedDict([

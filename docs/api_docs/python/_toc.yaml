@@ -82,6 +82,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/Selection
     - title: Tuple
       path: /federated/api_docs/python/tff/framework/Tuple
+    - title: type_to_tf_tensor_specs
+      path: /federated/api_docs/python/tff/framework/type_to_tf_tensor_specs
   - title: tff.learning
     section:
     - title: Overview
