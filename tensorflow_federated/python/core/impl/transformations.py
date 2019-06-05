@@ -68,7 +68,7 @@ def extract_intrinsics(comp):
 
   Args:
     comp: The computation building block in which to perform the extractions.
-      The names of lambda parameters and locals in blocks in `comp` must be
+      The names of lambda parameters and block variables in `comp` must be
       unique.
 
   Returns:
@@ -76,7 +76,7 @@ def extract_intrinsics(comp):
 
   Raises:
     TypeError: If types do not match.
-    ValueError: If `comp` contains a reference named `name`.
+    ValueError: If `comp` contains variables with non-unique names.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
@@ -270,29 +270,41 @@ def extract_intrinsics(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def inline_block_locals(comp):
-  """Inlines all block local variables.
-
-  Since this transform is not necessarily safe, it should only be calles if
-  all references under `comp` have unique names.
+def inline_block_locals(comp, variable_names=None):
+  """Inlines the block variables in `comp` whitelisted by `variable_names`.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
-      whose blocks we wish to inline.
+    comp: The computation building block in which to perform the extractions.
+      The names of lambda parameters and block variables in `comp` must be
+      unique.
+    variable_names: A Python list, tuple, or set representing the whitelist of
+      variable names to inline; or None if all variables should be inlined.
 
   Returns:
-    A possibly different `computation_building_blocks.ComputationBuildingBlock`
-    containing the same logic as `comp`, but with all blocks inlined.
+    A new computation with the transformation applied or the original `comp`.
 
   Raises:
-    ValueError: If `comp` has variables with non-unique names.
+    ValueError: If `comp` contains variables with non-unique names.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
   _check_has_unique_names(comp)
+  if variable_names is not None:
+    py_typecheck.check_type(variable_names, (list, tuple, set))
+
+  def _should_inline_variable(name):
+    return variable_names is None or name in variable_names
+
+  def _should_transform(comp):
+    return ((isinstance(comp, computation_building_blocks.Reference) and
+             _should_inline_variable(comp.name)) or
+            (isinstance(comp, computation_building_blocks.Block) and
+             any(_should_inline_variable(name) for name, _ in comp.locals)))
 
   def _transform(comp, symbol_tree):
-    """Inline transform function."""
+    """Returns a new transformed computation or `comp`."""
+    if not _should_transform(comp):
+      return comp, False
     if isinstance(comp, computation_building_blocks.Reference):
       value = symbol_tree.get_payload_with_name(comp.name).value
       # This identifies a variable bound by a Block as opposed to a Lambda.
@@ -301,7 +313,14 @@ def inline_block_locals(comp):
       else:
         return comp, False
     elif isinstance(comp, computation_building_blocks.Block):
-      return comp.result, True
+      variables = [(name, value)
+                   for name, value in comp.locals
+                   if not _should_inline_variable(name)]
+      if not variables:
+        comp = comp.result
+      else:
+        comp = computation_building_blocks.Block(variables, comp.result)
+      return comp, True
     return comp, False
 
   symbol_tree = transformation_utils.SymbolTree(

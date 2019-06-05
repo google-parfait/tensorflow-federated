@@ -976,9 +976,15 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
 class InlineBlockLocalsTest(absltest.TestCase):
 
-  def test_raises_type_error(self):
+  def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
       transformations.inline_block_locals(None)
+
+  def test_raises_type_error_with_wrong_type_variable_names(self):
+    block = _create_block_wrapping_data(variable_name='a')
+    comp = block
+    with self.assertRaises(TypeError):
+      transformations.inline_block_locals(comp, 1)
 
   def test_raises_value_error_with_non_unique_variable_names(self):
     data = computation_building_blocks.Data('data', tf.int32)
@@ -986,7 +992,7 @@ class InlineBlockLocalsTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       transformations.inline_block_locals(block)
 
-  def test_inlines_one_variable(self):
+  def test_inlines_one_block_variable(self):
     block = _create_block_wrapping_data(variable_name='a')
     comp = block
 
@@ -997,7 +1003,7 @@ class InlineBlockLocalsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_inlines_two_variables(self):
+  def test_inlines_two_block_variables(self):
     data = computation_building_blocks.Data('data', tf.int32)
     ref = computation_building_blocks.Reference('a', tf.int32)
     tup = computation_building_blocks.Tuple((ref, ref))
@@ -1008,6 +1014,22 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     self.assertEqual(comp.tff_repr, '(let a=data in <a,a>)')
     self.assertEqual(transformed_comp.tff_repr, '<data,data>')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_inlines_whitelisted_block_variables(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    ref_2 = computation_building_blocks.Reference('b', tf.int32)
+    tup = computation_building_blocks.Tuple((ref_1, ref_2))
+    block = computation_building_blocks.Block((('a', data), ('b', data)), tup)
+    comp = block
+
+    transformed_comp, modified = transformations.inline_block_locals(
+        comp, variable_names=('a',))
+
+    self.assertEqual(comp.tff_repr, '(let a=data,b=data in <a,b>)')
+    self.assertEqual(transformed_comp.tff_repr, '(let b=data in <data,b>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1055,7 +1077,7 @@ class InlineBlockLocalsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_does_not_inline_lambda(self):
+  def test_does_not_inline_lambda_parameter(self):
     fn = _create_lambda_to_identity('a', tf.int32)
     comp = fn
 
@@ -1063,6 +1085,18 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(transformed_comp.tff_repr, '(a -> a)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertFalse(modified)
+
+  def test_does_not_inline_block_variables(self):
+    block = _create_block_wrapping_data(variable_name='a')
+    comp = block
+
+    transformed_comp, modified = transformations.inline_block_locals(
+        comp, variable_names=('b',))
+
+    self.assertEqual(comp.tff_repr, '(let a=data in a)')
+    self.assertEqual(transformed_comp.tff_repr, '(let a=data in a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -1372,12 +1406,12 @@ class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
 
 class MergeTupleIntrinsicsTest(absltest.TestCase):
 
-  def test_raises_type_error_none_comp(self):
+  def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
       transformations.merge_tuple_intrinsics(None,
                                              intrinsic_defs.FEDERATED_MAP.uri)
 
-  def test_raises_type_error_none_uri(self):
+  def test_raises_type_error_with_none_uri(self):
     called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
@@ -2044,7 +2078,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
 
 class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
 
-  def test_raises_type_error_none_comp(self):
+  def test_raises_type_error_with_none_comp(self):
     uri = 'intrinsic'
     body = lambda x: x
 
@@ -2052,7 +2086,7 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
       transformations.replace_intrinsic_with_callable(
           None, uri, body, context_stack_impl.context_stack)
 
-  def test_raises_type_error_none_uri(self):
+  def test_raises_type_error_with_none_uri(self):
     comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
     body = lambda x: x
 
@@ -2060,7 +2094,7 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
       transformations.replace_intrinsic_with_callable(
           comp, None, body, context_stack_impl.context_stack)
 
-  def test_raises_type_error_none_body(self):
+  def test_raises_type_error_with_none_body(self):
     comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
     uri = 'intrinsic'
 
@@ -2068,7 +2102,7 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
       transformations.replace_intrinsic_with_callable(
           comp, uri, None, context_stack_impl.context_stack)
 
-  def test_raises_type_error_none_context_stack(self):
+  def test_raises_type_error_with_none_context_stack(self):
     comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
     uri = 'intrinsic'
     body = lambda x: x
