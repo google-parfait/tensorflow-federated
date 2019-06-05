@@ -26,12 +26,18 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
+
+
+def _to_computation_impl(building_block):
+  return computation_impl.ComputationImpl(building_block.proto,
+                                          context_stack_impl.context_stack)
 
 
 def _create_chained_calls(functions, arg):
@@ -226,6 +232,12 @@ def _create_block_wrapping_data(variable_name, variable_type=tf.int32):
   data = computation_building_blocks.Data('data', variable_type)
   ref = computation_building_blocks.Reference(variable_name, variable_type)
   return computation_building_blocks.Block([(variable_name, data)], ref)
+
+
+def _create_compiled_computation(py_fn, arg_type):
+  proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+      py_fn, arg_type, context_stack_impl.context_stack)
+  return computation_building_blocks.CompiledComputation(proto)
 
 
 class ExtractIntrinsicsTest(absltest.TestCase):
@@ -2444,6 +2456,300 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     self.assertEqual(transformed_comp.tff_repr,
                      '(let _var1=data,_var2=data in data)')
     self.assertTrue(modified)
+
+
+def parse_tff_to_tf(comp):
+  parser_callable = transformations.TFParser()
+  new_comp, transformed = transformation_utils.transform_postorder(
+      comp, parser_callable)
+  return new_comp, transformed
+
+
+class ParseTFFToTFTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      parse_tff_to_tf(None)
+
+  def test_does_not_transform_standalone_intrinsic(self):
+    standalone_intrinsic = computation_building_blocks.Intrinsic(
+        'dummy', tf.int32)
+    comp, mutated = parse_tff_to_tf(standalone_intrinsic)
+    self.assertFalse(mutated)
+    self.assertEqual(comp.tff_repr, standalone_intrinsic.tff_repr)
+    self.assertEqual(comp.type_signature, standalone_intrinsic.type_signature)
+
+  def test_replaces_lambda_to_selection_from_called_graph_with_tf_of_same_type(
+      self):
+    identity_tf_block = _create_compiled_computation(lambda x: x,
+                                                     [tf.int32, tf.float32])
+    tuple_ref = computation_building_blocks.Reference('x',
+                                                      [tf.int32, tf.float32])
+    called_tf_block = computation_building_blocks.Call(identity_tf_block,
+                                                       tuple_ref)
+    selection_from_call = computation_building_blocks.Selection(
+        called_tf_block, index=1)
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [tf.int32, tf.float32],
+                                                        selection_from_call)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertEqual(exec_lambda([0, 1.]), exec_tf([0, 1.]))
+
+  def test_replaces_lambda_to_called_graph_with_tf_of_same_type(self):
+    identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    int_ref = computation_building_blocks.Reference('x', tf.int32)
+    called_tf_block = computation_building_blocks.Call(identity_tf_block,
+                                                       int_ref)
+    lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32,
+                                                        called_tf_block)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertEqual(exec_lambda(2), exec_tf(2))
+
+  def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type(
+      self):
+    identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    tuple_ref = computation_building_blocks.Reference('x',
+                                                      [tf.int32, tf.float32])
+    selected_int = computation_building_blocks.Selection(tuple_ref, index=0)
+    called_tf_block = computation_building_blocks.Call(identity_tf_block,
+                                                       selected_int)
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [tf.int32, tf.float32],
+                                                        called_tf_block)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+    self.assertEqual(exec_lambda([3, 4.]), exec_tf([3, 4.]))
+
+  def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type_with_names(
+      self):
+    identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    tuple_ref = computation_building_blocks.Reference('x', [('a', tf.int32),
+                                                            ('b', tf.float32)])
+    selected_int = computation_building_blocks.Selection(tuple_ref, index=0)
+    called_tf_block = computation_building_blocks.Call(identity_tf_block,
+                                                       selected_int)
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [('a', tf.int32),
+                                                         ('b', tf.float32)],
+                                                        called_tf_block)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertEqual(exec_lambda({'a': 5, 'b': 6.}), exec_tf({'a': 5, 'b': 6.}))
+
+  def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type(
+      self):
+    identity_tf_block = _create_compiled_computation(lambda x: x,
+                                                     [tf.int32, tf.bool])
+    tuple_ref = computation_building_blocks.Reference(
+        'x', [tf.int32, tf.float32, tf.bool])
+    selected_int = computation_building_blocks.Selection(tuple_ref, index=0)
+    selected_bool = computation_building_blocks.Selection(tuple_ref, index=2)
+    created_tuple = computation_building_blocks.Tuple(
+        [selected_int, selected_bool])
+    called_tf_block = computation_building_blocks.Call(identity_tf_block,
+                                                       created_tuple)
+    lambda_wrapper = computation_building_blocks.Lambda(
+        'x', [tf.int32, tf.float32, tf.bool], called_tf_block)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+    self.assertEqual(exec_lambda([7, 8., True]), exec_tf([7, 8., True]))
+
+  def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type_with_names(
+      self):
+    identity_tf_block = _create_compiled_computation(lambda x: x,
+                                                     [tf.int32, tf.bool])
+    tuple_ref = computation_building_blocks.Reference('x', [('a', tf.int32),
+                                                            ('b', tf.float32),
+                                                            ('c', tf.bool)])
+    selected_int = computation_building_blocks.Selection(tuple_ref, index=0)
+    selected_bool = computation_building_blocks.Selection(tuple_ref, index=2)
+    created_tuple = computation_building_blocks.Tuple(
+        [selected_int, selected_bool])
+    called_tf_block = computation_building_blocks.Call(identity_tf_block,
+                                                       created_tuple)
+    lambda_wrapper = computation_building_blocks.Lambda('x', [('a', tf.int32),
+                                                              ('b', tf.float32),
+                                                              ('c', tf.bool)],
+                                                        called_tf_block)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+    self.assertEqual(
+        exec_lambda({
+            'a': 9,
+            'b': 10.,
+            'c': False
+        }), exec_tf({
+            'a': 9,
+            'b': 10.,
+            'c': False
+        }))
+
+  def test_replaces_lambda_to_unnamed_tuple_of_called_graphs_with_tf_of_same_type(
+      self):
+    int_identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    float_identity_tf_block = _create_compiled_computation(
+        lambda x: x, tf.float32)
+    tuple_ref = computation_building_blocks.Reference('x',
+                                                      [tf.int32, tf.float32])
+    selected_int = computation_building_blocks.Selection(tuple_ref, index=0)
+    selected_float = computation_building_blocks.Selection(tuple_ref, index=1)
+
+    called_int_tf_block = computation_building_blocks.Call(
+        int_identity_tf_block, selected_int)
+    called_float_tf_block = computation_building_blocks.Call(
+        float_identity_tf_block, selected_float)
+    tuple_of_called_graphs = computation_building_blocks.Tuple(
+        [called_int_tf_block, called_float_tf_block])
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [tf.int32, tf.float32],
+                                                        tuple_of_called_graphs)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+    self.assertEqual(exec_lambda([11, 12.]), exec_tf([11, 12.]))
+
+  def test_replaces_lambda_to_named_tuple_of_called_graphs_with_tf_of_same_type(
+      self):
+    int_identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    float_identity_tf_block = _create_compiled_computation(
+        lambda x: x, tf.float32)
+    tuple_ref = computation_building_blocks.Reference('x',
+                                                      [tf.int32, tf.float32])
+    selected_int = computation_building_blocks.Selection(tuple_ref, index=0)
+    selected_float = computation_building_blocks.Selection(tuple_ref, index=1)
+
+    called_int_tf_block = computation_building_blocks.Call(
+        int_identity_tf_block, selected_int)
+    called_float_tf_block = computation_building_blocks.Call(
+        float_identity_tf_block, selected_float)
+    tuple_of_called_graphs = computation_building_blocks.Tuple([
+        ('a', called_int_tf_block), ('b', called_float_tf_block)
+    ])
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [tf.int32, tf.float32],
+                                                        tuple_of_called_graphs)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertEqual(exec_lambda([13, 14.]), exec_tf([13, 14.]))
+
+  def test_replaces_lambda_to_called_composition_of_tf_blocks_with_tf_of_same_type_named_param(
+      self):
+    selection_tf_block = _create_compiled_computation(lambda x: x[0],
+                                                      [('a', tf.int32),
+                                                       ('b', tf.float32)])
+    add_one_int_tf_block = _create_compiled_computation(lambda x: x + 1,
+                                                        tf.int32)
+    int_ref = computation_building_blocks.Reference('x', [('a', tf.int32),
+                                                          ('b', tf.float32)])
+    called_selection = computation_building_blocks.Call(selection_tf_block,
+                                                        int_ref)
+    one_added = computation_building_blocks.Call(add_one_int_tf_block,
+                                                 called_selection)
+    lambda_wrapper = computation_building_blocks.Lambda('x',
+                                                        [('a', tf.int32),
+                                                         ('b', tf.float32)],
+                                                        one_added)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertEqual(
+        exec_lambda({
+            'a': 15,
+            'b': 16.
+        }), exec_tf({
+            'a': 15,
+            'b': 16.
+        }))
+
+  def test_replaces_lambda_to_called_tf_block_with_replicated_lambda_arg_with_tf_block_of_same_type(
+      self):
+    sum_and_add_one = _create_compiled_computation(lambda x: x[0] + x[1] + 1,
+                                                   [tf.int32, tf.int32])
+    int_ref = computation_building_blocks.Reference('x', tf.int32)
+    tuple_of_ints = computation_building_blocks.Tuple((int_ref, int_ref))
+    summed = computation_building_blocks.Call(sum_and_add_one, tuple_of_ints)
+    lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32, summed)
+
+    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    exec_lambda = _to_computation_impl(lambda_wrapper)
+    exec_tf = _to_computation_impl(parsed)
+
+    self.assertIsInstance(parsed,
+                          computation_building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    self.assertEqual(exec_lambda(17), exec_tf(17))
 
 
 if __name__ == '__main__':

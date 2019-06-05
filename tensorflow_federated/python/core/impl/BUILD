@@ -641,6 +641,7 @@ py_library(
     name = "transformations",
     srcs = ["transformations.py"],
     deps = [
+        ":compiled_computation_transforms",
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":context_stack_base",
@@ -660,6 +661,7 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
+        ":computation_impl",
         ":context_stack_impl",
         ":intrinsic_defs",
         ":tensorflow_serialization",

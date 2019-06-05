@@ -26,6 +26,7 @@ from six.moves import range
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
@@ -1031,6 +1032,96 @@ def uniquify_reference_names(comp):
   symbol_tree = transformation_utils.SymbolTree(_RenameNode)
   return transformation_utils.transform_postorder_with_symbol_bindings(
       comp, _transform, symbol_tree)
+
+
+class TFParser(object):
+  """Callable taking subset of TFF AST constructs to CompiledComputations.
+
+  When this function is applied via `transformation_utils.transform_postorder`
+  to a TFF AST node satisfying its assumptions,  the tree under this node will
+  be reduced to a single instance of
+  `computation_building_blocks.CompiledComputation` representing the same
+  logic.
+
+  Notice that this function is designed to be applied to what is essentially
+  a subtree of a larger TFF AST; once the processing on a single device has
+  been aligned at the AST level, and placement separated from the logic of
+  this processing, we should be left with a function wrapped via
+  `federated_map` or `federated_apply` to a federated argument. It is this
+  function which we need to reduce to TensorFlow, and it is to the root
+  node of this function which we are looking to apply `TFParser`. Because of
+  this, we assume that there is a lambda expression at the top of the AST
+  we are looking to parse, as well as the rest of the assumptions below.
+
+  We have no proof that these assumptions are sufficient for this
+  library to parse *all* TFF into TF, so we expect some constructs will fail
+  to be reduced. The assumptions can currently be enumerated as follows:
+
+  1. All called lambdas have been converted to blocks.
+  2. All blocks have been inlined; that is, there are no block/LET constructs
+     remaining.
+  3. All compiled computations are called.
+  4. No compiled computations have been partially called; we believe this
+     should be handled correctly today but we haven't reasoned explicitly about
+     this possibility.
+  5. The only leaf nodes present under `comp` are compiled computations and
+     references to the argument of the top-level lambda which we are hoping to
+     replace with a compiled computation. Further, every leaf node which is a
+     reference has as its parent a `computation_building_blocks.Call`, whose
+     associated function is a TF graph. This prevents us from needing to
+     deal with arbitrary nesting of references and TF graphs, and significantly
+     clarifies the reasoning. This can be accomplished by "decorating" the
+     appropriate leaves with called identity TF graphs, the construction of
+     which is provided by a utility module.
+  6. There is only a single lambda binding any references present in the AST,
+     and it is placed at the root of the AST to which we apply `TFParser`.
+  7. There are no intrinsics present in the AST.
+  """
+
+  # TODO(b/133328350): Allow for this to take in multiple selections from a
+  # single argument.
+
+  def __init__(self):
+    """Populates the parser library with mutually exclusive options."""
+    self._parse_library = [
+        compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(),
+        compiled_computation_transforms.LambdaWrappingGraph(),
+        compiled_computation_transforms.LambdaCallSelectionFromArg(),
+        compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
+        ),
+        compiled_computation_transforms.TupleCalledGraphs(),
+        compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(),
+        compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg(),
+    ]
+
+  def __call__(self, comp):
+    """Transforms `comp` by checking all elements of the parser library.
+
+    This function is roughly performing intermediate-code generation, taking
+    TFF and generating TF. Calling this function is essentially checking the
+    stack and selecting a semantic action based on its contents, and *only one*
+    of these actions should be selected for a given computation.
+
+    Notice that since the parser library contains mutually exclusive options,
+    it is safe to return early.
+
+    Args:
+      comp: The `computation_building_blocks.ComputationBuildingBlock` to check
+        for possibility of reduction according to the parsing library.
+
+    Returns:
+      A tuple whose first element is a possibly transformed version of `comp`,
+      and whose second is a Boolean indicating whether or not `comp` was
+      transformed. This is in conforming to the conventions of
+      `transformation_utils.transform_postorder`.
+    """
+    py_typecheck.check_type(
+        comp, computation_building_blocks.ComputationBuildingBlock)
+    for option in self._parse_library:
+      if option.should_transform(comp):
+        transformed, ind = option.transform(comp)
+        return transformed, ind
+    return comp, False
 
 
 def _is_called_intrinsic(comp, uri=None):
