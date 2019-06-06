@@ -1,5 +1,3 @@
-<!-- Please keep the content of this file in sync with docs/_index.yaml -->
-
 # TensorFlow Federated
 
 TensorFlow Federated (TFF) is an open-source framework for machine learning and
@@ -47,14 +45,41 @@ source.
 See the [get started](docs/get_started.md) documentation for instructions on
 how to use TensorFlow Federated.
 
-The
-[Code Style, Guidelines, and Best Practice](CONTRIBUTING.md#code-style-guidelines-and-best-practices)
-for developers may also be useful to review.
-
 ## Contributing
 
-If you want to contribute to TensorFlow Federated, be sure to review the
-[contribution guidelines](CONTRIBUTING.md).
+There are a number of ways to contribute depending on what you're interested in:
+
+* If you are interested in developing new federated learning algorithms, the
+  best way to start would be to study the implementations of federated
+  averaging and evaluation in `tff.learning`, and to think of extensions to
+  the existing imlementation (or alternative approaches). If you have a
+  proposal for a new algorithm, we recommend to start by staging your project
+  in the `research` directory and including a colab notebook to showcase the
+  new features.
+
+  You may want to also develop new algorithms in your own repository. We are
+  happy to feature pointers to academic publications and/or repos using TFF on
+  [tensorflow.org/federatred](http://www.tensorflow.org/federated).
+
+* If you are interested in applying federated learning, consider contributing
+  a tutorial, a new federated dataset, or an example model that others could
+  use for experiments and testing, or writing helper classes that others can
+  use in setting up simulations.
+
+* If you are interested in helping us improve the developer experience, the
+  best way to start would be to study the implementations behind the
+  `tff.learning` API, and to reflect on how we could make the code more
+  streamlined. You could contribute helper classes that build upon the FC API
+  or suggest extensions to the FC API itself.
+
+* If you are interested in helping us develop runtime infrastructure for
+  simulations and beyond, please wait for a future release in which we will
+  introduce interfaces and guidelines for contributing to a simulation
+  infrastructure.
+
+Please be sure to review the
+[contribution guidelines](CONTRIBUTING.md#code-style-guidelines-and-best-practices)
+for guidelines on the coding style, best practices, etc.
 
 ## Compatibility
 
