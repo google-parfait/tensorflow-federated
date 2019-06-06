@@ -29,7 +29,7 @@ from tensorflow_federated.python.common_libs import serialization_utils
 class SerializationUtilsTest(absltest.TestCase):
 
   def test_pack_graph_def_returns_any_pb(self):
-    input_value = tf.GraphDef()
+    input_value = tf.compat.v1.GraphDef()
     any_pb = serialization_utils.pack_graph_def(input_value)
     self.assertEqual(type(any_pb), any_pb2.Any)
 

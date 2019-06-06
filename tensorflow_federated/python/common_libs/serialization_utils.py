@@ -25,40 +25,41 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 
 def pack_graph_def(graph_def):
-  """Pack a `tf.GraphDef` into a proto3 `Any` message.
+  """Pack a `tf.compat.v1.GraphDef` into a proto3 `Any` message.
 
   Args:
-    graph_def: the `tf.GraphDef` to pack into a protocol buffer message.
+    graph_def: the `tf.compat.v1.GraphDef` to pack into a protocol buffer
+      message.
 
   Returns:
     A `google.protobuf.Any` protocol buffer message.
 
   Raises:
-    TypeError: if `graph_def` is not a `tf.GraphDef`.
+    TypeError: if `graph_def` is not a `tf.compat.v1.GraphDef`.
   """
-  py_typecheck.check_type(graph_def, tf.GraphDef)
+  py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
   any_pb = any_pb2.Any()
   any_pb.Pack(graph_def)
   return any_pb
 
 
 def unpack_graph_def(any_pb):
-  """Unpacks a proto3 `Any` message to a `tf.GraphDef`.
+  """Unpacks a proto3 `Any` message to a `tf.compat.v1.GraphDef`.
 
   Args:
     any_pb: the `Any` message to unpack.
 
   Returns:
-    A `tf.GraphDef`.
+    A `tf.compat.v1.GraphDef`.
 
   Raises:
     ValueError: if the object packed into `any_pb` cannot be unpacked as
-      `tf.GraphDef`.
+      `tf.compat.v1.GraphDef`.
     TypeError: if `any_pb` is not an `Any` protocol buffer message.
   """
   py_typecheck.check_type(any_pb, any_pb2.Any)
-  graph_def = tf.GraphDef()
+  graph_def = tf.compat.v1.GraphDef()
   if not any_pb.Unpack(graph_def):
     raise ValueError(
-        'Unable to unpack value [{}] as a tf.GraphDef'.format(any_pb))
+        'Unable to unpack value [{}] as a tf.compat.v1.GraphDef'.format(any_pb))
   return graph_def

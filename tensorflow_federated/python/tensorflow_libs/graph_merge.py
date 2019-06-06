@@ -36,7 +36,7 @@ class GraphSpec(object):
   `out_names`, as opposed to the single binding taken by TFF serialization.
 
   Attributes:
-    graph_def: Instance of `tf.GraphDef`.
+    graph_def: Instance of `tf.compat.v1.GraphDef`.
     init_op: Either a string name of the init op in the graph represented by
       `graph_def`, or `None` if there is no such init op.
     in_names: A Python `list` or `tuple of string names corresponding to the
@@ -62,9 +62,10 @@ class GraphSpec(object):
       TypeError: If the types of the arguments don't match the type
       specifications in the class doc.
     """
-    if not isinstance(graph_def, tf.GraphDef):
-      raise TypeError('graph_def must be of type `tf.GraphDef`; you have '
-                      'passed a value of type {}'.format(type(graph_def)))
+    if not isinstance(graph_def, tf.compat.v1.GraphDef):
+      raise TypeError(
+          'graph_def must be of type `tf.compat.v1.GraphDef`; you have '
+          'passed a value of type {}'.format(type(graph_def)))
     if not isinstance(init_op, (six.string_types, type(None))):
       raise TypeError('init_op must be string type or `NoneType`; you '
                       'have passed a value of type {}'.format(type(init_op)))
@@ -111,9 +112,9 @@ def _concat_graphs(graph_def_list, graph_names_list):
   variables to be wired up incorrectly.
 
   Args:
-    graph_def_list: Python iterable of `tf.GraphDef` objects.
+    graph_def_list: Python iterable of `tf.compat.v1.GraphDef` objects.
     graph_names_list: Parallel Python iterable containing the names under which
-      we wish to import the `tf.GraphDef`s in `graph_def_list`.
+      we wish to import the `tf.compat.v1.GraphDef`s in `graph_def_list`.
 
   Returns:
     An instance of `tf.Graph`, representing the computations in
@@ -261,7 +262,7 @@ def compose_graph_specs(graph_spec_list):
     """Imports graphs in `graph_def_list` wiring inputs and outputs as declared.
 
     Args:
-      graph_def_list: Python iterable of `tf.GraphDef` objects.
+      graph_def_list: Python iterable of `tf.compat.v1.GraphDef` objects.
       in_names: Parallel Python iterable whose kth element specifies the input
         names in element k from `graph_def_list`.
       out_names: Parallel Python iterable whose kth element specifies the output
