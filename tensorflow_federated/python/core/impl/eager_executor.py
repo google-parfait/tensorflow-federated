@@ -25,7 +25,10 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import typed_object
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import graph_utils
@@ -154,11 +157,11 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     return lambda: fn_to_return(None)
 
 
-def to_representation_for_type(value, type_spec, device=None):
+def to_representation_for_type(value, type_spec=None, device=None):
   """Verifies or converts the `value` to an eager objct matching `type_spec`.
 
   WARNING: This function is only partially implemented. It does not support
-  data sets or named tuples at this point.
+  data sets at this point.
 
   The output of this function is always an eager tensor, eager dataset, a
   representation of a TensorFlow computtion, or a nested structure of those
@@ -171,7 +174,8 @@ def to_representation_for_type(value, type_spec, device=None):
   Args:
     value: The raw representation of a value to compare against `type_spec` and
       potentially to be converted.
-    type_spec: An instance of `tff.Type`.
+    type_spec: An instance of `tff.Type`, can be `None` for values that derive
+      from `typed_object.TypedObject`.
     device: The optional device to place the value on (for tensor-level values).
 
   Returns:
@@ -180,11 +184,29 @@ def to_representation_for_type(value, type_spec, device=None):
   Raises:
     TypeError: If the `value` is not compatible with `type_spec`.
   """
-  type_spec = computation_types.to_type(type_spec)
   if device is not None:
     py_typecheck.check_type(device, six.string_types)
     with tf.device(device):
-      return to_representation_for_type(value, type_spec)
+      return to_representation_for_type(value, type_spec=type_spec, device=None)
+  type_spec = computation_types.to_type(type_spec)
+  if isinstance(value, typed_object.TypedObject):
+    if type_spec is not None:
+      if not type_utils.are_equivalent_types(value.type_signature, type_spec):
+        raise TypeError('Expected a value of type {}, found {}.'.format(
+            str(type_spec), str(value.type_signature)))
+    else:
+      type_spec = value.type_signature
+  if type_spec is None:
+    raise ValueError(
+        'Cannot derive an eager representation for a value of an unknown type.')
+  if isinstance(value, EagerValue):
+    return value.internal_representation
+  if isinstance(value, executor_value_base.ExecutorValue):
+    raise TypeError(
+        'Cannot accept a value embedded within a non-eager executor.')
+  if isinstance(value, computation_base.Computation):
+    return to_representation_for_type(
+        computation_impl.ComputationImpl.get_proto(value), type_spec, device)
   if isinstance(value, pb.Computation):
     return embed_tensorflow_computation(value, type_spec, device)
   if isinstance(type_spec, computation_types.TensorType):
@@ -197,6 +219,22 @@ def to_representation_for_type(value, type_spec, device=None):
           'The apparent type {} of a tensor {} does not match the expected '
           'type {}.'.format(str(value_type), str(value), str(type_spec)))
     return value
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    type_elem = anonymous_tuple.to_elements(type_spec)
+    value_elem = (
+        anonymous_tuple.to_elements(anonymous_tuple.from_container(value)))
+    result_elem = []
+    if len(type_elem) != len(value_elem):
+      raise TypeError('Expected a {}-element tuple, found {} elements.'.format(
+          str(len(type_elem)), str(len(value_elem))))
+    for (t_name, el_type), (v_name, el_val) in zip(type_elem, value_elem):
+      if t_name != v_name:
+        raise TypeError(
+            'Mismatching element names in type vs. value: {} vs. {}.'.format(
+                t_name, v_name))
+      el_repr = to_representation_for_type(el_val, el_type, device)
+      result_elem.append((t_name, el_repr))
+    return anonymous_tuple.AnonymousTuple(result_elem)
   else:
     raise TypeError('Unexpected type {}.'.format(str(type_spec)))
 
@@ -215,9 +253,13 @@ class EagerValue(executor_value_base.ExecutorValue):
       device: The optional device on which to place the value.
     """
     type_spec = computation_types.to_type(type_spec)
-    py_typecheck.check_type(type_spec, computation_types.Type)
-    self._type_signature = type_spec
     self._value = to_representation_for_type(value, type_spec, device)
+    if type_spec is None:
+      py_typecheck.check_type(self._value, typed_object.TypedObject)
+      type_spec = self._value.type_signature
+    else:
+      py_typecheck.check_type(type_spec, computation_types.Type)
+    self._type_signature = type_spec
 
   @property
   def internal_representation(self):
@@ -272,12 +314,14 @@ class EagerExecutor(executor_base.Executor):
     else:
       self._device = None
 
-  def ingest(self, value, type_spec):
+  def ingest(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
     Args:
-      value: As documented in `executor_base.Executor`.
-      type_spec: As documented in `executor_base.Executor`.
+      value: An object that represents the value to embed within the executor.
+      type_spec: The `tff.Type` of the value represented by this object, or
+        something convertible to it. Can optionally be `None` if `value` is an
+        instance of `typed_object.TypedObject`.
 
     Returns:
       An instance of `EagerValue`.
@@ -285,20 +329,39 @@ class EagerExecutor(executor_base.Executor):
     Raises:
       RuntimeError: If not executing eagerly.
       TypeError: If the arguments are of the wrong types.
+      ValueError: If the type was not specified and cannot be determined from
+        the value.
     """
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
-    type_spec = computation_types.to_type(type_spec)
-    if isinstance(value, EagerValue):
-      if not type_utils.are_equivalent_types(value.type_signature, type_spec):
-        raise TypeError(
-            'Trying to reingest a value of type {} as one of type {}.'.format(
-                str(value.type_signature), str(type_spec)))
-      return value
-    elif isinstance(value, executor_value_base.ExecutorValue):
-      raise TypeError('Cannot ingest a value embedded in a non-eager executor.')
-    else:
-      return EagerValue(value, type_spec, self._device)
+    return EagerValue(value, type_spec, self._device)
 
   def invoke(self, comp, arg):
-    raise NotImplementedError
+    """Invokes `comp` on optional `arg` in the eager executor.
+
+    Args:
+      comp: As documented in `executor_base.Executor`.
+      arg: As documented in `executor_base.Executor`.
+
+    Returns:
+      An instance of `EagerValue` representing the result of the invocation.
+
+    Raises:
+      RuntimeError: If not executing eagerly.
+      TypeError: If the arguments are of the wrong types.
+    """
+    py_typecheck.check_type(comp, typed_object.TypedObject)
+    if not isinstance(comp.type_signature, computation_types.FunctionType):
+      raise TypeError('Expected a functional type, found {}'.format(
+          str(comp.type_signature)))
+    comp = self.ingest(comp, comp.type_signature)
+    if comp.type_signature.parameter is not None:
+      arg = self.ingest(arg, comp.type_signature.parameter)
+      return EagerValue(
+          comp.internal_representation(arg.internal_representation),
+          comp.type_signature.result, self._device)
+    elif arg is None:
+      return EagerValue(comp.internal_representation(),
+                        comp.type_signature.result, self._device)
+    else:
+      raise TypeError('Cannot pass an argument to a no-argument function.')
