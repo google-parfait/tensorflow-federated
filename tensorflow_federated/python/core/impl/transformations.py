@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl import type_utils
 
 
 def extract_intrinsics(comp):
@@ -1122,6 +1123,118 @@ class TFParser(object):
         transformed, ind = option.transform(comp)
         return transformed, ind
     return comp, False
+
+
+def insert_called_tf_identity_at_leaves(comp):
+  r"""Inserts an identity TF graph called on References under `comp`.
+
+  For ease of reasoning about and proving completeness of TFF-to-TF
+  translation capabilities, we will maintain the invariant that
+  we constantly pass up the AST instances of the pattern:
+
+                                    Call
+                                  /      \
+              CompiledComputation         Reference
+
+  Any block of TFF reducible to TensorFlow must have a functional type
+  signature without nested functions, and therefore we may assume there is
+  a single Reference in the code we are parsing to TF. We continually push logic
+  into the compiled computation as we make our way up the AST, preserving the
+  pattern above; when we hit the lambda that binds this reference, we simply
+  unwrap the call.
+
+  To perform this process, we must begin with this pattern; otherwise there
+  may be some arbitrary TFF constructs present between any occurrences of TF
+  and the arguments to which they are applied, e.g. arbitrary selections from
+  and nesting of tuples containing references.
+
+  `insert_called_tf_identity_at_leaves` ensures that the pattern above is
+  present at the leaves of any portion of the TFF AST which is destined to be
+  reduced to TF.
+
+  We detect such a destiny by checking for the existence of a
+  `computation_building_blocks.Lambda` whose parameter and result type
+  can both be bound into TensorFlow. This pattern is enforced here as
+  parameter validation on `comp`.
+
+  Args:
+    comp: Instance of `computation_building_blocks.Lambda` whose AST we will
+      traverse, replacing appropriate instances of
+      `computation_building_blocks.Reference` with graphs representing thei
+      identity function of the appropriate type called on the same reference.
+      `comp` must declare a parameter and result type which are both able to be
+      stamped in to a TensorFlow graph.
+
+  Returns:
+    A possibly modified  version of `comp`, where any references now have a
+    parent of type `computation_building_blocks.Call` with function an instance
+    of `computation_building_blocks.CompiledComputation`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  if not (isinstance(comp, computation_building_blocks.Lambda) and
+          type_utils.check_tf_comp_whitelisted(comp.result.type_signature) and
+          type_utils.check_tf_comp_whitelisted(comp.parameter_type)):
+    raise ValueError(
+        '`insert_called_tf_identity_at_leaves` should only be '
+        'called on instances of '
+        '`computation_building_blocks.Lambda` whose parameter '
+        'and result types can both be stamped into TensorFlow '
+        'graphs. You have called in on a {} of type signature {}.'.format(
+            comp.tff_repr, comp.type_signature))
+
+  def _should_decorate(comp):
+    return (isinstance(comp, computation_building_blocks.Reference) and
+            type_utils.check_tf_comp_whitelisted(comp.type_signature))
+
+  def _decorate(comp):
+    identity_function = computation_constructing_utils.construct_compiled_identity(
+        comp.type_signature)
+    return computation_building_blocks.Call(identity_function, comp)
+
+  def _decorate_if_reference_without_graph(comp):
+    """Decorates references under `comp` if necessary."""
+    if (isinstance(comp, computation_building_blocks.Tuple) and
+        any(_should_decorate(x) for x in comp)):
+      elems = []
+      for x in anonymous_tuple.to_elements(comp):
+        if _should_decorate(x[1]):
+          elems.append((x[0], _decorate(x[1])))
+        else:
+          elems.append((x[0], x[1]))
+      return computation_building_blocks.Tuple(elems), True
+    elif (isinstance(comp, computation_building_blocks.Call) and not isinstance(
+        comp.function, computation_building_blocks.CompiledComputation) and
+          _should_decorate(comp.argument)):
+      arg = _decorate(comp.argument)
+      return computation_building_blocks.Call(comp.function, arg), True
+    elif (isinstance(comp, computation_building_blocks.Selection) and
+          _should_decorate(comp.source)):
+      return computation_building_blocks.Selection(
+          _decorate(comp.source), name=comp.name, index=comp.index), True
+    elif (isinstance(comp, computation_building_blocks.Lambda) and
+          _should_decorate(comp.result)):
+      return computation_building_blocks.Lambda(comp.parameter_name,
+                                                comp.parameter_type,
+                                                _decorate(comp.result)), True
+    elif isinstance(comp, computation_building_blocks.Block) and (
+        any(_should_decorate(x[1]) for x in comp.locals) or
+        _should_decorate(comp.result)):
+      new_locals = []
+      for x in comp.locals:
+        if _should_decorate(x[1]):
+          new_locals.append((x[0], _decorate(x[1])))
+        else:
+          new_locals.append((x[0], x[1]))
+      new_result = comp.result
+      if _should_decorate(comp.result):
+        new_result = _decorate(comp.result)
+      return computation_building_blocks.Block(new_locals, new_result), True
+    return comp, False
+
+  return transformation_utils.transform_postorder(
+      comp, _decorate_if_reference_without_graph)
 
 
 def _is_called_intrinsic(comp, uri=None):
