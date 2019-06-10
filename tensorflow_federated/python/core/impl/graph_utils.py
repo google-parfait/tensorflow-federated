@@ -241,7 +241,7 @@ def get_tf2_result_dict_and_binding(result, name_prefix=None):
   # Recusrive helper function.
   def _get_result_type_and_binding_impl(result, name_prefix):
     """Recurse, update `result_dict`, return (result_type, partial_binding)."""
-    if tf.contrib.framework.is_tensor(result):
+    if tf.is_tensor(result):
       output_name = get_name(result.name)
       assert output_name not in result_dict
       result_dict[output_name] = result
