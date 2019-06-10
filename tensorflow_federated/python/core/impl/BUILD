@@ -284,6 +284,7 @@ py_library(
     name = "eager_executor",
     srcs = ["eager_executor.py"],
     deps = [
+        ":computation_impl",
         ":executor_base",
         ":executor_value_base",
         ":graph_utils",
@@ -293,7 +294,9 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:typed_object",
     ],
 )
 
@@ -303,6 +306,7 @@ py_test(
     srcs = ["eager_executor_test.py"],
     deps = [
         ":computation_impl",
+        ":context_stack_impl",
         ":eager_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",

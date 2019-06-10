@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from absl.testing import absltest
 
 import tensorflow as tf
@@ -26,10 +28,14 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import eager_executor
 
 
 class EagerExecutorTest(absltest.TestCase):
+
+  # TODO(b/134764569): Potentially take advantage of something similar to the
+  # `tf.test.TestCase.evaluate()` to avoid having to call `.numpy()` everywhere.
 
   def test_get_available_devices(self):
     devices = eager_executor.get_available_devices()
@@ -123,6 +129,25 @@ class EagerExecutorTest(absltest.TestCase):
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertEqual(val.internal_representation.numpy(), 10)
 
+  def test_executor_ingest_unnamed_int_pair(self):
+    ex = eager_executor.EagerExecutor()
+    val = ex.ingest([10, {
+        'a': 20
+    }], [tf.int32, collections.OrderedDict([('a', tf.int32)])])
+    self.assertIsInstance(val, eager_executor.EagerValue)
+    self.assertEqual(str(val.type_signature), '<int32,<a=int32>>')
+    self.assertIsInstance(val.internal_representation,
+                          anonymous_tuple.AnonymousTuple)
+    self.assertLen(val.internal_representation, 2)
+    self.assertIsInstance(val.internal_representation[0], tf.Tensor)
+    self.assertIsInstance(val.internal_representation[1],
+                          anonymous_tuple.AnonymousTuple)
+    self.assertLen(val.internal_representation[1], 1)
+    self.assertEqual(dir(val.internal_representation[1]), ['a'])
+    self.assertIsInstance(val.internal_representation[1][0], tf.Tensor)
+    self.assertEqual(val.internal_representation[0].numpy(), 10)
+    self.assertEqual(val.internal_representation[1][0].numpy(), 20)
+
   def test_executor_ingest_no_arg_computation(self):
     ex = eager_executor.EagerExecutor()
 
@@ -158,6 +183,33 @@ class EagerExecutorTest(absltest.TestCase):
     result = val.internal_representation(arg)
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 20)
+
+  def test_executor_invoke_add_numbers(self):
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def comp(a, b):
+      return a + b
+
+    result = eager_executor.EagerExecutor().invoke(comp, [10, 20])
+    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertEqual(str(result.type_signature), 'int32')
+    self.assertIsInstance(result.internal_representation, tf.Tensor)
+    self.assertEqual(result.internal_representation.numpy(), 30)
+
+  def test_executor_as_context(self):
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def comp(a, b):
+      return a + b
+
+    with context_stack_impl.context_stack.install(
+        eager_executor.EagerExecutor()):
+      a = comp(10, 20)
+      b = comp(30, 40)
+      result = comp(a, b)
+
+    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertEqual(result.internal_representation.numpy(), 100)
 
 
 if __name__ == '__main__':
