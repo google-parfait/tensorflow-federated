@@ -84,7 +84,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       """Runs forward_pass on batch and sums the weighted gradients."""
       flat_accumulated_grads, batch_weight_sum = state
 
-      with tf.contrib.eager.GradientTape() as tape:
+      with tf.GradientTape() as tape:
         output = model.forward_pass(batch)
       flat_grads = tape.gradient(output.loss, flat_trainable_weights)
 
