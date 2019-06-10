@@ -226,6 +226,23 @@ py_test(
 )
 
 py_library(
+    name = "concurrent_executor",
+    srcs = ["concurrent_executor.py"],
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "concurrent_executor_test",
+    size = "small",
+    srcs = ["concurrent_executor_test.py"],
+    deps = [":concurrent_executor"],
+)
+
+py_library(
     name = "context_base",
     srcs = ["context_base.py"],
 )
@@ -261,6 +278,51 @@ py_test(
 py_library(
     name = "dtype_utils",
     srcs = ["dtype_utils.py"],
+)
+
+py_library(
+    name = "eager_executor",
+    srcs = ["eager_executor.py"],
+    deps = [
+        ":executor_base",
+        ":executor_value_base",
+        ":graph_utils",
+        ":type_serialization",
+        ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "eager_executor_test",
+    size = "small",
+    srcs = ["eager_executor_test.py"],
+    deps = [
+        ":computation_impl",
+        ":eager_executor",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_library(
+    name = "executor_base",
+    srcs = ["executor_base.py"],
+    deps = [
+        ":context_base",
+        ":executor_value_base",
+    ],
+)
+
+py_library(
+    name = "executor_value_base",
+    srcs = ["executor_value_base.py"],
+    deps = ["//tensorflow_federated/python/core/api:typed_object"],
 )
 
 py_library(
@@ -672,6 +734,26 @@ py_test(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
+    ],
+)
+
+py_library(
+    name = "transforming_executor",
+    srcs = ["transforming_executor.py"],
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "transforming_executor_test",
+    size = "small",
+    srcs = ["transforming_executor_test.py"],
+    deps = [
+        ":eager_executor",
+        ":transforming_executor",
     ],
 )
 
