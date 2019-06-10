@@ -35,7 +35,8 @@ class Executor(context_base.Context):
   # factoring out parts of reference executor's `to_representation_for_type()`.
 
   # TODO(b/134543154): Consider not deriving from `context_base.Context`, even
-  # though right now they're virtually identical.
+  # though right now they're virtually identical. Perhaps we should make one,
+  # but not the other responsible for unwrapping embedded values (TBD).
 
   @abc.abstractmethod
   def ingest(self, value, type_spec):
