@@ -254,7 +254,7 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
   no_nan_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
       weights_delta)
   # TODO(b/124538167): We should increment a server counter to
-  # track the fact a non-finite weiths_delta was encountered.
+  # track the fact a non-finite weights_delta was encountered.
 
   @tf.function
   def update_model_inner():
