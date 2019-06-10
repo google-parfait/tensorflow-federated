@@ -2474,8 +2474,8 @@ class ParseTFFToTFTest(absltest.TestCase):
   def test_does_not_transform_standalone_intrinsic(self):
     standalone_intrinsic = computation_building_blocks.Intrinsic(
         'dummy', tf.int32)
-    comp, mutated = parse_tff_to_tf(standalone_intrinsic)
-    self.assertFalse(mutated)
+    comp, modified = parse_tff_to_tf(standalone_intrinsic)
+    self.assertFalse(modified)
     self.assertEqual(comp.tff_repr, standalone_intrinsic.tff_repr)
     self.assertEqual(comp.type_signature, standalone_intrinsic.type_signature)
 
@@ -2493,13 +2493,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         [tf.int32, tf.float32],
                                                         selection_from_call)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda([0, 1.]), exec_tf([0, 1.]))
 
@@ -2511,13 +2511,13 @@ class ParseTFFToTFTest(absltest.TestCase):
     lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32,
                                                         called_tf_block)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda(2), exec_tf(2))
 
@@ -2533,13 +2533,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         [tf.int32, tf.float32],
                                                         called_tf_block)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
@@ -2558,13 +2558,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                          ('b', tf.float32)],
                                                         called_tf_block)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda({'a': 5, 'b': 6.}), exec_tf({'a': 5, 'b': 6.}))
 
@@ -2583,13 +2583,13 @@ class ParseTFFToTFTest(absltest.TestCase):
     lambda_wrapper = computation_building_blocks.Lambda(
         'x', [tf.int32, tf.float32, tf.bool], called_tf_block)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
@@ -2613,13 +2613,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                               ('c', tf.bool)],
                                                         called_tf_block)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
@@ -2654,13 +2654,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         [tf.int32, tf.float32],
                                                         tuple_of_called_graphs)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
@@ -2687,13 +2687,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         [tf.int32, tf.float32],
                                                         tuple_of_called_graphs)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda([13, 14.]), exec_tf([13, 14.]))
 
@@ -2715,13 +2715,13 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                          ('b', tf.float32)],
                                                         one_added)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     self.assertEqual(
         exec_lambda({
@@ -2741,15 +2741,138 @@ class ParseTFFToTFTest(absltest.TestCase):
     summed = computation_building_blocks.Call(sum_and_add_one, tuple_of_ints)
     lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32, summed)
 
-    parsed, mutated = parse_tff_to_tf(lambda_wrapper)
+    parsed, modified = parse_tff_to_tf(lambda_wrapper)
     exec_lambda = _to_computation_impl(lambda_wrapper)
     exec_tf = _to_computation_impl(parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
-    self.assertTrue(mutated)
+    self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda(17), exec_tf(17))
+
+
+def _count(comp, predicate):
+  count = [0]
+
+  def _count_predicate(comp):
+    if predicate(comp):
+      count[0] += 1
+    return comp, False
+
+  transformation_utils.transform_postorder(comp, _count_predicate)
+
+  return count[0]
+
+
+def _is_called_graph_pattern(comp):
+  return (isinstance(comp, computation_building_blocks.Call) and isinstance(
+      comp.function, computation_building_blocks.CompiledComputation) and
+          isinstance(comp.argument, computation_building_blocks.Reference))
+
+
+def _is_compiled_computation(comp):
+  return isinstance(comp, computation_building_blocks.CompiledComputation)
+
+
+class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
+
+  def test_rasies_on_none(self):
+    with self.assertRaises(TypeError):
+      transformations.insert_called_tf_identity_at_leaves(None)
+
+  def test_transforms_simple_lambda(self):
+    identity_lam = computation_building_blocks.Lambda(
+        'x', tf.int32, computation_building_blocks.Reference('x', tf.int32))
+    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+        identity_lam)
+    self.assertTrue(modified)
+    self.assertEqual(new_lambda.type_signature, identity_lam.type_signature)
+    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
+    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+
+  def test_raises_tuple(self):
+    one_element_tuple = computation_building_blocks.Tuple(
+        [computation_building_blocks.Reference('x', tf.int32)])
+    with self.assertRaises(ValueError):
+      _ = transformations.insert_called_tf_identity_at_leaves(one_element_tuple)
+
+  def test_raises_on_lambda_with_federated_types(self):
+    fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    identity_lam = computation_building_blocks.Lambda(
+        'x', tf.int32, computation_building_blocks.Reference('x', fed_type))
+    with self.assertRaises(ValueError):
+      _ = transformations.insert_called_tf_identity_at_leaves(identity_lam)
+    other_lam = computation_building_blocks.Lambda(
+        'x', fed_type, computation_building_blocks.Reference('x', tf.int32))
+    with self.assertRaises(ValueError):
+      _ = transformations.insert_called_tf_identity_at_leaves(other_lam)
+
+  def test_transforms_under_selection(self):
+    ref_to_x = computation_building_blocks.Reference('x', [tf.int32])
+    sel = computation_building_blocks.Selection(ref_to_x, index=0)
+    lam = computation_building_blocks.Lambda('x', [tf.int32], sel)
+    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+        lam)
+    self.assertTrue(modified)
+    self.assertEqual(lam.type_signature, new_lambda.type_signature)
+    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
+    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+
+  def test_transforms_under_tuple(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    tup = computation_building_blocks.Tuple([ref_to_x, ref_to_x])
+    lam = computation_building_blocks.Lambda('x', tf.int32, tup)
+    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+        lam)
+    self.assertTrue(modified)
+    self.assertEqual(lam.type_signature, new_lambda.type_signature)
+    self.assertEqual(_count(new_lambda, _is_compiled_computation), 2)
+    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 2)
+
+  def test_transforms_in_block_result(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    block = computation_building_blocks.Block([], ref_to_x)
+    lam = computation_building_blocks.Lambda('x', tf.int32, block)
+    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+        lam)
+    self.assertTrue(modified)
+    self.assertEqual(lam.type_signature, new_lambda.type_signature)
+    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
+    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+
+  def test_transforms_in_block_locals(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    data = computation_building_blocks.Data('x', tf.int32)
+    block = computation_building_blocks.Block([('y', ref_to_x)], data)
+    lam = computation_building_blocks.Lambda('x', tf.int32, block)
+    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+        lam)
+    self.assertTrue(modified)
+    self.assertEqual(lam.type_signature, new_lambda.type_signature)
+    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
+    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+
+  def test_transforms_under_call_without_compiled_computation(self):
+    ref_to_x = computation_building_blocks.Reference('x', [tf.int32])
+    sel = computation_building_blocks.Selection(ref_to_x, index=0)
+    lam = computation_building_blocks.Lambda('x', [tf.int32], sel)
+    call = computation_building_blocks.Call(lam, ref_to_x)
+    lam = computation_building_blocks.Lambda('x', [tf.int32], call)
+    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+        lam)
+    self.assertTrue(modified)
+    self.assertEqual(lam.type_signature, new_lambda.type_signature)
+    self.assertEqual(_count(new_lambda, _is_compiled_computation), 2)
+    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 2)
+
+  def test_noops_on_call_with_compiled_computation(self):
+    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+    compiled_comp = _create_compiled_computation(lambda x: x, tf.int32)
+    call = computation_building_blocks.Call(compiled_comp, ref_to_x)
+    lam = computation_building_blocks.Lambda('x', tf.int32, call)
+    _, modified = transformations.insert_called_tf_identity_at_leaves(lam)
+    self.assertFalse(modified)
 
 
 if __name__ == '__main__':
