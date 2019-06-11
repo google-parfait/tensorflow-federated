@@ -235,6 +235,18 @@ def to_representation_for_type(value, type_spec=None, device=None):
       el_repr = to_representation_for_type(el_val, el_type, device)
       result_elem.append((t_name, el_repr))
     return anonymous_tuple.AnonymousTuple(result_elem)
+  elif isinstance(type_spec, computation_types.SequenceType):
+    py_typecheck.check_type(
+        value,
+        (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset))
+    element_type = type_utils.tf_dtypes_and_shapes_to_type(
+        tf.compat.v1.data.get_output_types(value),
+        tf.compat.v1.data.get_output_shapes(value))
+    value_type = computation_types.SequenceType(element_type)
+    if not type_utils.are_equivalent_types(value_type, type_spec):
+      raise TypeError('Expected a value of type {}, found {}.'.format(
+          str(type_spec), str(value_type)))
+    return value
   else:
     raise TypeError('Unexpected type {}.'.format(str(type_spec)))
 
@@ -280,14 +292,38 @@ class EagerExecutor(executor_base.Executor):
 
   WARNING: This executor is only partially implemented, and should not be used.
 
-  This executor understands tensors, datasets, nested structures of those, and
-  tensorflow computations. It will optionally be able to place work on specific
-  devices (e.g., GPUs). In contrast to the reference executor, it handles data
-  sets in a pipelined fashion, and does not place limits on the data set sizes.
+  TODO(b/134764569): Add support for a subset of the computation building
+  blocks, as documented below:
+  - calls,
+  - tuples,
+  - selections,
+  - data.
+
+  This executor understands the following TFF types: tensors, sequences, named
+  tuples, and functions. It does not understand placements, federated, or
+  abstract types.
+
+  This executor understands the following kinds of TFF computation building
+  blocks: tensorflow computations, tuples, selections, calls, and external data.
+  It does not understand lambda calculus (lambdas, blocks, references),
+  placement literals, or any of the intrinsics (including those on sequences).
+
+  The arguments to be ingested can be Python constants of simple types, nested
+  structures of those, as well as eager tensors and eager datasets.
+
+  The external data references must identify files available in the executor's
+  filesystem. The exact format is yet to be documented.
+
+  The executor will be able to place work on specific devices (e.g., on GPUs).
+  In contrast to the reference executor, it handles data sets in a pipelined
+  fashion, and does not place limits on the data set sizes. It also avoids
+  marshaling TensorFlow values in and out between calls.
 
   It does not deal with multithreading, checkpointing, federated computations,
   and other concerns to be covered by separate executor components. It runs the
-  operations it supports in a synchronous fashion.
+  operations it supports in a synchronous fashion. Asynchrny and other aspects
+  not supported here should be handled by composing this executor with other
+  executors into a complex executor stack, rather than mixing in all the logic.
   """
 
   def __init__(self, device=None):

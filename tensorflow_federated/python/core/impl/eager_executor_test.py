@@ -66,9 +66,6 @@ class EagerExecutorTest(absltest.TestCase):
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 1000)
 
-  # TODO(b/134764569): Add here a test with a dataset reduce once the TF bug
-  # that affects `wrap_function` is fixed.
-
   def test_embed_tensorflow_computation_with_tuple_arg_and_result(self):
 
     @computations.tf_computation([('a', tf.int32), ('b', tf.int32)])
@@ -196,7 +193,21 @@ class EagerExecutorTest(absltest.TestCase):
     self.assertIsInstance(result.internal_representation, tf.Tensor)
     self.assertEqual(result.internal_representation.numpy(), 30)
 
-  def test_executor_as_context(self):
+  def test_executor_invoke_take_two_int_from_finite_dataset(self):
+
+    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    def comp(ds):
+      return ds.take(2)
+
+    ds = tf.data.Dataset.from_tensor_slices([10, 20, 30, 40, 50])
+    result = eager_executor.EagerExecutor().invoke(comp, ds)
+    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertEqual(str(result.type_signature), 'int32*')
+    self.assertIn('Dataset', type(result.internal_representation).__name__)
+    self.assertCountEqual([x.numpy() for x in result.internal_representation],
+                          [10, 20])
+
+  def test_executor_as_context_with_int_args(self):
 
     @computations.tf_computation(tf.int32, tf.int32)
     def comp(a, b):
