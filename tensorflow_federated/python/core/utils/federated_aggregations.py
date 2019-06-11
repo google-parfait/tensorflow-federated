@@ -111,8 +111,8 @@ def federated_min(value):
 
   Returns:
     In the degenerate scenario that the `value` is aggregated over an empty set
-  of `tff.CLIENTS`, the tensor constituents of the result are set to the
-  maximum of the underlying numeric data type.
+    of `tff.CLIENTS`, the tensor constituents of the result are set to the
+    maximum of the underlying numeric data type.
   """
   _validate_value_on_clients(value)
   member_type = value.type_signature.member
@@ -123,15 +123,13 @@ def federated_min(value):
 def federated_max(value):
   """Aggregation to find the maximum value from the `tff.CLIENTS`.
 
-  Returns
-
   Args:
     value: A `tff.Value` placed on the `tff.CLIENTS`.
 
   Returns:
     In the degenerate scenario that the `value` is aggregated over an empty set
-  of `tff.CLIENTS`, the tensor constituents of the result are set to the
-  minimum of the underlying numeric data type.
+    of `tff.CLIENTS`, the tensor constituents of the result are set to the
+    minimum of the underlying numeric data type.
   """
   _validate_value_on_clients(value)
   member_type = value.type_signature.member

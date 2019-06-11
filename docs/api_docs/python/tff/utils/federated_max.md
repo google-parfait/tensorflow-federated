@@ -17,17 +17,14 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-#### Returns
-
-Args:
+#### Args:
 
 *   <b>`value`</b>: A <a href="../../tff/Value.md"><code>tff.Value</code></a>
     placed on the <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 #### Returns:
 
-In the degenerate scenario that the `value` is aggregated over an empty set
-
-of <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>, the tensor
+In the degenerate scenario that the `value` is aggregated over an empty set of
+<a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>, the tensor
 constituents of the result are set to the minimum of the underlying numeric data
 type.
