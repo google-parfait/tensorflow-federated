@@ -792,20 +792,31 @@ class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
     return comp, False
 
 
-class LambdaToCalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
-  """`TransformSpec`: Lambda calling a graph with replication of its argument.
+class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
+  r"""`TransformSpec` representing a called graph with replicated argument.
 
-  This patterns comes about during TFF-to-TF parsing, as unnatural as it seems.
-  This will eventually be handled in full generality, but for now this is the
-  only instance of this particular evil pattern we need to deal with.
+  Transforms the pattern:
+
+                          Call
+                         /    \
+      CompiledComputation      <Arg, ..., Arg>
+
+  To
+
+                          Call
+                         /    \
+      CompiledComputation      Arg
+
+  This is necessary for preserving the invariant that we are always passing
+  called graphs up the tree; concatenating a tuple of called graphs necessarily
+  calls into this function to preserve this invariant.
   """
 
   def should_transform(self, comp):
-    if not (isinstance(comp, computation_building_blocks.Lambda) and
-            isinstance(comp.result, computation_building_blocks.Call)):
+    if not isinstance(comp, computation_building_blocks.Call):
       return False
-    function = comp.result.function
-    argument = comp.result.argument
+    function = comp.function
+    argument = comp.argument
     if not isinstance(function,
                       computation_building_blocks.CompiledComputation):
       return False
@@ -813,17 +824,21 @@ class LambdaToCalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
         isinstance(x, computation_building_blocks.Reference)
         for x in argument)):
       return False
-    return all(x.name == comp.parameter_name for x in argument)
+    first_ref_name = argument[0].name
+    return all(x.name == first_ref_name for x in argument)
 
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
     preprocess_arg_comp = computation_constructing_utils.construct_compiled_input_replication(
-        comp.parameter_type, len(comp.result.argument))
-    logic_of_tf_comp = comp.result.function
+        comp.argument[0].type_signature, len(comp.argument))
+    logic_of_tf_comp = comp.function
     composed_tf = compose_tensorflow_blocks(
         [logic_of_tf_comp, preprocess_arg_comp])
-    return composed_tf, True
+    single_arg = computation_building_blocks.Reference(
+        comp.argument[0].name, comp.argument[0].type_signature)
+    called_tf = computation_building_blocks.Call(composed_tf, single_arg)
+    return called_tf, True
 
 
 class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
@@ -941,9 +956,14 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
       arg = None
     elif len(non_none_arg_list) == 1:
       arg = non_none_arg_list[0]
+      return computation_building_blocks.Call(concatenated_tf, arg), True
     else:
       arg = computation_building_blocks.Tuple(non_none_arg_list)
-    return computation_building_blocks.Call(concatenated_tf, arg), True
+    called_tf_on_concatenated_arg = computation_building_blocks.Call(
+        concatenated_tf, arg)
+    replicated_arg_check = CalledGraphOnReplicatedArg()
+    return replicated_arg_check.transform(
+        called_tf_on_concatenated_arg)[0], True
 
 
 def _construct_padding(list_of_indices, tuple_type):

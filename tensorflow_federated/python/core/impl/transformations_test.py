@@ -2459,6 +2459,7 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
 
 
 def parse_tff_to_tf(comp):
+  comp, _ = transformations.insert_called_tf_identity_at_leaves(comp)
   parser_callable = transformations.TFParser()
   new_comp, transformed = transformation_utils.transform_postorder(
       comp, parser_callable)
@@ -2474,10 +2475,8 @@ class ParseTFFToTFTest(absltest.TestCase):
   def test_does_not_transform_standalone_intrinsic(self):
     standalone_intrinsic = computation_building_blocks.Intrinsic(
         'dummy', tf.int32)
-    comp, modified = parse_tff_to_tf(standalone_intrinsic)
-    self.assertFalse(modified)
-    self.assertEqual(comp.tff_repr, standalone_intrinsic.tff_repr)
-    self.assertEqual(comp.type_signature, standalone_intrinsic.type_signature)
+    with self.assertRaises(ValueError):
+      parse_tff_to_tf(standalone_intrinsic)
 
   def test_replaces_lambda_to_selection_from_called_graph_with_tf_of_same_type(
       self):

@@ -1054,10 +1054,6 @@ class TFParser(object):
   this, we assume that there is a lambda expression at the top of the AST
   we are looking to parse, as well as the rest of the assumptions below.
 
-  We have no proof that these assumptions are sufficient for this
-  library to parse *all* TFF into TF, so we expect some constructs will fail
-  to be reduced. The assumptions can currently be enumerated as follows:
-
   1. All called lambdas have been converted to blocks.
   2. All blocks have been inlined; that is, there are no block/LET constructs
      remaining.
@@ -1087,12 +1083,8 @@ class TFParser(object):
     self._parse_library = [
         compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(),
         compiled_computation_transforms.LambdaWrappingGraph(),
-        compiled_computation_transforms.LambdaCallSelectionFromArg(),
-        compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
-        ),
         compiled_computation_transforms.TupleCalledGraphs(),
         compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(),
-        compiled_computation_transforms.LambdaToCalledGraphOnReplicatedArg(),
     ]
 
   def __call__(self, comp):
