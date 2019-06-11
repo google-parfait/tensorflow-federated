@@ -45,6 +45,32 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       from_tensor_slices_client_data.FromTensorSlicesClientData({'a': []})
 
+  def test_shuffle_client_ids(self):
+    tensor_slices_dict = {'a': [1, 1], 'b': [2, 2, 2], 'c': [3], 'd': [4, 4]}
+    all_examples = [1, 1, 2, 2, 2, 3, 4, 4]
+    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+        tensor_slices_dict)
+
+    def get_flat_dataset(seed):
+      ds = client_data.create_tf_dataset_from_all_clients(seed=seed)
+      return [x.numpy() for x in ds]
+
+    d1 = get_flat_dataset(123)
+    d2 = get_flat_dataset(456)
+    self.assertNotEqual(d1, d2)  # Different random seeds, different order.
+    self.assertCountEqual(d1, all_examples)
+    self.assertCountEqual(d2, all_examples)
+
+    # Test that the default behavior is to use a fresh random seed.
+    # We could get unlucky, but we are very unlikely to get unlucky
+    # 100 times in a row.
+    found_not_equal = False
+    for _ in range(100):
+      if get_flat_dataset(seed=None) != get_flat_dataset(seed=None):
+        found_not_equal = True
+        break
+    self.assertTrue(found_not_equal)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
