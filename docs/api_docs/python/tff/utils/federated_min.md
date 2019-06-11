@@ -24,8 +24,7 @@ Defined in
 
 #### Returns:
 
-In the degenerate scenario that the `value` is aggregated over an empty set
-
-of <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>, the tensor
+In the degenerate scenario that the `value` is aggregated over an empty set of
+<a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>, the tensor
 constituents of the result are set to the maximum of the underlying numeric data
 type.
