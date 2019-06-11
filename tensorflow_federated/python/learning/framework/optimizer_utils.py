@@ -345,11 +345,61 @@ def build_model_delta_optimizer_process(
   with tf.Graph().as_default():
     dummy_model_for_metadata = model_utils.enhance(model_fn())
 
+  # ===========================================================================
+  # TensorFlow Computations
+
   @tff.tf_computation
   def tf_init_fn():
     return server_init(model_fn, server_optimizer_fn,
                        stateful_delta_aggregate_fn.initialize(),
                        stateful_model_broadcast_fn.initialize())
+
+  tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
+  server_state_type = tf_init_fn.type_signature.result
+
+  @tff.tf_computation(tf_dataset_type, server_state_type.model)
+  def tf_client_delta(tf_dataset, initial_model_weights):
+    """Performs client local model optimization.
+
+    Args:
+      tf_dataset: a `tf.data.Dataset` that provides training examples.
+      initial_model_weights: a `model_utils.ModelWeights` containing the
+        starting weights.
+
+    Returns:
+      A `ClientOutput` structure.
+    """
+    client_delta_fn = model_to_client_delta_fn(model_fn)
+    client_output = client_delta_fn(tf_dataset, initial_model_weights)
+    return client_output
+
+  @tff.tf_computation(server_state_type, server_state_type.model.trainable,
+                      server_state_type.delta_aggregate_state,
+                      server_state_type.model_broadcast_state)
+  def tf_server_update(server_state, model_delta, new_delta_aggregate_state,
+                       new_broadcaster_state):
+    """Converts args to correct python types and calls server_update_model."""
+    py_typecheck.check_type(server_state, ServerState)
+    server_state = ServerState(
+        model=server_state.model,
+        optimizer_state=list(server_state.optimizer_state),
+        delta_aggregate_state=new_delta_aggregate_state,
+        model_broadcast_state=new_broadcaster_state)
+
+    return server_update_model(
+        server_state,
+        model_delta,
+        model_fn=model_fn,
+        optimizer_fn=server_optimizer_fn)
+
+  weight_type = tf_client_delta.type_signature.result.weights_delta_weight
+
+  @tff.tf_computation(weight_type)
+  def _cast_weight_to_float(x):
+    return tf.cast(x, tf.float32)
+
+  # ===========================================================================
+  # Federated Computations
 
   @tff.federated_computation
   def server_init_tff():
@@ -357,9 +407,6 @@ def build_model_delta_optimizer_process(
     return tff.federated_value(tf_init_fn(), tff.SERVER)
 
   federated_server_state_type = server_init_tff.type_signature.result
-  server_state_type = tf_init_fn.type_signature.result
-
-  tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
   federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
 
   @tff.federated_computation(federated_server_state_type,
@@ -375,76 +422,27 @@ def build_model_delta_optimizer_process(
       A tuple of updated `tff.learning.framework.ServerState` and the result of
     `tff.learning.Model.federated_output_computation`.
     """
-    model_weights_type = server_state_type.model
-
-    @tff.tf_computation(tf_dataset_type, model_weights_type)
-    def client_delta_tf(tf_dataset, initial_model_weights):
-      """Performs client local model optimization.
-
-      Args:
-        tf_dataset: a `tf.data.Dataset` that provides training examples.
-        initial_model_weights: a `model_utils.ModelWeights` containing the
-          starting weights.
-
-      Returns:
-        A `ClientOutput` structure.
-      """
-      client_delta_fn = model_to_client_delta_fn(model_fn)
-      client_output = client_delta_fn(tf_dataset, initial_model_weights)
-      return client_output
-
     new_broadcaster_state, client_model = stateful_model_broadcast_fn(
         server_state.model_broadcast_state, server_state.model)
 
-    client_outputs = tff.federated_map(client_delta_tf,
+    client_outputs = tff.federated_map(tf_client_delta,
                                        (federated_dataset, client_model))
-
-    @tff.tf_computation(
-        server_state_type, model_weights_type.trainable,
-        server_state.delta_aggregate_state.type_signature.member,
-        server_state.model_broadcast_state.type_signature.member)
-    def server_update_tf(server_state, model_delta, new_delta_aggregate_state,
-                         new_broadcaster_state):
-      """Converts args to correct python types and calls server_update_model."""
-      py_typecheck.check_type(server_state, ServerState)
-      server_state = ServerState(
-          model=server_state.model,
-          optimizer_state=list(server_state.optimizer_state),
-          delta_aggregate_state=new_delta_aggregate_state,
-          model_broadcast_state=new_broadcaster_state)
-
-      return server_update_model(
-          server_state,
-          model_delta,
-          model_fn=model_fn,
-          optimizer_fn=server_optimizer_fn)
 
     # TODO(b/124070381): We hope to remove this explicit cast once we have a
     # full solution for type analysis in multiplications and divisions
     # inside TFF
-    fed_weight_type = client_outputs.weights_delta_weight.type_signature.member
-    py_typecheck.check_type(fed_weight_type, tff.TensorType)
-    if fed_weight_type.dtype.is_integer:
-
-      @tff.tf_computation(fed_weight_type)
-      def _cast_to_float(x):
-        return tf.cast(x, tf.float32)
-
-      weight_denom = tff.federated_map(_cast_to_float,
-                                       client_outputs.weights_delta_weight)
-    else:
-      weight_denom = client_outputs.weights_delta_weight
-
+    weight_denom = tff.federated_map(_cast_weight_to_float,
+                                     client_outputs.weights_delta_weight)
     new_delta_aggregate_state, round_model_delta = stateful_delta_aggregate_fn(
         server_state.delta_aggregate_state,
         client_outputs.weights_delta,
         weight=weight_denom)
 
     # TODO(b/123408447): remove tff.federated_apply and call
-    # server_update_tf directly once T <-> T@SERVER isomorphism is
+    # tf_server_update directly once T <-> T@SERVER isomorphism is
     # supported.
     server_state = tff.federated_apply(
-        server_update_tf, (server_state, round_model_delta,
+        tf_server_update, (server_state, round_model_delta,
                            new_delta_aggregate_state, new_broadcaster_state))
 
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
