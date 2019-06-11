@@ -70,13 +70,22 @@ A `tf.data.Dataset` object.
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
 ```python
-create_tf_dataset_from_all_clients()
+create_tf_dataset_from_all_clients(seed=None)
 ```
 
 Creates a new `tf.data.Dataset` containing _all_ client examples.
 
 NOTE: the returned `tf.data.Dataset` is not serializable and runnable on other
 devices, as it uses `tf.py_func` internally.
+
+Currently, the implementation produces a dataset that contains all examples from
+a single client in order, and so generally additional shuffling should be
+performed.
+
+#### Args:
+
+*   <b>`seed`</b>: Optional, a seed to determine the order in which clients are
+    processed in the joined dataset.
 
 #### Returns:
 

@@ -208,24 +208,6 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
             self.assertAlmostEqual(actual[i], e, places=4)
       self.assertEmpty(expected_examples)
 
-  def test_create_tf_dataset_from_all_clients(self):
-    data = self._create_fake_client_data()
-    expected_examples = [
-        example[1:] for example in sorted(FAKE_TEST_DATA, key=lambda x: x[0])
-    ]
-    tf_dataset = data.create_tf_dataset_from_all_clients()
-    # Assert the actual examples provided are the same.
-    for actual in tf_dataset:
-      expected = expected_examples.pop(0)
-      actual = self.evaluate(actual)
-      self.assertLen(actual, len(expected))
-      for i, e in enumerate(expected):
-        if isinstance(e, list):
-          self.assertSequenceAlmostEqual(actual[i], e, places=4)
-        else:
-          self.assertAlmostEqual(actual[i], e, places=4)
-    self.assertEmpty(expected_examples)
-
   def test_build_client_file_dict(self):
     temp_dir = FilePerUserClientDataTest.temp_dir
     data = file_per_user_client_data.FilePerUserClientData.create_from_dir(

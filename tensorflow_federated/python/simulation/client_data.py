@@ -26,6 +26,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import numpy as np
 
 import six
 import tensorflow as tf
@@ -52,20 +53,30 @@ class ClientData(object):
     """
     pass
 
-  def create_tf_dataset_from_all_clients(self):
+  def create_tf_dataset_from_all_clients(self, seed=None):
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
     NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
     other devices, as it uses `tf.py_func` internally.
 
+    Currently, the implementation produces a dataset that contains
+    all examples from a single client in order, and so generally additional
+    shuffling should be performed.
+
+    Args:
+      seed: Optional, a seed to determine the order in which clients
+        are processed in the joined dataset.
+
     Returns:
       A `tf.data.Dataset` object.
     """
-
     # NOTE: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
+    # NOTE: Tests are via the simple concrete from_tensor_slices_client_data.
     def _generator():
-      for client_id in self.client_ids:
+      client_ids = list(self.client_ids)
+      np.random.RandomState(seed=seed).shuffle(client_ids)
+      for client_id in client_ids:
         for example in self.create_tf_dataset_for_client(client_id):
           yield example
 
