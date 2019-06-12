@@ -32,8 +32,17 @@
 *   <a href="./tff/framework/Reference.md"><code>tff.framework.Reference</code></a>
 *   <a href="./tff/framework/Selection.md"><code>tff.framework.Selection</code></a>
 *   <a href="./tff/framework/Tuple.md"><code>tff.framework.Tuple</code></a>
+*   <a href="./tff/framework/check_has_unique_names.md"><code>tff.framework.check_has_unique_names</code></a>
+*   <a href="./tff/framework/get_map_of_unbound_references.md"><code>tff.framework.get_map_of_unbound_references</code></a>
+*   <a href="./tff/framework/inline_block_locals.md"><code>tff.framework.inline_block_locals</code></a>
 *   <a href="./tff/framework/is_assignable_from.md"><code>tff.framework.is_assignable_from</code></a>
+*   <a href="./tff/framework/is_called_intrinsic.md"><code>tff.framework.is_called_intrinsic</code></a>
+*   <a href="./tff/framework/merge_tuple_intrinsics.md"><code>tff.framework.merge_tuple_intrinsics</code></a>
+*   <a href="./tff/framework/replace_called_lambda_with_block.md"><code>tff.framework.replace_called_lambda_with_block</code></a>
+*   <a href="./tff/framework/transform_postorder.md"><code>tff.framework.transform_postorder</code></a>
 *   <a href="./tff/framework/type_to_tf_tensor_specs.md"><code>tff.framework.type_to_tf_tensor_specs</code></a>
+*   <a href="./tff/framework/unique_name_generator.md"><code>tff.framework.unique_name_generator</code></a>
+*   <a href="./tff/framework/uniquify_reference_names.md"><code>tff.framework.uniquify_reference_names</code></a>
 *   <a href="./tff/learning.md"><code>tff.learning</code></a>
 *   <a href="./tff/learning/BatchOutput.md"><code>tff.learning.BatchOutput</code></a>
 *   <a href="./tff/learning/Model.md"><code>tff.learning.Model</code></a>

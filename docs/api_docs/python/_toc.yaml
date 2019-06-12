@@ -64,26 +64,44 @@ toc:
       path: /federated/api_docs/python/tff/framework/Block
     - title: Call
       path: /federated/api_docs/python/tff/framework/Call
+    - title: check_has_unique_names
+      path: /federated/api_docs/python/tff/framework/check_has_unique_names
     - title: CompiledComputation
       path: /federated/api_docs/python/tff/framework/CompiledComputation
     - title: ComputationBuildingBlock
       path: /federated/api_docs/python/tff/framework/ComputationBuildingBlock
+    - title: get_map_of_unbound_references
+      path: /federated/api_docs/python/tff/framework/get_map_of_unbound_references
+    - title: inline_block_locals
+      path: /federated/api_docs/python/tff/framework/inline_block_locals
     - title: Intrinsic
       path: /federated/api_docs/python/tff/framework/Intrinsic
     - title: is_assignable_from
       path: /federated/api_docs/python/tff/framework/is_assignable_from
+    - title: is_called_intrinsic
+      path: /federated/api_docs/python/tff/framework/is_called_intrinsic
     - title: Lambda
       path: /federated/api_docs/python/tff/framework/Lambda
+    - title: merge_tuple_intrinsics
+      path: /federated/api_docs/python/tff/framework/merge_tuple_intrinsics
     - title: Placement
       path: /federated/api_docs/python/tff/framework/Placement
     - title: Reference
       path: /federated/api_docs/python/tff/framework/Reference
+    - title: replace_called_lambda_with_block
+      path: /federated/api_docs/python/tff/framework/replace_called_lambda_with_block
     - title: Selection
       path: /federated/api_docs/python/tff/framework/Selection
+    - title: transform_postorder
+      path: /federated/api_docs/python/tff/framework/transform_postorder
     - title: Tuple
       path: /federated/api_docs/python/tff/framework/Tuple
     - title: type_to_tf_tensor_specs
       path: /federated/api_docs/python/tff/framework/type_to_tf_tensor_specs
+    - title: unique_name_generator
+      path: /federated/api_docs/python/tff/framework/unique_name_generator
+    - title: uniquify_reference_names
+      path: /federated/api_docs/python/tff/framework/uniquify_reference_names
   - title: tff.learning
     section:
     - title: Overview

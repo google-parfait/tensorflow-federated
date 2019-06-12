@@ -84,7 +84,7 @@ def extract_intrinsics(comp):
                           computation_building_blocks.ComputationBuildingBlock)
   _check_has_unique_names(comp)
   name_generator = computation_constructing_utils.unique_name_generator(comp)
-  unbound_references = _get_unbound_references(comp)
+  unbound_references = _get_map_of_unbound_references(comp)
 
   def _contains_unbound_reference(comp, names):
     """Returns `True` if `comp` contains unbound references to `names`.
@@ -100,7 +100,7 @@ def extract_intrinsics(comp):
     if isinstance(names, six.string_types):
       names = (names,)
     if comp not in unbound_references:
-      references = _get_unbound_references(comp)
+      references = _get_map_of_unbound_references(comp)
       unbound_references.update(references)
     return any(n in unbound_references[comp] for n in names)
 
@@ -1265,7 +1265,7 @@ def _check_has_unique_names(comp):
         'those references.')
 
 
-def _get_unbound_references(comp):
+def _get_map_of_unbound_references(comp):
   """Gets a Python `dict` of the unbound references in `comp`.
 
   Compuations that are equal will have the same collections of unbounded
