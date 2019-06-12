@@ -96,6 +96,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/transform_postorder
     - title: Tuple
       path: /federated/api_docs/python/tff/framework/Tuple
+    - title: type_from_tensors
+      path: /federated/api_docs/python/tff/framework/type_from_tensors
     - title: type_to_tf_tensor_specs
       path: /federated/api_docs/python/tff/framework/type_to_tf_tensor_specs
     - title: unique_name_generator

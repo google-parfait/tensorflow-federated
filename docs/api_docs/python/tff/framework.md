@@ -71,6 +71,9 @@ Replaces all the called lambdas in `comp` with a block.
 [`transform_postorder(...)`](../tff/framework/transform_postorder.md): Traverses
 `comp` recursively postorder and replaces its constituents.
 
+[`type_from_tensors(...)`](../tff/framework/type_from_tensors.md): Builds a
+<a href="../tff/Type.md"><code>tff.Type</code></a> from supplied tensors.
+
 [`type_to_tf_tensor_specs(...)`](../tff/framework/type_to_tf_tensor_specs.md):
 Returns nested structure of `tf.TensorSpec`s for a given TFF type.
 

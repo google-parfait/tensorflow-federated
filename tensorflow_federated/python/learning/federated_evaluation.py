@@ -43,10 +43,7 @@ def build_federated_evaluation(model_fn):
   # with some other mechanism.
   with tf.Graph().as_default():
     model = model_utils.enhance(model_fn())
-    model_weights_type = tff.to_type(
-        tf.nest.map_structure(
-            lambda v: tff.TensorType(v.dtype.base_dtype, v.shape),
-            model.weights))
+    model_weights_type = tff.framework.type_from_tensors(model.weights)
     batch_type = tff.to_type(model.input_spec)
 
   @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))

@@ -387,6 +387,29 @@ def type_to_tf_structure(type_spec):
         py_typecheck.type_string(type(type_spec))))
 
 
+def type_from_tensors(tensors):
+  """Builds a `tff.Type` from supplied tensors.
+
+  Args:
+    tensors: A nested structure of tensors.
+
+  Returns:
+    The nested TensorType structure.
+  """
+
+  def _mapping_fn(x):
+    if not tf.is_tensor(x):
+      x = tf.convert_to_tensor(x)
+    return computation_types.TensorType(x.dtype.base_dtype, x.shape)
+
+  if isinstance(tensors, anonymous_tuple.AnonymousTuple):
+    return computation_types.to_type(
+        anonymous_tuple.map_structure(_mapping_fn, tensors))
+  else:
+    return computation_types.to_type(
+        tf.nest.map_structure(_mapping_fn, tensors))
+
+
 def get_named_tuple_element_type(type_spec, name):
   """Returns the type of a named tuple member.
 

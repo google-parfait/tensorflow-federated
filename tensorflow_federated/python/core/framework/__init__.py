@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.impl.transformations import merge_tuple_in
 from tensorflow_federated.python.core.impl.transformations import replace_called_lambda_with_block
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
+from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
 
 # Used by doc generation script.
@@ -64,6 +65,7 @@ _allowed_symbols = [
     "merge_tuple_intrinsics",
     "replace_called_lambda_with_block",
     "transform_postorder",
+    "type_from_tensors",
     "type_to_tf_tensor_specs",
     "unique_name_generator",
     "uniquify_reference_names",
