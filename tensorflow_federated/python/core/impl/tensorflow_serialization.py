@@ -294,7 +294,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
           # computations from context.init_ops. Variables from import_graph_def
           # will not make it into the global collections, and so will not be
           # initialized without this code path.
-          init_op_name = tf.initializers.variables(
+          init_op_name = tf.compat.v1.initializers.variables(
               all_variables, name=name).name
       elif context.init_ops:
         init_op_name = tf.group(
