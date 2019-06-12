@@ -82,9 +82,9 @@ def extract_intrinsics(comp):
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
-  _check_has_unique_names(comp)
+  check_has_unique_names(comp)
   name_generator = computation_constructing_utils.unique_name_generator(comp)
-  unbound_references = _get_map_of_unbound_references(comp)
+  unbound_references = get_map_of_unbound_references(comp)
 
   def _contains_unbound_reference(comp, names):
     """Returns `True` if `comp` contains unbound references to `names`.
@@ -100,13 +100,13 @@ def extract_intrinsics(comp):
     if isinstance(names, six.string_types):
       names = (names,)
     if comp not in unbound_references:
-      references = _get_map_of_unbound_references(comp)
+      references = get_map_of_unbound_references(comp)
       unbound_references.update(references)
     return any(n in unbound_references[comp] for n in names)
 
   def _is_called_intrinsic_or_block(comp):
     """Returns `True` if `comp` is a called intrinsic or a block."""
-    return (_is_called_intrinsic(comp) or
+    return (is_called_intrinsic(comp) or
             isinstance(comp, computation_building_blocks.Block))
 
   def _should_transform(comp):
@@ -129,7 +129,7 @@ def extract_intrinsics(comp):
     elif isinstance(comp, computation_building_blocks.Call):
       return _is_called_intrinsic_or_block(comp.argument)
     elif isinstance(comp, computation_building_blocks.Lambda):
-      if _is_called_intrinsic(comp.result):
+      if is_called_intrinsic(comp.result):
         return True
       if isinstance(comp.result, computation_building_blocks.Block):
         for index, (_, variable) in enumerate(comp.result.locals):
@@ -145,7 +145,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_block(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if _is_called_intrinsic(comp.result):
+    if is_called_intrinsic(comp.result):
       called_intrinsic = comp.result
       name = six.next(name_generator)
       variables = comp.locals
@@ -168,7 +168,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_call(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if _is_called_intrinsic(comp.argument):
+    if is_called_intrinsic(comp.argument):
       called_intrinsic = comp.argument
       name = six.next(name_generator)
       variables = ((name, called_intrinsic),)
@@ -184,7 +184,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_lambda(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if _is_called_intrinsic(comp.result):
+    if is_called_intrinsic(comp.result):
       called_intrinsic = comp.result
       name = six.next(name_generator)
       variables = ((name, called_intrinsic),)
@@ -221,7 +221,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_selection(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if _is_called_intrinsic(comp.source):
+    if is_called_intrinsic(comp.source):
       called_intrinsic = comp.source
       name = six.next(name_generator)
       variables = ((name, called_intrinsic),)
@@ -290,7 +290,7 @@ def inline_block_locals(comp, variable_names=None):
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
-  _check_has_unique_names(comp)
+  check_has_unique_names(comp)
   if variable_names is not None:
     py_typecheck.check_type(variable_names, (list, tuple, set))
 
@@ -435,12 +435,12 @@ def merge_chained_federated_maps_or_applys(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a chained federated map."""
-    if _is_called_intrinsic(comp, (
+    if is_called_intrinsic(comp, (
         intrinsic_defs.FEDERATED_APPLY.uri,
         intrinsic_defs.FEDERATED_MAP.uri,
     )):
       outer_arg = comp.argument[1]
-      if _is_called_intrinsic(outer_arg, comp.function.uri):
+      if is_called_intrinsic(outer_arg, comp.function.uri):
         return True
     return False
 
@@ -587,8 +587,8 @@ def merge_tuple_intrinsics(comp, uri):
 
   def _should_transform(comp):
     return (isinstance(comp, computation_building_blocks.Tuple) and
-            _is_called_intrinsic(comp[0], uri) and all(
-                _is_called_intrinsic(element, comp[0].function.uri)
+            is_called_intrinsic(comp[0], uri) and all(
+                is_called_intrinsic(element, comp[0].function.uri)
                 for element in comp))
 
   def _transform_functional_args(comps):
@@ -1229,7 +1229,7 @@ def insert_called_tf_identity_at_leaves(comp):
       comp, _decorate_if_reference_without_graph)
 
 
-def _is_called_intrinsic(comp, uri=None):
+def is_called_intrinsic(comp, uri=None):
   """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
 
             Call
@@ -1256,7 +1256,7 @@ def _is_identity_function(comp):
           comp.parameter_name == comp.result.name)
 
 
-def _check_has_unique_names(comp):
+def check_has_unique_names(comp):
   if not transformation_utils.has_unique_names(comp):
     raise ValueError(
         'This transform should only be called after we have uniquified all '
@@ -1265,7 +1265,7 @@ def _check_has_unique_names(comp):
         'those references.')
 
 
-def _get_map_of_unbound_references(comp):
+def get_map_of_unbound_references(comp):
   """Gets a Python `dict` of the unbound references in `comp`.
 
   Compuations that are equal will have the same collections of unbounded

@@ -32,10 +32,10 @@ from tensorflow_federated.python.core.impl.computation_constructing_utils import
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_AGGREGATE
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_BROADCAST
 from tensorflow_federated.python.core.impl.transformation_utils import transform_postorder
-from tensorflow_federated.python.core.impl.transformations import _check_has_unique_names as check_has_unique_names
-from tensorflow_federated.python.core.impl.transformations import _get_map_of_unbound_references as get_map_of_unbound_references
-from tensorflow_federated.python.core.impl.transformations import _is_called_intrinsic as is_called_intrinsic
+from tensorflow_federated.python.core.impl.transformations import check_has_unique_names
+from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
+from tensorflow_federated.python.core.impl.transformations import is_called_intrinsic
 from tensorflow_federated.python.core.impl.transformations import merge_tuple_intrinsics
 from tensorflow_federated.python.core.impl.transformations import replace_called_lambda_with_block
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
