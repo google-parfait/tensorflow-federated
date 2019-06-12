@@ -40,6 +40,7 @@
 *   <a href="./tff/framework/merge_tuple_intrinsics.md"><code>tff.framework.merge_tuple_intrinsics</code></a>
 *   <a href="./tff/framework/replace_called_lambda_with_block.md"><code>tff.framework.replace_called_lambda_with_block</code></a>
 *   <a href="./tff/framework/transform_postorder.md"><code>tff.framework.transform_postorder</code></a>
+*   <a href="./tff/framework/type_from_tensors.md"><code>tff.framework.type_from_tensors</code></a>
 *   <a href="./tff/framework/type_to_tf_tensor_specs.md"><code>tff.framework.type_to_tf_tensor_specs</code></a>
 *   <a href="./tff/framework/unique_name_generator.md"><code>tff.framework.unique_name_generator</code></a>
 *   <a href="./tff/framework/uniquify_reference_names.md"><code>tff.framework.uniquify_reference_names</code></a>
