@@ -156,7 +156,7 @@ def metrics_sum(values, name=None):
         initializer=tf.zeros_initializer,
         collections=[tf.GraphKeys.LOCAL_VARIABLES],
         trainable=False)
-    update_op = tf.assign_add(sum_var, tf.reduce_sum(values))
+    update_op = sum_var.assign_add(tf.reduce_sum(values))
     return sum_var, update_op
 
 

@@ -64,7 +64,7 @@ class TestModel(model.Model):
     num_over = tf.reduce_sum(
         tf.cast(
             tf.greater(batch['temp'], self._variables.max_temp), tf.float32))
-    tf.assign_add(self._variables.num_over, num_over)
+    self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = tf.zeros_like(batch['temp'])
     return model.BatchOutput(loss=loss, predictions=predictions)

@@ -77,7 +77,8 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       raise TypeError('Expected a data set, found {}.'.format(
           py_typecheck.type_string(type(dataset))))
 
-    tf.nest.map_structure(tf.assign, model.weights, initial_weights)
+    tf.nest.map_structure(lambda a, b: a.assign(b), model.weights,
+                          initial_weights)
     flat_trainable_weights = tuple(tf.nest.flatten(model.weights.trainable))
 
     @tf.function

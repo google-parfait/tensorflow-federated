@@ -37,7 +37,7 @@ def _make_add_variable_number_graph(var_name=None):
   with tf.Graph().as_default() as graph:
     input_val = tf.compat.v1.placeholder(tf.float32, name='input')
     var = tf.Variable(initial_value=0.0, name=var_name, import_scope='')
-    assign_op = tf.assign_add(var, tf.constant(1.0))
+    assign_op = var.assign_add(tf.constant(1.0))
     out = tf.add(input_val, assign_op)
   return graph, input_val.name, out.name
 

@@ -268,7 +268,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 
     assignments = []
     for v, a in zip(keras_metric.variables, accumulators):
-      assignments.append(tf.assign(v, a))
+      assignments.append(v.assign(a))
     with tf.control_dependencies(assignments):
       return keras_metric.result()
 

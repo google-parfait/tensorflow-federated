@@ -19,9 +19,9 @@ Defined in
 
 <!-- Placeholder for "Used in" -->
 
-This utility function provides the exact same behavior as `tf.assign`, but it
-generalizes to a wider class of objects, including ordinary variables as well as
-various types of nested structures.
+This utility function provides the exact same behavior as `tf.Variable.assign`,
+but it generalizes to a wider class of objects, including ordinary variables as
+well as various types of nested structures.
 
 #### Args:
 
