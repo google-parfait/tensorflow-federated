@@ -94,9 +94,9 @@ class LinearRegression(model.Model):
     num_examples = tf.gather(tf.shape(predictions), 0)
     total_loss = 0.5 * tf.reduce_sum(tf.pow(residuals, 2))
 
-    tf.assign_add(self._loss_sum, total_loss)
-    tf.assign_add(self._num_examples, num_examples)
-    tf.assign_add(self._num_batches, 1)
+    self._loss_sum.assign_add(total_loss)
+    self._num_examples.assign_add(num_examples)
+    self._num_batches.assign_add(1)
 
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model.BatchOutput(loss=average_loss, predictions=predictions)

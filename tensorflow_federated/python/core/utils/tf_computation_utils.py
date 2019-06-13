@@ -67,9 +67,9 @@ def get_variables(name, type_spec, **kwargs):
 def assign(target, source):
   """Creates an op that assigns `target` from `source`.
 
-  This utility function provides the exact same behavior as `tf.assign`, but it
-  generalizes to a wider class of objects, including ordinary variables as well
-  as various types of nested structures.
+  This utility function provides the exact same behavior as
+  `tf.Variable.assign`, but it generalizes to a wider class of objects,
+  including ordinary variables as well as various types of nested structures.
 
   Args:
     target: A nested structure composed of variables embedded in containers that
@@ -86,10 +86,11 @@ def assign(target, source):
   # TODO(b/113112108): Extend this to containers of mixed types.
   if isinstance(target, anonymous_tuple.AnonymousTuple):
     return tf.group(*anonymous_tuple.flatten(
-        anonymous_tuple.map_structure(tf.assign, target, source)))
+        anonymous_tuple.map_structure(lambda a, b: a.assign(b), target, source))
+                   )
   else:
-    return tf.group(
-        *tf.nest.flatten(tf.nest.map_structure(tf.assign, target, source)))
+    return tf.group(*tf.nest.flatten(
+        tf.nest.map_structure(lambda a, b: a.assign(b), target, source)))
 
 
 def identity(source):

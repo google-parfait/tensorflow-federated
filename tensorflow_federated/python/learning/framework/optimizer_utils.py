@@ -259,7 +259,8 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
   @tf.function
   def update_model_inner():
     """Applies the update."""
-    tf.nest.map_structure(tf.assign, (model.weights, optimizer_vars),
+    tf.nest.map_structure(lambda a, b: a.assign(b),
+                          (model.weights, optimizer_vars),
                           (server_state.model, server_state.optimizer_state))
     apply_delta_fn(no_nan_weights_delta)
     return model.weights, optimizer_vars

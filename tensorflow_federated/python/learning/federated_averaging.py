@@ -71,7 +71,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
           py_typecheck.type_string(type(dataset))))
 
     model = self._model
-    tf.nest.map_structure(tf.assign, model.weights, initial_weights)
+    tf.nest.map_structure(lambda a, b: a.assign(b), model.weights,
+                          initial_weights)
 
     @tf.function
     def reduce_fn(num_examples_sum, batch):

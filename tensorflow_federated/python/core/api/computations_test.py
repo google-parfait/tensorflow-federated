@@ -106,8 +106,8 @@ class TensorFlowComputationsV2OnlyTest(test.TestCase):
 
     @tf.function(input_signature=[tf.TensorSpec([], tf.float32)])
     def foo(x):
-      tf.assign(v1, 1.0)
-      tf.assign(v2, 1.0)
+      v1.assign(1.0)
+      v2.assign(1.0)
       return (v1 + v2, x)
 
     foo_cf = foo.get_concrete_function()
@@ -236,7 +236,7 @@ class TensorFlowComputationsTest(test.TestCase):
       if not v_slot:
         v_slot.append(tf.Variable(0))
       v = v_slot[0]
-      tf.assign(v, 1)
+      v.assign(1)
       return v + x
 
     tf_comp = tf_computation(foo, tf.int32)
