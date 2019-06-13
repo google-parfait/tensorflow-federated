@@ -213,6 +213,15 @@ def _create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
   return computation_constructing_utils.create_federated_map(fn, arg)
 
 
+def _create_dummy_called_federated_map_all_equal(parameter_name,
+                                                 parameter_type=tf.int32):
+  fn = _create_lambda_to_identity(parameter_name, parameter_type)
+  arg_type = computation_types.FederatedType(
+      parameter_type, placements.CLIENTS, all_equal=True)
+  arg = computation_building_blocks.Data('data', arg_type)
+  return computation_constructing_utils.create_federated_map_all_equal(fn, arg)
+
+
 def _create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
   fn = _create_lambda_to_identity(parameter_name, parameter_type)
   arg_type = computation_types.SequenceType(parameter_type)
@@ -1918,6 +1927,9 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
       ('federated_map',
        intrinsic_defs.FEDERATED_MAP.uri,
        _create_dummy_called_federated_map),
+      ('federated_map_all_equal',
+       intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+       _create_dummy_called_federated_map_all_equal),
       ('sequence_map',
        intrinsic_defs.SEQUENCE_MAP.uri,
        _create_dummy_called_sequence_map))

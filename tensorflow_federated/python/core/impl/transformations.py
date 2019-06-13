@@ -785,6 +785,7 @@ def remove_mapped_or_applied_identity(comp):
         isinstance(comp.function, computation_building_blocks.Intrinsic) and
         comp.function.uri in (
             intrinsic_defs.FEDERATED_MAP.uri,
+            intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
             intrinsic_defs.FEDERATED_APPLY.uri,
             intrinsic_defs.SEQUENCE_MAP.uri,
         )):
