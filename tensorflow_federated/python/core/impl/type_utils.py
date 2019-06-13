@@ -514,7 +514,7 @@ def check_well_formed(type_spec):
   return True
 
 
-def check_whitelisted(type_spec, whitelisted_types):
+def type_tree_contains_only(type_spec, whitelisted_types):
   """Checks whether `type_spec` contains only instances of `whitelisted_types`.
 
   Args:
@@ -549,17 +549,17 @@ def check_whitelisted(type_spec, whitelisted_types):
   return tracker.whitelisted
 
 
-def check_tf_comp_whitelisted(type_spec):
+def is_tensorflow_compatible_type(type_spec):
   """Checks `type_spec` against an explicit whitelist for `tf_computation`."""
   if type_spec is None:
     return True
   tf_comp_whitelist = (computation_types.TensorType,
                        computation_types.SequenceType,
                        computation_types.NamedTupleType)
-  return check_whitelisted(type_spec, tf_comp_whitelist)
+  return type_tree_contains_only(type_spec, tf_comp_whitelist)
 
 
-def check_blacklisted(type_spec, blacklisted_types):
+def type_tree_contains_types(type_spec, blacklisted_types):
   """Checks whether `type_spec` contains any instances of `blacklisted_types`.
 
   Args:
@@ -1050,8 +1050,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
   py_typecheck.check_type(type_with_abstract_elements, computation_types.Type)
   py_typecheck.check_type(type_with_concrete_elements, computation_types.Type)
 
-  if check_blacklisted(type_with_concrete_elements,
-                       computation_types.AbstractType):
+  if type_tree_contains_types(type_with_concrete_elements,
+                              computation_types.AbstractType):
     raise TypeError(
         '`type_with_concrete_elements` must contain no abstract types. You have passed {}'
         .format(type_with_concrete_elements))

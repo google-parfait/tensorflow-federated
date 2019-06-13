@@ -32,7 +32,7 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
   del name  # Unused.
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
-  if not type_utils.check_tf_comp_whitelisted(parameter_type):
+  if not type_utils.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
                     'constituents `SequenceType`, `NamedTupleType` '
                     'and `TensorType`; you have attempted to create one '

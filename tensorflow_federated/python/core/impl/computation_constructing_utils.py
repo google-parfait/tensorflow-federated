@@ -79,7 +79,7 @@ def construct_compiled_identity(type_signature):
   """
   type_spec = computation_types.to_type(type_signature)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.check_tf_comp_whitelisted(type_spec):
+  if not type_utils.is_tensorflow_compatible_type(type_spec):
     raise TypeError(
         'Can only construct a TF block with types which only contain tensor, '
         'sequence or tuple types; you have tried to construct a TF block with '
@@ -124,7 +124,7 @@ def construct_compiled_input_replication(type_signature, n_replicas):
   """
   type_spec = computation_types.to_type(type_signature)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.check_tf_comp_whitelisted(type_spec):
+  if not type_utils.is_tensorflow_compatible_type(type_spec):
     raise TypeError(
         'Can only construct a TF block with types which only contain tensor, '
         'sequence or tuple types; you have tried to construct a TF block with '

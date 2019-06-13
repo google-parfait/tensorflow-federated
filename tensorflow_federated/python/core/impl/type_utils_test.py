@@ -970,18 +970,18 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                                 r'A {int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(sequence_of_federated)
 
-  def test_check_whitelisted(self):
+  def test_type_tree_contains_only(self):
     federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    find_federated = type_utils.check_whitelisted(
+    find_federated = type_utils.type_tree_contains_only(
         federated,
         (computation_types.FederatedType, computation_types.TensorType))
     self.assertTrue(find_federated)
 
     tuple_on_federated = computation_types.NamedTupleType([federated])
-    find_federated_in_tuple = type_utils.check_whitelisted(
+    find_federated_in_tuple = type_utils.type_tree_contains_only(
         tuple_on_federated, computation_types.NamedTupleType)
     self.assertFalse(find_federated_in_tuple)
-    change_behavior_fed_in_tuple = type_utils.check_whitelisted(
+    change_behavior_fed_in_tuple = type_utils.type_tree_contains_only(
         tuple_on_federated,
         (computation_types.NamedTupleType, computation_types.FederatedType,
          computation_types.TensorType))
@@ -989,51 +989,51 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
     federated_outer = computation_types.FederatedType(tuple_on_federated,
                                                       placements.CLIENTS)
-    find_nt_in_federated = type_utils.check_whitelisted(
+    find_nt_in_federated = type_utils.type_tree_contains_only(
         federated_outer, computation_types.FederatedType)
     self.assertFalse(find_nt_in_federated)
-    miss_sequence = type_utils.check_whitelisted(federated_outer,
-                                                 computation_types.SequenceType)
+    miss_sequence = type_utils.type_tree_contains_only(
+        federated_outer, computation_types.SequenceType)
     self.assertFalse(miss_sequence)
 
   def test_check_for_disallowed(self):
     federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    find_federated = type_utils.check_blacklisted(
+    find_federated = type_utils.type_tree_contains_types(
         federated, computation_types.FederatedType)
     self.assertTrue(find_federated)
-    find_federated_list_arg = type_utils.check_blacklisted(
+    find_federated_list_arg = type_utils.type_tree_contains_types(
         federated, (computation_types.FederatedType))
     self.assertTrue(find_federated_list_arg)
 
     tuple_on_federated = computation_types.NamedTupleType([federated])
-    find_federated_in_tuple = type_utils.check_blacklisted(
+    find_federated_in_tuple = type_utils.type_tree_contains_types(
         tuple_on_federated, computation_types.FederatedType)
     self.assertTrue(find_federated_in_tuple)
 
     federated_outer = computation_types.FederatedType(tuple_on_federated,
                                                       placements.CLIENTS)
-    find_nt_in_federated = type_utils.check_blacklisted(
+    find_nt_in_federated = type_utils.type_tree_contains_types(
         federated_outer, computation_types.NamedTupleType)
     self.assertTrue(find_nt_in_federated)
-    miss_sequence = type_utils.check_blacklisted(federated_outer,
-                                                 computation_types.SequenceType)
+    miss_sequence = type_utils.type_tree_contains_types(
+        federated_outer, computation_types.SequenceType)
     self.assertFalse(miss_sequence)
 
     fn = computation_types.FunctionType(None,
                                         computation_types.TensorType(tf.int32))
     tuple_on_fn = computation_types.NamedTupleType([federated, fn])
-    find_fn = type_utils.check_blacklisted(tuple_on_fn,
-                                           computation_types.FunctionType)
+    find_fn = type_utils.type_tree_contains_types(
+        tuple_on_fn, computation_types.FunctionType)
     self.assertTrue(find_fn)
-    find_federated_in_tuple_with_fn = type_utils.check_blacklisted(
+    find_federated_in_tuple_with_fn = type_utils.type_tree_contains_types(
         tuple_on_fn, computation_types.FederatedType)
     self.assertTrue(find_federated_in_tuple_with_fn)
-    find_nested_tensor = type_utils.check_blacklisted(
+    find_nested_tensor = type_utils.type_tree_contains_types(
         tuple_on_fn, computation_types.TensorType)
     self.assertTrue(find_nested_tensor)
-    miss_abstract_type = type_utils.check_blacklisted(
+    miss_abstract_type = type_utils.type_tree_contains_types(
         tuple_on_fn, computation_types.AbstractType)
-    miss_placement_type = type_utils.check_blacklisted(
+    miss_placement_type = type_utils.type_tree_contains_types(
         tuple_on_fn, computation_types.PlacementType)
     self.assertFalse(miss_abstract_type)
     self.assertFalse(miss_placement_type)
