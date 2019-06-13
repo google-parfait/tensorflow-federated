@@ -1167,8 +1167,8 @@ def insert_called_tf_identity_at_leaves(comp):
                           computation_building_blocks.ComputationBuildingBlock)
 
   if not (isinstance(comp, computation_building_blocks.Lambda) and
-          type_utils.check_tf_comp_whitelisted(comp.result.type_signature) and
-          type_utils.check_tf_comp_whitelisted(comp.parameter_type)):
+          type_utils.is_tensorflow_compatible_type(comp.result.type_signature)
+          and type_utils.is_tensorflow_compatible_type(comp.parameter_type)):
     raise ValueError(
         '`insert_called_tf_identity_at_leaves` should only be '
         'called on instances of '
@@ -1179,7 +1179,7 @@ def insert_called_tf_identity_at_leaves(comp):
 
   def _should_decorate(comp):
     return (isinstance(comp, computation_building_blocks.Reference) and
-            type_utils.check_tf_comp_whitelisted(comp.type_signature))
+            type_utils.is_tensorflow_compatible_type(comp.type_signature))
 
   def _decorate(comp):
     identity_function = computation_constructing_utils.construct_compiled_identity(
