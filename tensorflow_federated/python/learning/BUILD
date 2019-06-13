@@ -24,6 +24,7 @@ py_library(
     deps = [
         ":model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
@@ -85,6 +86,7 @@ py_library(
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],

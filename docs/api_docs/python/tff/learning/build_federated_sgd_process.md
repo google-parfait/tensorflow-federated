@@ -11,7 +11,9 @@ Builds the TFF computations for optimization using federated SGD.
 tff.learning.build_federated_sgd_process(
     model_fn,
     server_optimizer_fn=(lambda : tf.keras.optimizers.SGD(learning_rate=0.1)),
-    client_weight_fn=None
+    client_weight_fn=None,
+    stateful_delta_aggregate_fn=None,
+    stateful_model_broadcast_fn=None
 )
 ```
 
@@ -31,6 +33,22 @@ Defined in
     `model.report_local_outputs` and returns a tensor that provides the weight
     in the federated average of model deltas. If not provided, the default is
     the total number of examples processed on device.
+*   <b>`stateful_delta_aggregate_fn`</b>: A
+    <a href="../../tff/utils/StatefulAggregateFn.md"><code>tff.utils.StatefulAggregateFn</code></a>
+    where the `next_fn` performs a federated aggregation and upates state. That
+    is, it has TFF type `(state@SERVER, value@CLIENTS, weights@CLIENTS) ->
+    (state@SERVER, aggregate@SERVER)`, where the `value` type is
+    <a href="../../tff/learning/framework/ModelWeights.md#trainable"><code>tff.learning.framework.ModelWeights.trainable</code></a>
+    corresponding to the object returned by `model_fn`. By default performs
+    arithmetic mean aggregation, weighted by `client_weight_fn`.
+*   <b>`stateful_model_broadcast_fn`</b>: A
+    <a href="../../tff/utils/StatefulBroadcastFn.md"><code>tff.utils.StatefulBroadcastFn</code></a>
+    where the `next_fn` performs a federated broadcast and upates state. That
+    is, it has TFF type `(state@SERVER, value@SERVER) -> (state@SERVER,
+    value@CLIENTS)`, where the `value` type is
+    <a href="../../tff/learning/framework/ModelWeights.md"><code>tff.learning.framework.ModelWeights</code></a>
+    corresponding to the object returned by `model_fn`. By default performs
+    identity broadcast.
 
 #### Returns:
 

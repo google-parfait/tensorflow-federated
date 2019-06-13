@@ -28,6 +28,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -108,8 +109,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 def build_federated_averaging_process(
     model_fn,
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    stateful_delta_aggregate_fn=optimizer_utils.build_stateless_mean(),
-    client_weight_fn=None):
+    client_weight_fn=None,
+    stateful_delta_aggregate_fn=None,
+    stateful_model_broadcast_fn=None):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
@@ -119,14 +121,23 @@ def build_federated_averaging_process(
       to the server model. The default creates a `tf.keras.optimizers.SGD` with
       a learning rate of 1.0, which simply adds the average client delta to the
       server's model.
-    stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn` where the
-      next_fn performs a federated aggregation and upates state. That is, it has
-      TFF type `(<state@SERVER, value@CLIENTS> -> <state@SERVER,
-      aggregate@SERVER>)`.
     client_weight_fn: Optional function that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If not provided, the default is
       the total number of examples processed on device.
+    stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn` where the
+      `next_fn` performs a federated aggregation and upates state. That is, it
+      has TFF type `(state@SERVER, value@CLIENTS, weights@CLIENTS) ->
+      (state@SERVER, aggregate@SERVER)`, where the `value` type is
+      `tff.learning.framework.ModelWeights.trainable` corresponding to the
+      object returned by `model_fn`. By default performs arithmetic mean
+      aggregation, weighted by `client_weight_fn`.
+    stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn` where the
+      `next_fn` performs a federated broadcast and upates state. That is, it has
+      TFF type `(state@SERVER, value@SERVER) -> (state@SERVER, value@CLIENTS)`,
+      where the `value` type is `tff.learning.framework.ModelWeights`
+      corresponding to the object returned by `model_fn`. By default performs
+      identity broadcast.
 
   Returns:
     A `tff.utils.IterativeProcess`.
@@ -135,6 +146,18 @@ def build_federated_averaging_process(
   def client_fed_avg(model_fn):
     return ClientFedAvg(model_fn(), client_weight_fn)
 
+  if stateful_delta_aggregate_fn is None:
+    stateful_delta_aggregate_fn = optimizer_utils.build_stateless_mean()
+  else:
+    py_typecheck.check_type(stateful_delta_aggregate_fn,
+                            tff.utils.StatefulAggregateFn)
+
+  if stateful_model_broadcast_fn is None:
+    stateful_model_broadcast_fn = optimizer_utils.build_stateless_broadcaster()
+  else:
+    py_typecheck.check_type(stateful_model_broadcast_fn,
+                            tff.utils.StatefulBroadcastFn)
+
   return optimizer_utils.build_model_delta_optimizer_process(
       model_fn, client_fed_avg, server_optimizer_fn,
-      stateful_delta_aggregate_fn)
+      stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
