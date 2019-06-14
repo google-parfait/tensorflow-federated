@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_utils
 
@@ -1228,6 +1229,284 @@ def insert_called_tf_identity_at_leaves(comp):
 
   return transformation_utils.transform_postorder(
       comp, _decorate_if_reference_without_graph)
+
+
+def check_has_single_placement(comp, single_placement):
+  """Checks that the AST of `comp` contains only `single_placement`.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`.
+    single_placement: Instance of `placement_literals.PlacementLiteral` which
+      should be the only placement present under `comp`.
+
+  Raises:
+    ValueError: If the AST under `comp` contains any
+    `computation_types.FederatedType` other than `single_placement`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(single_placement, placement_literals.PlacementLiteral)
+
+  def _check_single_placement(comp):
+    """Checks that the placement in `type_spec` matches `single_placement`."""
+    if (isinstance(comp.type_signature, computation_types.FederatedType) and
+        comp.type_signature.placement != single_placement):
+      raise ValueError('Comp contains a placement other than {}; '
+                       'placement {} on comp {} inside the structure. '.format(
+                           single_placement, comp.type_signature.placement,
+                           comp.tff_repr))
+    return comp, False
+
+  transformation_utils.transform_postorder(comp, _check_single_placement)
+
+
+def unwrap_placement(comp):
+  """Strips `comp`'s placement, returning a single call to map, apply or value.
+
+  For this purpose it is necessary to assume that all processing under `comp`
+  is happening at a single placement.
+
+  The other assumptions on inputs of `unwrap_placement` are enumerated as
+  follows:
+
+  1. There is at most one unbound reference under `comp`, which is of federated
+     type.
+  2. The only intrinsics present here are apply or map, zip,
+     and federated_value_at_*.
+  3. The type signature of `comp` is federated.
+  4. There are no instances of `computation_building_blocks.Data` of federated
+     type under `comp`; how these would be handled by a function such as this
+     is not entirely clear.
+
+  Under these conditions, `unwrap_placement` will produce a single call to
+  federated_map, federated_apply or federated_value, depending on the placement
+  and type signature of `comp`. Other than this single map or apply, no
+  intrinsics will remain under `comp`.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      satisfying the assumptions above.
+
+  Returns:
+    A modified version of `comp`, whose root is a single called
+    intrinsic, and containing no other intrinsics. Equivalent
+    to `comp`.
+
+  Raises:
+    TypeError: If the lone unbound reference under `comp` is not of federated
+    type, `comp` itself is not of federated type, or `comp` is not a building
+    block.
+    ValueError: If we encounter a placement other than the one declared by
+    `comp.type_signature`, an intrinsic not present in the whitelist above, or
+    `comp` contains more than one unbound reference.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
+  single_placement = comp.type_signature.placement
+
+  check_has_single_placement(comp, single_placement)
+
+  name_generator = computation_constructing_utils.unique_name_generator(comp)
+
+  all_unbound_references = get_map_of_unbound_references(comp)
+  root_unbound_references = all_unbound_references[comp]
+
+  if len(root_unbound_references) > 1:
+    raise ValueError(
+        '`unwrap_placement` can only handle computations with at most a single '
+        'unbound reference; you have passed in the computation {} with {} '
+        'unbound references.'.format(comp.tff_repr,
+                                     len(root_unbound_references)))
+
+  if len(root_unbound_references) == 1:
+    unbound_reference_name = root_unbound_references.pop()
+  else:
+    unbound_reference_name = None
+
+  def _rename_unbound_variable(comp, unbound_variable_name):
+    """Reads info about the unbound variable, and renames it uniquely.
+
+    The unique rename is simply to preserve uniqueness of names if this
+    property is present in the argument to `unwrap_placement`, since we will
+    eventually be binding a new reference of non-federated type in place
+    of this federated unbound reference.
+
+    Args:
+      comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+        with at most a single unbound reference.
+      unbound_variable_name: The name of the lone unbound variable present under
+        `comp`.
+
+    Returns:
+      A tuple, whose first element a is possibly transformed version of `comp`
+      with its unbound variable renamed to a name which is globally unique
+      within `comp`, and its second element a tuple containing the new name
+      given to the unbound reference, and the type of this unbound reference.
+    """
+    unbound_reference_name_and_type_pair = [(None, None)]
+
+    class _UnboundVariableIdentifier(transformation_utils.BoundVariableTracker):
+      """transformation_utils.SymbolTree node for tracking unbound variables."""
+
+      def __init__(self, name, value):
+        super(_UnboundVariableIdentifier, self).__init__(name, value)
+        self.unbound = False
+
+      def __str__(self):
+        return ''
+
+      def update(self, x):
+        del x  # Unused
+        self.unbound = True
+
+    symbol_tree = transformation_utils.SymbolTree(_UnboundVariableIdentifier)
+    symbol_tree.ingest_variable_binding(unbound_variable_name, None)
+    symbol_tree.update_payload_tracking_reference(
+        computation_building_blocks.Reference(
+            unbound_variable_name, computation_types.AbstractType('T')))
+
+    def _should_transform(comp, symbol_tree):
+      return (isinstance(comp, computation_building_blocks.Reference) and
+              comp.name == unbound_variable_name and
+              symbol_tree.get_payload_with_name(comp.name).unbound)
+
+    def _rename_unbound_variable(comp, symbol_tree):
+      """Updates the nonlocal tracker, and renames the unbound variable."""
+      if not _should_transform(comp, symbol_tree):
+        return comp, False
+      if unbound_reference_name_and_type_pair[0][1] is None:
+        name = six.next(name_generator)
+        unbound_reference_name_and_type_pair[0] = (name, comp.type_signature)
+      else:
+        name = unbound_reference_name_and_type_pair[0][0]
+      return computation_building_blocks.Reference(name,
+                                                   comp.type_signature), True
+
+    renamed_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
+        comp, _rename_unbound_variable, symbol_tree)
+    return renamed_comp, unbound_reference_name_and_type_pair[0]
+
+  def _remove_placement(comp):
+    """Unwraps placement from `comp`.
+
+    `_remove_placement` embodies the main transform logic in
+    `unwrap_placement`, performing a pure AST transformation to replace
+    any nodes of federated type with equivalent non-federated versions.
+    Whether or not it is safe to do this is left to `unwrap_placement` to
+    handle.
+
+    One note on the implementation: the four cases in the internal `_transform`
+    switch here exactly case for the building blocks which explicitly take type
+    signatures as arguments to their constructors.
+
+    Args:
+      comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+        from which we wish to remove placement.
+
+    Returns:
+      A transformed version of comp with its placements removed.
+
+    Raises:
+      NotImplementedError: In case a node of type
+        `computation_building_blocks.Data` is encountered in the AST, as
+        handling of data objects is not yet implemented in TFF and so it is
+        unclear what this function should do in that case.
+    """
+
+    def _remove_placement_from_type(type_spec):
+      if isinstance(type_spec, computation_types.FederatedType):
+        return type_spec.member, True
+      else:
+        return type_spec, False
+
+    def _remove_reference_placement(comp):
+      """Unwraps placement from references and updates unbound reference info."""
+      new_type, _ = type_utils.transform_type_postorder(
+          comp.type_signature, _remove_placement_from_type)
+      return computation_building_blocks.Reference(comp.name, new_type)
+
+    def _replace_intrinsics_with_functions(comp):
+      """Helper to remove intrinsics from the AST."""
+      if (comp.uri == intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri or
+          comp.uri == intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri or
+          comp.uri == intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri or
+          comp.uri == intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri):
+        arg_name = six.next(name_generator)
+        arg_type = comp.type_signature.result.member
+        val = computation_building_blocks.Reference(arg_name, arg_type)
+        lam = computation_building_blocks.Lambda(arg_name, arg_type, val)
+        return lam
+      elif comp.uri not in (intrinsic_defs.FEDERATED_MAP.uri,
+                            intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+                            intrinsic_defs.FEDERATED_APPLY.uri):
+        raise ValueError('Disallowed intrinsic: {}'.format(comp))
+      arg_name = six.next(name_generator)
+      tuple_ref = computation_building_blocks.Reference(arg_name, [
+          comp.type_signature.parameter[0],
+          comp.type_signature.parameter[1].member,
+      ])
+      fn = computation_building_blocks.Selection(tuple_ref, index=0)
+      arg = computation_building_blocks.Selection(tuple_ref, index=1)
+      called_fn = computation_building_blocks.Call(fn, arg)
+      return computation_building_blocks.Lambda(arg_name,
+                                                tuple_ref.type_signature,
+                                                called_fn)
+
+    def _remove_lambda_placement(comp):
+      """Removes placement from Lambda's parameter."""
+      new_parameter_type, _ = type_utils.transform_type_postorder(
+          comp.parameter_type, _remove_placement_from_type)
+      return computation_building_blocks.Lambda(comp.parameter_name,
+                                                new_parameter_type, comp.result)
+
+    def _transform(comp):
+      """Dispatches to helpers above."""
+      if isinstance(comp, computation_building_blocks.Reference):
+        return _remove_reference_placement(comp), True
+      elif isinstance(comp, computation_building_blocks.Intrinsic):
+        return _replace_intrinsics_with_functions(comp), True
+      elif isinstance(comp, computation_building_blocks.Lambda):
+        return _remove_lambda_placement(comp), True
+      elif (isinstance(comp, computation_building_blocks.Data) and
+            isinstance(comp.type_signature, computation_types.FederatedType)):
+        # TODO(b/135126947): Design and implement Data constructs.
+        raise NotImplementedError
+      return comp, False
+
+    return transformation_utils.transform_postorder(comp, _transform)
+
+  if unbound_reference_name is None:
+    unbound_variable_renamed = comp
+    unbound_reference_name = None
+    unbound_reference_type = None
+  else:
+    (unbound_variable_renamed,
+     unbound_reference_info) = _rename_unbound_variable(comp,
+                                                        unbound_reference_name)
+    (new_reference_name, unbound_reference_type) = unbound_reference_info
+
+    if not isinstance(unbound_reference_type, computation_types.FederatedType):
+      raise TypeError('The lone unbound reference is not of federated type; '
+                      'this is disallowed. '
+                      'The unbound type is {}'.format(unbound_reference_type))
+
+  placement_removed, _ = _remove_placement(unbound_variable_renamed)
+
+  if unbound_reference_name is None:
+    return computation_constructing_utils.create_federated_value(
+        placement_removed, single_placement), True
+
+  ref_to_fed_arg = computation_building_blocks.Reference(
+      unbound_reference_name, unbound_reference_type)
+
+  lambda_wrapping_placement_removal = computation_building_blocks.Lambda(
+      new_reference_name, unbound_reference_type.member, placement_removed)
+
+  called_intrinsic = computation_constructing_utils.create_federated_map_or_apply(
+      lambda_wrapping_placement_removal, ref_to_fed_arg)
+
+  return called_intrinsic, True
 
 
 def is_called_intrinsic(comp, uri=None):
