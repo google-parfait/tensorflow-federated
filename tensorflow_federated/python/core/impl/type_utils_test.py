@@ -1494,6 +1494,19 @@ class TransformTypePostorderTest(tf.test.TestCase):
     self.assertTrue(mutated)
     self.assertFalse(not_mutated)
 
+  def test_recurses_under_federated_type(self):
+    orig_type = computation_types.FederatedType([tf.int32], placements.CLIENTS)
+    expected_type = computation_types.FederatedType([tf.float32],
+                                                    placements.CLIENTS)
+    result_type, mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_tensor_to_float)
+    noop_type, not_mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_abstract_type_to_tensor)
+    self.assertEqual(result_type, expected_type)
+    self.assertEqual(noop_type, orig_type)
+    self.assertTrue(mutated)
+    self.assertFalse(not_mutated)
+
   def test_updates_mutated_bit_at_federated(self):
     orig_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     _, mutated = type_utils.transform_type_postorder(
@@ -1512,6 +1525,18 @@ class TransformTypePostorderTest(tf.test.TestCase):
     self.assertTrue(mutated)
     self.assertFalse(not_mutated)
 
+  def test_recurses_under_sequence(self):
+    orig_type = computation_types.SequenceType([tf.int32])
+    expected_type = computation_types.SequenceType([tf.float32])
+    result_type, mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_tensor_to_float)
+    noop_type, not_mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_abstract_type_to_tensor)
+    self.assertEqual(result_type, expected_type)
+    self.assertEqual(noop_type, orig_type)
+    self.assertTrue(mutated)
+    self.assertFalse(not_mutated)
+
   def test_updates_mutated_bit_at_sequence(self):
     orig_type = computation_types.SequenceType(tf.int32)
     _, mutated = type_utils.transform_type_postorder(
@@ -1521,6 +1546,18 @@ class TransformTypePostorderTest(tf.test.TestCase):
   def test_transforms_function(self):
     orig_type = computation_types.FunctionType(tf.int32, tf.int64)
     expected_type = computation_types.FunctionType(tf.float32, tf.float32)
+    result_type, mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_tensor_to_float)
+    noop_type, not_mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_abstract_type_to_tensor)
+    self.assertEqual(result_type, expected_type)
+    self.assertEqual(noop_type, orig_type)
+    self.assertTrue(mutated)
+    self.assertFalse(not_mutated)
+
+  def test_recurses_under_function(self):
+    orig_type = computation_types.FunctionType([tf.int32], tf.int64)
+    expected_type = computation_types.FunctionType([tf.float32], tf.float32)
     result_type, mutated = type_utils.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_utils.transform_type_postorder(
@@ -1572,6 +1609,20 @@ class TransformTypePostorderTest(tf.test.TestCase):
     orig_type = computation_types.to_type([('a', tf.int32), ('b', tf.float64)])
     expected_type = computation_types.to_type([('a', tf.float32),
                                                ('b', tf.float32)])
+    result_type, mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_tensor_to_float)
+    noop_type, not_mutated = type_utils.transform_type_postorder(
+        orig_type, _convert_abstract_type_to_tensor)
+    self.assertEqual(result_type, expected_type)
+    self.assertEqual(noop_type, orig_type)
+    self.assertTrue(mutated)
+    self.assertFalse(not_mutated)
+
+  def test_recurses_under_named_tuple_type(self):
+    orig_type = computation_types.to_type([[('a', tf.int32),
+                                            ('b', tf.float64)]])
+    expected_type = computation_types.to_type([[('a', tf.float32),
+                                                ('b', tf.float32)]])
     result_type, mutated = type_utils.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_utils.transform_type_postorder(
