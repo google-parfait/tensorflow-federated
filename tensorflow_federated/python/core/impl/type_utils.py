@@ -1150,7 +1150,8 @@ def transform_type_postorder(type_signature, transform_fn):
   py_typecheck.check_type(type_signature, computation_types.Type)
   py_typecheck.check_callable(transform_fn)
   if isinstance(type_signature, computation_types.FederatedType):
-    transformed_member, member_mutated = transform_fn(type_signature.member)
+    transformed_member, member_mutated = transform_type_postorder(
+        type_signature.member, transform_fn)
     if member_mutated:
       type_signature = computation_types.FederatedType(transformed_member,
                                                        type_signature.placement,
@@ -1158,14 +1159,17 @@ def transform_type_postorder(type_signature, transform_fn):
     fed_type_signature, type_signature_mutated = transform_fn(type_signature)
     return fed_type_signature, type_signature_mutated or member_mutated
   elif isinstance(type_signature, computation_types.SequenceType):
-    transformed_element, element_mutated = transform_fn(type_signature.element)
+    transformed_element, element_mutated = transform_type_postorder(
+        type_signature.element, transform_fn)
     if element_mutated:
       type_signature = computation_types.SequenceType(transformed_element)
     seq_type_signature, type_signature_mutated = transform_fn(type_signature)
     return seq_type_signature, type_signature_mutated or element_mutated
   elif isinstance(type_signature, computation_types.FunctionType):
-    transformed_param, param_mutated = transform_fn(type_signature.parameter)
-    transformed_result, result_mutated = transform_fn(type_signature.result)
+    transformed_param, param_mutated = transform_type_postorder(
+        type_signature.parameter, transform_fn)
+    transformed_result, result_mutated = transform_type_postorder(
+        type_signature.result, transform_fn)
     if param_mutated or result_mutated:
       type_signature = computation_types.FunctionType(transformed_param,
                                                       transformed_result)
@@ -1175,7 +1179,8 @@ def transform_type_postorder(type_signature, transform_fn):
     elems = []
     elems_mutated = False
     for element in anonymous_tuple.to_elements(type_signature):
-      transformed_element, element_mutated = transform_fn(element[1])
+      transformed_element, element_mutated = transform_type_postorder(
+          element[1], transform_fn)
       elems_mutated = elems_mutated or element_mutated
       elems.append((element[0], transformed_element))
     if elems_mutated:
