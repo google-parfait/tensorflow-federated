@@ -1,4 +1,4 @@
-# Lint as: python3
+## Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -928,6 +928,19 @@ class InlineBlockLocalsTest(absltest.TestCase):
     block = computation_building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
       transformations.inline_block_locals(block)
+
+  def test_noops_with_unbound_reference(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    lambda_binding_y = computation_building_blocks.Lambda('y', tf.float32, ref)
+
+    transformed_comp, modified = transformations.inline_block_locals(
+        lambda_binding_y)
+
+    self.assertEqual(lambda_binding_y.tff_repr, '(y -> x)')
+    self.assertEqual(transformed_comp.tff_repr, '(y -> x)')
+    self.assertEqual(transformed_comp.type_signature,
+                     lambda_binding_y.type_signature)
+    self.assertFalse(modified)
 
   def test_inlines_one_block_variable(self):
     block = computation_test_utils.create_identity_block_with_dummy_data(
@@ -2507,6 +2520,9 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
 def parse_tff_to_tf(comp):
   comp, _ = transformations.insert_called_tf_identity_at_leaves(comp)
   parser_callable = transformations.TFParser()
+  comp, _ = transformations.replace_called_lambda_with_block(comp)
+  comp, _ = transformations.inline_block_locals(comp)
+  comp, _ = transformations.replace_selection_from_tuple_with_element(comp)
   new_comp, transformed = transformation_utils.transform_postorder(
       comp, parser_callable)
   return new_comp, transformed

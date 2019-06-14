@@ -16,6 +16,7 @@ py_library(
         ":computation_impl",
         ":context_stack_base",
         ":intrinsic_bodies",
+        ":transformation_utils",
         ":transformations",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -211,6 +212,7 @@ py_library(
     name = "computation_wrapper_instances",
     srcs = ["computation_wrapper_instances.py"],
     deps = [
+        ":computation_building_blocks",
         ":computation_impl",
         ":computation_wrapper",
         ":context_stack_impl",
@@ -218,6 +220,7 @@ py_library(
         ":function_utils",
         ":tensorflow_serialization",
         ":type_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -738,9 +741,11 @@ py_library(
         ":placement_literals",
         ":transformation_utils",
         ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//third_party/py/tensorflow",
     ],
 )
 

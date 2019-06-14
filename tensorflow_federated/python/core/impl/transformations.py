@@ -309,12 +309,15 @@ def inline_block_locals(comp, variable_names=None):
     if not _should_transform(comp):
       return comp, False
     if isinstance(comp, computation_building_blocks.Reference):
-      value = symbol_tree.get_payload_with_name(comp.name).value
+      try:
+        value = symbol_tree.get_payload_with_name(comp.name).value
+      except NameError:
+        # This reference is unbound
+        value = None
       # This identifies a variable bound by a Block as opposed to a Lambda.
       if value is not None:
         return value, True
-      else:
-        return comp, False
+      return comp, False
     elif isinstance(comp, computation_building_blocks.Block):
       variables = [(name, value)
                    for name, value in comp.locals
@@ -1037,10 +1040,13 @@ def uniquify_reference_names(comp):
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
     if isinstance(comp, computation_building_blocks.Reference):
-      new_name = context_tree.get_payload_with_name(comp.name).new_name
-      return computation_building_blocks.Reference(new_name,
-                                                   comp.type_signature,
-                                                   comp.context), True
+      try:
+        new_name = context_tree.get_payload_with_name(comp.name).new_name
+        return computation_building_blocks.Reference(new_name,
+                                                     comp.type_signature,
+                                                     comp.context), True
+      except NameError:
+        return comp, False
     elif isinstance(comp, computation_building_blocks.Block):
       new_locals = []
       for name, val in comp.locals:
