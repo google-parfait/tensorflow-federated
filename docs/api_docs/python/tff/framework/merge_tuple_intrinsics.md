@@ -56,6 +56,7 @@ and the number of those components are not important.
 This transformation is implemented to match the following intrinsics:
 
 *   intrinsic_defs.FEDERATED_AGGREGATE.uri
+*   intrinsic_defs.FEDERATED_APPLY.uri
 *   intrinsic_defs.FEDERATED_BROADCAST.uri
 *   intrinsic_defs.FEDERATED_MAP.uri
 
