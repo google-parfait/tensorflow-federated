@@ -34,10 +34,16 @@ from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_constructors
+
+
+def _create_lambda_to_identity(parameter_name, parameter_type=tf.int32):
+  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
+  return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
 
 def _to_computation_impl(building_block):
@@ -1234,6 +1240,75 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
       self.assertEqual(
           executable_zip([[k, k * 1., k, k * 1.]]),
           executable_unwrapped([[k, k * 1., k, k * 1.]]))
+
+
+class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
+
+  def test_merge_tuple_intrinsics_executes_with_federated_aggregate(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    ref_type = computation_types.NamedTupleType(
+        (value_type, tf.float32, tf.float32, tf.float32, tf.bool))
+    ref = computation_building_blocks.Reference('a', ref_type)
+    value = computation_building_blocks.Selection(ref, index=0)
+    zero = computation_building_blocks.Selection(ref, index=1)
+    accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
+    accumulate_result = computation_building_blocks.Selection(ref, index=2)
+    accumulate = computation_building_blocks.Lambda('b', accumulate_type,
+                                                    accumulate_result)
+    merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
+    merge_result = computation_building_blocks.Selection(ref, index=3)
+    merge = computation_building_blocks.Lambda('c', merge_type, merge_result)
+    report_result = computation_building_blocks.Selection(ref, index=4)
+    report = computation_building_blocks.Lambda('d', tf.float32, report_result)
+    called_intrinsic = computation_constructing_utils.create_federated_aggregate(
+        value, zero, accumulate, merge, report)
+    tup = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+    comp_impl = _to_computation_impl(comp)
+    transformed_comp_impl = _to_computation_impl(transformed_comp)
+
+    self.assertEqual(
+        comp_impl(((1,), 1.0, 2.0, 3.0, True)),
+        transformed_comp_impl(((2,), 4.0, 5.0, 6.0, True)))
+
+  def test_merge_tuple_intrinsics_executes_with_federated_broadcast(self):
+    self.skipTest('b/135279151')
+    ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    ref = computation_building_blocks.Reference('a', ref_type)
+    called_intrinsic = computation_constructing_utils.create_federated_broadcast(
+        ref)
+    tup = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
+
+    comp_impl = _to_computation_impl(comp)
+    transformed_comp_impl = _to_computation_impl(transformed_comp)
+
+    self.assertEqual(comp_impl(10), transformed_comp_impl(10))
+
+  def test_merge_tuple_intrinsics_executes_with_federated_map(self):
+    ref_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    ref = computation_building_blocks.Reference('a', ref_type)
+    fn = _create_lambda_to_identity('b')
+    arg = ref
+    called_intrinsic = computation_constructing_utils.create_federated_map(
+        fn, arg)
+    tup = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_MAP.uri)
+
+    comp_impl = _to_computation_impl(comp)
+    transformed_comp_impl = _to_computation_impl(transformed_comp)
+
+    self.assertEqual(comp_impl((1,)), transformed_comp_impl((1,)))
 
 
 if __name__ == '__main__':

@@ -172,21 +172,19 @@ def _create_dummy_called_federated_aggregate(accumulate_parameter_name,
                                              report_parameter_name):
   value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
   value = computation_building_blocks.Data('data', value_type)
-  zero = computation_building_blocks.Data('data', tf.int32)
-  accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-  accumulate_result = computation_building_blocks.Data('data', tf.int32)
+  zero = computation_building_blocks.Data('data', tf.float32)
+  accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
+  accumulate_result = computation_building_blocks.Data('data', tf.float32)
   accumulate = computation_building_blocks.Lambda(accumulate_parameter_name,
                                                   accumulate_type,
                                                   accumulate_result)
-  merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-  merge_result = computation_building_blocks.Data('data', tf.int32)
+  merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
+  merge_result = computation_building_blocks.Data('data', tf.float32)
   merge = computation_building_blocks.Lambda(merge_parameter_name, merge_type,
                                              merge_result)
-  report_ref = computation_building_blocks.Reference(report_parameter_name,
-                                                     tf.int32)
-  report = computation_building_blocks.Lambda(report_ref.name,
-                                              report_ref.type_signature,
-                                              report_ref)
+  report_result = computation_building_blocks.Data('data', tf.bool)
+  report = computation_building_blocks.Lambda(report_parameter_name, tf.float32,
+                                              report_result)
   return computation_constructing_utils.create_federated_aggregate(
       value, zero, accumulate, merge, report)
 
@@ -1193,7 +1191,7 @@ class MergeChainedBlocksTest(absltest.TestCase):
     self.assertTrue(modified)
 
 
-class MergeChainedFederatedMapOrApplysTest(parameterized.TestCase):
+class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1462,23 +1460,45 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
 
     self.assertEqual(
         comp.tff_repr,
-        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> c)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> c)>)>'
+        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)>'
     )
     # pyformat: disable
     # pylint: disable=bad-continuation
     self.assertEqual(
         transformed_comp.tff_repr,
         '(x -> <x[0],x[1]>)((let value=federated_aggregate(<'
-            'federated_map(<(x -> <x[0],x[1]>),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
                 'federated_map(<'
                     '(arg -> arg),'
                     '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
                 '>)'
             '>),'
             '<data,data>,'
-            '(let _var1=<(a -> data),(a -> data)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            '(let _var3=<(b -> data),(b -> data)> in (_var4 -> <_var3[0](_var4[0]),_var3[1](_var4[1])>)),'
-            '(let _var5=<(c -> c),(c -> c)> in (_var6 -> <_var5[0](_var6[0]),_var5[1](_var6[1])>))'
+            '(let _var1=<(a -> data),(a -> data)> in (_var2 -> <'
+                '_var1[0](<'
+                    '<_var2[0][0],_var2[1][0]>,'
+                    '<_var2[0][1],_var2[1][1]>'
+                '>[0]),'
+                '_var1[1](<'
+                    '<_var2[0][0],_var2[1][0]>,'
+                    '<_var2[0][1],_var2[1][1]>'
+                '>[1])'
+            '>)),'
+            '(let _var3=<(b -> data),(b -> data)> in (_var4 -> <'
+                '_var3[0](<'
+                    '<_var4[0][0],_var4[1][0]>,'
+                    '<_var4[0][1],_var4[1][1]>'
+                '>[0]),'
+                '_var3[1](<'
+                    '<_var4[0][0],_var4[1][0]>,'
+                    '<_var4[0][1],_var4[1][1]>'
+                '>[1])'
+            '>)),'
+            '(let _var5=<(c -> data),(c -> data)> in (_var6 -> <'
+                '_var5[0](_var6[0]),'
+                '_var5[1](_var6[1])'
+             '>))'
         '>) in <'
             'federated_apply(<(arg -> arg[0]),value>),'
             'federated_apply(<(arg -> arg[1]),value>)'
@@ -1488,7 +1508,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
-        str(transformed_comp.type_signature), '<int32@SERVER,int32@SERVER>')
+        str(transformed_comp.type_signature), '<bool@SERVER,bool@SERVER>')
     self.assertTrue(modified)
 
   def test_merges_federated_broadcasts(self):
@@ -1604,7 +1624,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         '<{int32}@CLIENTS,{int32}@CLIENTS>')
     self.assertTrue(modified)
 
-  def test_merges_federated_maps_with_different_types(self):
+  def test_merges_federated_maps_with_different_type(self):
     called_intrinsic_1 = _create_dummy_called_federated_map(
         parameter_name='a', parameter_type=tf.int32)
     called_intrinsic_2 = _create_dummy_called_federated_map(
@@ -1646,13 +1666,12 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_named_parameter_type(self):
-    parameter_type = [('b', tf.int32), ('c', tf.int32)]
+    parameter_type = [('b', tf.int32), ('c', tf.float32)]
     called_intrinsic = _create_dummy_called_federated_map(
         parameter_name='a', parameter_type=parameter_type)
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
-
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
@@ -1682,7 +1701,49 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
         str(transformed_comp.type_signature),
-        '<{<b=int32,c=int32>}@CLIENTS,{<b=int32,c=int32>}@CLIENTS>')
+        '<{<b=int32,c=float32>}@CLIENTS,{<b=int32,c=float32>}@CLIENTS>')
+    self.assertTrue(modified)
+
+  def test_merges_federated_maps_with_different_named_parameter_types(self):
+    parameter_type_1 = [('b', tf.int32), ('c', tf.float32)]
+    called_intrinsic_1 = _create_dummy_called_federated_map(
+        parameter_name='a', parameter_type=parameter_type_1)
+    parameter_type_2 = [('e', tf.bool), ('f', tf.string)]
+    called_intrinsic_2 = _create_dummy_called_federated_map(
+        parameter_name='d', parameter_type=parameter_type_2)
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic_1, called_intrinsic_2))
+    comp = calls
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_MAP.uri)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_map(<(a -> a),data>),federated_map(<(d -> d),data>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0],x[1]>)((let value=federated_map(<'
+            '(let _var1=<(a -> a),(d -> d)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
+            'federated_map(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_map(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_map(<(arg -> arg[0]),value>),'
+            'federated_map(<(arg -> arg[1]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<{<b=int32,c=float32>}@CLIENTS,{<e=bool,f=string>}@CLIENTS>')
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_unbound_reference(self):
@@ -1886,11 +1947,11 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
         transformed_comp.tff_repr,
-        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> c)>),federated_map(<(a -> a),data>)>'
+        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_map(<(a -> a),data>)>'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
-        str(transformed_comp.type_signature), '<int32@SERVER,{int32}@CLIENTS>')
+        str(transformed_comp.type_signature), '<bool@SERVER,{int32}@CLIENTS>')
     self.assertFalse(modified)
 
   def test_does_not_merge_intrinsics_with_different_uri(self):
@@ -1932,7 +1993,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
        _create_dummy_called_federated_map_all_equal),
       ('sequence_map',
        intrinsic_defs.SEQUENCE_MAP.uri,
-       _create_dummy_called_sequence_map))
+       _create_dummy_called_sequence_map),
+  )
   # pyformat: enable
   def test_removes_intrinsic(self, uri, factory):
     call = factory(parameter_name='a')

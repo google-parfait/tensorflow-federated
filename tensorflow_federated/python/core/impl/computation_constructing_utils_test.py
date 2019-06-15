@@ -1855,5 +1855,101 @@ class CreateNamedTupleTest(absltest.TestCase):
     self.assertEqual(named_comp.type_signature, expected_type_signature)
 
 
+class CreateZipTest(absltest.TestCase):
+
+  def test_raises_type_error(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.create_zip(None)
+
+  def test_zips_tuple_unnamed(self):
+    data_1 = computation_building_blocks.Data('a', tf.int32)
+    data_2 = computation_building_blocks.Data('b', tf.float32)
+    data_3 = computation_building_blocks.Data('c', tf.bool)
+    tup_1 = computation_building_blocks.Tuple((data_1, data_2, data_3))
+    tup_2 = computation_building_blocks.Tuple((tup_1, tup_1))
+    comp = tup_2
+    new_comp = computation_constructing_utils.create_zip(comp)
+    self.assertEqual(comp.tff_repr, '<<a,b,c>,<a,b,c>>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        new_comp.tff_repr,
+        '(let _var1=<'
+            '<a,b,c>,'
+            '<a,b,c>'
+        '> in <'
+            '<_var1[0][0],_var1[1][0]>,'
+            '<_var1[0][1],_var1[1][1]>,'
+            '<_var1[0][2],_var1[1][2]>'
+        '>)'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(
+        str(comp.type_signature), '<<int32,float32,bool>,<int32,float32,bool>>')
+    self.assertEqual(
+        str(new_comp.type_signature),
+        '<<int32,int32>,<float32,float32>,<bool,bool>>')
+
+  def test_zips_tuple_named(self):
+    data_1 = computation_building_blocks.Data('a', tf.int32)
+    data_2 = computation_building_blocks.Data('b', tf.float32)
+    data_3 = computation_building_blocks.Data('c', tf.bool)
+    tup_1 = computation_building_blocks.Tuple(
+        (('d', data_1), ('e', data_2), ('f', data_3)))
+    tup_2 = computation_building_blocks.Tuple((('g', tup_1), ('h', tup_1)))
+    comp = tup_2
+    new_comp = computation_constructing_utils.create_zip(comp)
+    self.assertEqual(comp.tff_repr, '<g=<d=a,e=b,f=c>,h=<d=a,e=b,f=c>>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        new_comp.tff_repr,
+        '(let _var1=<'
+            'g=<d=a,e=b,f=c>,'
+            'h=<d=a,e=b,f=c>'
+        '> in <'
+            '<_var1[0][0],_var1[1][0]>,'
+            '<_var1[0][1],_var1[1][1]>,'
+            '<_var1[0][2],_var1[1][2]>'
+        '>)'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(
+        str(comp.type_signature),
+        '<g=<d=int32,e=float32,f=bool>,h=<d=int32,e=float32,f=bool>>')
+    self.assertEqual(
+        str(new_comp.type_signature),
+        '<<int32,int32>,<float32,float32>,<bool,bool>>')
+
+  def test_zips_reference(self):
+    type_signature_1 = computation_types.NamedTupleType(
+        [tf.int32, tf.float32, tf.bool])
+    type_signature_2 = computation_types.NamedTupleType(
+        [type_signature_1, type_signature_1])
+    ref = computation_building_blocks.Reference('a', type_signature_2)
+    comp = ref
+    new_comp = computation_constructing_utils.create_zip(comp)
+    self.assertEqual(comp.tff_repr, 'a')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        new_comp.tff_repr,
+        '<'
+            '<a[0][0],a[1][0]>,'
+            '<a[0][1],a[1][1]>,'
+            '<a[0][2],a[1][2]>'
+        '>'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(
+        str(comp.type_signature), '<<int32,float32,bool>,<int32,float32,bool>>')
+    self.assertEqual(
+        str(new_comp.type_signature),
+        '<<int32,int32>,<float32,float32>,<bool,bool>>')
+
+
 if __name__ == '__main__':
   absltest.main()
