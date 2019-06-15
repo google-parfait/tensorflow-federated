@@ -581,6 +581,7 @@ py_test(
         ":computation_impl",
         ":context_stack_impl",
         ":graph_utils",
+        ":intrinsic_defs",
         ":intrinsic_utils",
         ":reference_executor",
         ":transformations",

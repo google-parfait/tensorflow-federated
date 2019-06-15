@@ -36,8 +36,8 @@ Comp(v2), ...]
 with the following computation containing one called intrinsic:
 
 federated_unzip(Call) / \
-Intrinsic Tuple | [Block, federated_zip(Tuple), ...] / \ | fn=Tuple Lambda(arg)
-[Comp(v1), Comp(v2), ...] | \
+Intrinsic Tuple | [Block, federated_zip(Tuple), ...] / \ | [fn=Tuple]
+Lambda(arg) [Comp(v1), Comp(v2), ...] | \
 [Comp(f1), Comp(f2), ...] Tuple | [Call, Call, ...] / \ / \
 Sel(0) Sel(0) Sel(1) Sel(1) / / / / Ref(fn) Ref(arg) Ref(fn) Ref(arg)
 
