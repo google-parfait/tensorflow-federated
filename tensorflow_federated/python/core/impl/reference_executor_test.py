@@ -1275,6 +1275,24 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
         comp_impl(((1,), 1.0, 2.0, 3.0, True)),
         transformed_comp_impl(((2,), 4.0, 5.0, 6.0, True)))
 
+  def test_merge_tuple_intrinsics_executes_with_federated_apply(self):
+    ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    ref = computation_building_blocks.Reference('a', ref_type)
+    fn = _create_lambda_to_identity('b')
+    arg = ref
+    called_intrinsic = computation_constructing_utils.create_federated_apply(
+        fn, arg)
+    tup = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_APPLY.uri)
+
+    comp_impl = _to_computation_impl(comp)
+    transformed_comp_impl = _to_computation_impl(transformed_comp)
+
+    self.assertEqual(comp_impl(1), transformed_comp_impl(1))
+
   def test_merge_tuple_intrinsics_executes_with_federated_broadcast(self):
     self.skipTest('b/135279151')
     ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)

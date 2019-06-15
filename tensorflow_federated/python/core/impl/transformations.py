@@ -559,6 +559,7 @@ def merge_tuple_intrinsics(comp, uri):
   This transformation is implemented to match the following intrinsics:
 
   * intrinsic_defs.FEDERATED_AGGREGATE.uri
+  * intrinsic_defs.FEDERATED_APPLY.uri
   * intrinsic_defs.FEDERATED_BROADCAST.uri
   * intrinsic_defs.FEDERATED_MAP.uri
 
@@ -577,6 +578,7 @@ def merge_tuple_intrinsics(comp, uri):
   py_typecheck.check_type(uri, six.string_types)
   expected_uri = (
       intrinsic_defs.FEDERATED_AGGREGATE.uri,
+      intrinsic_defs.FEDERATED_APPLY.uri,
       intrinsic_defs.FEDERATED_BROADCAST.uri,
       intrinsic_defs.FEDERATED_MAP.uri,
   )

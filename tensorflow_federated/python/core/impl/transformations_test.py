@@ -1511,6 +1511,43 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         str(transformed_comp.type_signature), '<bool@SERVER,bool@SERVER>')
     self.assertTrue(modified)
 
+  def test_merges_federated_applys(self):
+    called_intrinsic = _create_dummy_called_federated_apply(parameter_name='a')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_APPLY.uri)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_apply(<(a -> a),data>),federated_apply(<(a -> a),data>)>')
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0],x[1]>)((let value=federated_apply(<'
+            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
+            'federated_apply(<'
+                '(x -> <x[0],x[1]>),'
+                'federated_apply(<'
+                    '(arg -> arg),'
+                    '(let value=<data,data> in federated_zip_at_server(<value[0],value[1]>))'
+                '>)'
+            '>)'
+        '>) in <'
+            'federated_apply(<(arg -> arg[0]),value>),'
+            'federated_apply(<(arg -> arg[1]),value>)'
+        '>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature), '<int32@SERVER,int32@SERVER>')
+    self.assertTrue(modified)
+
   def test_merges_federated_broadcasts(self):
     called_intrinsic = _create_dummy_called_federated_broadcast()
     calls = computation_building_blocks.Tuple(
