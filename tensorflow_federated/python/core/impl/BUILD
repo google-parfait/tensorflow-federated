@@ -228,6 +228,7 @@ py_test(
 py_library(
     name = "concurrent_executor",
     srcs = ["concurrent_executor.py"],
+    srcs_version = "PY3",
     deps = [
         ":executor_base",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -239,6 +240,7 @@ py_test(
     name = "concurrent_executor_test",
     size = "small",
     srcs = ["concurrent_executor_test.py"],
+    python_version = "PY3",
     deps = [":concurrent_executor"],
 )
 
@@ -283,6 +285,7 @@ py_library(
 py_library(
     name = "eager_executor",
     srcs = ["eager_executor.py"],
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":executor_base",
@@ -304,9 +307,9 @@ py_test(
     name = "eager_executor_test",
     size = "small",
     srcs = ["eager_executor_test.py"],
+    python_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_impl",
         ":eager_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -317,15 +320,14 @@ py_test(
 py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
-    deps = [
-        ":context_base",
-        ":executor_value_base",
-    ],
+    srcs_version = "PY3",
+    deps = [":executor_value_base"],
 )
 
 py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
+    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/api:typed_object"],
 )
 
@@ -748,6 +750,7 @@ py_test(
 py_library(
     name = "transforming_executor",
     srcs = ["transforming_executor.py"],
+    srcs_version = "PY3",
     deps = [
         ":executor_base",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -759,6 +762,7 @@ py_test(
     name = "transforming_executor_test",
     size = "small",
     srcs = ["transforming_executor_test.py"],
+    python_version = "PY3",
     deps = [
         ":eager_executor",
         ":transforming_executor",

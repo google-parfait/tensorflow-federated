@@ -350,7 +350,7 @@ class EagerExecutor(executor_base.Executor):
     else:
       self._device = None
 
-  def ingest(self, value, type_spec=None):
+  async def ingest(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
     Args:
@@ -372,7 +372,7 @@ class EagerExecutor(executor_base.Executor):
       raise RuntimeError('The eager executor may only be used in eager mode.')
     return EagerValue(value, type_spec, self._device)
 
-  def invoke(self, comp, arg):
+  async def invoke(self, comp, arg):
     """Invokes `comp` on optional `arg` in the eager executor.
 
     Args:
@@ -390,9 +390,9 @@ class EagerExecutor(executor_base.Executor):
     if not isinstance(comp.type_signature, computation_types.FunctionType):
       raise TypeError('Expected a functional type, found {}'.format(
           str(comp.type_signature)))
-    comp = self.ingest(comp, comp.type_signature)
+    comp = await self.ingest(comp, comp.type_signature)
     if comp.type_signature.parameter is not None:
-      arg = self.ingest(arg, comp.type_signature.parameter)
+      arg = await self.ingest(arg, comp.type_signature.parameter)
       return EagerValue(
           comp.internal_representation(arg.internal_representation),
           comp.type_signature.result, self._device)
