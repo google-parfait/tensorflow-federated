@@ -147,7 +147,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
       model_vars = tff.utils.get_variables("v", model_type)
       init_model = tff.utils.assign(model_vars, initial_model)
 
-      optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+      optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate)
       with tf.control_dependencies([init_model]):
         train_model = optimizer.minimize(batch_loss(model_vars, batch))
 
