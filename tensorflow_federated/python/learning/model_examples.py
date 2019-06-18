@@ -139,7 +139,7 @@ class TrainableLinearRegression(LinearRegression, model.TrainableModel):
   def train_on_batch(self, batch):
     # Most users won't implement this, and let us provide the optimizer.
     fp = self.forward_pass(batch)
-    optimizer = tf.train.GradientDescentOptimizer(0.1)
+    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.1)
     optimizer.minimize(fp.loss, var_list=self.trainable_variables)
     return fp
 

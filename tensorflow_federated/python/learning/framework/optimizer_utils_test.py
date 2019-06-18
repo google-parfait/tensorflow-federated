@@ -133,7 +133,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('_sgd', lambda: tf.train.GradientDescentOptimizer(learning_rate=0.1),
+      ('_sgd', lambda: tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.1),
        0.1, 0),
       # It looks like Adam introduces 2 + 2*num_model_variables additional vars.
       ('_adam', lambda: tf.train.AdamOptimizer(  # pylint: disable=g-long-lambda
