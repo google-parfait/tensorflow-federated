@@ -21,11 +21,9 @@ from __future__ import print_function
 import abc
 import six
 
-from tensorflow_federated.python.core.impl import context_base
-
 
 @six.add_metaclass(abc.ABCMeta)
-class Executor(context_base.Context):
+class Executor(object):
   """Represents the abstract interface that all executors must implement."""
 
   # TODO(b/134543154): Migrate the reference executor over this new interface.
@@ -34,13 +32,9 @@ class Executor(context_base.Context):
   # embedded and must be understood by all executor implementations, possibly
   # factoring out parts of reference executor's `to_representation_for_type()`.
 
-  # TODO(b/134543154): Consider not deriving from `context_base.Context`, even
-  # though right now they're virtually identical. Perhaps we should make one,
-  # but not the other responsible for unwrapping embedded values (TBD).
-
   @abc.abstractmethod
-  def ingest(self, value, type_spec):
-    """Ingests value `value` of type `type_spec`.
+  async def ingest(self, value, type_spec):
+    """A coroutine that ingests value `value` of type `type_spec`.
 
     This function is used to embed a value within the executor. Once embedded,
     the value can be further passed around. The value being embedded can be a
@@ -59,8 +53,8 @@ class Executor(context_base.Context):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def invoke(self, comp, arg):
-    """Invokes computation `comp` with argument `arg`.
+  async def invoke(self, comp, arg):
+    """A coruotine that invokes computation `comp` with argument `arg`.
 
     Args:
       comp: The computation to invoke. If `comp` has not been ingested by this

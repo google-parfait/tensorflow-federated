@@ -42,8 +42,8 @@ class ConcurrentExecutor(executor_base.Executor):
       py_typecheck.check_type(executor, executor_base.Executor)
       self._target_executors.append(executor)
 
-  def ingest(self, value, type_spec):
+  async def ingest(self, value, type_spec):
     raise NotImplementedError
 
-  def invoke(self, comp, arg):
+  async def invoke(self, comp, arg):
     raise NotImplementedError

@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import asyncio
 import collections
 
 from absl.testing import absltest
@@ -29,7 +30,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import eager_executor
 
 
@@ -133,7 +133,7 @@ class EagerExecutorTest(absltest.TestCase):
 
   def test_executor_ingest_int(self):
     ex = eager_executor.EagerExecutor()
-    val = ex.ingest(10, tf.int32)
+    val = asyncio.get_event_loop().run_until_complete(ex.ingest(10, tf.int32))
     self.assertIsInstance(val, eager_executor.EagerValue)
     self.assertIsInstance(val.internal_representation, tf.Tensor)
     self.assertEqual(str(val.type_signature), 'int32')
@@ -141,9 +141,10 @@ class EagerExecutorTest(absltest.TestCase):
 
   def test_executor_ingest_unnamed_int_pair(self):
     ex = eager_executor.EagerExecutor()
-    val = ex.ingest([10, {
-        'a': 20
-    }], [tf.int32, collections.OrderedDict([('a', tf.int32)])])
+    val = asyncio.get_event_loop().run_until_complete(
+        ex.ingest([10, {
+            'a': 20
+        }], [tf.int32, collections.OrderedDict([('a', tf.int32)])]))
     self.assertIsInstance(val, eager_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '<int32,<a=int32>>')
     self.assertIsInstance(val.internal_representation,
@@ -166,7 +167,8 @@ class EagerExecutorTest(absltest.TestCase):
       return 1000
 
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-    val = ex.ingest(comp_proto, computation_types.FunctionType(None, tf.int32))
+    val = asyncio.get_event_loop().run_until_complete(
+        ex.ingest(comp_proto, computation_types.FunctionType(None, tf.int32)))
     self.assertIsInstance(val, eager_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '( -> int32)')
     self.assertTrue(callable(val.internal_representation))
@@ -182,9 +184,10 @@ class EagerExecutorTest(absltest.TestCase):
       return a + b
 
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-    val = ex.ingest(
-        comp_proto,
-        computation_types.FunctionType([tf.int32, tf.int32], tf.int32))
+    val = asyncio.get_event_loop().run_until_complete(
+        ex.ingest(
+            comp_proto,
+            computation_types.FunctionType([tf.int32, tf.int32], tf.int32)))
     self.assertIsInstance(val, eager_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '(<int32,int32> -> int32)')
     self.assertTrue(callable(val.internal_representation))
@@ -200,7 +203,8 @@ class EagerExecutorTest(absltest.TestCase):
     def comp(a, b):
       return a + b
 
-    result = eager_executor.EagerExecutor().invoke(comp, [10, 20])
+    result = asyncio.get_event_loop().run_until_complete(
+        eager_executor.EagerExecutor().invoke(comp, [10, 20]))
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
     self.assertIsInstance(result.internal_representation, tf.Tensor)
@@ -213,7 +217,8 @@ class EagerExecutorTest(absltest.TestCase):
       return ds.take(2)
 
     ds = tf.data.Dataset.from_tensor_slices([10, 20, 30, 40, 50])
-    result = eager_executor.EagerExecutor().invoke(comp, ds)
+    result = asyncio.get_event_loop().run_until_complete(
+        eager_executor.EagerExecutor().invoke(comp, ds))
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32*')
     self.assertIn('Dataset', type(result.internal_representation).__name__)
@@ -227,7 +232,8 @@ class EagerExecutorTest(absltest.TestCase):
       return ds.take(3)
 
     ds = tf.data.Dataset.from_tensor_slices([10]).repeat()
-    result = eager_executor.EagerExecutor().invoke(comp, ds)
+    result = asyncio.get_event_loop().run_until_complete(
+        eager_executor.EagerExecutor().invoke(comp, ds))
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32*')
     self.assertIn('Dataset', type(result.internal_representation).__name__)
@@ -241,7 +247,8 @@ class EagerExecutorTest(absltest.TestCase):
       return ds.take(5).reduce(np.int32(0), lambda p, q: p + q)
 
     ds = tf.data.Dataset.from_tensor_slices([10, 20, 30]).repeat()
-    result = eager_executor.EagerExecutor().invoke(comp, ds)
+    result = asyncio.get_event_loop().run_until_complete(
+        eager_executor.EagerExecutor().invoke(comp, ds))
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
     self.assertIsInstance(result.internal_representation, tf.Tensor)
@@ -259,7 +266,8 @@ class EagerExecutorTest(absltest.TestCase):
                   np.int32(0)), lambda p, q: element(p.a + q.a, p.b + q.b))
 
     ds = tf.data.Dataset.from_tensor_slices(element([10, 20, 30], [4, 5, 6]))
-    result = eager_executor.EagerExecutor().invoke(comp, ds)
+    result = asyncio.get_event_loop().run_until_complete(
+        eager_executor.EagerExecutor().invoke(comp, ds))
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(str(result.type_signature), '<a=int32,b=int32>')
     self.assertIsInstance(result.internal_representation,
@@ -269,35 +277,6 @@ class EagerExecutorTest(absltest.TestCase):
     self.assertIsInstance(result.internal_representation.b, tf.Tensor)
     self.assertEqual(result.internal_representation.a.numpy(), 60)
     self.assertEqual(result.internal_representation.b.numpy(), 15)
-
-  def test_executor_as_context_with_int_args(self):
-
-    @computations.tf_computation(tf.int32, tf.int32)
-    def comp(a, b):
-      return a + b
-
-    with context_stack_impl.context_stack.install(
-        eager_executor.EagerExecutor()):
-      a = comp(10, 20)
-      b = comp(30, 40)
-      result = comp(a, b)
-
-    self.assertIsInstance(result, eager_executor.EagerValue)
-    self.assertEqual(result.internal_representation.numpy(), 100)
-
-  def test_executor_as_context_with_dataset_arg(self):
-
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
-    def comp(ds):
-      return ds.reduce(np.int32(1), lambda p, q: p * q)
-
-    with context_stack_impl.context_stack.install(
-        eager_executor.EagerExecutor()):
-      ds = tf.data.Dataset.from_tensor_slices([4, 5, 6])
-      result = comp(ds)
-
-    self.assertIsInstance(result, eager_executor.EagerValue)
-    self.assertEqual(result.internal_representation.numpy(), 120)
 
 
 if __name__ == '__main__':

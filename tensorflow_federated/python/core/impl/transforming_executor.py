@@ -43,8 +43,8 @@ class TransformingExecutor(executor_base.Executor):
     py_typecheck.check_type(target_executor, executor_base.Executor)
     self._target_executor = target_executor
 
-  def ingest(self, value, type_spec):
+  async def ingest(self, value, type_spec):
     raise NotImplementedError
 
-  def invoke(self, comp, arg):
+  async def invoke(self, comp, arg):
     raise NotImplementedError
