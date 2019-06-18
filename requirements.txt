@@ -4,4 +4,4 @@ h5py~=2.6
 matplotlib~=3.0
 numpy~=1.14
 six~=1.10
-tf-nightly==1.14.1.dev20190613
+tf-nightly
