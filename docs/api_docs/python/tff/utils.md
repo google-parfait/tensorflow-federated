@@ -45,5 +45,5 @@ variables that matches the given `type_spec`.
 [`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to
 `source`.
 
-[`update_state(...)`](../tff/utils/update_state.md): Returns a new `state` (a
-namedtuple) with updated with kwargs.
+[`update_state(...)`](../tff/utils/update_state.md): Returns a new `state` with
+new values for fields in `kwargs`.

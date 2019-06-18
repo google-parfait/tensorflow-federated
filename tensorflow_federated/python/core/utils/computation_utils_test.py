@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
+import attr
 import six
 from six.moves import range
 import tensorflow as tf
@@ -53,16 +54,51 @@ def count_int32(current):
 
 class ComputationUtilsTest(absltest.TestCase):
 
-  def test_update_state(self):
-    MyTuple = collections.namedtuple('MyTuple', 'a b c')  # pylint: disable=invalid-name
-    t = MyTuple(1, 2, 3)
-    t2 = computation_utils.update_state(t, c=7)
-    self.assertEqual(t2, MyTuple(1, 2, 7))
-    t3 = computation_utils.update_state(t2, a=8)
-    self.assertEqual(t3, MyTuple(8, 2, 7))
+  def test_update_state_namedtuple(self):
+    my_tuple_type = collections.namedtuple('my_tuple_type', 'a b c')
+    state = my_tuple_type(1, 2, 3)
+    state2 = computation_utils.update_state(state, c=7)
+    self.assertEqual(state2, my_tuple_type(1, 2, 7))
+    state3 = computation_utils.update_state(state2, a=8)
+    self.assertEqual(state3, my_tuple_type(8, 2, 7))
 
-    with six.assertRaisesRegex(self, TypeError, r'state.*namedtuple'):
+  def test_update_state_dict(self):
+    state = {'a': 1, 'b': 2, 'c': 3}
+    state2 = computation_utils.update_state(state, c=7)
+    self.assertEqual(state2, {'a': 1, 'b': 2, 'c': 7})
+    state3 = computation_utils.update_state(state2, a=8)
+    self.assertEqual(state3, {'a': 8, 'b': 2, 'c': 7})
+
+  def test_update_state_ordereddict(self):
+    state = collections.OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+    state2 = computation_utils.update_state(state, c=7)
+    self.assertEqual(state2,
+                     collections.OrderedDict([('a', 1), ('b', 2), ('c', 7)]))
+    state3 = computation_utils.update_state(state2, a=8)
+    self.assertEqual(state3,
+                     collections.OrderedDict([('a', 8), ('b', 2), ('c', 7)]))
+
+  def test_update_state_attrs(self):
+
+    @attr.s
+    class TestAttrsClass(object):
+      a = attr.ib()
+      b = attr.ib()
+      c = attr.ib()
+
+    state = TestAttrsClass(1, 2, 3)
+    state2 = computation_utils.update_state(state, c=7)
+    self.assertEqual(state2, TestAttrsClass(1, 2, 7))
+    state3 = computation_utils.update_state(state2, a=8)
+    self.assertEqual(state3, TestAttrsClass(8, 2, 7))
+
+  def test_update_state_fails(self):
+    with six.assertRaisesRegex(self, TypeError, 'state must be a structure'):
       computation_utils.update_state((1, 2, 3), a=8)
+    with six.assertRaisesRegex(self, TypeError, 'state must be a structure'):
+      computation_utils.update_state([1, 2, 3], a=8)
+    with six.assertRaisesRegex(self, KeyError, 'does not contain a field'):
+      computation_utils.update_state({'z': 1}, a=8)
 
   def test_iterative_process_state_only(self):
     iterative_process = computation_utils.IterativeProcess(
