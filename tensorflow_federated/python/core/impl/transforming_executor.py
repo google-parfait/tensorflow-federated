@@ -43,8 +43,14 @@ class TransformingExecutor(executor_base.Executor):
     py_typecheck.check_type(target_executor, executor_base.Executor)
     self._target_executor = target_executor
 
-  async def ingest(self, value, type_spec):
+  async def create_value(self, value, type_spec=None):
     raise NotImplementedError
 
-  async def invoke(self, comp, arg):
+  async def create_call(self, comp, arg=None):
+    raise NotImplementedError
+
+  async def create_tuple(self, elements):
+    raise NotImplementedError
+
+  async def create_selection(self, source, index=None, name=None):
     raise NotImplementedError

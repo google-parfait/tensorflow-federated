@@ -254,7 +254,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
 class EagerValue(executor_value_base.ExecutorValue):
   """A representation of an eager value managed by the eager executor."""
 
-  def __init__(self, value, type_spec, device=None):
+  def __init__(self, value, type_spec=None, device=None):
     """Creates an instance of a value in this executor.
 
     Args:
@@ -264,14 +264,14 @@ class EagerValue(executor_value_base.ExecutorValue):
         or a nested structure of these.
       device: The optional device on which to place the value.
     """
-    type_spec = computation_types.to_type(type_spec)
-    self._value = to_representation_for_type(value, type_spec, device)
     if type_spec is None:
-      py_typecheck.check_type(self._value, typed_object.TypedObject)
-      type_spec = self._value.type_signature
+      py_typecheck.check_type(value, typed_object.TypedObject)
+      type_spec = value.type_signature
     else:
+      type_spec = computation_types.to_type(type_spec)
       py_typecheck.check_type(type_spec, computation_types.Type)
     self._type_signature = type_spec
+    self._value = to_representation_for_type(value, type_spec, device)
 
   @property
   def internal_representation(self):
@@ -290,23 +290,16 @@ class EagerValue(executor_value_base.ExecutorValue):
 class EagerExecutor(executor_base.Executor):
   """The eager executor only runs TensorFlow, synchronously, in eager mode.
 
-  WARNING: This executor is only partially implemented, and should not be used.
-
-  TODO(b/134764569): Add support for a subset of the computation building
-  blocks, as documented below:
-  - calls,
-  - tuples,
-  - selections,
-  - data.
+  TODO(b/134764569): Add support for data as a building block.
 
   This executor understands the following TFF types: tensors, sequences, named
   tuples, and functions. It does not understand placements, federated, or
   abstract types.
 
   This executor understands the following kinds of TFF computation building
-  blocks: tensorflow computations, tuples, selections, calls, and external data.
-  It does not understand lambda calculus (lambdas, blocks, references),
-  placement literals, or any of the intrinsics (including those on sequences).
+  blocks: tensorflow computations, and external data. It does not understand
+  lambda calculus or any compositional constructs. Tuples and selections can
+  only be created using `create_tuple()` and `create_selection()` in the API.
 
   The arguments to be ingested can be Python constants of simple types, nested
   structures of those, as well as eager tensors and eager datasets.
@@ -321,7 +314,7 @@ class EagerExecutor(executor_base.Executor):
 
   It does not deal with multithreading, checkpointing, federated computations,
   and other concerns to be covered by separate executor components. It runs the
-  operations it supports in a synchronous fashion. Asynchrny and other aspects
+  operations it supports in a synchronous fashion. Asynchrony and other aspects
   not supported here should be handled by composing this executor with other
   executors into a complex executor stack, rather than mixing in all the logic.
   """
@@ -350,7 +343,7 @@ class EagerExecutor(executor_base.Executor):
     else:
       self._device = None
 
-  async def ingest(self, value, type_spec=None):
+  async def create_value(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
     Args:
@@ -372,27 +365,27 @@ class EagerExecutor(executor_base.Executor):
       raise RuntimeError('The eager executor may only be used in eager mode.')
     return EagerValue(value, type_spec, self._device)
 
-  async def invoke(self, comp, arg):
-    """Invokes `comp` on optional `arg` in the eager executor.
+  async def create_call(self, comp, arg=None):
+    """Creates a call to `comp` with optional `arg`.
 
     Args:
       comp: As documented in `executor_base.Executor`.
       arg: As documented in `executor_base.Executor`.
 
     Returns:
-      An instance of `EagerValue` representing the result of the invocation.
+      An instance of `EagerValue` representing the result of the call.
 
     Raises:
       RuntimeError: If not executing eagerly.
       TypeError: If the arguments are of the wrong types.
     """
-    py_typecheck.check_type(comp, typed_object.TypedObject)
+    py_typecheck.check_type(comp, EagerValue)
+    if arg is not None:
+      py_typecheck.check_type(arg, EagerValue)
     if not isinstance(comp.type_signature, computation_types.FunctionType):
       raise TypeError('Expected a functional type, found {}'.format(
           str(comp.type_signature)))
-    comp = await self.ingest(comp, comp.type_signature)
     if comp.type_signature.parameter is not None:
-      arg = await self.ingest(arg, comp.type_signature.parameter)
       return EagerValue(
           comp.internal_representation(arg.internal_representation),
           comp.type_signature.result, self._device)
@@ -401,3 +394,63 @@ class EagerExecutor(executor_base.Executor):
                         comp.type_signature.result, self._device)
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
+
+  async def create_tuple(self, elements):
+    """Creates a tuple of `elements`.
+
+    Args:
+      elements: As documented in `executor_base.Executor`.
+
+    Returns:
+      An instance of `EagerValue` that represents the constructed tuple.
+    """
+    elements = anonymous_tuple.to_elements(
+        anonymous_tuple.from_container(elements))
+    val_elements = []
+    type_elements = []
+    for k, v in elements:
+      py_typecheck.check_type(v, EagerValue)
+      val_elements.append((k, v.internal_representation))
+      type_elements.append((k, v.type_signature))
+    return EagerValue(
+        anonymous_tuple.AnonymousTuple(val_elements),
+        computation_types.NamedTupleType([
+            (k, v) if k is not None else v for k, v in type_elements
+        ]))
+
+  async def create_selection(self, source, index=None, name=None):
+    """Creates a selection from `source`.
+
+    Args:
+      source: As documented in `executor_base.Executor`.
+      index: As documented in `executor_base.Executor`.
+      name: As documented in `executor_base.Executor`.
+
+    Returns:
+      An instance of `EagerValue` that represents the constructed selection.
+
+    Raises:
+      TypeError: If arguments are of the wrong types.
+      ValueError: If either both, or neither of `name` and `index` are present.
+    """
+    py_typecheck.check_type(source, EagerValue)
+    py_typecheck.check_type(source.type_signature,
+                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.internal_representation,
+                            anonymous_tuple.AnonymousTuple)
+    if index is not None:
+      py_typecheck.check_type(index, int)
+      if name is not None:
+        raise ValueError(
+            'Cannot simulatenously specify name {} and index {}.'.format(
+                str(name), str(index)))
+      else:
+        return EagerValue(source.internal_representation[index],
+                          source.type_signature[index])
+    elif name is not None:
+      py_typecheck.check_type(name, six.string_types)
+      return EagerValue(
+          getattr(source.internal_representation, str(name)),
+          getattr(source.type_signature, str(name)))
+    else:
+      raise ValueError('Must specify either name or index.')
