@@ -110,7 +110,7 @@ def zero_all_if_any_non_finite(structure):
   flat = tf.nest.flatten(structure)
   if not flat:
     return (structure, tf.constant(0))
-  flat_bools = [tf.reduce_all(tf.is_finite(t)) for t in flat]
+  flat_bools = [tf.reduce_all(tf.math.is_finite(t)) for t in flat]
   all_finite = functools.reduce(tf.logical_and, flat_bools)
   if all_finite:
     return (structure, tf.constant(0))
