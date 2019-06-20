@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 from tensorflow_federated.python.core.impl.computation_building_blocks import Block
 from tensorflow_federated.python.core.impl.computation_building_blocks import Call
 from tensorflow_federated.python.core.impl.computation_building_blocks import CompiledComputation
@@ -28,6 +29,8 @@ from tensorflow_federated.python.core.impl.computation_building_blocks import Pl
 from tensorflow_federated.python.core.impl.computation_building_blocks import Reference
 from tensorflow_federated.python.core.impl.computation_building_blocks import Selection
 from tensorflow_federated.python.core.impl.computation_building_blocks import Tuple
+from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_or_apply
+from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_zip
 from tensorflow_federated.python.core.impl.computation_constructing_utils import unique_name_generator
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_AGGREGATE
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_BROADCAST
@@ -37,7 +40,9 @@ from tensorflow_federated.python.core.impl.transformations import get_map_of_unb
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import is_called_intrinsic
 from tensorflow_federated.python.core.impl.transformations import merge_tuple_intrinsics
+from tensorflow_federated.python.core.impl.transformations import remove_mapped_or_applied_identity
 from tensorflow_federated.python.core.impl.transformations import replace_called_lambda_with_block
+from tensorflow_federated.python.core.impl.transformations import replace_selection_from_tuple_with_element
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
@@ -58,12 +63,16 @@ _allowed_symbols = [
     "Selection",
     "Tuple",
     "check_has_unique_names",
+    "create_federated_map_or_apply",
+    "create_federated_zip",
     "get_map_of_unbound_references",
     "inline_block_locals",
     "is_assignable_from",
     "is_called_intrinsic",
     "merge_tuple_intrinsics",
+    "remove_mapped_or_applied_identity",
     "replace_called_lambda_with_block",
+    "replace_selection_from_tuple_with_element",
     "transform_postorder",
     "type_from_tensors",
     "type_to_tf_tensor_specs",
