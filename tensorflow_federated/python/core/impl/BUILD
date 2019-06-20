@@ -252,7 +252,12 @@ py_test(
     size = "small",
     srcs = ["concurrent_executor_test.py"],
     python_version = "PY3",
-    deps = [":concurrent_executor"],
+    deps = [
+        ":concurrent_executor",
+        ":eager_executor",
+        ":executor_base",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
 )
 
 py_library(

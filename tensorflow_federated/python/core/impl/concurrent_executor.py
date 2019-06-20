@@ -18,38 +18,60 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import asyncio
+import functools
+import threading
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import executor_base
 
 
 class ConcurrentExecutor(executor_base.Executor):
-  """The concurrent executor partitions work across multiple threads.
+  """The concurrent executor delegates work to a separate thread.
 
-  This executor only handles multithreading. It delegates all execution to an
+  This executor only handles threading. It delegates all execution to an
   underlying pool of target executors.
   """
 
-  def __init__(self, target_executors):
-    """Creates a concurrent executor backed by a pool of target executors.
+  # TODO(b/134543154): Upgrade this to a threadpool with multiple workers,
+  # possibly one that could be shared among multiple of these executors.
+
+  def __init__(self, target_executor):
+    """Creates a concurrent executor backed by a target executor.
 
     Args:
-      target_executors: An enumerable of target executors to use.
+      target_executor: The executor that does all the work.
     """
-    # TODO(b/134543154): Actually implement this.
+    py_typecheck.check_type(target_executor, executor_base.Executor)
+    self._target_executor = target_executor
+    self._event_loop = asyncio.new_event_loop()
 
-    self._target_executors = []
-    for executor in target_executors:
-      py_typecheck.check_type(executor, executor_base.Executor)
-      self._target_executors.append(executor)
+    def run_loop(loop):
+      loop.run_forever()
+      loop.close()
+
+    self._thread = threading.Thread(
+        target=functools.partial(run_loop, self._event_loop))
+    self._thread.start()
+
+  def __del__(self):
+    self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+    self._thread.join()
+
+  def _delegate(self, coro):
+    return asyncio.wrap_future(
+        asyncio.run_coroutine_threadsafe(coro, self._event_loop))
 
   async def create_value(self, value, type_spec=None):
-    raise NotImplementedError
+    return await self._delegate(
+        self._target_executor.create_value(value, type_spec))
 
   async def create_call(self, comp, arg=None):
-    raise NotImplementedError
+    return await self._delegate(self._target_executor.create_call(comp, arg))
 
   async def create_tuple(self, elements):
-    raise NotImplementedError
+    return await self._delegate(self._target_executor.create_tuple(elements))
 
   async def create_selection(self, source, index=None, name=None):
-    raise NotImplementedError
+    return await self._delegate(
+        self._target_executor.create_selection(source, index=index, name=name))
