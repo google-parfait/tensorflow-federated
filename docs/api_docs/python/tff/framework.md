@@ -50,6 +50,12 @@ elements in TFF's internal language.
 
 [`check_has_unique_names(...)`](../tff/framework/check_has_unique_names.md)
 
+[`create_federated_map_or_apply(...)`](../tff/framework/create_federated_map_or_apply.md):
+Creates a called federated map or apply depending on `arg`s placement.
+
+[`create_federated_zip(...)`](../tff/framework/create_federated_zip.md): Creates
+a called federated zip.
+
 [`get_map_of_unbound_references(...)`](../tff/framework/get_map_of_unbound_references.md):
 Gets a Python `dict` of the unbound references in `comp`.
 
@@ -65,8 +71,14 @@ whether `target_type` is assignable from `source_type`.
 [`merge_tuple_intrinsics(...)`](../tff/framework/merge_tuple_intrinsics.md):
 Merges all the tuples of intrinsics in `comp` into one intrinsic.
 
+[`remove_mapped_or_applied_identity(...)`](../tff/framework/remove_mapped_or_applied_identity.md):
+Removes all the mapped or applied identity functions in `comp`.
+
 [`replace_called_lambda_with_block(...)`](../tff/framework/replace_called_lambda_with_block.md):
 Replaces all the called lambdas in `comp` with a block.
+
+[`replace_selection_from_tuple_with_element(...)`](../tff/framework/replace_selection_from_tuple_with_element.md):
+Replaces any selection from a tuple with the underlying tuple element.
 
 [`transform_postorder(...)`](../tff/framework/transform_postorder.md): Traverses
 `comp` recursively postorder and replaces its constituents.

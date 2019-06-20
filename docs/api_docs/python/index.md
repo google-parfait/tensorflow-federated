@@ -33,12 +33,16 @@
 *   <a href="./tff/framework/Selection.md"><code>tff.framework.Selection</code></a>
 *   <a href="./tff/framework/Tuple.md"><code>tff.framework.Tuple</code></a>
 *   <a href="./tff/framework/check_has_unique_names.md"><code>tff.framework.check_has_unique_names</code></a>
+*   <a href="./tff/framework/create_federated_map_or_apply.md"><code>tff.framework.create_federated_map_or_apply</code></a>
+*   <a href="./tff/framework/create_federated_zip.md"><code>tff.framework.create_federated_zip</code></a>
 *   <a href="./tff/framework/get_map_of_unbound_references.md"><code>tff.framework.get_map_of_unbound_references</code></a>
 *   <a href="./tff/framework/inline_block_locals.md"><code>tff.framework.inline_block_locals</code></a>
 *   <a href="./tff/framework/is_assignable_from.md"><code>tff.framework.is_assignable_from</code></a>
 *   <a href="./tff/framework/is_called_intrinsic.md"><code>tff.framework.is_called_intrinsic</code></a>
 *   <a href="./tff/framework/merge_tuple_intrinsics.md"><code>tff.framework.merge_tuple_intrinsics</code></a>
+*   <a href="./tff/framework/remove_mapped_or_applied_identity.md"><code>tff.framework.remove_mapped_or_applied_identity</code></a>
 *   <a href="./tff/framework/replace_called_lambda_with_block.md"><code>tff.framework.replace_called_lambda_with_block</code></a>
+*   <a href="./tff/framework/replace_selection_from_tuple_with_element.md"><code>tff.framework.replace_selection_from_tuple_with_element</code></a>
 *   <a href="./tff/framework/transform_postorder.md"><code>tff.framework.transform_postorder</code></a>
 *   <a href="./tff/framework/type_from_tensors.md"><code>tff.framework.type_from_tensors</code></a>
 *   <a href="./tff/framework/type_to_tf_tensor_specs.md"><code>tff.framework.type_to_tf_tensor_specs</code></a>

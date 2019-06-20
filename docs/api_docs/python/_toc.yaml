@@ -70,6 +70,10 @@ toc:
       path: /federated/api_docs/python/tff/framework/CompiledComputation
     - title: ComputationBuildingBlock
       path: /federated/api_docs/python/tff/framework/ComputationBuildingBlock
+    - title: create_federated_map_or_apply
+      path: /federated/api_docs/python/tff/framework/create_federated_map_or_apply
+    - title: create_federated_zip
+      path: /federated/api_docs/python/tff/framework/create_federated_zip
     - title: get_map_of_unbound_references
       path: /federated/api_docs/python/tff/framework/get_map_of_unbound_references
     - title: inline_block_locals
@@ -88,8 +92,12 @@ toc:
       path: /federated/api_docs/python/tff/framework/Placement
     - title: Reference
       path: /federated/api_docs/python/tff/framework/Reference
+    - title: remove_mapped_or_applied_identity
+      path: /federated/api_docs/python/tff/framework/remove_mapped_or_applied_identity
     - title: replace_called_lambda_with_block
       path: /federated/api_docs/python/tff/framework/replace_called_lambda_with_block
+    - title: replace_selection_from_tuple_with_element
+      path: /federated/api_docs/python/tff/framework/replace_selection_from_tuple_with_element
     - title: Selection
       path: /federated/api_docs/python/tff/framework/Selection
     - title: transform_postorder
