@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
@@ -112,24 +113,6 @@ def _create_chained_dummy_federated_maps(functions, arg):
   return call
 
 
-def _create_lambda_to_identity(parameter_name, parameter_type=tf.int32):
-  r"""Creates a lambda to return the argument.
-
-  Lambda(x)
-           \
-            Ref(x)
-
-  Args:
-    parameter_name: The name of the parameter.
-    parameter_type: The type of the parameter.
-
-  Returns:
-    A `computation_building_blocks.Lambda`.
-  """
-  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
-  return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-
-
 def _create_lambda_to_dummy_intrinsic(parameter_name, parameter_type=tf.int32):
   r"""Creates a lambda to call a dummy intrinsic.
 
@@ -167,78 +150,12 @@ def _create_dummy_block(comp, variable_name, variable_type=tf.int32):
   return computation_building_blocks.Block([(variable_name, data)], comp)
 
 
-def _create_dummy_called_federated_aggregate(accumulate_parameter_name,
-                                             merge_parameter_name,
-                                             report_parameter_name):
-  value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  value = computation_building_blocks.Data('data', value_type)
-  zero = computation_building_blocks.Data('data', tf.float32)
-  accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
-  accumulate_result = computation_building_blocks.Data('data', tf.float32)
-  accumulate = computation_building_blocks.Lambda(accumulate_parameter_name,
-                                                  accumulate_type,
-                                                  accumulate_result)
-  merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
-  merge_result = computation_building_blocks.Data('data', tf.float32)
-  merge = computation_building_blocks.Lambda(merge_parameter_name, merge_type,
-                                             merge_result)
-  report_result = computation_building_blocks.Data('data', tf.bool)
-  report = computation_building_blocks.Lambda(report_parameter_name, tf.float32,
-                                              report_result)
-  return computation_constructing_utils.create_federated_aggregate(
-      value, zero, accumulate, merge, report)
-
-
-def _create_dummy_called_federated_apply(parameter_name,
-                                         parameter_type=tf.int32):
-  fn = _create_lambda_to_identity(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_apply(fn, arg)
-
-
-def _create_dummy_called_federated_broadcast(parameter_type=tf.int32):
-  value_type = computation_types.FederatedType(parameter_type,
-                                               placements.SERVER)
-  value = computation_building_blocks.Data('data', value_type)
-  return computation_constructing_utils.create_federated_broadcast(value)
-
-
-def _create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
-  fn = _create_lambda_to_identity(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_map(fn, arg)
-
-
-def _create_dummy_called_federated_map_all_equal(parameter_name,
-                                                 parameter_type=tf.int32):
-  fn = _create_lambda_to_identity(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(
-      parameter_type, placements.CLIENTS, all_equal=True)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_map_all_equal(fn, arg)
-
-
-def _create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
-  fn = _create_lambda_to_identity(parameter_name, parameter_type)
-  arg_type = computation_types.SequenceType(parameter_type)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_sequence_map(fn, arg)
-
-
 def _create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
   intrinsic_type = computation_types.FunctionType(parameter_type,
                                                   parameter_type)
   intrinsic = computation_building_blocks.Intrinsic('intrinsic', intrinsic_type)
   ref = computation_building_blocks.Reference(parameter_name, parameter_type)
   return computation_building_blocks.Call(intrinsic, ref)
-
-
-def _create_block_wrapping_data(variable_name, variable_type=tf.int32):
-  data = computation_building_blocks.Data('data', variable_type)
-  ref = computation_building_blocks.Reference(variable_name, variable_type)
-  return computation_building_blocks.Block([(variable_name, data)], ref)
 
 
 def _create_compiled_computation(py_fn, arg_type):
@@ -445,7 +362,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_call_intrinsic(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     called_intrinsic = _create_dummy_called_intrinsic(parameter_name='b')
     call = computation_building_blocks.Call(fn, called_intrinsic)
     comp = call
@@ -459,7 +376,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_call_block_one_var(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     called_intrinsic = _create_dummy_called_intrinsic(parameter_name='b')
     ref = computation_building_blocks.Reference('c',
                                                 called_intrinsic.type_signature)
@@ -476,7 +393,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_call_block_multiple_vars(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     called_intrinsic = _create_dummy_called_intrinsic(parameter_name='b')
     ref = computation_building_blocks.Reference('c',
                                                 called_intrinsic.type_signature)
@@ -857,9 +774,9 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     tup = computation_building_blocks.Tuple((called_intrinsic,))
     sel = computation_building_blocks.Selection(tup, index=0)
     block = computation_building_blocks.Block((('b', data),), sel)
-    fn_1 = _create_lambda_to_identity('c', tf.int32)
+    fn_1 = computation_test_utils.create_identity_function('c', tf.int32)
     call_1 = computation_building_blocks.Call(fn_1, block)
-    fn_2 = _create_lambda_to_identity('d', tf.int32)
+    fn_2 = computation_test_utils.create_identity_function('d', tf.int32)
     call_2 = computation_building_blocks.Call(fn_2, call_1)
     fn_3 = computation_building_blocks.Lambda('e', tf.int32, call_2)
     comp = fn_3
@@ -886,9 +803,9 @@ class ExtractIntrinsicsTest(absltest.TestCase):
         ('b', data),
         ('c', called_intrinsic),
     ), sel)
-    fn_1 = _create_lambda_to_identity('d', tf.int32)
+    fn_1 = computation_test_utils.create_identity_function('d', tf.int32)
     call_1 = computation_building_blocks.Call(fn_1, block)
-    fn_2 = _create_lambda_to_identity('e', tf.int32)
+    fn_2 = computation_test_utils.create_identity_function('e', tf.int32)
     call_2 = computation_building_blocks.Call(fn_2, call_1)
     fn_3 = computation_building_blocks.Lambda('f', tf.int32, call_2)
     comp = fn_3
@@ -980,7 +897,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_extract_called_lambda(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
@@ -1000,7 +917,8 @@ class InlineBlockLocalsTest(absltest.TestCase):
       transformations.inline_block_locals(None)
 
   def test_raises_type_error_with_wrong_type_variable_names(self):
-    block = _create_block_wrapping_data(variable_name='a')
+    block = computation_test_utils.create_identity_block_with_dummy_data(
+        variable_name='a')
     comp = block
     with self.assertRaises(TypeError):
       transformations.inline_block_locals(comp, 1)
@@ -1012,7 +930,8 @@ class InlineBlockLocalsTest(absltest.TestCase):
       transformations.inline_block_locals(block)
 
   def test_inlines_one_block_variable(self):
-    block = _create_block_wrapping_data(variable_name='a')
+    block = computation_test_utils.create_identity_block_with_dummy_data(
+        variable_name='a')
     comp = block
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
@@ -1053,7 +972,8 @@ class InlineBlockLocalsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_inlines_variables_in_block_variables(self):
-    block_1 = _create_block_wrapping_data(variable_name='a')
+    block_1 = computation_test_utils.create_identity_block_with_dummy_data(
+        variable_name='a')
     ref = computation_building_blocks.Reference('b', block_1.type_signature)
     block_2 = computation_building_blocks.Block((('b', block_1),), ref)
     comp = block_2
@@ -1097,7 +1017,7 @@ class InlineBlockLocalsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_inline_lambda_parameter(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     comp = fn
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
@@ -1108,7 +1028,8 @@ class InlineBlockLocalsTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_inline_block_variables(self):
-    block = _create_block_wrapping_data(variable_name='a')
+    block = computation_test_utils.create_identity_block_with_dummy_data(
+        variable_name='a')
     comp = block
 
     transformed_comp, modified = transformations.inline_block_locals(
@@ -1198,7 +1119,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
       transformations.merge_chained_federated_maps_or_applys(None)
 
   def test_merges_federated_applys(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_applys([fn, fn], arg)
@@ -1219,7 +1140,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
@@ -1240,10 +1161,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_different_names(self):
-    fn_1 = _create_lambda_to_identity('a', tf.int32)
+    fn_1 = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
-    fn_2 = _create_lambda_to_identity('b', tf.int32)
+    fn_2 = computation_test_utils.create_identity_function('b', tf.int32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
@@ -1265,7 +1186,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     fn_1 = _create_lambda_to_dummy_cast('a', tf.int32, tf.float32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
-    fn_2 = _create_lambda_to_identity('b', tf.float32)
+    fn_2 = computation_test_utils.create_identity_function('b', tf.float32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
@@ -1285,7 +1206,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
 
   def test_merges_federated_maps_with_named_parameter_type(self):
     parameter_type = [('b', tf.int32), ('c', tf.int32)]
-    fn = _create_lambda_to_identity('a', parameter_type)
+    fn = computation_test_utils.create_identity_function('a', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
@@ -1330,7 +1251,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_nested_federated_maps(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
@@ -1353,7 +1274,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_multiple_federated_maps(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn, fn], arg)
@@ -1385,7 +1306,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_merge_one_federated_map(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call = computation_constructing_utils.create_federated_map(fn, arg)
@@ -1402,7 +1323,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_merge_separated_federated_maps(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call_1 = computation_constructing_utils.create_federated_map(fn, arg)
@@ -1431,7 +1352,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
                                              intrinsic_defs.FEDERATED_MAP.uri)
 
   def test_raises_type_error_with_none_uri(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
@@ -1439,7 +1361,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
       transformations.merge_tuple_intrinsics(comp, None)
 
   def test_raises_value_error(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
@@ -1447,7 +1370,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
       transformations.merge_tuple_intrinsics(comp, 'dummy')
 
   def test_merges_federated_aggregates(self):
-    called_intrinsic = _create_dummy_called_federated_aggregate(
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -1512,7 +1435,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_applys(self):
-    called_intrinsic = _create_dummy_called_federated_apply(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_apply(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
@@ -1549,7 +1473,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_broadcasts(self):
-    called_intrinsic = _create_dummy_called_federated_broadcast()
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_broadcast(
+    )
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
@@ -1585,7 +1510,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
@@ -1623,8 +1549,10 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_different_names(self):
-    called_intrinsic_1 = _create_dummy_called_federated_map(parameter_name='a')
-    called_intrinsic_2 = _create_dummy_called_federated_map(parameter_name='b')
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='b')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic_1, called_intrinsic_2))
     comp = calls
@@ -1662,9 +1590,9 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_maps_with_different_type(self):
-    called_intrinsic_1 = _create_dummy_called_federated_map(
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=tf.int32)
-    called_intrinsic_2 = _create_dummy_called_federated_map(
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='b', parameter_type=tf.float32)
     calls = computation_building_blocks.Tuple(
         (called_intrinsic_1, called_intrinsic_2))
@@ -1704,7 +1632,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
 
   def test_merges_federated_maps_with_named_parameter_type(self):
     parameter_type = [('b', tf.int32), ('c', tf.float32)]
-    called_intrinsic = _create_dummy_called_federated_map(
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=parameter_type)
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
@@ -1743,10 +1671,10 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
 
   def test_merges_federated_maps_with_different_named_parameter_types(self):
     parameter_type_1 = [('b', tf.int32), ('c', tf.float32)]
-    called_intrinsic_1 = _create_dummy_called_federated_map(
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=parameter_type_1)
     parameter_type_2 = [('e', tf.bool), ('f', tf.string)]
-    called_intrinsic_2 = _create_dummy_called_federated_map(
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='d', parameter_type=parameter_type_2)
     calls = computation_building_blocks.Tuple(
         (called_intrinsic_1, called_intrinsic_2))
@@ -1827,7 +1755,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_named_federated_maps(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (('b', called_intrinsic), ('c', called_intrinsic)))
     comp = calls
@@ -1865,7 +1794,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_nested_federated_maps(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     block = _create_dummy_block(calls, variable_name='a')
@@ -1905,7 +1835,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_multiple_federated_maps(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic, called_intrinsic))
     comp = calls
@@ -1945,7 +1876,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_merges_one_federated_map(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple((called_intrinsic,))
     comp = calls
 
@@ -1969,11 +1901,12 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_merge_intrinsics_with_different_uris(self):
-    called_intrinsic_1 = _create_dummy_called_federated_aggregate(
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    called_intrinsic_2 = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic_1, called_intrinsic_2))
     comp = calls
@@ -1992,7 +1925,8 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_merge_intrinsics_with_different_uri(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = calls
@@ -2021,16 +1955,16 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('federated_apply',
        intrinsic_defs.FEDERATED_APPLY.uri,
-       _create_dummy_called_federated_apply),
+       computation_test_utils.create_dummy_called_federated_apply),
       ('federated_map',
        intrinsic_defs.FEDERATED_MAP.uri,
-       _create_dummy_called_federated_map),
+       computation_test_utils.create_dummy_called_federated_map),
       ('federated_map_all_equal',
        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-       _create_dummy_called_federated_map_all_equal),
+       computation_test_utils.create_dummy_called_federated_map_all_equal),
       ('sequence_map',
        intrinsic_defs.SEQUENCE_MAP.uri,
-       _create_dummy_called_sequence_map),
+       computation_test_utils.create_dummy_called_sequence_map),
   )
   # pyformat: enable
   def test_removes_intrinsic(self, uri, factory):
@@ -2047,7 +1981,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_removes_federated_map_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
-    fn = _create_lambda_to_identity('c', parameter_type)
+    fn = computation_test_utils.create_identity_function('c', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
@@ -2063,7 +1997,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_nested_federated_map(self):
-    called_intrinsic = _create_dummy_called_federated_map(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
+        parameter_name='a')
     block = _create_dummy_block(called_intrinsic, variable_name='b')
     comp = block
 
@@ -2077,7 +2012,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_chained_federated_maps(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
@@ -2105,7 +2040,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_remove_called_lambda(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
@@ -2126,7 +2061,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
       transformations.replace_called_lambda_with_block(None)
 
   def test_replaces_called_lambda(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     comp = call
@@ -2140,7 +2075,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_nested_called_lambda(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
     block = _create_dummy_block(call, variable_name='b')
@@ -2156,7 +2091,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_chained_called_lambdas(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
     call = _create_chained_calls([fn, fn], arg)
     comp = call
@@ -2171,7 +2106,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_replace_uncalled_lambda(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     comp = fn
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
@@ -2183,7 +2118,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_replace_separated_called_lambda(self):
-    fn = _create_lambda_to_identity('a', tf.int32)
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
     block = _create_dummy_block(fn, variable_name='b')
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(block, arg)

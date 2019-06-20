@@ -172,6 +172,17 @@ py_test(
 )
 
 py_library(
+    name = "computation_test_utils",
+    srcs = ["computation_test_utils.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":computation_constructing_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+    ],
+)
+
+py_library(
     name = "computation_wrapper",
     srcs = ["computation_wrapper.py"],
     deps = [
@@ -735,6 +746,7 @@ py_test(
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":computation_impl",
+        ":computation_test_utils",
         ":context_stack_impl",
         ":intrinsic_defs",
         ":tensorflow_serialization",
