@@ -91,7 +91,7 @@ class GraphSpec(object):
     self.out_names = out_names
 
 
-def _uniquify_shared_names(graph_def):
+def uniquify_shared_names(graph_def):
   """Appends unique identifier to any shared names present in `graph`."""
   # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
   # unblock using more modern TF compositional constructs, and avoid direct
@@ -126,7 +126,7 @@ def _concat_graphs(graph_def_list, graph_names_list):
   for k in range(len(graph_names_list)):
     # The GraphDef we are about to import must have its shared name attributes
     # set to unique values to avoid variables being wired together incorrectly.
-    graph_def_to_merge = _uniquify_shared_names(graph_def_list[k])
+    graph_def_to_merge = uniquify_shared_names(graph_def_list[k])
     with merged_graph.as_default():
       tf.import_graph_def(graph_def_to_merge, name=graph_names_list[k])
   return merged_graph
@@ -283,7 +283,7 @@ def compose_graph_specs(graph_spec_list):
       # The GraphDef we are about to import must have its shared name
       # attributes set to unique values to avoid variables being wired together
       # incorrectly.
-      graph_def_to_merge = _uniquify_shared_names(graph_def_list[k])
+      graph_def_to_merge = uniquify_shared_names(graph_def_list[k])
       input_map = dict(zip(in_names[k], output_elements))
       with composed_graph.as_default():
         output_elements = tf.import_graph_def(
