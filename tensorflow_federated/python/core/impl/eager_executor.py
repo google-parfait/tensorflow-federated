@@ -98,15 +98,22 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   output_tensor_names = graph_utils.extract_tensor_names_from_binding(
       comp.tensorflow.result)
 
-  def function_to_wrap(*args):
+  def function_to_wrap(*args):  # pylint: disable=missing-docstring
     if len(args) != len(input_tensor_names):
       raise RuntimeError('Expected {} arguments, found {}.'.format(
           str(len(input_tensor_names)), str(len(args))))
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
-    return tf.import_graph_def(
+    init_op = comp.tensorflow.initialize_op
+    init_names = [init_op] if init_op else []
+    returned_elements = tf.import_graph_def(
         graph_def,
         input_map=dict(zip(input_tensor_names, args)),
-        return_elements=output_tensor_names)
+        return_elements=output_tensor_names + init_names)
+    if init_names:
+      with tf.control_dependencies([returned_elements[-1]]):
+        return [tf.identity(x) for x in returned_elements[0:-1]]
+    else:
+      return returned_elements
 
   signature = []
   param_fns = []
