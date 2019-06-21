@@ -29,11 +29,14 @@ from tensorflow_federated.python.core.impl.computation_building_blocks import Pl
 from tensorflow_federated.python.core.impl.computation_building_blocks import Reference
 from tensorflow_federated.python.core.impl.computation_building_blocks import Selection
 from tensorflow_federated.python.core.impl.computation_building_blocks import Tuple
+from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_all_equal
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_or_apply
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_zip
 from tensorflow_federated.python.core.impl.computation_constructing_utils import unique_name_generator
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_AGGREGATE
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_BROADCAST
+from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_MAP
+from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_MAP_ALL_EQUAL
 from tensorflow_federated.python.core.impl.transformation_utils import transform_postorder
 from tensorflow_federated.python.core.impl.transformations import check_has_unique_names
 from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
@@ -56,6 +59,8 @@ _allowed_symbols = [
     "ComputationBuildingBlock",
     "FEDERATED_AGGREGATE",
     "FEDERATED_BROADCAST",
+    "FEDERATED_MAP",
+    "FEDERATED_MAP_ALL_EQUAL",
     "Intrinsic",
     "Lambda",
     "Placement",
@@ -63,6 +68,7 @@ _allowed_symbols = [
     "Selection",
     "Tuple",
     "check_has_unique_names",
+    "create_federated_map_all_equal",
     "create_federated_map_or_apply",
     "create_federated_zip",
     "get_map_of_unbound_references",

@@ -1,0 +1,43 @@
+<div itemscope itemtype="http://developers.google.com/ReferenceObject">
+<meta itemprop="name" content="tff.framework.create_federated_map_all_equal" />
+<meta itemprop="path" content="Stable" />
+</div>
+
+# tff.framework.create_federated_map_all_equal
+
+Creates a called federated map of equal values.
+
+```python
+tff.framework.create_federated_map_all_equal(
+    fn,
+    arg
+)
+```
+
+Defined in
+[`python/core/impl/computation_constructing_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py).
+
+<!-- Placeholder for "Used in" -->
+
+          Call
+         /    \
+
+Intrinsic Tuple | [Comp, Comp]
+
+NOTE: The `fn` is required to be deterministic and therefore should contain no
+`computation_building_blocks.CompiledComputations`.
+
+#### Args:
+
+*   <b>`fn`</b>: A `computation_building_blocks.ComputationBuildingBlock` to use
+    as the function.
+*   <b>`arg`</b>: A `computation_building_blocks.ComputationBuildingBlock` to
+    use as the argument.
+
+#### Returns:
+
+A `computation_building_blocks.Call`.
+
+#### Raises:
+
+*   <b>`TypeError`</b>: If any of the types do not match.
