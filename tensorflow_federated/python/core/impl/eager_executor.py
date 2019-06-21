@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 _AVAILABLE_DEVICES = list(
     '/{}'.format(str(x.name[17:]))
@@ -106,7 +107,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     init_op = comp.tensorflow.initialize_op
     init_names = [init_op] if init_op else []
     returned_elements = tf.import_graph_def(
-        graph_def,
+        graph_merge.uniquify_shared_names(graph_def),
         input_map=dict(zip(input_tensor_names, args)),
         return_elements=output_tensor_names + init_names)
     if init_names:

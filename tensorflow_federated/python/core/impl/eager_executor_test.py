@@ -55,6 +55,18 @@ class EagerExecutorTest(absltest.TestCase):
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 11)
 
+  def test_embed_tensorflow_computation_with_float(self):
+
+    @computations.tf_computation(tf.float32)
+    def comp(x):
+      return x + 0.5
+
+    fn = eager_executor.embed_tensorflow_computation(
+        computation_impl.ComputationImpl.get_proto(comp))
+    result = fn(10.0)
+    self.assertIsInstance(result, tf.Tensor)
+    self.assertEqual(result.numpy(), 10.5)
+
   def test_embed_tensorflow_computation_with_no_arg_and_int_result(self):
 
     @computations.tf_computation
@@ -123,6 +135,31 @@ class EagerExecutorTest(absltest.TestCase):
     result = fn(30)
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 60)
+
+  def test_embed_tensorflow_computation_with_float_variables_same_name(self):
+
+    @computations.tf_computation
+    def comp1():
+      x = tf.Variable(0.5, name='bob')
+      with tf.control_dependencies([x.initializer]):
+        return tf.add(x, 0.6)
+
+    @computations.tf_computation
+    def comp2():
+      x = tf.Variable(0.5, name='bob')
+      with tf.control_dependencies([x.initializer]):
+        return tf.add(x, 0.7)
+
+    fns = [
+        eager_executor.embed_tensorflow_computation(
+            computation_impl.ComputationImpl.get_proto(x))
+        for x in [comp1, comp2]
+    ]
+    results = [f() for f in fns]
+    for res in results:
+      self.assertIsInstance(res, tf.Tensor)
+    self.assertAlmostEqual(results[0].numpy(), 1.1)
+    self.assertAlmostEqual(results[1].numpy(), 1.2)
 
   def test_to_representation_for_type_with_int(self):
     v = eager_executor.to_representation_for_type(10, tf.int32)
