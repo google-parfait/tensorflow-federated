@@ -70,6 +70,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/CompiledComputation
     - title: ComputationBuildingBlock
       path: /federated/api_docs/python/tff/framework/ComputationBuildingBlock
+    - title: create_federated_map_all_equal
+      path: /federated/api_docs/python/tff/framework/create_federated_map_all_equal
     - title: create_federated_map_or_apply
       path: /federated/api_docs/python/tff/framework/create_federated_map_or_apply
     - title: create_federated_zip

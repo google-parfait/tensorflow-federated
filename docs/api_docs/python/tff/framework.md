@@ -3,6 +3,8 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="FEDERATED_AGGREGATE"/>
 <meta itemprop="property" content="FEDERATED_BROADCAST"/>
+<meta itemprop="property" content="FEDERATED_MAP"/>
+<meta itemprop="property" content="FEDERATED_MAP_ALL_EQUAL"/>
 </div>
 
 # Module: tff.framework
@@ -49,6 +51,9 @@ elements in TFF's internal language.
 ## Functions
 
 [`check_has_unique_names(...)`](../tff/framework/check_has_unique_names.md)
+
+[`create_federated_map_all_equal(...)`](../tff/framework/create_federated_map_all_equal.md):
+Creates a called federated map of equal values.
 
 [`create_federated_map_or_apply(...)`](../tff/framework/create_federated_map_or_apply.md):
 Creates a called federated map or apply depending on `arg`s placement.
@@ -99,3 +104,5 @@ Replaces all the reference names in `comp` with unique names.
 
 *   `FEDERATED_AGGREGATE` <a id="FEDERATED_AGGREGATE"></a>
 *   `FEDERATED_BROADCAST` <a id="FEDERATED_BROADCAST"></a>
+*   `FEDERATED_MAP` <a id="FEDERATED_MAP"></a>
+*   `FEDERATED_MAP_ALL_EQUAL` <a id="FEDERATED_MAP_ALL_EQUAL"></a>

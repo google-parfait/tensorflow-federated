@@ -33,6 +33,7 @@
 *   <a href="./tff/framework/Selection.md"><code>tff.framework.Selection</code></a>
 *   <a href="./tff/framework/Tuple.md"><code>tff.framework.Tuple</code></a>
 *   <a href="./tff/framework/check_has_unique_names.md"><code>tff.framework.check_has_unique_names</code></a>
+*   <a href="./tff/framework/create_federated_map_all_equal.md"><code>tff.framework.create_federated_map_all_equal</code></a>
 *   <a href="./tff/framework/create_federated_map_or_apply.md"><code>tff.framework.create_federated_map_or_apply</code></a>
 *   <a href="./tff/framework/create_federated_zip.md"><code>tff.framework.create_federated_zip</code></a>
 *   <a href="./tff/framework/get_map_of_unbound_references.md"><code>tff.framework.get_map_of_unbound_references</code></a>
