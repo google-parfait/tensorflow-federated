@@ -95,6 +95,35 @@ class EagerExecutorTest(absltest.TestCase):
     self.assertIsInstance(result.sum, tf.Tensor)
     self.assertEqual(result.sum.numpy(), 30)
 
+  def test_embed_tensorflow_computation_with_variable_v1(self):
+
+    @computations.tf_computation
+    def comp():
+      x = tf.Variable(10)
+      with tf.control_dependencies([x.initializer]):
+        return tf.add(x, 20)
+
+    fn = eager_executor.embed_tensorflow_computation(
+        computation_impl.ComputationImpl.get_proto(comp))
+    result = fn()
+    self.assertIsInstance(result, tf.Tensor)
+    self.assertEqual(result.numpy(), 30)
+
+  def test_embed_tensorflow_computation_with_variable_v2(self):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      v = tf.Variable(10)
+      with tf.control_dependencies([v.initializer]):
+        with tf.control_dependencies([tf.assign_add(v, 20)]):
+          return tf.add(x, v)
+
+    fn = eager_executor.embed_tensorflow_computation(
+        computation_impl.ComputationImpl.get_proto(comp))
+    result = fn(30)
+    self.assertIsInstance(result, tf.Tensor)
+    self.assertEqual(result.numpy(), 60)
+
   def test_to_representation_for_type_with_int(self):
     v = eager_executor.to_representation_for_type(10, tf.int32)
     self.assertIsInstance(v, tf.Tensor)
