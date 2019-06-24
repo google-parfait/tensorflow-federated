@@ -342,6 +342,21 @@ py_library(
 )
 
 py_library(
+    name = "executor_service",
+    srcs = ["executor_service.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2"],
+)
+
+py_test(
+    name = "executor_service_test",
+    size = "small",
+    srcs = ["executor_service_test.py"],
+    python_version = "PY3",
+    deps = [":executor_service"],
+)
+
+py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
     srcs_version = "PY3",
