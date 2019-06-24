@@ -196,17 +196,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
     py_typecheck.check_type(device, six.string_types)
     with tf.device(device):
       return to_representation_for_type(value, type_spec=type_spec, device=None)
-  type_spec = computation_types.to_type(type_spec)
-  if isinstance(value, typed_object.TypedObject):
-    if type_spec is not None:
-      if not type_utils.are_equivalent_types(value.type_signature, type_spec):
-        raise TypeError('Expected a value of type {}, found {}.'.format(
-            str(type_spec), str(value.type_signature)))
-    else:
-      type_spec = value.type_signature
-  if type_spec is None:
-    raise ValueError(
-        'Cannot derive an eager representation for a value of an unknown type.')
+  type_spec = type_utils.reconcile_value_with_type_spec(value, type_spec)
   if isinstance(value, EagerValue):
     return value.internal_representation
   if isinstance(value, executor_value_base.ExecutorValue):
@@ -293,6 +283,9 @@ class EagerValue(executor_value_base.ExecutorValue):
   @property
   def type_signature(self):
     return self._type_signature
+
+  async def compute(self):
+    return self._value
 
 
 class EagerExecutor(executor_base.Executor):

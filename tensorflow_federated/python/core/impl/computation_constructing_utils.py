@@ -1018,11 +1018,11 @@ def _create_chain_zipped_values(value):
   for i in range(1, length):
     sel = computation_building_blocks.Selection(ref, index=i)
     values = computation_building_blocks.Tuple((result, sel))
-    result = _create_zip_two_values(values)
+    result = create_zip_two_values(values)
   return computation_building_blocks.Block(symbols, result)
 
 
-def _create_zip_two_values(value):
+def create_zip_two_values(value):
   r"""Creates a called federated zip with two values.
 
             Call

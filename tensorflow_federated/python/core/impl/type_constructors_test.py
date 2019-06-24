@@ -31,6 +31,9 @@ class TypeConstructorsTest(absltest.TestCase):
         str(type_constructors.reduction_op(tf.float32, tf.int32)),
         '(<float32,int32> -> float32)')
 
+  def test_unary_op(self):
+    self.assertEqual(str(type_constructors.unary_op(tf.bool)), '(bool -> bool)')
+
   def test_binary_op(self):
     self.assertEqual(
         str(type_constructors.binary_op(tf.bool)), '(<bool,bool> -> bool)')

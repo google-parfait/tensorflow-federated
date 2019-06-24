@@ -1670,6 +1670,40 @@ class TransformTypePostorderTest(tf.test.TestCase):
     self.assertTrue(mutated)
     self.assertFalse(not_mutated)
 
+  def test_reconcile_value_type_with_type_spec(self):
+    self.assertEqual(
+        str(type_utils.reconcile_value_type_with_type_spec(tf.int32, tf.int32)),
+        'int32')
+    self.assertEqual(
+        str(type_utils.reconcile_value_type_with_type_spec(tf.int32, None)),
+        'int32')
+    with self.assertRaises(TypeError):
+      type_utils.reconcile_value_type_with_type_spec(tf.int32, tf.bool)
+
+  def test_reconcile_value_with_type_spec(self):
+    self.assertEqual(
+        str(type_utils.reconcile_value_with_type_spec(10, tf.int32)), 'int32')
+
+    @computations.tf_computation(tf.bool)
+    def comp(x):
+      return x
+
+    self.assertEqual(
+        str(type_utils.reconcile_value_with_type_spec(comp, None)),
+        '(bool -> bool)')
+
+    self.assertEqual(
+        str(
+            type_utils.reconcile_value_with_type_spec(
+                comp, computation_types.FunctionType(tf.bool, tf.bool))),
+        '(bool -> bool)')
+
+    with self.assertRaises(TypeError):
+      type_utils.reconcile_value_with_type_spec(10, None)
+
+    with self.assertRaises(TypeError):
+      type_utils.reconcile_value_with_type_spec(comp, tf.int32)
+
 
 if __name__ == '__main__':
   tf.test.main()

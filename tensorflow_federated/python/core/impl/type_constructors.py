@@ -39,6 +39,20 @@ def reduction_op(result_type_spec, element_type_spec):
                                         result_type_spec)
 
 
+def unary_op(type_spec):
+  """Returns the type of an unary operator that operates on `type_spec`.
+
+  Args:
+    type_spec: An instance of computation_types.Type, or something convertible
+      to it.
+
+  Returns:
+    The type of the corresponding unary operator.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  return computation_types.FunctionType(type_spec, type_spec)
+
+
 def binary_op(type_spec):
   """Returns the type of a binary operator that operates on `type_spec`.
 
