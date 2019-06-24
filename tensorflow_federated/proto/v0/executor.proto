@@ -3,7 +3,7 @@ syntax = "proto3";
 package tensorflow_federated.v0;
 
 import "google/protobuf/any.proto";
-import "third_party/tensorflow_federated/proto/v0/computation.proto";
+import "tensorflow_federated/proto/v0/computation.proto";
 
 // A service interface to be implemented by executors.
 service Executor {

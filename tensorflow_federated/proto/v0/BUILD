@@ -12,7 +12,10 @@ py_library(
 
 py_proto_library(
     name = "tensorflow_federated_v0_py_pb2",
-    srcs = ["computation.proto"],
+    srcs = [
+      "computation.proto",
+      "executor.proto",
+    ],
     default_runtime = "@com_google_protobuf//:protobuf_python",
     protoc = "@com_google_protobuf//:protoc",
     srcs_version = "PY2AND3",
