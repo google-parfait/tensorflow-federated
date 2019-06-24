@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package tensorflow_federated.v0;
+
+import "google/protobuf/any.proto";
+import "third_party/tensorflow_federated/proto/v0/computation.proto";
+
+// A service interface to be implemented by executors.
+service Executor {
+  // Creates a value in the executor and returns a reference to it that can be
+  // supplied as an argument to other methods.
+  rpc CreateValue(CreateValueRequest) returns (CreateValueResponse) {}
+}
+
+message CreateValueRequest {
+  Value value = 1;
+}
+
+message CreateValueResponse {
+  ValueRef value_ref = 1;
+}
+
+// A representation of a value that's to be embedded in the executor, or that
+// is being returned as a result of a computation.
+message Value {
+  oneof value {
+    // A serialized tensor content as an instance of `tensorflow.TensorProto`,
+    // as defined in `tensorflow/core/framework/tensor.proto`.
+    google.protobuf.Any tensor = 1;
+
+    // TODO(b/134543154): To be populated with the variants of what we might
+    // want to hand over the network (tensor protos, computations, nested
+    // structures of those, etc.).
+  }
+}
+
+// A reference to a value embedded in the executor, guaranteed to be unique
+// at a minimum among all the values that have been embedded in this executor
+// instance (but not guaranteed to be unique globally across the network),
+// across the agreed-upon lifetime of the service (at the very least, reboots
+// of the backend instance while the client is running should not result in
+// name clashes). In the context of a simulation, the service lifetime should
+// at minimum span the lifetime of the entire simulation.
+message ValueRef {
+  // The identifier should consist of printable ASCII characters for the sake
+  // of debuggability, ideally alphanumeric. The format of the identifier may
+  // depend on the type of the executor.
+  string id = 1;
+}
