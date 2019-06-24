@@ -61,7 +61,8 @@ def transform_postorder(comp, transform):
 
   Returns:
     The result of applying `transform` to parts of `comp` in a bottom-up
-    fashion.
+    fashion, along with a Boolean with the value `True` if `comp` was
+    transformed and `False` if it was not.
 
   Raises:
     TypeError: If the arguments are of the wrong computation_types.
@@ -175,7 +176,9 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   Returns:
     Returns a possibly modified version of `comp`, an instance
-    of `computation_building_blocks.ComputationBuildingBlock`.
+    of `computation_building_blocks.ComputationBuildingBlock`, along with a
+    Boolean with the value `True` if `comp` was transformed and `False` if it
+    was not.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
