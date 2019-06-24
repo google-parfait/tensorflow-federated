@@ -47,7 +47,9 @@ Therefore, `f` is transformed into `f'`, next `x` into `x'` and finally,
 
 #### Returns:
 
-The result of applying `transform` to parts of `comp` in a bottom-up fashion.
+The result of applying `transform` to parts of `comp` in a bottom-up fashion,
+along with a Boolean with the value `True` if `comp` was transformed and `False`
+if it was not.
 
 #### Raises:
 
