@@ -381,7 +381,7 @@ def type_to_tf_structure(type_spec):
       else:
         output = container_type(
             e if e[0] is not None else e[1] for e in element_outputs)
-    return tf.data.experimental.NestedStructure(output)
+    return output
   else:
     raise ValueError('Unsupported type {}.'.format(
         py_typecheck.type_string(type(type_spec))))
