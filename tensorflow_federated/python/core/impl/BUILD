@@ -399,6 +399,49 @@ py_test(
 )
 
 py_library(
+    name = "federated_executor",
+    srcs = ["federated_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":computation_impl",
+        ":executor_base",
+        ":executor_value_base",
+        ":intrinsic_defs",
+        ":placement_literals",
+        ":type_constructors",
+        ":type_serialization",
+        ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "federated_executor_test",
+    size = "small",
+    srcs = ["federated_executor_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":computation_building_blocks",
+        ":computation_constructing_utils",
+        ":computation_impl",
+        ":eager_executor",
+        ":federated_executor",
+        ":intrinsic_defs",
+        ":type_constructors",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+    ],
+)
+
+py_library(
     name = "function_utils",
     srcs = ["function_utils.py"],
     deps = [
@@ -770,7 +813,10 @@ py_library(
     srcs = ["transforming_executor.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_building_blocks",
+        ":computation_impl",
         ":executor_base",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -782,8 +828,13 @@ py_test(
     srcs = ["transforming_executor_test.py"],
     python_version = "PY3",
     deps = [
-        ":eager_executor",
+        ":computation_building_blocks",
+        ":executor_base",
+        ":transformations",
         ":transforming_executor",
+        ":type_constructors",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
     ],
 )
 

@@ -32,7 +32,15 @@ class ExecutorValue(typed_object.TypedObject):
   in the future or fail before they materialize.
   """
 
-  # TODO(b/134543154): Populate this with additional abstract properties to
-  # reflect asynchrony, failures, etc.
+  @abc.abstractmethod
+  async def compute(self):
+    """A coroutine that asynchronously returns the computed form of the value.
 
-  pass
+    The computed form of a value can take a number of forms, such as primitive
+    types in Python, numpy arrays, or even eager tensors in case this is an
+    eager executor, or an executor backed by an eager one.
+
+    Returns:
+      The computed form of the value, as defined above.
+    """
+    raise NotImplementedError

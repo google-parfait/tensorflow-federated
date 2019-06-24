@@ -399,6 +399,15 @@ class EagerExecutorTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       loop.run_until_complete(ex.create_selection(v3))
 
+  def test_executor_compute(self):
+    ex = eager_executor.EagerExecutor()
+    loop = asyncio.get_event_loop()
+    val = loop.run_until_complete(ex.create_value(10, tf.int32))
+    self.assertIsInstance(val, eager_executor.EagerValue)
+    val = loop.run_until_complete(val.compute())
+    self.assertIsInstance(val, tf.Tensor)
+    self.assertEqual(val.numpy(), 10)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
