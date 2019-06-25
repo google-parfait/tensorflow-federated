@@ -28,9 +28,9 @@ This class expects that the HDF5 file has a top-level group `examples` which
 contains further subgroups, one per user, named by the user ID.
 
 The `tf.data.Dataset` returned by
-`HDF5ClientData.create_tf_dataset_for_client(client_id)` yields tuples from
-zipping all datasets that were found at `/data/client_id` group, in a similar
-fashion to `tf.data.Dataset.from_tensor_slices()`.
+<a href="../../tff/simulation/HDF5ClientData.md#create_tf_dataset_for_client"><code>HDF5ClientData.create_tf_dataset_for_client(client_id)</code></a>
+yields tuples from zipping all datasets that were found at `/data/client_id`
+group, in a similar fashion to `tf.data.Dataset.from_tensor_slices()`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
