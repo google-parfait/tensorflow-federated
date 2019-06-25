@@ -335,6 +335,33 @@ py_test(
 )
 
 py_library(
+    name = "execution_context",
+    srcs = ["execution_context.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":context_base",
+        ":executor_base",
+        ":type_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "execution_context_test",
+    size = "small",
+    srcs = ["execution_context_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":context_stack_impl",
+        ":eager_executor",
+        ":execution_context",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
     srcs_version = "PY3",
