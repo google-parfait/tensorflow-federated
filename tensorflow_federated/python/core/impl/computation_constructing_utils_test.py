@@ -111,6 +111,23 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     self.assertTrue(all(n.startswith(prefix) for n in names))
 
 
+class ConstructCompiledEmptyTupleTest(absltest.TestCase):
+
+  def test_constructs_correct_type(self):
+    empty_tuple = computation_constructing_utils.construct_compiled_empty_tuple(
+    )
+    self.assertEqual(empty_tuple.type_signature,
+                     computation_building_blocks.Tuple([]).type_signature)
+
+  def test_constructs_called_graph(self):
+    empty_tuple = computation_constructing_utils.construct_compiled_empty_tuple(
+    )
+    self.assertIsInstance(empty_tuple, computation_building_blocks.Call)
+    self.assertIsNone(empty_tuple.argument)
+    self.assertIsInstance(empty_tuple.function,
+                          computation_building_blocks.CompiledComputation)
+
+
 class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_raises_on_none(self):
