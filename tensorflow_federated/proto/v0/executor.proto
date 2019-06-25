@@ -10,6 +10,16 @@ service Executor {
   // Creates a value in the executor and returns a reference to it that can be
   // supplied as an argument to other methods.
   rpc CreateValue(CreateValueRequest) returns (CreateValueResponse) {}
+
+  // Creates a call in the executor and returns a reference to the result.
+  rpc CreateCall(CreateCallRequest) returns (CreateCallResponse) {}
+
+  // Creates a tuple of values in the executor and returns a reference to it.
+  rpc CreateTuple(CreateTupleRequest) returns (CreateTupleResponse) {}
+
+  // Creates a selection from an executor value and returns a reference to it.
+  rpc CreateSelection(CreateSelectionRequest)
+      returns (CreateSelectionResponse) {}
 }
 
 message CreateValueRequest {
@@ -17,6 +27,44 @@ message CreateValueRequest {
 }
 
 message CreateValueResponse {
+  ValueRef value_ref = 1;
+}
+
+message CreateCallRequest {
+  // A reference to the function to be called (which must be obtained from a
+  // prior call to `CreateValue()`).
+  ValueRef function_ref = 1;
+
+  // An optional argument, only for functions that declare an argument.
+  ValueRef argument_ref = 2;
+}
+
+message CreateCallResponse {
+  ValueRef value_ref = 1;
+}
+
+message CreateTupleRequest {
+  repeated Element element = 1;
+  message Element {
+    string name = 1;
+    ValueRef value_ref = 2;
+  }
+}
+
+message CreateTupleResponse {
+  ValueRef value_ref = 1;
+}
+
+message CreateSelectionRequest {
+  ValueRef source_ref = 1;
+
+  oneof selection {
+    string name = 2;
+    int32 index = 3;
+  }
+}
+
+message CreateSelectionResponse {
   ValueRef value_ref = 1;
 }
 
