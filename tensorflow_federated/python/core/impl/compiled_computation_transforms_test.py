@@ -941,6 +941,16 @@ def _create_simple_tuple_of_called_graphs():
 
 class TupleCalledGraphsTest(parameterized.TestCase):
 
+  def test_empty_tuple(self):
+    pattern = computation_building_blocks.Tuple([])
+    logic = compiled_computation_transforms.TupleCalledGraphs()
+    transformed, _ = logic.transform(pattern)
+    self.assertEqual(transformed.type_signature, pattern.type_signature)
+    self.assertIsInstance(transformed, computation_building_blocks.Call)
+    self.assertIsInstance(transformed.function,
+                          computation_building_blocks.CompiledComputation)
+    self.assertIsNone(transformed.argument)
+
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_tuple_of_called_graphs()
     logic = compiled_computation_transforms.TupleCalledGraphs()

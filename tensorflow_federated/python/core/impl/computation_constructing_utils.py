@@ -61,6 +61,32 @@ def unique_name_generator(comp, prefix='_var'):
     index += 1
 
 
+def construct_compiled_empty_tuple():
+  """Returns called graph representing the empty tuple.
+
+  Returns:
+    An instance of `computation_building_blocks.Call`, calling a noarg function
+    which returns an empty tuple. This function is an instance of
+    `computation_building_blocks.CompiledComputation`.
+  """
+  with tf.Graph().as_default() as graph:
+    result_type, result_binding = graph_utils.capture_result_from_graph([],
+                                                                        graph)
+
+  function_type = computation_types.FunctionType(None, result_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  proto = pb.Computation(
+      type=serialized_function_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          parameter=None,
+          result=result_binding))
+
+  return computation_building_blocks.Call(
+      computation_building_blocks.CompiledComputation(proto), None)
+
+
 def construct_compiled_identity(type_signature):
   """Constructs CompiledComputation representing identity function.
 
