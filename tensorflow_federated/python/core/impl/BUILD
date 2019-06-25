@@ -345,7 +345,12 @@ py_library(
     name = "executor_service",
     srcs = ["executor_service.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2"],
+    deps = [
+        ":executor_base",
+        ":executor_service_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(
@@ -354,7 +359,32 @@ py_test(
     srcs = ["executor_service_test.py"],
     python_version = "PY3",
     deps = [
+        ":eager_executor",
         ":executor_service",
+        ":executor_service_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+    ],
+)
+
+py_library(
+    name = "executor_service_utils",
+    srcs = ["executor_service_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
+py_test(
+    name = "executor_service_utils_test",
+    size = "small",
+    srcs = ["executor_service_utils_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":executor_service_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
     ],
 )

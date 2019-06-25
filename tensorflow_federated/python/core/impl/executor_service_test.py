@@ -18,15 +18,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import asyncio
+
 from absl.testing import absltest
 
 import grpc
 from grpc.framework.foundation import logging_pool
 import portpicker
 
+import tensorflow as tf
+
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_service
+from tensorflow_federated.python.core.impl import executor_service_utils
 
 
 class ExecutorServiceTest(absltest.TestCase):
@@ -37,10 +43,12 @@ class ExecutorServiceTest(absltest.TestCase):
     server_pool = logging_pool.pool(max_workers=1)
     self._server = grpc.server(server_pool)
     self._server.add_insecure_port('[::]:{}'.format(port))
-    service = executor_service.ExecutorService()
-    executor_pb2_grpc.add_ExecutorServicer_to_server(service, self._server)
+    self._service = executor_service.ExecutorService(
+        eager_executor.EagerExecutor())
+    executor_pb2_grpc.add_ExecutorServicer_to_server(self._service,
+                                                     self._server)
     self._server.start()
-    self._channel = grpc.insecure_channel('localhost:%d' % port)
+    self._channel = grpc.insecure_channel('localhost:{}'.format(port))
     self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
 
   def tearDown(self):
@@ -56,12 +64,24 @@ class ExecutorServiceTest(absltest.TestCase):
     self._server.stop(None)
     super(ExecutorServiceTest, self).tearDown()
 
-  def test_executor_service_constructor_with_no_args(self):
-    value = executor_pb2.Value()
-    request = executor_pb2.CreateValueRequest(value=value)
+  def test_executor_service_create_tensor_value(self):
+    value_proto = executor_service_utils.serialize_tensor_value(
+        tf.constant(10.0).numpy())
+    request = executor_pb2.CreateValueRequest(value=value_proto)
     response = self._stub.CreateValue(request)
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
+    value_id = str(response.value_ref.id)
+
+    # pylint: disable=protected-access
+    with self._service._lock:
+      future_val = self._service._values[value_id]
+    # pylint: enable=protected-access
+
+    value = asyncio.get_event_loop().run_until_complete(future_val)
+    self.assertIsInstance(value, eager_executor.EagerValue)
+    self.assertEqual(value.internal_representation.numpy(), 10.0)
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   absltest.main()
