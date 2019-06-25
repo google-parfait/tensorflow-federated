@@ -6,3 +6,4 @@ numpy~=1.14
 six~=1.10
 tf-nightly
 grpcio~=1.6.0
+portpicker
