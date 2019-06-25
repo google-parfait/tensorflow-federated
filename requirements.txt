@@ -5,5 +5,5 @@ matplotlib~=3.0
 numpy~=1.14
 six~=1.10
 tf-nightly
-grpcio~=1.6.0
+grpcio~=1.8.0
 portpicker

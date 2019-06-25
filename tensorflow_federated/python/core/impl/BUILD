@@ -353,7 +353,10 @@ py_test(
     size = "small",
     srcs = ["executor_service_test.py"],
     python_version = "PY3",
-    deps = [":executor_service"],
+    deps = [
+        ":executor_service",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+    ],
 )
 
 py_library(
