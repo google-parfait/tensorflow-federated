@@ -152,5 +152,28 @@ class ComputationWrapperInstancesTest(test.TestCase):
         del x
 
 
+class ToComputationImplTest(test.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      computation_wrapper_instances.building_block_to_computation(None)
+
+  def test_converts_building_block_to_computation(self):
+    lam = computation_building_blocks.Lambda(
+        'x', tf.int32, computation_building_blocks.Reference('x', tf.int32))
+    computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
+        lam)
+    self.assertIsInstance(computation_impl_lambda,
+                          computation_impl.ComputationImpl)
+
+  def test_identity_lambda_executes_as_identity(self):
+    lam = computation_building_blocks.Lambda(
+        'x', tf.int32, computation_building_blocks.Reference('x', tf.int32))
+    computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
+        lam)
+    for k in range(10):
+      self.assertEqual(computation_impl_lambda(k), k)
+
+
 if __name__ == '__main__':
   test.main()

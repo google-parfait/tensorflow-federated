@@ -211,6 +211,7 @@ py_library(
     name = "computation_wrapper_instances",
     srcs = ["computation_wrapper_instances.py"],
     deps = [
+        ":computation_building_blocks",
         ":computation_impl",
         ":computation_wrapper",
         ":context_stack_impl",
@@ -218,6 +219,7 @@ py_library(
         ":function_utils",
         ":tensorflow_serialization",
         ":type_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 

@@ -5,7 +5,7 @@
 
 # tff.framework.uniquify_reference_names
 
-Replaces all the reference names in `comp` with unique names.
+Replaces all the bound reference names in `comp` with unique names.
 
 ```python
 tff.framework.uniquify_reference_names(comp)
@@ -15,6 +15,9 @@ Defined in
 [`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
 
 <!-- Placeholder for "Used in" -->
+
+Notice that `uniquify_reference_names` simply leaves alone any reference which
+is unbound under `comp`.
 
 #### Args:
 
