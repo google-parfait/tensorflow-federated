@@ -1,4 +1,4 @@
-# Lint as: python3
+## Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -928,6 +928,19 @@ class InlineBlockLocalsTest(absltest.TestCase):
     block = computation_building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
       transformations.inline_block_locals(block)
+
+  def test_noops_with_unbound_reference(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    lambda_binding_y = computation_building_blocks.Lambda('y', tf.float32, ref)
+
+    transformed_comp, modified = transformations.inline_block_locals(
+        lambda_binding_y)
+
+    self.assertEqual(lambda_binding_y.tff_repr, '(y -> x)')
+    self.assertEqual(transformed_comp.tff_repr, '(y -> x)')
+    self.assertEqual(transformed_comp.type_signature,
+                     lambda_binding_y.type_signature)
+    self.assertFalse(modified)
 
   def test_inlines_one_block_variable(self):
     block = computation_test_utils.create_identity_block_with_dummy_data(
@@ -2367,6 +2380,19 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       transformations.uniquify_reference_names(None)
 
+  def test_renames_lambda_but_not_unbound_reference(self):
+    ref = computation_building_blocks.Reference('x', tf.int32)
+    lambda_binding_y = computation_building_blocks.Lambda('y', tf.float32, ref)
+
+    transformed_comp, modified = transformations.uniquify_reference_names(
+        lambda_binding_y)
+
+    self.assertEqual(lambda_binding_y.tff_repr, '(y -> x)')
+    self.assertEqual(transformed_comp.tff_repr, '(_var1 -> x)')
+    self.assertEqual(transformed_comp.type_signature,
+                     lambda_binding_y.type_signature)
+    self.assertTrue(modified)
+
   def test_single_level_block(self):
     ref = computation_building_blocks.Reference('a', tf.int32)
     data = computation_building_blocks.Data('data', tf.int32)
@@ -2507,6 +2533,9 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
 def parse_tff_to_tf(comp):
   comp, _ = transformations.insert_called_tf_identity_at_leaves(comp)
   parser_callable = transformations.TFParser()
+  comp, _ = transformations.replace_called_lambda_with_block(comp)
+  comp, _ = transformations.inline_block_locals(comp)
+  comp, _ = transformations.replace_selection_from_tuple_with_element(comp)
   new_comp, transformed = transformation_utils.transform_postorder(
       comp, parser_callable)
   return new_comp, transformed
@@ -3246,6 +3275,32 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
     self.assertEqual(unwrapped.argument[0].type_signature,
                      computation_types.FunctionType(tf.int32, tf.int32))
+
+
+class IntrinsicsWhitelistedTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      transformations.check_intrinsics_whitelisted_for_reduction(None)
+
+  def test_passes_with_federated_map(self):
+    intrinsic = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MAP.uri,
+        computation_types.FunctionType([
+            computation_types.FunctionType(tf.int32, tf.float32),
+            computation_types.FederatedType(tf.int32, placements.CLIENTS)
+        ], computation_types.FederatedType(tf.float32, placements.CLIENTS)))
+    transformations.check_intrinsics_whitelisted_for_reduction(intrinsic)
+
+  def test_raises_with_federated_mean(self):
+    intrinsic = computation_building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MEAN.uri,
+        computation_types.FunctionType(
+            computation_types.FederatedType(tf.int32, placements.CLIENTS),
+            computation_types.FederatedType(tf.int32, placements.SERVER)))
+
+    with self.assertRaisesRegex(ValueError, intrinsic.tff_repr):
+      transformations.check_intrinsics_whitelisted_for_reduction(intrinsic)
 
 
 if __name__ == '__main__':

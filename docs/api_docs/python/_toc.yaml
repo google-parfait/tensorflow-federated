@@ -62,10 +62,14 @@ toc:
       path: /federated/api_docs/python/tff/framework
     - title: Block
       path: /federated/api_docs/python/tff/framework/Block
+    - title: building_block_to_computation
+      path: /federated/api_docs/python/tff/framework/building_block_to_computation
     - title: Call
       path: /federated/api_docs/python/tff/framework/Call
     - title: check_has_unique_names
       path: /federated/api_docs/python/tff/framework/check_has_unique_names
+    - title: check_intrinsics_whitelisted_for_reduction
+      path: /federated/api_docs/python/tff/framework/check_intrinsics_whitelisted_for_reduction
     - title: CompiledComputation
       path: /federated/api_docs/python/tff/framework/CompiledComputation
     - title: ComputationBuildingBlock
@@ -80,12 +84,16 @@ toc:
       path: /federated/api_docs/python/tff/framework/get_map_of_unbound_references
     - title: inline_block_locals
       path: /federated/api_docs/python/tff/framework/inline_block_locals
+    - title: insert_called_tf_identity_at_leaves
+      path: /federated/api_docs/python/tff/framework/insert_called_tf_identity_at_leaves
     - title: Intrinsic
       path: /federated/api_docs/python/tff/framework/Intrinsic
     - title: is_assignable_from
       path: /federated/api_docs/python/tff/framework/is_assignable_from
     - title: is_called_intrinsic
       path: /federated/api_docs/python/tff/framework/is_called_intrinsic
+    - title: is_tensorflow_compatible_type
+      path: /federated/api_docs/python/tff/framework/is_tensorflow_compatible_type
     - title: Lambda
       path: /federated/api_docs/python/tff/framework/Lambda
     - title: merge_tuple_intrinsics
@@ -102,8 +110,12 @@ toc:
       path: /federated/api_docs/python/tff/framework/replace_selection_from_tuple_with_element
     - title: Selection
       path: /federated/api_docs/python/tff/framework/Selection
+    - title: TFParser
+      path: /federated/api_docs/python/tff/framework/TFParser
     - title: transform_postorder
       path: /federated/api_docs/python/tff/framework/transform_postorder
+    - title: transform_type_postorder
+      path: /federated/api_docs/python/tff/framework/transform_type_postorder
     - title: Tuple
       path: /federated/api_docs/python/tff/framework/Tuple
     - title: type_from_tensors
@@ -114,6 +126,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/unique_name_generator
     - title: uniquify_reference_names
       path: /federated/api_docs/python/tff/framework/uniquify_reference_names
+    - title: unwrap_placement
+      path: /federated/api_docs/python/tff/framework/unwrap_placement
   - title: tff.learning
     section:
     - title: Overview

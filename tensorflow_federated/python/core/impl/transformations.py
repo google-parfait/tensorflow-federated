@@ -309,12 +309,15 @@ def inline_block_locals(comp, variable_names=None):
     if not _should_transform(comp):
       return comp, False
     if isinstance(comp, computation_building_blocks.Reference):
-      value = symbol_tree.get_payload_with_name(comp.name).value
+      try:
+        value = symbol_tree.get_payload_with_name(comp.name).value
+      except NameError:
+        # This reference is unbound
+        value = None
       # This identifies a variable bound by a Block as opposed to a Lambda.
       if value is not None:
         return value, True
-      else:
-        return comp, False
+      return comp, False
     elif isinstance(comp, computation_building_blocks.Block):
       variables = [(name, value)
                    for name, value in comp.locals
@@ -589,7 +592,7 @@ def merge_tuple_intrinsics(comp, uri):
   name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   def _should_transform(comp):
-    return (isinstance(comp, computation_building_blocks.Tuple) and
+    return (isinstance(comp, computation_building_blocks.Tuple) and comp and
             is_called_intrinsic(comp[0], uri) and all(
                 is_called_intrinsic(element, comp[0].function.uri)
                 for element in comp))
@@ -1009,7 +1012,10 @@ def uniquify_compiled_computation_names(comp):
 
 
 def uniquify_reference_names(comp):
-  """Replaces all the reference names in `comp` with unique names.
+  """Replaces all the bound reference names in `comp` with unique names.
+
+  Notice that `uniquify_reference_names` simply leaves alone any reference
+  which is unbound under `comp`.
 
   Args:
     comp: The computation building block in which to perform the replacements.
@@ -1037,10 +1043,13 @@ def uniquify_reference_names(comp):
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
     if isinstance(comp, computation_building_blocks.Reference):
-      new_name = context_tree.get_payload_with_name(comp.name).new_name
-      return computation_building_blocks.Reference(new_name,
-                                                   comp.type_signature,
-                                                   comp.context), True
+      try:
+        new_name = context_tree.get_payload_with_name(comp.name).new_name
+        return computation_building_blocks.Reference(new_name,
+                                                     comp.type_signature,
+                                                     comp.context), True
+      except NameError:
+        return comp, False
     elif isinstance(comp, computation_building_blocks.Block):
       new_locals = []
       for name, val in comp.locals:
@@ -1620,3 +1629,43 @@ def get_map_of_unbound_references(comp):
 
   transformation_utils.transform_postorder(comp, _update)
   return references
+
+
+def check_intrinsics_whitelisted_for_reduction(comp):
+  """Checks whitelist of intrinsics reducible to aggregate or broadcast.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      check for presence of intrinsics not currently immediately reducible to
+      `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
+
+  Raises:
+    ValueError: If we encounter an intrinsic under `comp` that is not
+    whitelisted as currently reducible.
+  """
+  # TODO(b/135930668): Factor this and other non-transforms (e.g.
+  # `check_has_unique_names` out of this file into a structure specified for
+  # static analysis of ASTs.
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  uri_whitelist = (
+      intrinsic_defs.FEDERATED_AGGREGATE.uri,
+      intrinsic_defs.FEDERATED_APPLY.uri,
+      intrinsic_defs.FEDERATED_BROADCAST.uri,
+      intrinsic_defs.FEDERATED_MAP.uri,
+      intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
+      intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
+      intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
+      intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
+  )
+
+  def _check_whitelisted(comp):
+    if isinstance(comp, computation_building_blocks.Intrinsic
+                 ) and comp.uri not in uri_whitelist:
+      raise ValueError(
+          'Encountered an Intrinsic not currently reducible to aggregate or '
+          'broadcast, the intrinsic {}'.format(comp.tff_repr))
+    return comp, False
+
+  transformation_utils.transform_postorder(comp, _check_whitelisted)

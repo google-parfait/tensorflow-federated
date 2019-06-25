@@ -9,6 +9,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl:computation_building_blocks",
         "//tensorflow_federated/python/core/impl:computation_constructing_utils",
+        "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
         "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:transformations",
