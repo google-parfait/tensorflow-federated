@@ -346,8 +346,8 @@ class EagerExecutorTest(absltest.TestCase):
         computation_types.SequenceType(element(tf.int32, tf.int32)))
     def comp(ds):
       return ds.reduce(
-          element(np.int32(0),
-                  np.int32(0)), lambda p, q: element(p.a + q.a, p.b + q.b))
+          element(np.int32(0), np.int32(0)),
+          lambda p, q: element(p.a + q.a, p.b + q.b))
 
     ds = tf.data.Dataset.from_tensor_slices(element([10, 20, 30], [4, 5, 6]))
     ex = eager_executor.EagerExecutor()

@@ -116,9 +116,8 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertIs(
         reference_executor.to_representation_for_type(
-            foo, computation_types.FunctionType(tf.int32,
-                                                tf.string), lambda x, t: x),
-        foo)
+            foo, computation_types.FunctionType(tf.int32, tf.string),
+            lambda x, t: x), foo)
 
     with self.assertRaises(TypeError):
       reference_executor.to_representation_for_type(
