@@ -62,10 +62,12 @@ The <a href="../../../tff/Computation.md"><code>tff.Computation</code></a>
 should take as its single input a
 <a href="../../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>-placed
 <a href="../../../tff/Value.md"><code>tff.Value</code></a> corresponding to the
-return value of `Model.report_local_outputs`, and return a dictionary or other
-structure of <a href="../../../tff.md#SERVER"><code>tff.SERVER</code></a>-placed
-values; consumers of this method should generally provide these server-placed
-values as outputs of the overall computation consuming the model.
+return value of
+<a href="../../../tff/learning/Model.md#report_local_outputs"><code>Model.report_local_outputs</code></a>,
+and return a dictionary or other structure of
+<a href="../../../tff.md#SERVER"><code>tff.SERVER</code></a>-placed values;
+consumers of this method should generally provide these server-placed values as
+outputs of the overall computation consuming the model.
 
 <h3 id="input_spec"><code>input_spec</code></h3>
 
@@ -109,7 +111,7 @@ Runs the forward pass and returns results.
 
 This method should not modify any variables that are part of the model, that is,
 variables that influence the predictions; for that, see
-`TrainableModel.train_on_batch`.
+<a href="../../../tff/learning/TrainableModel.md#train_on_batch"><code>TrainableModel.train_on_batch</code></a>.
 
 However, this method may update aggregated metrics computed across calls to
 forward_pass; the final values of such metrics can be accessed via
@@ -127,9 +129,11 @@ forward_pass; the final values of such metrics can be accessed via
 #### Args:
 
 *   <b>`batch_input`</b>: a nested structure that matches the structure of
-    `Model.input_spec` and each tensor in `batch_input` satisfies
+    <a href="../../../tff/learning/Model.md#input_spec"><code>Model.input_spec</code></a>
+    and each tensor in `batch_input` satisfies
     `tf.TensorSpec.is_compatible_with()` for the corresponding `tf.TensorSpec`
-    in `Model.input_spec`.
+    in
+    <a href="../../../tff/learning/Model.md#input_spec"><code>Model.input_spec</code></a>.
 *   <b>`training`</b>: If `True`, run the training forward pass, otherwise, run
     in evaluation mode. The semantics are generally the same as the `training`
     argument to `keras.Model.__call__`; this might e.g. influence how dropout or
