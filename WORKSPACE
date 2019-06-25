@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "com_google_protobuf",
-    commit = "54288a01cebfd0bfa62ca581dd07ffd6f9c77f2c",
+    commit = "09745575a923640154bcf307fba8aedff47f240a",
     remote = "https://github.com/protocolbuffers/protobuf.git",
     shallow_since = "2019-06-01",
 )
