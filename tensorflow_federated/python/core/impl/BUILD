@@ -392,6 +392,7 @@ py_test(
         ":executor_service",
         ":executor_service_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 
@@ -400,6 +401,9 @@ py_library(
     srcs = ["executor_service_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_impl",
+        ":type_serialization",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -415,6 +419,7 @@ py_test(
     deps = [
         ":executor_service_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 

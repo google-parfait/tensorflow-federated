@@ -51,8 +51,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     """
     py_typecheck.check_type(request, executor_pb2.CreateValueRequest)
     try:
-      value, value_type = executor_service_utils.deserialize_tensor_value(
-          request.value)
+      value, value_type = (
+          executor_service_utils.deserialize_value(request.value))
       value_id = str(uuid.uuid4())
       future_val = self._executor.create_value(value, value_type)
       with self._lock:

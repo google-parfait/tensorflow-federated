@@ -103,6 +103,11 @@ message Value {
     // as defined in `tensorflow/core/framework/tensor.proto`.
     google.protobuf.Any tensor = 1;
 
+    // A serialized TFF computation; this is the canonical (and currently only)
+    // way to pass any functional constructs, but the computation included here
+    // does not necessarily have to be of a functional type.
+    Computation computation = 2;
+
     // TODO(b/134543154): To be populated with the variants of what we might
     // want to hand over the network (tensor protos, computations, nested
     // structures of those, etc.).
