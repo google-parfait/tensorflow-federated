@@ -20,10 +20,12 @@ from __future__ import print_function
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import six
 from six.moves import range
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -1966,6 +1968,99 @@ class CreateZipTest(absltest.TestCase):
     self.assertEqual(
         str(new_comp.type_signature),
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
+
+
+class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
+
+  def test_raises_on_none_type(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_binary_operator(
+          None, tf.add)
+
+  def test_raises_non_callable_op(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_binary_operator(
+          tf.int32, 1)
+
+  def test_raises_on_federated_type(self):
+    fed_type = computation_types.FederatedType(tf.int32,
+                                               placement_literals.SERVER)
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_binary_operator(
+          fed_type, tf.add)
+
+  def test_raises_on_nested_sequence_type(self):
+    hiding_sequence_type = computation_types.NamedTupleType(
+        [computation_types.SequenceType(tf.int32)])
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_binary_operator(
+          hiding_sequence_type, tf.add)
+
+  def test_divide_integers(self):
+    integer_division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+        tf.int32, tf.divide)
+    self.assertEqual(
+        integer_division_func.type_signature,
+        computation_types.FunctionType([tf.int32, tf.int32], tf.float64))
+    callable_division = _to_computation_impl(integer_division_func)
+    self.assertEqual(callable_division(1, 1), 1)
+    self.assertEqual(callable_division(1, 2), 0.5)
+    self.assertEqual(callable_division(2, 1), 2)
+    self.assertEqual(callable_division(1, 0), np.inf)
+
+  def test_divide_unnamed_tuple(self):
+    division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+        [tf.int32, tf.float32], tf.divide)
+    self.assertEqual(
+        division_func.type_signature,
+        computation_types.FunctionType(
+            [[tf.int32, tf.float32], [tf.int32, tf.float32]],
+            [tf.float64, tf.float32]))
+    callable_division = _to_computation_impl(division_func)
+    self.assertEqual(callable_division([1, 0.], [1, 1.])[0], 1)
+    self.assertEqual(callable_division([1, 0.], [1, 1.])[1], 0.)
+
+  def test_divide_named_tuple(self):
+    integer_division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+        [('a', tf.int32), ('b', tf.float32)], tf.divide)
+    callable_division = _to_computation_impl(integer_division_func)
+    self.assertDictEqual(
+        anonymous_tuple.to_odict(callable_division([1, 0.], [1, 1.])), {
+            'a': 1,
+            'b': 0.
+        })
+
+  def test_multiply_integers(self):
+    integer_multiplication_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+        tf.int32, tf.multiply)
+    callable_multiplication = _to_computation_impl(integer_multiplication_func)
+    self.assertEqual(callable_multiplication(1, 1), 1)
+    self.assertEqual(callable_multiplication(1, 2), 2)
+    self.assertEqual(callable_multiplication(2, 1), 2)
+
+  def test_multiply_named_tuple(self):
+    integer_multiplication_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+        [('a', tf.int32), ('b', tf.float32)], tf.multiply)
+    callable_multiplication = _to_computation_impl(integer_multiplication_func)
+    self.assertDictEqual(
+        anonymous_tuple.to_odict(callable_multiplication([1, 0.], [1, 1.])), {
+            'a': 1,
+            'b': 0.
+        })
+    self.assertDictEqual(
+        anonymous_tuple.to_odict(callable_multiplication([2, 2.], [1, 1.])), {
+            'a': 2,
+            'b': 2.
+        })
+
+  def test_add_integers(self):
+    integer_add = computation_constructing_utils.construct_tensorflow_binary_operator(
+        tf.int32, tf.add)
+    callable_add = _to_computation_impl(integer_add)
+    self.assertEqual(callable_add(0, 0), 0)
+    self.assertEqual(callable_add(1, 0), 1)
+    self.assertEqual(callable_add(0, 1), 1)
+    self.assertEqual(callable_add(1, 1), 2)
 
 
 if __name__ == '__main__':

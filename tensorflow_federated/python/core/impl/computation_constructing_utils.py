@@ -176,6 +176,86 @@ def construct_compiled_input_replication(type_signature, n_replicas):
   return computation_building_blocks.CompiledComputation(proto)
 
 
+def construct_tensorflow_binary_operator(operand_type, operator):
+  """Constructs a TensorFlow computation for the binary `operator`.
+
+  For `T` the `operand_type`, the type signature of the constructed operator
+  will be `(<T,T> -> U)`, where `U` is the result of applying `operator` to
+  a tuple of type `<T,T>`.
+
+  Notice that we have quite serious restrictions on `operand_type` here; not
+  only must it be compatible with stamping into a TensorFlow graph, but
+  additionally cannot contain a `computation_types.SequenceType`, as checked by
+  `type_utils.is_generic_op_compatible_type`.
+
+  Notice also that if `operand_type` is a `computation_types.NamedTupleType`,
+  `operator` will be applied pointwise. This places the burden on callers of
+  this function to construct the correct values to pass into the returned
+  function. For example, to divide `[2, 2]` by `2`, first the `int 2` must
+  be packed into the data structure `[x, x]`, before the division operator of
+  the appropriate type is called.
+
+  Args:
+    operand_type: The type of argument to the constructed binary operator. Must
+      be convertible to `computation_types.Type`.
+    operator: Callable taking two arguments specifying the operation to encode.
+      For example, `tf.add`, `tf.multiply`, `tf.divide`, ...
+
+  Returns:
+    Instance of `computation_building_blocks.CompiledComputation` encoding
+    this binary operator.
+
+  Raises:
+    TypeError: If the type tree of `operand_type` contains any type which is
+    incompatible with the TFF generic operators, as checked by
+    `type_utils.is_generic_op_compatible_type`, or `operator` is not callable.
+  """
+  operand_type = computation_types.to_type(operand_type)
+  py_typecheck.check_type(operand_type, computation_types.Type)
+  py_typecheck.check_callable(operator)
+  if not type_utils.is_generic_op_compatible_type(operand_type):
+    raise TypeError('The type {} contains a type other than '
+                    '`computation_types.TensorType` and '
+                    '`computation_types.NamedTupleType`; this is disallowed '
+                    'in the generic operators.'.format(operand_type))
+  with tf.Graph().as_default() as graph:
+    operand_1_value, operand_1_binding = graph_utils.stamp_parameter_in_graph(
+        'x', operand_type, graph)
+    operand_2_value, operand_2_binding = graph_utils.stamp_parameter_in_graph(
+        'y', operand_type, graph)
+
+    if isinstance(operand_type, computation_types.TensorType):
+      result_value = operator(operand_1_value, operand_2_value)
+    elif isinstance(operand_type, computation_types.NamedTupleType):
+      result_value = anonymous_tuple.map_structure(operator, operand_1_value,
+                                                   operand_2_value)
+    else:
+      raise TypeError('Operand type {} cannot be used in generic operations. '
+                      'The whitelist in '
+                      '`type_utils.is_generic_op_compatible_type` has allowed '
+                      'it to pass, and should be updated.'.format(operand_type))
+    result_type, result_binding = graph_utils.capture_result_from_graph(
+        result_value, graph)
+
+  function_type = computation_types.FunctionType(
+      computation_types.NamedTupleType([operand_type, operand_type]),
+      result_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  parameter_binding = pb.TensorFlow.Binding(
+      tuple=pb.TensorFlow.NamedTupleBinding(
+          element=[operand_1_binding, operand_2_binding]))
+
+  proto = pb.Computation(
+      type=serialized_function_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          parameter=parameter_binding,
+          result=result_binding))
+
+  return computation_building_blocks.CompiledComputation(proto)
+
+
 def construct_federated_getitem_call(arg, idx):
   """Constructs computation building block passing getitem to federated value.
 

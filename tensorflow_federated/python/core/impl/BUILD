@@ -139,6 +139,7 @@ py_test(
         ":placement_literals",
         ":type_utils",
         ":value_impl",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
     ],
