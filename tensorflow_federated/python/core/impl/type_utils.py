@@ -559,6 +559,15 @@ def is_tensorflow_compatible_type(type_spec):
   return type_tree_contains_only(type_spec, tf_comp_whitelist)
 
 
+def is_generic_op_compatible_type(type_spec):
+  """Checks `type_spec` against an explicit whitelist for generic operators."""
+  if type_spec is None:
+    return True
+  tf_comp_whitelist = (computation_types.TensorType,
+                       computation_types.NamedTupleType)
+  return type_tree_contains_only(type_spec, tf_comp_whitelist)
+
+
 def type_tree_contains_types(type_spec, blacklisted_types):
   """Checks whether `type_spec` contains any instances of `blacklisted_types`.
 
