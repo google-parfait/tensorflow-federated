@@ -64,12 +64,13 @@ class ClientData(object):
     shuffling should be performed.
 
     Args:
-      seed: Optional, a seed to determine the order in which clients
-        are processed in the joined dataset.
+      seed: Optional, a seed to determine the order in which clients are
+        processed in the joined dataset.
 
     Returns:
       A `tf.data.Dataset` object.
     """
+
     # NOTE: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
     # NOTE: Tests are via the simple concrete from_tensor_slices_client_data.
