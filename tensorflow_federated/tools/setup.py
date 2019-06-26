@@ -56,7 +56,7 @@ import setuptools
 
 DOCLINES = __doc__.split('\n')
 
-_VERSION = '0.5.0'
+_VERSION = '0.6.0'
 
 project_name = 'tensorflow_federated'
 
@@ -72,6 +72,8 @@ REQUIRED_PACKAGES = [
     'numpy~=1.14',
     'six~=1.10',
     'tf-nightly',
+    'grpcio~=1.8.0',
+    'portpicker',
 ]
 
 setuptools.setup(
