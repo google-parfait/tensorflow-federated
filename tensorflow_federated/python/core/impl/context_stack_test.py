@@ -62,6 +62,18 @@ class ContextStackTest(absltest.TestCase):
     self.assertIsInstance(ctx_stack.current,
                           reference_executor.ReferenceExecutor)
 
+  def test_set_default_context(self):
+
+    ctx_stack = context_stack_impl.context_stack
+    self.assertIsInstance(ctx_stack.current,
+                          reference_executor.ReferenceExecutor)
+    foo = TestContext('foo')
+    ctx_stack.set_default_context(foo)
+    self.assertIs(ctx_stack.current, foo)
+    ctx_stack.set_default_context()
+    self.assertIsInstance(ctx_stack.current,
+                          reference_executor.ReferenceExecutor)
+
 
 if __name__ == '__main__':
   absltest.main()

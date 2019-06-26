@@ -28,15 +28,32 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import reference_executor
 
 
+def _make_default_context(stack):
+  return reference_executor.ReferenceExecutor(
+      compiler_pipeline.CompilerPipeline(stack))
+
+
 class ContextStackImpl(context_stack_base.ContextStack, threading.local):
   """An implementation of a common thread-local context stack to run against."""
 
   def __init__(self):
     super(ContextStackImpl, self).__init__()
-    self._stack = [
-        reference_executor.ReferenceExecutor(
-            compiler_pipeline.CompilerPipeline(self))
-    ]
+    self._stack = [_make_default_context(self)]
+
+  def set_default_context(self, ctx=None):
+    """Places `ctx` at the bottom of the stack.
+
+    Args:
+      ctx: Either an instance of `context_base.Context`, or `None`, with the
+        latter resulting in the default reference executor getting installed at
+        the bottom of the stack (as is the default).
+    """
+    if ctx is not None:
+      py_typecheck.check_type(ctx, context_base.Context)
+    else:
+      ctx = _make_default_context(self)
+    assert self._stack
+    self._stack[0] = ctx
 
   @property
   def current(self):
