@@ -30,6 +30,7 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_service
 from tensorflow_federated.python.core.impl import executor_service_utils
@@ -64,14 +65,7 @@ class ExecutorServiceTest(absltest.TestCase):
     self._server.stop(None)
     super(ExecutorServiceTest, self).tearDown()
 
-  def test_executor_service_create_tensor_value(self):
-    value_proto = executor_service_utils.serialize_tensor_value(
-        tf.constant(10.0).numpy())
-    request = executor_pb2.CreateValueRequest(value=value_proto)
-    response = self._stub.CreateValue(request)
-    self.assertIsInstance(response, executor_pb2.CreateValueResponse)
-    value_id = str(response.value_ref.id)
-
+  def _extract_value_from_service(self, value_id):
     # pylint: disable=protected-access
     with self._service._lock:
       future_val = self._service._values[value_id]
@@ -79,7 +73,32 @@ class ExecutorServiceTest(absltest.TestCase):
 
     value = asyncio.get_event_loop().run_until_complete(future_val)
     self.assertIsInstance(value, eager_executor.EagerValue)
+    return value
+
+  def test_executor_service_create_tensor_value(self):
+    value_proto = executor_service_utils.serialize_value(
+        tf.constant(10.0).numpy(), tf.float32)
+    request = executor_pb2.CreateValueRequest(value=value_proto)
+    response = self._stub.CreateValue(request)
+    self.assertIsInstance(response, executor_pb2.CreateValueResponse)
+    value_id = str(response.value_ref.id)
+    value = self._extract_value_from_service(value_id)
     self.assertEqual(value.internal_representation.numpy(), 10.0)
+
+  def test_executor_service_create_computation_value(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.constant(10)
+
+    value_proto = executor_service_utils.serialize_value(comp)
+    request = executor_pb2.CreateValueRequest(value=value_proto)
+    response = self._stub.CreateValue(request)
+    self.assertIsInstance(response, executor_pb2.CreateValueResponse)
+    value_id = str(response.value_ref.id)
+    value = self._extract_value_from_service(value_id)
+    self.assertTrue(callable(value.internal_representation))
+    self.assertEqual(value.internal_representation().numpy(), 10.0)
 
 
 if __name__ == '__main__':

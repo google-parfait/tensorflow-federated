@@ -23,7 +23,9 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import executor_service_utils
 
 
@@ -66,6 +68,18 @@ class ExecutorServiceUtilsTest(absltest.TestCase):
     x = tf.constant([10, 20, 30]).numpy()
     with self.assertRaises(TypeError):
       executor_service_utils.serialize_tensor_value(x, tf.int32)
+
+  def test_serialize_deserialize_computation_value(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.constant(10)
+
+    value_proto = executor_service_utils.serialize_value(comp)
+    self.assertEqual(value_proto.WhichOneof('value'), 'computation')
+    comp, type_spec = executor_service_utils.deserialize_value(value_proto)
+    self.assertIsInstance(comp, computation_pb2.Computation)
+    self.assertEqual(str(type_spec), '( -> int32)')
 
 
 if __name__ == '__main__':
