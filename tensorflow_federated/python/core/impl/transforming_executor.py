@@ -37,10 +37,10 @@ class TransformingExecutor(executor_base.Executor):
     """Creates a transforming executor backed by a given target executor.
 
     Args:
-      transformation_fn: A callable that accepts as single parameter that is
-        an instance of `tff.framework.ComputationBuildingBlock`, and returns a
-        result of the same type. This callable is used to transform any kind
-        of computations before they are relayed to the target executor.
+      transformation_fn: A callable that accepts as single parameter that is an
+        instance of `tff.framework.ComputationBuildingBlock`, and returns a
+        result of the same type. This callable is used to transform any kind of
+        computations before they are relayed to the target executor.
       target_executor: The target executor to delegate all the execution to.
     """
     py_typecheck.check_callable(transformation_fn)
