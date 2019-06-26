@@ -20,6 +20,19 @@ service Executor {
   // Creates a selection from an executor value and returns a reference to it.
   rpc CreateSelection(CreateSelectionRequest)
       returns (CreateSelectionResponse) {}
+
+  // Causes a value in the executor to get computed, and sends back the result.
+  // WARNING: Unlike all other methods in this API, this may be a long-running
+  // call (it will block until the value becomes available).
+  rpc Compute(ComputeRequest) returns (ComputeResponse) {}
+
+  // TODO(b/134543154): Given that there is no support for asynchronous server
+  // processing in Python gRPC, long-running calls may be a problem. Revisit
+  // this and look for alternatives.
+
+  // Causes one or more values in the executor to get disposed of (no longer
+  // available for future calls).
+  rpc Dispose(DisposeRequest) returns (DisposeResponse) {}
 }
 
 message CreateValueRequest {
@@ -67,6 +80,20 @@ message CreateSelectionRequest {
 message CreateSelectionResponse {
   ValueRef value_ref = 1;
 }
+
+message ComputeRequest {
+  ValueRef value_ref = 1;
+}
+
+message ComputeResponse {
+  Value value = 1;
+}
+
+message DisposeRequest {
+  repeated ValueRef value_ref = 1;
+}
+
+message DisposeResponse {}
 
 // A representation of a value that's to be embedded in the executor, or that
 // is being returned as a result of a computation.
