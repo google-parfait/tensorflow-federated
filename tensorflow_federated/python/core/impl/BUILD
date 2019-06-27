@@ -378,7 +378,9 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_service_utils",
+        ":executor_value_base",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -390,9 +392,12 @@ py_test(
     python_version = "PY3",
     deps = [
         ":eager_executor",
+        ":executor_base",
         ":executor_service",
         ":executor_service_utils",
+        ":executor_value_base",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
     ],
 )
