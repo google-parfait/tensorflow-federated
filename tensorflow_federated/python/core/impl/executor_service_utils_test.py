@@ -91,7 +91,7 @@ class ExecutorServiceUtilsTest(absltest.TestCase):
     self.assertIsInstance(comp, computation_pb2.Computation)
     self.assertEqual(str(type_spec), '( -> int32)')
 
-  def test_serialize_deserialize_nested_tuple_value(self):
+  def test_serialize_deserialize_nested_tuple_value_with_names(self):
     x = collections.OrderedDict([('a', 10), ('b', [20, 30]),
                                  ('c', collections.OrderedDict([('d', 40)]))])
     x_type = computation_types.to_type(
@@ -104,6 +104,16 @@ class ExecutorServiceUtilsTest(absltest.TestCase):
     y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), str(x_type))
     self.assertTrue(str(y), '<a=10,b=<20,30>,c=<d=40>>')
+
+  def test_serialize_deserialize_nested_tuple_value_without_names(self):
+    x = tuple([10, 20])
+    x_type = computation_types.to_type(tuple([tf.int32, tf.int32]))
+    value_proto, value_type = executor_service_utils.serialize_value(x, x_type)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assertEqual(str(value_type), '<int32,int32>')
+    y, type_spec = executor_service_utils.deserialize_value(value_proto)
+    self.assertEqual(str(type_spec), str(x_type))
+    self.assertCountEqual(y, (10, 20))
 
 
 if __name__ == '__main__':

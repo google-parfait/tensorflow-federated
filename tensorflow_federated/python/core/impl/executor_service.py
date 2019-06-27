@@ -134,7 +134,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         element_vals = [self._values[e.value_ref.id] for e in request.element]
       elements = []
       for idx, elem in enumerate(request.element):
-        elements.append((str(elem.name), element_vals[idx].result()))
+        elements.append(
+            (str(elem.name) if elem.name else None, element_vals[idx].result()))
       anon_tuple = anonymous_tuple.AnonymousTuple(elements)
       result_val = asyncio.run_coroutine_threadsafe(
           self._executor.create_tuple(anon_tuple), self._event_loop)

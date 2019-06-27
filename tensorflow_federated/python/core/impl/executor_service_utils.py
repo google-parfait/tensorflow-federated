@@ -142,7 +142,8 @@ def serialize_value(value, type_spec=None):
     for (e_name, e_type), (_, e_val) in zip(type_elements, val_elements):
       e_proto, _ = serialize_value(e_val, e_type)
       tup_elems.append(
-          executor_pb2.Value.Tuple.Element(name=e_name, value=e_proto))
+          executor_pb2.Value.Tuple.Element(
+              name=e_name if e_name else None, value=e_proto))
     result_proto = (
         executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
     return result_proto, type_spec
