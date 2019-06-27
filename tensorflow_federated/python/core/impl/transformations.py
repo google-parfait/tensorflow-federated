@@ -1200,6 +1200,9 @@ def insert_called_tf_identity_at_leaves(comp):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
 
+  if isinstance(comp, computation_building_blocks.CompiledComputation):
+    return comp, False
+
   if not (isinstance(comp, computation_building_blocks.Lambda) and
           type_utils.is_tensorflow_compatible_type(comp.result.type_signature)
           and type_utils.is_tensorflow_compatible_type(comp.parameter_type)):
