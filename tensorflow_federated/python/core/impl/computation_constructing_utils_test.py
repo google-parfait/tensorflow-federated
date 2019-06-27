@@ -1970,6 +1970,49 @@ class CreateZipTest(absltest.TestCase):
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
 
 
+class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
+
+  def test_raises_python_type(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+          int, tf.TensorShape([]))
+
+  def test_raises_list_for_shape(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+          tf.int32, [1, 1])
+
+  def test_raises_partially_defined(self):
+    with self.assertRaises(ValueError):
+      computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+          tf.int32, tf.TensorShape([None, 1]))
+
+  def test_constructs_identity_scalar_function(self):
+    int_identity = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+        tf.int32, tf.TensorShape([]))
+    executable_int_identity = _to_computation_impl(int_identity)
+    for k in range(5):
+      self.assertEqual(executable_int_identity(k), k)
+
+  def test_broadcasts_ints_to_nonempty_shape(self):
+    int_broadcast = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+        tf.int32, tf.TensorShape([2, 2]))
+    executable_int_broadcast = _to_computation_impl(int_broadcast)
+    for k in range(5):
+      self.assertTrue(
+          np.array_equal(
+              executable_int_broadcast(k), np.array([[k, k], [k, k]])))
+
+  def test_broadcasts_bools_to_nonempty_shape(self):
+    int_broadcast = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+        tf.bool, tf.TensorShape([2, 2]))
+    executable_int_broadcast = _to_computation_impl(int_broadcast)
+    self.assertTrue(
+        np.array_equal(
+            executable_int_broadcast(True),
+            np.array([[True, True], [True, True]])))
+
+
 class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
