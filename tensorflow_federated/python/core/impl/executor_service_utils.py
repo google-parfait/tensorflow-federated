@@ -24,6 +24,7 @@ from google.protobuf import any_pb2
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
@@ -40,12 +41,21 @@ def serialize_tensor_value(value, type_spec=None):
       convertible to it.
 
   Returns:
-    An instance of `executor_pb2.Value` with the serialized content of `value`.
+    A tuple `(value_proto, ret_type_spec)` in which `value_proto` is an instance
+    of `executor_pb2.Value` with the serialized content of `value`, and
+    `ret_type_spec` is the type of the serialized value. The `ret_type_spec` is
+    the same as the argument `type_spec` if that argument was not `None`. If
+    the argument was `None`, `ret_type_spec` is a type determined from `value`.
 
-  Returns:
+  Raises:
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
+  if isinstance(value, tf.Tensor):
+    if type_spec is None:
+      type_spec = computation_types.TensorType(
+          dtype=tf.DType(value.dtype), shape=tf.TensorShape(value.shape))
+    value = value.numpy()
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.TensorType)
@@ -53,9 +63,12 @@ def serialize_tensor_value(value, type_spec=None):
         value, dtype=type_spec.dtype, shape=type_spec.shape, verify_shape=True)
   else:
     tensor_proto = tf.make_tensor_proto(value)
+    type_spec = computation_types.TensorType(
+        dtype=tf.DType(tensor_proto.dtype),
+        shape=tf.TensorShape(tensor_proto.tensor_shape))
   any_pb = any_pb2.Any()
   any_pb.Pack(tensor_proto)
-  return executor_pb2.Value(tensor=any_pb)
+  return executor_pb2.Value(tensor=any_pb), type_spec
 
 
 def deserialize_tensor_value(value_proto):
@@ -69,7 +82,7 @@ def deserialize_tensor_value(value_proto):
     the deserialized value, and `type_spec` is an instance of `tff.TensorType`
     that represents its type.
 
-  Returns:
+  Raises:
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
@@ -101,24 +114,38 @@ def serialize_value(value, type_spec=None):
     type_spec: Optional type spec, a `tff.Type` or something convertible to it.
 
   Returns:
-    An instance of `executor_pb2.Value` with the serialized content of `value`.
+    A tuple `(value_proto, ret_type_spec)` where `value_proto` is an instance
+    of `executor_pb2.Value` with the serialized content of `value`, and the
+    returned `ret_type_spec` is an instance of `tff.Type` that represents the
+    TFF type of the serialized value.
 
-  Returns:
+  Raises:
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
   type_spec = computation_types.to_type(type_spec)
   if isinstance(value, computation_pb2.Computation):
-    if type_spec is not None:
-      type_utils.reconcile_value_type_with_type_spec(
-          type_serialization.deserialize_type(value.type), type_spec)
-    return executor_pb2.Value(computation=value)
+    type_spec = type_utils.reconcile_value_type_with_type_spec(
+        type_serialization.deserialize_type(value.type), type_spec)
+    return executor_pb2.Value(computation=value), type_spec
   elif isinstance(value, computation_impl.ComputationImpl):
     return serialize_value(
         computation_impl.ComputationImpl.get_proto(value),
         type_utils.reconcile_value_with_type_spec(value, type_spec))
   elif isinstance(type_spec, computation_types.TensorType):
     return serialize_tensor_value(value, type_spec)
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    type_elements = anonymous_tuple.to_elements(type_spec)
+    val_elements = anonymous_tuple.to_elements(
+        anonymous_tuple.from_container(value))
+    tup_elems = []
+    for (e_name, e_type), (_, e_val) in zip(type_elements, val_elements):
+      e_proto, _ = serialize_value(e_val, e_type)
+      tup_elems.append(
+          executor_pb2.Value.Tuple.Element(name=e_name, value=e_proto))
+    result_proto = (
+        executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
+    return result_proto, type_spec
   else:
     raise ValueError(
         'Unable to serialize value with Python type {} and {} TFF type.'.format(
@@ -138,7 +165,7 @@ def deserialize_value(value_proto):
     `pb.Computation` instance), and `type_spec` is an instance of
     `tff.TensorType` that represents its type.
 
-  Returns:
+  Raises:
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
@@ -149,6 +176,16 @@ def deserialize_value(value_proto):
   elif which_value == 'computation':
     return (value_proto.computation,
             type_serialization.deserialize_type(value_proto.computation.type))
+  elif which_value == 'tuple':
+    val_elems = []
+    type_elems = []
+    for e in value_proto.tuple.element:
+      name = e.name if e.name else None
+      e_val, e_type = deserialize_value(e.value)
+      val_elems.append((name, e_val))
+      type_elems.append((name, e_type) if name else e_type)
+    return (anonymous_tuple.AnonymousTuple(val_elems),
+            computation_types.NamedTupleType(type_elems))
   else:
     raise ValueError(
         'Unable to deserialize a value of type {}.'.format(which_value))
