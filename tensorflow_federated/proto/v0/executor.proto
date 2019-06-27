@@ -98,6 +98,17 @@ message DisposeResponse {}
 // A representation of a value that's to be embedded in the executor, or that
 // is being returned as a result of a computation.
 message Value {
+  // A representation of a tuple of values. Unlike in the computation proto,
+  // elements of this tuple can contain actual computed values such as
+  // serialized tensors (rather than computations).
+  message Tuple {
+    repeated Element element = 1;
+    message Element {
+      string name = 1;
+      Value value = 2;
+    }
+  }
+
   oneof value {
     // A serialized tensor content as an instance of `tensorflow.TensorProto`,
     // as defined in `tensorflow/core/framework/tensor.proto`.
@@ -108,9 +119,8 @@ message Value {
     // does not necessarily have to be of a functional type.
     Computation computation = 2;
 
-    // TODO(b/134543154): To be populated with the variants of what we might
-    // want to hand over the network (tensor protos, computations, nested
-    // structures of those, etc.).
+    // A tuple of values.
+    Tuple tuple = 3;
   }
 }
 
