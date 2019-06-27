@@ -24,8 +24,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import executor_base
+from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -36,6 +38,41 @@ def _unwrap(value):
     return anonymous_tuple.map_structure(_unwrap, value)
   else:
     return value
+
+
+async def _ingest(executor, val, type_spec):
+  """A coroutine that handles ingestion.
+
+  Args:
+    executor: An instance of `executor_base.Executor`.
+    val: The first argument to `context_base.Context.ingest()`.
+    type_spec: The second argument to `context_base.Context.ingest()`.
+
+  Returns:
+    The result of the ingestion.
+
+  Raises:
+    ValueError: If the value does not match the type.
+  """
+  if isinstance(val, executor_value_base.ExecutorValue):
+    return val
+  elif isinstance(val, anonymous_tuple.AnonymousTuple):
+    py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+    v_elem = anonymous_tuple.to_elements(val)
+    t_elem = anonymous_tuple.to_elements(type_spec)
+    if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
+      raise ValueError('Value {} does not match type {}.'.format(
+          str(val), str(type_spec)))
+    ingested = []
+    for (_, v), (_, t) in zip(v_elem, t_elem):
+      ingested.append(_ingest(executor, v, t))
+    ingested = await asyncio.gather(*ingested)
+    return await executor.create_tuple(
+        anonymous_tuple.AnonymousTuple([
+            (name, val) for (name, _), val in zip(t_elem, ingested)
+        ]))
+  else:
+    return await executor.create_value(val, type_spec)
 
 
 async def _invoke(executor, comp, arg):
@@ -49,14 +86,11 @@ async def _invoke(executor, comp, arg):
   Returns:
     The result of the invocation.
   """
+  py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
   result_type = comp.type_signature.result
-  elements = [executor.create_value(comp)]
-  if isinstance(arg, anonymous_tuple.AnonymousTuple):
-    elements.append(executor.create_tuple(arg))
-  elements = await asyncio.gather(*elements)
-  comp = elements[0]
-  if len(elements) > 1:
-    arg = elements[1]
+  if arg is not None:
+    py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
+  comp = await executor.create_value(comp)
   result = await executor.create_call(comp, arg)
   result_val = _unwrap(await result.compute())
   if type_utils.is_anon_tuple_with_py_container(result_val, result_type):
@@ -79,7 +113,7 @@ class ExecutionContext(context_base.Context):
 
   def ingest(self, val, type_spec):
     return asyncio.get_event_loop().run_until_complete(
-        self._executor.create_value(val, type_spec))
+        _ingest(self._executor, val, type_spec))
 
   def invoke(self, comp, arg):
     return asyncio.get_event_loop().run_until_complete(

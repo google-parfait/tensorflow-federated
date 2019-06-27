@@ -344,9 +344,11 @@ py_library(
     deps = [
         ":context_base",
         ":executor_base",
+        ":executor_value_base",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 
@@ -744,6 +746,37 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+    ],
+)
+
+py_library(
+    name = "remote_executor",
+    srcs = ["remote_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        ":executor_service_utils",
+        ":executor_value_base",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "remote_executor_test",
+    size = "small",
+    srcs = ["remote_executor_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":eager_executor",
+        ":executor_service",
+        ":remote_executor",
+        ":set_default_executor",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 
