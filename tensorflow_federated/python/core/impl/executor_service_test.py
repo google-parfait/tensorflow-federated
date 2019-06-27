@@ -76,7 +76,7 @@ class ExecutorServiceTest(absltest.TestCase):
     return value
 
   def test_executor_service_create_tensor_value(self):
-    value_proto = executor_service_utils.serialize_value(
+    value_proto, _ = executor_service_utils.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
     request = executor_pb2.CreateValueRequest(value=value_proto)
     response = self._stub.CreateValue(request)
@@ -91,7 +91,7 @@ class ExecutorServiceTest(absltest.TestCase):
     def comp():
       return tf.constant(10)
 
-    value_proto = executor_service_utils.serialize_value(comp)
+    value_proto, _ = executor_service_utils.serialize_value(comp)
     request = executor_pb2.CreateValueRequest(value=value_proto)
     response = self._stub.CreateValue(request)
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
