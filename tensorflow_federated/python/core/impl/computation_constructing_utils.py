@@ -176,6 +176,60 @@ def construct_compiled_input_replication(type_signature, n_replicas):
   return computation_building_blocks.CompiledComputation(proto)
 
 
+def construct_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
+  """Constructs TF function broadcasting scalar to shape `new_shape`.
+
+  Args:
+    scalar_type: Instance of `tf.DType`, the type of the scalar we are looking
+      to broadcast.
+    new_shape: Instance of `tf.TensorShape`, the shape we wish to broadcast to.
+      Must be fully defined.
+
+  Returns:
+    Instance of `computation_building_blocks.CompiledComputation` representing
+    a function declaring a scalar parameter of dtype `scalar_type`, and
+    returning a tensor of this same dtype and shape `new_shape`, with the same
+    value in each entry as its scalar argument.
+
+  Raises:
+    TypeError: If the types of the arguments do not match the declared arg
+    types.
+    ValueError: If `new_shape` is not fully defined.
+  """
+  # TODO(b/136119348): There are enough of these little TF helper functions,
+  # and they are suffificiently conceptually similar, to potentially warrant
+  # factoring out into their own file. At the same time, a possible clearer
+  # pattern than immediately dropping into the graph context manager would be
+  # to declare parameter ad result bindings outside of the context manager
+  # (after constructing the graph of course) and only dropping in for the body.
+  # If these functions get moved, perhaps that would be a natural time to
+  # revisit the pattern.
+  py_typecheck.check_type(scalar_type, tf.DType)
+  py_typecheck.check_type(new_shape, tf.TensorShape)
+  new_shape.assert_is_fully_defined()
+  tensor_spec = computation_types.TensorType(scalar_type, shape=())
+
+  with tf.Graph().as_default() as graph:
+    parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+        'x', tensor_spec, graph)
+    result = tf.broadcast_to(parameter_value, new_shape)
+    result_type, result_binding = graph_utils.capture_result_from_graph(
+        result, graph)
+
+  function_type = computation_types.FunctionType(
+      computation_types.TensorType(dtype=scalar_type, shape=()), result_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  proto = pb.Computation(
+      type=serialized_function_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          parameter=parameter_binding,
+          result=result_binding))
+
+  return computation_building_blocks.CompiledComputation(proto)
+
+
 def construct_tensorflow_binary_operator(operand_type, operator):
   """Constructs a TensorFlow computation for the binary `operator`.
 
