@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
+
 from tensorflow_federated.python.core.impl.computation_building_blocks import Block
 from tensorflow_federated.python.core.impl.computation_building_blocks import Call
 from tensorflow_federated.python.core.impl.computation_building_blocks import CompiledComputation
@@ -57,6 +59,28 @@ from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compa
 from tensorflow_federated.python.core.impl.type_utils import transform_type_postorder
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
+
+# High-performance simulation components currently only available in Python 3,
+# and dependent on targets are are not currently included in the open-source
+# build rule.
+# TODO(b/134543154): Modify the OSS build rule to conditionally include these
+# new targets if possible.
+if six.PY3:
+  # pylint: disable=g-import-not-at-top
+  try:
+    from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
+    from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
+    from tensorflow_federated.python.core.impl.executor_base import Executor
+    from tensorflow_federated.python.core.impl.executor_service import ExecutorService
+    from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
+    from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
+    from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
+    from tensorflow_federated.python.core.impl.set_default_executor import set_default_executor
+    from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
+  except ModuleNotFoundError:
+    pass
+  # pylint: enable=g-import-not-at-top
+
 # Used by doc generation script.
 _allowed_symbols = [
     "Block",
