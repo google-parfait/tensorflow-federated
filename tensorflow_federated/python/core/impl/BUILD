@@ -670,10 +670,13 @@ py_library(
     srcs = ["intrinsic_utils.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_constructing_utils",
         ":context_stack_base",
         ":intrinsic_defs",
         ":type_constructors",
+        ":type_utils",
         ":value_impl",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
@@ -684,8 +687,11 @@ py_test(
     size = "small",
     srcs = ["intrinsic_utils_test.py"],
     deps = [
+        ":computation_building_blocks",
         ":context_stack_impl",
         ":intrinsic_utils",
+        ":placement_literals",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 

@@ -1705,5 +1705,43 @@ class TransformTypePostorderTest(tf.test.TestCase):
       type_utils.reconcile_value_with_type_spec(comp, tf.int32)
 
 
+class IsBinaryOpWithUpcastCompatibleTest(test.TestCase):
+
+  def test_passes_on_none(self):
+    self.assertTrue(
+        type_utils.is_binary_op_with_upcast_compatible_pair(None, None))
+
+  def test_passes_empty_tuples(self):
+    self.assertTrue(type_utils.is_binary_op_with_upcast_compatible_pair([], []))
+
+  def test_fails_scalars_different_dtypes(self):
+    self.assertFalse(
+        type_utils.is_binary_op_with_upcast_compatible_pair(
+            tf.int32, tf.float32))
+
+  def test_passes_named_tuple_and_compatible_scalar(self):
+    self.assertTrue(
+        type_utils.is_binary_op_with_upcast_compatible_pair(
+            [('a', computation_types.TensorType(tf.int32, [2, 2]))], tf.int32))
+
+  def test_fails_named_tuple_and_incompatible_scalar(self):
+    self.assertFalse(
+        type_utils.is_binary_op_with_upcast_compatible_pair(
+            [('a', computation_types.TensorType(tf.int32, [2, 2]))],
+            tf.float32))
+
+  def test_fails_compatible_scalar_and_named_tuple(self):
+    self.assertFalse(
+        type_utils.is_binary_op_with_upcast_compatible_pair(
+            tf.float32,
+            [('a', computation_types.TensorType(tf.int32, [2, 2]))]))
+
+  def test_fails_named_tuple_type_and_non_scalar_tensor(self):
+    self.assertFalse(
+        type_utils.is_binary_op_with_upcast_compatible_pair(
+            [('a', computation_types.TensorType(tf.int32, [2, 2]))],
+            computation_types.TensorType(tf.int32, [2])))
+
+
 if __name__ == '__main__':
   tf.test.main()
