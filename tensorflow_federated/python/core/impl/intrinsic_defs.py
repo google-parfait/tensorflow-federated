@@ -404,6 +404,25 @@ GENERIC_PLUS = IntrinsicDef(
     'GENERIC_PLUS', 'generic_plus',
     type_constructors.binary_op(computation_types.AbstractType('T')))
 
+# Performs pointwise TensorFlow division on its arguments.
+# The type signature of generic divide is determined by TensorFlow's set of
+# implicit type equations. For example, dividing `int32` by `int32` in TF
+# generates a tensor of type `float64`. There is therefore more structure than
+# is suggested by the type signature `<T,T> -> U`.
+# Type signature: <T,T> -> U
+GENERIC_DIVIDE = IntrinsicDef(
+    'GENERIC_DIVIDE', 'generic_divide',
+    computation_types.FunctionType([
+        computation_types.AbstractType('T'),
+        computation_types.AbstractType('T')
+    ], computation_types.AbstractType('U')))
+
+# Performs pointwise TensorFlow multiplication on its arguments.
+# Type signature: <T,T> -> T
+GENERIC_MULTIPLY = IntrinsicDef(
+    'GENERIC_MULTIPLY', 'generic_multiply',
+    computation_types.FunctionType([computation_types.AbstractType('T')] * 2,
+                                   computation_types.AbstractType('T')))
 # Generic zero operator that represents zero-filled values of diverse types (to
 # be defined, but generally similar to that supported by GENERIC_ADD).
 #
