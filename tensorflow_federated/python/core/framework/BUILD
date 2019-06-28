@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//tensorflow_federated/python/core:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -14,5 +14,18 @@ py_library(
         "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
-    ]
+    ] + select({
+        "//tensorflow_federated:py2_mode": [],
+        "//tensorflow_federated:py3_mode": [
+            "//tensorflow_federated/python/core/impl:concurrent_executor",
+            "//tensorflow_federated/python/core/impl:eager_executor",
+            "//tensorflow_federated/python/core/impl:executor_base",
+            "//tensorflow_federated/python/core/impl:executor_service",
+            "//tensorflow_federated/python/core/impl:executor_value_base",
+            "//tensorflow_federated/python/core/impl:federated_executor",
+            "//tensorflow_federated/python/core/impl:remote_executor",
+            "//tensorflow_federated/python/core/impl:set_default_executor",
+            "//tensorflow_federated/python/core/impl:transforming_executor",
+        ],
+    }),
 )
