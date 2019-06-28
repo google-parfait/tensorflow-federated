@@ -568,6 +568,54 @@ def is_generic_op_compatible_type(type_spec):
   return type_tree_contains_only(type_spec, tf_comp_whitelist)
 
 
+def is_binary_op_with_upcast_compatible_pair(possibly_nested_type,
+                                             type_to_upcast):
+  """Checks unambiguity in applying `type_to_upcast` to `possibly_nested_type`.
+
+  That is, checks that either these types are equivalent and contain only
+  tuples and tensors, or that
+  `possibly_nested_type` is perhaps a nested structure containing only tensors
+  with `dtype` of `type_to_upcast` at the leaves, where `type_to_upcast` must
+  be a scalar tensor type. Notice that this relationship is not symmetric,
+  since binary operators need not respect this symmetry in general.
+  For example, it makes perfect sence to divide a nested structure of tensors
+  by a scalar, but not the other way around.
+
+  Args:
+    possibly_nested_type: Convertible to `computation_types.Type`.
+    type_to_upcast: Convertible to `computation_types.Type`.
+
+  Returns:
+    Boolean indicating whether `type_to_upcast` can be upcast to
+    `possibly_nested_type` in the manner described above.
+  """
+  possibly_nested_type = computation_types.to_type(possibly_nested_type)
+  type_to_upcast = computation_types.to_type(type_to_upcast)
+  if not (is_generic_op_compatible_type(possibly_nested_type) and
+          is_generic_op_compatible_type(type_to_upcast)):
+    return False
+  if are_equivalent_types(possibly_nested_type, type_to_upcast):
+    return True
+  if not (isinstance(type_to_upcast, computation_types.TensorType) and
+          type_to_upcast.shape == tf.TensorShape(())):
+    return False
+
+  types_are_ok = [True]
+
+  only_allowed_dtype = type_to_upcast.dtype
+
+  def _check_tensor_types(type_spec):
+    if isinstance(
+        type_spec,
+        computation_types.TensorType) and type_spec.dtype != only_allowed_dtype:
+      types_are_ok[0] = False
+    return type_spec, False
+
+  transform_type_postorder(possibly_nested_type, _check_tensor_types)
+
+  return types_are_ok[0]
+
+
 def type_tree_contains_types(type_spec, blacklisted_types):
   """Checks whether `type_spec` contains any instances of `blacklisted_types`.
 
