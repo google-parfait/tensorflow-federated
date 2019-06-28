@@ -36,15 +36,6 @@ from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
-_AVAILABLE_DEVICES = list(
-    '/{}'.format(str(x.name[17:]))
-    for x in tf.config.experimental.list_physical_devices()
-    if x.name.startswith('/physical_device:'))
-
-
-def get_available_devices():
-  return _AVAILABLE_DEVICES
-
 
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
   """Embeds a TensorFlow computation for use in the eager context.
@@ -325,8 +316,9 @@ class EagerExecutor(executor_base.Executor):
 
     Args:
       device: An optional name of the device that this executor will schedule
-        all of its operations to run on. Must be one of the devices returned by
-        `get_available_devices`.
+        all of its operations to run on. It is the caller's responsibility to
+        select a correct device name. For example, the list of physical devices
+        can be obtained using `tf.config.experimental.list_physical_devices()`.
 
     Raises:
       RuntimeError: If not executing eagerly.
@@ -337,9 +329,6 @@ class EagerExecutor(executor_base.Executor):
       raise RuntimeError('The eager executor may only be used in eager mode.')
     if device is not None:
       py_typecheck.check_type(device, six.string_types)
-      if device not in get_available_devices():
-        raise ValueError('No device "{}"; available devices are {}'.format(
-            device, str(get_available_devices())))
       self._device = device
     else:
       self._device = None

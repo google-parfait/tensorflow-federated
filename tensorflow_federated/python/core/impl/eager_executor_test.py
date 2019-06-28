@@ -38,11 +38,6 @@ class EagerExecutorTest(absltest.TestCase):
   # TODO(b/134764569): Potentially take advantage of something similar to the
   # `tf.test.TestCase.evaluate()` to avoid having to call `.numpy()` everywhere.
 
-  def test_get_available_devices(self):
-    devices = eager_executor.get_available_devices()
-    self.assertIsInstance(devices, list)
-    self.assertIn('/CPU:0', devices)
-
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
     @computations.tf_computation(tf.int32)
@@ -184,12 +179,6 @@ class EagerExecutorTest(absltest.TestCase):
     with tf.Graph().as_default():
       with self.assertRaises(RuntimeError):
         eager_executor.EagerExecutor()
-
-  def test_executor_constructor_fails_if_bogus_device_name(self):
-    with self.assertRaises(TypeError):
-      eager_executor.EagerExecutor(10)
-    with self.assertRaises(ValueError):
-      eager_executor.EagerExecutor('Mary had a little lamb.')
 
   def test_executor_construction_with_correct_device_name(self):
     eager_executor.EagerExecutor('/CPU:0')

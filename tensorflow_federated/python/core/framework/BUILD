@@ -1,4 +1,4 @@
-package(default_visibility = ["//tensorflow_federated/python/core:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -14,5 +14,5 @@ py_library(
         "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
-    ],
+    ]
 )
