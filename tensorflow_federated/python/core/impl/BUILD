@@ -602,11 +602,17 @@ py_library(
     name = "intrinsic_bodies",
     srcs = ["intrinsic_bodies.py"],
     deps = [
+        ":computation_building_blocks",
+        ":computation_constructing_utils",
         ":context_stack_base",
         ":intrinsic_defs",
         ":intrinsic_factory",
         ":intrinsic_utils",
+        ":type_utils",
+        ":value_impl",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 
@@ -619,6 +625,8 @@ py_test(
         ":computation_impl",
         ":context_stack_impl",
         ":intrinsic_bodies",
+        ":intrinsic_defs",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",

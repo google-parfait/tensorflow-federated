@@ -1013,7 +1013,9 @@ class ReferenceExecutor(context_base.Context):
                       'types ({} vs. {}).'.format(
                           str(element_type), str(arg.type_signature[1])))
     if isinstance(element_type, computation_types.TensorType):
-      return ComputedValue(arg.value[0] + arg.value[1], element_type)
+      val = numpy_cast(arg.value[0] + arg.value[1], element_type.dtype,
+                       element_type.shape)
+      return ComputedValue(val, element_type)
     elif isinstance(element_type, computation_types.NamedTupleType):
       py_typecheck.check_type(arg.value[0], anonymous_tuple.AnonymousTuple)
       py_typecheck.check_type(arg.value[1], anonymous_tuple.AnonymousTuple)
