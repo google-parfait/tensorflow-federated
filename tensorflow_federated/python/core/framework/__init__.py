@@ -54,6 +54,7 @@ from tensorflow_federated.python.core.impl.transformations import replace_select
 from tensorflow_federated.python.core.impl.transformations import TFParser
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.transformations import unwrap_placement
+from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compatible_type
 from tensorflow_federated.python.core.impl.type_utils import transform_type_postorder
@@ -98,6 +99,7 @@ _allowed_symbols = [
     "Reference",
     "Selection",
     "Tuple",
+    "are_equivalent_types",
     "check_has_unique_names",
     "check_intrinsics_whitelisted_for_reduction",
     "create_federated_map_all_equal",

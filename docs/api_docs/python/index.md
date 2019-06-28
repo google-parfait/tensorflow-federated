@@ -33,6 +33,7 @@
 *   <a href="./tff/framework/Selection.md"><code>tff.framework.Selection</code></a>
 *   <a href="./tff/framework/TFParser.md"><code>tff.framework.TFParser</code></a>
 *   <a href="./tff/framework/Tuple.md"><code>tff.framework.Tuple</code></a>
+*   <a href="./tff/framework/are_equivalent_types.md"><code>tff.framework.are_equivalent_types</code></a>
 *   <a href="./tff/framework/building_block_to_computation.md"><code>tff.framework.building_block_to_computation</code></a>
 *   <a href="./tff/framework/check_has_unique_names.md"><code>tff.framework.check_has_unique_names</code></a>
 *   <a href="./tff/framework/check_intrinsics_whitelisted_for_reduction.md"><code>tff.framework.check_intrinsics_whitelisted_for_reduction</code></a>

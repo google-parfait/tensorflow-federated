@@ -54,6 +54,9 @@ elements in TFF's internal language.
 
 ## Functions
 
+[`are_equivalent_types(...)`](../tff/framework/are_equivalent_types.md):
+Determines whether `type1` and `type2` are equivalent.
+
 [`building_block_to_computation(...)`](../tff/framework/building_block_to_computation.md):
 Converts a computation building block to a computation impl.
 

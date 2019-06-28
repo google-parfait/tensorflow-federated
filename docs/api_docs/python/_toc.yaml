@@ -60,6 +60,8 @@ toc:
     section:
     - title: Overview
       path: /federated/api_docs/python/tff/framework
+    - title: are_equivalent_types
+      path: /federated/api_docs/python/tff/framework/are_equivalent_types
     - title: Block
       path: /federated/api_docs/python/tff/framework/Block
     - title: building_block_to_computation
