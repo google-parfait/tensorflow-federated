@@ -16,6 +16,14 @@ py_library(
     ],
 )
 
+py_binary(
+    name = "worker",
+    srcs = ["worker.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
 py_library(
     name = "client_data",
     srcs = ["client_data.py"],
