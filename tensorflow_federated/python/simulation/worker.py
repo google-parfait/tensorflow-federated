@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An internal Google-specific worker binary for deployment on borg."""
+"""A generic worker binary for deployment, e.g., on GCP."""
 
 import concurrent
 import time
