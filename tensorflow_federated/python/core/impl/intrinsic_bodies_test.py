@@ -51,12 +51,45 @@ class IntrinsicBodiesTest(absltest.TestCase):
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
+
+    body_string = (r'\(FEDERATED_arg -> '
+                   r'federated_aggregate\(<FEDERATED_arg,generic_zero,'
+                   r'\(binary_operator_arg'
+                   r' -> comp#[a-z0-9]+\(<binary_operator_arg\[0\],'
+                   r'binary_operator_arg\[1\]>\)\),\(binary_operator_arg'
+                   r' -> comp#[a-z0-9]+\(<binary_operator_arg\[0\],'
+                   r'binary_operator_arg\[1\]>\)\),comp#[a-z0-9]+>\)\)')
+
+    self.assertRegexMatch(_body_str(foo), [body_string])
     self.assertEqual(foo([1]), 1)
     self.assertEqual(foo([1, 2, 3]), 6)
-    self.assertRegexMatch(
-        _body_str(foo), [
-            r'\(FEDERATED_arg -> federated_aggregate\(<FEDERATED_arg,generic_zero,generic_plus,generic_plus,comp#[a-z0-9]+>\)\)'
-        ])
+
+  def test_federated_sum_named_tuples(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
+                                        placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.FEDERATED_SUM.uri](x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({<a=int32,b=float32>}@CLIENTS -> <a=int32,b=float32>@SERVER)')
+    self.assertDictEqual(
+        anonymous_tuple.to_odict(foo([[1, 2.]])), {
+            'a': 1,
+            'b': 2.
+        })
+    self.assertDictEqual(
+        anonymous_tuple.to_odict(foo([[1, 2.], [3, 4.]])), {
+            'a': 4,
+            'b': 6.
+        })
+
+  # TODO(b/136495368): It is clear that testing at least the generic operators
+  # can be made much simpler by placing each in its own test class.
 
   def test_federated_generic_divide_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -205,6 +238,21 @@ class IntrinsicBodiesTest(absltest.TestCase):
     self.assertEqual(foo([1]), [1])
     self.assertEqual(foo([1, 2, 3]), [1, 4, 9])
 
+  def test_federated_generic_add_with_ints(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, x)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> {int32}@CLIENTS)')
+
+    self.assertEqual(foo([1]), [2])
+    self.assertEqual(foo([1, 2, 3]), [2, 4, 6])
+
   def test_federated_generic_multiply_with_unnamed_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -227,6 +275,30 @@ class IntrinsicBodiesTest(absltest.TestCase):
             anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)]),
             anonymous_tuple.AnonymousTuple([(None, 1), (None, 4.)]),
             anonymous_tuple.AnonymousTuple([(None, 1), (None, 9.)])
+        ])
+
+  def test_federated_generic_add_with_unnamed_tuples(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType([tf.int32, tf.float32],
+                                        placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({<int32,float32>}@CLIENTS -> {<int32,float32>}@CLIENTS)')
+
+    self.assertEqual(
+        foo([[1, 1.]]),
+        [anonymous_tuple.AnonymousTuple([(None, 2.), (None, 2.)])])
+    self.assertEqual(
+        foo([[1, 1.], [1, 2.], [1, 3.]]), [
+            anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)]),
+            anonymous_tuple.AnonymousTuple([(None, 2), (None, 4.)]),
+            anonymous_tuple.AnonymousTuple([(None, 2), (None, 6.)])
         ])
 
   def test_federated_generic_multiply_with_named_tuples(self):
@@ -253,6 +325,30 @@ class IntrinsicBodiesTest(absltest.TestCase):
             anonymous_tuple.AnonymousTuple([('a', 1), ('b', 9.)])
         ])
 
+  def test_federated_generic_add_with_named_tuples(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
+                                        placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
+
+    self.assertEqual(
+        foo([[1, 1.]]),
+        [anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)])])
+    self.assertEqual(
+        foo([[1, 1.], [1, 2.], [1, 3.]]), [
+            anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]),
+            anonymous_tuple.AnonymousTuple([('a', 2), ('b', 4.)]),
+            anonymous_tuple.AnonymousTuple([('a', 2), ('b', 6.)])
+        ])
+
   def test_generic_multiply_with_named_tuple_of_federated_types(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -272,6 +368,25 @@ class IntrinsicBodiesTest(absltest.TestCase):
         foo([[1], [1]]),
         anonymous_tuple.AnonymousTuple([('a', [1.]), ('b', [1.])]))
 
+  def test_generic_add_with_named_tuple_of_federated_types(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+
+    @computations.federated_computation([('a', fed_int), ('b', fed_int)])
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<a={int32}@CLIENTS,b={int32}@CLIENTS> -> <a={int32}@CLIENTS,b={int32}@CLIENTS>)'
+    )
+
+    self.assertEqual(
+        foo([[1], [1]]),
+        anonymous_tuple.AnonymousTuple([('a', [2.]), ('b', [2.])]))
+
   def test_generic_multiply_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -287,6 +402,21 @@ class IntrinsicBodiesTest(absltest.TestCase):
     self.assertEqual(
         foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
+  def test_generic_add_with_unplaced_named_tuples(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(<a=int32,b=float32> -> <a=int32,b=float32>)')
+
+    self.assertEqual(
+        foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]))
+
   def test_generic_multiply_with_unplaced_scalars(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -301,7 +431,7 @@ class IntrinsicBodiesTest(absltest.TestCase):
     self.assertEqual(foo(2.), 4.)
     self.assertEqual(foo(3.), 9.)
 
-  def test_generic_multiply_unplaced_named_tuple_by_tensor(self):
+  def test_generic_multiply_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
@@ -325,6 +455,32 @@ class IntrinsicBodiesTest(absltest.TestCase):
             anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]),
             anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 4.)]),
             anonymous_tuple.AnonymousTuple([('a', 4.), ('b', 16.)])
+        ])
+
+  def test_generic_add_federated_named_tuple_by_tensor(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType([[('a', tf.float32),
+                                          ('b', tf.float32)], tf.float32],
+                                        placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x[0], x[1])
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({<<a=float32,b=float32>,float32>}@CLIENTS -> {<a=float32,b=float32>}@CLIENTS)'
+    )
+
+    self.assertEqual(
+        foo([[[1., 1.], 1.]]),
+        [anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)])])
+    self.assertEqual(
+        foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]), [
+            anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]),
+            anonymous_tuple.AnonymousTuple([('a', 3.), ('b', 4.)]),
+            anonymous_tuple.AnonymousTuple([('a', 5.), ('b', 8.)])
         ])
 
   def test_federated_weighted_mean_with_ints(self):

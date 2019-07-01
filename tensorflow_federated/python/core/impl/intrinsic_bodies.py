@@ -156,6 +156,30 @@ def get_intrinsic_bodies(context_stack):
                             x.type_signature) != dir(x.type_signature):
         raise TypeError(top_level_mismatch_string)
 
+  def federated_weighted_mean(arg):
+    x = arg[0]
+    w = arg[1]
+    multiplied = generic_multiply(x, w)
+    summed = federated_sum(intrinsics.federated_zip([multiplied, w]))
+    return generic_divide(summed[0], summed[1])
+
+  def federated_sum(x):
+    zero = intrinsic_utils.zero_for(x.type_signature.member, context_stack)
+    plus_op = value_impl.ValueImpl(
+        intrinsic_utils.construct_binary_operator_with_upcast(
+            computation_types.NamedTupleType(
+                [x.type_signature.member, x.type_signature.member]), tf.add),
+        context_stack)
+    return federated_reduce([x, zero, plus_op])
+
+  def federated_reduce(arg):
+    x = arg[0]
+    zero = arg[1]
+    op = arg[2]
+    identity = computation_constructing_utils.construct_compiled_identity(
+        op.type_signature.result)
+    return intrinsics.federated_aggregate(x, zero, op, op, identity)
+
   def generic_divide(x, y):
     """Divides two arguments when possible."""
     _check_top_level_compatibility_with_generic_operators(
@@ -172,7 +196,8 @@ def get_intrinsic_bodies(context_stack):
       return value_impl.ValueImpl(named_divided, context_stack)
     arg = _pack_binary_operator_args(x, y)
     arg_comp = value_impl.ValueImpl.get_comp(arg)
-    divided = intrinsic_utils.binary_operator_with_upcast(arg_comp, tf.divide)
+    divided = intrinsic_utils.apply_binary_operator_with_upcast(
+        arg_comp, tf.divide)
     return value_impl.ValueImpl(divided, context_stack)
 
   def generic_multiply(x, y):
@@ -191,29 +216,27 @@ def get_intrinsic_bodies(context_stack):
       return value_impl.ValueImpl(named_multiplied, context_stack)
     arg = _pack_binary_operator_args(x, y)
     arg_comp = value_impl.ValueImpl.get_comp(arg)
-    multiplied = intrinsic_utils.binary_operator_with_upcast(
+    multiplied = intrinsic_utils.apply_binary_operator_with_upcast(
         arg_comp, tf.multiply)
     return value_impl.ValueImpl(multiplied, context_stack)
 
-  def federated_weighted_mean(arg):
-    x = arg[0]
-    w = arg[1]
-    multiplied = generic_multiply(x, w)
-    summed = federated_sum(intrinsics.federated_zip([multiplied, w]))
-    return generic_divide(summed[0], summed[1])
-
-  def federated_sum(x):
-    zero = intrinsic_utils.zero_for(x.type_signature.member, context_stack)
-    plus = intrinsic_utils.plus_for(x.type_signature.member, context_stack)
-    return federated_reduce([x, zero, plus])
-
-  def federated_reduce(arg):
-    x = arg[0]
-    zero = arg[1]
-    op = arg[2]
-    identity = computation_constructing_utils.construct_compiled_identity(
-        op.type_signature.result)
-    return intrinsics.federated_aggregate(x, zero, op, op, identity)
+  def generic_plus(x, y):
+    """Adds two arguments when possible."""
+    _check_top_level_compatibility_with_generic_operators(x, y, 'Generic plus')
+    if isinstance(x.type_signature, computation_types.NamedTupleType):
+      # This case is needed if federated types are nested deeply.
+      names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
+      added = [
+          value_impl.ValueImpl.get_comp(generic_plus(x[i], y[i]))
+          for i in range(len(names))
+      ]
+      named_added = computation_constructing_utils.create_named_tuple(
+          computation_building_blocks.Tuple(added), names)
+      return value_impl.ValueImpl(named_added, context_stack)
+    arg = _pack_binary_operator_args(x, y)
+    arg_comp = value_impl.ValueImpl.get_comp(arg)
+    added = intrinsic_utils.apply_binary_operator_with_upcast(arg_comp, tf.add)
+    return value_impl.ValueImpl(added, context_stack)
 
   # - FEDERATED_ZIP(x, y) := GENERIC_ZIP(x, y)
   #
@@ -273,8 +296,9 @@ def get_intrinsic_bodies(context_stack):
   # - SEQUENCE_REDUCE
 
   return collections.OrderedDict([
-      (intrinsic_defs.FEDERATED_SUM.uri, federated_sum),
       (intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, federated_weighted_mean),
+      (intrinsic_defs.FEDERATED_SUM.uri, federated_sum),
       (intrinsic_defs.GENERIC_DIVIDE.uri, generic_divide),
       (intrinsic_defs.GENERIC_MULTIPLY.uri, generic_multiply),
+      (intrinsic_defs.GENERIC_PLUS.uri, generic_plus),
   ])

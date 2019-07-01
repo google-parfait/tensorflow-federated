@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -48,30 +47,62 @@ def zero_for(type_spec, context_stack):
                                             type_spec), context_stack)
 
 
-def plus_for(type_spec, context_stack):
-  """Constructs PLUS intrinsic that operates on values of TFF type `type_spec`.
+def _check_generic_operator_type(type_spec):
+  """Checks that `type_spec` can be the signature of args to a generic op."""
+  if not type_utils.type_tree_contains_only(
+      type_spec,
+      (computation_types.FederatedType, computation_types.NamedTupleType,
+       computation_types.TensorType)):
+    raise TypeError(
+        'Generic operators are only implemented for '
+        'arguments both containing only federated, tuple and '
+        'tensor types; you have passed an argument of type {} '.format(
+            type_spec))
+  if not (isinstance(type_spec, computation_types.NamedTupleType) and
+          len(type_spec) == 2):
+    raise TypeError(
+        'We are trying to construct a generic operator declaring argument that '
+        'is not a two-tuple, the type {}.'.format(type_spec))
+  if not type_utils.is_binary_op_with_upcast_compatible_pair(
+      type_spec[0], type_spec[1]):
+    raise TypeError('The two-tuple you have passed in is incompatible with '
+                    'upcasted binary operators. You have passed the tuple '
+                    'type {}, which fails the check that the two members of '
+                    'the tuple are either the same type, or the second is a '
+                    'scalar with the same dtype as the leaves of the first. '
+                    'See `type_utils.is_binary_op_with_upcast_compatible_pair` '
+                    'for more details.'.format(type_spec))
+
+
+def construct_binary_operator_with_upcast(type_signature, operator):
+  """Constructs lambda upcasting its argument and applying `operator`.
+
+  The concept of upcasting is explained further in the docstring for
+  `apply_binary_operator_with_upcast`.
+
+  Notice that since we are constructing a function here, e.g. for the body
+  of an intrinsic, the function we are constructing must be reducible to
+  TensorFlow. Therefore `type_signature` can only have named tuple or tensor
+  type elements; that is, we cannot handle federated types here in a generic
+  way.
 
   Args:
-    type_spec: An instance of `types.Type` or something convertible to it.
-      intrinsic.
-    context_stack: The context stack to use.
+    type_signature: Value convertible to `computation_types.NamedTupleType`,
+      with two elements, both of the same type or the second able to be upcast
+      to the first, as explained in `apply_binary_operator_with_upcast`, and
+      both containing only tuples and tensors in their type tree.
+    operator: Callable defining the operator.
 
   Returns:
-    The `PLUS` intrinsic of type `<T,T> -> T`, where `T` represents `type_spec`.
+    A `computation_building_blocks.Lambda` encapsulating a function which
+    upcasts the second element of its argument and applies the binary
+    operator.
   """
-  type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  return value_impl.ValueImpl(
-      computation_building_blocks.Intrinsic(
-          intrinsic_defs.GENERIC_PLUS.uri,
-          type_constructors.binary_op(type_spec)), context_stack)
-
-
-def _construct_lambda_encapsulating_binary_operator(ref_to_arg, operator):
-  """Constructs lambda upcasting `ref_to_arg` and applying `operator`."""
-  py_typecheck.check_type(ref_to_arg.type_signature,
-                          computation_types.NamedTupleType)
   py_typecheck.check_callable(operator)
+  type_signature = computation_types.to_type(type_signature)
+  _check_generic_operator_type(type_signature)
+  ref_to_arg = computation_building_blocks.Reference('binary_operator_arg',
+                                                     type_signature)
 
   def _pack_into_type(to_pack, type_spec):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
@@ -103,7 +134,7 @@ def _construct_lambda_encapsulating_binary_operator(ref_to_arg, operator):
   return lambda_encapsulating_op
 
 
-def binary_operator_with_upcast(arg, operator):
+def apply_binary_operator_with_upcast(arg, operator):
   """Constructs result of applying `operator` to `arg` upcasting if appropriate.
 
   Notice `arg` here must be of federated type, with a named tuple member of
@@ -134,19 +165,9 @@ def binary_operator_with_upcast(arg, operator):
   Raises:
     TypeError: If the types don't match.
   """
-
   py_typecheck.check_type(arg,
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_callable(operator)
-  if not type_utils.type_tree_contains_only(
-      arg.type_signature,
-      (computation_types.FederatedType, computation_types.NamedTupleType,
-       computation_types.TensorType)):
-    raise TypeError(
-        'Generic operators are only implemented for '
-        'arguments both containing only federated, tuple and '
-        'tensor types; you have passed an argument of type {} '.format(
-            arg.type_signature))
   if isinstance(arg.type_signature, computation_types.FederatedType):
     py_typecheck.check_type(arg.type_signature.member,
                             computation_types.NamedTupleType)
@@ -158,22 +179,9 @@ def binary_operator_with_upcast(arg, operator):
         'Generic binary operators are only implemented for '
         'federated tuple and unplaced tuples; you have passed {}.'.format(
             arg.type_signature))
-  if len(tuple_type) != 2:
-    raise TypeError('We have passed a non 2-tuple to '
-                    '`binary_operator_with_upcast`, the type {}.'.format(
-                        arg.type_signature.member))
-  if not type_utils.is_binary_op_with_upcast_compatible_pair(
-      tuple_type[0], tuple_type[1]):
-    raise TypeError('The two-tuple you have passed in is incompatible with '
-                    'upcasted binary operators. You have passed the tuple '
-                    'type {}, which fails the check that the two members of '
-                    'the tuple are either the same type, or the second is a '
-                    'scalar with the same dtype as the leaves of the first. '
-                    'See `type_utils.is_binary_op_with_upcast_compatible_pair` '
-                    'for more details.'.format(tuple_type))
-  ref_to_arg = computation_building_blocks.Reference('tuple', tuple_type)
-  lambda_encapsulating_op = _construct_lambda_encapsulating_binary_operator(
-      ref_to_arg, operator)
+
+  lambda_encapsulating_op = construct_binary_operator_with_upcast(
+      tuple_type, operator)
 
   if isinstance(arg.type_signature, computation_types.FederatedType):
     called = computation_constructing_utils.create_federated_map_or_apply(

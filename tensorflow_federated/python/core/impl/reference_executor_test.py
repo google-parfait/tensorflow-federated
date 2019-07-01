@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import reference_executor
@@ -865,22 +866,24 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(foo(), 0)
 
   def test_generic_plus_with_integers(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
 
     @computations.federated_computation(tf.int32, tf.int32)
     def foo(x, y):
-      return intrinsic_utils.plus_for(tf.int32,
-                                      context_stack_impl.context_stack)(x, y)
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, y)
 
     self.assertEqual(str(foo.type_signature), '(<int32,int32> -> int32)')
     self.assertEqual(foo(2, 3), 5)
 
   def test_generic_plus_with_tuples(self):
     type_spec = [('A', tf.int32), ('B', tf.float32)]
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
 
     @computations.federated_computation(type_spec, type_spec)
     def foo(x, y):
-      return intrinsic_utils.plus_for(type_spec,
-                                      context_stack_impl.context_stack)(x, y)
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, y)
 
     self.assertEqual(
         str(foo.type_signature),

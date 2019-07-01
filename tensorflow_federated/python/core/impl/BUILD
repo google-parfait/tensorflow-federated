@@ -681,7 +681,6 @@ py_library(
         ":computation_constructing_utils",
         ":context_stack_base",
         ":intrinsic_defs",
-        ":type_constructors",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -699,6 +698,7 @@ py_test(
         ":context_stack_impl",
         ":intrinsic_utils",
         ":placement_literals",
+        ":type_constructors",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
@@ -749,6 +749,7 @@ py_test(
         ":computation_impl",
         ":context_stack_impl",
         ":graph_utils",
+        ":intrinsic_bodies",
         ":intrinsic_defs",
         ":intrinsic_utils",
         ":reference_executor",
