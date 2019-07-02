@@ -2106,5 +2106,113 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
     self.assertEqual(callable_add(1, 1), 2)
 
 
+class TensorFlowConstantTest(absltest.TestCase):
+
+  def test_raises_on_none_type_spec(self):
+    with self.assertRaises(TypeError):
+      computation_constructing_utils.construct_tensorflow_constant(None, 0)
+
+  def test_raises_type_spec_federated_int(self):
+    federated_int = computation_types.FederatedType(tf.int32,
+                                                    placement_literals.SERVER)
+    with self.assertRaisesRegex(TypeError, 'only nested tuples and tensors'):
+      computation_constructing_utils.construct_tensorflow_constant(
+          federated_int, 0)
+
+  def test_raises_non_scalar_value(self):
+    non_scalar_value = np.zeros([1])
+    with self.assertRaisesRegex(TypeError, 'Must pass a scalar'):
+      computation_constructing_utils.construct_tensorflow_constant(
+          tf.int32, non_scalar_value)
+
+  def test_raises_float_passed_for_int(self):
+    with self.assertRaisesRegex(TypeError, 'Only integers'):
+      computation_constructing_utils.construct_tensorflow_constant(tf.int32, 1.)
+
+  def test_constructs_integer_tensor_zero(self):
+    tensor_zero = computation_constructing_utils.construct_tensorflow_constant(
+        computation_types.TensorType(tf.int32, [2, 2]), 0)
+    self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
+    executable_noarg_zero = _to_computation_impl(tensor_zero.function)
+    self.assertTrue(
+        np.array_equal(executable_noarg_zero(), np.zeros([2, 2],
+                                                         dtype=np.int32)))
+
+  def test_constructs_float_tensor_one(self):
+    tensor_one = computation_constructing_utils.construct_tensorflow_constant(
+        computation_types.TensorType(tf.float32, [2, 2]), 1.)
+    self.assertIsInstance(tensor_one, computation_building_blocks.Call)
+    executable_noarg_one = _to_computation_impl(tensor_one.function)
+    self.assertTrue(
+        np.array_equal(executable_noarg_one(), np.ones([2, 2],
+                                                       dtype=np.float32)))
+
+  def test_constructs_unnamed_tuple_of_float_tensor_ones(self):
+    tuple_type = computation_types.NamedTupleType(
+        [computation_types.TensorType(tf.float32, [2, 2])] * 2)
+    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+        tuple_type, 1.)
+    self.assertEqual(tuple_of_ones.type_signature, tuple_type)
+    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
+    executable_noarg_one = _to_computation_impl(tuple_of_ones.function)
+    self.assertTrue(
+        np.array_equal(executable_noarg_one()[0],
+                       np.ones([2, 2], dtype=np.float32)))
+    self.assertTrue(
+        np.array_equal(executable_noarg_one()[1],
+                       np.ones([2, 2], dtype=np.float32)))
+
+  def test_constructs_named_tuple_of_float_tensor_ones(self):
+    tuple_type = computation_types.NamedTupleType([
+        ('a', computation_types.TensorType(tf.float32, [2, 2])),
+        ('b', computation_types.TensorType(tf.float32, [2, 2]))
+    ])
+    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+        tuple_type, 1.)
+    self.assertEqual(tuple_of_ones.type_signature, tuple_type)
+    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
+    executable_noarg_one = _to_computation_impl(tuple_of_ones.function)
+    self.assertTrue(
+        np.array_equal(executable_noarg_one().a,
+                       np.ones([2, 2], dtype=np.float32)))
+    self.assertTrue(
+        np.array_equal(executable_noarg_one().b,
+                       np.ones([2, 2], dtype=np.float32)))
+
+  def test_constructs_nested_named_tuple_of_float_tensor_ones(self):
+    tuple_type = computation_types.NamedTupleType([[
+        ('a', computation_types.TensorType(tf.float32, [2, 2])),
+        ('b', computation_types.TensorType(tf.float32, [2, 2]))
+    ]])
+    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+        tuple_type, 1.)
+    self.assertEqual(tuple_of_ones.type_signature, tuple_type)
+    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
+    executable_noarg_one = _to_computation_impl(tuple_of_ones.function)
+    self.assertTrue(
+        np.array_equal(executable_noarg_one()[0].a,
+                       np.ones([2, 2], dtype=np.float32)))
+    self.assertTrue(
+        np.array_equal(executable_noarg_one()[0].b,
+                       np.ones([2, 2], dtype=np.float32)))
+
+  def test_constructs_nested_named_tuple_of_int_and_float_tensor_ones(self):
+    tuple_type = computation_types.NamedTupleType([[
+        ('a', computation_types.TensorType(tf.int32, [2, 2])),
+        ('b', computation_types.TensorType(tf.float32, [2, 2]))
+    ]])
+    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+        tuple_type, 1)
+    self.assertEqual(tuple_of_ones.type_signature, tuple_type)
+    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
+    executable_noarg_zero = _to_computation_impl(tuple_of_ones.function)
+    self.assertTrue(
+        np.array_equal(executable_noarg_zero()[0].a,
+                       np.ones([2, 2], dtype=np.int32)))
+    self.assertTrue(
+        np.array_equal(executable_noarg_zero()[0].b,
+                       np.ones([2, 2], dtype=np.float32)))
+
+
 if __name__ == '__main__':
   absltest.main()
