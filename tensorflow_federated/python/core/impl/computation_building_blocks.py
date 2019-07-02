@@ -19,9 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import enum
 import zlib
 
 import six
+from six.moves import zip
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -111,20 +113,22 @@ class ComputationBuildingBlock(typed_object.TypedObject):
     """Returns a serialized form of this object as a pb.Computation instance."""
     raise NotImplementedError
 
-  @abc.abstractproperty
+  @property
   def tff_repr(self):
     """Returns the representation of the instance using TFF syntax."""
-    pass
+    return compact_representation(self)
 
   # TODO(b/113112885): Add memoization after identifying a suitable externally
   # available standard library that works in Python 2/3.
 
   @abc.abstractmethod
   def __repr__(self):
+    """Returns a full-form representation of this computation building block."""
     raise NotImplementedError
 
   def __str__(self):
-    return self.tff_repr
+    """Returns a concise representation of this computation building block."""
+    return compact_representation(self)
 
 
 class Reference(ComputationBuildingBlock):
@@ -181,13 +185,6 @@ class Reference(ComputationBuildingBlock):
   @property
   def context(self):
     return self._context
-
-  @property
-  def tff_repr(self):
-    if self._context is not None:
-      return '{}@{}'.format(self._name, str(self._context))
-    else:
-      return self._name
 
   def __repr__(self):
     return 'Reference(\'{}\', {}{})'.format(
@@ -294,13 +291,6 @@ class Selection(ComputationBuildingBlock):
   def index(self):
     return self._index
 
-  @property
-  def tff_repr(self):
-    if self._name is not None:
-      return '{}.{}'.format(str(self._source), self._name)
-    else:
-      return '{}[{}]'.format(str(self._source), self._index)
-
   def __repr__(self):
     if self._name is not None:
       return 'Selection({}, name={})'.format(
@@ -378,10 +368,6 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         tuple=pb.Tuple(element=elements))
-
-  @property
-  def tff_repr(self):
-    return anonymous_tuple.AnonymousTuple.__str__(self)
 
   def __repr__(self):
     return 'Tuple([{}])'.format(', '.join(
@@ -471,13 +457,6 @@ class Call(ComputationBuildingBlock):
   def argument(self):
     return self._argument
 
-  @property
-  def tff_repr(self):
-    if self._argument is not None:
-      return '{}({})'.format(str(self._function), str(self._argument))
-    else:
-      return '{}()'.format(str(self._function))
-
   def __repr__(self):
     if self._argument is not None:
       return 'Call({}, {})'.format(repr(self._function), repr(self._argument))
@@ -553,10 +532,6 @@ class Lambda(ComputationBuildingBlock):
   @property
   def result(self):
     return self._result
-
-  @property
-  def tff_repr(self):
-    return '({} -> {})'.format(self._parameter_name, str(self._result))
 
   def __repr__(self):
     return ('Lambda(\'{}\', {}, {})'.format(self._parameter_name,
@@ -666,12 +641,6 @@ class Block(ComputationBuildingBlock):
   def result(self):
     return self._result
 
-  @property
-  def tff_repr(self):
-    return ('(let {} in {})'.format(
-        ','.join('{}={}'.format(k, str(v)) for k, v in self._locals),
-        str(self._result)))
-
   def __repr__(self):
     return ('Block([{}], {})'.format(
         ', '.join('(\'{}\', {})'.format(k, repr(v)) for k, v in self._locals),
@@ -733,10 +702,6 @@ class Intrinsic(ComputationBuildingBlock):
   def uri(self):
     return self._uri
 
-  @property
-  def tff_repr(self):
-    return self._uri
-
   def __repr__(self):
     return 'Intrinsic(\'{}\', {})'.format(self._uri, repr(self.type_signature))
 
@@ -787,10 +752,6 @@ class Data(ComputationBuildingBlock):
   def uri(self):
     return self._uri
 
-  @property
-  def tff_repr(self):
-    return self._uri
-
   def __repr__(self):
     return 'Data(\'{}\', {})'.format(self._uri, repr(self.type_signature))
 
@@ -834,8 +795,8 @@ class CompiledComputation(ComputationBuildingBlock):
     return self._proto
 
   @property
-  def tff_repr(self):
-    return 'comp#{}'.format(self._name)
+  def name(self):
+    return self._name
 
   def __repr__(self):
     return 'CompiledComputation({}, {})'.format(self._name,
@@ -881,12 +842,535 @@ class Placement(ComputationBuildingBlock):
   def uri(self):
     return self._literal.uri
 
-  @property
-  def tff_repr(self):
-    return str(self._literal)
-
   def __repr__(self):
     return 'Placement(\'{}\')'.format(self.uri)
+
+
+def compact_representation(comp):
+  """Returns the compact string representation of the given `comp`.
+
+  Args:
+    comp: An instance of a TFF `ComputationBuildingBlock`.
+  """
+  return _string_representation(comp, formatted=False)
+
+
+def formatted_representation(comp):
+  """Returns the formatted string representation of the given `comp`.
+
+  Args:
+    comp: An instance of a TFF `ComputationBuildingBlock`.
+  """
+  return _string_representation(comp, formatted=True)
+
+
+def _string_representation(comp, formatted):
+  """Returns the string representation of a `ComputationBuildingBlock`.
+
+  This functions creates a `list` of strings representing the given `comp`;
+  combines the strings in either a formatted or un-formatted representation; and
+  returns the resulting string represetnation.
+
+  Args:
+    comp: An instance of a `ComputationBuildingBlock`.
+    formatted: A boolean indicating if the returned string should be formatted.
+
+  Raises:
+    TypeError: If `comp` has an unepxected type.
+  """
+  py_typecheck.check_type(comp, ComputationBuildingBlock)
+
+  def _join(components):
+    """Returns a `list` of strings by combining each component in `components`.
+
+    >>> _join([['a'], ['b'], ['c']])
+    ['abc']
+
+    >>> _join([['a', 'b', 'c'], ['d', 'e', 'f']])
+    ['abcd', 'ef']
+
+    This function is used to help track where new-lines should be inserted into
+    the string representation if the lines are formatted.
+
+    Args:
+      components: A `list` where each element is a `list` of strings
+        representing a part of the string of a `ComputationBuildingBlock`.
+    """
+    lines = ['']
+    for component in components:
+      lines[-1] = '{}{}'.format(lines[-1], component[0])
+      lines.extend(component[1:])
+    return lines
+
+  def _indent(lines, indent_chars='  '):
+    """Returns a `list` of strings indented across a slice."""
+    return ['{}{}'.format(indent_chars, e) for e in lines]
+
+  def _lines_for_named_comps(named_comps, formatted):
+    """Returns a `list` of strings representing the given `named_comps`.
+
+    Args:
+      named_comps: A `list` of named comutations, each being a pair consisting
+        of a name (either a string, or `None`) and a `ComputationBuildingBlock`.
+      formatted: A boolean indicating if the returned string should be
+        formatted.
+    """
+    lines = []
+    for index, (name, comp) in enumerate(named_comps):
+      if index != 0:
+        if formatted:
+          lines.append([',', ''])
+        else:
+          lines.append([','])
+      element_lines = _lines_for_comp(comp, formatted)
+      if name is not None:
+        element_lines = _join([
+            ['{}='.format(name)],
+            element_lines,
+        ])
+      lines.append(element_lines)
+    return _join(lines)
+
+  def _lines_for_comp(comp, formatted):
+    """Returns a `list` of strings representing the given `comp`.
+
+    Args:
+      comp: An instance of a `ComputationBuildingBlock`.
+      formatted: A boolean indicating if the returned string should be
+        formatted.
+    """
+    if isinstance(comp, Block):
+      lines = []
+      variables_lines = _lines_for_named_comps(comp.locals, formatted)
+      if formatted:
+        variables_lines = _indent(variables_lines)
+        lines.extend([['(let ', ''], variables_lines, ['', ' in ']])
+      else:
+        lines.extend([['(let '], variables_lines, [' in ']])
+      result_lines = _lines_for_comp(comp.result, formatted)
+      lines.append(result_lines)
+      lines.append([')'])
+      return _join(lines)
+    elif isinstance(comp, Reference):
+      if comp.context is not None:
+        return ['{}@{}'.format(comp.name, comp.context)]
+      else:
+        return [comp.name]
+    elif isinstance(comp, Selection):
+      source_lines = _lines_for_comp(comp.source, formatted)
+      if comp.name is not None:
+        return _join([source_lines, ['.{}'.format(comp.name)]])
+      else:
+        return _join([source_lines, ['[{}]'.format(comp.index)]])
+    elif isinstance(comp, Call):
+      function_lines = _lines_for_comp(comp.function, formatted)
+      if comp.argument is not None:
+        argument_lines = _lines_for_comp(comp.argument, formatted)
+        return _join([function_lines, ['('], argument_lines, [')']])
+      else:
+        return _join([function_lines, ['()']])
+    elif isinstance(comp, CompiledComputation):
+      return ['comp#{}'.format(comp.name)]
+    elif isinstance(comp, Data):
+      return [comp.uri]
+    elif isinstance(comp, Intrinsic):
+      return [comp.uri]
+    elif isinstance(comp, Lambda):
+      result_lines = _lines_for_comp(comp.result, formatted)
+      lines = [['({} -> '.format(comp.parameter_name)], result_lines, [')']]
+      return _join(lines)
+    elif isinstance(comp, Placement):
+      return [comp._literal.name]  # pylint: disable=protected-access
+    elif isinstance(comp, Tuple):
+      elements = anonymous_tuple.to_elements(comp)
+      elements_lines = _lines_for_named_comps(elements, formatted)
+      if formatted:
+        elements_lines = _indent(elements_lines)
+        lines = [['<', ''], elements_lines, ['', '>']]
+      else:
+        lines = [['<'], elements_lines, ['>']]
+      return _join(lines)
+    else:
+      raise NotImplementedError('Unexpected type found: {}.'.format(type(comp)))
+
+  lines = _lines_for_comp(comp, formatted)
+  lines = [line.rstrip() for line in lines]
+  if formatted:
+    return '\n'.join(lines)
+  else:
+    return ''.join(lines)
+
+
+def structural_representation(comp):
+  """Returns the structural string representation of the given `comp`.
+
+  This functions creates and returns a string representing the structure of the
+  abstract syntax tree for the given `comp`.
+
+  Args:
+    comp: An instance of a `ComputationBuildingBlock`.
+
+  Raises:
+    TypeError: If `comp` has an unepxected type.
+  """
+  py_typecheck.check_type(comp, ComputationBuildingBlock)
+  padding_char = ' '
+
+  def _get_leading_padding(string):
+    """Returns the length of the leading padding for the given `string`."""
+    for index, character in enumerate(string):
+      if character != padding_char:
+        return index
+    return len(string)
+
+  def _get_trailing_padding(string):
+    """Returns the length of the trailing padding for the given `string`."""
+    for index, character in enumerate(reversed(string)):
+      if character != padding_char:
+        return index
+    return len(string)
+
+  def _pad_bottom(lines, total_height):
+    """Pads the end of a `list` of strings to the given 'total_height'.
+
+    This function returns a new `list` of strings by appending padding the end
+    of `lines` to the given `total_height`. Each string of padding is
+    `padding_char` of length equal to the width of the first line in `lines`.
+
+    >>>_pad_bottom(['aa', 'bb'], 4)
+    ['aa', 'bb', '  ', '  ']
+
+    Args:
+      lines: A `list` of strings to pad.
+      total_height: The length that `lines` should be padded to.
+
+    Returns:
+      A `list` of lines with padding applied.
+    """
+    current_height = len(lines)
+    assert current_height <= total_height
+    line_width = len(lines[0])
+    padding = total_height - current_height
+    padding_lines = [padding_char * line_width for _ in range(padding)]
+    return lines + padding_lines
+
+  def _pad_left(lines, total_width):
+    """Pads the beginning of each line in `lines` to the given `total_width`.
+
+    >>>_pad_left(['aa', 'bb'], 4)
+    ['  aa', '  bb',]
+
+    Args:
+      lines: A `list` of strings to pad.
+      total_width: The length that each line in `lines` should be padded to.
+
+    Returns:
+      A `list` of lines with padding applied.
+    """
+
+    def _pad_line_left(line, total_width):
+      current_width = len(line)
+      assert current_width <= total_width
+      padding = total_width - current_width
+      return '{}{}'.format(padding_char * padding, line)
+
+    return [_pad_line_left(line, total_width) for line in lines]
+
+  def _pad_right(lines, total_width):
+    """Pads the end of each line in `lines` to the given `total_width`.
+
+    >>>_pad_right(['aa', 'bb'], 4)
+    ['aa  ', 'bb  ']
+
+    Args:
+      lines: A `list` of strings to pad.
+      total_width: The length that each line in `lines` should be padded to.
+
+    Returns:
+      A `list` of lines with padding applied.
+    """
+
+    def _pad_line_right(line, total_width):
+      current_width = len(line)
+      assert current_width <= total_width
+      padding = total_width - current_width
+      return '{}{}'.format(line, padding_char * padding)
+
+    return [_pad_line_right(line, total_width) for line in lines]
+
+  class Alignment(enum.Enum):
+    LEFT = 1
+    RIGHT = 2
+
+  def _concatenate(lines_1, lines_2, align):
+    """Concatenates two `list`s of strings.
+
+    Concatenates two `list`s of strings by appending one list of strings to the
+    other and then aligning lines of different widths by either padding the left
+    or padding the right of each line to the width of the longest line.
+
+    >>>_concatenate(['aa', 'bb'], ['ccc'], Alignment.LEFT)
+    ['aa ', 'bb ', 'ccc']
+
+    Args:
+      lines_1: A `list` of strings.
+      lines_2: A `list` of strings.
+      align: An enum indicating how to align lines of different widths.
+
+    Returns:
+      A `list` of lines.
+    """
+    lines = lines_1 + lines_2
+    longest_line = max(lines, key=len)
+    width = len(longest_line)
+    if align is Alignment.LEFT:
+      return _pad_right(lines, width)
+    elif align is Alignment.RIGHT:
+      return _pad_left(lines, width)
+
+  def _calculate_inset_from_padding(left, right, preferred_padding,
+                                    minimum_content_padding):
+    """Calculates the inset for the given padding.
+
+    NOTE: This function is intended to only be called from `_fit_with_padding`.
+
+    Args:
+      left: A `list` of strings.
+      right: A `list` of strings.
+      preferred_padding: The preferred amount of non-negative padding between
+        the lines in the fitted `list` of strings.
+      minimum_content_padding: The minimum amount of non-negative padding
+        allowed between the lines in the fitted `list` of strings.
+
+    Returns:
+      An integer.
+    """
+    assert preferred_padding >= 0
+    assert minimum_content_padding >= 0
+
+    trailing_padding = _get_trailing_padding(left[0])
+    leading_padding = _get_leading_padding(right[0])
+    inset = trailing_padding + leading_padding - preferred_padding
+    for left_line, right_line in zip(left[1:], right[1:]):
+      trailing_padding = _get_trailing_padding(left_line)
+      leading_padding = _get_leading_padding(right_line)
+      minimum_inset = trailing_padding + leading_padding - minimum_content_padding
+      inset = min(inset, minimum_inset)
+    return inset
+
+  def _fit_with_inset(left, right, inset):
+    r"""Concatenates the lines of two `list`s of strings.
+
+    NOTE: This function is intended to only be called from `_fit_with_padding`.
+
+    Args:
+      left: A `list` of strings.
+      right: A `list` of strings.
+      inset: The amount of padding to remove or add when concatenating the
+        lines.
+
+    Returns:
+      A `list` of lines.
+    """
+    left_height = len(left)
+    right_height = len(right)
+    if left_height > right_height:
+      right = _pad_bottom(right, left_height)
+    else:
+      left = _pad_bottom(left, right_height)
+    lines = []
+    for left_line, right_line in zip(left, right):
+      if inset > 0:
+        left_inset = 0
+        right_inset = 0
+        trailing_padding = _get_trailing_padding(left_line)
+        if trailing_padding > 0:
+          left_inset = min(trailing_padding, inset)
+          left_line = left_line[:-left_inset]
+        if inset - left_inset > 0:
+          leading_padding = _get_leading_padding(right_line)
+          if leading_padding > 0:
+            right_inset = min(leading_padding, inset - left_inset)
+            right_line = right_line[right_inset:]
+      padding = abs(inset) if inset < 0 else 0
+      line = ''.join([left_line, padding_char * padding, right_line])
+      lines.append(line)
+    width = len(lines[-1])
+    if left_height > right_height:
+      lines = _pad_right(lines, width)
+    else:
+      lines = _pad_left(lines, width)
+    return lines
+
+  def _fit_with_padding(left,
+                        right,
+                        preferred_padding,
+                        minimum_content_padding=4):
+    r"""Concatenates the lines of two `list`s of strings.
+
+    Concatenates the lines of two `list`s of strings by appending each line
+    together using a padding. The same padding is used to append each line and
+    the padding is calculated starting from the `preferred_padding` without
+    going below `minimum_content_padding` on any of the lines. If the two
+    `list`s of strings have different lengths, padding will be applied to
+    maintain the length of each string in the resulting `list` of strings.
+
+    >>>_fit_with_padding(['aa', 'bb'], ['ccc'])
+    ['aa    cccc', 'bb        ']
+
+    >>>_fit_with_padding(['aa          ', 'bb          '], ['          ccc'])
+    ['aa    cccc', 'bb        ']
+
+    Args:
+      left: A `list` of strings.
+      right: A `list` of strings.
+      preferred_padding: The preferred amount of non-negative padding between
+        the lines in the fitted `list` of strings.
+      minimum_content_padding: The minimum amount of non-negative padding
+        allowed between the lines in the fitted `list` of strings.
+
+    Returns:
+      A `list` of lines.
+    """
+    inset = _calculate_inset_from_padding(left, right, preferred_padding,
+                                          minimum_content_padding)
+    return _fit_with_inset(left, right, inset)
+
+  def _get_node_label(comp):
+    """Returns a string for node in the structure of the given `comp`."""
+    if isinstance(comp, Block):
+      return 'Block'
+    elif isinstance(comp, Call):
+      return 'Call'
+    elif isinstance(comp, CompiledComputation):
+      return 'Compiled({})'.format(comp.name)
+    elif isinstance(comp, Data):
+      return comp.uri
+    elif isinstance(comp, Intrinsic):
+      return comp.uri
+    elif isinstance(comp, Lambda):
+      return 'Lambda({})'.format(comp.parameter_name)
+    elif isinstance(comp, Reference):
+      return 'Ref({})'.format(comp.name)
+    elif isinstance(comp, Placement):
+      return 'Placement'
+    elif isinstance(comp, Selection):
+      key = comp.name if comp.name is not None else comp.index
+      return 'Sel({})'.format(key)
+    elif isinstance(comp, Tuple):
+      return 'Tuple'
+    else:
+      raise TypeError('Unexpected type found: {}.'.format(type(comp)))
+
+  def _lines_for_named_comps(named_comps):
+    """Returns a `list` of strings representing the given `named_comps`.
+
+    Args:
+      named_comps: A `list` of named comutations, each being a pair consisting
+        of a name (either a string, or `None`) and a `ComputationBuildingBlock`.
+    """
+    lines = ['[']
+    for index, (name, comp) in enumerate(named_comps):
+      comp_lines = _lines_for_comp(comp)
+      if name is not None:
+        label = '{}='.format(name)
+        comp_lines = _fit_with_padding([label], comp_lines, 0, 0)
+      if index == 0:
+        lines = _fit_with_padding(lines, comp_lines, 0, 0)
+      else:
+        lines = _fit_with_padding(lines, [','], 0, 0)
+        lines = _fit_with_padding(lines, comp_lines, 1)
+    return _fit_with_padding(lines, [']'], 0, 0)
+
+  def _lines_for_comp(comp):
+    """Returns a `list` of strings representing the given `comp`.
+
+    Args:
+      comp: An instance of a `ComputationBuildingBlock`.
+    """
+    node_label = _get_node_label(comp)
+
+    if isinstance(comp, (
+        CompiledComputation,
+        Data,
+        Intrinsic,
+        Placement,
+        Reference,
+    )):
+      return [node_label]
+    elif isinstance(comp, Block):
+      variables_lines = _lines_for_named_comps(comp.locals)
+      variables_width = len(variables_lines[0])
+      variables_trailing_padding = _get_trailing_padding(variables_lines[0])
+      leading_padding = variables_width - variables_trailing_padding
+      edge_line = '{}/'.format(padding_char * leading_padding)
+      variables_lines = _concatenate([edge_line], variables_lines,
+                                     Alignment.LEFT)
+
+      result_lines = _lines_for_comp(comp.result)
+      result_width = len(result_lines[0])
+      leading_padding = _get_leading_padding(result_lines[0]) - 1
+      trailing_padding = result_width - leading_padding - 1
+      edge_line = '\\{}'.format(padding_char * trailing_padding)
+      result_lines = _concatenate([edge_line], result_lines, Alignment.RIGHT)
+
+      preferred_padding = len(node_label)
+      lines = _fit_with_padding(variables_lines, result_lines,
+                                preferred_padding)
+      leading_padding = _get_leading_padding(lines[0]) + 1
+      node_line = '{}{}'.format(padding_char * leading_padding, node_label)
+      return _concatenate([node_line], lines, Alignment.LEFT)
+    elif isinstance(comp, Call):
+      function_lines = _lines_for_comp(comp.function)
+      function_width = len(function_lines[0])
+      function_trailing_padding = _get_trailing_padding(function_lines[0])
+      leading_padding = function_width - function_trailing_padding
+      edge_line = '{}/'.format(padding_char * leading_padding)
+      function_lines = _concatenate([edge_line], function_lines, Alignment.LEFT)
+
+      if comp.argument is not None:
+        argument_lines = _lines_for_comp(comp.argument)
+        argument_width = len(argument_lines[0])
+        leading_padding = _get_leading_padding(argument_lines[0]) - 1
+        trailing_padding = argument_width - leading_padding - 1
+        edge_line = '\\{}'.format(padding_char * trailing_padding)
+        argument_lines = _concatenate([edge_line], argument_lines,
+                                      Alignment.RIGHT)
+
+        preferred_padding = len(node_label)
+        lines = _fit_with_padding(function_lines, argument_lines,
+                                  preferred_padding)
+      else:
+        lines = function_lines
+      leading_padding = _get_leading_padding(lines[0]) + 1
+      node_line = '{}{}'.format(padding_char * leading_padding, node_label)
+      return _concatenate([node_line], lines, Alignment.LEFT)
+    elif isinstance(comp, Lambda):
+      result_lines = _lines_for_comp(comp.result)
+      leading_padding = _get_leading_padding(result_lines[0])
+      node_line = '{}{}'.format(padding_char * leading_padding, node_label)
+      edge_line = '{}|'.format(padding_char * leading_padding)
+      return _concatenate([node_line, edge_line], result_lines, Alignment.LEFT)
+    elif isinstance(comp, Selection):
+      source_lines = _lines_for_comp(comp.source)
+      leading_padding = _get_leading_padding(source_lines[0])
+      node_line = '{}{}'.format(padding_char * leading_padding, node_label)
+      edge_line = '{}|'.format(padding_char * leading_padding)
+      return _concatenate([node_line, edge_line], source_lines, Alignment.LEFT)
+    elif isinstance(comp, Tuple):
+      elements = anonymous_tuple.to_elements(comp)
+      elements_lines = _lines_for_named_comps(elements)
+      leading_padding = _get_leading_padding(elements_lines[0])
+      node_line = '{}{}'.format(padding_char * leading_padding, node_label)
+      edge_line = '{}|'.format(padding_char * leading_padding)
+      return _concatenate([node_line, edge_line], elements_lines,
+                          Alignment.LEFT)
+    else:
+      raise NotImplementedError('Unexpected type found: {}.'.format(type(comp)))
+
+  lines = _lines_for_comp(comp)
+  lines = [line.rstrip() for line in lines]
+  return '\n'.join(lines)
 
 
 # pylint: disable=protected-access

@@ -97,6 +97,7 @@ py_test(
     srcs = ["computation_building_blocks_test.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_test_utils",
         ":context_stack_impl",
         ":intrinsic_defs",
         ":tensorflow_serialization",

@@ -1,6 +1,7 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
 <meta itemprop="name" content="tff.framework.CompiledComputation" />
 <meta itemprop="path" content="Stable" />
+<meta itemprop="property" content="name"/>
 <meta itemprop="property" content="proto"/>
 <meta itemprop="property" content="tff_repr"/>
 <meta itemprop="property" content="type_signature"/>
@@ -51,6 +52,8 @@ Creates a representation of a fully constructed computation.
 *   <b>`TypeError`</b>: if the arguments are of the wrong types.
 
 ## Properties
+
+<h3 id="name"><code>name</code></h3>
 
 <h3 id="proto"><code>proto</code></h3>
 

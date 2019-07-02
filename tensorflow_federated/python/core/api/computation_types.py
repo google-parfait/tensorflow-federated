@@ -40,10 +40,9 @@ class Type(object):
     """Returns a full-form representation of this type."""
     raise NotImplementedError
 
-  @abc.abstractmethod
   def __str__(self):
     """Returns a concise representation of this type."""
-    raise NotImplementedError
+    return compact_representation(self)
 
   @abc.abstractmethod
   def __eq__(self, other):
@@ -118,18 +117,6 @@ class TensorType(Type):
     else:
       return 'TensorType({})'.format(repr(self._dtype))
 
-  def __str__(self):
-    if self._shape.ndims is None:
-      return '{}[{}]'.format(repr(self._dtype), None)
-    elif self._shape.ndims > 0:
-      values = [
-          str(dim.value) if dim.value is not None else '?'
-          for dim in self._shape.dims
-      ]
-      return '{}[{}]'.format(self._dtype.name, ','.join(values))
-    else:
-      return self._dtype.name
-
   def __eq__(self, other):
     return (isinstance(other, TensorType) and self._dtype == other.dtype and
             tensor_utils.same_shape(self._shape, other.shape))
@@ -185,16 +172,6 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     return 'NamedTupleType([{}])'.format(', '.join(
         [_element_repr(e) for e in anonymous_tuple.to_elements(self)]))
 
-  def __str__(self):
-
-    def _element_str(name, value):
-      return '{}={}'.format(name, str(value)) if name else str(value)
-
-    return ('<{}>'.format(','.join([
-        _element_str(name, value)
-        for name, value in anonymous_tuple.to_elements(self)
-    ])))
-
   def __eq__(self, other):
     return (isinstance(other, NamedTupleType) and
             super(NamedTupleType, self).__eq__(other))
@@ -234,9 +211,6 @@ class SequenceType(Type):
   def __repr__(self):
     return 'SequenceType({})'.format(repr(self._element))
 
-  def __str__(self):
-    return '{}*'.format(str(self._element))
-
   def __eq__(self, other):
     return isinstance(other, SequenceType) and self._element == other.element
 
@@ -268,11 +242,6 @@ class FunctionType(Type):
     return 'FunctionType({}, {})'.format(
         repr(self._parameter), repr(self._result))
 
-  def __str__(self):
-    return '({} -> {})'.format(
-        str(self._parameter) if self._parameter is not None else '',
-        str(self._result))
-
   def __eq__(self, other):
     return (isinstance(other, FunctionType) and
             self._parameter == other.parameter and self._result == other.result)
@@ -298,9 +267,6 @@ class AbstractType(Type):
   def __repr__(self):
     return 'AbstractType(\'{}\')'.format(self._label)
 
-  def __str__(self):
-    return self._label
-
   def __eq__(self, other):
     return isinstance(other, AbstractType) and self._label == other.label
 
@@ -315,9 +281,6 @@ class PlacementType(Type):
 
   def __repr__(self):
     return 'PlacementType()'
-
-  def __str__(self):
-    return 'placement'
 
   def __eq__(self, other):
     return isinstance(other, PlacementType)
@@ -374,12 +337,6 @@ class FederatedType(Type):
   def __repr__(self):
     return 'FederatedType({}, {}, {})'.format(
         repr(self._member), repr(self._placement), repr(self._all_equal))
-
-  def __str__(self):
-    if self._all_equal:
-      return '{}@{}'.format(str(self._member), str(self._placement))
-    else:
-      return '{{{}}}@{}'.format(str(self._member), str(self._placement))
 
   def __eq__(self, other):
     return (isinstance(other, FederatedType) and
@@ -466,3 +423,161 @@ def to_type(spec):
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
             py_typecheck.type_string(type(spec))))
+
+
+def compact_representation(type_spec):
+  """Returns the compact string representation of a TFF `Type`.
+
+  Args:
+    type_spec: An instance of a TFF `Type`.
+  """
+  return _string_representation(type_spec, formatted=False)
+
+
+def formatted_representation(type_spec):
+  """Returns the formatted string representation of a TFF `Type`.
+
+  Args:
+    type_spec: An instance of a TFF `Type`.
+  """
+  return _string_representation(type_spec, formatted=True)
+
+
+def _string_representation(type_spec, formatted):
+  """Returns the string representation of a TFF `Type`.
+
+  This functions creates a `list` of strings representing the given `type_spec`;
+  combines the strings in either a formatted or un-formatted representation; and
+  returns the resulting string represetnation.
+
+  Args:
+    type_spec: An instance of a TFF `Type`.
+    formatted: A boolean indicating if the returned string should be formatted.
+
+  Raises:
+    TypeError: If `type_spec` has an unepxected type.
+  """
+  py_typecheck.check_type(type_spec, Type)
+
+  def _combine(components):
+    """Returns a `list` of strings by combining `components`.
+
+    This function creates and returns a `list` of strings by combining a `list`
+    of `components`. Each `component` is a `list` of strings representing a part
+    of the string of a TFF `Type`. The `components` are combined by iteratively
+    **appending** the last element of the result with the first element of the
+    `component` and then **extending** the result with remaining elements of the
+    `component`.
+
+    For example:
+
+    >>> _combine([['a'], ['b'], ['c']])
+    ['abc']
+
+    >>> _combine([['a', 'b', 'c'], ['d', 'e', 'f']])
+    ['abcd', 'ef']
+
+    This function is used to help track where new-lines should be inserted into
+    the string representation if the lines are formatted.
+
+    Args:
+      components: A `list` where each element is a `list` of strings
+        representing a part of the string of a TFF `Type`.
+    """
+    lines = ['']
+    for component in components:
+      lines[-1] = '{}{}'.format(lines[-1], component[0])
+      lines.extend(component[1:])
+    return lines
+
+  def _indent(lines, indent_chars='  '):
+    """Returns an indented `list` of strings."""
+    return ['{}{}'.format(indent_chars, e) for e in lines]
+
+  def _lines_for_named_types(named_type_specs, formatted):
+    """Returns a `list` of strings representing the given `named_type_specs`.
+
+    Args:
+      named_type_specs: A `list` of named comutations, each being a pair
+        consisting of a name (either a string, or `None`) and a
+        `ComputationBuildingBlock`.
+      formatted: A boolean indicating if the returned string should be
+        formatted.
+    """
+    lines = []
+    for index, (name, type_spec) in enumerate(named_type_specs):
+      if index != 0:
+        if formatted:
+          lines.append([',', ''])
+        else:
+          lines.append([','])
+      element_lines = _lines_for_type(type_spec, formatted)
+      if name is not None:
+        element_lines = _combine([
+            ['{}='.format(name)],
+            element_lines,
+        ])
+      lines.append(element_lines)
+    return _combine(lines)
+
+  def _lines_for_type(type_spec, formatted):
+    """Returns a `list` of strings representing the given `type_spec`.
+
+    Args:
+      type_spec: An instance of a TFF `Type`.
+      formatted: A boolean indicating if the returned string should be
+        formatted.
+    """
+    if isinstance(type_spec, AbstractType):
+      return [type_spec.label]
+    elif isinstance(type_spec, FederatedType):
+      member_lines = _lines_for_type(type_spec.member, formatted)
+      placement_line = '@{}'.format(type_spec.placement)
+      if type_spec.all_equal:
+        return _combine([member_lines, [placement_line]])
+      else:
+        return _combine([['{'], member_lines, ['}'], [placement_line]])
+    elif isinstance(type_spec, FunctionType):
+      if type_spec.parameter is not None:
+        parameter_lines = _lines_for_type(type_spec.parameter, formatted)
+      else:
+        parameter_lines = ['']
+      result_lines = _lines_for_type(type_spec.result, formatted)
+      return _combine([['('], parameter_lines, [' -> '], result_lines, [')']])
+    elif isinstance(type_spec, NamedTupleType):
+      elements = anonymous_tuple.to_elements(type_spec)
+      elements_lines = _lines_for_named_types(elements, formatted)
+      if formatted:
+        elements_lines = _indent(elements_lines)
+        lines = [['<', ''], elements_lines, ['', '>']]
+      else:
+        lines = [['<'], elements_lines, ['>']]
+      return _combine(lines)
+    elif isinstance(type_spec, PlacementType):
+      return ['placement']
+    elif isinstance(type_spec, SequenceType):
+      element_lines = _lines_for_type(type_spec.element, formatted)
+      return _combine([element_lines, ['*']])
+    elif isinstance(type_spec, TensorType):
+      if type_spec.shape.ndims is None:
+        return ['{}[{}]'.format(repr(type_spec.dtype), None)]
+      elif type_spec.shape.ndims > 0:
+
+        def _value_string(value):
+          return str(value) if value is not None else '?'
+
+        value_strings = [_value_string(e.value) for e in type_spec.shape.dims]
+        values_strings = ','.join(value_strings)
+        return ['{}[{}]'.format(type_spec.dtype.name, values_strings)]
+      else:
+        return [type_spec.dtype.name]
+    else:
+      raise NotImplementedError('Unexpected type found: {}.'.format(
+          type(type_spec)))
+
+  lines = _lines_for_type(type_spec, formatted)
+  lines = [line.rstrip() for line in lines]
+  if formatted:
+    return '\n'.join(lines)
+  else:
+    return ''.join(lines)
