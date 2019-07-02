@@ -23,6 +23,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
@@ -39,6 +41,11 @@ from tensorflow_federated.python.core.impl import type_utils
 def _to_computation_impl(building_block):
   return computation_impl.ComputationImpl(building_block.proto,
                                           context_stack_impl.context_stack)
+
+
+def _computation_impl_to_building_block(comp):
+  return computation_building_blocks.ComputationBuildingBlock.from_proto(
+      comp._computation_proto)
 
 
 def _create_chained_calls(functions, arg):
@@ -3275,6 +3282,79 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
     self.assertEqual(unwrapped.argument[0].type_signature,
                      computation_types.FunctionType(tf.int32, tf.int32))
+
+
+def is_intrinsic(comp, uri=None):
+  return isinstance(comp, computation_building_blocks.Intrinsic
+                   ) and uri is not None and comp.uri == uri
+
+
+class ReduceIntrinsicBodiesTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    context_stack = context_stack_impl.context_stack
+    with self.assertRaises(TypeError):
+      transformations.replace_all_intrinsics_with_bodies(None, context_stack)
+
+  def test_federated_weighted_mean_reduces(self):
+    context_stack = context_stack_impl.context_stack
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_mean(x, x)
+
+    foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        foo._computation_proto)
+    uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
+    is_federated_weighted_mean = lambda x: is_intrinsic(x, uri)
+    count_before_reduction = _count(foo_building_block,
+                                    is_federated_weighted_mean)
+    reduced, modified = transformations.replace_all_intrinsics_with_bodies(
+        foo_building_block, context_stack)
+    count_after_reduction = _count(reduced, is_federated_weighted_mean)
+    self.assertGreater(count_before_reduction, 0)
+    self.assertEqual(count_after_reduction, 0)
+    self.assertTrue(modified)
+
+  def test_federated_sum_reduces(self):
+    context_stack = context_stack_impl.context_stack
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.federated_sum(x)
+
+    foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        foo._computation_proto)
+
+    uri = intrinsic_defs.FEDERATED_SUM.uri
+    is_federated_sum = lambda x: is_intrinsic(x, uri)
+    count_before_reduction = _count(foo_building_block, is_federated_sum)
+    reduced, modified = transformations.replace_all_intrinsics_with_bodies(
+        foo_building_block, context_stack)
+    count_after_reduction = _count(reduced, is_federated_sum)
+    self.assertGreater(count_before_reduction, 0)
+    self.assertEqual(count_after_reduction, 0)
+    self.assertTrue(modified)
+
+  def test_generic_divide_reduces(self):
+    context_stack = context_stack_impl.context_stack
+    comp = computation_building_blocks.Intrinsic(
+        intrinsic_defs.GENERIC_DIVIDE.uri,
+        computation_types.FunctionType([tf.float32, tf.float32], tf.float32))
+
+    uri = intrinsic_defs.GENERIC_DIVIDE.uri
+    is_generic_divide = lambda x: is_intrinsic(x, uri)
+    count_before_reduction = _count(comp, is_generic_divide)
+    reduced, modified = transformations.replace_all_intrinsics_with_bodies(
+        comp, context_stack)
+    count_after_reduction = _count(reduced, is_generic_divide)
+
+    self.assertGreater(count_before_reduction, 0)
+    self.assertEqual(count_after_reduction, 0)
+    transformations.check_intrinsics_whitelisted_for_reduction(reduced)
+    self.assertTrue(modified)
 
 
 class IntrinsicsWhitelistedTest(absltest.TestCase):

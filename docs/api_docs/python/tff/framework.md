@@ -101,6 +101,9 @@ Removes all the mapped or applied identity functions in `comp`.
 [`replace_called_lambda_with_block(...)`](../tff/framework/replace_called_lambda_with_block.md):
 Replaces all the called lambdas in `comp` with a block.
 
+[`replace_intrinsics_with_bodies(...)`](../tff/framework/replace_intrinsics_with_bodies.md):
+Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
+
 [`replace_selection_from_tuple_with_element(...)`](../tff/framework/replace_selection_from_tuple_with_element.md):
 Replaces any selection from a tuple with the underlying tuple element.
 

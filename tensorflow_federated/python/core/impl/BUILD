@@ -15,7 +15,6 @@ py_library(
         ":computation_building_blocks",
         ":computation_impl",
         ":context_stack_base",
-        ":intrinsic_bodies",
         ":transformations",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -705,6 +704,23 @@ py_test(
 )
 
 py_library(
+    name = "intrinsic_reductions",
+    srcs = ["intrinsic_reductions.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":context_stack_impl",
+        ":transformations",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "intrinsic_reductions_test",
+    srcs = ["intrinsic_reductions_test.py"],
+    deps = [":intrinsic_reductions"],
+)
+
+py_library(
     name = "intrinsic_utils",
     srcs = ["intrinsic_utils.py"],
     deps = [
@@ -1010,6 +1026,7 @@ py_library(
         ":computation_constructing_utils",
         ":context_stack_base",
         ":federated_computation_utils",
+        ":intrinsic_bodies",
         ":intrinsic_defs",
         ":placement_literals",
         ":transformation_utils",
@@ -1037,6 +1054,8 @@ py_test(
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
     ],
 )
