@@ -250,6 +250,8 @@ class FederatedExecutorTest(absltest.TestCase):
     v = val.internal_representation[0]
     self.assertIsInstance(v, eager_executor.EagerValue)
     self.assertEqual(v.internal_representation.numpy(), 11)
+    result = loop.run_until_complete(v.compute())
+    self.assertEqual(result.numpy(), 11)
 
   def test_federated_map(self):
     loop = asyncio.get_event_loop()
