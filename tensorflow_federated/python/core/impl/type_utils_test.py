@@ -1742,6 +1742,19 @@ class IsBinaryOpWithUpcastCompatibleTest(test.TestCase):
             [('a', computation_types.TensorType(tf.int32, [2, 2]))],
             computation_types.TensorType(tf.int32, [2])))
 
+  def test_get_function_type_and_argument_type(self):
+    t1 = computation_types.FunctionType(tf.int32, tf.int32)
+    t2 = type_utils.get_function_type(t1)
+    t3 = type_utils.get_argument_type(t2)
+    self.assertEqual(str(t2), str(t1))
+    self.assertEqual(str(t3), str(t1))
+
+    t4 = computation_types.to_type(tf.int32)
+    t5 = type_utils.get_function_type(t4)
+    t6 = type_utils.get_argument_type(t5)
+    self.assertEqual(str(t5), '( -> int32)')
+    self.assertEqual(str(t6), str(t4))
+
 
 if __name__ == '__main__':
   tf.test.main()

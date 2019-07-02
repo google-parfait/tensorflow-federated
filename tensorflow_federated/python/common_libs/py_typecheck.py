@@ -49,6 +49,39 @@ def check_type(target, type_spec, label=None):
   return target
 
 
+def check_none(target, label=None):
+  """Checks that `target` is `None`.
+
+  Args:
+    target: An object to check.
+    label: An optional label associated with the target, used to create a more
+      human-readable error message.
+
+  Raises:
+    TypeError: when the target is not `None`.
+  """
+  if target is not None:
+    raise TypeError('Expected {} to be `None`, found {}.'.format(
+        label if label is not None else 'the argument',
+        type_string(type(target))))
+
+
+def check_not_none(target, label=None):
+  """Checks that `target` is not `None`.
+
+  Args:
+    target: An object to check.
+    label: An optional label associated with the target, used to create a more
+      human-readable error message.
+
+  Raises:
+    TypeError: when the target is `None`.
+  """
+  if target is None:
+    raise TypeError('Expected {} to not be `None`.'.format(
+        label if label is not None else 'the argument'))
+
+
 def check_subclass(target_class, parent_class):
   """Tests that `target_class` subclasses `parent_class`, that both are classes.
 
