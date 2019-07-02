@@ -23,6 +23,7 @@ py_library(
             "//tensorflow_federated/python/core/impl:executor_service",
             "//tensorflow_federated/python/core/impl:executor_value_base",
             "//tensorflow_federated/python/core/impl:federated_executor",
+            "//tensorflow_federated/python/core/impl:lambda_executor",
             "//tensorflow_federated/python/core/impl:remote_executor",
             "//tensorflow_federated/python/core/impl:set_default_executor",
             "//tensorflow_federated/python/core/impl:transforming_executor",

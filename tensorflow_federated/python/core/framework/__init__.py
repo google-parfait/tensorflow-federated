@@ -75,6 +75,7 @@ if six.PY3:
     from tensorflow_federated.python.core.impl.executor_service import ExecutorService
     from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
     from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
+    from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
     from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
     from tensorflow_federated.python.core.impl.set_default_executor import set_default_executor
     from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
