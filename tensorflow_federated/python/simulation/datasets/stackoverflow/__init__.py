@@ -1,4 +1,3 @@
-# Lint as: python2
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,19 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Datasets for running Federated Learning experiments in simulation."""
+"""Module for the Stackoverflow federated experimental dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.simulation.datasets import emnist
-from tensorflow_federated.python.simulation.datasets import shakespeare
-from tensorflow_federated.python.simulation.datasets import stackoverflow
+from tensorflow_federated.python.simulation.datasets.stackoverflow.load_data import load_data
+from tensorflow_federated.python.simulation.datasets.stackoverflow.load_data import load_word_counts
 
 # Used by doc generation script.
 _allowed_symbols = [
-    "emnist",
-    "shakespeare",
-    "stackoverflow",
+    "load_data",
+    "load_word_counts",
 ]
