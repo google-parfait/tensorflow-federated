@@ -731,7 +731,7 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   result_type = computation_types.FederatedType(report.type_signature.result,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType((
-      value.type_signature,
+      type_utils.to_non_all_equal(value.type_signature),
       zero.type_signature,
       accumulate.type_signature,
       merge.type_signature,
@@ -1025,7 +1025,7 @@ def create_federated_reduce(value, zero, op):
   result_type = computation_types.FederatedType(op.type_signature.result,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType((
-      value.type_signature,
+      type_utils.to_non_all_equal(value.type_signature),
       zero.type_signature,
       op.type_signature,
   ), result_type)

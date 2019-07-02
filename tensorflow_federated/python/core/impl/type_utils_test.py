@@ -1755,6 +1755,20 @@ class IsBinaryOpWithUpcastCompatibleTest(test.TestCase):
     self.assertEqual(str(t5), '( -> int32)')
     self.assertEqual(str(t6), str(t4))
 
+  def test_check_equivalent_types(self):
+    type_utils.check_equivalent_types(tf.int32, tf.int32)
+    with self.assertRaises(TypeError):
+      type_utils.check_equivalent_types(tf.int32, tf.bool)
+
+  def test_to_non_all_equal(self):
+    for x in [True, False]:
+      self.assertEqual(
+          str(
+              type_utils.to_non_all_equal(
+                  computation_types.FederatedType(
+                      tf.int32, placements.CLIENTS, all_equal=x))),
+          '{int32}@CLIENTS')
+
 
 if __name__ == '__main__':
   tf.test.main()
