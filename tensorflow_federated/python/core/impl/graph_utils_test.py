@@ -75,9 +75,9 @@ class GraphUtilsTest(test.TestCase):
       output_dtypes, output_shapes = (
           type_utils.type_to_tf_dtypes_and_shapes(type_spec.element))
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_types(val), output_dtypes)
+          tf.data.get_output_types(val), output_dtypes)
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_shapes(val), output_shapes)
+          tf.data.get_output_shapes(val), output_shapes)
     elif binding_oneof == 'tuple':
       self.assertIsInstance(type_spec, computation_types.NamedTupleType)
       if not isinstance(val, (list, tuple, anonymous_tuple.AnonymousTuple)):
@@ -167,9 +167,9 @@ class GraphUtilsTest(test.TestCase):
                                         computation_types.SequenceType(tf.bool))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_types(x), tf.bool)
+          tf.data.get_output_types(x), tf.bool)
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_shapes(x), tf.TensorShape([]))
+          tf.data.get_output_shapes(x), tf.TensorShape([]))
 
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
@@ -177,9 +177,9 @@ class GraphUtilsTest(test.TestCase):
           'foo', computation_types.SequenceType((tf.int32, [50])))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_types(x), tf.int32)
+          tf.data.get_output_types(x), tf.int32)
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_shapes(x), tf.TensorShape([50]))
+          tf.data.get_output_shapes(x), tf.TensorShape([50]))
 
   def test_stamp_parameter_in_graph_with_tensor_ordered_dict_sequence(self):
     with tf.Graph().as_default():
@@ -190,12 +190,12 @@ class GraphUtilsTest(test.TestCase):
                                        ('B', (tf.int32, [1]))])))
       self.assertIsInstance(x, graph_utils.DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_types(x), {
+          tf.data.get_output_types(x), {
               'A': tf.float32,
               'B': tf.int32
           })
       test.assert_nested_struct_eq(
-          tf.compat.v1.data.get_output_shapes(x), {
+          tf.data.get_output_shapes(x), {
               'A': tf.TensorShape([3, 4, 5]),
               'B': tf.TensorShape([1])
           })

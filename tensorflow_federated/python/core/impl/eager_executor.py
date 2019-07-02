@@ -229,8 +229,8 @@ def to_representation_for_type(value, type_spec=None, device=None):
         value,
         (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset))
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(value),
-        tf.compat.v1.data.get_output_shapes(value))
+        tf.data.get_output_types(value),
+        tf.data.get_output_shapes(value))
     value_type = computation_types.SequenceType(element_type)
     if not type_utils.are_equivalent_types(value_type, type_spec):
       raise TypeError('Expected a value of type {}, found {}.'.format(

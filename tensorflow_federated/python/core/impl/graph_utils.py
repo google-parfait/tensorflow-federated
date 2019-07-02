@@ -566,8 +566,8 @@ def capture_result_from_graph(result, graph):
     # legacy structures all over the code base and replacing them with the new
     # tf.data.experimenta.Structure variants.
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(result),
-        tf.compat.v1.data.get_output_shapes(result))
+        tf.data.get_output_types(result),
+        tf.data.get_output_shapes(result))
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
@@ -575,8 +575,8 @@ def capture_result_from_graph(result, graph):
   elif isinstance(result, OneShotDataset):
     # TODO(b/129956296): Eventually delete this deprecated code path.
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(result),
-        tf.compat.v1.data.get_output_shapes(result))
+        tf.data.get_output_types(result),
+        tf.data.get_output_shapes(result))
     handle_name = result.make_one_shot_iterator().string_handle().name
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
@@ -1073,8 +1073,8 @@ def make_data_set_from_elements(graph, elements, element_type):
           singleton_ds = _make(elements[i:i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
     ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(ds),
-        tf.compat.v1.data.get_output_shapes(ds))
+        tf.data.get_output_types(ds),
+        tf.data.get_output_shapes(ds))
     if not type_utils.is_assignable_from(element_type, ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
@@ -1125,8 +1125,8 @@ def fetch_value_in_session(sess, value):
         if not dataset_tensors:
           # An empty list has been returned; we must pack the shape information
           # back in or the result won't typecheck.
-          output_shapes = tf.compat.v1.data.get_output_shapes(v)
-          output_types = tf.compat.v1.data.get_output_types(v)
+          output_shapes = tf.data.get_output_shapes(v)
+          output_types = tf.data.get_output_types(v)
           zipped_elems = tf.nest.map_structure(lambda x, y: (x, y),
                                                output_types, output_shapes)
           dummy_elem = _make_dummy_element_for_type_spec(zipped_elems)

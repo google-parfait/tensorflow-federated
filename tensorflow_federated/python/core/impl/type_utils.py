@@ -63,8 +63,8 @@ def infer_type(arg):
       (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
     return computation_types.SequenceType(
         tf_dtypes_and_shapes_to_type(
-            tf.compat.v1.data.get_output_types(arg),
-            tf.compat.v1.data.get_output_shapes(arg)))
+            tf.data.get_output_types(arg),
+            tf.data.get_output_shapes(arg)))
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return computation_types.NamedTupleType([
         (k, infer_type(v)) if k else infer_type(v)
