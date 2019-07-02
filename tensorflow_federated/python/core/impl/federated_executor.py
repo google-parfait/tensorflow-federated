@@ -295,6 +295,13 @@ class FederatedExecutor(executor_base.Executor):
 
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, FederatedExecutorValue)
+    if arg is not None:
+      py_typecheck.check_type(arg, FederatedExecutorValue)
+      py_typecheck.check_type(comp.type_signature,
+                              computation_types.FunctionType)
+      param_type = comp.type_signature.parameter
+      type_utils.check_assignable_from(param_type, arg.type_signature)
+      arg = FederatedExecutorValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
       if which_computation == 'tensorflow':
@@ -440,3 +447,100 @@ class FederatedExecutor(executor_base.Executor):
 
   async def _compute_intrinsic_federated_zip_at_clients(self, arg):
     return await self._zip(arg, placement_literals.CLIENTS, all_equal=False)
+
+  async def _compute_intrinsic_federated_reduce(self, arg):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.internal_representation,
+                            anonymous_tuple.AnonymousTuple)
+    if len(arg.internal_representation) != 3:
+      raise ValueError(
+          'Expected 3 elements in the `federated_reduce()` argument tuple, '
+          'found {}.'.format(len(arg.internal_representation)))
+
+    val_type = arg.type_signature[0]
+    py_typecheck.check_type(val_type, computation_types.FederatedType)
+    item_type = val_type.member
+    zero_type = arg.type_signature[1]
+    op_type = arg.type_signature[2]
+    type_utils.check_equivalent_types(
+        op_type, type_constructors.reduction_op(zero_type, item_type))
+
+    val = arg.internal_representation[0]
+    py_typecheck.check_type(val, list)
+    child = self._target_executors[placement_literals.SERVER][0]
+
+    async def _move(v):
+      return await child.create_value(await v.compute(), item_type)
+
+    items = await asyncio.gather(*[_move(v) for v in val])
+
+    zero = await child.create_value(arg.internal_representation[1], zero_type)
+    op = await child.create_value(arg.internal_representation[2], op_type)
+
+    result = zero
+    for item in items:
+      result = await child.create_call(
+          op, await child.create_tuple(
+              anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
+    return FederatedExecutorValue([result],
+                                  computation_types.FederatedType(
+                                      result.type_signature,
+                                      placement_literals.SERVER,
+                                      all_equal=True))
+
+  async def _compute_intrinsic_federated_aggregate(self, arg):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.internal_representation,
+                            anonymous_tuple.AnonymousTuple)
+    if len(arg.internal_representation) != 5:
+      raise ValueError(
+          'Expected 5 elements in the `federated_aggregate()` argument tuple, '
+          'found {}.'.format(len(arg.internal_representation)))
+
+    val_type = arg.type_signature[0]
+    py_typecheck.check_type(val_type, computation_types.FederatedType)
+    item_type = val_type.member
+    zero_type = arg.type_signature[1]
+    accumulate_type = arg.type_signature[2]
+    type_utils.check_equivalent_types(
+        accumulate_type, type_constructors.reduction_op(zero_type, item_type))
+    merge_type = arg.type_signature[3]
+    type_utils.check_equivalent_types(merge_type,
+                                      type_constructors.binary_op(zero_type))
+    report_type = arg.type_signature[4]
+    py_typecheck.check_type(report_type, computation_types.FunctionType)
+    type_utils.check_equivalent_types(report_type.parameter, zero_type)
+
+    # NOTE: This is a simple initial implementation that simply forwards this
+    # to `federated_reduce()`. The more complete implementation would be able
+    # to take advantage of the parallelism afforded by `merge` to reduce the
+    # cost from liner (with respect to the number of clients) to sub-linear.
+
+    # TODO(b/134543154): Expand this implementation to take advantage of the
+    # parallelism afforded by `merge`.
+
+    val = arg.internal_representation[0]
+    zero = arg.internal_representation[1]
+    accumulate = arg.internal_representation[2]
+    pre_report = await self._compute_intrinsic_federated_reduce(
+        FederatedExecutorValue(
+            anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
+                                            (None, accumulate)]),
+            computation_types.NamedTupleType(
+                [val_type, zero_type, accumulate_type])))
+
+    py_typecheck.check_type(pre_report.type_signature,
+                            computation_types.FederatedType)
+    type_utils.check_equivalent_types(pre_report.type_signature.member,
+                                      report_type.parameter)
+
+    report = arg.internal_representation[4]
+    return await self._compute_intrinsic_federated_apply(
+        FederatedExecutorValue(
+            anonymous_tuple.AnonymousTuple([
+                (None, report), (None, pre_report.internal_representation)
+            ]),
+            computation_types.NamedTupleType(
+                [report_type, pre_report.type_signature])))

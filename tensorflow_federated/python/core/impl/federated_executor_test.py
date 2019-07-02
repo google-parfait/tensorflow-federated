@@ -330,6 +330,47 @@ class FederatedExecutorTest(absltest.TestCase):
       else:
         self.assertEqual(_print(result), expected_result)
 
+  def test_federated_reduce_with_simple_integer_sum(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(3)
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def add_numbers(x, y):
+      return x + y
+
+    @computations.federated_computation
+    def comp():
+      return intrinsics.federated_reduce(
+          intrinsics.federated_value(10, placements.CLIENTS), 0, add_numbers)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    result = loop.run_until_complete(val.compute())
+    self.assertEqual(result.numpy(), 30)
+
+  def test_federated_aggregate_with_simple_integer_sum(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(3)
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def add_numbers(x, y):
+      return x + y
+
+    @computations.tf_computation(tf.int32)
+    def add_one_because_why_not(x):
+      return x + 1
+
+    @computations.federated_computation
+    def comp():
+      x = intrinsics.federated_value(10, placements.CLIENTS)
+      return intrinsics.federated_aggregate(x, 0, add_numbers, add_numbers,
+                                            add_one_because_why_not)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    result = loop.run_until_complete(val.compute())
+    self.assertEqual(result.numpy(), 31)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

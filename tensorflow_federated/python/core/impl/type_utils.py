@@ -972,6 +972,20 @@ def are_equivalent_types(type1, type2):
                                   is_assignable_from(type2, type1))
 
 
+def check_equivalent_types(type1, type2):
+  """Checks that `type1` and `type2` are equivalent.
+
+  Args:
+    type1: One type.
+    type2: Another type.
+
+  Raises:
+    TypeError: If `not are_equivalent_types(type1, type2)`.
+  """
+  if not are_equivalent_types(type1, type2):
+    raise TypeError('Types {} and {} are not equivalent.')
+
+
 def is_anon_tuple_with_py_container(value, type_spec):
   return (isinstance(value, anonymous_tuple.AnonymousTuple) and isinstance(
       type_spec, computation_types.NamedTupleTypeWithPyContainerType))
@@ -1365,3 +1379,17 @@ def get_argument_type(type_spec):
     return type_spec
   else:
     return type_spec.result
+
+
+def to_non_all_equal(type_spec):
+  """Constructs a non-`all_equal` version of the federated type `type_spec`.
+
+  Args:
+    type_spec: An instance of `tff.FederatedType`.
+
+  Returns:
+    A federated type with the same member and placement, but `all_equal=False`.
+  """
+  py_typecheck.check_type(type_spec, computation_types.FederatedType)
+  return computation_types.FederatedType(
+      type_spec.member, type_spec.placement, all_equal=False)
