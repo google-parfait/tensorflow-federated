@@ -871,7 +871,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.federated_computation(tf.int32, tf.int32)
     def foo(x, y):
-      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, y)
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, y])
 
     self.assertEqual(str(foo.type_signature), '(<int32,int32> -> int32)')
     self.assertEqual(foo(2, 3), 5)
@@ -883,7 +883,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.federated_computation(type_spec, type_spec)
     def foo(x, y):
-      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x, y)
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, y])
 
     self.assertEqual(
         str(foo.type_signature),

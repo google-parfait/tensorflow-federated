@@ -157,11 +157,10 @@ def get_intrinsic_bodies(context_stack):
         raise TypeError(top_level_mismatch_string)
 
   def federated_weighted_mean(arg):
-    x = arg[0]
     w = arg[1]
-    multiplied = generic_multiply(x, w)
+    multiplied = generic_multiply(arg)
     summed = federated_sum(intrinsics.federated_zip([multiplied, w]))
-    return generic_divide(summed[0], summed[1])
+    return generic_divide(summed)
 
   def federated_sum(x):
     zero = intrinsic_utils.zero_for(x.type_signature.member, context_stack)
@@ -180,15 +179,17 @@ def get_intrinsic_bodies(context_stack):
         op.type_signature.result)
     return intrinsics.federated_aggregate(x, zero, op, op, identity)
 
-  def generic_divide(x, y):
+  def generic_divide(arg):
     """Divides two arguments when possible."""
+    x = arg[0]
+    y = arg[1]
     _check_top_level_compatibility_with_generic_operators(
         x, y, 'Generic divide')
     if isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
       divided = [
-          value_impl.ValueImpl.get_comp(generic_divide(x[i], y[i]))
+          value_impl.ValueImpl.get_comp(generic_divide([x[i], y[i]]))
           for i in range(len(names))
       ]
       named_divided = computation_constructing_utils.create_named_tuple(
@@ -200,15 +201,17 @@ def get_intrinsic_bodies(context_stack):
         arg_comp, tf.divide)
     return value_impl.ValueImpl(divided, context_stack)
 
-  def generic_multiply(x, y):
+  def generic_multiply(arg):
     """Multiplies two arguments when possible."""
+    x = arg[0]
+    y = arg[1]
     _check_top_level_compatibility_with_generic_operators(
         x, y, 'Generic multiply')
     if isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
       multiplied = [
-          value_impl.ValueImpl.get_comp(generic_multiply(x[i], y[i]))
+          value_impl.ValueImpl.get_comp(generic_multiply([x[i], y[i]]))
           for i in range(len(names))
       ]
       named_multiplied = computation_constructing_utils.create_named_tuple(
@@ -220,14 +223,16 @@ def get_intrinsic_bodies(context_stack):
         arg_comp, tf.multiply)
     return value_impl.ValueImpl(multiplied, context_stack)
 
-  def generic_plus(x, y):
+  def generic_plus(arg):
     """Adds two arguments when possible."""
+    x = arg[0]
+    y = arg[1]
     _check_top_level_compatibility_with_generic_operators(x, y, 'Generic plus')
     if isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
       added = [
-          value_impl.ValueImpl.get_comp(generic_plus(x[i], y[i]))
+          value_impl.ValueImpl.get_comp(generic_plus([x[i], y[i]]))
           for i in range(len(names))
       ]
       named_added = computation_constructing_utils.create_named_tuple(
