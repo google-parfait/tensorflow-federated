@@ -129,6 +129,88 @@ def construct_compiled_identity(type_signature):
   return computation_building_blocks.CompiledComputation(proto)
 
 
+def construct_tensorflow_constant(type_spec, scalar_value):
+  """Creates called graph returning constant `scalar_value` of type `type_spec`.
+
+  `scalar_value` must be a scalar, and cannot be a float if any of the tensor
+  leaves of `type_spec` contain an integer data type. `type_spec` must contain
+  only named tuples and tensor types, but these can be arbitrarily nested.
+
+  Args:
+    type_spec: Value convertible to `computation_types.Type` via
+      `computation_types.to_type`, and whose resulting type tree can only
+      contain named tuples and tensors.
+    scalar_value: Scalar value to place in all the tensor leaves of `type_spec`.
+
+  Returns:
+    An instance of `computation_building_blocks.Call`, whose argument is `None`
+    and whose function is a noarg
+    `computation_building_blocks.CompiledComputation` which returns the
+    specified `scalar_value` packed into a TFF structure of type `type_spec.
+
+  Raises:
+    TypeError: If the type assumptions above are violated.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if not type_utils.is_generic_op_compatible_type(type_spec):
+    raise TypeError('Type spec {} cannot be constructed as a TensorFlow '
+                    'constant in TFF; only nested tuples and tensors are '
+                    'permitted.'.format(type_spec))
+  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
+  if inferred_scalar_value_type.shape != tf.TensorShape(()):
+    raise TypeError('Must pass a scalar value to '
+                    '`construct_tensorflow_constant`; encountered a value '
+                    '{}'.format(scalar_value))
+  tensor_dtypes_in_type_spec = []
+
+  def _pack_dtypes(type_signature):
+    """Appends dtype of `type_signature` to nonlocal variable."""
+    if isinstance(type_signature, computation_types.TensorType):
+      tensor_dtypes_in_type_spec.append(type_signature.dtype)
+    return type_signature, False
+
+  type_utils.transform_type_postorder(type_spec, _pack_dtypes)
+
+  if (any(x.is_integer for x in tensor_dtypes_in_type_spec) and
+      not inferred_scalar_value_type.dtype.is_integer):
+    raise TypeError('Only integers can be used as scalar values if our desired '
+                    'constant type spec contains any integer tensors; passed '
+                    'scalar {} of dtype {} for type spec {}.'.format(
+                        scalar_value, inferred_scalar_value_type.dtype,
+                        type_spec))
+
+  def _construct_result_tensor(type_spec, scalar_value):
+    """Packs `scalar_value` into `type_spec` recursively."""
+    if isinstance(type_spec, computation_types.TensorType):
+      type_spec.shape.assert_is_fully_defined()
+      result = tf.constant(
+          scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
+    else:
+      elements = []
+      for _, type_element in anonymous_tuple.to_elements(type_spec):
+        elements.append(_construct_result_tensor(type_element, scalar_value))
+      result = elements
+    return result
+
+  with tf.Graph().as_default() as graph:
+    result = _construct_result_tensor(type_spec, scalar_value)
+  _, result_binding = graph_utils.capture_result_from_graph(result, graph)
+
+  function_type = computation_types.FunctionType(None, type_spec)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+
+  proto = pb.Computation(
+      type=serialized_function_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          parameter=None,
+          result=result_binding))
+
+  noarg_constant_fn = computation_building_blocks.CompiledComputation(proto)
+  return computation_building_blocks.Call(noarg_constant_fn, None)
+
+
 def construct_compiled_input_replication(type_signature, n_replicas):
   """Constructs a compiled computation which replicates its argument.
 

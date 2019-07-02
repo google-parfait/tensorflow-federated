@@ -113,6 +113,7 @@ py_library(
     srcs = ["computation_constructing_utils.py"],
     deps = [
         ":computation_building_blocks",
+        ":dtype_utils",
         ":graph_utils",
         ":intrinsic_defs",
         ":placement_literals",
