@@ -708,9 +708,11 @@ py_library(
     srcs = ["lambda_executor.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_building_blocks",
         ":computation_impl",
         ":executor_base",
         ":executor_value_base",
+        ":transformations",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -728,10 +730,14 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":eager_executor",
+        ":federated_executor",
         ":lambda_executor",
+        ":placement_literals",
+        ":type_constructors",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
     ],
 )
 

@@ -27,9 +27,13 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
+from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl import type_constructors
 
 
 class LambdaExecutorTest(absltest.TestCase):
@@ -175,6 +179,56 @@ class LambdaExecutorTest(absltest.TestCase):
     v5 = loop.run_until_complete(ex.create_call(v1, v4))
     result = loop.run_until_complete(v5.compute())
     self.assertEqual(result.numpy(), 12)
+
+  def test_with_federated_apply(self):
+    eager_ex = eager_executor.EagerExecutor()
+    federated_ex = federated_executor.FederatedExecutor({
+        None: eager_ex,
+        placement_literals.SERVER: eager_ex
+    })
+    ex = lambda_executor.LambdaExecutor(federated_ex)
+    loop = asyncio.get_event_loop()
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    def comp(x):
+      return intrinsics.federated_apply(add_one, x)
+
+    v1 = loop.run_until_complete(ex.create_value(comp))
+    v2 = loop.run_until_complete(
+        ex.create_value(10, type_constructors.at_server(tf.int32)))
+    v3 = loop.run_until_complete(ex.create_call(v1, v2))
+    result = loop.run_until_complete(v3.compute())
+    self.assertEqual(result.numpy(), 11)
+
+  def test_with_federated_map_and_broadcast(self):
+    eager_ex = eager_executor.EagerExecutor()
+    federated_ex = federated_executor.FederatedExecutor({
+        None: eager_ex,
+        placement_literals.SERVER: eager_ex,
+        placement_literals.CLIENTS: [eager_ex for _ in range(3)]
+    })
+    ex = lambda_executor.LambdaExecutor(federated_ex)
+    loop = asyncio.get_event_loop()
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    def comp(x):
+      return intrinsics.federated_map(add_one,
+                                      intrinsics.federated_broadcast(x))
+
+    v1 = loop.run_until_complete(ex.create_value(comp))
+    v2 = loop.run_until_complete(
+        ex.create_value(10, type_constructors.at_server(tf.int32)))
+    v3 = loop.run_until_complete(ex.create_call(v1, v2))
+    result = loop.run_until_complete(v3.compute())
+    self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
 
 
 if __name__ == '__main__':

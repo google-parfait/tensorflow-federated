@@ -20,9 +20,11 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
+from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 
@@ -148,16 +150,6 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
   @property
   def type_signature(self):
     return self._type_signature
-
-  def __str__(self):
-    if isinstance(self._value, executor_value_base.ExecutorValue):
-      return '(target {})'.format(str(self._value))
-    elif isinstance(self._value, pb.Computation):
-      return '(unprocessed {})'.format(str(self._type_signature))
-    elif isinstance(self._value, pb.Computation):
-      return '(callable {})'.format(str(self._type_signature))
-    else:
-      return str(self._value)
 
   async def compute(self):
     if isinstance(self._type_signature, computation_types.FunctionType):
@@ -317,7 +309,7 @@ class LambdaExecutor(executor_base.Executor):
       vals = await asyncio.gather(*[self._delegate(v) for _, v in elem])
       return await self._target_executor.create_tuple(
           anonymous_tuple.AnonymousTuple(list(zip([k for k, _ in elem], vals))))
-    elif isinstance(value_repr, callable):
+    elif callable(value_repr):
       raise RuntimeError(
           'Cannot delegate a callable to a target executor; it appears that '
           'the internal computation structure has been evaluated too deeply '
@@ -329,9 +321,10 @@ class LambdaExecutor(executor_base.Executor):
       # are about to push down to the target executor making references to
       # something declared outside of its scope, in which case we'll have to
       # do a little bit more work to plumb things through.
-      raise NotImplementedError(
-          'Delegation of unprocessed computations to the traget scope is not '
-          'yet implemented.')
+
+      _check_no_unbound_references(value_repr)
+      return await self._target_executor.create_value(value_repr,
+                                                      value.type_signature)
 
   async def _evaluate(self, comp, scope=None):
     """Evaluates or partially evaluates `comp` in `scope`.
@@ -389,10 +382,20 @@ class LambdaExecutor(executor_base.Executor):
           **{which_selection: getattr(comp.selection, which_selection)})
     elif which_computation == 'tuple':
       names = [str(e.name) if e.name else None for e in comp.tuple.element]
-      values = await asyncio.gather(*[
-          self.create_call(LambdaExecutorValue(e.value, scope=scope))
-          for e in comp.tuple.element
-      ])
+      values = []
+      for e in comp.tuple.element:
+        val = LambdaExecutorValue(e.value, scope=scope)
+        if (isinstance(val.type_signature, computation_types.FunctionType) and
+            val.type_signature.parameter is None):
+          val = self.create_call(val)
+        else:
+
+          async def _async_identity(x):
+            return x
+
+          val = _async_identity(val)
+        values.append(val)
+      values = await asyncio.gather(*values)
       return await self.create_tuple(
           anonymous_tuple.AnonymousTuple(list(zip(names, values))))
     elif which_computation == 'block':
@@ -403,3 +406,24 @@ class LambdaExecutor(executor_base.Executor):
     else:
       raise NotImplementedError(
           'Unsupported computation type "{}".'.format(which_computation))
+
+
+def _check_no_unbound_references(comp):
+  """Checks that `comp` has no unbound references.
+
+  This is a temporary helper function, to be removed once we provide a more
+  complete support.
+
+  Args:
+    comp: An instance of `pb.Computation` to check.
+
+  Raises:
+    ValueError: If `comp` has unbound references.
+  """
+  py_typecheck.check_type(comp, pb.Computation)
+  blk = computation_building_blocks.ComputationBuildingBlock.from_proto(comp)
+  unbound_map = transformations.get_map_of_unbound_references(blk)
+  unbound_refs = unbound_map[blk]
+  if unbound_refs:
+    raise ValueError(
+        'The computation contains unbound references: {}.'.format(unbound_refs))
