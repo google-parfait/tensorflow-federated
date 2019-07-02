@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_bodies
@@ -45,11 +46,6 @@ from tensorflow_federated.python.core.impl import type_constructors
 def _create_lambda_to_identity(parameter_name, parameter_type=tf.int32):
   ref = computation_building_blocks.Reference(parameter_name, parameter_type)
   return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-
-
-def _to_computation_impl(building_block):
-  return computation_impl.ComputationImpl(building_block.proto,
-                                          context_stack_impl.context_stack)
 
 
 class ReferenceExecutorTest(test.TestCase):
@@ -1167,8 +1163,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
         'x', fed_ref.type_signature, second_applied_id)
     lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
         'x', fed_ref.type_signature, placement_unwrapped)
-    executable_identity = _to_computation_impl(lambda_wrapping_id)
-    executable_unwrapped = _to_computation_impl(
+    executable_identity = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapping_id)
+    executable_unwrapped = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_placement_unwrapped)
 
     for k in range(10):
@@ -1190,8 +1187,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
         'x', fed_ref.type_signature, second_applied_id)
     lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
         'x', fed_ref.type_signature, placement_unwrapped)
-    executable_identity = _to_computation_impl(lambda_wrapping_id)
-    executable_unwrapped = _to_computation_impl(
+    executable_identity = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapping_id)
+    executable_unwrapped = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_placement_unwrapped)
 
     for k in range(10):
@@ -1212,8 +1210,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
         'tup', fed_tuple.type_signature, zipped)
     lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
         'tup', fed_tuple.type_signature, placement_unwrapped)
-    executable_zip = _to_computation_impl(lambda_wrapping_zip)
-    executable_unwrapped = _to_computation_impl(
+    executable_zip = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapping_zip)
+    executable_unwrapped = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_placement_unwrapped)
 
     for k in range(10):
@@ -1235,8 +1234,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
         'tup', fed_tuple.type_signature, zipped)
     lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
         'tup', fed_tuple.type_signature, placement_unwrapped)
-    executable_zip = _to_computation_impl(lambda_wrapping_zip)
-    executable_unwrapped = _to_computation_impl(
+    executable_zip = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapping_zip)
+    executable_unwrapped = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_placement_unwrapped)
 
     for k in range(10):
@@ -1271,8 +1271,10 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
-    comp_impl = _to_computation_impl(comp)
-    transformed_comp_impl = _to_computation_impl(transformed_comp)
+    comp_impl = computation_wrapper_instances.building_block_to_computation(
+        comp)
+    transformed_comp_impl = computation_wrapper_instances.building_block_to_computation(
+        transformed_comp)
 
     self.assertEqual(
         comp_impl(((1,), 1.0, 2.0, 3.0, True)),
@@ -1291,8 +1293,10 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_APPLY.uri)
 
-    comp_impl = _to_computation_impl(comp)
-    transformed_comp_impl = _to_computation_impl(transformed_comp)
+    comp_impl = computation_wrapper_instances.building_block_to_computation(
+        comp)
+    transformed_comp_impl = computation_wrapper_instances.building_block_to_computation(
+        transformed_comp)
 
     self.assertEqual(comp_impl(1), transformed_comp_impl(1))
 
@@ -1308,8 +1312,10 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
 
-    comp_impl = _to_computation_impl(comp)
-    transformed_comp_impl = _to_computation_impl(transformed_comp)
+    comp_impl = computation_wrapper_instances.building_block_to_computation(
+        comp)
+    transformed_comp_impl = computation_wrapper_instances.building_block_to_computation(
+        transformed_comp)
 
     self.assertEqual(comp_impl(10), transformed_comp_impl(10))
 
@@ -1326,8 +1332,10 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
-    comp_impl = _to_computation_impl(comp)
-    transformed_comp_impl = _to_computation_impl(transformed_comp)
+    comp_impl = computation_wrapper_instances.building_block_to_computation(
+        comp)
+    transformed_comp_impl = computation_wrapper_instances.building_block_to_computation(
+        transformed_comp)
 
     self.assertEqual(comp_impl((1,)), transformed_comp_impl((1,)))
 
