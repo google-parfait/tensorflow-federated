@@ -373,8 +373,8 @@ class _KerasModel(model_lib.Model):
     for variable in itertools.chain(self.trainable_variables,
                                     self.non_trainable_variables,
                                     self.local_variables):
-      tf.add_to_collection(graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE,
-                           variable)
+      tf.compat.v1.add_to_collection(
+          graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE, variable)
 
   @property
   def trainable_variables(self):
