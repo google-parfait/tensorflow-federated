@@ -394,6 +394,9 @@ class FederatedExecutor(executor_base.Executor):
     for idx in range(cardinality):
       new_vals.append(
           anonymous_tuple.AnonymousTuple([(k, v[idx]) for k, v in elements]))
+    children = self._target_executors[placement]
+    new_vals = await asyncio.gather(
+        *[c.create_tuple(x) for c, x in zip(children, new_vals)])
     return FederatedExecutorValue(
         new_vals,
         computation_types.FederatedType(

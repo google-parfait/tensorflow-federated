@@ -434,6 +434,35 @@ py_test(
 )
 
 py_library(
+    name = "executor_stacks",
+    srcs = ["executor_stacks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":concurrent_executor",
+        ":eager_executor",
+        ":federated_executor",
+        ":lambda_executor",
+        ":placement_literals",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "executor_stacks_test",
+    size = "small",
+    srcs = ["executor_stacks_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":executor_stacks",
+        ":set_default_executor",
+        ":type_constructors",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+    ],
+)
+
+py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
     srcs_version = "PY3",
