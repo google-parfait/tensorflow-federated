@@ -49,6 +49,7 @@
 *   <a href="./tff/framework/merge_tuple_intrinsics.md"><code>tff.framework.merge_tuple_intrinsics</code></a>
 *   <a href="./tff/framework/remove_mapped_or_applied_identity.md"><code>tff.framework.remove_mapped_or_applied_identity</code></a>
 *   <a href="./tff/framework/replace_called_lambda_with_block.md"><code>tff.framework.replace_called_lambda_with_block</code></a>
+*   <a href="./tff/framework/replace_intrinsics_with_bodies.md"><code>tff.framework.replace_intrinsics_with_bodies</code></a>
 *   <a href="./tff/framework/replace_selection_from_tuple_with_element.md"><code>tff.framework.replace_selection_from_tuple_with_element</code></a>
 *   <a href="./tff/framework/transform_postorder.md"><code>tff.framework.transform_postorder</code></a>
 *   <a href="./tff/framework/transform_type_postorder.md"><code>tff.framework.transform_type_postorder</code></a>

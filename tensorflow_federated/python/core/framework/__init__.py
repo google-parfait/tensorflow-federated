@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_APPLY
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_BROADCAST
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_MAP
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_MAP_ALL_EQUAL
+from tensorflow_federated.python.core.impl.intrinsic_reductions import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.transformation_utils import transform_postorder
 from tensorflow_federated.python.core.impl.transformations import check_has_unique_names
 from tensorflow_federated.python.core.impl.transformations import check_intrinsics_whitelisted_for_reduction
@@ -90,8 +91,8 @@ _allowed_symbols = [
     "Call",
     "CompiledComputation",
     "ComputationBuildingBlock",
-    "FEDERATED_APPLY",
     "FEDERATED_AGGREGATE",
+    "FEDERATED_APPLY",
     "FEDERATED_BROADCAST",
     "FEDERATED_MAP",
     "FEDERATED_MAP_ALL_EQUAL",
@@ -100,8 +101,10 @@ _allowed_symbols = [
     "Placement",
     "Reference",
     "Selection",
+    "TFParser",
     "Tuple",
     "are_equivalent_types",
+    "building_block_to_computation",
     "check_has_unique_names",
     "check_intrinsics_whitelisted_for_reduction",
     "create_federated_map_all_equal",
@@ -116,9 +119,8 @@ _allowed_symbols = [
     "merge_tuple_intrinsics",
     "remove_mapped_or_applied_identity",
     "replace_called_lambda_with_block",
+    "replace_intrinsics_with_bodies",
     "replace_selection_from_tuple_with_element",
-    "TFParser",
-    "building_block_to_computation",
     "transform_postorder",
     "transform_type_postorder",
     "type_from_tensors",

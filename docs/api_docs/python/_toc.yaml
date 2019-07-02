@@ -108,6 +108,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/remove_mapped_or_applied_identity
     - title: replace_called_lambda_with_block
       path: /federated/api_docs/python/tff/framework/replace_called_lambda_with_block
+    - title: replace_intrinsics_with_bodies
+      path: /federated/api_docs/python/tff/framework/replace_intrinsics_with_bodies
     - title: replace_selection_from_tuple_with_element
       path: /federated/api_docs/python/tff/framework/replace_selection_from_tuple_with_element
     - title: Selection

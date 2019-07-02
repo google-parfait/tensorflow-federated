@@ -36,7 +36,10 @@ from tensorflow_federated.python.core.impl import value_impl
 
 
 def get_intrinsic_bodies(context_stack):
-  """Returns a dictionary of intrinsic bodies.
+  """Returns a `collections.OrderedDict` of intrinsic bodies.
+
+  This dictionary respects the invariant that no body may refer to an intrinsic
+  whose body appears previously in the `dict`.
 
   Args:
     context_stack: The context stack to use.
