@@ -73,6 +73,7 @@ if six.PY3:
     from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
     from tensorflow_federated.python.core.impl.executor_base import Executor
     from tensorflow_federated.python.core.impl.executor_service import ExecutorService
+    from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
     from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
     from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
     from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor

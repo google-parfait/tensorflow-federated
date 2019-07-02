@@ -305,9 +305,9 @@ class FederatedExecutorTest(absltest.TestCase):
     def ten_on_clients():
       return intrinsics.federated_value(10, placements.CLIENTS)
 
-    for ten, type_string, cardinality in [
-        (ten_on_server, '<int32,int32>@SERVER', 1),
-        (ten_on_clients, '{<int32,int32>}@CLIENTS', 3)
+    for ten, type_string, cardinality, expected_result in [
+        (ten_on_server, '<int32,int32>@SERVER', 1, '<10,10>'),
+        (ten_on_clients, '{<int32,int32>}@CLIENTS', 3, ['<10,10>'] * 3)
     ]:
       comp = computation_constructing_utils.create_zip_two_values(
           computation_building_blocks.Tuple([
@@ -320,12 +320,15 @@ class FederatedExecutorTest(absltest.TestCase):
       self.assertEqual(str(val.type_signature), type_string)
       self.assertIsInstance(val.internal_representation, list)
       self.assertLen(val.internal_representation, cardinality)
-      for v in val.internal_representation:
-        self.assertIsInstance(v, anonymous_tuple.AnonymousTuple)
-        self.assertLen(v, 2)
-        for x in v:
-          self.assertIsInstance(x, eager_executor.EagerValue)
-          self.assertEqual(x.internal_representation.numpy(), 10)
+      result = loop.run_until_complete(val.compute())
+
+      def _print(x):
+        return str(anonymous_tuple.map_structure(lambda v: v.numpy(), x))
+
+      if isinstance(expected_result, list):
+        self.assertCountEqual([_print(x) for x in result], expected_result)
+      else:
+        self.assertEqual(_print(result), expected_result)
 
 
 if __name__ == '__main__':
