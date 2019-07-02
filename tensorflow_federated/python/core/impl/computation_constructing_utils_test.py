@@ -30,17 +30,12 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
-from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
-
-
-def _to_computation_impl(building_block):
-  return computation_impl.ComputationImpl(building_block.proto,
-                                          context_stack_impl.context_stack)
 
 
 class UniqueNameGeneratorTest(absltest.TestCase):
@@ -158,7 +153,8 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
   def test_integer_identity_acts_as_identity(self):
     int_identity = computation_constructing_utils.construct_compiled_identity(
         tf.int32)
-    executable_identity = _to_computation_impl(int_identity)
+    executable_identity = computation_wrapper_instances.building_block_to_computation(
+        int_identity)
     for k in range(10):
       self.assertEqual(executable_identity(k), k)
 
@@ -176,7 +172,8 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
     tuple_type = [tf.int32, tf.float32]
     tuple_identity = computation_constructing_utils.construct_compiled_identity(
         tuple_type)
-    executable_identity = _to_computation_impl(tuple_identity)
+    executable_identity = computation_wrapper_instances.building_block_to_computation(
+        tuple_identity)
     for k in range(10):
       self.assertEqual(executable_identity([k, 10. - k])[0], k)
       self.assertEqual(executable_identity([k, 10. - k])[1], 10. - k)
@@ -195,7 +192,8 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
     tuple_identity = computation_constructing_utils.construct_compiled_identity(
         tuple_type)
-    executable_identity = _to_computation_impl(tuple_identity)
+    executable_identity = computation_wrapper_instances.building_block_to_computation(
+        tuple_identity)
     for k in range(10):
       self.assertEqual(executable_identity({'a': k, 'b': 10. - k}).a, k)
       self.assertEqual(executable_identity({'a': k, 'b': 10. - k}).b, 10. - k)
@@ -214,7 +212,8 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
     sequence_type = computation_types.SequenceType(tf.int32)
     sequence_identity = computation_constructing_utils.construct_compiled_identity(
         sequence_type)
-    executable_identity = _to_computation_impl(sequence_identity)
+    executable_identity = computation_wrapper_instances.building_block_to_computation(
+        sequence_identity)
     seq = list(range(10))
     self.assertEqual(executable_identity(seq), seq)
 
@@ -256,7 +255,8 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
   def test_integer_input_duplicate_duplicates_input(self):
     int_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
         tf.int32, 2)
-    executable_duplicate_input = _to_computation_impl(int_duplicate_input)
+    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
+        int_duplicate_input)
     for k in range(10):
       self.assertEqual(executable_duplicate_input(k)[0], k)
       self.assertEqual(executable_duplicate_input(k)[1], k)
@@ -275,7 +275,8 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
   def test_integer_input_triplicate_triplicates_input(self):
     int_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
         tf.int32, 3)
-    executable_duplicate_input = _to_computation_impl(int_duplicate_input)
+    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
+        int_duplicate_input)
     for k in range(10):
       self.assertEqual(executable_duplicate_input(k)[0], k)
       self.assertEqual(executable_duplicate_input(k)[1], k)
@@ -297,7 +298,8 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
     tuple_type = [tf.int32, tf.float32]
     tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
         tuple_type, 2)
-    executable_duplicate_input = _to_computation_impl(tuple_duplicate_input)
+    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
+        tuple_duplicate_input)
     for k in range(10):
       self.assertEqual(executable_duplicate_input([k, 10. - k])[0][0], k)
       self.assertEqual(executable_duplicate_input([k, 10. - k])[1][0], k)
@@ -320,7 +322,8 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
     tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
         tuple_type, 2)
-    executable_duplicate_input = _to_computation_impl(tuple_duplicate_input)
+    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
+        tuple_duplicate_input)
     for k in range(10):
       self.assertEqual(executable_duplicate_input([k, 10. - k])[0].a, k)
       self.assertEqual(executable_duplicate_input([k, 10. - k])[1].a, k)
@@ -343,7 +346,8 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
     sequence_type = computation_types.SequenceType(tf.int32)
     sequence_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
         sequence_type, 2)
-    executable_duplicate_input = _to_computation_impl(sequence_duplicate_input)
+    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
+        sequence_duplicate_input)
     seq = list(range(10))
     self.assertEqual(executable_duplicate_input(seq)[0], seq)
     self.assertEqual(executable_duplicate_input(seq)[1], seq)
@@ -1990,14 +1994,16 @@ class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
   def test_constructs_identity_scalar_function(self):
     int_identity = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
         tf.int32, tf.TensorShape([]))
-    executable_int_identity = _to_computation_impl(int_identity)
+    executable_int_identity = computation_wrapper_instances.building_block_to_computation(
+        int_identity)
     for k in range(5):
       self.assertEqual(executable_int_identity(k), k)
 
   def test_broadcasts_ints_to_nonempty_shape(self):
     int_broadcast = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
         tf.int32, tf.TensorShape([2, 2]))
-    executable_int_broadcast = _to_computation_impl(int_broadcast)
+    executable_int_broadcast = computation_wrapper_instances.building_block_to_computation(
+        int_broadcast)
     for k in range(5):
       self.assertTrue(
           np.array_equal(
@@ -2006,7 +2012,8 @@ class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
   def test_broadcasts_bools_to_nonempty_shape(self):
     int_broadcast = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
         tf.bool, tf.TensorShape([2, 2]))
-    executable_int_broadcast = _to_computation_impl(int_broadcast)
+    executable_int_broadcast = computation_wrapper_instances.building_block_to_computation(
+        int_broadcast)
     self.assertTrue(
         np.array_equal(
             executable_int_broadcast(True),
@@ -2045,7 +2052,8 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
     self.assertEqual(
         integer_division_func.type_signature,
         computation_types.FunctionType([tf.int32, tf.int32], tf.float64))
-    callable_division = _to_computation_impl(integer_division_func)
+    callable_division = computation_wrapper_instances.building_block_to_computation(
+        integer_division_func)
     self.assertEqual(callable_division(1, 1), 1)
     self.assertEqual(callable_division(1, 2), 0.5)
     self.assertEqual(callable_division(2, 1), 2)
@@ -2059,14 +2067,16 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
         computation_types.FunctionType(
             [[tf.int32, tf.float32], [tf.int32, tf.float32]],
             [tf.float64, tf.float32]))
-    callable_division = _to_computation_impl(division_func)
+    callable_division = computation_wrapper_instances.building_block_to_computation(
+        division_func)
     self.assertEqual(callable_division([1, 0.], [1, 1.])[0], 1)
     self.assertEqual(callable_division([1, 0.], [1, 1.])[1], 0.)
 
   def test_divide_named_tuple(self):
     integer_division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
         [('a', tf.int32), ('b', tf.float32)], tf.divide)
-    callable_division = _to_computation_impl(integer_division_func)
+    callable_division = computation_wrapper_instances.building_block_to_computation(
+        integer_division_func)
     self.assertDictEqual(
         anonymous_tuple.to_odict(callable_division([1, 0.], [1, 1.])), {
             'a': 1,
@@ -2076,7 +2086,8 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
   def test_multiply_integers(self):
     integer_multiplication_func = computation_constructing_utils.construct_tensorflow_binary_operator(
         tf.int32, tf.multiply)
-    callable_multiplication = _to_computation_impl(integer_multiplication_func)
+    callable_multiplication = computation_wrapper_instances.building_block_to_computation(
+        integer_multiplication_func)
     self.assertEqual(callable_multiplication(1, 1), 1)
     self.assertEqual(callable_multiplication(1, 2), 2)
     self.assertEqual(callable_multiplication(2, 1), 2)
@@ -2084,7 +2095,8 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
   def test_multiply_named_tuple(self):
     integer_multiplication_func = computation_constructing_utils.construct_tensorflow_binary_operator(
         [('a', tf.int32), ('b', tf.float32)], tf.multiply)
-    callable_multiplication = _to_computation_impl(integer_multiplication_func)
+    callable_multiplication = computation_wrapper_instances.building_block_to_computation(
+        integer_multiplication_func)
     self.assertDictEqual(
         anonymous_tuple.to_odict(callable_multiplication([1, 0.], [1, 1.])), {
             'a': 1,
@@ -2099,7 +2111,8 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
   def test_add_integers(self):
     integer_add = computation_constructing_utils.construct_tensorflow_binary_operator(
         tf.int32, tf.add)
-    callable_add = _to_computation_impl(integer_add)
+    callable_add = computation_wrapper_instances.building_block_to_computation(
+        integer_add)
     self.assertEqual(callable_add(0, 0), 0)
     self.assertEqual(callable_add(1, 0), 1)
     self.assertEqual(callable_add(0, 1), 1)
@@ -2133,7 +2146,8 @@ class TensorFlowConstantTest(absltest.TestCase):
     tensor_zero = computation_constructing_utils.construct_tensorflow_constant(
         computation_types.TensorType(tf.int32, [2, 2]), 0)
     self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
-    executable_noarg_zero = _to_computation_impl(tensor_zero.function)
+    executable_noarg_zero = computation_wrapper_instances.building_block_to_computation(
+        tensor_zero.function)
     self.assertTrue(
         np.array_equal(executable_noarg_zero(), np.zeros([2, 2],
                                                          dtype=np.int32)))
@@ -2142,7 +2156,8 @@ class TensorFlowConstantTest(absltest.TestCase):
     tensor_one = computation_constructing_utils.construct_tensorflow_constant(
         computation_types.TensorType(tf.float32, [2, 2]), 1.)
     self.assertIsInstance(tensor_one, computation_building_blocks.Call)
-    executable_noarg_one = _to_computation_impl(tensor_one.function)
+    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
+        tensor_one.function)
     self.assertTrue(
         np.array_equal(executable_noarg_one(), np.ones([2, 2],
                                                        dtype=np.float32)))
@@ -2154,7 +2169,8 @@ class TensorFlowConstantTest(absltest.TestCase):
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_one = _to_computation_impl(tuple_of_ones.function)
+    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
+        tuple_of_ones.function)
     self.assertTrue(
         np.array_equal(executable_noarg_one()[0],
                        np.ones([2, 2], dtype=np.float32)))
@@ -2171,7 +2187,8 @@ class TensorFlowConstantTest(absltest.TestCase):
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_one = _to_computation_impl(tuple_of_ones.function)
+    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
+        tuple_of_ones.function)
     self.assertTrue(
         np.array_equal(executable_noarg_one().a,
                        np.ones([2, 2], dtype=np.float32)))
@@ -2188,7 +2205,8 @@ class TensorFlowConstantTest(absltest.TestCase):
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_one = _to_computation_impl(tuple_of_ones.function)
+    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
+        tuple_of_ones.function)
     self.assertTrue(
         np.array_equal(executable_noarg_one()[0].a,
                        np.ones([2, 2], dtype=np.float32)))
@@ -2205,7 +2223,8 @@ class TensorFlowConstantTest(absltest.TestCase):
         tuple_type, 1)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_zero = _to_computation_impl(tuple_of_ones.function)
+    executable_noarg_zero = computation_wrapper_instances.building_block_to_computation(
+        tuple_of_ones.function)
     self.assertTrue(
         np.array_equal(executable_noarg_zero()[0].a,
                        np.ones([2, 2], dtype=np.int32)))

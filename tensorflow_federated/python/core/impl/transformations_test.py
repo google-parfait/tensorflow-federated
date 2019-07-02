@@ -28,19 +28,14 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_test_utils
+from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
-
-
-def _to_computation_impl(building_block):
-  return computation_impl.ComputationImpl(building_block.proto,
-                                          context_stack_impl.context_stack)
 
 
 def _computation_impl_to_building_block(comp):
@@ -2575,8 +2570,10 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         selection_from_call)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
@@ -2593,8 +2590,10 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
@@ -2615,15 +2614,19 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
     self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
     self.assertEqual(exec_lambda([3, 4.]), exec_tf([3, 4.]))
 
   def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type_with_names(
@@ -2640,8 +2643,10 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
@@ -2665,15 +2670,19 @@ class ParseTFFToTFTest(absltest.TestCase):
         'x', [tf.int32, tf.float32, tf.bool], called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
     self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
     self.assertEqual(exec_lambda([7, 8., True]), exec_tf([7, 8., True]))
 
   def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type_with_names(
@@ -2695,15 +2704,19 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
     self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
     self.assertEqual(
         exec_lambda({
             'a': 9,
@@ -2736,15 +2749,19 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         tuple_of_called_graphs)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
     self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
     self.assertEqual(exec_lambda([11, 12.]), exec_tf([11, 12.]))
 
   def test_replaces_lambda_to_named_tuple_of_called_graphs_with_tf_of_same_type(
@@ -2769,8 +2786,10 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         tuple_of_called_graphs)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
@@ -2797,8 +2816,10 @@ class ParseTFFToTFTest(absltest.TestCase):
                                                         one_added)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
@@ -2823,8 +2844,10 @@ class ParseTFFToTFTest(absltest.TestCase):
     lambda_wrapper = computation_building_blocks.Lambda('x', tf.int32, summed)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = _to_computation_impl(lambda_wrapper)
-    exec_tf = _to_computation_impl(parsed)
+    exec_lambda = computation_wrapper_instances.building_block_to_computation(
+        lambda_wrapper)
+    exec_tf = computation_wrapper_instances.building_block_to_computation(
+        parsed)
 
     self.assertIsInstance(parsed,
                           computation_building_blocks.CompiledComputation)
