@@ -371,6 +371,20 @@ class FederatedExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(val.compute())
     self.assertEqual(result.numpy(), 31)
 
+  def test_federated_sum_with_integers(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(3)
+
+    @computations.federated_computation
+    def comp():
+      x = intrinsics.federated_value(10, placements.CLIENTS)
+      return intrinsics.federated_sum(x)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    result = loop.run_until_complete(val.compute())
+    self.assertEqual(result.numpy(), 30)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

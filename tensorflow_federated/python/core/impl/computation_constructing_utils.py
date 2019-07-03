@@ -1057,8 +1057,8 @@ def create_federated_sum(value):
                           computation_building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
                                                 placement_literals.SERVER)
-  intrinsic_type = computation_types.FunctionType(value.type_signature,
-                                                  result_type)
+  intrinsic_type = computation_types.FunctionType(
+      type_utils.to_non_all_equal(value.type_signature), result_type)
   intrinsic = computation_building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_SUM.uri, intrinsic_type)
   return computation_building_blocks.Call(intrinsic, value)
