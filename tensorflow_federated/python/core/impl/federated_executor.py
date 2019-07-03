@@ -550,25 +550,10 @@ class FederatedExecutor(executor_base.Executor):
 
   async def _compute_intrinsic_federated_sum(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-
-    zero_building_block = (
-        computation_constructing_utils.construct_tensorflow_constant(
-            arg.type_signature.member, 0))
-    zero = await self.create_call(await self.create_value(
-        zero_building_block.function.proto,
-        zero_building_block.function.type_signature))
-    type_utils.check_equivalent_types(arg.type_signature.member,
-                                      zero.type_signature)
-
-    # TODO(b/134543154): There is an opportunity here to import something more
-    # in line with the usage (no building block wrapping, etc.)
-    plus_building_block = (
-        computation_constructing_utils.construct_tensorflow_binary_operator(
-            zero.type_signature, tf.add))
-    plus = await self.create_value(plus_building_block.proto,
-                                   plus_building_block.type_signature)
-    type_utils.check_equivalent_types(
-        plus.type_signature, type_constructors.binary_op(zero.type_signature))
+    zero, plus = tuple(await asyncio.gather(*[
+        _embed_tf_scalar_constant(self, arg.type_signature.member, 0),
+        _embed_tf_binary_operator(self, arg.type_signature.member, tf.add)
+    ]))
     return await self._compute_intrinsic_federated_reduce(
         FederatedExecutorValue(
             anonymous_tuple.AnonymousTuple([
@@ -579,3 +564,71 @@ class FederatedExecutor(executor_base.Executor):
             computation_types.NamedTupleType(
                 [arg.type_signature, zero.type_signature,
                  plus.type_signature])))
+
+  async def _compute_intrinsic_federated_mean(self, arg):
+    arg_sum = await self._compute_intrinsic_federated_sum(arg)
+    member_type = arg_sum.type_signature.member
+    count = float(len(arg.internal_representation))
+    if count < 1.0:
+      raise RuntimeError('Cannot compute a federated mean over an empty group.')
+    child = self._target_executors[placement_literals.SERVER][0]
+    factor, multiply = tuple(await asyncio.gather(*[
+        _embed_tf_scalar_constant(child, member_type, float(1.0 / count)),
+        _embed_tf_binary_operator(child, member_type, tf.multiply)
+    ]))
+    multiply_arg = await child.create_tuple(
+        anonymous_tuple.AnonymousTuple([(None,
+                                         arg_sum.internal_representation[0]),
+                                        (None, factor)]))
+    result = await child.create_call(multiply, multiply_arg)
+    return FederatedExecutorValue([result], arg_sum.type_signature)
+
+
+async def _embed_tf_scalar_constant(executor, type_spec, val):
+  """Embeds a constant `val` of TFF type `type_spec` in `executor`.
+
+  Args:
+    executor: An instance of `tff.framework.Executor`.
+    type_spec: An instance of `tff.Type`.
+    val: A scalar value.
+
+  Returns:
+    An instance of `tff.framework.ExecutorValue` containing an embedded value.
+  """
+  # TODO(b/134543154): Perhaps graduate this and the function below it into a
+  # separate library, so that it can be used in other places.
+  py_typecheck.check_type(executor, executor_base.Executor)
+  fn_building_block = (
+      computation_constructing_utils.construct_tensorflow_constant(
+          type_spec, val))
+  embedded_val = await executor.create_call(await executor.create_value(
+      fn_building_block.function.proto,
+      fn_building_block.function.type_signature))
+  type_utils.check_equivalent_types(embedded_val.type_signature, type_spec)
+  return embedded_val
+
+
+async def _embed_tf_binary_operator(executor, type_spec, op):
+  """Embeds a binary operator `op` on `type_spec`-typed values in `executor`.
+
+  Args:
+    executor: An instance of `tff.framework.Executor`.
+    type_spec: An instance of `tff.Type` of the type of values that the binary
+      operator accepts as input and returns as output.
+    op: An operator function (such as `tf.add` or `tf.multiply`) to apply to the
+      tensor-level constituents of the values, pointwise.
+
+  Returns:
+    An instance of `tff.framework.ExecutorValue` representing the operator in
+    a form embedded into the executor.
+  """
+  # TODO(b/134543154): There is an opportunity here to import something more
+  # in line with the usage (no building block wrapping, etc.)
+  fn_building_block = (
+      computation_constructing_utils.construct_tensorflow_binary_operator(
+          type_spec, op))
+  embedded_val = await executor.create_value(fn_building_block.proto,
+                                             fn_building_block.type_signature)
+  type_utils.check_equivalent_types(embedded_val.type_signature,
+                                    type_constructors.binary_op(type_spec))
+  return embedded_val
