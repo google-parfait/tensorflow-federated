@@ -19,24 +19,119 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import computation_wrapper_instances
+from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_constructors
 
 
-class IntrinsicUtilsTest(absltest.TestCase):
+class GenericConstantTest(absltest.TestCase):
 
-  def test_zero_for(self):
-    self.assertEqual(
-        str(
-            intrinsic_utils.zero_for(
-                tf.int32, context_stack_impl.context_stack).type_signature),
-        'int32')
+  def test_raises_on_none_type(self):
+    with self.assertRaises(TypeError):
+      intrinsic_utils.construct_generic_constant(None, 0)
+
+  def test_raises_non_scalar(self):
+    with self.assertRaises(TypeError):
+      intrinsic_utils.construct_generic_constant([tf.int32], [0])
+
+  def test_constructs_tensor_zero(self):
+    tensor_type = computation_types.TensorType(tf.float32, [2, 2])
+    tensor_zero = intrinsic_utils.construct_generic_constant(tensor_type, 0)
+    self.assertEqual(tensor_zero.type_signature, tensor_type)
+    self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
+    executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
+        tensor_zero.function)
+    self.assertTrue(np.array_equal(executable_noarg_fn(), np.zeros([2, 2])))
+
+  def test_create_unnamed_tuple_zero(self):
+    tuple_type = [computation_types.TensorType(tf.float32, [2, 2])] * 2
+    tuple_zero = intrinsic_utils.construct_generic_constant(tuple_type, 0)
+    self.assertEqual(tuple_zero.type_signature,
+                     computation_types.to_type(tuple_type))
+    self.assertIsInstance(tuple_zero, computation_building_blocks.Call)
+    executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
+        tuple_zero.function)
+    self.assertLen(executable_noarg_fn(), 2)
+    self.assertTrue(np.array_equal(executable_noarg_fn()[0], np.zeros([2, 2])))
+    self.assertTrue(np.array_equal(executable_noarg_fn()[1], np.zeros([2, 2])))
+
+  def test_create_named_tuple_one(self):
+    tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
+                  ('b', computation_types.TensorType(tf.float32, [2, 2]))]
+    tuple_zero = intrinsic_utils.construct_generic_constant(tuple_type, 1)
+    self.assertEqual(tuple_zero.type_signature,
+                     computation_types.to_type(tuple_type))
+    self.assertIsInstance(tuple_zero, computation_building_blocks.Call)
+    executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
+        tuple_zero.function)
+    self.assertLen(executable_noarg_fn(), 2)
+    self.assertTrue(np.array_equal(executable_noarg_fn().a, np.ones([2, 2])))
+    self.assertTrue(np.array_equal(executable_noarg_fn().b, np.ones([2, 2])))
+
+  def test_create_federated_tensor_one(self):
+    fed_type = computation_types.FederatedType(
+        computation_types.TensorType(tf.float32, [2, 2]),
+        placement_literals.CLIENTS)
+    fed_zero = intrinsic_utils.construct_generic_constant(fed_type, 1)
+    self.assertEqual(fed_zero.type_signature.member, fed_type.member)
+    self.assertEqual(fed_zero.type_signature.placement, fed_type.placement)
+    self.assertTrue(fed_zero.type_signature.all_equal)
+    self.assertIsInstance(fed_zero, computation_building_blocks.Call)
+    self.assertIsInstance(fed_zero.function,
+                          computation_building_blocks.Intrinsic)
+    self.assertEqual(fed_zero.function.uri,
+                     intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
+    self.assertIsInstance(fed_zero.argument, computation_building_blocks.Call)
+    executable_unplaced_fn = computation_wrapper_instances.building_block_to_computation(
+        fed_zero.argument.function)
+    self.assertTrue(np.array_equal(executable_unplaced_fn(), np.ones([2, 2])))
+
+  def test_create_federated_named_tuple_one(self):
+    tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
+                  ('b', computation_types.TensorType(tf.float32, [2, 2]))]
+    fed_type = computation_types.FederatedType(tuple_type,
+                                               placement_literals.SERVER)
+    fed_zero = intrinsic_utils.construct_generic_constant(fed_type, 1)
+    self.assertEqual(fed_zero.type_signature.member, fed_type.member)
+    self.assertEqual(fed_zero.type_signature.placement, fed_type.placement)
+    self.assertTrue(fed_zero.type_signature.all_equal)
+    self.assertIsInstance(fed_zero, computation_building_blocks.Call)
+    self.assertIsInstance(fed_zero.function,
+                          computation_building_blocks.Intrinsic)
+    self.assertEqual(fed_zero.function.uri,
+                     intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri)
+    self.assertIsInstance(fed_zero.argument, computation_building_blocks.Call)
+    executable_unplaced_fn = computation_wrapper_instances.building_block_to_computation(
+        fed_zero.argument.function)
+    self.assertLen(executable_unplaced_fn(), 2)
+    self.assertTrue(np.array_equal(executable_unplaced_fn().a, np.ones([2, 2])))
+    self.assertTrue(np.array_equal(executable_unplaced_fn().b, np.ones([2, 2])))
+
+  def test_create_named_tuple_of_federated_tensors_zero(self):
+    fed_type = computation_types.FederatedType(
+        computation_types.TensorType(tf.float32, [2, 2]),
+        placement_literals.CLIENTS,
+        all_equal=True)
+    tuple_type = [('a', fed_type), ('b', fed_type)]
+    zero = intrinsic_utils.construct_generic_constant(tuple_type, 0)
+    fed_zero = zero.argument[0]
+
+    self.assertEqual(zero.type_signature, computation_types.to_type(tuple_type))
+    self.assertIsInstance(fed_zero.function,
+                          computation_building_blocks.Intrinsic)
+    self.assertEqual(fed_zero.function.uri,
+                     intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
+    self.assertIsInstance(fed_zero.argument, computation_building_blocks.Call)
+    executable_unplaced_fn = computation_wrapper_instances.building_block_to_computation(
+        fed_zero.argument.function)
+    self.assertTrue(np.array_equal(executable_unplaced_fn(), np.zeros([2, 2])))
 
 
 class BinaryOperatorBodyTest(absltest.TestCase):

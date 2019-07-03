@@ -158,7 +158,8 @@ def construct_tensorflow_constant(type_spec, scalar_value):
                     'constant in TFF; only nested tuples and tensors are '
                     'permitted.'.format(type_spec))
   inferred_scalar_value_type = type_utils.infer_type(scalar_value)
-  if inferred_scalar_value_type.shape != tf.TensorShape(()):
+  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
+      or inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError('Must pass a scalar value to '
                     '`construct_tensorflow_constant`; encountered a value '
                     '{}'.format(scalar_value))
