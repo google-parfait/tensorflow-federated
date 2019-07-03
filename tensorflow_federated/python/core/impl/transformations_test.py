@@ -1449,6 +1449,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         str(transformed_comp.type_signature), '<bool@SERVER,bool@SERVER>')
     self.assertTrue(modified)
 
+  def test_merges_multiple_federated_aggregates(self):
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    calls = computation_building_blocks.Tuple(
+        (called_intrinsic, called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+    self.assertEqual(
+        comp.tff_repr,
+        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)>'
+    )
+    # pyformat: disable
+    # pylint: disable=bad-continuation
+    self.assertEqual(
+        transformed_comp.tff_repr,
+        '(x -> <x[0],x[1],x[2]>)'
+          '((let value=federated_aggregate(<'
+              'federated_map(<(x -> <x[0],x[1],x[2]>),'
+                'federated_map(<(arg -> (let comps=<(arg -> arg)(arg[0]),arg[1]> in <comps[0][0],comps[0][1],comps[1]>)),'
+                  '(let value=<data,data,data> in federated_zip_at_clients(<federated_zip_at_clients(<value[0],value[1]>),value[2]>))>)>),'
+              '<data,data,data>,'
+              '(let _var1=<(a -> data),(a -> data),(a -> data)> in ('
+                '_var2 -> <_var1[0](<<_var2[0][0],_var2[1][0]>,<_var2[0][1],_var2[1][1]>,<_var2[0][2],_var2[1][2]>>[0]),'
+                '_var1[1](<<_var2[0][0],_var2[1][0]>,<_var2[0][1],_var2[1][1]>,<_var2[0][2],_var2[1][2]>>[1]),'
+                '_var1[2](<<_var2[0][0],_var2[1][0]>,<_var2[0][1],_var2[1][1]>,<_var2[0][2],_var2[1][2]>>[2])>)),'
+              '(let _var3=<(b -> data),(b -> data),(b -> data)> in ('
+                '_var4 -> <_var3[0](<<_var4[0][0],_var4[1][0]>,<_var4[0][1],_var4[1][1]>,<_var4[0][2],_var4[1][2]>>[0]),'
+                '_var3[1](<<_var4[0][0],_var4[1][0]>,<_var4[0][1],_var4[1][1]>,<_var4[0][2],_var4[1][2]>>[1]),'
+                '_var3[2](<<_var4[0][0],_var4[1][0]>,<_var4[0][1],_var4[1][1]>,<_var4[0][2],_var4[1][2]>>[2])>)),'
+              '(let _var5=<(c -> data),(c -> data),(c -> data)> in ('
+                '_var6 -> <_var5[0](_var6[0]),_var5[1](_var6[1]),_var5[2](_var6[2])>))>) '
+            'in '
+              '<federated_apply(<(arg -> arg[0]),value>),'
+              'federated_apply(<(arg -> arg[1]),value>),'
+              'federated_apply(<(arg -> arg[2]),value>)>))'
+    )
+    # pylint: enable=bad-continuation
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertEqual(
+        str(transformed_comp.type_signature),
+        '<bool@SERVER,bool@SERVER,bool@SERVER>')
+    self.assertTrue(modified)
+
   def test_merges_federated_applys(self):
     called_intrinsic = computation_test_utils.create_dummy_called_federated_apply(
         parameter_name='a')

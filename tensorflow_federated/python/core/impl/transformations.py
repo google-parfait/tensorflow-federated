@@ -691,7 +691,7 @@ def merge_tuple_intrinsics(comp, uri):
     fn_ref = computation_building_blocks.Reference(fn_name,
                                                    functions.type_signature)
     if isinstance(type_signature.parameter, computation_types.NamedTupleType):
-      arg_type = [[] for _ in range(len(comps))]
+      arg_type = [[] for _ in range(len(type_signature.parameter))]
       for functional_comp in comps:
         named_type_signatures = anonymous_tuple.to_elements(
             functional_comp.type_signature.parameter)
