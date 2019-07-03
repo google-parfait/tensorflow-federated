@@ -526,6 +526,7 @@ py_library(
     srcs = ["federated_executor.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_constructing_utils",
         ":computation_impl",
         ":executor_base",
         ":executor_value_base",

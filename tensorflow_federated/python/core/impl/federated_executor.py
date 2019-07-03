@@ -20,10 +20,13 @@ from __future__ import print_function
 
 import asyncio
 
+import tensorflow as tf
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
@@ -544,3 +547,35 @@ class FederatedExecutor(executor_base.Executor):
             ]),
             computation_types.NamedTupleType(
                 [report_type, pre_report.type_signature])))
+
+  async def _compute_intrinsic_federated_sum(self, arg):
+    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+
+    zero_building_block = (
+        computation_constructing_utils.construct_tensorflow_constant(
+            arg.type_signature.member, 0))
+    zero = await self.create_call(await self.create_value(
+        zero_building_block.function.proto,
+        zero_building_block.function.type_signature))
+    type_utils.check_equivalent_types(arg.type_signature.member,
+                                      zero.type_signature)
+
+    # TODO(b/134543154): There is an opportunity here to import something more
+    # in line with the usage (no building block wrapping, etc.)
+    plus_building_block = (
+        computation_constructing_utils.construct_tensorflow_binary_operator(
+            zero.type_signature, tf.add))
+    plus = await self.create_value(plus_building_block.proto,
+                                   plus_building_block.type_signature)
+    type_utils.check_equivalent_types(
+        plus.type_signature, type_constructors.binary_op(zero.type_signature))
+    return await self._compute_intrinsic_federated_reduce(
+        FederatedExecutorValue(
+            anonymous_tuple.AnonymousTuple([
+                (None, arg.internal_representation),
+                (None, zero.internal_representation),
+                (None, plus.internal_representation)
+            ]),
+            computation_types.NamedTupleType(
+                [arg.type_signature, zero.type_signature,
+                 plus.type_signature])))
