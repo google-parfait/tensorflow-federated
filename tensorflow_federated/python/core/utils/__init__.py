@@ -24,6 +24,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.python.core.utils.broadcast_map_reduce import BroadcastMapReduce
 from tensorflow_federated.python.core.utils.computation_utils import IterativeProcess
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn

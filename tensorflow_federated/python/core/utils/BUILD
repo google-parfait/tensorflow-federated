@@ -9,9 +9,20 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        ":broadcast_map_reduce",
         ":computation_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
+    ],
+)
+
+py_library(
+    name = "broadcast_map_reduce",
+    srcs = ["broadcast_map_reduce.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api",
     ],
 )
 
