@@ -10,6 +10,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":computation_utils",
+        ":dp_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
     ],
@@ -52,6 +53,28 @@ py_test(
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api",
+    ],
+)
+
+py_library(
+    name = "dp_utils",
+    srcs = ["dp_utils.py"],
+    deps = [
+        ":computation_utils",
+        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/framework",
+    ],
+)
+
+py_test(
+    name = "dp_utils_test",
+    srcs = ["dp_utils_test.py"],
+    deps = [
+        ":dp_utils",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/framework",
+        "//third_party/py/tensorflow_privacy/privacy",
     ],
 )
 

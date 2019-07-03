@@ -8,3 +8,4 @@ six~=1.10
 tf-nightly
 grpcio~=1.8.0
 portpicker
+tensorflow_privacy

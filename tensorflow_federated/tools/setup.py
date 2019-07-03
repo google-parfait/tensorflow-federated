@@ -67,13 +67,8 @@ if '--project_name' in sys.argv:
   sys.argv.pop(project_name_idx)
 
 REQUIRED_PACKAGES = [
-    'attrs~=18.2',
-    'h5py~=2.6',
-    'numpy~=1.14',
-    'six~=1.10',
-    'tf-nightly',
-    'grpcio~=1.8.0',
-    'portpicker',
+    'attrs~=18.2', 'h5py~=2.6', 'numpy~=1.14', 'six~=1.10', 'tf-nightly',
+    'grpcio~=1.8.0', 'portpicker', 'tensorflow_privacy'
 ]
 
 setuptools.setup(
