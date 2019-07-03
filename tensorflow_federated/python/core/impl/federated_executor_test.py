@@ -36,16 +36,19 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
 
 
-def _make_test_executor(num_clients=1):
-  eager_ex = eager_executor.EagerExecutor()
+def _make_test_executor(num_clients=1, use_lambda_executor=False):
+  bottom_ex = eager_executor.EagerExecutor()
+  if use_lambda_executor:
+    bottom_ex = lambda_executor.LambdaExecutor(bottom_ex)
   return federated_executor.FederatedExecutor({
-      placements.SERVER: eager_ex,
-      placements.CLIENTS: [eager_ex for _ in range(num_clients)],
-      None: eager_ex
+      placements.SERVER: bottom_ex,
+      placements.CLIENTS: [bottom_ex for _ in range(num_clients)],
+      None: bottom_ex
   })
 
 
@@ -408,6 +411,43 @@ class FederatedExecutorTest(absltest.TestCase):
 
     result = loop.run_until_complete(v3.compute())
     self.assertEqual(result.numpy(), 2.5)
+
+  def test_federated_weighted_mean_with_floats(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(num_clients=4, use_lambda_executor=True)
+
+    v1 = loop.run_until_complete(
+        ex.create_value([1.0, 2.0, 3.0, 4.0],
+                        type_constructors.at_clients(tf.float32)))
+    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
+
+    v2 = loop.run_until_complete(
+        ex.create_value([5.0, 10.0, 3.0, 2.0],
+                        type_constructors.at_clients(tf.float32)))
+    self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
+
+    v3 = loop.run_until_complete(
+        ex.create_tuple(
+            anonymous_tuple.AnonymousTuple([(None, v1), (None, v2)])))
+    self.assertEqual(
+        str(v3.type_signature), '<{float32}@CLIENTS,{float32}@CLIENTS>')
+
+    v4 = loop.run_until_complete(
+        ex.create_value(
+            intrinsic_defs.FEDERATED_WEIGHTED_MEAN,
+            computation_types.FunctionType([
+                type_constructors.at_clients(tf.float32),
+                type_constructors.at_clients(tf.float32)
+            ], type_constructors.at_server(tf.float32))))
+    self.assertEqual(
+        str(v4.type_signature),
+        '(<{float32}@CLIENTS,{float32}@CLIENTS> -> float32@SERVER)')
+
+    v5 = loop.run_until_complete(ex.create_call(v4, v3))
+    self.assertEqual(str(v5.type_signature), 'float32@SERVER')
+
+    result = loop.run_until_complete(v5.compute())
+    self.assertAlmostEqual(result.numpy(), 2.1, places=3)
 
 
 if __name__ == '__main__':

@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -1768,6 +1769,15 @@ class IsBinaryOpWithUpcastCompatibleTest(test.TestCase):
                   computation_types.FederatedType(
                       tf.int32, placements.CLIENTS, all_equal=x))),
           '{int32}@CLIENTS')
+
+  def check_valid_federated_weighted_mean_argument_tuple_type(self):
+    type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
+        computation_types.to_type([type_constructors.at_clients(tf.float32)] *
+                                  2))
+    with self.assertRaises(TypeError):
+      type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
+          computation_types.to_type([type_constructors.at_clients(tf.int32)] *
+                                    2))
 
 
 if __name__ == '__main__':

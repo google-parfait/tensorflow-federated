@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
@@ -478,7 +479,8 @@ class FederatedExecutor(executor_base.Executor):
 
     items = await asyncio.gather(*[_move(v) for v in val])
 
-    zero = await child.create_value(arg.internal_representation[1], zero_type)
+    zero = await child.create_value(
+        await arg.internal_representation[1].compute(), zero_type)
     op = await child.create_value(arg.internal_representation[2], op_type)
 
     result = zero
@@ -582,6 +584,42 @@ class FederatedExecutor(executor_base.Executor):
                                         (None, factor)]))
     result = await child.create_call(multiply, multiply_arg)
     return FederatedExecutorValue([result], arg_sum.type_signature)
+
+  async def _compute_intrinsic_federated_weighted_mean(self, arg):
+    type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
+        arg.type_signature)
+    zipped_arg = await self._compute_intrinsic_federated_zip_at_clients(arg)
+    # TODO(b/134543154): Replace with something that produces a section of
+    # plain TensorFlow code instead of constructing a lambda (so that this
+    # can be executed directly on top of a plain TensorFlow-based executor).
+    multiply_blk = intrinsic_utils.construct_binary_operator_with_upcast(
+        zipped_arg.type_signature.member, tf.multiply)
+    sum_of_products = await self._compute_intrinsic_federated_sum(
+        await self._compute_intrinsic_federated_map(
+            FederatedExecutorValue(
+                anonymous_tuple.AnonymousTuple([
+                    (None, multiply_blk.proto),
+                    (None, zipped_arg.internal_representation)
+                ]),
+                computation_types.NamedTupleType(
+                    [multiply_blk.type_signature, zipped_arg.type_signature]))))
+    total_weight = await self._compute_intrinsic_federated_sum(
+        FederatedExecutorValue(arg.internal_representation[1],
+                               arg.type_signature[1]))
+    divide_arg = await self._compute_intrinsic_federated_zip_at_server(
+        await self.create_tuple(
+            anonymous_tuple.AnonymousTuple([(None, sum_of_products),
+                                            (None, total_weight)])))
+    divide_blk = intrinsic_utils.construct_binary_operator_with_upcast(
+        divide_arg.type_signature.member, tf.divide)
+    return await self._compute_intrinsic_federated_apply(
+        FederatedExecutorValue(
+            anonymous_tuple.AnonymousTuple([
+                (None, divide_blk.proto),
+                (None, divide_arg.internal_representation)
+            ]),
+            computation_types.NamedTupleType(
+                [divide_blk.type_signature, divide_arg.type_signature])))
 
 
 async def _embed_tf_scalar_constant(executor, type_spec, val):
