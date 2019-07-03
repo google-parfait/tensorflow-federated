@@ -33,43 +33,43 @@ from tensorflow_federated.python.core.impl import type_constructors
 
 class ExecutorStacksTest(absltest.TestCase):
 
-  def test_with_incomplete_temperature_sensor_example(self):
+  def test_with_temperature_sensor_example(self):
+
+    @computations.tf_computation(
+        computation_types.SequenceType(tf.float32), tf.float32)
+    def count_over(ds, t):
+      return ds.reduce(
+          np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
+
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    def count_total(ds):
+      return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
     @computations.federated_computation(
         type_constructors.at_clients(
             computation_types.SequenceType(tf.float32)),
         type_constructors.at_server(tf.float32))
     def comp(temperatures, threshold):
+      return intrinsics.federated_mean(
+          intrinsics.federated_map(
+              count_over,
+              intrinsics.federated_zip(
+                  [temperatures,
+                   intrinsics.federated_broadcast(threshold)])),
+          intrinsics.federated_map(count_total, temperatures))
 
-      @computations.tf_computation(
-          computation_types.SequenceType(tf.float32), tf.float32)
-      def count(ds, t):
-        return ds.reduce(
-            np.int32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.int32))
-
-      return intrinsics.federated_map(
-          count,
-          intrinsics.federated_zip(
-              [temperatures,
-               intrinsics.federated_broadcast(threshold)]))
-
-    num_clients = 10
-
+    num_clients = 3
     set_default_executor.set_default_executor(
         executor_stacks.create_local_executor(num_clients))
-
+    to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
-        tf.data.Dataset.range(1000).map(lambda x: tf.cast(x, tf.float32))
-        for _ in range(num_clients)
+        tf.data.Dataset.range(10).map(to_float),
+        tf.data.Dataset.range(20).map(to_float),
+        tf.data.Dataset.range(30).map(to_float)
     ]
-
-    threshold = 100.0
-
+    threshold = 15.0
     result = comp(temperatures, threshold)
-
-    self.assertCountEqual([x.numpy() for x in result],
-                          [899 for _ in range(num_clients)])
-
+    self.assertAlmostEqual(result, 8.333, places=3)
     set_default_executor.set_default_executor()
 
 
