@@ -1393,3 +1393,29 @@ def to_non_all_equal(type_spec):
   py_typecheck.check_type(type_spec, computation_types.FederatedType)
   return computation_types.FederatedType(
       type_spec.member, type_spec.placement, all_equal=False)
+
+
+def check_valid_federated_weighted_mean_argument_tuple_type(type_spec):
+  """Checks that `type_spec` is a valid type of a federated weighted mean arg.
+
+  Args:
+    type_spec: An instance of `tff.Type` or something convertible to it.
+
+  Raises:
+    TypeError: If the check fails.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_not_none(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+  if len(type_spec) != 2:
+    raise TypeError('Expected a 2-tuple, found {}.'.format(str(type_spec)))
+  for _, v in anonymous_tuple.to_elements(type_spec):
+    check_federated_type(v, None, placement_literals.CLIENTS, False)
+    if not is_average_compatible(v.member):
+      raise TypeError(
+          'Expected average-compatible args, got {} from argument of '
+          'type {}.'.format(str(v.member), str(type_spec)))
+  w_type = type_spec[1].member
+  py_typecheck.check_type(w_type, computation_types.TensorType)
+  if w_type.shape.ndims != 0:
+    raise TypeError('Expected scalar weight, got {}.'.format(str(w_type)))

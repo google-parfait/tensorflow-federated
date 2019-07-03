@@ -1151,22 +1151,9 @@ class ReferenceExecutor(context_base.Context):
                       [arg.type_signature[4], root_accumulator.type_signature]))
 
   def _federated_weighted_mean(self, arg):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
-    if len(arg.type_signature) != 2:
-      raise TypeError('Expected a 2-tuple, found {}.'.format(
-          str(arg.type_signature)))
-    for _, v in anonymous_tuple.to_elements(arg.type_signature):
-      type_utils.check_federated_type(v, None, placements.CLIENTS, False)
-      if not type_utils.is_average_compatible(v.member):
-        raise TypeError('Expected average-compatible args,'
-                        ' got {} from argument of type {}.'.format(
-                            str(v.member), arg.type_signature))
+    type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
+        arg.type_signature)
     v_type = arg.type_signature[0].member
-    w_type = arg.type_signature[1].member
-    py_typecheck.check_type(w_type, computation_types.TensorType)
-    if w_type.shape.ndims != 0:
-      raise TypeError('Expected scalar weight, got {}.'.format(str(w_type)))
     total = sum(arg.value[1])
     products_val = [
         multiply_by_scalar(ComputedValue(v, v_type), w / total).value

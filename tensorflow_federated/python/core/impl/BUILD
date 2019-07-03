@@ -531,6 +531,7 @@ py_library(
         ":executor_base",
         ":executor_value_base",
         ":intrinsic_defs",
+        ":intrinsic_utils",
         ":placement_literals",
         ":type_constructors",
         ":type_serialization",
@@ -554,6 +555,7 @@ py_test(
         ":eager_executor",
         ":federated_executor",
         ":intrinsic_defs",
+        ":lambda_executor",
         ":type_constructors",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -1156,6 +1158,7 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
+        ":type_constructors",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
