@@ -385,6 +385,30 @@ class FederatedExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(val.compute())
     self.assertEqual(result.numpy(), 30)
 
+  def test_federated_mean_with_floats(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(4)
+
+    v1 = loop.run_until_complete(
+        ex.create_value([1.0, 2.0, 3.0, 4.0],
+                        type_constructors.at_clients(tf.float32)))
+    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
+
+    v2 = loop.run_until_complete(
+        ex.create_value(
+            intrinsic_defs.FEDERATED_MEAN,
+            computation_types.FunctionType(
+                type_constructors.at_clients(tf.float32),
+                type_constructors.at_server(tf.float32))))
+    self.assertEqual(
+        str(v2.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
+
+    v3 = loop.run_until_complete(ex.create_call(v2, v1))
+    self.assertEqual(str(v3.type_signature), 'float32@SERVER')
+
+    result = loop.run_until_complete(v3.compute())
+    self.assertEqual(result.numpy(), 2.5)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
