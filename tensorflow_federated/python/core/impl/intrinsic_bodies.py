@@ -166,7 +166,9 @@ def get_intrinsic_bodies(context_stack):
     return generic_divide(summed)
 
   def federated_sum(x):
-    zero = intrinsic_utils.zero_for(x.type_signature.member, context_stack)
+    zero = value_impl.ValueImpl(
+        intrinsic_utils.construct_generic_constant(x.type_signature.member, 0),
+        context_stack)
     plus_op = value_impl.ValueImpl(
         intrinsic_utils.construct_binary_operator_with_upcast(
             computation_types.NamedTupleType(
@@ -231,6 +233,7 @@ def get_intrinsic_bodies(context_stack):
     x = arg[0]
     y = arg[1]
     _check_top_level_compatibility_with_generic_operators(x, y, 'Generic plus')
+    # TODO(b/136587334): Push this logic down a level
     if isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]

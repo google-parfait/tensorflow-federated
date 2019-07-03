@@ -25,17 +25,9 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_defs
-
-
-def _body_str(comp):
-  """Returns the string representation of `comp`'s body."""
-  return computation_building_blocks.ComputationBuildingBlock.from_proto(
-      computation_impl.ComputationImpl.get_proto(comp)).tff_repr
 
 
 class IntrinsicBodiesTest(absltest.TestCase):
@@ -52,15 +44,6 @@ class IntrinsicBodiesTest(absltest.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
 
-    body_string = (r'\(FEDERATED_arg -> '
-                   r'federated_aggregate\(<FEDERATED_arg,generic_zero,'
-                   r'\(binary_operator_arg'
-                   r' -> comp#[a-z0-9]+\(<binary_operator_arg\[0\],'
-                   r'binary_operator_arg\[1\]>\)\),\(binary_operator_arg'
-                   r' -> comp#[a-z0-9]+\(<binary_operator_arg\[0\],'
-                   r'binary_operator_arg\[1\]>\)\),comp#[a-z0-9]+>\)\)')
-
-    self.assertRegexMatch(_body_str(foo), [body_string])
     self.assertEqual(foo([1]), 1)
     self.assertEqual(foo([1, 2, 3]), 6)
 
