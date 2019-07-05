@@ -185,7 +185,7 @@ def build_server_init_fn(model_fn, server_optimizer_fn):
     """Returns initial `tff.learning.framework.ServerState."""
     return tff.federated_value(server_init_tf(), tff.SERVER)
 
-  return server_init_tff, server_init_tf
+  return server_init_tff
 
 
 def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
@@ -323,11 +323,10 @@ def build_federated_averaging_process(
 
   dummy_model_for_metadata = model_fn()
 
-  server_init_tff, server_init_tf = build_server_init_fn(
-      model_fn, server_optimizer_fn)
+  server_init_tff = build_server_init_fn(model_fn, server_optimizer_fn)
 
   federated_server_state_type = server_init_tff.type_signature.result
-  server_state_type = server_init_tf.type_signature.result
+  server_state_type = federated_server_state_type.member
 
   tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
   federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
