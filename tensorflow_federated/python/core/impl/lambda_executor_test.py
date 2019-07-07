@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import placement_literals
@@ -85,6 +86,30 @@ class LambdaExecutorTest(absltest.TestCase):
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     result = loop.run_until_complete(v3.compute())
     self.assertEqual(result.numpy(), 12)
+
+  def test_with_one_arg_tf_comp_in_two_arg_fed_comp(self):
+    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    loop = asyncio.get_event_loop()
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def add_numbers(x, y):
+      return x + y
+
+    @computations.federated_computation(tf.int32, tf.int32)
+    def comp(x, y):
+      return add_numbers(x, x), add_numbers(x, y), add_numbers(y, y)
+
+    v1 = loop.run_until_complete(ex.create_value(comp))
+    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    v3 = loop.run_until_complete(ex.create_value(20, tf.int32))
+    v4 = loop.run_until_complete(
+        ex.create_tuple(
+            anonymous_tuple.AnonymousTuple([(None, v2), (None, v3)])))
+    v5 = loop.run_until_complete(ex.create_call(v1, v4))
+    result = loop.run_until_complete(v5.compute())
+    self.assertEqual(
+        str(anonymous_tuple.map_structure(lambda x: x.numpy(), result)),
+        '<20,30,40>')
 
   def test_with_functional_parameter(self):
     ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
@@ -229,6 +254,10 @@ class LambdaExecutorTest(absltest.TestCase):
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     result = loop.run_until_complete(v3.compute())
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
+
+  def test_with_mnist_training_example(self):
+    executor_test_utils.test_mnist_training(
+        self, lambda_executor.LambdaExecutor(eager_executor.EagerExecutor()))
 
 
 if __name__ == '__main__':

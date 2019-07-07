@@ -1024,7 +1024,8 @@ def make_data_set_from_elements(graph, elements, element_type):
   then concatenating them all.
 
   Args:
-    graph: The graph in which to construct the `tf.data.Dataset`.
+    graph: The graph in which to construct the `tf.data.Dataset`, or `None` if
+      the construction is to happen in the eager context.
     elements: A list of elements.
     element_type: The type of elements.
 
@@ -1033,9 +1034,15 @@ def make_data_set_from_elements(graph, elements, element_type):
 
   Raises:
     TypeError: If element types do not match `element_type`.
-    ValueError: If the elements are of incompatible types and shapes.
+    ValueError: If the elements are of incompatible types and shapes, or if
+      no graph was specified outside of the eager context.
   """
-  py_typecheck.check_type(graph, tf.Graph)
+  # NOTE: We allow the graph to be `None` to allow this function to be used in
+  # the eager context.
+  if graph is not None:
+    py_typecheck.check_type(graph, tf.Graph)
+  elif not tf.executing_eagerly():
+    raise ValueError('Only in eager context may the graph be `None`.')
   py_typecheck.check_type(elements, list)
   element_type = computation_types.to_type(element_type)
   py_typecheck.check_type(element_type, computation_types.Type)
@@ -1049,7 +1056,7 @@ def make_data_set_from_elements(graph, elements, element_type):
         structure, element_type)
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
 
-  with graph.as_default():
+  def _work():  # pylint: disable=missing-docstring
     if not elements:
       # Just return an empty data set with the appropriate types.
       dummy_element = _make_dummy_element_for_type_spec(element_type)
@@ -1080,7 +1087,13 @@ def make_data_set_from_elements(graph, elements, element_type):
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(
               str(element_type), str(ds_element_type)))
-  return ds
+    return ds
+
+  if graph is not None:
+    with graph.as_default():
+      return _work()
+  else:
+    return _work()
 
 
 def fetch_value_in_session(sess, value):
@@ -1158,3 +1171,80 @@ def _interleave_dataset_results_and_tensors(dataset_results, flat_run_tensors):
     else:
       flattened_results.append(flat_run_tensors.pop(0))
   return flattened_results
+
+
+def to_node_name(name):
+  """Returns the name of a node in `graph_def` that `name` refers to.
+
+  Args:
+    name: A string.
+
+  Returns:
+    A stripped version of `name` without control dependency prefix or output
+    suffix.
+
+  Raises:
+    ValueError: If `name` is not a valid name of a node or node input.
+  """
+  py_typecheck.check_type(name, six.string_types)
+  if not name:
+    raise ValueError('The argument cannot be empty.')
+  if name[0] == '^':
+    name = name[1:]
+  colon = name.rfind(':')
+  if colon >= 0:
+    return name[:colon]
+  else:
+    return name
+
+
+def get_deps_for_graph_node(graph_def, node_name):
+  """Returns the set of node names that a node named `node_name` depends on.
+
+  Args:
+    graph_def: The input graph, an instance of `tf.GraphDef`.
+    node_name: The node name, a string.
+
+  Returns:
+    An instance of `set()` containing string names of the nodes `node_name`
+    depends on in `graph_def`.
+  """
+  py_typecheck.check_type(graph_def, tf.GraphDef)
+  py_typecheck.check_type(node_name, six.string_types)
+  input_map = {}
+  for node in graph_def.node:
+    input_map[node.name] = set([to_node_name(x) for x in node.input])
+  dependencies = set()
+  initial_singleton = set([node_name])
+  todo = initial_singleton
+  while todo:
+    dependencies.update(todo)
+    todo = set.union(*[input_map[name]
+                       for name in todo]).difference(dependencies)
+  return dependencies.difference(initial_singleton)
+
+
+def add_control_deps_for_init_op(graph_def, init_op):
+  """Adds control deps on `init_op` to `graph_def`.
+
+  Args:
+    graph_def: The input graph, an instance of `tf.GraphDef`.
+    init_op: The init op name, a string.
+
+  Returns:
+    The updated graph, an instance of `tf.GraphDef`.
+  """
+  py_typecheck.check_type(graph_def, tf.GraphDef)
+  py_typecheck.check_type(init_op, six.string_types)
+  init_op_str = to_node_name(init_op)
+  init_op_control_dep = '^{}'.format(init_op_str)
+  deps = get_deps_for_graph_node(graph_def,
+                                 init_op_str).union(set([init_op_str]))
+  new_graph_def = tf.GraphDef()
+  new_graph_def.CopyFrom(graph_def)
+  for new_node in new_graph_def.node:
+    if new_node.name not in deps:
+      node_inputs = set(new_node.input)
+      if init_op_control_dep not in node_inputs:
+        new_node.input.extend([init_op_control_dep])
+  return new_graph_def

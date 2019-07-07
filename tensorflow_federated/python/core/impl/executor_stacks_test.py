@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import executor_stacks
+from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import set_default_executor
 from tensorflow_federated.python.core.impl import type_constructors
 
@@ -71,6 +72,10 @@ class ExecutorStacksTest(absltest.TestCase):
     result = comp(temperatures, threshold)
     self.assertAlmostEqual(result, 8.333, places=3)
     set_default_executor.set_default_executor()
+
+  def test_with_mnist_training_example(self):
+    executor_test_utils.test_mnist_training(
+        self, executor_stacks.create_local_executor(1))
 
 
 if __name__ == '__main__':

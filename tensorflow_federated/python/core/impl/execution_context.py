@@ -56,7 +56,8 @@ async def _ingest(executor, val, type_spec):
   """
   if isinstance(val, executor_value_base.ExecutorValue):
     return val
-  elif isinstance(val, anonymous_tuple.AnonymousTuple):
+  elif (isinstance(val, anonymous_tuple.AnonymousTuple) and
+        not isinstance(type_spec, computation_types.FederatedType)):
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     v_elem = anonymous_tuple.to_elements(val)
     t_elem = anonymous_tuple.to_elements(type_spec)
@@ -92,6 +93,7 @@ async def _invoke(executor, comp, arg):
     py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
   comp = await executor.create_value(comp)
   result = await executor.create_call(comp, arg)
+  py_typecheck.check_type(result, executor_value_base.ExecutorValue)
   result_val = _unwrap(await result.compute())
   if type_utils.is_anon_tuple_with_py_container(result_val, result_type):
     return type_utils.convert_to_py_container(result_val, result_type)
@@ -112,8 +114,10 @@ class ExecutionContext(context_base.Context):
     self._executor = executor
 
   def ingest(self, val, type_spec):
-    return asyncio.get_event_loop().run_until_complete(
+    result = asyncio.get_event_loop().run_until_complete(
         _ingest(self._executor, val, type_spec))
+    py_typecheck.check_type(result, executor_value_base.ExecutorValue)
+    return result
 
   def invoke(self, comp, arg):
     return asyncio.get_event_loop().run_until_complete(
