@@ -115,13 +115,17 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
 class FederatedExecutor(executor_base.Executor):
   """The federated executor orchestrates federated computations.
 
-  WARNING: This executor is not functional enough to use it. The intrinsics
-  currently implemented include:
+  The intrinsics currently implemented include:
+  - federated_aggregate
   - federated_apply
   - federated_broadcast
   - federated_map
+  - federated_mean
+  - federated_reduce
+  - federated_sum
   - federated_value_at_clients
   - federated_value_at_server
+  - federated_weighted_mean
   - federated_zip_at_clients
   - federated_zip_at_server
 
@@ -312,9 +316,13 @@ class FederatedExecutor(executor_base.Executor):
         child = self._target_executors[None][0]
         embedded_comp = await child.create_value(comp.internal_representation,
                                                  comp.type_signature)
-        result = await child.create_call(
-            embedded_comp,
-            arg.internal_representation if arg is not None else None)
+        if arg is not None:
+          embedded_arg = await self._delegate(child,
+                                              arg.internal_representation,
+                                              arg.type_signature)
+        else:
+          embedded_arg = None
+        result = await child.create_call(embedded_comp, embedded_arg)
         return FederatedExecutorValue(result, result.type_signature)
       else:
         raise ValueError(
@@ -348,6 +356,42 @@ class FederatedExecutor(executor_base.Executor):
 
   async def create_selection(self, source, index=None, name=None):
     raise NotImplementedError
+
+  async def _delegate(self, executor, arg, arg_type):
+    """Delegates a non-federated `arg` in its entirety to the target executor.
+
+    Args:
+      executor: The target executor to use.
+      arg: The object to delegate to the target executor.
+      arg_type: The type of this object.
+
+    Returns:
+      An instance of `executor_value_base.ExecutorValue` that represents the
+      result of delegation.
+
+    Raises:
+      TypeError: If the arguments are of the wrong types.
+    """
+    py_typecheck.check_type(arg_type, computation_types.Type)
+    if isinstance(arg_type, computation_types.FederatedType):
+      raise TypeError(
+          'Cannot delegate an argument of a federated type {}.'.format(
+              str(arg_type)))
+    if isinstance(arg, executor_value_base.ExecutorValue):
+      return arg
+    elif isinstance(arg, anonymous_tuple.AnonymousTuple):
+      v_elem = anonymous_tuple.to_elements(arg)
+      t_elem = anonymous_tuple.to_elements(arg_type)
+      vals = await asyncio.gather(*[
+          self._delegate(executor, v, t)
+          for (_, v), (_, t) in zip(v_elem, t_elem)
+      ])
+      return await executor.create_tuple(
+          anonymous_tuple.AnonymousTuple(
+              list(zip([k for k, _ in t_elem], vals))))
+    else:
+      py_typecheck.check_type(arg, pb.Computation)
+      return await executor.create_value(arg, arg_type)
 
   async def _place(self, arg, placement):
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)

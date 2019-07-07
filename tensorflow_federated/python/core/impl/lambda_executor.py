@@ -165,8 +165,9 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
       # functional type, so this is the only case left to handle.
       py_typecheck.check_type(self._value, anonymous_tuple.AnonymousTuple)
       elem = anonymous_tuple.to_elements(self._value)
-      vals = asyncio.gather(*[v.compute() for _, v in elem])
-      return anonymous_tuple.AnonymousTuple(zip([k for k, _ in elem], vals))
+      vals = await asyncio.gather(*[v.compute() for _, v in elem])
+      return anonymous_tuple.AnonymousTuple(
+          list(zip([k for k, _ in elem], vals)))
 
 
 class LambdaExecutor(executor_base.Executor):
@@ -262,8 +263,9 @@ class LambdaExecutor(executor_base.Executor):
       py_typecheck.check_none(arg)
     comp_repr = comp.internal_representation
     if isinstance(comp_repr, executor_value_base.ExecutorValue):
+      delegated_arg = await self._delegate(arg) if arg is not None else None
       return LambdaExecutorValue(await self._target_executor.create_call(
-          comp_repr, await self._delegate(arg) if arg is not None else None))
+          comp_repr, delegated_arg))
     elif callable(comp_repr):
       return await comp_repr(arg)
     else:

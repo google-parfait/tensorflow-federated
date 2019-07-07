@@ -333,6 +333,7 @@ py_test(
     deps = [
         ":computation_impl",
         ":eager_executor",
+        ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -456,11 +457,25 @@ py_test(
     python_version = "PY3",
     deps = [
         ":executor_stacks",
+        ":executor_test_utils",
         ":set_default_executor",
         ":type_constructors",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+    ],
+)
+
+py_library(
+    name = "executor_test_utils",
+    srcs = ["executor_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":set_default_executor",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/utils:tf_computation_utils",
     ],
 )
 
@@ -553,6 +568,7 @@ py_test(
         ":computation_constructing_utils",
         ":computation_impl",
         ":eager_executor",
+        ":executor_test_utils",
         ":federated_executor",
         ":intrinsic_defs",
         ":lambda_executor",
@@ -781,6 +797,7 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":eager_executor",
+        ":executor_test_utils",
         ":federated_executor",
         ":lambda_executor",
         ":placement_literals",

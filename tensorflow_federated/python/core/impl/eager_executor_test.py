@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_test_utils
 
 
 class EagerExecutorTest(absltest.TestCase):
@@ -396,6 +397,29 @@ class EagerExecutorTest(absltest.TestCase):
     val = loop.run_until_complete(val.compute())
     self.assertIsInstance(val, tf.Tensor)
     self.assertEqual(val.numpy(), 10)
+
+  def test_with_repeated_variable_assignment(self):
+    ex = eager_executor.EagerExecutor()
+    loop = asyncio.get_event_loop()
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      v = tf.Variable(10)
+      with tf.control_dependencies([v.initializer]):
+        with tf.control_dependencies([tf.assign(v, x)]):
+          with tf.control_dependencies([tf.assign_add(v, 10)]):
+            return tf.identity(v)
+
+    fn = loop.run_until_complete(ex.create_value(comp))
+    arg = loop.run_until_complete(ex.create_value(10, tf.int32))
+    for n in range(10):
+      arg = loop.run_until_complete(ex.create_call(fn, arg))
+      val = loop.run_until_complete(arg.compute())
+      self.assertEqual(val.numpy(), 10 * (n + 2))
+
+  def test_with_mnist_training_example(self):
+    executor_test_utils.test_mnist_training(self,
+                                            eager_executor.EagerExecutor())
 
 
 if __name__ == '__main__':

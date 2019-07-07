@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import six
 import tensorflow as tf
 
@@ -96,16 +97,12 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
           str(len(input_tensor_names)), str(len(args))))
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
     init_op = comp.tensorflow.initialize_op
-    init_names = [init_op] if init_op else []
-    returned_elements = tf.import_graph_def(
+    if init_op:
+      graph_def = graph_utils.add_control_deps_for_init_op(graph_def, init_op)
+    return tf.import_graph_def(
         graph_merge.uniquify_shared_names(graph_def),
         input_map=dict(zip(input_tensor_names, args)),
-        return_elements=output_tensor_names + init_names)
-    if init_names:
-      with tf.control_dependencies([returned_elements[-1]]):
-        return [tf.identity(x) for x in returned_elements[0:-1]]
-    else:
-      return returned_elements
+        return_elements=output_tensor_names)
 
   signature = []
   param_fns = []
@@ -200,7 +197,10 @@ def to_representation_for_type(value, type_spec=None, device=None):
     return embed_tensorflow_computation(value, type_spec, device)
   if isinstance(type_spec, computation_types.TensorType):
     if not isinstance(value, tf.Tensor):
-      value = tf.constant(value, type_spec.dtype, type_spec.shape)
+      if isinstance(value, np.ndarray):
+        value = tf.constant(value, dtype=type_spec.dtype)
+      else:
+        value = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
     value_type = (
         computation_types.TensorType(value.dtype.base_dtype, value.shape))
     if not type_utils.is_assignable_from(type_spec, value_type):
@@ -225,6 +225,9 @@ def to_representation_for_type(value, type_spec=None, device=None):
       result_elem.append((t_name, el_repr))
     return anonymous_tuple.AnonymousTuple(result_elem)
   elif isinstance(type_spec, computation_types.SequenceType):
+    if isinstance(value, list):
+      value = graph_utils.make_data_set_from_elements(None, value,
+                                                      type_spec.element)
     py_typecheck.check_type(
         value,
         (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset))
@@ -232,9 +235,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
         tf.compat.v1.data.get_output_types(value),
         tf.compat.v1.data.get_output_shapes(value))
     value_type = computation_types.SequenceType(element_type)
-    if not type_utils.are_equivalent_types(value_type, type_spec):
-      raise TypeError('Expected a value of type {}, found {}.'.format(
-          str(type_spec), str(value_type)))
+    type_utils.check_assignable_from(type_spec, value_type)
     return value
   else:
     raise TypeError('Unexpected type {}.'.format(str(type_spec)))

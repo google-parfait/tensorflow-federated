@@ -543,6 +543,10 @@ class GraphUtilsTest(test.TestCase):
     self.assertTrue(graph_utils.nested_structures_equal([10, 20], [10, 20]))
     self.assertFalse(graph_utils.nested_structures_equal([10, 20], ['x']))
 
+  def test_make_data_set_from_elements_in_eager_context(self):
+    ds = graph_utils.make_data_set_from_elements(None, [10, 20], tf.int32)
+    self.assertCountEqual([x.numpy() for x in iter(ds)], [10, 20])
+
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = graph_utils.make_data_set_from_elements(
@@ -1033,6 +1037,52 @@ class GraphUtilsTest(test.TestCase):
     self.assertAllClose(x[1][0].b, np.zeros([0], dtype=np.int32))
     self.assertTrue(np.array_equal(x[1][0].a, np.zeros([0], dtype=np.int32)))
     self.assertTrue(np.array_equal(x[1][0].b, np.zeros([0], dtype=np.int32)))
+
+  def test_to_node_name(self):
+    self.assertEqual(graph_utils.to_node_name('foo'), 'foo')
+    self.assertEqual(graph_utils.to_node_name('^foo'), 'foo')
+    self.assertEqual(graph_utils.to_node_name('foo:0'), 'foo')
+    self.assertEqual(graph_utils.to_node_name('^foo:0'), 'foo')
+
+  def test_get_deps_for_graph_node(self):
+    graph_def = tf.GraphDef(node=[
+        tf.NodeDef(name='foo', input=[]),
+        tf.NodeDef(name='bar', input=['foo:0']),
+        tf.NodeDef(name='baz', input=['foo:1', 'bar']),
+        tf.NodeDef(name='bak', input=['bar', '^abc']),
+        tf.NodeDef(name='abc', input=[]),
+        tf.NodeDef(name='def', input=['abc:0']),
+        tf.NodeDef(name='ghi', input=['^def']),
+    ])
+
+    def _get_deps(x):
+      return ','.join(
+          sorted(list(graph_utils.get_deps_for_graph_node(graph_def, x))))
+
+    self.assertEqual(_get_deps('foo'), '')
+    self.assertEqual(_get_deps('bar'), 'foo')
+    self.assertEqual(_get_deps('baz'), 'bar,foo')
+    self.assertEqual(_get_deps('bak'), 'abc,bar,foo')
+    self.assertEqual(_get_deps('abc'), '')
+    self.assertEqual(_get_deps('def'), 'abc')
+    self.assertEqual(_get_deps('ghi'), 'abc,def')
+
+  def test_add_control_deps_for_init_op(self):
+    graph_def = tf.GraphDef(node=[
+        tf.NodeDef(name='foo', input=[]),
+        tf.NodeDef(name='bar', input=['foo']),
+        tf.NodeDef(name='baz', input=['foo', 'bar']),
+        tf.NodeDef(name='bak', input=['bar', '^abc']),
+        tf.NodeDef(name='abc', input=['def:0']),
+        tf.NodeDef(name='def', input=['^ghi']),
+        tf.NodeDef(name='ghi', input=[]),
+    ])
+    new_graph_def = graph_utils.add_control_deps_for_init_op(graph_def, 'abc')
+    self.assertEqual(
+        ','.join('{}({})'.format(node.name, ','.join(node.input))
+                 for node in new_graph_def.node),
+        'foo(^abc),bar(foo,^abc),baz(foo,bar,^abc),'
+        'bak(bar,^abc),abc(def:0),def(^ghi),ghi()')
 
 
 if __name__ == '__main__':

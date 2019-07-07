@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import lambda_executor
@@ -448,6 +449,13 @@ class FederatedExecutorTest(absltest.TestCase):
 
     result = loop.run_until_complete(v5.compute())
     self.assertAlmostEqual(result.numpy(), 2.1, places=3)
+
+  def test_with_mnist_training_example(self):
+    executor_test_utils.test_mnist_training(self, _make_test_executor(1))
+
+  def test_with_mnist_training_example_with_lambda_executor(self):
+    executor_test_utils.test_mnist_training(
+        self, _make_test_executor(1, use_lambda_executor=True))
 
 
 if __name__ == '__main__':

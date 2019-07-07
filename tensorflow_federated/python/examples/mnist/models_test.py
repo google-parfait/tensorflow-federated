@@ -42,6 +42,17 @@ class MnistTest(tf.test.TestCase):
         str(federated_data_type), '{<x=float32[?,784],y=int64[?,1]>*}@CLIENTS')
 
   def test_simple_training(self):
+    # Try to test the high-performance stack. If we are in Python 2, the new
+    # executor API will not be available, and an exception will be raised.
+    try:
+      tff.framework.set_default_executor(tff.framework.create_local_executor(1))
+      self._do_test_simple_training()
+      tff.framework.set_default_executor()
+    except AttributeError:
+      pass
+    self._do_test_simple_training()
+
+  def _do_test_simple_training(self):
     it_process = tff.learning.build_federated_averaging_process(models.model_fn)
     server_state = it_process.initialize()
     Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
@@ -77,6 +88,17 @@ class MnistTest(tf.test.TestCase):
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
   def test_self_contained_example(self):
+    # Try to test the high-performance stack. If we are in Python 2, the new
+    # executor API will not be available, and an exception will be raised.
+    try:
+      tff.framework.set_default_executor(tff.framework.create_local_executor(1))
+      self._do_test_self_contained_example()
+      tff.framework.set_default_executor()
+    except AttributeError:
+      pass
+    self._do_test_self_contained_example()
+
+  def _do_test_self_contained_example(self):
     emnist_batch = collections.OrderedDict([('label', [5]),
                                             ('pixels', np.random.rand(28, 28))])
 
