@@ -823,12 +823,14 @@ class BoundVariableTracker(object):
       return NotImplemented
     if self.name != other.name:
       return False
-    if isinstance(self.value,
-                  computation_building_blocks.ComputationBuildingBlock):
-      return isinstance(
-          other.value, computation_building_blocks.ComputationBuildingBlock
-      ) and self.value.tff_repr == other.value.tff_repr and type_utils.are_equivalent_types(
-          self.value.type_signature, other.value.type_signature)
+    if (isinstance(self.value,
+                   computation_building_blocks.ComputationBuildingBlock) and
+        isinstance(other.value,
+                   computation_building_blocks.ComputationBuildingBlock)):
+      return (computation_building_blocks.compact_representation(
+          self.value) == computation_building_blocks.compact_representation(
+              other.value) and type_utils.are_equivalent_types(
+                  self.value.type_signature, other.value.type_signature))
     return self.value is other.value
 
   def __ne__(self, other):

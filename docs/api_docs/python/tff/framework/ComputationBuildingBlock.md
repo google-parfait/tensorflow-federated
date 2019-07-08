@@ -2,7 +2,6 @@
 <meta itemprop="name" content="tff.framework.ComputationBuildingBlock" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="proto"/>
-<meta itemprop="property" content="tff_repr"/>
 <meta itemprop="property" content="type_signature"/>
 <meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="from_proto"/>
@@ -48,10 +47,6 @@ Constructs a computation building block with the given TFF type.
 <h3 id="proto"><code>proto</code></h3>
 
 Returns a serialized form of this object as a pb.Computation instance.
-
-<h3 id="tff_repr"><code>tff_repr</code></h3>
-
-Returns the representation of the instance using TFF syntax.
 
 <h3 id="type_signature"><code>type_signature</code></h3>
 

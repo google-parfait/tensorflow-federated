@@ -1217,7 +1217,8 @@ def insert_called_tf_identity_at_leaves(comp):
         '`computation_building_blocks.Lambda` whose parameter '
         'and result types can both be stamped into TensorFlow '
         'graphs. You have called in on a {} of type signature {}.'.format(
-            comp.tff_repr, comp.type_signature))
+            computation_building_blocks.compact_representation(comp),
+            comp.type_signature))
 
   def _should_decorate(comp):
     return (isinstance(comp, computation_building_blocks.Reference) and
@@ -1292,10 +1293,11 @@ def check_has_single_placement(comp, single_placement):
     """Checks that the placement in `type_spec` matches `single_placement`."""
     if (isinstance(comp.type_signature, computation_types.FederatedType) and
         comp.type_signature.placement != single_placement):
-      raise ValueError('Comp contains a placement other than {}; '
-                       'placement {} on comp {} inside the structure. '.format(
-                           single_placement, comp.type_signature.placement,
-                           comp.tff_repr))
+      raise ValueError(
+          'Comp contains a placement other than {}; '
+          'placement {} on comp {} inside the structure. '.format(
+              single_placement, comp.type_signature.placement,
+              computation_building_blocks.compact_representation(comp)))
     return comp, False
 
   transformation_utils.transform_postorder(comp, _check_single_placement)
@@ -1357,8 +1359,9 @@ def unwrap_placement(comp):
     raise ValueError(
         '`unwrap_placement` can only handle computations with at most a single '
         'unbound reference; you have passed in the computation {} with {} '
-        'unbound references.'.format(comp.tff_repr,
-                                     len(root_unbound_references)))
+        'unbound references.'.format(
+            computation_building_blocks.compact_representation(comp),
+            len(root_unbound_references)))
 
   if len(root_unbound_references) == 1:
     unbound_reference_name = root_unbound_references.pop()
@@ -1675,7 +1678,8 @@ def check_intrinsics_whitelisted_for_reduction(comp):
                  ) and comp.uri not in uri_whitelist:
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
-          'broadcast, the intrinsic {}'.format(comp.tff_repr))
+          'broadcast, the intrinsic {}'.format(
+              computation_building_blocks.compact_representation(comp)))
     return comp, False
 
   transformation_utils.transform_postorder(comp, _check_whitelisted)
