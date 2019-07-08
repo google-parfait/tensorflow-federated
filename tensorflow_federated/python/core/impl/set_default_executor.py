@@ -27,6 +27,8 @@ from tensorflow_federated.python.core.impl import executor_base
 def set_default_executor(executor=None):
   """Places an `executor`-backed execution context at the top of the stack.
 
+  NOTE: This function is only available in Python 3.
+
   Args:
     executor: Either an instance of `executor_base.Executor`, or `None` which
       causes the default reference executor to be installed (as is the default).

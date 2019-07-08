@@ -31,11 +31,32 @@ representation of a fully constructed and serialized computation.
 [`class ComputationBuildingBlock`](../tff/framework/ComputationBuildingBlock.md):
 The abstract base class for abstractions in the TFF's internal language.
 
+[`class ConcurrentExecutor`](../tff/framework/ConcurrentExecutor.md): The
+concurrent executor delegates work to a separate thread.
+
+[`class EagerExecutor`](../tff/framework/EagerExecutor.md): The eager executor
+only runs TensorFlow, synchronously, in eager mode.
+
+[`class Executor`](../tff/framework/Executor.md): Represents the abstract
+interface that all executors must implement.
+
+[`class ExecutorService`](../tff/framework/ExecutorService.md): A wrapper around
+a target executor that makes it into a gRPC service.
+
+[`class ExecutorValue`](../tff/framework/ExecutorValue.md): Represents the
+abstract interface for values embedded within executors.
+
+[`class FederatedExecutor`](../tff/framework/FederatedExecutor.md): The
+federated executor orchestrates federated computations.
+
 [`class Intrinsic`](../tff/framework/Intrinsic.md): A representation of an
 intrinsic in TFF's internal language.
 
 [`class Lambda`](../tff/framework/Lambda.md): A representation of a lambda
 expression in TFF's internal language.
+
+[`class LambdaExecutor`](../tff/framework/LambdaExecutor.md): The lambda
+executor handles lambda expressions and related abstractions.
 
 [`class Placement`](../tff/framework/Placement.md): A representation of a
 placement literal in TFF's internal language.
@@ -43,11 +64,17 @@ placement literal in TFF's internal language.
 [`class Reference`](../tff/framework/Reference.md): A reference to a name
 defined earlier in TFF's internal language.
 
+[`class RemoteExecutor`](../tff/framework/RemoteExecutor.md): The remote
+executor is a local proxy for a remote executor instance.
+
 [`class Selection`](../tff/framework/Selection.md): A selection by name or index
 from a tuple-typed value in TFF's language.
 
 [`class TFParser`](../tff/framework/TFParser.md): Callable taking subset of TFF
 AST constructs to CompiledComputations.
+
+[`class TransformingExecutor`](../tff/framework/TransformingExecutor.md): This
+executor transforms computations prior to executing them.
 
 [`class Tuple`](../tff/framework/Tuple.md): A tuple with named or unnamed
 elements in TFF's internal language.
@@ -73,6 +100,9 @@ Creates a called federated map or apply depending on `arg`s placement.
 
 [`create_federated_zip(...)`](../tff/framework/create_federated_zip.md): Creates
 a called federated zip.
+
+[`create_local_executor(...)`](../tff/framework/create_local_executor.md):
+Constructs an executor to execute computations on the local machine.
 
 [`get_map_of_unbound_references(...)`](../tff/framework/get_map_of_unbound_references.md):
 Gets a Python `dict` of the unbound references in `comp`.
@@ -106,6 +136,9 @@ Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
 
 [`replace_selection_from_tuple_with_element(...)`](../tff/framework/replace_selection_from_tuple_with_element.md):
 Replaces any selection from a tuple with the underlying tuple element.
+
+[`set_default_executor(...)`](../tff/framework/set_default_executor.md): Places
+an `executor`-backed execution context at the top of the stack.
 
 [`transform_postorder(...)`](../tff/framework/transform_postorder.md): Traverses
 `comp` recursively postorder and replaces its constituents.
