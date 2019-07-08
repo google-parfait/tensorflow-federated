@@ -63,7 +63,7 @@ class ClientOutput(object):
 
 @attr.s(cmp=False, frozen=True)
 class ServerState(object):
-  """Structure for outputs returned from clients during federated optimization.
+  """Structure for state on the server.
 
   Fields:
   -   `model`: A dictionary of model's trainable variables.
@@ -99,8 +99,7 @@ def server_update(model, server_optimizer, server_optimizer_vars, server_state,
     model: A `tff.learning.TrainableModel`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`.
     server_optimizer_vars: A list of previous variables of server_optimzer.
-    server_state: A `tff.learning.framework.ServerState` namedtuple, the state
-      to be updated.
+    server_state: A `ServerState`, the state to be updated.
     weights_delta: An update to the trainable variables of the model.
 
   Returns:
@@ -159,7 +158,7 @@ def client_update(model, dataset, initial_weights):
 
 
 def build_server_init_fn(model_fn, server_optimizer_fn):
-  """Returns initial `tff.learning.framework.ServerState`.
+  """Builds a `tff.tf_computation` that returns initial `ServerState`.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
@@ -167,7 +166,7 @@ def build_server_init_fn(model_fn, server_optimizer_fn):
       `tf.keras.optimizers.Optimizer`.
 
   Returns:
-    A `tff.learning.framework.ServerState` namedtuple.
+    A `tff.tf_computation` that returns initial `ServerState`.
   """
 
   @tff.tf_computation
@@ -180,17 +179,12 @@ def build_server_init_fn(model_fn, server_optimizer_fn):
     return ServerState(
         model=_get_weights(model), optimizer_state=server_optimizer_vars)
 
-  @tff.federated_computation
-  def server_init_tff():
-    """Returns initial `tff.learning.framework.ServerState."""
-    return tff.federated_value(server_init_tf(), tff.SERVER)
-
-  return server_init_tff, server_init_tf
+  return server_init_tf
 
 
 def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
                            model_weights_type):
-  """Build the server update function.
+  """Builds a `tff.tf_computation` that updates `ServerState`.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
@@ -200,19 +194,19 @@ def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
     model_weights_type: type_signature of model weights.
 
   Returns:
-    A function for the server update.
+    A `tff.tf_computation` that updates `ServerState`.
   """
 
   @tff.tf_computation(server_state_type, model_weights_type.trainable)
   def server_update_tf(server_state, model_delta):
-    """Build the server update function.
+    """Updates the `server_state`.
 
     Args:
-      server_state: The server_state.
-      model_delta: The model difference from clients
+      server_state: The `ServerState`.
+      model_delta: The model difference from clients.
 
     Returns:
-      A function for the server update.
+      The updated `ServerState`.
     """
     model = model_fn()
     server_optimizer = server_optimizer_fn()
@@ -227,7 +221,7 @@ def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
 
 
 def build_client_update_fn(model_fn, tf_dataset_type, model_weights_type):
-  """Build the client update function.
+  """Builds a `tff.tf_computation` for local model optimization.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
@@ -235,7 +229,7 @@ def build_client_update_fn(model_fn, tf_dataset_type, model_weights_type):
     model_weights_type: type_signature of model weights.
 
   Returns:
-    A function for the client update.
+    A `tff.tf_computation` for local model optimization.
   """
 
   @tff.tf_computation(tf_dataset_type, model_weights_type)
@@ -248,11 +242,9 @@ def build_client_update_fn(model_fn, tf_dataset_type, model_weights_type):
         starting weights.
 
     Returns:
-        A `ClientOutput` structure.
+      A `ClientOutput`.
     """
-    model = model_fn()
-
-    return client_update(model, tf_dataset, initial_model_weights)
+    return client_update(model_fn(), tf_dataset, initial_model_weights)
 
   return client_delta_tf
 
@@ -260,7 +252,7 @@ def build_client_update_fn(model_fn, tf_dataset_type, model_weights_type):
 def build_run_one_round_fn(server_update_fn, client_update_fn,
                            dummy_model_for_metadata,
                            federated_server_state_type, federated_dataset_type):
-  """Build build_run_one_round_fn function.
+  """Builds a `tff.federated_computation` for a round of training.
 
   Args:
     server_update_fn: A function for updates in the server.
@@ -270,7 +262,7 @@ def build_run_one_round_fn(server_update_fn, client_update_fn,
     federated_dataset_type: type_signature of federated dataset.
 
   Returns:
-    A function for the procedure of federated learning.
+    A `tff.federated_computation` for a round of training.
   """
 
   @tff.federated_computation(federated_server_state_type,
@@ -279,12 +271,12 @@ def build_run_one_round_fn(server_update_fn, client_update_fn,
     """Orchestration logic for one round of computation.
 
     Args:
-      server_state: A `tff.learning.framework.ServerState` named tuple.
-      federated_dataset: A federated `tf.Dataset` with placement tff.CLIENTS.
+      server_state: A `ServerState`.
+      federated_dataset: A federated `tf.Dataset` with placement `tff.CLIENTS`.
 
     Returns:
-      A tuple of updated `tff.learning.framework.ServerState` and the result of
-    `tff.learning.Model.federated_output_computation`.
+      A tuple of updated `ServerState` and the result of
+      `tff.learning.Model.federated_output_computation`.
     """
     client_model = tff.federated_broadcast(server_state.model)
 
@@ -323,26 +315,24 @@ def build_federated_averaging_process(
 
   dummy_model_for_metadata = model_fn()
 
-  server_init_tff, server_init_tf = build_server_init_fn(
-      model_fn, server_optimizer_fn)
-
-  federated_server_state_type = server_init_tff.type_signature.result
+  server_init_tf = build_server_init_fn(model_fn, server_optimizer_fn)
   server_state_type = server_init_tf.type_signature.result
-
-  tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
-  federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
-
   server_update_fn = build_server_update_fn(model_fn, server_optimizer_fn,
                                             server_state_type,
                                             server_state_type.model)
 
+  tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
   client_update_fn = build_client_update_fn(model_fn, tf_dataset_type,
                                             server_state_type.model)
 
+  federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
+  federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
   run_one_round_tff = build_run_one_round_fn(server_update_fn, client_update_fn,
                                              dummy_model_for_metadata,
                                              federated_server_state_type,
                                              federated_dataset_type)
 
   return tff.utils.IterativeProcess(
-      initialize_fn=server_init_tff, next_fn=run_one_round_tff)
+      initialize_fn=tff.federated_computation(
+          lambda: tff.federated_value(server_init_tf(), tff.SERVER)),
+      next_fn=run_one_round_tff)
