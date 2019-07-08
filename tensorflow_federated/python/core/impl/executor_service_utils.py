@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from google.protobuf import any_pb2
@@ -59,8 +60,20 @@ def serialize_tensor_value(value, type_spec=None):
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.TensorType)
-    tensor_proto = tf.make_tensor_proto(
-        value, dtype=type_spec.dtype, shape=type_spec.shape, verify_shape=True)
+    if isinstance(value, np.ndarray):
+      tensor_proto = tf.make_tensor_proto(
+          value, dtype=type_spec.dtype, verify_shape=False)
+      type_utils.check_assignable_from(
+          type_spec,
+          computation_types.TensorType(
+              dtype=tf.DType(tensor_proto.dtype),
+              shape=tf.TensorShape(tensor_proto.tensor_shape)))
+    else:
+      tensor_proto = tf.make_tensor_proto(
+          value,
+          dtype=type_spec.dtype,
+          shape=type_spec.shape,
+          verify_shape=True)
   else:
     tensor_proto = tf.make_tensor_proto(value)
     type_spec = computation_types.TensorType(
