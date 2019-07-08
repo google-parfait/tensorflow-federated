@@ -894,6 +894,7 @@ py_test(
     deps = [
         ":eager_executor",
         ":executor_service",
+        ":executor_test_utils",
         ":remote_executor",
         ":set_default_executor",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",

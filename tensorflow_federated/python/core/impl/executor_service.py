@@ -21,7 +21,11 @@ from __future__ import print_function
 import asyncio
 import functools
 import threading
+import traceback
 import uuid
+
+from absl import logging
+
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
@@ -83,6 +87,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateValueResponse(
           value_ref=executor_pb2.ValueRef(id=value_id))
     except (ValueError, TypeError) as err:
+      logging.error(traceback.format_exc())
       context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
       context.set_details(str(err))
       return executor_pb2.CreateValueResponse()
@@ -114,6 +119,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateCallResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
+      logging.error(traceback.format_exc())
       context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
       context.set_details(str(err))
       return executor_pb2.CreateCallResponse()
@@ -145,6 +151,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateTupleResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
+      logging.error(traceback.format_exc())
       context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
       context.set_details(str(err))
       return executor_pb2.CreateTupleResponse()
@@ -176,6 +183,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateSelectionResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
+      logging.error(traceback.format_exc())
       context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
       context.set_details(str(err))
       return executor_pb2.CreateSelectionResponse()
@@ -204,6 +212,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           result_val, val_type)
       return executor_pb2.ComputeResponse(value=value_proto)
     except (ValueError, TypeError) as err:
+      logging.error(traceback.format_exc())
       context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
       context.set_details(str(err))
       return executor_pb2.ComputeResponse()

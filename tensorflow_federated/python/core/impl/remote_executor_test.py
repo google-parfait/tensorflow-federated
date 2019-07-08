@@ -31,6 +31,7 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_service
+from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import remote_executor
 from tensorflow_federated.python.core.impl import set_default_executor
 
@@ -85,6 +86,10 @@ class RemoteExecutorTest(absltest.TestCase):
         return x + y
 
       self.assertEqual(comp(10, 20), 30)
+
+  def test_with_mnist_training_example(self):
+    with test_context() as executor:
+      executor_test_utils.test_mnist_training(self, executor)
 
 
 if __name__ == '__main__':
