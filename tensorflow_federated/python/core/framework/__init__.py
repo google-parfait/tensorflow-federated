@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import six
 
+from tensorflow_federated.python.core.impl.computation_building_block_utils import is_called_intrinsic
 from tensorflow_federated.python.core.impl.computation_building_blocks import Block
 from tensorflow_federated.python.core.impl.computation_building_blocks import Call
 from tensorflow_federated.python.core.impl.computation_building_blocks import CompiledComputation
@@ -47,7 +48,6 @@ from tensorflow_federated.python.core.impl.transformations import check_intrinsi
 from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves
-from tensorflow_federated.python.core.impl.transformations import is_called_intrinsic
 from tensorflow_federated.python.core.impl.transformations import merge_tuple_intrinsics
 from tensorflow_federated.python.core.impl.transformations import remove_mapped_or_applied_identity
 from tensorflow_federated.python.core.impl.transformations import replace_called_lambda_with_block

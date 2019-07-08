@@ -65,14 +65,19 @@ py_test(
     deps = [
         ":compiled_computation_transforms",
         ":computation_building_blocks",
-        ":computation_impl",
+        ":computation_test_utils",
         ":computation_wrapper_instances",
         ":context_stack_impl",
         ":tensorflow_serialization",
-        ":transformation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
+)
+
+py_library(
+    name = "computation_building_block_utils",
+    srcs = ["computation_building_block_utils.py"],
+    deps = [":computation_building_blocks"],
 )
 
 py_library(
@@ -180,6 +185,8 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
     ],
@@ -1045,6 +1052,7 @@ py_library(
     srcs = ["transformations.py"],
     deps = [
         ":compiled_computation_transforms",
+        ":computation_building_block_utils",
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":context_stack_base",
@@ -1065,9 +1073,9 @@ py_test(
     size = "small",
     srcs = ["transformations_test.py"],
     deps = [
+        ":computation_building_block_utils",
         ":computation_building_blocks",
         ":computation_constructing_utils",
-        ":computation_impl",
         ":computation_test_utils",
         ":computation_wrapper_instances",
         ":context_stack_impl",

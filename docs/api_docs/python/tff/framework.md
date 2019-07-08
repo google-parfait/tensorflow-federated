@@ -86,8 +86,8 @@ Inserts an identity TF graph called on References under `comp`.
 [`is_assignable_from(...)`](../tff/framework/is_assignable_from.md): Determines
 whether `target_type` is assignable from `source_type`.
 
-[`is_called_intrinsic(...)`](../tff/framework/is_called_intrinsic.md): Returns
-`True` if `comp` is a called intrinsic with the `uri` or `uri`s.
+[`is_called_intrinsic(...)`](../tff/framework/is_called_intrinsic.md): Tests if
+`comp` is a called intrinsic with the given `uri`.
 
 [`is_tensorflow_compatible_type(...)`](../tff/framework/is_tensorflow_compatible_type.md):
 Checks `type_spec` against an explicit whitelist for `tf_computation`.

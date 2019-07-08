@@ -7,6 +7,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        "//tensorflow_federated/python/core/impl:computation_building_block_utils",
         "//tensorflow_federated/python/core/impl:computation_building_blocks",
         "//tensorflow_federated/python/core/impl:computation_constructing_utils",
         "//tensorflow_federated/python/core/impl:computation_wrapper_instances",

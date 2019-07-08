@@ -5,7 +5,7 @@
 
 # tff.framework.is_called_intrinsic
 
-Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
+Tests if `comp` is a called intrinsic with the given `uri`.
 
 ```python
 tff.framework.is_called_intrinsic(
@@ -15,16 +15,16 @@ tff.framework.is_called_intrinsic(
 ```
 
 Defined in
-[`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
+[`python/core/impl/computation_building_block_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_block_utils.py).
 
 <!-- Placeholder for "Used in" -->
-
-          Call
-         /
-
-Intrinsic
 
 #### Args:
 
 *   <b>`comp`</b>: The computation building block to test.
-*   <b>`uri`</b>: A uri or a list, tuple, or set of uri.
+*   <b>`uri`</b>: A uri or a collection of uris; the same as what is accepted by
+    isinstance.
+
+#### Returns:
+
+`True` if `comp` is a called intrinsic with the given `uri`, otherwise `False`.
