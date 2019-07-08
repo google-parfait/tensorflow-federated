@@ -32,6 +32,8 @@ def create_local_executor(num_clients):
   The initial temporary implementation requires that the number of clients be
   specified in advance. This limitation will be removed in the near future.
 
+  NOTE: This function is only available in Python 3.
+
   Args:
     num_clients: The number of clients.
 

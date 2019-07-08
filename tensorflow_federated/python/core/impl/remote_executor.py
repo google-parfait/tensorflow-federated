@@ -62,7 +62,10 @@ class RemoteValue(executor_value_base.ExecutorValue):
 
 
 class RemoteExecutor(executor_base.Executor):
-  """The remote executor is a local proxy for a remote executor instance."""
+  """The remote executor is a local proxy for a remote executor instance.
+
+  NOTE: This component is only available in Python 3.
+  """
 
   # TODO(b/134543154): Switch to using an asynchronous gRPC client so we don't
   # have to block on all those calls.

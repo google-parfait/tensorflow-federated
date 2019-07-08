@@ -1,0 +1,154 @@
+<div itemscope itemtype="http://developers.google.com/ReferenceObject">
+<meta itemprop="name" content="tff.framework.ExecutorService" />
+<meta itemprop="path" content="Stable" />
+<meta itemprop="property" content="Compute"/>
+<meta itemprop="property" content="CreateCall"/>
+<meta itemprop="property" content="CreateSelection"/>
+<meta itemprop="property" content="CreateTuple"/>
+<meta itemprop="property" content="CreateValue"/>
+<meta itemprop="property" content="Dispose"/>
+<meta itemprop="property" content="__init__"/>
+</div>
+
+# tff.framework.ExecutorService
+
+## Class `ExecutorService`
+
+A wrapper around a target executor that makes it into a gRPC service.
+
+Defined in
+[`python/core/impl/executor_service.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py).
+
+<!-- Placeholder for "Used in" -->
+
+NOTE: This component is only available in Python 3.
+
+<h2 id="__init__"><code>__init__</code></h2>
+
+```python
+__init__(
+    executor,
+    *args,
+    **kwargs
+)
+```
+
+Initialize self. See help(type(self)) for accurate signature.
+
+## Methods
+
+<h3 id="Compute"><code>Compute</code></h3>
+
+```python
+Compute(
+    request,
+    context
+)
+```
+
+Computes a value embedded in the executor.
+
+#### Args:
+
+*   <b>`request`</b>: An instance of `executor_pb2.ComputeRequest`.
+*   <b>`context`</b>: An instance of `grpc.ServicerContext`.
+
+#### Returns:
+
+An instance of `executor_pb2.ComputeResponse`.
+
+<h3 id="CreateCall"><code>CreateCall</code></h3>
+
+```python
+CreateCall(
+    request,
+    context
+)
+```
+
+Creates a call embedded in the executor.
+
+#### Args:
+
+*   <b>`request`</b>: An instance of `executor_pb2.CreateCallRequest`.
+*   <b>`context`</b>: An instance of `grpc.ServicerContext`.
+
+#### Returns:
+
+An instance of `executor_pb2.CreateCallResponse`.
+
+<h3 id="CreateSelection"><code>CreateSelection</code></h3>
+
+```python
+CreateSelection(
+    request,
+    context
+)
+```
+
+Creates a selection embedded in the executor.
+
+#### Args:
+
+*   <b>`request`</b>: An instance of `executor_pb2.CreateSelectionRequest`.
+*   <b>`context`</b>: An instance of `grpc.ServicerContext`.
+
+#### Returns:
+
+An instance of `executor_pb2.CreateSelectionResponse`.
+
+<h3 id="CreateTuple"><code>CreateTuple</code></h3>
+
+```python
+CreateTuple(
+    request,
+    context
+)
+```
+
+Creates a tuple embedded in the executor.
+
+#### Args:
+
+*   <b>`request`</b>: An instance of `executor_pb2.CreateTupleRequest`.
+*   <b>`context`</b>: An instance of `grpc.ServicerContext`.
+
+#### Returns:
+
+An instance of `executor_pb2.CreateTupleResponse`.
+
+<h3 id="CreateValue"><code>CreateValue</code></h3>
+
+```python
+CreateValue(
+    request,
+    context
+)
+```
+
+Creates a value embedded in the executor.
+
+#### Args:
+
+*   <b>`request`</b>: An instance of `executor_pb2.CreateValueRequest`.
+*   <b>`context`</b>: An instance of `grpc.ServicerContext`.
+
+#### Returns:
+
+An instance of `executor_pb2.CreateValueResponse`.
+
+<h3 id="Dispose"><code>Dispose</code></h3>
+
+```python
+Dispose(
+    request,
+    context
+)
+```
+
+TODO(b/134543154): Given that there is no support for asynchronous server
+processing in Python gRPC, long-running calls may be a problem. Revisit this and
+look for alternatives.
+
+Causes one or more values in the executor to get disposed of (no longer
+available for future calls).

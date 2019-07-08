@@ -310,6 +310,8 @@ class EagerExecutor(executor_base.Executor):
   operations it supports in a synchronous fashion. Asynchrony and other aspects
   not supported here should be handled by composing this executor with other
   executors into a complex executor stack, rather than mixing in all the logic.
+
+  NOTE: This component is only available in Python 3.
   """
 
   def __init__(self, device=None):

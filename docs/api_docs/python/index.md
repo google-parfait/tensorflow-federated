@@ -26,12 +26,21 @@
 *   <a href="./tff/framework/Call.md"><code>tff.framework.Call</code></a>
 *   <a href="./tff/framework/CompiledComputation.md"><code>tff.framework.CompiledComputation</code></a>
 *   <a href="./tff/framework/ComputationBuildingBlock.md"><code>tff.framework.ComputationBuildingBlock</code></a>
+*   <a href="./tff/framework/ConcurrentExecutor.md"><code>tff.framework.ConcurrentExecutor</code></a>
+*   <a href="./tff/framework/EagerExecutor.md"><code>tff.framework.EagerExecutor</code></a>
+*   <a href="./tff/framework/Executor.md"><code>tff.framework.Executor</code></a>
+*   <a href="./tff/framework/ExecutorService.md"><code>tff.framework.ExecutorService</code></a>
+*   <a href="./tff/framework/ExecutorValue.md"><code>tff.framework.ExecutorValue</code></a>
+*   <a href="./tff/framework/FederatedExecutor.md"><code>tff.framework.FederatedExecutor</code></a>
 *   <a href="./tff/framework/Intrinsic.md"><code>tff.framework.Intrinsic</code></a>
 *   <a href="./tff/framework/Lambda.md"><code>tff.framework.Lambda</code></a>
+*   <a href="./tff/framework/LambdaExecutor.md"><code>tff.framework.LambdaExecutor</code></a>
 *   <a href="./tff/framework/Placement.md"><code>tff.framework.Placement</code></a>
 *   <a href="./tff/framework/Reference.md"><code>tff.framework.Reference</code></a>
+*   <a href="./tff/framework/RemoteExecutor.md"><code>tff.framework.RemoteExecutor</code></a>
 *   <a href="./tff/framework/Selection.md"><code>tff.framework.Selection</code></a>
 *   <a href="./tff/framework/TFParser.md"><code>tff.framework.TFParser</code></a>
+*   <a href="./tff/framework/TransformingExecutor.md"><code>tff.framework.TransformingExecutor</code></a>
 *   <a href="./tff/framework/Tuple.md"><code>tff.framework.Tuple</code></a>
 *   <a href="./tff/framework/are_equivalent_types.md"><code>tff.framework.are_equivalent_types</code></a>
 *   <a href="./tff/framework/building_block_to_computation.md"><code>tff.framework.building_block_to_computation</code></a>
@@ -40,6 +49,7 @@
 *   <a href="./tff/framework/create_federated_map_all_equal.md"><code>tff.framework.create_federated_map_all_equal</code></a>
 *   <a href="./tff/framework/create_federated_map_or_apply.md"><code>tff.framework.create_federated_map_or_apply</code></a>
 *   <a href="./tff/framework/create_federated_zip.md"><code>tff.framework.create_federated_zip</code></a>
+*   <a href="./tff/framework/create_local_executor.md"><code>tff.framework.create_local_executor</code></a>
 *   <a href="./tff/framework/get_map_of_unbound_references.md"><code>tff.framework.get_map_of_unbound_references</code></a>
 *   <a href="./tff/framework/inline_block_locals.md"><code>tff.framework.inline_block_locals</code></a>
 *   <a href="./tff/framework/insert_called_tf_identity_at_leaves.md"><code>tff.framework.insert_called_tf_identity_at_leaves</code></a>
@@ -51,6 +61,7 @@
 *   <a href="./tff/framework/replace_called_lambda_with_block.md"><code>tff.framework.replace_called_lambda_with_block</code></a>
 *   <a href="./tff/framework/replace_intrinsics_with_bodies.md"><code>tff.framework.replace_intrinsics_with_bodies</code></a>
 *   <a href="./tff/framework/replace_selection_from_tuple_with_element.md"><code>tff.framework.replace_selection_from_tuple_with_element</code></a>
+*   <a href="./tff/framework/set_default_executor.md"><code>tff.framework.set_default_executor</code></a>
 *   <a href="./tff/framework/transform_postorder.md"><code>tff.framework.transform_postorder</code></a>
 *   <a href="./tff/framework/transform_type_postorder.md"><code>tff.framework.transform_type_postorder</code></a>
 *   <a href="./tff/framework/type_from_tensors.md"><code>tff.framework.type_from_tensors</code></a>

@@ -24,7 +24,10 @@ import six
 
 @six.add_metaclass(abc.ABCMeta)
 class Executor(object):
-  """Represents the abstract interface that all executors must implement."""
+  """Represents the abstract interface that all executors must implement.
+
+  NOTE: This component is only available in Python 3.
+  """
 
   # TODO(b/134543154): Migrate the reference executor over this new interface.
 

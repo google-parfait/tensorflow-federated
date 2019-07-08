@@ -115,6 +115,8 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
 class FederatedExecutor(executor_base.Executor):
   """The federated executor orchestrates federated computations.
 
+  NOTE: This component is only available in Python 3.
+
   The intrinsics currently implemented include:
   - federated_aggregate
   - federated_apply
@@ -123,11 +125,9 @@ class FederatedExecutor(executor_base.Executor):
   - federated_mean
   - federated_reduce
   - federated_sum
-  - federated_value_at_clients
-  - federated_value_at_server
+  - federated_value
   - federated_weighted_mean
-  - federated_zip_at_clients
-  - federated_zip_at_server
+  - federated_zip
 
   This executor is only responsible for handling federated types and federated
   operators, and a delegation of work to an underlying collection of target

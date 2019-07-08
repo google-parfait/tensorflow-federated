@@ -173,7 +173,7 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
 class LambdaExecutor(executor_base.Executor):
   """The lambda executor handles lambda expressions and related abstractions.
 
-  WARNING: This executor is only partially implemented, and should not be used.
+  NOTE: This component is only available in Python 3.
 
   This executor understands TFF computation compositional constructs, including
   lambdas, blocks, references, calls, tuples, and selections, and orchestrates
