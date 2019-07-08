@@ -113,11 +113,6 @@ class ComputationBuildingBlock(typed_object.TypedObject):
     """Returns a serialized form of this object as a pb.Computation instance."""
     raise NotImplementedError
 
-  @property
-  def tff_repr(self):
-    """Returns the representation of the instance using TFF syntax."""
-    return compact_representation(self)
-
   # TODO(b/113112885): Add memoization after identifying a suitable externally
   # available standard library that works in Python 2/3.
 
@@ -1030,30 +1025,6 @@ def structural_representation(comp):
         return index
     return len(string)
 
-  def _pad_bottom(lines, total_height):
-    """Pads the end of a `list` of strings to the given 'total_height'.
-
-    This function returns a new `list` of strings by appending padding the end
-    of `lines` to the given `total_height`. Each string of padding is
-    `padding_char` of length equal to the width of the first line in `lines`.
-
-    >>>_pad_bottom(['aa', 'bb'], 4)
-    ['aa', 'bb', '  ', '  ']
-
-    Args:
-      lines: A `list` of strings to pad.
-      total_height: The length that `lines` should be padded to.
-
-    Returns:
-      A `list` of lines with padding applied.
-    """
-    current_height = len(lines)
-    assert current_height <= total_height
-    line_width = len(lines[0])
-    padding = total_height - current_height
-    padding_lines = [padding_char * line_width for _ in range(padding)]
-    return lines + padding_lines
-
   def _pad_left(lines, total_width):
     """Pads the beginning of each line in `lines` to the given `total_width`.
 
@@ -1122,11 +1093,11 @@ def structural_representation(comp):
     """
     lines = lines_1 + lines_2
     longest_line = max(lines, key=len)
-    width = len(longest_line)
+    longest_width = len(longest_line)
     if align is Alignment.LEFT:
-      return _pad_right(lines, width)
+      return _pad_right(lines, longest_width)
     elif align is Alignment.RIGHT:
-      return _pad_left(lines, width)
+      return _pad_left(lines, longest_width)
 
   def _calculate_inset_from_padding(left, right, preferred_padding,
                                     minimum_content_padding):
@@ -1172,12 +1143,6 @@ def structural_representation(comp):
     Returns:
       A `list` of lines.
     """
-    left_height = len(left)
-    right_height = len(right)
-    if left_height > right_height:
-      right = _pad_bottom(right, left_height)
-    else:
-      left = _pad_bottom(left, right_height)
     lines = []
     for left_line, right_line in zip(left, right):
       if inset > 0:
@@ -1195,11 +1160,21 @@ def structural_representation(comp):
       padding = abs(inset) if inset < 0 else 0
       line = ''.join([left_line, padding_char * padding, right_line])
       lines.append(line)
-    width = len(lines[-1])
+    left_height = len(left)
+    right_height = len(right)
     if left_height > right_height:
-      lines = _pad_right(lines, width)
-    else:
-      lines = _pad_left(lines, width)
+      lines.extend(left[right_height:])
+    elif right_height > left_height:
+      lines.extend(right[left_height:])
+    longest_line = max(lines, key=len)
+    longest_width = len(longest_line)
+    shortest_line = min(lines, key=len)
+    shortest_width = len(shortest_line)
+    if shortest_width != longest_width:
+      if left_height > right_height:
+        lines = _pad_right(lines, longest_width)
+      else:
+        lines = _pad_left(lines, longest_width)
     return lines
 
   def _fit_with_padding(left,
@@ -1280,7 +1255,8 @@ def structural_representation(comp):
       else:
         lines = _fit_with_padding(lines, [','], 0, 0)
         lines = _fit_with_padding(lines, comp_lines, 1)
-    return _fit_with_padding(lines, [']'], 0, 0)
+    lines = _fit_with_padding(lines, [']'], 0, 0)
+    return lines
 
   def _lines_for_comp(comp):
     """Returns a `list` of strings representing the given `comp`.

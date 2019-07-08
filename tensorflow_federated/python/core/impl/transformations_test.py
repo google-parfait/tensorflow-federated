@@ -204,9 +204,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(let a=data in intrinsic(a))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,_var1=intrinsic(a) in _var1)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data in intrinsic(a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,_var1=intrinsic(a) in _var1)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -221,9 +224,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(let a=data in (let b=intrinsic(a) in b))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,b=intrinsic(a) in b)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data in (let b=intrinsic(a) in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,b=intrinsic(a) in b)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -242,10 +248,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(let a=data in (let b=intrinsic(a),c=intrinsic(a) in b))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,b=intrinsic(a),c=intrinsic(a) in b)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,b=intrinsic(a),c=intrinsic(a) in b)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -261,8 +268,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(let c=(let b=intrinsic(a) in b) in c)')
-    self.assertEqual(transformed_comp.tff_repr, '(let b=intrinsic(a),c=b in c)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let c=(let b=intrinsic(a) in b) in c)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a),c=b in c)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -280,10 +291,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(let d=(let b=intrinsic(a),c=intrinsic(a) in b) in d)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=intrinsic(a),c=intrinsic(a),d=b in d)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let d=(let b=intrinsic(a),c=intrinsic(a) in b) in d)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a),c=intrinsic(a),d=b in d)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -300,10 +313,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(a -> (let c=(let b=intrinsic(a) in b) in c))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(a -> (let b=intrinsic(a),c=b in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> (let c=(let b=intrinsic(a) in b) in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> (let b=intrinsic(a),c=b in c))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -324,10 +339,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(a -> (let d=(let b=intrinsic(a),c=intrinsic(a) in b) in d))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(a -> (let b=intrinsic(a),c=intrinsic(a),d=b in d))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> (let b=intrinsic(a),c=intrinsic(a),d=b in d))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -347,10 +363,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(let a=data,c=(let b=intrinsic(a) in b) in c)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,b=intrinsic(a),c=b in c)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data,c=(let b=intrinsic(a) in b) in c)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,b=intrinsic(a),c=b in c)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -374,10 +392,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(let a=data,d=(let b=intrinsic(a),c=intrinsic(a) in b) in d)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,b=intrinsic(a),c=intrinsic(a),d=b in d)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,b=intrinsic(a),c=intrinsic(a),d=b in d)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -389,9 +408,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(a -> a)(intrinsic(b))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=intrinsic(b) in (a -> a)(_var1))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> a)(intrinsic(b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=intrinsic(b) in (a -> a)(_var1))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -406,9 +428,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(a -> a)((let c=intrinsic(b) in c))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let c=intrinsic(b) in (a -> a)(c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> a)((let c=intrinsic(b) in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let c=intrinsic(b) in (a -> a)(c))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -426,10 +451,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(a -> a)((let c=intrinsic(b),d=intrinsic(b) in c))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let c=intrinsic(b),d=intrinsic(b) in (a -> a)(c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> a)((let c=intrinsic(b),d=intrinsic(b) in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let c=intrinsic(b),d=intrinsic(b) in (a -> a)(c))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -440,9 +467,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(b -> intrinsic(a))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=intrinsic(a) in (b -> _var1))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(b -> intrinsic(a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=intrinsic(a) in (b -> _var1))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -453,9 +483,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(a -> intrinsic(a))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(a -> (let _var1=intrinsic(a) in _var1))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> intrinsic(a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> (let _var1=intrinsic(a) in _var1))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -469,9 +502,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(c -> (let b=intrinsic(a) in b))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=intrinsic(a) in (c -> b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(c -> (let b=intrinsic(a) in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a) in (c -> b))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -488,10 +524,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(d -> (let b=intrinsic(a),c=intrinsic(a) in b))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=intrinsic(a),c=intrinsic(a) in (d -> b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(d -> (let b=intrinsic(a),c=intrinsic(a) in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a),c=intrinsic(a) in (d -> b))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -509,10 +547,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(b -> (let c=intrinsic(a),d=intrinsic(b) in c))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '(b -> (let c=intrinsic(a),d=intrinsic(b) in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let c=intrinsic(a) in (b -> (let d=intrinsic(b) in c)))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -531,10 +570,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(a -> (let c=intrinsic(a),d=intrinsic(b) in c))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '(a -> (let c=intrinsic(a),d=intrinsic(b) in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let d=intrinsic(b) in (a -> (let c=intrinsic(a) in c)))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -553,9 +593,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(c -> (let a=data,b=intrinsic(a) in b))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,b=intrinsic(a) in (c -> b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(c -> (let a=data,b=intrinsic(a) in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,b=intrinsic(a) in (c -> b))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -575,10 +618,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(d -> (let a=data,b=intrinsic(a),c=intrinsic(b) in c))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=data,b=intrinsic(a),c=intrinsic(b) in (d -> c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(d -> (let a=data,b=intrinsic(a),c=intrinsic(b) in c))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data,b=intrinsic(a),c=intrinsic(b) in (d -> c))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -591,9 +636,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, 'intrinsic(a)[0]')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=intrinsic(a) in _var1[0])')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        'intrinsic(a)[0]')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=intrinsic(a) in _var1[0])')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -609,9 +657,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, 'intrinsic(c)[0]')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=intrinsic(c) in _var1[0])')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        'intrinsic(c)[0]')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=intrinsic(c) in _var1[0])')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -627,8 +678,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '(let b=intrinsic(a) in b)[0]')
-    self.assertEqual(transformed_comp.tff_repr, '(let b=intrinsic(a) in b[0])')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let b=intrinsic(a) in b)[0]')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a) in b[0])')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -647,10 +702,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(let b=intrinsic(a),c=intrinsic(a) in b)[0]')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=intrinsic(a),c=intrinsic(a) in b[0])')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let b=intrinsic(a),c=intrinsic(a) in b)[0]')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a),c=intrinsic(a) in b[0])')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -661,9 +718,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '<intrinsic(a)>')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=intrinsic(a) in <_var1>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '<intrinsic(a)>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=intrinsic(a) in <_var1>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -675,9 +735,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '<intrinsic(a),intrinsic(a)>')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '<intrinsic(a),intrinsic(a)>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let _var1=intrinsic(a),_var2=intrinsic(a) in <_var1,_var2>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -692,9 +754,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '<b=intrinsic(a),c=intrinsic(a)>')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '<b=intrinsic(a),c=intrinsic(a)>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let _var1=intrinsic(a),_var2=intrinsic(a) in <b=_var1,c=_var2>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -709,9 +773,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr, '<(let b=intrinsic(a) in b)>')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=intrinsic(a),_var1=b in <_var1>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '<(let b=intrinsic(a) in b)>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a),_var1=b in <_var1>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -728,10 +795,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '<(let b=intrinsic(a),c=intrinsic(a) in b)>')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=intrinsic(a),c=intrinsic(a),_var1=b in <_var1>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '<(let b=intrinsic(a),c=intrinsic(a) in b)>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a),c=intrinsic(a),_var1=b in <_var1>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -750,10 +819,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '<(let b=intrinsic(a) in b),(let d=intrinsic(a) in d)>')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '<(let b=intrinsic(a) in b),(let d=intrinsic(a) in d)>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let b=intrinsic(a),_var1=b,d=intrinsic(a),_var2=d in <_var1,_var2>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -778,11 +848,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<(let b=intrinsic(a),c=intrinsic(a) in b),(let d=intrinsic(a),e=intrinsic(a) in d)>'
     )
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let b=intrinsic(a),c=intrinsic(a),_var1=b,d=intrinsic(a),e=intrinsic(a),_var2=d in <_var1,_var2>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -804,10 +874,10 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(e -> (d -> d)((c -> c)((let b=data in <intrinsic(a)>[0]))))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let b=data,_var1=intrinsic(a) in (e -> (d -> d)((c -> c)(<_var1>[0]))))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -833,11 +903,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(f -> (e -> e)((d -> d)((let b=data,c=intrinsic(a) in <intrinsic(a),intrinsic(a)>[0]))))'
     )
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let b=data,c=intrinsic(a),_var1=intrinsic(a),_var2=intrinsic(a) in (f -> (e -> e)((d -> d)(<_var1,_var2>[0]))))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -857,10 +927,11 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(b -> intrinsic((a -> intrinsic(a))(data)))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '(b -> intrinsic((a -> intrinsic(a))(data)))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let _var2=intrinsic((a -> (let _var1=intrinsic(a) in _var1))(data)) in (b -> _var2))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -875,8 +946,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(let b=intrinsic(a) in b)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=intrinsic(a) in b)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -890,9 +965,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(a -> (let b=intrinsic(a) in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> (let b=intrinsic(a) in b))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -910,9 +988,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(a -> (let b=intrinsic(a),c=intrinsic(a) in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> (let b=intrinsic(a),c=intrinsic(a) in b))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -924,8 +1005,12 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.extract_intrinsics(comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(a -> a)(data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> a)(data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -956,8 +1041,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
     transformed_comp, modified = transformations.inline_block_locals(
         lambda_binding_y)
 
-    self.assertEqual(lambda_binding_y.tff_repr, '(y -> x)')
-    self.assertEqual(transformed_comp.tff_repr, '(y -> x)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(lambda_binding_y),
+        '(y -> x)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(y -> x)')
     self.assertEqual(transformed_comp.type_signature,
                      lambda_binding_y.type_signature)
     self.assertFalse(modified)
@@ -969,8 +1058,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(comp.tff_repr, '(let a=data in a)')
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -983,8 +1076,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(comp.tff_repr, '(let a=data in <a,a>)')
-    self.assertEqual(transformed_comp.tff_repr, '<data,data>')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data in <a,a>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '<data,data>')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -999,8 +1096,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
     transformed_comp, modified = transformations.inline_block_locals(
         comp, variable_names=('a',))
 
-    self.assertEqual(comp.tff_repr, '(let a=data,b=data in <a,b>)')
-    self.assertEqual(transformed_comp.tff_repr, '(let b=data in <data,b>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data,b=data in <a,b>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=data in <data,b>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1013,8 +1114,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(comp.tff_repr, '(let b=(let a=data in a) in b)')
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let b=(let a=data in a) in b)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1028,8 +1133,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(comp.tff_repr, '(let a=data in (let b=a in b))')
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data in (let b=a in b))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1044,8 +1153,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(comp.tff_repr, '(let b=data,c=b,a=c in a)')
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let b=data,c=b,a=c in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -1055,8 +1168,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.inline_block_locals(comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(a -> a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -1068,8 +1185,12 @@ class InlineBlockLocalsTest(absltest.TestCase):
     transformed_comp, modified = transformations.inline_block_locals(
         comp, variable_names=('b',))
 
-    self.assertEqual(comp.tff_repr, '(let a=data in a)')
-    self.assertEqual(transformed_comp.tff_repr, '(let a=data in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let a=data in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data in a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -1086,11 +1207,13 @@ class MergeChainedBlocksTest(absltest.TestCase):
     block1 = computation_building_blocks.Block([('result', input1)], result)
     input2 = computation_building_blocks.Data('input2', tf.int32)
     block2 = computation_building_blocks.Block([('input1', input2)], block1)
-    self.assertEqual(block2.tff_repr,
-                     '(let input1=input2 in (let result=input1 in result))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(block2),
+        '(let input1=input2 in (let result=input1 in result))')
     merged_blocks, modified = transformations.merge_chained_blocks(block2)
-    self.assertEqual(merged_blocks.tff_repr,
-                     '(let input1=input2,result=input1 in result)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(merged_blocks),
+        '(let input1=input2,result=input1 in result)')
     self.assertTrue(modified)
 
   def test_leaves_names(self):
@@ -1104,11 +1227,12 @@ class MergeChainedBlocksTest(absltest.TestCase):
     input2 = computation_building_blocks.Data('input2', tf.int32)
     block2 = computation_building_blocks.Block([('y', input2)], result_block)
     self.assertEqual(
-        block2.tff_repr,
+        computation_building_blocks.compact_representation(block2),
         '(let y=input2 in (let x=input1 in <a=result_a,b=result_b>))')
     merged, modified = transformations.merge_chained_blocks(block2)
-    self.assertEqual(merged.tff_repr,
-                     '(let y=input2,x=input1 in <a=result_a,b=result_b>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(merged),
+        '(let y=input2,x=input1 in <a=result_a,b=result_b>)')
     self.assertTrue(modified)
 
   def test_leaves_separated_chained_blocks_alone(self):
@@ -1119,11 +1243,13 @@ class MergeChainedBlocksTest(absltest.TestCase):
     result_tuple = computation_building_blocks.Tuple([result_block])
     input2 = computation_building_blocks.Data('input2', tf.int32)
     block2 = computation_building_blocks.Block([('y', input2)], result_tuple)
-    self.assertEqual(block2.tff_repr,
-                     '(let y=input2 in <(let x=input1 in result)>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(block2),
+        '(let y=input2 in <(let x=input1 in result)>)')
     merged, modified = transformations.merge_chained_blocks(block2)
-    self.assertEqual(merged.tff_repr,
-                     '(let y=input2 in <(let x=input1 in result)>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(merged),
+        '(let y=input2 in <(let x=input1 in result)>)')
     self.assertFalse(modified)
 
   def test_two_levels_of_nesting(self):
@@ -1135,12 +1261,12 @@ class MergeChainedBlocksTest(absltest.TestCase):
     input3 = computation_building_blocks.Data('input3', tf.int32)
     block3 = computation_building_blocks.Block([('input2', input3)], block2)
     self.assertEqual(
-        block3.tff_repr,
+        computation_building_blocks.compact_representation(block3),
         '(let input2=input3 in (let input1=input2 in (let result=input1 in result)))'
     )
     merged_blocks, modified = transformations.merge_chained_blocks(block3)
     self.assertEqual(
-        merged_blocks.tff_repr,
+        computation_building_blocks.compact_representation(merged_blocks),
         '(let input2=input3,input1=input2,result=input1 in result)')
     self.assertTrue(modified)
 
@@ -1162,10 +1288,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_apply(<(a -> a),federated_apply(<(a -> a),data>)>)')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_apply(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1183,10 +1309,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_map(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1205,10 +1331,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(b -> b),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_map(<(let _var1=<(a -> a),(b -> b)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1227,10 +1353,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(b -> b),federated_map(<(a -> data),data>)>)')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_map(<(let _var1=<(a -> data),(b -> b)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1250,10 +1376,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_map(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1273,10 +1399,10 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(b -> a),federated_map(<(b -> a),data>)>)')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_map(<(let _var1=<(b -> a),(b -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1295,11 +1421,11 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(let b=data in federated_map(<(a -> a),federated_map(<(a -> a),data>)>))'
     )
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let b=data in federated_map(<(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),data>))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1317,22 +1443,27 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(a -> a),federated_map(<(a -> a),federated_map(<(a -> a),data>)>)>)'
     )
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        'federated_map(<'
-            '(let _var3=<'
-                '(let _var1=<(a -> a),(a -> a)> in (_var2 -> _var1[1](_var1[0](_var2)))),'
-                '(a -> a)'
-            '> in (_var4 -> _var3[1](_var3[0](_var4)))),'
-            'data'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        'federated_map(<\n'
+        '  (let\n'
+        '    _var3=<\n'
+        '      (let\n'
+        '        _var1=<\n'
+        '          (a -> a),\n'
+        '          (a -> a)\n'
+        '        >\n'
+        '       in (_var2 -> _var1[1](_var1[0](_var2)))),\n'
+        '      (a -> a)\n'
+        '    >\n'
+        '   in (_var4 -> _var3[1](_var3[0](_var4)))),\n'
+        '  data\n'
         '>)'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
@@ -1348,9 +1479,12 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr,
-                     'federated_map(<(a -> a),data>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'federated_map(<(a -> a),data>)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '{int32}@CLIENTS')
     self.assertFalse(modified)
@@ -1367,9 +1501,11 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
         comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         'federated_map(<(a -> a),(let b=data in federated_map(<(a -> a),data>))>)'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1414,53 +1550,130 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
-    self.assertEqual(
-        comp.tff_repr,
-        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)>'
-    )
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_aggregate(<'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>),'
-            '<data,data>,'
-            '(let _var1=<(a -> data),(a -> data)> in (_var2 -> <'
-                '_var1[0](<'
-                    '<_var2[0][0],_var2[1][0]>,'
-                    '<_var2[0][1],_var2[1][1]>'
-                '>[0]),'
-                '_var1[1](<'
-                    '<_var2[0][0],_var2[1][0]>,'
-                    '<_var2[0][1],_var2[1][1]>'
-                '>[1])'
-            '>)),'
-            '(let _var3=<(b -> data),(b -> data)> in (_var4 -> <'
-                '_var3[0](<'
-                    '<_var4[0][0],_var4[1][0]>,'
-                    '<_var4[0][1],_var4[1][1]>'
-                '>[0]),'
-                '_var3[1](<'
-                    '<_var4[0][0],_var4[1][0]>,'
-                    '<_var4[0][1],_var4[1][1]>'
-                '>[1])'
-            '>)),'
-            '(let _var5=<(c -> data),(c -> data)> in (_var6 -> <'
-                '_var5[0](_var6[0]),'
-                '_var5[1](_var6[1])'
-             '>))'
-        '>) in <'
-            'federated_apply(<(arg -> arg[0]),value>),'
-            'federated_apply(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(comp),
+        '<\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >),\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >)\n'
+        '>'
+    )
+    self.assertEqual(
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_aggregate(<\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >),\n'
+        '    <\n'
+        '      data,\n'
+        '      data\n'
+        '    >,\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> data),\n'
+        '        (a -> data)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](<\n'
+        '        <\n'
+        '          _var2[0][0],\n'
+        '          _var2[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][1],\n'
+        '          _var2[1][1]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var1[1](<\n'
+        '        <\n'
+        '          _var2[0][0],\n'
+        '          _var2[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][1],\n'
+        '          _var2[1][1]\n'
+        '        >\n'
+        '      >[1])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var3=<\n'
+        '        (b -> data),\n'
+        '        (b -> data)\n'
+        '      >\n'
+        '     in (_var4 -> <\n'
+        '      _var3[0](<\n'
+        '        <\n'
+        '          _var4[0][0],\n'
+        '          _var4[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][1],\n'
+        '          _var4[1][1]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var3[1](<\n'
+        '        <\n'
+        '          _var4[0][0],\n'
+        '          _var4[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][1],\n'
+        '          _var4[1][1]\n'
+        '        >\n'
+        '      >[1])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var5=<\n'
+        '        (c -> data),\n'
+        '        (c -> data)\n'
+        '      >\n'
+        '     in (_var6 -> <\n'
+        '      _var5[0](_var6[0]),\n'
+        '      _var5[1](_var6[1])\n'
+        '    >))\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1479,36 +1692,205 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
-    self.assertEqual(
-        comp.tff_repr,
-        '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)>'
-    )
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1],x[2]>)'
-          '((let value=federated_aggregate(<'
-              'federated_map(<(x -> <x[0],x[1],x[2]>),'
-                'federated_map(<(arg -> (let comps=<(arg -> arg)(arg[0]),arg[1]> in <comps[0][0],comps[0][1],comps[1]>)),'
-                  '(let value=<data,data,data> in federated_zip_at_clients(<federated_zip_at_clients(<value[0],value[1]>),value[2]>))>)>),'
-              '<data,data,data>,'
-              '(let _var1=<(a -> data),(a -> data),(a -> data)> in ('
-                '_var2 -> <_var1[0](<<_var2[0][0],_var2[1][0]>,<_var2[0][1],_var2[1][1]>,<_var2[0][2],_var2[1][2]>>[0]),'
-                '_var1[1](<<_var2[0][0],_var2[1][0]>,<_var2[0][1],_var2[1][1]>,<_var2[0][2],_var2[1][2]>>[1]),'
-                '_var1[2](<<_var2[0][0],_var2[1][0]>,<_var2[0][1],_var2[1][1]>,<_var2[0][2],_var2[1][2]>>[2])>)),'
-              '(let _var3=<(b -> data),(b -> data),(b -> data)> in ('
-                '_var4 -> <_var3[0](<<_var4[0][0],_var4[1][0]>,<_var4[0][1],_var4[1][1]>,<_var4[0][2],_var4[1][2]>>[0]),'
-                '_var3[1](<<_var4[0][0],_var4[1][0]>,<_var4[0][1],_var4[1][1]>,<_var4[0][2],_var4[1][2]>>[1]),'
-                '_var3[2](<<_var4[0][0],_var4[1][0]>,<_var4[0][1],_var4[1][1]>,<_var4[0][2],_var4[1][2]>>[2])>)),'
-              '(let _var5=<(c -> data),(c -> data),(c -> data)> in ('
-                '_var6 -> <_var5[0](_var6[0]),_var5[1](_var6[1]),_var5[2](_var6[2])>))>) '
-            'in '
-              '<federated_apply(<(arg -> arg[0]),value>),'
-              'federated_apply(<(arg -> arg[1]),value>),'
-              'federated_apply(<(arg -> arg[2]),value>)>))'
+        computation_building_blocks.formatted_representation(comp),
+        '<\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >),\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >),\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >)\n'
+        '>'
     )
-    # pylint: enable=bad-continuation
+    self.assertEqual(
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1],\n'
+        '  x[2]\n'
+        '>)((let\n'
+        '  value=federated_aggregate(<\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1],\n'
+        '        x[2]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> (let\n'
+        '          comps=<\n'
+        '            (arg -> arg)(arg[0]),\n'
+        '            arg[1]\n'
+        '          >\n'
+        '         in <\n'
+        '          comps[0][0],\n'
+        '          comps[0][1],\n'
+        '          comps[1]\n'
+        '        >)),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          federated_zip_at_clients(<\n'
+        '            value[0],\n'
+        '            value[1]\n'
+        '          >),\n'
+        '          value[2]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >),\n'
+        '    <\n'
+        '      data,\n'
+        '      data,\n'
+        '      data\n'
+        '    >,\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> data),\n'
+        '        (a -> data),\n'
+        '        (a -> data)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](<\n'
+        '        <\n'
+        '          _var2[0][0],\n'
+        '          _var2[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][1],\n'
+        '          _var2[1][1]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][2],\n'
+        '          _var2[1][2]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var1[1](<\n'
+        '        <\n'
+        '          _var2[0][0],\n'
+        '          _var2[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][1],\n'
+        '          _var2[1][1]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][2],\n'
+        '          _var2[1][2]\n'
+        '        >\n'
+        '      >[1]),\n'
+        '      _var1[2](<\n'
+        '        <\n'
+        '          _var2[0][0],\n'
+        '          _var2[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][1],\n'
+        '          _var2[1][1]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var2[0][2],\n'
+        '          _var2[1][2]\n'
+        '        >\n'
+        '      >[2])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var3=<\n'
+        '        (b -> data),\n'
+        '        (b -> data),\n'
+        '        (b -> data)\n'
+        '      >\n'
+        '     in (_var4 -> <\n'
+        '      _var3[0](<\n'
+        '        <\n'
+        '          _var4[0][0],\n'
+        '          _var4[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][1],\n'
+        '          _var4[1][1]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][2],\n'
+        '          _var4[1][2]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var3[1](<\n'
+        '        <\n'
+        '          _var4[0][0],\n'
+        '          _var4[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][1],\n'
+        '          _var4[1][1]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][2],\n'
+        '          _var4[1][2]\n'
+        '        >\n'
+        '      >[1]),\n'
+        '      _var3[2](<\n'
+        '        <\n'
+        '          _var4[0][0],\n'
+        '          _var4[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][1],\n'
+        '          _var4[1][1]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var4[0][2],\n'
+        '          _var4[1][2]\n'
+        '        >\n'
+        '      >[2])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var5=<\n'
+        '        (c -> data),\n'
+        '        (c -> data),\n'
+        '        (c -> data)\n'
+        '      >\n'
+        '     in (_var6 -> <\n'
+        '      _var5[0](_var6[0]),\n'
+        '      _var5[1](_var6[1]),\n'
+        '      _var5[2](_var6[2])\n'
+        '    >))\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[2]),\n'
+        '    value\n'
+        '  >)\n'
+        '>))'
+    )
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1527,27 +1909,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_APPLY.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_apply(<(a -> a),data>),federated_apply(<(a -> a),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_apply(<'
-            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_apply(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_apply(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_server(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_apply(<(arg -> arg[0]),value>),'
-            'federated_apply(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_apply(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_apply(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_apply(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_server(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1564,26 +1974,45 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
 
-    self.assertEqual(comp.tff_repr,
-                     '<federated_broadcast(data),federated_broadcast(data)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_broadcast('
-            'federated_apply(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_apply(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_server(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        ') in <'
-            'federated_map_all_equal(<(arg -> arg[0]),value>),'
-            'federated_map_all_equal(<(arg -> arg[1]),value>)'
+        computation_building_blocks.compact_representation(comp),
+        '<federated_broadcast(data),federated_broadcast(data)>')
+    # pyformat: disable
+    self.assertEqual(
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_broadcast(federated_apply(<\n'
+        '    (x -> <\n'
+        '      x[0],\n'
+        '      x[1]\n'
+        '    >),\n'
+        '    federated_apply(<\n'
+        '      (arg -> arg),\n'
+        '      (let\n'
+        '        value=<\n'
+        '          data,\n'
+        '          data\n'
+        '        >\n'
+        '       in federated_zip_at_server(<\n'
+        '        value[0],\n'
+        '        value[1]\n'
+        '      >))\n'
+        '    >)\n'
+        '  >))\n'
+        ' in <\n'
+        '  federated_map_all_equal(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map_all_equal(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(str(comp.type_signature), '<int32@CLIENTS,int32@CLIENTS>')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -1602,27 +2031,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1643,27 +2100,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(a -> a),data>),federated_map(<(b -> b),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(b -> b)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (b -> b)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1684,27 +2169,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(a -> a),data>),federated_map(<(b -> b),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(b -> b)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (b -> b)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1723,27 +2236,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1765,27 +2306,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(a -> a),data>),federated_map(<(d -> d),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(d -> d)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (d -> d)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1808,27 +2377,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(b -> a),data>),federated_map(<(b -> a),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(b -> a),(b -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (b -> a),\n'
+        '        (b -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1847,27 +2444,55 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<b=federated_map(<(a -> a),data>),c=federated_map(<(a -> a),data>)>')
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <b=x[0],c=x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  b=x[0],\n'
+        '  c=x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1887,28 +2512,58 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '(let a=data in <federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>)'
     )
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(let a=data in (x -> <x[0],x[1]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1]>),'
-                'federated_map(<'
-                    '(arg -> arg),'
-                    '(let value=<data,data> in federated_zip_at_clients(<value[0],value[1]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(let\n'
+        '  a=data\n'
+        ' in (x -> <\n'
+        '  x[0],\n'
+        '  x[1]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> arg),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >)\n'
         '>)))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1927,29 +2582,77 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>'
     )
     # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0],x[1],x[2]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a),(a -> a),(a -> a)> in (_var2 -> <_var1[0](_var2[0]),_var1[1](_var2[1]),_var1[2](_var2[2])>)),'
-            'federated_map(<'
-                '(x -> <x[0],x[1],x[2]>),'
-                'federated_map(<'
-                    '(arg -> (let comps=<(arg -> arg)(arg[0]),arg[1]> in <comps[0][0],comps[0][1],comps[1]>)),'
-                    '(let value=<data,data,data> in federated_zip_at_clients(<federated_zip_at_clients(<value[0],value[1]>),value[2]>))'
-                '>)'
-            '>)'
-        '>) in <'
-            'federated_map(<(arg -> arg[0]),value>),'
-            'federated_map(<(arg -> arg[1]),value>),'
-            'federated_map(<(arg -> arg[2]),value>)'
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0],\n'
+        '  x[1],\n'
+        '  x[2]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a),\n'
+        '        (a -> a),\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0]),\n'
+        '      _var1[1](_var2[1]),\n'
+        '      _var1[2](_var2[2])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (x -> <\n'
+        '        x[0],\n'
+        '        x[1],\n'
+        '        x[2]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (arg -> (let\n'
+        '          comps=<\n'
+        '            (arg -> arg)(arg[0]),\n'
+        '            arg[1]\n'
+        '          >\n'
+        '         in <\n'
+        '          comps[0][0],\n'
+        '          comps[0][1],\n'
+        '          comps[1]\n'
+        '        >)),\n'
+        '        (let\n'
+        '          value=<\n'
+        '            data,\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          federated_zip_at_clients(<\n'
+        '            value[0],\n'
+        '            value[1]\n'
+        '          >),\n'
+        '          value[2]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[1]),\n'
+        '    value\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[2]),\n'
+        '    value\n'
+        '  >)\n'
         '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -1966,17 +2669,39 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
-    self.assertEqual(comp.tff_repr, '<federated_map(<(a -> a),data>)>')
-    # pyformat: disable
-    # pylint: disable=bad-continuation
     self.assertEqual(
-        transformed_comp.tff_repr,
-        '(x -> <x[0]>)((let value=federated_map(<'
-            '(let _var1=<(a -> a)> in (_var2 -> <_var1[0](_var2[0])>)),'
-            'federated_map(<(arg -> <arg>),<data>[0]>)'
-        '>) in <federated_map(<(arg -> arg[0]),value>)>))'
+        computation_building_blocks.compact_representation(comp),
+        '<federated_map(<(a -> a),data>)>')
+    # pyformat: disable
+    self.assertEqual(
+        computation_building_blocks.formatted_representation(transformed_comp),
+        '(x -> <\n'
+        '  x[0]\n'
+        '>)((let\n'
+        '  value=federated_map(<\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> a)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](_var2[0])\n'
+        '    >)),\n'
+        '    federated_map(<\n'
+        '      (arg -> <\n'
+        '        arg\n'
+        '      >),\n'
+        '      <\n'
+        '        data\n'
+        '      >[0]\n'
+        '    >)\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_map(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >)\n'
+        '>))'
     )
-    # pylint: enable=bad-continuation
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(str(transformed_comp.type_signature), '<{int32}@CLIENTS>')
@@ -1996,9 +2721,11 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '<federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>),federated_map(<(a -> a),data>)>'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -2016,9 +2743,11 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '<federated_map(<(a -> a),data>),federated_map(<(a -> a),data>)>')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
@@ -2056,8 +2785,12 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr, '{}(<(a -> a),data>)'.format(uri))
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '{}(<(a -> a),data>)'.format(uri))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2073,8 +2806,12 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr, 'federated_map(<(c -> c),data>)')
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        'federated_map(<(c -> c),data>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2087,9 +2824,12 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(comp.tff_repr,
-                     '(let b=data in federated_map(<(a -> a),data>))')
-    self.assertEqual(transformed_comp.tff_repr, '(let b=data in data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let b=data in federated_map(<(a -> a),data>))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=data in data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2104,9 +2844,11 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
         comp)
 
     self.assertEqual(
-        comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
         'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)')
-    self.assertEqual(transformed_comp.tff_repr, 'data')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'data')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2116,8 +2858,12 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, 'intrinsic(a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        'intrinsic(a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2130,8 +2876,12 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(a -> a)(data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> a)(data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2151,8 +2901,12 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(a -> a)(data)')
-    self.assertEqual(transformed_comp.tff_repr, '(let a=data in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> a)(data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=data in a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2166,9 +2920,12 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(let b=data in (a -> a)(data))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=data in (let a=data in a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(let b=data in (a -> a)(data))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=data in (let a=data in a))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2181,9 +2938,12 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(comp.tff_repr, '(a -> a)((a -> a)(data))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let a=(let a=data in a) in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> a)((a -> a)(data))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let a=(let a=data in a) in a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2194,8 +2954,12 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(a -> a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> a)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2209,9 +2973,12 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
         comp)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let b=data in (a -> a))(data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let b=data in (a -> a))(data)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2258,9 +3025,12 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr, '(a -> intrinsic(a))')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(a -> (intrinsic_arg -> intrinsic_arg)(a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(comp),
+        '(a -> intrinsic(a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> (intrinsic_arg -> intrinsic_arg)(a))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -2274,9 +3044,11 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr, '(let b=data in (a -> intrinsic(a)))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '(let b=data in (a -> intrinsic(a)))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let b=data in (a -> (intrinsic_arg -> intrinsic_arg)(a)))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -2292,10 +3064,11 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(comp.tff_repr,
-                     '(a -> intrinsic(a))((a -> intrinsic(a))(data))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(comp),
+        '(a -> intrinsic(a))((a -> intrinsic(a))(data))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(a -> (intrinsic_arg -> intrinsic_arg)(a))((a -> (intrinsic_arg -> intrinsic_arg)(a))(data))'
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -2309,8 +3082,12 @@ class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
     transformed_comp, modified = transformations.replace_intrinsic_with_callable(
         comp, uri, body, context_stack_impl.context_stack)
 
-    self.assertEqual(transformed_comp.tff_repr, comp.tff_repr)
-    self.assertEqual(transformed_comp.tff_repr, '(a -> intrinsic(a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(a -> intrinsic(a))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -2456,8 +3233,12 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     transformed_comp, modified = transformations.uniquify_reference_names(
         lambda_binding_y)
 
-    self.assertEqual(lambda_binding_y.tff_repr, '(y -> x)')
-    self.assertEqual(transformed_comp.tff_repr, '(_var1 -> x)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(lambda_binding_y),
+        '(y -> x)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(_var1 -> x)')
     self.assertEqual(transformed_comp.type_signature,
                      lambda_binding_y.type_signature)
     self.assertTrue(modified)
@@ -2470,9 +3251,12 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.uniquify_reference_names(block)
 
-    self.assertEqual(block.tff_repr, '(let a=data,a=a,a=a in a)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(block),
+        '(let a=data,a=a,a=a in a)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
     self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
     self.assertTrue(modified)
 
@@ -2487,10 +3271,11 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     transformed_comp, modified = transformations.uniquify_reference_names(
         block2)
 
-    self.assertEqual(block2.tff_repr,
-                     '(let a=data,a=a in (let a=data,a=a in a))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(block2),
+        '(let a=data,a=a in (let a=data,a=a in a))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let _var1=data,_var2=_var1 in (let _var3=data,_var4=_var3 in _var4))')
     self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
     self.assertTrue(modified)
@@ -2510,8 +3295,9 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     transformed_comp, modified = transformations.uniquify_reference_names(
         second_level_call)
 
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(_var1 -> _var1)((_var2 -> _var2)(data))')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(_var1 -> _var1)((_var2 -> _var2)(data))')
     self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
     self.assertTrue(modified)
 
@@ -2533,10 +3319,10 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
         last_block)
 
     self.assertEqual(
-        last_block.tff_repr,
+        computation_building_blocks.compact_representation(last_block),
         '(let a=data,a=a in (a -> (let a=a,a=a in (a -> a)(a)))(a))')
     self.assertEqual(
-        transformed_comp.tff_repr,
+        computation_building_blocks.compact_representation(transformed_comp),
         '(let _var1=data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
     )
     self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
@@ -2562,20 +3348,26 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
     transformed_comp, modified = transformations.uniquify_reference_names(
         multiple_bindings_highest_block)
 
-    self.assertEqual(higher_block.tff_repr,
-                     '(let a=(let a=(let a=data in data) in data) in data)')
-    self.assertEqual(higher_block_with_y_ref.tff_repr,
-                     '(let a=(let a=(let a=a in data) in data) in data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(higher_block),
+        '(let a=(let a=(let a=data in data) in data) in data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(
+            higher_block_with_y_ref),
+        '(let a=(let a=(let a=a in data) in data) in data)')
     self.assertEqual(transformed_comp.locals[0][0], '_var4')
     self.assertEqual(
-        transformed_comp.locals[0][1].tff_repr,
+        computation_building_blocks.compact_representation(
+            transformed_comp.locals[0][1]),
         '(let _var3=(let _var2=(let _var1=data in data) in data) in data)')
     self.assertEqual(transformed_comp.locals[1][0], '_var8')
     self.assertEqual(
-        transformed_comp.locals[1][1].tff_repr,
+        computation_building_blocks.compact_representation(
+            transformed_comp.locals[1][1]),
         '(let _var7=(let _var6=(let _var5=_var4 in data) in data) in data)')
     self.assertEqual(
-        transformed_comp.result.tff_repr,
+        computation_building_blocks.compact_representation(
+            transformed_comp.result),
         '(let _var11=(let _var10=(let _var9=_var8 in data) in data) in data)')
     self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
     self.assertTrue(modified)
@@ -2587,15 +3379,19 @@ class UniquifyReferenceNamesTest(absltest.TestCase):
 
     transformed_comp, modified = transformations.uniquify_reference_names(comp)
 
-    self.assertEqual(block.tff_repr, '(let a=data,b=data in data)')
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=data,_var2=data in data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(block),
+        '(let a=data,b=data in data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=data,_var2=data in data)')
     self.assertTrue(modified)
 
     transformed_comp, modified = transformations.uniquify_reference_names(comp)
 
-    self.assertEqual(transformed_comp.tff_repr,
-                     '(let _var1=data,_var2=data in data)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(transformed_comp),
+        '(let _var1=data,_var2=data in data)')
     self.assertTrue(modified)
 
 
@@ -3147,7 +3943,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
 
     self.assertEqual(
-        second_applied_id.tff_repr,
+        computation_building_blocks.compact_representation(second_applied_id),
         'federated_apply(<(x -> x),federated_apply(<(x -> x),x>)>)')
     self.assertEqual(
         _count_called_intrinsics(second_applied_id,
@@ -3162,12 +3958,16 @@ class UnwrapPlacementTest(parameterized.TestCase):
                           computation_building_blocks.Lambda)
     self.assertIsInstance(placement_unwrapped.argument[0].result,
                           computation_building_blocks.Call)
-    self.assertEqual(placement_unwrapped.argument[0].result.function.tff_repr,
-                     '(_var2 -> _var2[0](_var2[1]))')
     self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[0].tff_repr, '(x -> x)')
+        computation_building_blocks.compact_representation(
+            placement_unwrapped.argument[0].result.function),
+        '(_var2 -> _var2[0](_var2[1]))')
     self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[1].tff_repr,
+        computation_building_blocks.compact_representation(
+            placement_unwrapped.argument[0].result.argument[0]), '(x -> x)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(
+            placement_unwrapped.argument[0].result.argument[1]),
         '(_var3 -> _var3[0](_var3[1]))(<(x -> x),_var1>)')
 
   def test_unwrap_placement_removes_two_federated_applys(self):
@@ -3205,8 +4005,9 @@ class UnwrapPlacementTest(parameterized.TestCase):
         second_applied_id)
     self.assertTrue(modified)
 
-    self.assertEqual(second_applied_id.tff_repr,
-                     'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(second_applied_id),
+        'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)')
     self.assertEqual(
         _count_called_intrinsics(second_applied_id,
                                  intrinsic_defs.FEDERATED_MAP.uri), 2)
@@ -3220,12 +4021,16 @@ class UnwrapPlacementTest(parameterized.TestCase):
                           computation_building_blocks.Lambda)
     self.assertIsInstance(placement_unwrapped.argument[0].result,
                           computation_building_blocks.Call)
-    self.assertEqual(placement_unwrapped.argument[0].result.function.tff_repr,
-                     '(_var2 -> _var2[0](_var2[1]))')
     self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[0].tff_repr, '(x -> x)')
+        computation_building_blocks.compact_representation(
+            placement_unwrapped.argument[0].result.function),
+        '(_var2 -> _var2[0](_var2[1]))')
     self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[1].tff_repr,
+        computation_building_blocks.compact_representation(
+            placement_unwrapped.argument[0].result.argument[0]), '(x -> x)')
+    self.assertEqual(
+        computation_building_blocks.compact_representation(
+            placement_unwrapped.argument[0].result.argument[1]),
         '(_var3 -> _var3[0](_var3[1]))(<(x -> x),_var1>)')
 
   def test_unwrap_placement_removes_two_federated_maps(self):
@@ -3466,7 +4271,9 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
             computation_types.FederatedType(tf.int32, placements.CLIENTS),
             computation_types.FederatedType(tf.int32, placements.SERVER)))
 
-    with self.assertRaisesRegex(ValueError, intrinsic.tff_repr):
+    with self.assertRaisesRegex(
+        ValueError,
+        computation_building_blocks.compact_representation(intrinsic)):
       transformations.check_intrinsics_whitelisted_for_reduction(intrinsic)
 
 

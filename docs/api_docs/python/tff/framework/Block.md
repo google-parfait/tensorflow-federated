@@ -4,7 +4,6 @@
 <meta itemprop="property" content="locals"/>
 <meta itemprop="property" content="proto"/>
 <meta itemprop="property" content="result"/>
-<meta itemprop="property" content="tff_repr"/>
 <meta itemprop="property" content="type_signature"/>
 <meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="from_proto"/>
@@ -88,10 +87,6 @@ Creates a block of TFF code.
 Returns a serialized form of this object as a pb.Computation instance.
 
 <h3 id="result"><code>result</code></h3>
-
-<h3 id="tff_repr"><code>tff_repr</code></h3>
-
-Returns the representation of the instance using TFF syntax.
 
 <h3 id="type_signature"><code>type_signature</code></h3>
 
