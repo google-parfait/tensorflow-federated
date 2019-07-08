@@ -27,6 +27,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
+from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
@@ -108,7 +109,7 @@ def extract_intrinsics(comp):
 
   def _is_called_intrinsic_or_block(comp):
     """Returns `True` if `comp` is a called intrinsic or a block."""
-    return (is_called_intrinsic(comp) or
+    return (computation_building_block_utils.is_called_intrinsic(comp) or
             isinstance(comp, computation_building_blocks.Block))
 
   def _should_transform(comp):
@@ -131,7 +132,7 @@ def extract_intrinsics(comp):
     elif isinstance(comp, computation_building_blocks.Call):
       return _is_called_intrinsic_or_block(comp.argument)
     elif isinstance(comp, computation_building_blocks.Lambda):
-      if is_called_intrinsic(comp.result):
+      if computation_building_block_utils.is_called_intrinsic(comp.result):
         return True
       if isinstance(comp.result, computation_building_blocks.Block):
         for index, (_, variable) in enumerate(comp.result.locals):
@@ -147,7 +148,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_block(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if is_called_intrinsic(comp.result):
+    if computation_building_block_utils.is_called_intrinsic(comp.result):
       called_intrinsic = comp.result
       name = six.next(name_generator)
       variables = comp.locals
@@ -170,7 +171,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_call(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if is_called_intrinsic(comp.argument):
+    if computation_building_block_utils.is_called_intrinsic(comp.argument):
       called_intrinsic = comp.argument
       name = six.next(name_generator)
       variables = ((name, called_intrinsic),)
@@ -186,7 +187,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_lambda(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if is_called_intrinsic(comp.result):
+    if computation_building_block_utils.is_called_intrinsic(comp.result):
       called_intrinsic = comp.result
       name = six.next(name_generator)
       variables = ((name, called_intrinsic),)
@@ -223,7 +224,7 @@ def extract_intrinsics(comp):
 
   def _extract_from_selection(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if is_called_intrinsic(comp.source):
+    if computation_building_block_utils.is_called_intrinsic(comp.source):
       called_intrinsic = comp.source
       name = six.next(name_generator)
       variables = ((name, called_intrinsic),)
@@ -440,12 +441,14 @@ def merge_chained_federated_maps_or_applys(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a chained federated map."""
-    if is_called_intrinsic(comp, (
-        intrinsic_defs.FEDERATED_APPLY.uri,
-        intrinsic_defs.FEDERATED_MAP.uri,
-    )):
+    if computation_building_block_utils.is_called_intrinsic(
+        comp, (
+            intrinsic_defs.FEDERATED_APPLY.uri,
+            intrinsic_defs.FEDERATED_MAP.uri,
+        )):
       outer_arg = comp.argument[1]
-      if is_called_intrinsic(outer_arg, comp.function.uri):
+      if computation_building_block_utils.is_called_intrinsic(
+          outer_arg, comp.function.uri):
         return True
     return False
 
@@ -593,10 +596,11 @@ def merge_tuple_intrinsics(comp, uri):
   name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   def _should_transform(comp):
-    return (isinstance(comp, computation_building_blocks.Tuple) and comp and
-            is_called_intrinsic(comp[0], uri) and all(
-                is_called_intrinsic(element, comp[0].function.uri)
-                for element in comp))
+    return (isinstance(comp, computation_building_blocks.Tuple) and
+            comp and computation_building_block_utils.is_called_intrinsic(
+                comp[0], uri) and all(
+                    computation_building_block_utils.is_called_intrinsic(
+                        element, comp[0].function.uri) for element in comp))
 
   def _transform_args_with_type(comps, type_signature):
     """Transforms a Python `list` of computations.
@@ -819,8 +823,8 @@ def remove_mapped_or_applied_identity(comp):
             intrinsic_defs.SEQUENCE_MAP.uri,
         )):
       called_function = comp.argument[0]
-      if _is_identity_function(called_function):
-        return True
+      return computation_building_block_utils.is_identity_function(
+          called_function)
     return False
 
   def _transform(comp):
@@ -1573,33 +1577,6 @@ def replace_all_intrinsics_with_bodies(comp, context_stack):
                                                       context_stack)
     transformed = transformed or uri_found
   return comp, transformed
-
-
-def is_called_intrinsic(comp, uri=None):
-  """Returns `True` if `comp` is a called intrinsic with the `uri` or `uri`s.
-
-            Call
-           /
-  Intrinsic
-
-  Args:
-    comp: The computation building block to test.
-    uri: A uri or a list, tuple, or set of uri.
-  """
-  if isinstance(uri, six.string_types):
-    uri = (uri,)
-  if uri is not None:
-    py_typecheck.check_type(uri, (list, tuple, set))
-  return (isinstance(comp, computation_building_blocks.Call) and
-          isinstance(comp.function, computation_building_blocks.Intrinsic) and
-          (uri is None or comp.function.uri in uri))
-
-
-def _is_identity_function(comp):
-  """Returns `True` if `comp` is an identity function."""
-  return (isinstance(comp, computation_building_blocks.Lambda) and
-          isinstance(comp.result, computation_building_blocks.Reference) and
-          comp.parameter_name == comp.result.name)
 
 
 def check_has_unique_names(comp):

@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
@@ -164,6 +165,23 @@ def _create_compiled_computation(py_fn, arg_type):
   proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       py_fn, arg_type, context_stack_impl.context_stack)
   return computation_building_blocks.CompiledComputation(proto)
+
+
+def _count_called_intrinsics(comp, uri=None):
+
+  def _predicate(comp):
+    return computation_building_block_utils.is_called_intrinsic(comp, uri)
+
+  return computation_test_utils.count(comp, _predicate)
+
+
+def _count_intrinsics(comp, uri):
+
+  def _predicate(comp):
+    return (isinstance(comp, computation_building_blocks.Intrinsic) and
+            uri is not None and comp.uri == uri)
+
+  return computation_test_utils.count(comp, _predicate)
 
 
 class ExtractIntrinsicsTest(absltest.TestCase):
@@ -2905,27 +2923,10 @@ class ParseTFFToTFTest(absltest.TestCase):
     self.assertEqual(exec_lambda(17), exec_tf(17))
 
 
-def _count(comp, predicate):
-  count = [0]
-
-  def _count_predicate(comp):
-    if predicate(comp):
-      count[0] += 1
-    return comp, False
-
-  transformation_utils.transform_postorder(comp, _count_predicate)
-
-  return count[0]
-
-
 def _is_called_graph_pattern(comp):
   return (isinstance(comp, computation_building_blocks.Call) and isinstance(
       comp.function, computation_building_blocks.CompiledComputation) and
           isinstance(comp.argument, computation_building_blocks.Reference))
-
-
-def _is_compiled_computation(comp):
-  return isinstance(comp, computation_building_blocks.CompiledComputation)
 
 
 class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
@@ -2941,8 +2942,11 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
         identity_lam)
     self.assertTrue(modified)
     self.assertEqual(new_lambda.type_signature, identity_lam.type_signature)
-    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
-    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+    self.assertEqual(
+        computation_test_utils.count_types(
+            new_lambda, computation_building_blocks.CompiledComputation), 1)
+    self.assertEqual(
+        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_raises_tuple(self):
     one_element_tuple = computation_building_blocks.Tuple(
@@ -2969,8 +2973,11 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
-    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
-    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+    self.assertEqual(
+        computation_test_utils.count_types(
+            new_lambda, computation_building_blocks.CompiledComputation), 1)
+    self.assertEqual(
+        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_under_tuple(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -2980,8 +2987,11 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
-    self.assertEqual(_count(new_lambda, _is_compiled_computation), 2)
-    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 2)
+    self.assertEqual(
+        computation_test_utils.count_types(
+            new_lambda, computation_building_blocks.CompiledComputation), 2)
+    self.assertEqual(
+        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 2)
 
   def test_transforms_in_block_result(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -2991,8 +3001,11 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
-    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
-    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+    self.assertEqual(
+        computation_test_utils.count_types(
+            new_lambda, computation_building_blocks.CompiledComputation), 1)
+    self.assertEqual(
+        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_in_block_locals(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -3003,8 +3016,11 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
-    self.assertEqual(_count(new_lambda, _is_compiled_computation), 1)
-    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 1)
+    self.assertEqual(
+        computation_test_utils.count_types(
+            new_lambda, computation_building_blocks.CompiledComputation), 1)
+    self.assertEqual(
+        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_under_call_without_compiled_computation(self):
     ref_to_x = computation_building_blocks.Reference('x', [tf.int32])
@@ -3016,8 +3032,11 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
-    self.assertEqual(_count(new_lambda, _is_compiled_computation), 2)
-    self.assertEqual(_count(new_lambda, _is_called_graph_pattern), 2)
+    self.assertEqual(
+        computation_test_utils.count_types(
+            new_lambda, computation_building_blocks.CompiledComputation), 2)
+    self.assertEqual(
+        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 2)
 
   def test_noops_on_call_with_compiled_computation(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -3026,10 +3045,6 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     lam = computation_building_blocks.Lambda('x', tf.int32, call)
     _, modified = transformations.insert_called_tf_identity_at_leaves(lam)
     self.assertFalse(modified)
-
-
-def _count_intrinsic(comp, uri):
-  return _count(comp, lambda x: transformations.is_called_intrinsic(x, uri))
 
 
 class UnwrapPlacementTest(parameterized.TestCase):
@@ -3115,7 +3130,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertEqual(placement_unwrapped.function.uri,
                      intrinsic_defs.FEDERATED_APPLY.uri)
     self.assertEqual(
-        _count(placement_unwrapped.argument[0], _fed_type_predicate), 0)
+        computation_test_utils.count(placement_unwrapped.argument[0],
+                                     _fed_type_predicate), 0)
 
   def test_unwrap_placement_removes_one_federated_apply(self):
     int_ref = computation_building_blocks.Reference('x', tf.int32)
@@ -3134,11 +3150,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
         second_applied_id.tff_repr,
         'federated_apply(<(x -> x),federated_apply(<(x -> x),x>)>)')
     self.assertEqual(
-        _count_intrinsic(second_applied_id, intrinsic_defs.FEDERATED_APPLY.uri),
-        2)
+        _count_called_intrinsics(second_applied_id,
+                                 intrinsic_defs.FEDERATED_APPLY.uri), 2)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped,
-                         intrinsic_defs.FEDERATED_APPLY.uri), 1)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_APPLY.uri), 1)
     self.assertEqual(placement_unwrapped.type_signature,
                      second_applied_id.type_signature)
     self.assertIsInstance(placement_unwrapped, computation_building_blocks.Call)
@@ -3170,11 +3186,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
 
     self.assertEqual(
-        _count_intrinsic(third_applied_id, intrinsic_defs.FEDERATED_APPLY.uri),
-        3)
+        _count_called_intrinsics(third_applied_id,
+                                 intrinsic_defs.FEDERATED_APPLY.uri), 3)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped,
-                         intrinsic_defs.FEDERATED_APPLY.uri), 1)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_APPLY.uri), 1)
 
   def test_unwrap_placement_removes_one_federated_map(self):
     int_ref = computation_building_blocks.Reference('x', tf.int32)
@@ -3192,11 +3208,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertEqual(second_applied_id.tff_repr,
                      'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)')
     self.assertEqual(
-        _count_intrinsic(second_applied_id, intrinsic_defs.FEDERATED_MAP.uri),
-        2)
+        _count_called_intrinsics(second_applied_id,
+                                 intrinsic_defs.FEDERATED_MAP.uri), 2)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped, intrinsic_defs.FEDERATED_MAP.uri),
-        1)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_MAP.uri), 1)
     self.assertEqual(placement_unwrapped.type_signature,
                      second_applied_id.type_signature)
     self.assertIsInstance(placement_unwrapped, computation_building_blocks.Call)
@@ -3228,10 +3244,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
 
     self.assertEqual(
-        _count_intrinsic(third_applied_id, intrinsic_defs.FEDERATED_MAP.uri), 3)
+        _count_called_intrinsics(third_applied_id,
+                                 intrinsic_defs.FEDERATED_MAP.uri), 3)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped, intrinsic_defs.FEDERATED_MAP.uri),
-        1)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_MAP.uri), 1)
 
   def test_unwrap_removes_all_federated_zips_at_server(self):
     fed_tuple = computation_building_blocks.Reference(
@@ -3246,10 +3263,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertIsInstance(zipped.type_signature,
                           computation_types.FederatedType)
     self.assertEqual(
-        _count_intrinsic(zipped, intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri), 3)
+        _count_called_intrinsics(zipped,
+                                 intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri), 3)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped,
-                         intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri), 0)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri), 0)
 
   def test_unwrap_removes_all_federated_zips_at_clients(self):
     fed_tuple = computation_building_blocks.Reference(
@@ -3264,11 +3282,13 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertIsInstance(zipped.type_signature,
                           computation_types.FederatedType)
     self.assertEqual(
-        _count_intrinsic(zipped, intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri),
+        _count_called_intrinsics(zipped,
+                                 intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri),
         3)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped,
-                         intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri), 0)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri),
+        0)
 
   def test_unwrap_placement_federated_value_at_server_removes_one_federated_value(
       self):
@@ -3287,11 +3307,13 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertEqual(placement_unwrapped.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri)
     self.assertEqual(
-        _count_intrinsic(zipped, intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri),
+        _count_called_intrinsics(zipped,
+                                 intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri),
         2)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped,
-                         intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri), 1)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri),
+        1)
 
   def test_unwrap_placement_federated_value_at_clients_removes_one_federated_value(
       self):
@@ -3315,11 +3337,13 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertEqual(placement_unwrapped.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
     self.assertEqual(
-        _count_intrinsic(zipped, intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri),
+        _count_called_intrinsics(zipped,
+                                 intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri),
         2)
     self.assertEqual(
-        _count_intrinsic(placement_unwrapped,
-                         intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri), 1)
+        _count_called_intrinsics(placement_unwrapped,
+                                 intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri),
+        1)
 
   def test_unwrap_placement_with_lambda_inserts_federated_apply(self):
     federated_ref = computation_building_blocks.Reference(
@@ -3356,11 +3380,6 @@ class UnwrapPlacementTest(parameterized.TestCase):
                      computation_types.FunctionType(tf.int32, tf.int32))
 
 
-def is_intrinsic(comp, uri=None):
-  return isinstance(comp, computation_building_blocks.Intrinsic
-                   ) and uri is not None and comp.uri == uri
-
-
 class ReduceIntrinsicBodiesTest(absltest.TestCase):
 
   def test_raises_on_none(self):
@@ -3369,6 +3388,7 @@ class ReduceIntrinsicBodiesTest(absltest.TestCase):
       transformations.replace_all_intrinsics_with_bodies(None, context_stack)
 
   def test_federated_weighted_mean_reduces(self):
+    uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
     context_stack = context_stack_impl.context_stack
 
     @computations.federated_computation(
@@ -3378,18 +3398,16 @@ class ReduceIntrinsicBodiesTest(absltest.TestCase):
 
     foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
         foo._computation_proto)
-    uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
-    is_federated_weighted_mean = lambda x: is_intrinsic(x, uri)
-    count_before_reduction = _count(foo_building_block,
-                                    is_federated_weighted_mean)
+    count_before_reduction = _count_intrinsics(foo_building_block, uri)
     reduced, modified = transformations.replace_all_intrinsics_with_bodies(
         foo_building_block, context_stack)
-    count_after_reduction = _count(reduced, is_federated_weighted_mean)
+    count_after_reduction = _count_intrinsics(reduced, uri)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     self.assertTrue(modified)
 
   def test_federated_sum_reduces(self):
+    uri = intrinsic_defs.FEDERATED_SUM.uri
     context_stack = context_stack_impl.context_stack
 
     @computations.federated_computation(
@@ -3400,28 +3418,25 @@ class ReduceIntrinsicBodiesTest(absltest.TestCase):
     foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
         foo._computation_proto)
 
-    uri = intrinsic_defs.FEDERATED_SUM.uri
-    is_federated_sum = lambda x: is_intrinsic(x, uri)
-    count_before_reduction = _count(foo_building_block, is_federated_sum)
+    count_before_reduction = _count_intrinsics(foo_building_block, uri)
     reduced, modified = transformations.replace_all_intrinsics_with_bodies(
         foo_building_block, context_stack)
-    count_after_reduction = _count(reduced, is_federated_sum)
+    count_after_reduction = _count_intrinsics(reduced, uri)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     self.assertTrue(modified)
 
   def test_generic_divide_reduces(self):
+    uri = intrinsic_defs.GENERIC_DIVIDE.uri
     context_stack = context_stack_impl.context_stack
     comp = computation_building_blocks.Intrinsic(
-        intrinsic_defs.GENERIC_DIVIDE.uri,
-        computation_types.FunctionType([tf.float32, tf.float32], tf.float32))
+        uri, computation_types.FunctionType([tf.float32, tf.float32],
+                                            tf.float32))
 
-    uri = intrinsic_defs.GENERIC_DIVIDE.uri
-    is_generic_divide = lambda x: is_intrinsic(x, uri)
-    count_before_reduction = _count(comp, is_generic_divide)
+    count_before_reduction = _count_intrinsics(comp, uri)
     reduced, modified = transformations.replace_all_intrinsics_with_bodies(
         comp, context_stack)
-    count_after_reduction = _count(reduced, is_generic_divide)
+    count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)

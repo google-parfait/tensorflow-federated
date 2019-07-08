@@ -29,10 +29,10 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl import transformation_utils
 
 
 def _create_compiled_computation(py_fn, arg_type):
@@ -1910,19 +1910,6 @@ def _create_simple_called_composition_of_tf_blocks():
   return one
 
 
-def _count_compiled_computations_under(comp):
-  count = [0]
-
-  def _count(comp):
-    if isinstance(comp, computation_building_blocks.CompiledComputation):
-      count[0] += 1
-    return comp, False
-
-  transformation_utils.transform_postorder(comp, _count)
-
-  return count[0]
-
-
 class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
@@ -1979,11 +1966,13 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
 
   def test_transform_reduces_number_of_compiled_computations(self):
     pattern = _create_simple_called_composition_of_tf_blocks()
-    original_count = _count_compiled_computations_under(pattern)
+    original_count = computation_test_utils.count_types(
+        pattern, computation_building_blocks.CompiledComputation)
     logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
     )
     parsed, _ = logic.transform(pattern)
-    new_count = _count_compiled_computations_under(parsed)
+    new_count = computation_test_utils.count_types(
+        parsed, computation_building_blocks.CompiledComputation)
     self.assertLess(new_count, original_count)
 
   def test_leaves_type_signature_alone(self):
