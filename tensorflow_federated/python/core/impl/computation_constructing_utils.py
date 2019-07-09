@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library implementing reusable `computation_building_blocks` constructs."""
+"""Library implementing reusable `computation_building_blocks` structures."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -61,7 +61,7 @@ def unique_name_generator(comp, prefix='_var'):
     index += 1
 
 
-def construct_compiled_empty_tuple():
+def create_compiled_empty_tuple():
   """Returns called graph representing the empty tuple.
 
   Returns:
@@ -87,8 +87,8 @@ def construct_compiled_empty_tuple():
       computation_building_blocks.CompiledComputation(proto), None)
 
 
-def construct_compiled_identity(type_signature):
-  """Constructs CompiledComputation representing identity function.
+def create_compiled_identity(type_signature):
+  """Creates CompiledComputation representing identity function.
 
   Args:
     type_signature: Argument convertible to instance of `computation_types.Type`
@@ -129,7 +129,7 @@ def construct_compiled_identity(type_signature):
   return computation_building_blocks.CompiledComputation(proto)
 
 
-def construct_tensorflow_constant(type_spec, scalar_value):
+def create_tensorflow_constant(type_spec, scalar_value):
   """Creates called graph returning constant `scalar_value` of type `type_spec`.
 
   `scalar_value` must be a scalar, and cannot be a float if any of the tensor
@@ -161,7 +161,7 @@ def construct_tensorflow_constant(type_spec, scalar_value):
   if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
       or inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError('Must pass a scalar value to '
-                    '`construct_tensorflow_constant`; encountered a value '
+                    '`create_tensorflow_constant`; encountered a value '
                     '{}'.format(scalar_value))
   tensor_dtypes_in_type_spec = []
 
@@ -181,7 +181,7 @@ def construct_tensorflow_constant(type_spec, scalar_value):
                         scalar_value, inferred_scalar_value_type.dtype,
                         type_spec))
 
-  def _construct_result_tensor(type_spec, scalar_value):
+  def _create_result_tensor(type_spec, scalar_value):
     """Packs `scalar_value` into `type_spec` recursively."""
     if isinstance(type_spec, computation_types.TensorType):
       type_spec.shape.assert_is_fully_defined()
@@ -190,12 +190,12 @@ def construct_tensorflow_constant(type_spec, scalar_value):
     else:
       elements = []
       for _, type_element in anonymous_tuple.to_elements(type_spec):
-        elements.append(_construct_result_tensor(type_element, scalar_value))
+        elements.append(_create_result_tensor(type_element, scalar_value))
       result = elements
     return result
 
   with tf.Graph().as_default() as graph:
-    result = _construct_result_tensor(type_spec, scalar_value)
+    result = _create_result_tensor(type_spec, scalar_value)
   _, result_binding = graph_utils.capture_result_from_graph(result, graph)
 
   function_type = computation_types.FunctionType(None, type_spec)
@@ -212,8 +212,8 @@ def construct_tensorflow_constant(type_spec, scalar_value):
   return computation_building_blocks.Call(noarg_constant_fn, None)
 
 
-def construct_compiled_input_replication(type_signature, n_replicas):
-  """Constructs a compiled computation which replicates its argument.
+def create_compiled_input_replication(type_signature, n_replicas):
+  """Creates a compiled computation which replicates its argument.
 
   Args:
     type_signature: Value convertible to `computation_types.Type` via
@@ -259,8 +259,8 @@ def construct_compiled_input_replication(type_signature, n_replicas):
   return computation_building_blocks.CompiledComputation(proto)
 
 
-def construct_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
-  """Constructs TF function broadcasting scalar to shape `new_shape`.
+def create_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
+  """Creates TF function broadcasting scalar to shape `new_shape`.
 
   Args:
     scalar_type: Instance of `tf.DType`, the type of the scalar we are looking
@@ -313,8 +313,8 @@ def construct_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
   return computation_building_blocks.CompiledComputation(proto)
 
 
-def construct_tensorflow_binary_operator(operand_type, operator):
-  """Constructs a TensorFlow computation for the binary `operator`.
+def create_tensorflow_binary_operator(operand_type, operator):
+  """Creates a TensorFlow computation for the binary `operator`.
 
   For `T` the `operand_type`, the type signature of the constructed operator
   will be `(<T,T> -> U)`, where `U` is the result of applying `operator` to
@@ -393,8 +393,8 @@ def construct_tensorflow_binary_operator(operand_type, operator):
   return computation_building_blocks.CompiledComputation(proto)
 
 
-def construct_federated_getitem_call(arg, idx):
-  """Constructs computation building block passing getitem to federated value.
+def create_federated_getitem_call(arg, idx):
+  """Creates computation building block passing getitem to federated value.
 
   Args:
     arg: Instance of `computation_building_blocks.ComputationBuildingBlock` of
@@ -416,12 +416,12 @@ def construct_federated_getitem_call(arg, idx):
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
-  getitem_comp = construct_federated_getitem_comp(arg, idx)
+  getitem_comp = create_federated_getitem_comp(arg, idx)
   return create_federated_map_or_apply(getitem_comp, arg)
 
 
-def construct_federated_getattr_call(arg, name):
-  """Constructs computation building block passing getattr to federated value.
+def create_federated_getattr_call(arg, name):
+  """Creates computation building block passing getattr to federated value.
 
   Args:
     arg: Instance of `computation_building_blocks.ComputationBuildingBlock` of
@@ -443,14 +443,14 @@ def construct_federated_getattr_call(arg, name):
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
-  getattr_comp = construct_federated_getattr_comp(arg, name)
+  getattr_comp = create_federated_getattr_comp(arg, name)
   return create_federated_map_or_apply(getattr_comp, arg)
 
 
-def construct_federated_setattr_call(federated_comp, name, value_comp):
+def create_federated_setattr_call(federated_comp, name, value_comp):
   """Returns building block for `setattr(name, value_comp)` on `federated_comp`.
 
-  Constructs an appropriate communication intrinsic (either `federated_map` or
+  Creates an appropriate communication intrinsic (either `federated_map` or
   `federated_apply`) as well as a `computation_building_blocks.Lambda`
   representing setting the `name` attribute of `federated_comp`'s `member` to
   `value_comp`, and stitches these together in a call.
@@ -485,14 +485,13 @@ def construct_federated_setattr_call(federated_comp, name, value_comp):
   py_typecheck.check_type(federated_comp.type_signature.member,
                           computation_types.NamedTupleType)
   named_tuple_type_signature = federated_comp.type_signature.member
-  setattr_lambda = construct_named_tuple_setattr_lambda(
-      named_tuple_type_signature, name, value_comp)
+  setattr_lambda = create_named_tuple_setattr_lambda(named_tuple_type_signature,
+                                                     name, value_comp)
   return create_federated_map_or_apply(setattr_lambda, federated_comp)
 
 
-def construct_named_tuple_setattr_lambda(named_tuple_signature, name,
-                                         value_comp):
-  """Constructs a building block for replacing one attribute in a named tuple.
+def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
+  """Creates a building block for replacing one attribute in a named tuple.
 
   Returns an instance of `computation_building_blocks.Lambda` which takes an
   argument of type `computation_types.NamedTupleType` and returns a
@@ -558,10 +557,10 @@ def construct_named_tuple_setattr_lambda(named_tuple_signature, name,
   return computation_building_blocks.Block(symbols, lambda_to_return)
 
 
-def construct_federated_getattr_comp(comp, name):
+def create_federated_getattr_comp(comp, name):
   """Function to construct computation for `federated_apply` of `__getattr__`.
 
-  Constructs a `computation_building_blocks.ComputationBuildingBlock`
+  Creates a `computation_building_blocks.ComputationBuildingBlock`
   which selects `name` from its argument, of type `comp.type_signature.member`,
   an instance of `computation_types.NamedTupleType`.
 
@@ -596,10 +595,10 @@ def construct_federated_getattr_comp(comp, name):
   return apply_lambda
 
 
-def construct_federated_getitem_comp(comp, key):
+def create_federated_getitem_comp(comp, key):
   """Function to construct computation for `federated_apply` of `__getitem__`.
 
-  Constructs a `computation_building_blocks.ComputationBuildingBlock`
+  Creates a `computation_building_blocks.ComputationBuildingBlock`
   which selects `key` from its argument, of type `comp.type_signature.member`,
   of type `computation_types.NamedTupleType`.
 
@@ -1203,7 +1202,7 @@ def create_federated_zip(value):
     zipped_args = _create_chain_zipped_values(value)
     append_fn = _create_fn_to_append_chain_zipped_values(value)
     unnamed_zip = map_fn(append_fn, zipped_args)
-    return construct_named_federated_tuple(unnamed_zip, names_to_add)
+    return create_named_federated_tuple(unnamed_zip, names_to_add)
 
 
 def _create_chain_zipped_values(value):
@@ -1490,7 +1489,7 @@ def create_sequence_sum(value):
   return computation_building_blocks.Call(intrinsic, value)
 
 
-def _construct_naming_function(tuple_type_to_name, names_to_add):
+def _create_naming_function(tuple_type_to_name, names_to_add):
   """Private function to construct lambda naming a given tuple type.
 
   Args:
@@ -1529,7 +1528,7 @@ def _construct_naming_function(tuple_type_to_name, names_to_add):
                                             named_result)
 
 
-def construct_named_federated_tuple(tuple_to_name, names_to_add):
+def create_named_federated_tuple(tuple_to_name, names_to_add):
   """Name tuple elements with names in `names_to_add`.
 
   Certain intrinsics, e.g. `federated_zip`, only accept unnamed tuples as
@@ -1552,7 +1551,7 @@ def construct_named_federated_tuple(tuple_to_name, names_to_add):
     representing a federated tuple with the same elements as `tuple_to_name`
     but with the names from `names_to_add` attached to the type
     signature. Notice that if these names are already present in
-    `tuple_to_name`, `construct_naming_function` represents the identity.
+    `tuple_to_name`, `create_naming_function` represents the identity.
 
   Raises:
     TypeError: If the types do not match the description above.
@@ -1567,8 +1566,8 @@ def construct_named_federated_tuple(tuple_to_name, names_to_add):
   py_typecheck.check_type(tuple_to_name.type_signature,
                           computation_types.FederatedType)
 
-  naming_fn = _construct_naming_function(tuple_to_name.type_signature.member,
-                                         names_to_add)
+  naming_fn = _create_naming_function(tuple_to_name.type_signature.member,
+                                      names_to_add)
   return create_federated_map_or_apply(naming_fn, tuple_to_name)
 
 
@@ -1596,7 +1595,7 @@ def create_named_tuple(comp, names):
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.NamedTupleType)
-  fn = _construct_naming_function(comp.type_signature, names)
+  fn = _create_naming_function(comp.type_signature, names)
   return computation_building_blocks.Call(fn, comp)
 
 

@@ -108,42 +108,40 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     self.assertTrue(all(n.startswith(prefix) for n in names))
 
 
-class ConstructCompiledEmptyTupleTest(absltest.TestCase):
+class CreateCompiledEmptyTupleTest(absltest.TestCase):
 
   def test_constructs_correct_type(self):
-    empty_tuple = computation_constructing_utils.construct_compiled_empty_tuple(
-    )
+    empty_tuple = computation_constructing_utils.create_compiled_empty_tuple()
     self.assertEqual(empty_tuple.type_signature,
                      computation_building_blocks.Tuple([]).type_signature)
 
   def test_constructs_called_graph(self):
-    empty_tuple = computation_constructing_utils.construct_compiled_empty_tuple(
-    )
+    empty_tuple = computation_constructing_utils.create_compiled_empty_tuple()
     self.assertIsInstance(empty_tuple, computation_building_blocks.Call)
     self.assertIsNone(empty_tuple.argument)
     self.assertIsInstance(empty_tuple.function,
                           computation_building_blocks.CompiledComputation)
 
 
-class ConstructCompiledIdentityTest(absltest.TestCase):
+class CreateCompiledIdentityTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_identity(None)
+      computation_constructing_utils.create_compiled_identity(None)
 
   def test_raises_on_federated_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_identity(
+      computation_constructing_utils.create_compiled_identity(
           computation_types.FederatedType(tf.int32, placement_literals.SERVER))
 
   def test_raises_on_federated_type_under_tuple(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_identity([
+      computation_constructing_utils.create_compiled_identity([
           computation_types.FederatedType(tf.int32, placement_literals.SERVER)
       ])
 
   def test_integer_identity_type_signature(self):
-    int_identity = computation_constructing_utils.construct_compiled_identity(
+    int_identity = computation_constructing_utils.create_compiled_identity(
         tf.int32)
     self.assertIsInstance(int_identity,
                           computation_building_blocks.CompiledComputation)
@@ -151,7 +149,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
     self.assertEqual(int_identity.type_signature, expected_type_signature)
 
   def test_integer_identity_acts_as_identity(self):
-    int_identity = computation_constructing_utils.construct_compiled_identity(
+    int_identity = computation_constructing_utils.create_compiled_identity(
         tf.int32)
     executable_identity = computation_wrapper_instances.building_block_to_computation(
         int_identity)
@@ -160,7 +158,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_unnamed_tuple_identity_type_signature(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+    tuple_identity = computation_constructing_utils.create_compiled_identity(
         tuple_type)
     self.assertIsInstance(tuple_identity,
                           computation_building_blocks.CompiledComputation)
@@ -170,7 +168,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_unnamed_tuple_identity_acts_as_identity(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+    tuple_identity = computation_constructing_utils.create_compiled_identity(
         tuple_type)
     executable_identity = computation_wrapper_instances.building_block_to_computation(
         tuple_identity)
@@ -180,7 +178,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_named_tuple_identity_type_signature(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+    tuple_identity = computation_constructing_utils.create_compiled_identity(
         tuple_type)
     self.assertIsInstance(tuple_identity,
                           computation_building_blocks.CompiledComputation)
@@ -190,7 +188,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_named_tuple_identity_acts_as_identity(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_identity = computation_constructing_utils.construct_compiled_identity(
+    tuple_identity = computation_constructing_utils.create_compiled_identity(
         tuple_type)
     executable_identity = computation_wrapper_instances.building_block_to_computation(
         tuple_identity)
@@ -200,7 +198,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_sequence_identity_type_signature(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_identity = computation_constructing_utils.construct_compiled_identity(
+    sequence_identity = computation_constructing_utils.create_compiled_identity(
         sequence_type)
     self.assertIsInstance(sequence_identity,
                           computation_building_blocks.CompiledComputation)
@@ -210,7 +208,7 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
 
   def test_sequence_identity_acts_as_identity(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_identity = computation_constructing_utils.construct_compiled_identity(
+    sequence_identity = computation_constructing_utils.create_compiled_identity(
         sequence_type)
     executable_identity = computation_wrapper_instances.building_block_to_computation(
         sequence_identity)
@@ -218,32 +216,31 @@ class ConstructCompiledIdentityTest(absltest.TestCase):
     self.assertEqual(executable_identity(seq), seq)
 
 
-class ConstructCompiledInputReplicationTest(absltest.TestCase):
+class CreateCompiledInputReplicationTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_input_replication(
-          None, 2)
+      computation_constructing_utils.create_compiled_input_replication(None, 2)
 
   def test_raises_on_none_int(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_input_replication(
+      computation_constructing_utils.create_compiled_input_replication(
           tf.int32, None)
 
   def test_raises_on_federated_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_input_replication(
+      computation_constructing_utils.create_compiled_input_replication(
           computation_types.FederatedType(tf.int32, placement_literals.SERVER),
           2)
 
   def test_raises_on_federated_type_under_tuple(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_compiled_input_replication([
+      computation_constructing_utils.create_compiled_input_replication([
           computation_types.FederatedType(tf.int32, placement_literals.SERVER)
       ])
 
   def test_integer_input_duplicate_type_signature(self):
-    int_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tf.int32, 2)
     self.assertIsInstance(int_duplicate_input,
                           computation_building_blocks.CompiledComputation)
@@ -253,7 +250,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
                      expected_type_signature)
 
   def test_integer_input_duplicate_duplicates_input(self):
-    int_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tf.int32, 2)
     executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
         int_duplicate_input)
@@ -263,7 +260,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
       self.assertLen(executable_duplicate_input(k), 2)
 
   def test_integer_input_triplicate_type_signature(self):
-    int_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tf.int32, 3)
     self.assertIsInstance(int_duplicate_input,
                           computation_building_blocks.CompiledComputation)
@@ -273,7 +270,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
                      expected_type_signature)
 
   def test_integer_input_triplicate_triplicates_input(self):
-    int_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tf.int32, 3)
     executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
         int_duplicate_input)
@@ -285,7 +282,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
 
   def test_unnamed_tuple_input_duplicate_type_signature(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tuple_type, 2)
     self.assertIsInstance(tuple_duplicate_input,
                           computation_building_blocks.CompiledComputation)
@@ -296,7 +293,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
 
   def test_unnamed_tuple_input_duplicate_duplicates_input(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tuple_type, 2)
     executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
         tuple_duplicate_input)
@@ -309,7 +306,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
 
   def test_named_tuple_input_duplicate_type_signature(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tuple_type, 2)
     self.assertIsInstance(tuple_duplicate_input,
                           computation_building_blocks.CompiledComputation)
@@ -320,7 +317,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
 
   def test_named_tuple_input_duplicate_duplicates_input(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         tuple_type, 2)
     executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
         tuple_duplicate_input)
@@ -333,7 +330,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
 
   def test_sequence_input_duplicate_type_signature(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    sequence_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         sequence_type, 2)
     self.assertIsInstance(sequence_duplicate_input,
                           computation_building_blocks.CompiledComputation)
@@ -344,7 +341,7 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
 
   def test_sequence_input_duplicate_duplicates_input(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_duplicate_input = computation_constructing_utils.construct_compiled_input_replication(
+    sequence_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
         sequence_type, 2)
     executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
         sequence_duplicate_input)
@@ -354,13 +351,13 @@ class ConstructCompiledInputReplicationTest(absltest.TestCase):
     self.assertLen(executable_duplicate_input(seq), 2)
 
 
-class ConstructFederatedGetitemCompTest(parameterized.TestCase):
+class CreateFederatedGetitemCompTest(parameterized.TestCase):
 
   def test_fails_value(self):
     x = computation_building_blocks.Reference(
         'x', computation_types.to_type([tf.int32]))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_federated_getitem_comp(
+      computation_constructing_utils.create_federated_getitem_comp(
           value_impl.to_value(x), 0)
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
@@ -370,21 +367,21 @@ class ConstructFederatedGetitemCompTest(parameterized.TestCase):
         'test',
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
                                         placement))
-    get_0_comp = computation_constructing_utils.construct_federated_getitem_comp(
+    get_0_comp = computation_constructing_utils.create_federated_getitem_comp(
         federated_value, 0)
     self.assertEqual(str(get_0_comp), '(x -> x[0])')
-    get_slice_comp = computation_constructing_utils.construct_federated_getitem_comp(
+    get_slice_comp = computation_constructing_utils.create_federated_getitem_comp(
         federated_value, slice(None, None, -1))
     self.assertEqual(str(get_slice_comp), '(x -> <b=x[1],a=x[0]>)')
 
 
-class ConstructFederatedGetattrCompTest(parameterized.TestCase):
+class CreateFederatedGetattrCompTest(parameterized.TestCase):
 
   def test_fails_value(self):
     x = computation_building_blocks.Reference(
         'x', computation_types.to_type([('x', tf.int32)]))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_federated_getattr_comp(
+      computation_constructing_utils.create_federated_getattr_comp(
           value_impl.to_value(x), 'x')
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
@@ -394,30 +391,30 @@ class ConstructFederatedGetattrCompTest(parameterized.TestCase):
         'test',
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
                                         placement))
-    get_a_comp = computation_constructing_utils.construct_federated_getattr_comp(
+    get_a_comp = computation_constructing_utils.create_federated_getattr_comp(
         federated_value, 'a')
     self.assertEqual(str(get_a_comp), '(x -> x.a)')
-    get_b_comp = computation_constructing_utils.construct_federated_getattr_comp(
+    get_b_comp = computation_constructing_utils.create_federated_getattr_comp(
         federated_value, 'b')
     self.assertEqual(str(get_b_comp), '(x -> x.b)')
     non_federated_arg = computation_building_blocks.Reference(
         'test',
         computation_types.NamedTupleType([('a', tf.int32), ('b', tf.bool)]))
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_federated_getattr_comp(
+      _ = computation_constructing_utils.create_federated_getattr_comp(
           non_federated_arg, 'a')
     with self.assertRaisesRegex(ValueError, 'has no element of name c'):
-      _ = computation_constructing_utils.construct_federated_getattr_comp(
+      _ = computation_constructing_utils.create_federated_getattr_comp(
           federated_value, 'c')
 
 
-class ConstructFederatedGetattrCallTest(parameterized.TestCase):
+class CreateFederatedGetattrCallTest(parameterized.TestCase):
 
   def test_fails_value(self):
     x = computation_building_blocks.Reference(
         'x', computation_types.to_type([('x', tf.int32)]))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_federated_getattr_call(
+      computation_constructing_utils.create_federated_getattr_call(
           value_impl.to_value(x), 'x')
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
@@ -430,9 +427,9 @@ class ConstructFederatedGetattrCallTest(parameterized.TestCase):
     self.assertEqual(
         str(federated_comp_named.type_signature.member),
         '<a=int32,b=bool,int32>')
-    name_a = computation_constructing_utils.construct_federated_getattr_call(
+    name_a = computation_constructing_utils.create_federated_getattr_call(
         federated_comp_named, 'a')
-    name_b = computation_constructing_utils.construct_federated_getattr_call(
+    name_b = computation_constructing_utils.create_federated_getattr_call(
         federated_comp_named, 'b')
     self.assertIsInstance(name_a.type_signature,
                           computation_types.FederatedType)
@@ -447,17 +444,17 @@ class ConstructFederatedGetattrCallTest(parameterized.TestCase):
         value_impl.to_value(name_b, None, context_stack_impl.context_stack),
         placement)
     with self.assertRaisesRegex(ValueError, 'has no element of name c'):
-      _ = computation_constructing_utils.construct_federated_getattr_call(
+      _ = computation_constructing_utils.create_federated_getattr_call(
           federated_comp_named, 'c')
 
 
-class ConstructFederatedGetitemCallTest(parameterized.TestCase):
+class CreateFederatedGetitemCallTest(parameterized.TestCase):
 
   def test_fails_value(self):
     x = computation_building_blocks.Reference(
         'x', computation_types.to_type([tf.int32]))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_federated_getitem_call(
+      computation_constructing_utils.create_federated_getitem_call(
           value_impl.to_value(x), 0)
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
@@ -469,9 +466,9 @@ class ConstructFederatedGetitemCallTest(parameterized.TestCase):
                                         placement))
     self.assertEqual(
         str(federated_comp_named.type_signature.member), '<a=int32,b=bool>')
-    idx_0 = computation_constructing_utils.construct_federated_getitem_call(
+    idx_0 = computation_constructing_utils.create_federated_getitem_call(
         federated_comp_named, 0)
-    idx_1 = computation_constructing_utils.construct_federated_getitem_call(
+    idx_1 = computation_constructing_utils.create_federated_getitem_call(
         federated_comp_named, 1)
     self.assertIsInstance(idx_0.type_signature, computation_types.FederatedType)
     self.assertIsInstance(idx_1.type_signature, computation_types.FederatedType)
@@ -483,7 +480,7 @@ class ConstructFederatedGetitemCallTest(parameterized.TestCase):
     type_utils.check_federated_value_placement(
         value_impl.to_value(idx_1, None, context_stack_impl.context_stack),
         placement)
-    flipped = computation_constructing_utils.construct_federated_getitem_call(
+    flipped = computation_constructing_utils.create_federated_getitem_call(
         federated_comp_named, slice(None, None, -1))
     self.assertIsInstance(flipped.type_signature,
                           computation_types.FederatedType)
@@ -499,9 +496,9 @@ class ConstructFederatedGetitemCallTest(parameterized.TestCase):
         'test', computation_types.FederatedType([tf.int32, tf.bool], placement))
     self.assertEqual(
         str(federated_comp_unnamed.type_signature.member), '<int32,bool>')
-    unnamed_idx_0 = computation_constructing_utils.construct_federated_getitem_call(
+    unnamed_idx_0 = computation_constructing_utils.create_federated_getitem_call(
         federated_comp_unnamed, 0)
-    unnamed_idx_1 = computation_constructing_utils.construct_federated_getitem_call(
+    unnamed_idx_1 = computation_constructing_utils.create_federated_getitem_call(
         federated_comp_unnamed, 1)
     self.assertIsInstance(unnamed_idx_0.type_signature,
                           computation_types.FederatedType)
@@ -515,7 +512,7 @@ class ConstructFederatedGetitemCallTest(parameterized.TestCase):
     type_utils.check_federated_value_placement(
         value_impl.to_value(unnamed_idx_1, None,
                             context_stack_impl.context_stack), placement)
-    unnamed_flipped = computation_constructing_utils.construct_federated_getitem_call(
+    unnamed_flipped = computation_constructing_utils.create_federated_getitem_call(
         federated_comp_unnamed, slice(None, None, -1))
     self.assertIsInstance(unnamed_flipped.type_signature,
                           computation_types.FederatedType)
@@ -525,27 +522,27 @@ class ConstructFederatedGetitemCallTest(parameterized.TestCase):
                             context_stack_impl.context_stack), placement)
 
 
-class ConstructFederatedSetitemLambdaTest(parameterized.TestCase):
+class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
 
   def test_fails_on_bad_type(self):
     bad_type = computation_types.FederatedType([('a', tf.int32)],
                                                placement_literals.CLIENTS)
     value_comp = computation_building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
           bad_type, 'a', value_comp)
 
   def test_fails_on_none_name(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32)])
     value_comp = computation_building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
           good_type, None, value_comp)
 
   def test_fails_on_none_value(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32)])
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
           good_type, 'a', None)
 
   def test_fails_implicit_type_conversion(self):
@@ -553,7 +550,7 @@ class ConstructFederatedSetitemLambdaTest(parameterized.TestCase):
                                                   ('b', tf.bool)])
     value_comp = computation_building_blocks.Data('x', tf.int32)
     with self.assertRaisesRegex(TypeError, 'incompatible type'):
-      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
           good_type, 'b', value_comp)
 
   def test_fails_unknown_name(self):
@@ -561,14 +558,14 @@ class ConstructFederatedSetitemLambdaTest(parameterized.TestCase):
                                                   ('b', tf.bool)])
     value_comp = computation_building_blocks.Data('x', tf.int32)
     with self.assertRaises(AttributeError):
-      _ = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
           good_type, 'c', value_comp)
 
   def test_replaces_single_element(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32),
                                                   ('b', tf.bool)])
     value_comp = computation_building_blocks.Data('x', tf.int32)
-    lam = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+    lam = computation_constructing_utils.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -587,7 +584,7 @@ class ConstructFederatedSetitemLambdaTest(parameterized.TestCase):
                                                   (None, tf.float32),
                                                   ('b', tf.bool)])
     value_comp = computation_building_blocks.Data('x', tf.int32)
-    lam = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+    lam = computation_constructing_utils.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -607,19 +604,19 @@ class ConstructFederatedSetitemLambdaTest(parameterized.TestCase):
                                                   (None, tf.float32),
                                                   ('b', tf.bool)])
     value_comp = computation_building_blocks.Data('x', tf.int32)
-    lam = computation_constructing_utils.construct_named_tuple_setattr_lambda(
+    lam = computation_constructing_utils.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     self.assertTrue(
         type_utils.are_equivalent_types(lam.type_signature.parameter,
                                         lam.type_signature.result))
 
 
-class ConstructFederatedSetatterCallTest(parameterized.TestCase):
+class CreateFederatedSetatterCallTest(parameterized.TestCase):
 
   def test_fails_on_none_federated_comp(self):
     value_comp = computation_building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_federated_setattr_call(
+      _ = computation_constructing_utils.create_federated_setattr_call(
           None, 'a', value_comp)
 
   def test_fails_non_federated_type(self):
@@ -630,7 +627,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_federated_setattr_call(
+      _ = computation_constructing_utils.create_federated_setattr_call(
           bad_comp, 'a', value_comp)
 
   def test_fails_on_none_name(self):
@@ -643,7 +640,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_federated_setattr_call(
+      _ = computation_constructing_utils.create_federated_setattr_call(
           acceptable_comp, None, value_comp)
 
   def test_fails_on_none_value(self):
@@ -655,7 +652,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
     acceptable_comp = computation_building_blocks.Data('data', good_type)
 
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.construct_federated_setattr_call(
+      _ = computation_constructing_utils.create_federated_setattr_call(
           acceptable_comp, 'a', None)
 
   def test_constructs_correct_intrinsic_clients(self):
@@ -668,7 +665,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
                                                       good_type)
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertEqual(federated_setattr.function.uri,
                      intrinsic_defs.FEDERATED_MAP.uri)
@@ -683,7 +680,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
                                                       good_type)
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertEqual(federated_setattr.function.uri,
                      intrinsic_defs.FEDERATED_APPLY.uri)
@@ -699,7 +696,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
                                                       good_type)
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertTrue(
         type_utils.are_equivalent_types(federated_setattr.type_signature,
@@ -715,7 +712,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
                                                       good_type)
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -743,7 +740,7 @@ class ConstructFederatedSetatterCallTest(parameterized.TestCase):
                                                       good_type)
     value_comp = computation_building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.construct_federated_setattr_call(
+    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -2132,18 +2129,17 @@ class CreateSequenceSumTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
-class ConstructNamedFederatedTupleTest(parameterized.TestCase):
+class CreateNamedFederatedTupleTest(parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_named_federated_tuple(
-          None, ['a'])
+      computation_constructing_utils.create_named_federated_tuple(None, ['a'])
 
   def test_raises_non_federated_type(self):
     bad_comp = computation_building_blocks.Data(
         'x', computation_types.to_type(tf.int32))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_named_federated_tuple(
+      computation_constructing_utils.create_named_federated_tuple(
           bad_comp, ['a'])
 
   def test_raises_federated_non_tuple(self):
@@ -2151,7 +2147,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
         'x',
         computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_named_federated_tuple(
+      computation_constructing_utils.create_named_federated_tuple(
           bad_comp, ['a'])
 
   def test_raises_on_naked_string(self):
@@ -2159,7 +2155,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
         'x',
         computation_types.FederatedType([tf.int32], placement_literals.CLIENTS))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_named_federated_tuple(
+      computation_constructing_utils.create_named_federated_tuple(
           data_tuple, 'a')
 
   def test_raises_list_of_ints(self):
@@ -2167,7 +2163,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
         'x',
         computation_types.FederatedType([tf.int32], placement_literals.SERVER))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_named_federated_tuple(
+      computation_constructing_utils.create_named_federated_tuple(
           data_tuple, [1])
 
   def test_raises_wrong_list_length(self):
@@ -2175,7 +2171,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
         'x',
         computation_types.FederatedType([tf.int32], placement_literals.SERVER))
     with self.assertRaises(ValueError):
-      computation_constructing_utils.construct_named_federated_tuple(
+      computation_constructing_utils.create_named_federated_tuple(
           data_tuple, ['a', 'b'])
 
   @parameterized.named_parameters(
@@ -2186,7 +2182,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
     fed_type = computation_types.FederatedType([tf.int32, tf.float32],
                                                placement)
     data_tuple = computation_building_blocks.Data('x', fed_type)
-    named_tuple = computation_constructing_utils.construct_named_federated_tuple(
+    named_tuple = computation_constructing_utils.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     expected_result_type = computation_types.FederatedType([('a', tf.int32),
                                                             ('b', tf.float32)],
@@ -2201,7 +2197,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
     fed_type = computation_types.FederatedType([('c', tf.int32),
                                                 ('d', tf.float32)], placement)
     data_tuple = computation_building_blocks.Data('x', fed_type)
-    named_tuple = computation_constructing_utils.construct_named_federated_tuple(
+    named_tuple = computation_constructing_utils.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     expected_result_type = computation_types.FederatedType([('a', tf.int32),
                                                             ('b', tf.float32)],
@@ -2215,7 +2211,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
   def test_only_names_unnamed_tuple(self, placement):
     ntt = computation_types.FederatedType([tf.int32, tf.float32], placement)
     data_tuple = computation_building_blocks.Data('data', ntt)
-    named_tuple = computation_constructing_utils.construct_named_federated_tuple(
+    named_tuple = computation_constructing_utils.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     self.assertRegexMatch(
         computation_building_blocks.compact_representation(named_tuple),
@@ -2229,7 +2225,7 @@ class ConstructNamedFederatedTupleTest(parameterized.TestCase):
     fed_type = computation_types.FederatedType([('c', tf.int32),
                                                 ('d', tf.float32)], placement)
     data_tuple = computation_building_blocks.Data('data', fed_type)
-    named_tuple = computation_constructing_utils.construct_named_federated_tuple(
+    named_tuple = computation_constructing_utils.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     self.assertRegexMatch(
         computation_building_blocks.compact_representation(named_tuple),
@@ -2427,25 +2423,25 @@ class CreateZipTest(absltest.TestCase):
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
 
 
-class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
+class CreateTensorFlowBroadcastFunctionTest(absltest.TestCase):
 
   def test_raises_python_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+      computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
           int, tf.TensorShape([]))
 
   def test_raises_list_for_shape(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+      computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
           tf.int32, [1, 1])
 
   def test_raises_partially_defined(self):
     with self.assertRaises(ValueError):
-      computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+      computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
           tf.int32, tf.TensorShape([None, 1]))
 
   def test_constructs_identity_scalar_function(self):
-    int_identity = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+    int_identity = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
         tf.int32, tf.TensorShape([]))
     executable_int_identity = computation_wrapper_instances.building_block_to_computation(
         int_identity)
@@ -2453,7 +2449,7 @@ class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
       self.assertEqual(executable_int_identity(k), k)
 
   def test_broadcasts_ints_to_nonempty_shape(self):
-    int_broadcast = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+    int_broadcast = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
         tf.int32, tf.TensorShape([2, 2]))
     executable_int_broadcast = computation_wrapper_instances.building_block_to_computation(
         int_broadcast)
@@ -2463,7 +2459,7 @@ class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
               executable_int_broadcast(k), np.array([[k, k], [k, k]])))
 
   def test_broadcasts_bools_to_nonempty_shape(self):
-    int_broadcast = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+    int_broadcast = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
         tf.bool, tf.TensorShape([2, 2]))
     executable_int_broadcast = computation_wrapper_instances.building_block_to_computation(
         int_broadcast)
@@ -2473,34 +2469,34 @@ class ConstructTensorFlowBroadcastFunctionTest(absltest.TestCase):
             np.array([[True, True], [True, True]])))
 
 
-class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
+class CreateTensorFlowBinaryOpTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_binary_operator(
+      computation_constructing_utils.create_tensorflow_binary_operator(
           None, tf.add)
 
   def test_raises_non_callable_op(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_binary_operator(
+      computation_constructing_utils.create_tensorflow_binary_operator(
           tf.int32, 1)
 
   def test_raises_on_federated_type(self):
     fed_type = computation_types.FederatedType(tf.int32,
                                                placement_literals.SERVER)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_binary_operator(
+      computation_constructing_utils.create_tensorflow_binary_operator(
           fed_type, tf.add)
 
   def test_raises_on_nested_sequence_type(self):
     hiding_sequence_type = computation_types.NamedTupleType(
         [computation_types.SequenceType(tf.int32)])
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_binary_operator(
+      computation_constructing_utils.create_tensorflow_binary_operator(
           hiding_sequence_type, tf.add)
 
   def test_divide_integers(self):
-    integer_division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+    integer_division_func = computation_constructing_utils.create_tensorflow_binary_operator(
         tf.int32, tf.divide)
     self.assertEqual(
         integer_division_func.type_signature,
@@ -2513,7 +2509,7 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
     self.assertEqual(callable_division(1, 0), np.inf)
 
   def test_divide_unnamed_tuple(self):
-    division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+    division_func = computation_constructing_utils.create_tensorflow_binary_operator(
         [tf.int32, tf.float32], tf.divide)
     self.assertEqual(
         division_func.type_signature,
@@ -2526,7 +2522,7 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
     self.assertEqual(callable_division([1, 0.], [1, 1.])[1], 0.)
 
   def test_divide_named_tuple(self):
-    integer_division_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+    integer_division_func = computation_constructing_utils.create_tensorflow_binary_operator(
         [('a', tf.int32), ('b', tf.float32)], tf.divide)
     callable_division = computation_wrapper_instances.building_block_to_computation(
         integer_division_func)
@@ -2537,7 +2533,7 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
         })
 
   def test_multiply_integers(self):
-    integer_multiplication_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+    integer_multiplication_func = computation_constructing_utils.create_tensorflow_binary_operator(
         tf.int32, tf.multiply)
     callable_multiplication = computation_wrapper_instances.building_block_to_computation(
         integer_multiplication_func)
@@ -2546,7 +2542,7 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
     self.assertEqual(callable_multiplication(2, 1), 2)
 
   def test_multiply_named_tuple(self):
-    integer_multiplication_func = computation_constructing_utils.construct_tensorflow_binary_operator(
+    integer_multiplication_func = computation_constructing_utils.create_tensorflow_binary_operator(
         [('a', tf.int32), ('b', tf.float32)], tf.multiply)
     callable_multiplication = computation_wrapper_instances.building_block_to_computation(
         integer_multiplication_func)
@@ -2562,7 +2558,7 @@ class ConstructTensorFlowBinaryOpTest(absltest.TestCase):
         })
 
   def test_add_integers(self):
-    integer_add = computation_constructing_utils.construct_tensorflow_binary_operator(
+    integer_add = computation_constructing_utils.create_tensorflow_binary_operator(
         tf.int32, tf.add)
     callable_add = computation_wrapper_instances.building_block_to_computation(
         integer_add)
@@ -2576,27 +2572,27 @@ class TensorFlowConstantTest(absltest.TestCase):
 
   def test_raises_on_none_type_spec(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.construct_tensorflow_constant(None, 0)
+      computation_constructing_utils.create_tensorflow_constant(None, 0)
 
   def test_raises_type_spec_federated_int(self):
     federated_int = computation_types.FederatedType(tf.int32,
                                                     placement_literals.SERVER)
     with self.assertRaisesRegex(TypeError, 'only nested tuples and tensors'):
-      computation_constructing_utils.construct_tensorflow_constant(
+      computation_constructing_utils.create_tensorflow_constant(
           federated_int, 0)
 
   def test_raises_non_scalar_value(self):
     non_scalar_value = np.zeros([1])
     with self.assertRaisesRegex(TypeError, 'Must pass a scalar'):
-      computation_constructing_utils.construct_tensorflow_constant(
+      computation_constructing_utils.create_tensorflow_constant(
           tf.int32, non_scalar_value)
 
   def test_raises_float_passed_for_int(self):
     with self.assertRaisesRegex(TypeError, 'Only integers'):
-      computation_constructing_utils.construct_tensorflow_constant(tf.int32, 1.)
+      computation_constructing_utils.create_tensorflow_constant(tf.int32, 1.)
 
   def test_constructs_integer_tensor_zero(self):
-    tensor_zero = computation_constructing_utils.construct_tensorflow_constant(
+    tensor_zero = computation_constructing_utils.create_tensorflow_constant(
         computation_types.TensorType(tf.int32, [2, 2]), 0)
     self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
     executable_noarg_zero = computation_wrapper_instances.building_block_to_computation(
@@ -2606,7 +2602,7 @@ class TensorFlowConstantTest(absltest.TestCase):
                                                          dtype=np.int32)))
 
   def test_constructs_float_tensor_one(self):
-    tensor_one = computation_constructing_utils.construct_tensorflow_constant(
+    tensor_one = computation_constructing_utils.create_tensorflow_constant(
         computation_types.TensorType(tf.float32, [2, 2]), 1.)
     self.assertIsInstance(tensor_one, computation_building_blocks.Call)
     executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
@@ -2618,7 +2614,7 @@ class TensorFlowConstantTest(absltest.TestCase):
   def test_constructs_unnamed_tuple_of_float_tensor_ones(self):
     tuple_type = computation_types.NamedTupleType(
         [computation_types.TensorType(tf.float32, [2, 2])] * 2)
-    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
@@ -2636,7 +2632,7 @@ class TensorFlowConstantTest(absltest.TestCase):
         ('a', computation_types.TensorType(tf.float32, [2, 2])),
         ('b', computation_types.TensorType(tf.float32, [2, 2]))
     ])
-    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
@@ -2654,7 +2650,7 @@ class TensorFlowConstantTest(absltest.TestCase):
         ('a', computation_types.TensorType(tf.float32, [2, 2])),
         ('b', computation_types.TensorType(tf.float32, [2, 2]))
     ]])
-    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
@@ -2672,7 +2668,7 @@ class TensorFlowConstantTest(absltest.TestCase):
         ('a', computation_types.TensorType(tf.int32, [2, 2])),
         ('b', computation_types.TensorType(tf.float32, [2, 2]))
     ]])
-    tuple_of_ones = computation_constructing_utils.construct_tensorflow_constant(
+    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
         tuple_type, 1)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
     self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)

@@ -47,10 +47,10 @@ def zero_for(type_spec, context_stack):
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   return value_impl.ValueImpl(
-      construct_generic_constant(type_spec, 0), context_stack)
+      create_generic_constant(type_spec, 0), context_stack)
 
 
-def construct_generic_constant(type_spec, scalar_value):
+def create_generic_constant(type_spec, scalar_value):
   """Creates constant for a combination of federated, tuple and tensor types.
 
   Args:
@@ -75,7 +75,7 @@ def construct_generic_constant(type_spec, scalar_value):
   if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
       or inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError('Must pass a scalar value to '
-                    '`construct_tensorflow_constant`; encountered a value '
+                    '`create_tensorflow_constant`; encountered a value '
                     '{}'.format(scalar_value))
   if not type_utils.type_tree_contains_only(
       type_spec,
@@ -85,10 +85,10 @@ def construct_generic_constant(type_spec, scalar_value):
   if type_utils.type_tree_contains_only(
       type_spec,
       (computation_types.NamedTupleType, computation_types.TensorType)):
-    return computation_constructing_utils.construct_tensorflow_constant(
+    return computation_constructing_utils.create_tensorflow_constant(
         type_spec, scalar_value)
   elif isinstance(type_spec, computation_types.FederatedType):
-    unplaced_zero = computation_constructing_utils.construct_tensorflow_constant(
+    unplaced_zero = computation_constructing_utils.create_tensorflow_constant(
         type_spec.member, scalar_value)
     if type_spec.placement == placement_literals.CLIENTS:
       placement_fn_type = computation_types.FunctionType(
@@ -108,7 +108,7 @@ def construct_generic_constant(type_spec, scalar_value):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = []
     for k in range(len(type_spec)):
-      elements.append(construct_generic_constant(type_spec[k], scalar_value))
+      elements.append(create_generic_constant(type_spec[k], scalar_value))
     names = [name for name, _ in anonymous_tuple.to_elements(type_spec)]
     packed_elements = computation_building_blocks.Tuple(elements)
     named_tuple = computation_constructing_utils.create_named_tuple(
@@ -147,8 +147,8 @@ def _check_generic_operator_type(type_spec):
                     'for more details.'.format(type_spec))
 
 
-def construct_binary_operator_with_upcast(type_signature, operator):
-  """Constructs lambda upcasting its argument and applying `operator`.
+def create_binary_operator_with_upcast(type_signature, operator):
+  """Creates lambda upcasting its argument and applying `operator`.
 
   The concept of upcasting is explained further in the docstring for
   `apply_binary_operator_with_upcast`.
@@ -185,7 +185,7 @@ def construct_binary_operator_with_upcast(type_signature, operator):
                       for elem_name, elem_type in elems]
       return computation_building_blocks.Tuple(packed_elems)
     elif isinstance(type_spec, computation_types.TensorType):
-      expand_fn = computation_constructing_utils.construct_tensorflow_to_broadcast_scalar(
+      expand_fn = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
           to_pack.type_signature.dtype, type_spec.shape)
       return computation_building_blocks.Call(expand_fn, to_pack)
 
@@ -198,7 +198,7 @@ def construct_binary_operator_with_upcast(type_signature, operator):
   else:
     second_arg = _pack_into_type(y_ref, first_arg.type_signature)
 
-  fn = computation_constructing_utils.construct_tensorflow_binary_operator(
+  fn = computation_constructing_utils.create_tensorflow_binary_operator(
       first_arg.type_signature, operator)
   packed = computation_building_blocks.Tuple([first_arg, second_arg])
   operated = computation_building_blocks.Call(fn, packed)
@@ -253,7 +253,7 @@ def apply_binary_operator_with_upcast(arg, operator):
         'federated tuple and unplaced tuples; you have passed {}.'.format(
             arg.type_signature))
 
-  lambda_encapsulating_op = construct_binary_operator_with_upcast(
+  lambda_encapsulating_op = create_binary_operator_with_upcast(
       tuple_type, operator)
 
   if isinstance(arg.type_signature, computation_types.FederatedType):
