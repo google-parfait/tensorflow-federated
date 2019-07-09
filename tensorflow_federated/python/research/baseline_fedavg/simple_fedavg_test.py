@@ -29,17 +29,20 @@ from tensorflow_federated.python.examples.mnist import models
 from tensorflow_federated.python.research.baseline_fedavg import simple_fedavg
 from tensorflow_federated.python.research.baseline_fedavg.simple_fedavg import build_federated_averaging_process
 
-
 MnistVariables = collections.namedtuple(
     'MnistVariables', 'weights bias num_examples loss_sum accuracy_sum')
 
 
 def create_mnist_variables():
   return MnistVariables(
-      weights=tf.Variable(lambda: tf.zeros(dtype=tf.float32, shape=(784, 10)),
-                          name='weights', trainable=True),
-      bias=tf.Variable(lambda: tf.zeros(dtype=tf.float32, shape=(10)),
-                       name='bias', trainable=True),
+      weights=tf.Variable(
+          lambda: tf.zeros(dtype=tf.float32, shape=(784, 10)),
+          name='weights',
+          trainable=True),
+      bias=tf.Variable(
+          lambda: tf.zeros(dtype=tf.float32, shape=(10)),
+          name='bias',
+          trainable=True),
       num_examples=tf.Variable(0.0, name='num_examples', trainable=False),
       loss_sum=tf.Variable(0.0, name='loss_sum', trainable=False),
       accuracy_sum=tf.Variable(0.0, name='accuracy_sum', trainable=False))
@@ -50,8 +53,9 @@ def mnist_forward_pass(variables, batch):
   predictions = tf.cast(tf.argmax(y, 1), tf.int32)
 
   flat_labels = tf.reshape(batch['y'], [-1])
-  loss = -tf.reduce_mean(tf.reduce_sum(
-      tf.one_hot(flat_labels, 10) * tf.log(y), reduction_indices=[1]))
+  loss = -tf.reduce_mean(
+      tf.reduce_sum(
+          tf.one_hot(flat_labels, 10) * tf.log(y), reduction_indices=[1]))
   accuracy = tf.reduce_mean(
       tf.cast(tf.equal(predictions, flat_labels), tf.float32))
 
@@ -68,7 +72,8 @@ def get_local_mnist_metrics(variables):
   return collections.OrderedDict([
       ('num_examples', variables.num_examples),
       ('loss', variables.loss_sum / variables.num_examples),
-      ('accuracy', variables.accuracy_sum / variables.num_examples)])
+      ('accuracy', variables.accuracy_sum / variables.num_examples)
+  ])
 
 
 @tff.federated_computation
@@ -237,9 +242,9 @@ def server_init(model, optimizer):
     A `tff.learning.framework.ServerState` namedtuple.
   """
   optimizer_vars = simple_fedavg._create_optimizer_vars(model, optimizer)
-  return (simple_fedavg.ServerState(model=simple_fedavg._get_weights(model),
-                                    optimizer_state=optimizer_vars),
-          optimizer_vars)
+  return (simple_fedavg.ServerState(
+      model=simple_fedavg._get_weights(model),
+      optimizer_state=optimizer_vars), optimizer_vars)
 
 
 class ServerTest(tf.test.TestCase):
@@ -250,7 +255,8 @@ class ServerTest(tf.test.TestCase):
     optimizer = optimizer_fn()
     state, optimizer_vars = server_init(model, optimizer)
     weights_delta = tf.nest.map_structure(
-        tf.ones_like, simple_fedavg._get_weights(model).trainable)
+        tf.ones_like,
+        simple_fedavg._get_weights(model).trainable)
 
     for _ in range(2):
       state = simple_fedavg.server_update(model, optimizer, optimizer_vars,
@@ -262,10 +268,12 @@ class ServerTest(tf.test.TestCase):
     # weights are initialized with all-zeros, weights_delta is all ones,
     # SGD learning rate is 0.1. Updating server for 2 steps.
     values = list(train_vars.values())
-    self.assertAllClose(values, [np.ones_like(values[0])*0.2,
-                                 np.ones_like(values[1])*0.2])
+    self.assertAllClose(
+        values, [np.ones_like(values[0]) * 0.2,
+                 np.ones_like(values[1]) * 0.2])
 
   def test_self_contained_example_keras_model(self):
+
     def model_fn():
       return tff.learning.from_compiled_keras_model(
           models.create_simple_keras_model(), sample_batch)
