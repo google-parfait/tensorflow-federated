@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import transformations
@@ -756,6 +757,24 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(
         str(bar.type_signature), '({int32}@CLIENTS -> {int32}@CLIENTS)')
     self.assertEqual(bar([1, 10, 3, 7, 2]), [2, 11, 4, 8, 3])
+
+  def test_federated_map_all_equal_with_int(self):
+
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+      return x + 1
+
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            tf.int32, placements.CLIENTS, all_equal=True))
+    def bar(x):
+      factory = intrinsic_factory.IntrinsicFactory(
+          context_stack_impl.context_stack)
+      return factory.federated_map_all_equal(foo, x)
+
+    self.assertEqual(
+        str(bar.type_signature), '(int32@CLIENTS -> int32@CLIENTS)')
+    self.assertEqual(bar(10), 11)
 
   def test_federated_apply_with_int(self):
 
