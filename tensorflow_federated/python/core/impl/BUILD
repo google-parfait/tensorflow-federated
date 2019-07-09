@@ -864,6 +864,7 @@ py_test(
         ":graph_utils",
         ":intrinsic_bodies",
         ":intrinsic_defs",
+        ":intrinsic_factory",
         ":intrinsic_utils",
         ":reference_executor",
         ":transformations",

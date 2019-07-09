@@ -632,6 +632,8 @@ class ReferenceExecutor(context_base.Context):
             self._federated_collect,
         intrinsic_defs.FEDERATED_MAP.uri:
             self._federated_map,
+        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
+            self._federated_map_all_equal,
         intrinsic_defs.FEDERATED_REDUCE.uri:
             self._federated_reduce,
         intrinsic_defs.FEDERATED_SUM.uri:
@@ -924,6 +926,20 @@ class ReferenceExecutor(context_base.Context):
     ]
     result_type = computation_types.FederatedType(mapping_type.result,
                                                   placements.CLIENTS, False)
+    return ComputedValue(result_val, result_type)
+
+  def _federated_map_all_equal(self, arg):
+    mapping_type = arg.type_signature[0]
+    py_typecheck.check_type(mapping_type, computation_types.FunctionType)
+    type_utils.check_federated_type(
+        arg.type_signature[1],
+        mapping_type.parameter,
+        placements.CLIENTS,
+        all_equal=True)
+    fn = arg.value[0]
+    result_val = fn(ComputedValue(arg.value[1], mapping_type.parameter)).value
+    result_type = computation_types.FederatedType(
+        mapping_type.result, placements.CLIENTS, all_equal=True)
     return ComputedValue(result_val, result_type)
 
   def _federated_apply(self, arg):

@@ -232,6 +232,55 @@ class IntrinsicFactory(object):
     comp = computation_constructing_utils.create_federated_map(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
+  def federated_map_all_equal(self, fn, arg):
+    """Implements `federated_map` as defined in `api/intrinsic.py`.
+
+    Implements `federated_map` as defined in `api/intrinsic.py` with an argument
+    with the `all_equal` bit set.
+
+    Args:
+      fn: As in `api/intrinsics.py`.
+      arg: As in `api/intrinsics.py`, with the `all_equal` bit set.
+
+    Returns:
+      As in `api/intrinsics.py`.
+
+    Raises:
+      TypeError: As in `api/intrinsics.py`.
+    """
+    # TODO(b/113112108): Possibly lift the restriction that the mapped value
+    # must be placed at the clients after adding support for placement labels
+    # in the federated types, and expanding the type specification of the
+    # intrinsic this is based on to work with federated values of arbitrary
+    # placement.
+
+    arg = value_impl.to_value(arg, None, self._context_stack)
+    if isinstance(arg.type_signature, computation_types.NamedTupleType):
+      if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
+        # We've been passed a value which the user expects to be zipped.
+        arg = self.federated_zip(arg)
+    type_utils.check_federated_value_placement(arg, placements.CLIENTS,
+                                               'value to be mapped')
+
+    # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
+    # here based on the actual type of the argument.
+    fn = value_impl.to_value(fn, None, self._context_stack)
+
+    py_typecheck.check_type(fn, value_base.Value)
+    py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
+    if not type_utils.is_assignable_from(fn.type_signature.parameter,
+                                         arg.type_signature.member):
+      raise TypeError(
+          'The mapping function expects a parameter of type {}, but member '
+          'constituents of the mapped value are of incompatible type {}.'
+          .format(fn.type_signature.parameter, arg.type_signature.member))
+
+    fn = value_impl.ValueImpl.get_comp(fn)
+    arg = value_impl.ValueImpl.get_comp(arg)
+    comp = computation_constructing_utils.create_federated_map_all_equal(
+        fn, arg)
+    return value_impl.ValueImpl(comp, self._context_stack)
+
   def federated_mean(self, value, weight):
     """Implements `federated_mean` as defined in `api/intrinsics.py`.
 
