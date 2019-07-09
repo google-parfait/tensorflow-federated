@@ -14,10 +14,6 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor

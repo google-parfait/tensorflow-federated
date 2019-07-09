@@ -22,6 +22,7 @@ import collections
 import itertools
 
 import six
+from six.moves import range
 from six.moves import zip
 import tensorflow as tf
 
@@ -152,7 +153,7 @@ def from_keras_model(keras_model,
         if name not in loss:
           raise KeyError('Output missing from loss dictionary'
                          '\nlosses: {}\noutputs: {}'.format(
-                             loss.keys(), keras_model.output_names))
+                             list(loss.keys()), keras_model.output_names))
         loss_functions.append(loss[name])
     elif isinstance(loss, collections.Sequence):
       loss_functions = loss
@@ -308,7 +309,8 @@ class _KerasModel(model_lib.Model):
         if name not in loss_weights:
           raise KeyError('Output missing from loss_weights dictionary'
                          '\nloss_weights: {}\noutputs: {}'.format(
-                             loss_weights.keys(), inner_model.output_names))
+                             list(loss_weights.keys()),
+                             inner_model.output_names))
         else:
           self._loss_weights.append(loss_weights[name])
     else:

@@ -14,15 +14,10 @@
 # limitations under the License.
 """Tests for eager_executor.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import asyncio
 import collections
 
 from absl.testing import absltest
-
 import numpy as np
 import tensorflow as tf
 

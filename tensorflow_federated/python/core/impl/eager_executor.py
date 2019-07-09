@@ -14,12 +14,7 @@
 # limitations under the License.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
-import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -101,7 +96,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       graph_def = graph_utils.add_control_deps_for_init_op(graph_def, init_op)
     return tf.import_graph_def(
         graph_merge.uniquify_shared_names(graph_def),
-        input_map=dict(zip(input_tensor_names, args)),
+        input_map=dict(list(zip(input_tensor_names, args))),
         return_elements=output_tensor_names)
 
   signature = []
@@ -181,7 +176,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
     TypeError: If the `value` is not compatible with `type_spec`.
   """
   if device is not None:
-    py_typecheck.check_type(device, six.string_types)
+    py_typecheck.check_type(device, str)
     with tf.device(device):
       return to_representation_for_type(value, type_spec=type_spec, device=None)
   type_spec = type_utils.reconcile_value_with_type_spec(value, type_spec)
@@ -331,7 +326,7 @@ class EagerExecutor(executor_base.Executor):
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
     if device is not None:
-      py_typecheck.check_type(device, six.string_types)
+      py_typecheck.check_type(device, str)
       self._device = device
     else:
       self._device = None
@@ -441,7 +436,7 @@ class EagerExecutor(executor_base.Executor):
         return EagerValue(source.internal_representation[index],
                           source.type_signature[index])
     elif name is not None:
-      py_typecheck.check_type(name, six.string_types)
+      py_typecheck.check_type(name, str)
       return EagerValue(
           getattr(source.internal_representation, str(name)),
           getattr(source.type_signature, str(name)))

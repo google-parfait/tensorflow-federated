@@ -14,15 +14,10 @@
 # limitations under the License.
 """A set of utility methods for `executor_service.py` and its clients."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import tensorflow as tf
 
 from google.protobuf import any_pb2
-
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import anonymous_tuple

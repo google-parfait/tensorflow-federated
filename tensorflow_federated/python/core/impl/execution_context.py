@@ -14,10 +14,6 @@
 # limitations under the License.
 """A context for execution based on an embedded executor instance."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import asyncio
 
 import tensorflow as tf

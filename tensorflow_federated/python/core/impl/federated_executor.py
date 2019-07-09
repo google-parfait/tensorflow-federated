@@ -14,10 +14,6 @@
 # limitations under the License.
 """An executor that handles federated types and federated operators."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import asyncio
 
 import tensorflow as tf
@@ -425,8 +421,9 @@ class FederatedExecutor(executor_base.Executor):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
     children = self._target_executors[val_type.placement]
     fns = await asyncio.gather(*[c.create_value(fn, fn_type) for c in children])
-    results = await asyncio.gather(
-        *[c.create_call(f, v) for c, (f, v) in zip(children, zip(fns, val))])
+    results = await asyncio.gather(*[
+        c.create_call(f, v) for c, (f, v) in zip(children, list(zip(fns, val)))
+    ])
     return FederatedExecutorValue(
         results,
         computation_types.FederatedType(

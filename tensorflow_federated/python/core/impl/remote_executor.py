@@ -14,10 +14,6 @@
 # limitations under the License.
 """A local proxy for a remote executor service hosted on a separate machine."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
