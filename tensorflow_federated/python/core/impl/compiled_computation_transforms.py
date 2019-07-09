@@ -830,7 +830,7 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
-    preprocess_arg_comp = computation_constructing_utils.construct_compiled_input_replication(
+    preprocess_arg_comp = computation_constructing_utils.create_compiled_input_replication(
         comp.argument[0].type_signature, len(comp.argument))
     logic_of_tf_comp = comp.function
     composed_tf = compose_tensorflow_blocks(
@@ -943,8 +943,7 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     if len(comp) == 0:  # pylint: disable=g-explicit-length-test
-      return computation_constructing_utils.construct_compiled_empty_tuple(
-      ), True
+      return computation_constructing_utils.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
     name_list = [x[0] for x in anonymous_tuple.to_elements(comp.type_signature)]

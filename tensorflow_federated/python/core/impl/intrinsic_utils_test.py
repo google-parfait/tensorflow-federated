@@ -35,15 +35,15 @@ class GenericConstantTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
-      intrinsic_utils.construct_generic_constant(None, 0)
+      intrinsic_utils.create_generic_constant(None, 0)
 
   def test_raises_non_scalar(self):
     with self.assertRaises(TypeError):
-      intrinsic_utils.construct_generic_constant([tf.int32], [0])
+      intrinsic_utils.create_generic_constant([tf.int32], [0])
 
   def test_constructs_tensor_zero(self):
     tensor_type = computation_types.TensorType(tf.float32, [2, 2])
-    tensor_zero = intrinsic_utils.construct_generic_constant(tensor_type, 0)
+    tensor_zero = intrinsic_utils.create_generic_constant(tensor_type, 0)
     self.assertEqual(tensor_zero.type_signature, tensor_type)
     self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
     executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
@@ -52,7 +52,7 @@ class GenericConstantTest(absltest.TestCase):
 
   def test_create_unnamed_tuple_zero(self):
     tuple_type = [computation_types.TensorType(tf.float32, [2, 2])] * 2
-    tuple_zero = intrinsic_utils.construct_generic_constant(tuple_type, 0)
+    tuple_zero = intrinsic_utils.create_generic_constant(tuple_type, 0)
     self.assertEqual(tuple_zero.type_signature,
                      computation_types.to_type(tuple_type))
     self.assertIsInstance(tuple_zero, computation_building_blocks.Call)
@@ -65,7 +65,7 @@ class GenericConstantTest(absltest.TestCase):
   def test_create_named_tuple_one(self):
     tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
                   ('b', computation_types.TensorType(tf.float32, [2, 2]))]
-    tuple_zero = intrinsic_utils.construct_generic_constant(tuple_type, 1)
+    tuple_zero = intrinsic_utils.create_generic_constant(tuple_type, 1)
     self.assertEqual(tuple_zero.type_signature,
                      computation_types.to_type(tuple_type))
     self.assertIsInstance(tuple_zero, computation_building_blocks.Call)
@@ -79,7 +79,7 @@ class GenericConstantTest(absltest.TestCase):
     fed_type = computation_types.FederatedType(
         computation_types.TensorType(tf.float32, [2, 2]),
         placement_literals.CLIENTS)
-    fed_zero = intrinsic_utils.construct_generic_constant(fed_type, 1)
+    fed_zero = intrinsic_utils.create_generic_constant(fed_type, 1)
     self.assertEqual(fed_zero.type_signature.member, fed_type.member)
     self.assertEqual(fed_zero.type_signature.placement, fed_type.placement)
     self.assertTrue(fed_zero.type_signature.all_equal)
@@ -98,7 +98,7 @@ class GenericConstantTest(absltest.TestCase):
                   ('b', computation_types.TensorType(tf.float32, [2, 2]))]
     fed_type = computation_types.FederatedType(tuple_type,
                                                placement_literals.SERVER)
-    fed_zero = intrinsic_utils.construct_generic_constant(fed_type, 1)
+    fed_zero = intrinsic_utils.create_generic_constant(fed_type, 1)
     self.assertEqual(fed_zero.type_signature.member, fed_type.member)
     self.assertEqual(fed_zero.type_signature.placement, fed_type.placement)
     self.assertTrue(fed_zero.type_signature.all_equal)
@@ -120,7 +120,7 @@ class GenericConstantTest(absltest.TestCase):
         placement_literals.CLIENTS,
         all_equal=True)
     tuple_type = [('a', fed_type), ('b', fed_type)]
-    zero = intrinsic_utils.construct_generic_constant(tuple_type, 0)
+    zero = intrinsic_utils.create_generic_constant(tuple_type, 0)
     fed_zero = zero.argument[0]
 
     self.assertEqual(zero.type_signature, computation_types.to_type(tuple_type))
@@ -142,7 +142,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
 
   def test_construct_op_raises_on_none_operator(self):
     with self.assertRaisesRegex(TypeError, 'found non-callable'):
-      intrinsic_utils.construct_binary_operator_with_upcast(tf.int32, None)
+      intrinsic_utils.create_binary_operator_with_upcast(tf.int32, None)
 
   def test_raises_incompatible_tuple_and_tensor(self):
     bad_type_ref = computation_building_blocks.Reference(
@@ -153,7 +153,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
       intrinsic_utils.apply_binary_operator_with_upcast(bad_type_ref,
                                                         tf.multiply)
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      intrinsic_utils.construct_binary_operator_with_upcast(
+      intrinsic_utils.create_binary_operator_with_upcast(
           bad_type_ref.type_signature.member, tf.multiply)
 
   def test_raises_non_callable_op(self):
@@ -163,7 +163,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
       intrinsic_utils.apply_binary_operator_with_upcast(bad_type_ref,
                                                         tf.constant(0))
     with self.assertRaisesRegex(TypeError, 'non-callable'):
-      intrinsic_utils.construct_binary_operator_with_upcast(
+      intrinsic_utils.create_binary_operator_with_upcast(
           bad_type_ref, tf.constant(0))
 
   def test_raises_tuple_and_nonscalar_tensor(self):
@@ -177,7 +177,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
       intrinsic_utils.apply_binary_operator_with_upcast(bad_type_ref,
                                                         tf.multiply)
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      intrinsic_utils.construct_binary_operator_with_upcast(
+      intrinsic_utils.create_binary_operator_with_upcast(
           bad_type_ref.type_signature.member, tf.multiply)
 
   def test_raises_tuple_scalar_multiplied_by_nonscalar(self):
@@ -187,7 +187,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
       intrinsic_utils.apply_binary_operator_with_upcast(bad_type_ref,
                                                         tf.multiply)
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      intrinsic_utils.construct_binary_operator_with_upcast(
+      intrinsic_utils.create_binary_operator_with_upcast(
           bad_type_ref.type_signature, tf.multiply)
 
   def test_construct_generic_raises_federated_type(self):
@@ -196,8 +196,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
          computation_types.TensorType(tf.float32, [2])],
         placement_literals.CLIENTS)
     with self.assertRaisesRegex(TypeError, 'argument that is not a two-tuple'):
-      intrinsic_utils.construct_binary_operator_with_upcast(
-          bad_type, tf.multiply)
+      intrinsic_utils.create_binary_operator_with_upcast(bad_type, tf.multiply)
 
   def test_apply_integer_type_signature(self):
     ref = computation_building_blocks.Reference('x', [tf.int32, tf.int32])
@@ -208,7 +207,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
 
   def test_construct_integer_type_signature(self):
     ref = computation_building_blocks.Reference('x', [tf.int32, tf.int32])
-    multiplier = intrinsic_utils.construct_binary_operator_with_upcast(
+    multiplier = intrinsic_utils.create_binary_operator_with_upcast(
         ref.type_signature, tf.multiply)
     self.assertEqual(
         multiplier.type_signature,
@@ -303,7 +302,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
   def test_construct_multiply_op_named_tuple_with_scalar_type_signature(self):
     type_spec = computation_types.to_type([[('a', tf.float32),
                                             ('b', tf.float32)], tf.float32])
-    multiplier = intrinsic_utils.construct_binary_operator_with_upcast(
+    multiplier = intrinsic_utils.create_binary_operator_with_upcast(
         type_spec, tf.multiply)
     expected_function_type = computation_types.FunctionType(
         type_spec, type_spec[0])
@@ -312,7 +311,7 @@ class BinaryOperatorBodyTest(absltest.TestCase):
   def test_construct_divide_op_named_tuple_with_scalar_type_signature(self):
     type_spec = computation_types.to_type([[('a', tf.float32),
                                             ('b', tf.float32)], tf.float32])
-    multiplier = intrinsic_utils.construct_binary_operator_with_upcast(
+    multiplier = intrinsic_utils.create_binary_operator_with_upcast(
         type_spec, tf.divide)
     expected_function_type = computation_types.FunctionType(
         type_spec, type_spec[0])

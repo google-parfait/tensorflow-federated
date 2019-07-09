@@ -1226,7 +1226,7 @@ def insert_called_tf_identity_at_leaves(comp):
             type_utils.is_tensorflow_compatible_type(comp.type_signature))
 
   def _decorate(comp):
-    identity_function = computation_constructing_utils.construct_compiled_identity(
+    identity_function = computation_constructing_utils.create_compiled_identity(
         comp.type_signature)
     return computation_building_blocks.Call(identity_function, comp)
 
