@@ -15,6 +15,7 @@
 """Utils for testing executors."""
 
 import collections
+
 import numpy as np
 import tensorflow as tf
 

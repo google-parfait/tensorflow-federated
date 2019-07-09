@@ -14,10 +14,6 @@
 # limitations under the License.
 """A service wrapper around an executor that makes it accessible over gRPC."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import asyncio
 import functools
 import threading
@@ -25,7 +21,6 @@ import traceback
 import uuid
 
 from absl import logging
-
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2

@@ -253,7 +253,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
-        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -379,7 +378,6 @@ py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
     srcs_version = "PY3",
-    deps = [":executor_value_base"],
 )
 
 py_library(
@@ -478,7 +476,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":set_default_executor",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/utils:tf_computation_utils",
@@ -904,8 +901,6 @@ py_test(
         ":executor_test_utils",
         ":remote_executor",
         ":set_default_executor",
-        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
     ],
 )

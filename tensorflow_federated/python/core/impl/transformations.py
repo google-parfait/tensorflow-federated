@@ -22,6 +22,7 @@ import itertools
 
 import six
 from six.moves import range
+from six.moves import zip
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck

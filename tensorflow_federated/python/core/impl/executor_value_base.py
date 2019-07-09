@@ -14,18 +14,12 @@
 # limitations under the License.
 """A base Python interface for values embedded in executors."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-import six
 
 from tensorflow_federated.python.core.api import typed_object
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ExecutorValue(typed_object.TypedObject):
+class ExecutorValue(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """Represents the abstract interface for values embedded within executors.
 
   The embedded values may represent computations in-flight that may materialize
