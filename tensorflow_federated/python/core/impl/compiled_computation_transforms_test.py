@@ -2180,9 +2180,9 @@ class CalledGraphOnReplicatedArgTest(absltest.TestCase):
     self.assertLen(result_on_1, 5)
 
   def test_constructs_correct_type_signature_nested_tuple_argument(self):
-    slicer = _create_compiled_computation(lambda x: [x[0][0], x[1][1]],
-                                          [[tf.int32, tf.float32],
-                                           [tf.int32, tf.float32]])
+    slicer = _create_compiled_computation(
+        lambda x: [x[0][0], x[1][1]],
+        [[tf.int32, tf.float32], [tf.int32, tf.float32]])
     tuple_reference = computation_building_blocks.Reference(
         'x', [tf.int32, tf.float32])
 
@@ -2195,9 +2195,10 @@ class CalledGraphOnReplicatedArgTest(absltest.TestCase):
     self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_nested_named_tuple_argument(self):
-    slicer = _create_compiled_computation(lambda x: [x[0][0], x[1][1]], [[
-        ('a', tf.int32), ('b', tf.float32)
-    ], [('a', tf.int32), ('b', tf.float32)]])
+    slicer = _create_compiled_computation(
+        lambda x: [x[0][0], x[1][1]],
+        [[('a', tf.int32),
+          ('b', tf.float32)], [('a', tf.int32), ('b', tf.float32)]])
     tuple_reference = computation_building_blocks.Reference(
         'x', [('a', tf.int32), ('b', tf.float32)])
 
@@ -2210,9 +2211,9 @@ class CalledGraphOnReplicatedArgTest(absltest.TestCase):
     self.assertTrue(mutated)
 
   def test_execution_nested_tuple_argument(self):
-    slicer = _create_compiled_computation(lambda x: [x[0][0], x[1][1]],
-                                          [[tf.int32, tf.float32],
-                                           [tf.int32, tf.float32]])
+    slicer = _create_compiled_computation(
+        lambda x: [x[0][0], x[1][1]],
+        [[tf.int32, tf.float32], [tf.int32, tf.float32]])
     tuple_reference = computation_building_blocks.Reference(
         'x', [tf.int32, tf.float32])
 

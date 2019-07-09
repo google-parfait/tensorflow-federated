@@ -70,14 +70,14 @@ class ModelUtilsTest(test.TestCase):
         return 'Not BatchOutput'
 
     bad_model = model_utils.enhance(BadModel())
-    self.assertRaisesRegex(TypeError,
-                           'Variable', lambda: bad_model.trainable_variables)
-    self.assertRaisesRegex(TypeError,
-                           'Iterable', lambda: bad_model.local_variables)
-    self.assertRaisesRegex(TypeError,
-                           'BatchOutput', lambda: bad_model.forward_pass(1))
-    self.assertRaisesRegex(TypeError,
-                           'BatchOutput', lambda: bad_model.train_on_batch(1))
+    self.assertRaisesRegex(TypeError, 'Variable',
+                           lambda: bad_model.trainable_variables)
+    self.assertRaisesRegex(TypeError, 'Iterable',
+                           lambda: bad_model.local_variables)
+    self.assertRaisesRegex(TypeError, 'BatchOutput',
+                           lambda: bad_model.forward_pass(1))
+    self.assertRaisesRegex(TypeError, 'BatchOutput',
+                           lambda: bad_model.train_on_batch(1))
 
 
 if __name__ == '__main__':
