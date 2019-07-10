@@ -11,8 +11,8 @@ Creates a called federated zip.
 tff.framework.create_federated_zip(value)
 ```
 
-Defined in
-[`python/core/impl/computation_constructing_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -11,8 +11,8 @@ Constructs an executor to execute computations on the local machine.
 tff.framework.create_local_executor(num_clients)
 ```
 
-Defined in
-[`python/core/impl/executor_stacks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_stacks.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_stacks.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

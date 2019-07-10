@@ -19,8 +19,8 @@ A selection by name or index from a tuple-typed value in TFF's language.
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
 
-Defined in
-[`python/core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -29,6 +29,9 @@ value of expression `foo`), and `foo[n]` (selecting element at index `n` from
 the value of `foo`).
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 __init__(
@@ -76,6 +79,9 @@ Returns the TFF type of this object (an instance of
 ## Methods
 
 <h3 id="from_proto"><code>from_proto</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 @classmethod

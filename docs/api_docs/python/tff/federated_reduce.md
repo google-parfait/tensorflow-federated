@@ -16,8 +16,8 @@ tff.federated_reduce(
 )
 ```
 
-Defined in
-[`python/core/api/intrinsics.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

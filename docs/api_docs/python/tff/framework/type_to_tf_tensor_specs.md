@@ -11,8 +11,8 @@ Returns nested structure of `tf.TensorSpec`s for a given TFF type.
 tff.framework.type_to_tf_tensor_specs(type_spec)
 ```
 
-Defined in
-[`python/core/impl/type_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

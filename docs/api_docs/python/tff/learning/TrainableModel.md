@@ -19,8 +19,8 @@ A Model with an additional method for (local) training.
 
 Inherits From: [`Model`](../../tff/learning/Model.md)
 
-Defined in
-[`python/learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -90,6 +90,9 @@ An iterable of `tf.Variable` objects, see class comment for details.
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+source</a>
+
 ```python
 forward_pass(
     batch_input,
@@ -136,6 +139,9 @@ will be trained via a gradient-based algorithm.
 
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+source</a>
+
 ```python
 report_local_outputs()
 ```
@@ -165,6 +171,9 @@ A structure of tensors (as supported by `tf.nest`) to be aggregated across
 clients.
 
 <h3 id="train_on_batch"><code>train_on_batch</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+source</a>
 
 ```python
 train_on_batch(batch_input)

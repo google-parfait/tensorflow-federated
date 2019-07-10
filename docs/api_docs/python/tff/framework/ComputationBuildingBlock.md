@@ -15,8 +15,8 @@ The abstract base class for abstractions in the TFF's internal language.
 
 Inherits From: [`TypedObject`](../../tff/TypedObject.md)
 
-Defined in
-[`python/core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -30,6 +30,9 @@ does not have a dedicated Python equivalent is a section of TensorFlow code
 <a href="../../tff/framework/CompiledComputation.md"><code>tff.framework.CompiledComputation</code></a>).
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 __init__(type_spec)
@@ -56,6 +59,9 @@ Returns the TFF type of this object (an instance of
 ## Methods
 
 <h3 id="from_proto"><code>from_proto</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 @classmethod

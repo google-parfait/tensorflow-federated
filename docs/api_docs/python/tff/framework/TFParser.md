@@ -11,8 +11,8 @@
 
 Callable taking subset of TFF AST constructs to CompiledComputations.
 
-Defined in
-[`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -53,6 +53,9 @@ the assumptions below.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
+
 ```python
 __init__()
 ```
@@ -62,6 +65,9 @@ Populates the parser library with mutually exclusive options.
 ## Methods
 
 <h3 id="__call__"><code>__call__</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
 
 ```python
 __call__(comp)

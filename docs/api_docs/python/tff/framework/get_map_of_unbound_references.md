@@ -11,8 +11,8 @@ Gets a Python `dict` of the unbound references in `comp`.
 tff.framework.get_map_of_unbound_references(comp)
 ```
 
-Defined in
-[`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

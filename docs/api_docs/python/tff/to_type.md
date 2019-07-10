@@ -12,8 +12,8 @@ Converts the argument into an instance of
 tff.to_type(spec)
 ```
 
-Defined in
-[`python/core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

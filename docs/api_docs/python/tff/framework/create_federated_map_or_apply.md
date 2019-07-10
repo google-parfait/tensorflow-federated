@@ -14,8 +14,8 @@ tff.framework.create_federated_map_or_apply(
 )
 ```
 
-Defined in
-[`python/core/impl/computation_constructing_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

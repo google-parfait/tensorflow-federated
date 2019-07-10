@@ -15,8 +15,8 @@ tff.to_value(
 )
 ```
 
-Defined in
-[`python/core/api/values.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/values.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/values.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

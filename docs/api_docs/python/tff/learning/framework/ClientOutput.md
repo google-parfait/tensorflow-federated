@@ -13,8 +13,8 @@
 
 Structure for outputs returned from clients during federated optimization.
 
-Defined in
-[`python/learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

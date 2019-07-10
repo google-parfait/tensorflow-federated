@@ -9,8 +9,8 @@
 
 TensorFlow Federated Library.
 
-Defined in
-[`__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

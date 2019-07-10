@@ -12,8 +12,8 @@
 A structure that holds the output of a
 <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
-Defined in
-[`python/learning/model.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

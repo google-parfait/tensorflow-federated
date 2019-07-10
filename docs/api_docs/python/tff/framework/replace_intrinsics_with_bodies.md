@@ -11,8 +11,8 @@ Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
 tff.framework.replace_intrinsics_with_bodies(comp)
 ```
 
-Defined in
-[`python/core/impl/intrinsic_reductions.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/intrinsic_reductions.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/intrinsic_reductions.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

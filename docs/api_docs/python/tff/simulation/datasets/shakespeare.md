@@ -7,8 +7,8 @@
 
 Module for the Shakespeare federated experimental dataset.
 
-Defined in
-[`python/simulation/datasets/shakespeare/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/__init__.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/__init__.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

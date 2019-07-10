@@ -18,8 +18,8 @@ A reference to a name defined earlier in TFF's internal language.
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
 
-Defined in
-[`python/core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -35,6 +35,9 @@ defined as the formal parameter of the lambda epxression, and one to `f` that
 must have been defined somewhere in the surrounding context.
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 __init__(
@@ -77,6 +80,9 @@ Returns the TFF type of this object (an instance of
 ## Methods
 
 <h3 id="from_proto"><code>from_proto</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 @classmethod
