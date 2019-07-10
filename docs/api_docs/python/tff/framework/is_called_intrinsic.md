@@ -14,8 +14,8 @@ tff.framework.is_called_intrinsic(
 )
 ```
 
-Defined in
-[`python/core/impl/computation_building_block_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_block_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_block_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

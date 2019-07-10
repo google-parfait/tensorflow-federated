@@ -16,14 +16,17 @@ The remote executor is a local proxy for a remote executor instance.
 
 Inherits From: [`Executor`](../../tff/framework/Executor.md)
 
-Defined in
-[`python/core/impl/remote_executor.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
 NOTE: This component is only available in Python 3.
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py>View
+source</a>
 
 ```python
 __init__(channel)
@@ -39,6 +42,9 @@ Creates a remote executor.
 ## Methods
 
 <h3 id="create_call"><code>create_call</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py>View
+source</a>
 
 ```python
 create_call(
@@ -63,6 +69,9 @@ An instance of `executor_value_base.ExecutorValue` that represents the
 constructed vall.
 
 <h3 id="create_selection"><code>create_selection</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py>View
+source</a>
 
 ```python
 create_selection(
@@ -90,6 +99,9 @@ constructed selection.
 
 <h3 id="create_tuple"><code>create_tuple</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py>View
+source</a>
+
 ```python
 create_tuple(elements)
 ```
@@ -108,6 +120,9 @@ An instance of `executor_value_base.ExecutorValue` that represents the
 constructed tuple.
 
 <h3 id="create_value"><code>create_value</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/remote_executor.py>View
+source</a>
 
 ```python
 create_value(

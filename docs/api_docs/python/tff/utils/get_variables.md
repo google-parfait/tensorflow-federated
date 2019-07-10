@@ -15,8 +15,8 @@ tff.utils.get_variables(
 )
 ```
 
-Defined in
-[`python/core/utils/tf_computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

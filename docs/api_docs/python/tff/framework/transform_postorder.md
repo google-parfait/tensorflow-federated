@@ -14,8 +14,8 @@ tff.framework.transform_postorder(
 )
 ```
 
-Defined in
-[`python/core/impl/transformation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformation_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformation_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

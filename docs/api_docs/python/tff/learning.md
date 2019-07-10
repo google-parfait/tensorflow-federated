@@ -7,8 +7,8 @@
 
 The public API for model developers using federated learning algorithms.
 
-Defined in
-[`python/learning/__init__.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/__init__.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/__init__.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

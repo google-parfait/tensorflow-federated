@@ -14,8 +14,8 @@
 
 A container for the trainable and non-trainable variables of a `Model`.
 
-Defined in
-[`python/learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -34,6 +34,9 @@ e.g., tensors corresponding to variable values, or updates to model variables.
 
 <h3 id="assign_weights_to"><code>assign_weights_to</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
+
 ```python
 assign_weights_to(keras_model)
 ```
@@ -46,6 +49,9 @@ Assign these TFF model weights to the weights of a `tf.keras.Model`.
 
 <h3 id="from_model"><code>from_model</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
+
 ```python
 @classmethod
 from_model(
@@ -55,6 +61,9 @@ from_model(
 ```
 
 <h3 id="from_tff_value"><code>from_tff_value</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
 
 ```python
 @classmethod

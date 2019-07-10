@@ -11,8 +11,8 @@ Checks whitelist of intrinsics reducible to aggregate or broadcast.
 tff.framework.check_intrinsics_whitelisted_for_reduction(comp)
 ```
 
-Defined in
-[`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

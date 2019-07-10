@@ -18,8 +18,8 @@ A representation of a function invocation in TFF's internal language.
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
 
-Defined in
-[`python/core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -32,6 +32,9 @@ The concise notation for calls is `foo(bar)`, where `foo` is the function, and
 `bar` is the argument.
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 __init__(
@@ -71,6 +74,9 @@ Returns the TFF type of this object (an instance of
 ## Methods
 
 <h3 id="from_proto"><code>from_proto</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 @classmethod

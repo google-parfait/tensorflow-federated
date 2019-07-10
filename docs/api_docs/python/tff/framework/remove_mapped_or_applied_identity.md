@@ -11,8 +11,8 @@ Removes all the mapped or applied identity functions in `comp`.
 tff.framework.remove_mapped_or_applied_identity(comp)
 ```
 
-Defined in
-[`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

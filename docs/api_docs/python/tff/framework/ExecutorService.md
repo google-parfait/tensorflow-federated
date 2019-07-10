@@ -16,14 +16,17 @@
 
 A wrapper around a target executor that makes it into a gRPC service.
 
-Defined in
-[`python/core/impl/executor_service.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
 NOTE: This component is only available in Python 3.
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
 
 ```python
 __init__(
@@ -38,6 +41,9 @@ Initialize self. See help(type(self)) for accurate signature.
 ## Methods
 
 <h3 id="Compute"><code>Compute</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
 
 ```python
 Compute(
@@ -59,6 +65,9 @@ An instance of `executor_pb2.ComputeResponse`.
 
 <h3 id="CreateCall"><code>CreateCall</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
+
 ```python
 CreateCall(
     request,
@@ -78,6 +87,9 @@ Creates a call embedded in the executor.
 An instance of `executor_pb2.CreateCallResponse`.
 
 <h3 id="CreateSelection"><code>CreateSelection</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
 
 ```python
 CreateSelection(
@@ -99,6 +111,9 @@ An instance of `executor_pb2.CreateSelectionResponse`.
 
 <h3 id="CreateTuple"><code>CreateTuple</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
+
 ```python
 CreateTuple(
     request,
@@ -119,6 +134,9 @@ An instance of `executor_pb2.CreateTupleResponse`.
 
 <h3 id="CreateValue"><code>CreateValue</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py>View
+source</a>
+
 ```python
 CreateValue(
     request,
@@ -138,6 +156,9 @@ Creates a value embedded in the executor.
 An instance of `executor_pb2.CreateValueResponse`.
 
 <h3 id="Dispose"><code>Dispose</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/proto/v0/executor_pb2_grpc.py>View
+source</a>
 
 ```python
 Dispose(

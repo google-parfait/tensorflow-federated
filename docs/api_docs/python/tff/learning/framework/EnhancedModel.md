@@ -20,12 +20,15 @@ A wrapper around a Model that adds sanity checking and metadata helpers.
 
 Inherits From: [`Model`](../../../tff/learning/Model.md)
 
-Defined in
-[`python/learning/model_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
 
 ```python
 __init__(model)
@@ -100,6 +103,9 @@ Returns a `tff.learning.ModelWeights`.
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
+
 ```python
 forward_pass(
     batch_input,
@@ -145,6 +151,9 @@ A `BatchOutput` object. The object must include the `loss` tensor if the model
 will be trained via a gradient-based algorithm.
 
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+source</a>
 
 ```python
 report_local_outputs()

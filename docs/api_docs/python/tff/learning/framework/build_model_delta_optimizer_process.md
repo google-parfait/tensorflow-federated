@@ -19,8 +19,8 @@ tff.learning.framework.build_model_delta_optimizer_process(
 )
 ```
 
-Defined in
-[`python/learning/framework/optimizer_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

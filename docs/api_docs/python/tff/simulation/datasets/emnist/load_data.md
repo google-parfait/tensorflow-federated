@@ -14,8 +14,8 @@ tff.simulation.datasets.emnist.load_data(
 )
 ```
 
-Defined in
-[`python/simulation/datasets/emnist/load_data.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

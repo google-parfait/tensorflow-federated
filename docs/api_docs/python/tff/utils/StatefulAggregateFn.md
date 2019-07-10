@@ -12,8 +12,8 @@
 
 A simple container for a stateful aggregation function.
 
-Defined in
-[`python/core/utils/computation_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -27,6 +27,9 @@ stateless_federated_mean = tff.utils.StatefulAggregateFn(
 ```
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+source</a>
 
 ```python
 __init__(
@@ -52,6 +55,9 @@ Creates the StatefulFn.
 ## Methods
 
 <h3 id="__call__"><code>__call__</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+source</a>
 
 ```python
 __call__(
@@ -95,6 +101,9 @@ A tuple of <a href="../../tff/Value.md"><code>tff.Value</code></a>s
 *   `aggregate`: The result of the aggregation of `value` weighted by `weight`.
 
 <h3 id="initialize"><code>initialize</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+source</a>
 
 ```python
 initialize()

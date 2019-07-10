@@ -11,8 +11,8 @@ Replaces any selection from a tuple with the underlying tuple element.
 tff.framework.replace_selection_from_tuple_with_element(comp)
 ```
 
-Defined in
-[`python/core/impl/transformations.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

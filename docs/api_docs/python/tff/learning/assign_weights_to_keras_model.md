@@ -14,8 +14,8 @@ tff.learning.assign_weights_to_keras_model(
 )
 ```
 
-Defined in
-[`python/learning/keras_utils.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 

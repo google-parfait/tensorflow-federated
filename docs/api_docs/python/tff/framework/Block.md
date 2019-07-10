@@ -18,8 +18,8 @@ A representation of a block of code in TFF's internal language.
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
 
-Defined in
-[`python/core/impl/computation_building_blocks.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -54,6 +54,9 @@ An equivalent form in a more sequential notation using a block expression: `let
 v1 = federated_broadcast(y), v2 = federated_map(x, v1) in federated_sum(v2)`
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 __init__(
@@ -96,6 +99,9 @@ Returns the TFF type of this object (an instance of
 ## Methods
 
 <h3 id="from_proto"><code>from_proto</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+source</a>
 
 ```python
 @classmethod

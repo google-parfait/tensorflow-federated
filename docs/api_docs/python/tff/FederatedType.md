@@ -18,12 +18,15 @@ representing federated types in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
 
-Defined in
-[`python/core/api/computation_types.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
 <h2 id="__init__"><code>__init__</code></h2>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+source</a>
 
 ```python
 __init__(
@@ -67,6 +70,9 @@ Constructs a new federated type instance.
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+source</a>
+
 ```python
 __eq__(other)
 ```
@@ -91,6 +97,9 @@ with differently named type variables in their definitions.
 *   <b>`NotImplementedError`</b>: If not implemented in the derived class.
 
 <h3 id="__ne__"><code>__ne__</code></h3>
+
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+source</a>
 
 ```python
 __ne__(other)

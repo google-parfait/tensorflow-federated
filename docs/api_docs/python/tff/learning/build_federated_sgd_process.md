@@ -17,8 +17,8 @@ tff.learning.build_federated_sgd_process(
 )
 ```
 
-Defined in
-[`python/learning/federated_sgd.py`](http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_sgd.py).
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_sgd.py>View
+source</a>
 
 <!-- Placeholder for "Used in" -->
 
