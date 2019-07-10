@@ -1045,7 +1045,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(graph_utils.to_node_name('^foo:0'), 'foo')
 
   def test_get_deps_for_graph_node(self):
-    graph_def = tf.GraphDef(node=[
+    graph_def = tf.compat.v1.GraphDef(node=[
         tf.NodeDef(name='foo', input=[]),
         tf.NodeDef(name='bar', input=['foo:0']),
         tf.NodeDef(name='baz', input=['foo:1', 'bar']),
@@ -1068,7 +1068,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(_get_deps('ghi'), 'abc,def')
 
   def test_add_control_deps_for_init_op(self):
-    graph_def = tf.GraphDef(node=[
+    graph_def = tf.compat.v1.GraphDef(node=[
         tf.NodeDef(name='foo', input=[]),
         tf.NodeDef(name='bar', input=['foo']),
         tf.NodeDef(name='baz', input=['foo', 'bar']),

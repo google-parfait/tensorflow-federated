@@ -1202,14 +1202,14 @@ def get_deps_for_graph_node(graph_def, node_name):
   """Returns the set of node names that a node named `node_name` depends on.
 
   Args:
-    graph_def: The input graph, an instance of `tf.GraphDef`.
+    graph_def: The input graph, an instance of `tf.compat.v1.GraphDef`.
     node_name: The node name, a string.
 
   Returns:
     An instance of `set()` containing string names of the nodes `node_name`
     depends on in `graph_def`.
   """
-  py_typecheck.check_type(graph_def, tf.GraphDef)
+  py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
   py_typecheck.check_type(node_name, six.string_types)
   input_map = {}
   for node in graph_def.node:
@@ -1228,19 +1228,19 @@ def add_control_deps_for_init_op(graph_def, init_op):
   """Adds control deps on `init_op` to `graph_def`.
 
   Args:
-    graph_def: The input graph, an instance of `tf.GraphDef`.
+    graph_def: The input graph, an instance of `tf.compat.v1.GraphDef`.
     init_op: The init op name, a string.
 
   Returns:
-    The updated graph, an instance of `tf.GraphDef`.
+    The updated graph, an instance of `tf.compat.v1.GraphDef`.
   """
-  py_typecheck.check_type(graph_def, tf.GraphDef)
+  py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
   py_typecheck.check_type(init_op, six.string_types)
   init_op_str = to_node_name(init_op)
   init_op_control_dep = '^{}'.format(init_op_str)
   deps = get_deps_for_graph_node(graph_def,
                                  init_op_str).union(set([init_op_str]))
-  new_graph_def = tf.GraphDef()
+  new_graph_def = tf.compat.v1.GraphDef()
   new_graph_def.CopyFrom(graph_def)
   for new_node in new_graph_def.node:
     if new_node.name not in deps:
