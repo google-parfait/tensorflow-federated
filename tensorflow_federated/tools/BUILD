@@ -16,6 +16,7 @@ sh_binary(
         "//tensorflow_federated/python",
         "//tensorflow_federated/python/common_libs",
         "//tensorflow_federated/python/core/impl",
+        "//tensorflow_federated/python/examples",
         "//tensorflow_federated/python/tensorflow_libs",
     ],
 )
