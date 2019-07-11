@@ -1087,7 +1087,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
                      tuple_of_called_graphs.type_signature)
     self.assertRegexMatch(
         computation_building_blocks.compact_representation(parsed_tuple),
-        [r'comp#[a-zA-Z0-9]{8}\(<y,x>\)'])
+        [r'comp#[a-zA-Z0-9]*\(<y,x>\)'])
     for k in range(5):
       self.assertEqual(executable([k * 1., k])[0], (k * 1.)**3)
       self.assertEqual(executable([k * 1., k])[1], k**2)
@@ -1122,7 +1122,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
                      tuple_of_called_graphs.type_signature)
     self.assertRegexMatch(
         computation_building_blocks.compact_representation(parsed_tuple),
-        [r'comp#[a-zA-Z0-9]{8}\(<y,x>\)'])
+        [r'comp#[a-zA-Z0-9]*\(<y,x>\)'])
     for k in range(5):
       self.assertEqual(executable([[k * 1., k * 2.], k])[0], k * 1.)
       self.assertEqual(executable([[k * 1., k * 2.], k])[1], k**2)
@@ -1159,7 +1159,7 @@ class TupleCalledGraphsTest(parameterized.TestCase):
                      tuple_of_called_graphs.type_signature)
     self.assertRegexMatch(
         computation_building_blocks.compact_representation(parsed_tuple),
-        [r'comp#[a-zA-Z0-9]{8}\(<y,x>\)'])
+        [r'comp#[a-zA-Z0-9]*\(<y,x>\)'])
     for k in range(5):
       self.assertEqual(executable([[k * 1., k * 2.], k])[0], k * 1.)
       self.assertEqual(executable([[k * 1., k * 2.], k])[1], k**2)
