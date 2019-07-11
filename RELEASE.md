@@ -1,3 +1,29 @@
+# Release 0.7.0
+
+## Major Features and Improvements
+
+*   High-performance simulation components and tutorials.
+
+## Breaking Changes
+
+*   Refactoring/consolidation in utility functions in tff.framework.
+*   Switches some of the tutorials to new PY3-only executor stack components.
+
+## Bug Fixes
+
+*   Includes the `examples` directory in the pip package.
+*   Pip installs for TensorFlow and TFF in turorials.
+*   Patches for asyncio in tutorials for use in Jupyter notebooks.
+*   Python 3 compatibility issues.
+*   Support for `federated_map_all_equal` in the reference executor.
+*   Adds missing implementations of generic constants and operator intrinsics.
+*   Fixes missed link in compatibility section of readme.
+*   Adds some of the missing intrinsic reductions.
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google.
+
 # Release 0.6.0
 
 ## Major Features and Improvements
