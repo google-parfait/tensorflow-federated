@@ -54,7 +54,7 @@ def _make_manual_reduce_graph(dataset_construction_graph, return_element):
     v1 = tf.import_graph_def(
         dataset_construction_graph.as_graph_def(),
         return_elements=[return_element])[0]
-    structure = tf.data.experimental.TensorStructure(tf.int64, shape=[])
+    structure = tf.TensorSpec([], tf.int64)
     ds1 = tf.data.experimental.from_variant(v1, structure=structure)
     out = ds1.reduce(tf.constant(0, dtype=tf.int64), lambda x, y: x + y)
   return graph, '', out.name
@@ -462,7 +462,7 @@ class ComposeGraphSpecTest(test.TestCase):
 
     with tf.Graph().as_default() as reduce_graph:
       variant = tf.compat.v1.placeholder(variant_type)
-      structure = tf.data.experimental.TensorStructure(tf.int64, shape=[])
+      structure = tf.TensorSpec([], tf.int64)
       ds1 = tf.data.experimental.from_variant(variant, structure=structure)
       out = ds1.reduce(tf.constant(0, dtype=tf.int64), lambda x, y: x + y)
 

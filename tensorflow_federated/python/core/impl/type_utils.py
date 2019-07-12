@@ -354,8 +354,7 @@ def type_to_tf_structure(type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   if isinstance(type_spec, computation_types.TensorType):
-    return tf.data.experimental.TensorStructure(type_spec.dtype,
-                                                type_spec.shape)
+    return tf.TensorSpec(type_spec.shape, type_spec.dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
     if not elements:
