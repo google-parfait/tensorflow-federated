@@ -149,3 +149,45 @@ Note: To exit the virtual environment run `deactivate`.
 </pre>
 
 Success: The TensorFlow Federated package is built.
+
+## Using Docker
+
+Create a Tensorflow Federated development environment using Docker on Ubuntu or
+macOS.
+
+### 1. Install Docker.
+
+[Install Docker](https://docs.docker.com/install/) on your local machine.
+
+### 2. Clone the latest Tensorflow Federated source.
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">git clone https://github.com/tensorflow/federated.git</code>
+<code class="devsite-terminal">cd "federated"</code>
+</pre>
+
+### 3. Build a Docker image.
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">docker build . \
+    --tag tensorflow_federated:latest</code>
+</pre>
+
+### 4. Start a Docker container.
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">docker run -it \
+    --workdir /federated \
+    --volume $(pwd):/federated \
+    tensorflow_federated:latest \
+    bash</code>
+</pre>
+
+### 5. (Optional) Test Tensorflow Federated.
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">bazel test //tensorflow_federated/...</code>
+</pre>
+
+Success: The TensorFlow Federated development environment is ready, now
+[build the pip package](#build-the-pip-package).
