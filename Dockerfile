@@ -57,12 +57,14 @@ RUN bazel version
 
 # Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} --no-cache-dir install \
-    enum34
-    keras_applications \
-    keras_preprocessing \
-    h5py \
-    matplotlib \
-    numpy \
-    six \
-    tensorflow_estimator
+    absl-py~=0.7 \
+    attrs~=18.2 \
+    enum34~=1.1 \
+    h5py~=2.6 \
+    matplotlib~=3.0 \
+    numpy~=1.14 \
+    six~=1.10 \
+    tf-nightly \
+    grpcio~=1.8.0 \
+    portpicker
 RUN pip freeze
