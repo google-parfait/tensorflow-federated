@@ -24,7 +24,8 @@ ENV LANG C.UTF-8
 
 RUN apt-get update && apt-get install -y \
     ${PYTHON}-dev \
-    ${PYTHON}-pip
+    ${PYTHON}-pip \
+    git
 
 RUN ${PIP} --no-cache-dir install --upgrade \
     pip \
