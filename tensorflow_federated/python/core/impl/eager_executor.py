@@ -53,9 +53,6 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   # it deals exclusively with eager mode. Incubate here, and potentially move
   # there, once stable.
 
-  if device is not None:
-    raise NotImplementedError('Unable to embed TF code on a specific device.')
-
   py_typecheck.check_type(comp, pb.Computation)
   comp_type = type_serialization.deserialize_type(comp.type)
   type_spec = computation_types.to_type(type_spec)
@@ -94,10 +91,18 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     init_op = comp.tensorflow.initialize_op
     if init_op:
       graph_def = graph_utils.add_control_deps_for_init_op(graph_def, init_op)
-    return tf.import_graph_def(
-        graph_merge.uniquify_shared_names(graph_def),
-        input_map=dict(list(zip(input_tensor_names, args))),
-        return_elements=output_tensor_names)
+
+    def _import_fn():
+      return tf.import_graph_def(
+          graph_merge.uniquify_shared_names(graph_def),
+          input_map=dict(list(zip(input_tensor_names, args))),
+          return_elements=output_tensor_names)
+
+    if device is not None:
+      with tf.device(device):
+        return _import_fn()
+    else:
+      return _import_fn()
 
   signature = []
   param_fns = []
@@ -142,6 +147,17 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     return anonymous_tuple.pack_sequence_as(result_type, result_elements)
 
   fn_to_return = lambda arg, p=param_fns, w=wrapped_fn: _fn_to_return(arg, p, w)
+
+  if device is not None:
+    old_fn_to_return = fn_to_return
+
+    # pylint: disable=function-redefined
+    def fn_to_return(x):
+      with tf.device(device):
+        return old_fn_to_return(x)
+
+    # pylint: enable=function-redefined
+
   if param_type is not None:
     return lambda arg: fn_to_return(arg)  # pylint: disable=unnecessary-lambda
   else:
