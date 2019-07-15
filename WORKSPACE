@@ -1,6 +1,9 @@
 workspace(name = "org_tensorflow_federated")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load(":version_check.bzl", "check_bazel_version_equal")
+
+check_bazel_version_equal(bazel_version = "0.26.1")
 
 http_archive(
     name = "com_google_protobuf",
