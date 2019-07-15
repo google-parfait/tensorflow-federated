@@ -43,8 +43,6 @@ from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_MAP
 from tensorflow_federated.python.core.impl.intrinsic_defs import FEDERATED_MAP_ALL_EQUAL
 from tensorflow_federated.python.core.impl.intrinsic_reductions import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.transformation_utils import transform_postorder
-from tensorflow_federated.python.core.impl.transformations import check_has_unique_names
-from tensorflow_federated.python.core.impl.transformations import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves
@@ -55,6 +53,8 @@ from tensorflow_federated.python.core.impl.transformations import replace_select
 from tensorflow_federated.python.core.impl.transformations import TFParser
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.transformations import unwrap_placement
+from tensorflow_federated.python.core.impl.tree_analysis import check_has_unique_names
+from tensorflow_federated.python.core.impl.tree_analysis import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compatible_type
