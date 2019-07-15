@@ -130,3 +130,119 @@ def check_has_unique_names(comp):
         '`computation_building_blocks.Reference` names, since we may be moving '
         'computations with unbound references under constructs which bind '
         'those references.')
+
+
+def extract_nodes_consuming(tree, predicate):
+  """Returns the set of AST nodes which consume nodes matching `predicate`.
+
+  Notice we adopt the convention that a node which itself satisfies the
+  predicate is in this set.
+
+  Args:
+    tree: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      view as an abstract syntax tree, and construct the set of nodes in this
+      tree having a dependency on nodes matching `predicate`; that is, the set
+      of nodes whose value depends on evaluating nodes matching `predicate`.
+    predicate: One-arg callable, accepting arguments of type
+      `computation_building_blocks.ComputationBuildingBlock` and returning a
+      `bool` indicating match or mismatch with the desired pattern.
+
+  Returns:
+    A `set` of `computation_building_blocks.ComputationBuildingBlock` instances
+    representing the nodes in `tree` dependent on nodes matching `predicate`.
+  """
+  py_typecheck.check_type(tree,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_callable(predicate)
+  dependent_nodes = set()
+
+  def _are_children_in_dependent_set(comp, symbol_tree):
+    """Checks if the dependencies of `comp` are present in `dependent_nodes`."""
+    if isinstance(comp, (computation_building_blocks.Intrinsic,
+                         computation_building_blocks.Data,
+                         computation_building_blocks.Placement,
+                         computation_building_blocks.CompiledComputation)):
+      return False
+    elif isinstance(comp, computation_building_blocks.Lambda):
+      return comp.result in dependent_nodes
+    elif isinstance(comp, computation_building_blocks.Block):
+      return any(x[1] in dependent_nodes
+                 for x in comp.locals) or comp.result in dependent_nodes
+    elif isinstance(comp, computation_building_blocks.Tuple):
+      return any(x in dependent_nodes for x in comp)
+    elif isinstance(comp, computation_building_blocks.Selection):
+      return comp.source in dependent_nodes
+    elif isinstance(comp, computation_building_blocks.Call):
+      return comp.function in dependent_nodes or comp.argument in dependent_nodes
+    elif isinstance(comp, computation_building_blocks.Reference):
+      return _is_reference_dependent(comp, symbol_tree)
+
+  def _is_reference_dependent(comp, symbol_tree):
+    try:
+      payload = symbol_tree.get_payload_with_name(comp.name)
+    except NameError:
+      return False
+    # The postorder traversal ensures that we process any
+    # bindings before we process the reference to those bindings
+    return payload.value in dependent_nodes
+
+  def _populate_dependent_set(comp, symbol_tree):
+    """Populates `dependent_nodes` with all nodes dependent on `predicate`."""
+    if predicate(comp):
+      dependent_nodes.add(comp)
+    elif _are_children_in_dependent_set(comp, symbol_tree):
+      dependent_nodes.add(comp)
+    return comp, False
+
+  symbol_tree = transformation_utils.SymbolTree(
+      transformation_utils.ReferenceCounter)
+  transformation_utils.transform_postorder_with_symbol_bindings(
+      tree, _populate_dependent_set, symbol_tree)
+  return dependent_nodes
+
+
+def check_broadcast_not_dependent_on_aggregate(tree):
+  """Raises if any broadcast in `tree` ingests the result of an aggregate.
+
+  We explicitly check for this pattern since if it occurs, `tree` is not
+  reducible to broadcast-map-aggregate form.
+
+
+  Args:
+    tree: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+      check for the presence of a broadcast which ingests the result of an
+      aggregate.
+
+  Raises:
+    ValueError: If a broadcast in `tree` consumes the result of an aggregate.
+  """
+
+  py_typecheck.check_type(tree,
+                          computation_building_blocks.ComputationBuildingBlock)
+
+  def aggregate_predicate(x):
+    return (isinstance(x, computation_building_blocks.Intrinsic) and
+            x.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+  def broadcast_predicate(x):
+    return (isinstance(x, computation_building_blocks.Intrinsic) and
+            x.uri == intrinsic_defs.FEDERATED_BROADCAST.uri)
+
+  nodes_dependent_on_aggregate = extract_nodes_consuming(
+      tree, aggregate_predicate)
+
+  nodes_dependent_on_broadcast = extract_nodes_consuming(
+      tree, broadcast_predicate)
+
+  broadcast_dependent = False
+  examples = []
+
+  for node in nodes_dependent_on_aggregate:
+    if isinstance(node, computation_building_blocks.Call):
+      if (node.argument in nodes_dependent_on_aggregate and
+          node.function in nodes_dependent_on_broadcast):
+        broadcast_dependent = True
+        examples.append(node)
+  if broadcast_dependent:
+    raise ValueError('Detected broadcast dependent on aggregate. '
+                     'Examples are: {}'.format(examples))

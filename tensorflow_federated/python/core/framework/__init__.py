@@ -53,6 +53,7 @@ from tensorflow_federated.python.core.impl.transformations import replace_select
 from tensorflow_federated.python.core.impl.transformations import TFParser
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.transformations import unwrap_placement
+from tensorflow_federated.python.core.impl.tree_analysis import check_broadcast_not_dependent_on_aggregate
 from tensorflow_federated.python.core.impl.tree_analysis import check_has_unique_names
 from tensorflow_federated.python.core.impl.tree_analysis import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types

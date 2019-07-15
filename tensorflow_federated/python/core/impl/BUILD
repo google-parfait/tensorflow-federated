@@ -1135,6 +1135,8 @@ py_test(
     srcs = ["tree_analysis_test.py"],
     deps = [
         ":computation_building_blocks",
+        ":computation_constructing_utils",
+        ":computation_test_utils",
         ":intrinsic_defs",
         ":tree_analysis",
         "//tensorflow_federated/python/core/api:computation_types",

@@ -199,3 +199,92 @@ def create_identity_function(parameter_name, parameter_type=tf.int32):
   return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
 
+def create_nested_syntax_tree():
+  r"""Constructs computation with explicit ordering for testing traversals.
+
+  The goal of this computation is to exercise each switch
+  in transform_postorder_with_symbol_bindings, at least all those that recurse.
+
+  The computation this function constructs can be represented as below.
+
+  Notice that the body of the Lambda *does not depend on the Lambda's
+  parameter*, so that if we were actually executing this call the argument will
+  be thrown away.
+
+                            Call
+                           /    \
+                 Lambda('arg')   Data('k')
+                     |
+                   Block('y','z')-------------
+                  /                          |
+  ['y'=Data('a'),'z'=Data('b')]              |
+                                           Tuple
+                                         /       \
+                                   Block('v')     Block('x')-------
+                                     / \              |            |
+                       ['v'=Selection]   Data('g') ['x'=Data('h']  |
+                             |                                     |
+                             |                                     |
+                             |                                 Block('w')
+                             |                                   /   \
+                           Tuple ------            ['w'=Data('i']     Data('j')
+                         /              \
+                 Block('t')             Block('u')
+                  /     \              /          \
+    ['t'=Data('c')]    Data('d') ['u'=Data('e')]  Data('f')
+
+
+  If we are reading Data URIs, results of a postorder traversal should be:
+  [a, b, c, d, e, f, g, h, i, j, k]
+
+  If we are reading locals declarations, results of a postorder traversal should
+  be:
+  [t, u, v, w, x, y, z]
+
+  And if we are reading both in an interleaved fashion, results of a postorder
+  traversal should be:
+  [a, b, c, d, t, e, f, u, g, v, h, i, j, w, x, y, z, k]
+
+  Since we are also exposing the ability to hook into variable declarations,
+  it is worthwhile considering the order in which variables are assigned in
+  this tree. Notice that this order maps neither to preorder nor to postorder
+  when purely considering the nodes of the tree above. This would be:
+  [arg, y, z, t, u, v, x, w]
+
+  Returns:
+    An instance of `computation_building_blocks.ComputationBuildingBlock`
+    satisfying the description above.
+  """
+  data_c = computation_building_blocks.Data('c', tf.float32)
+  data_d = computation_building_blocks.Data('d', tf.float32)
+  left_most_leaf = computation_building_blocks.Block([('t', data_c)], data_d)
+
+  data_e = computation_building_blocks.Data('e', tf.float32)
+  data_f = computation_building_blocks.Data('f', tf.float32)
+  center_leaf = computation_building_blocks.Block([('u', data_e)], data_f)
+  inner_tuple = computation_building_blocks.Tuple([left_most_leaf, center_leaf])
+
+  selected = computation_building_blocks.Selection(inner_tuple, index=0)
+  data_g = computation_building_blocks.Data('g', tf.float32)
+  middle_block = computation_building_blocks.Block([('v', selected)], data_g)
+
+  data_i = computation_building_blocks.Data('i', tf.float32)
+  data_j = computation_building_blocks.Data('j', tf.float32)
+  right_most_endpoint = computation_building_blocks.Block([('w', data_i)],
+                                                          data_j)
+
+  data_h = computation_building_blocks.Data('h', tf.int32)
+  right_child = computation_building_blocks.Block([('x', data_h)],
+                                                  right_most_endpoint)
+
+  result = computation_building_blocks.Tuple([middle_block, right_child])
+  data_a = computation_building_blocks.Data('a', tf.float32)
+  data_b = computation_building_blocks.Data('b', tf.float32)
+  dummy_outer_block = computation_building_blocks.Block([('y', data_a),
+                                                         ('z', data_b)], result)
+  dummy_lambda = computation_building_blocks.Lambda('arg', tf.float32,
+                                                    dummy_outer_block)
+  dummy_arg = computation_building_blocks.Data('k', tf.float32)
+  called_lambda = computation_building_blocks.Call(dummy_lambda, dummy_arg)
+
+  return called_lambda
