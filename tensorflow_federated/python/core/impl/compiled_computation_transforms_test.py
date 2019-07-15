@@ -29,10 +29,10 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl import tree_analysis
 
 
 def _create_compiled_computation(py_fn, arg_type):
@@ -1969,12 +1969,12 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
 
   def test_transform_reduces_number_of_compiled_computations(self):
     pattern = _create_simple_called_composition_of_tf_blocks()
-    original_count = computation_test_utils.count_types(
+    original_count = tree_analysis.count_types(
         pattern, computation_building_blocks.CompiledComputation)
     logic = compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(
     )
     parsed, _ = logic.transform(pattern)
-    new_count = computation_test_utils.count_types(
+    new_count = tree_analysis.count_types(
         parsed, computation_building_blocks.CompiledComputation)
     self.assertLess(new_count, original_count)
 

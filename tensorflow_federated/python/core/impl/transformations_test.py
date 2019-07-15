@@ -36,6 +36,7 @@ from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl import tree_analysis
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -172,7 +173,7 @@ def _count_called_intrinsics(comp, uri=None):
   def _predicate(comp):
     return computation_building_block_utils.is_called_intrinsic(comp, uri)
 
-  return computation_test_utils.count(comp, _predicate)
+  return tree_analysis.count(comp, _predicate)
 
 
 def _count_intrinsics(comp, uri):
@@ -181,7 +182,7 @@ def _count_intrinsics(comp, uri):
     return (isinstance(comp, computation_building_blocks.Intrinsic) and
             uri is not None and comp.uri == uri)
 
-  return computation_test_utils.count(comp, _predicate)
+  return tree_analysis.count(comp, _predicate)
 
 
 class ExtractIntrinsicsTest(absltest.TestCase):
@@ -3739,10 +3740,10 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertEqual(new_lambda.type_signature, identity_lam.type_signature)
     self.assertEqual(
-        computation_test_utils.count_types(
+        tree_analysis.count_types(
             new_lambda, computation_building_blocks.CompiledComputation), 1)
     self.assertEqual(
-        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
+        tree_analysis.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_raises_tuple(self):
     one_element_tuple = computation_building_blocks.Tuple(
@@ -3770,10 +3771,10 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
     self.assertEqual(
-        computation_test_utils.count_types(
+        tree_analysis.count_types(
             new_lambda, computation_building_blocks.CompiledComputation), 1)
     self.assertEqual(
-        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
+        tree_analysis.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_under_tuple(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -3784,10 +3785,10 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
     self.assertEqual(
-        computation_test_utils.count_types(
+        tree_analysis.count_types(
             new_lambda, computation_building_blocks.CompiledComputation), 2)
     self.assertEqual(
-        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 2)
+        tree_analysis.count(new_lambda, _is_called_graph_pattern), 2)
 
   def test_transforms_in_block_result(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -3798,10 +3799,10 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
     self.assertEqual(
-        computation_test_utils.count_types(
+        tree_analysis.count_types(
             new_lambda, computation_building_blocks.CompiledComputation), 1)
     self.assertEqual(
-        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
+        tree_analysis.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_in_block_locals(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -3813,10 +3814,10 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
     self.assertEqual(
-        computation_test_utils.count_types(
+        tree_analysis.count_types(
             new_lambda, computation_building_blocks.CompiledComputation), 1)
     self.assertEqual(
-        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 1)
+        tree_analysis.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_under_call_without_compiled_computation(self):
     ref_to_x = computation_building_blocks.Reference('x', [tf.int32])
@@ -3829,10 +3830,10 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
     self.assertEqual(
-        computation_test_utils.count_types(
+        tree_analysis.count_types(
             new_lambda, computation_building_blocks.CompiledComputation), 2)
     self.assertEqual(
-        computation_test_utils.count(new_lambda, _is_called_graph_pattern), 2)
+        tree_analysis.count(new_lambda, _is_called_graph_pattern), 2)
 
   def test_noops_on_call_with_compiled_computation(self):
     ref_to_x = computation_building_blocks.Reference('x', tf.int32)
@@ -3926,8 +3927,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertEqual(placement_unwrapped.function.uri,
                      intrinsic_defs.FEDERATED_APPLY.uri)
     self.assertEqual(
-        computation_test_utils.count(placement_unwrapped.argument[0],
-                                     _fed_type_predicate), 0)
+        tree_analysis.count(placement_unwrapped.argument[0],
+                            _fed_type_predicate), 0)
 
   def test_unwrap_placement_removes_one_federated_apply(self):
     int_ref = computation_building_blocks.Reference('x', tf.int32)
@@ -4245,36 +4246,8 @@ class ReduceIntrinsicBodiesTest(absltest.TestCase):
 
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
-    transformations.check_intrinsics_whitelisted_for_reduction(reduced)
+    tree_analysis.check_intrinsics_whitelisted_for_reduction(reduced)
     self.assertTrue(modified)
-
-
-class IntrinsicsWhitelistedTest(absltest.TestCase):
-
-  def test_raises_on_none(self):
-    with self.assertRaises(TypeError):
-      transformations.check_intrinsics_whitelisted_for_reduction(None)
-
-  def test_passes_with_federated_map(self):
-    intrinsic = computation_building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_MAP.uri,
-        computation_types.FunctionType([
-            computation_types.FunctionType(tf.int32, tf.float32),
-            computation_types.FederatedType(tf.int32, placements.CLIENTS)
-        ], computation_types.FederatedType(tf.float32, placements.CLIENTS)))
-    transformations.check_intrinsics_whitelisted_for_reduction(intrinsic)
-
-  def test_raises_with_federated_mean(self):
-    intrinsic = computation_building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_MEAN.uri,
-        computation_types.FunctionType(
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
-            computation_types.FederatedType(tf.int32, placements.SERVER)))
-
-    with self.assertRaisesRegex(
-        ValueError,
-        computation_building_blocks.compact_representation(intrinsic)):
-      transformations.check_intrinsics_whitelisted_for_reduction(intrinsic)
 
 
 if __name__ == '__main__':

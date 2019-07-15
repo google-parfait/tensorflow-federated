@@ -65,10 +65,10 @@ py_test(
     deps = [
         ":compiled_computation_transforms",
         ":computation_building_blocks",
-        ":computation_test_utils",
         ":computation_wrapper_instances",
         ":context_stack_impl",
         ":tensorflow_serialization",
+        ":tree_analysis",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
@@ -184,8 +184,6 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
-        ":transformation_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
     ],
@@ -1032,6 +1030,7 @@ py_test(
     deps = [
         ":computation_building_blocks",
         ":computation_impl",
+        ":computation_test_utils",
         ":context_stack_impl",
         ":placement_literals",
         ":tensorflow_serialization",
@@ -1054,8 +1053,8 @@ py_library(
         ":federated_computation_utils",
         ":intrinsic_bodies",
         ":intrinsic_defs",
-        ":placement_literals",
         ":transformation_utils",
+        ":tree_analysis",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -1078,6 +1077,7 @@ py_test(
         ":tensorflow_serialization",
         ":transformation_utils",
         ":transformations",
+        ":tree_analysis",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -1114,6 +1114,31 @@ py_test(
         ":type_constructors",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+    ],
+)
+
+py_library(
+    name = "tree_analysis",
+    srcs = ["tree_analysis.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":intrinsic_defs",
+        ":placement_literals",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "tree_analysis_test",
+    srcs = ["tree_analysis_test.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":intrinsic_defs",
+        ":tree_analysis",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
     ],
 )
 

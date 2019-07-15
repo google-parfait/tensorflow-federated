@@ -20,12 +20,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
-from tensorflow_federated.python.core.impl import transformation_utils
 
 
 def create_dummy_called_federated_aggregate(accumulate_parameter_name,
@@ -201,26 +199,3 @@ def create_identity_function(parameter_name, parameter_type=tf.int32):
   return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
 
-def count(comp, predicate=None):
-  """Returns the number of computations in `comp` matching `predicate`.
-
-  Args:
-    comp: The computation to test.
-    predicate: A Python function that takes a computation as a parameter and
-      returns a boolean value.
-  """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  counter = [0]
-
-  def _function(comp):
-    if predicate is None or predicate(comp):
-      counter[0] += 1
-    return comp, False
-
-  transformation_utils.transform_postorder(comp, _function)
-  return counter[0]
-
-
-def count_types(comp, types):
-  return count(comp, lambda x: isinstance(x, types))

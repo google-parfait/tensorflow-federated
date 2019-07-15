@@ -13,6 +13,7 @@ py_library(
         "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
         "//tensorflow_federated/python/core/impl:intrinsic_reductions",
+        "//tensorflow_federated/python/core/impl:tree_analysis",
         "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:transformations",
         "//tensorflow_federated/python/core/impl:type_utils",

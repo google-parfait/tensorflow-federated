@@ -9,7 +9,7 @@
 tff.framework.check_has_unique_names(comp)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/tree_analysis.py>View
 source</a>
 
 <!-- Placeholder for "Used in" -->
