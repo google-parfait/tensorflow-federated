@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_serialization
@@ -141,97 +142,6 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   return cbb_list
 
 
-def _construct_nested_tree():
-  r"""Constructs computation with explicit ordering for testing traversals.
-
-  The goal of this computation is to exercise each switch
-  in transform_postorder_with_symbol_bindings, at least all those that recurse.
-
-  The computation this function constructs can be represented as below.
-
-  Notice that the body of the Lambda *does not depend on the Lambda's
-  parameter*, so that if we were actually executing this call the argument will
-  be thrown away.
-
-                            Call
-                           /    \
-                 Lambda('arg')   Data('k')
-                     |
-                   Block('y','z')-------------
-                  /                          |
-  ['y'=Data('a'),'z'=Data('b')]              |
-                                           Tuple
-                                         /       \
-                                   Block('v')     Block('x')-------
-                                     / \              |            |
-                       ['v'=Selection]   Data('g') ['x'=Data('h']  |
-                             |                                     |
-                             |                                     |
-                             |                                 Block('w')
-                             |                                   /   \
-                           Tuple ------            ['w'=Data('i']     Data('j')
-                         /              \
-                 Block('t')             Block('u')
-                  /     \              /          \
-    ['t'=Data('c')]    Data('d') ['u'=Data('e')]  Data('f')
-
-
-  If we are reading Data URIs, results of a postorder traversal should be:
-  [a, b, c, d, e, f, g, h, i, j, k]
-
-  If we are reading locals declarations, results of a postorder traversal should
-  be:
-  [t, u, v, w, x, y, z]
-
-  And if we are reading both in an interleaved fashion, results of a postorder
-  traversal should be:
-  [a, b, c, d, t, e, f, u, g, v, h, i, j, w, x, y, z, k]
-
-  Since we are also exposing the ability to hook into variable declarations,
-  it is worthwhile considering the order in which variables are assigned in
-  this tree. Notice that this order maps neither to preorder nor to postorder
-  when purely considering the nodes of the tree above. This would be:
-  [arg, y, z, t, u, v, x, w]
-
-  Returns:
-    An instance of `computation_building_blocks.ComputationBuildingBlock`
-    satisfying the description above.
-  """
-  data_c = computation_building_blocks.Data('c', tf.float32)
-  data_d = computation_building_blocks.Data('d', tf.float32)
-  left_most_leaf = computation_building_blocks.Block([('t', data_c)], data_d)
-
-  data_e = computation_building_blocks.Data('e', tf.float32)
-  data_f = computation_building_blocks.Data('f', tf.float32)
-  center_leaf = computation_building_blocks.Block([('u', data_e)], data_f)
-  inner_tuple = computation_building_blocks.Tuple([left_most_leaf, center_leaf])
-
-  selected = computation_building_blocks.Selection(inner_tuple, index=0)
-  data_g = computation_building_blocks.Data('g', tf.float32)
-  middle_block = computation_building_blocks.Block([('v', selected)], data_g)
-
-  data_i = computation_building_blocks.Data('i', tf.float32)
-  data_j = computation_building_blocks.Data('j', tf.float32)
-  right_most_endpoint = computation_building_blocks.Block([('w', data_i)],
-                                                          data_j)
-
-  data_h = computation_building_blocks.Data('h', tf.int32)
-  right_child = computation_building_blocks.Block([('x', data_h)],
-                                                  right_most_endpoint)
-
-  result = computation_building_blocks.Tuple([middle_block, right_child])
-  data_a = computation_building_blocks.Data('a', tf.float32)
-  data_b = computation_building_blocks.Data('b', tf.float32)
-  dummy_outer_block = computation_building_blocks.Block([('y', data_a),
-                                                         ('z', data_b)], result)
-  dummy_lambda = computation_building_blocks.Lambda('arg', tf.float32,
-                                                    dummy_outer_block)
-  dummy_arg = computation_building_blocks.Data('k', tf.float32)
-  called_lambda = computation_building_blocks.Call(dummy_lambda, dummy_arg)
-
-  return called_lambda
-
-
 def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
   """Returns the number of nodes in `comp` matching `predicate`."""
   py_typecheck.check_type(comp,
@@ -322,7 +232,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_tree', _construct_nested_tree())])
+      [('complex_tree', computation_test_utils.create_nested_syntax_tree())])
   def test_transform_postorder_returns_untransformed(self, comp):
 
     def transform_noop(comp):
@@ -349,12 +259,12 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_transform_postorder_hits_all_nodes_once(self):
-    complex_ast = _construct_nested_tree()
+    complex_ast = computation_test_utils.create_nested_syntax_tree()
     self.assertEqual(
         _get_number_of_nodes_via_transform_postorder(complex_ast), 22)
 
   def test_transform_postorder_walks_to_leaves_in_postorder(self):
-    complex_ast = _construct_nested_tree()
+    complex_ast = computation_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -369,7 +279,7 @@ class TransformationUtilsTest(parameterized.TestCase):
                      ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
 
   def test_transform_postorder_walks_block_locals_postorder(self):
-    complex_ast = _construct_nested_tree()
+    complex_ast = computation_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -394,7 +304,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     logic ingesting a `Call` breaks, this test will fail and the one above
     may pass.
     """
-    complex_ast = _construct_nested_tree()
+    complex_ast = computation_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -450,7 +360,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_ast', _construct_nested_tree())])
+      [('complex_ast', computation_test_utils.create_nested_syntax_tree())])
   def test_transform_postorder_with_symbol_bindings_returns_untransformed(
       self, comp):
 
@@ -485,7 +395,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       self.assertEqual(id(comp), id(same_comp))
 
   def test_transform_postorder_with_symbol_bindings_hits_all_nodes_once(self):
-    complex_ast = _construct_nested_tree()
+    complex_ast = computation_test_utils.create_nested_syntax_tree()
 
     simple_count = _get_number_of_nodes_via_transform_postorder(complex_ast)
     with_hooks_count = _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
@@ -506,7 +416,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       ('placement', computation_building_blocks.Placement))
   def test_transform_postorder_with_symbol_bindings_counts_each_type_correctly(
       self, cbb_type):
-    complex_ast = _construct_nested_tree()
+    complex_ast = computation_test_utils.create_nested_syntax_tree()
 
     simple_count = _get_number_of_nodes_via_transform_postorder(
         complex_ast, predicate=lambda x: isinstance(x, cbb_type))
@@ -517,7 +427,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_leaves_in_postorder(self):
     leaf_order = []
-    outer_comp = _construct_nested_tree()
+    outer_comp = computation_test_utils.create_nested_syntax_tree()
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -533,7 +443,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_block_locals_postorder(self):
     block_locals_order = []
-    outer_comp = _construct_nested_tree()
+    outer_comp = computation_test_utils.create_nested_syntax_tree()
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -549,7 +459,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_variable_declarations_in_order(self):
     variable_binding_order = []
-    outer_comp = _construct_nested_tree()
+    outer_comp = computation_test_utils.create_nested_syntax_tree()
 
     class PreorderHookTracker(transformation_utils.BoundVariableTracker):
 
@@ -574,7 +484,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_postorder_interleaved(self):
     named_node_order = []
-    outer_comp = _construct_nested_tree()
+    outer_comp = computation_test_utils.create_nested_syntax_tree()
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
