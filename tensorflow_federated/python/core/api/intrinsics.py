@@ -283,7 +283,7 @@ def sequence_map(mapping_fn, value):
 
   * When applied to a non-federated sequence, it maps individual elements of
     the sequence pointwise. If the supplied `mapping_fn` is of type `T->U` and
-    the sequence `value` is of type `T*` (a seqeunce of `T`-typed elements),
+    the sequence `value` is of type `T*` (a sequence of `T`-typed elements),
     the result is a sequence of type `U*` (a sequence of `U`-typed elements),
     with each element of the input sequence individually mapped by `mapping_fn`.
     In this mode of usage, `sequence_map` behaves like a compuatation with type
