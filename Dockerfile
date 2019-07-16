@@ -65,7 +65,7 @@ RUN ${PIP} --no-cache-dir install \
     matplotlib~=3.0 \
     numpy~=1.14 \
     six~=1.10 \
-    tf-nightly \
+    tf-nightly==1.15.0.dev20190715 \
     grpcio~=1.8.0 \
     portpicker \
     tensorflow-model-optimization~=0.1.2
