@@ -56,6 +56,29 @@ py_test(
 )
 
 py_library(
+    name = "encoding_utils",
+    srcs = ["encoding_utils.py"],
+    deps = [
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/learning:model_utils",
+    ],
+)
+
+py_test(
+    name = "encoding_utils_test",
+    size = "medium",
+    srcs = ["encoding_utils_test.py"],
+    deps = [
+        ":encoding_utils",
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/learning:model_examples",
+        "//tensorflow_federated/python/learning/framework:optimizer_utils",
+    ],
+)
+
+py_library(
     name = "federated_aggregations",
     srcs = ["federated_aggregations.py"],
     deps = [

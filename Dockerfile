@@ -67,5 +67,6 @@ RUN ${PIP} --no-cache-dir install \
     six~=1.10 \
     tf-nightly \
     grpcio~=1.8.0 \
-    portpicker
+    portpicker \
+    tensorflow-model-optimization~=0.1.2
 RUN pip freeze
