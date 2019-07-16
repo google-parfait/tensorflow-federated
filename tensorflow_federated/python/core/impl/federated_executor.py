@@ -273,7 +273,9 @@ class FederatedExecutor(executor_base.Executor):
                   str(type_spec.placement)))
         py_typecheck.check_type(children, list)
         if not type_spec.all_equal:
-          py_typecheck.check_type(value, list)
+          py_typecheck.check_type(value, (list, tuple, set, frozenset))
+          if not isinstance(value, list):
+            value = list(value)
         elif isinstance(value, list):
           raise ValueError(
               'An all_equal value should be passed directly, not as a list.')

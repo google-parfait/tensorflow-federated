@@ -17,6 +17,7 @@
 import asyncio
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -48,7 +49,7 @@ def _make_test_executor(num_clients=1, use_lambda_executor=False):
   })
 
 
-class FederatedExecutorTest(absltest.TestCase):
+class FederatedExecutorTest(parameterized.TestCase):
 
   def test_executor_create_value_with_valid_intrinsic_def(self):
     loop = asyncio.get_event_loop()
@@ -451,6 +452,18 @@ class FederatedExecutorTest(absltest.TestCase):
   def test_with_mnist_training_example_with_lambda_executor(self):
     executor_test_utils.test_mnist_training(
         self, _make_test_executor(1, use_lambda_executor=True))
+
+  @parameterized.parameters(((1, 2, 3, 4),), (set([1, 2, 3, 4]),),
+                            (frozenset([1, 2, 3, 4]),))
+  def test_with_federated_value_as_a_non_py_list(self, val):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(num_clients=4)
+    v = loop.run_until_complete(
+        ex.create_value(val, type_constructors.at_clients(tf.int32)))
+    self.assertEqual(str(v.type_signature), '{int32}@CLIENTS')
+    result = tf.nest.map_structure(lambda x: x.numpy(),
+                                   loop.run_until_complete(v.compute()))
+    self.assertCountEqual(result, [1, 2, 3, 4])
 
 
 if __name__ == '__main__':
