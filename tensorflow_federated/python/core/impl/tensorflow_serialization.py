@@ -128,7 +128,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   # tf.saved_model.load can take/return nests; this might offer a better
   # approach to the one taken here.
 
-  @tf.function(autograph=False)
+  @tf.function
   def target_poly(*args, **kwargs):
     result = target(*args, **kwargs)
     result_dict, result_type, result_binding = (
