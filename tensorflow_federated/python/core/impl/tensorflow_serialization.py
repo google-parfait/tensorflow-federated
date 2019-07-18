@@ -172,7 +172,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
     graph = tf.Graph()
     with tf.compat.v1.Session(graph=graph) as sess:
       mgd = tf.saved_model.load(
-          sess, tags=[tf.saved_model.tag_constants.SERVING], export_dir=outdir)
+          sess, tags=[tf.saved_model.SERVING], export_dir=outdir)
   finally:
     shutil.rmtree(outdir)
   sigs = mgd.signature_def
