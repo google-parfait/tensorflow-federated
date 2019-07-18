@@ -471,22 +471,20 @@ class GraphUtilsTest(test.TestCase):
     type_spec = computation_types.SequenceType(
         collections.OrderedDict([('X', tf.int32), ('Y', tf.int32)]))
     binding = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(
-            iterator_string_handle_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
     data_set = tf.data.Dataset.from_tensors({
         'X': tf.constant(1),
         'Y': tf.constant(2)
     })
-    it = data_set.make_one_shot_iterator()
-    output_map = {'foo': it.string_handle()}
+    output_map = {'foo': tf.data.experimental.to_variant(data_set)}
     result = graph_utils.assemble_result_from_graph(type_spec, binding,
                                                     output_map)
     self.assertIsInstance(result, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        str(result.output_types),
+        str(tf.compat.v1.data.get_output_types(result)),
         'OrderedDict([(\'X\', tf.int32), (\'Y\', tf.int32)])')
     self.assertEqual(
-        str(result.output_shapes),
+        str(tf.compat.v1.data.get_output_shapes(result)),
         'OrderedDict([(\'X\', TensorShape([])), (\'Y\', TensorShape([]))])')
 
   @test.graph_mode_test
@@ -495,21 +493,20 @@ class GraphUtilsTest(test.TestCase):
     type_spec = computation_types.SequenceType(
         named_tuple_type(tf.int32, tf.int32))
     binding = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(
-            iterator_string_handle_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
     data_set = tf.data.Dataset.from_tensors({
         'X': tf.constant(1),
         'Y': tf.constant(2)
     })
-    it = data_set.make_one_shot_iterator()
-    output_map = {'foo': it.string_handle()}
+    output_map = {'foo': tf.data.experimental.to_variant(data_set)}
     result = graph_utils.assemble_result_from_graph(type_spec, binding,
                                                     output_map)
     self.assertIsInstance(result, graph_utils.DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
-        str(result.output_types), 'TestNamedTuple(X=tf.int32, Y=tf.int32)')
+        str(tf.compat.v1.data.get_output_types(result)),
+        'TestNamedTuple(X=tf.int32, Y=tf.int32)')
     self.assertEqual(
-        str(result.output_shapes),
+        str(tf.compat.v1.data.get_output_shapes(result)),
         'TestNamedTuple(X=TensorShape([]), Y=TensorShape([]))')
 
   def test_make_dummy_element_TensorType(self):
@@ -908,31 +905,6 @@ class GraphUtilsTest(test.TestCase):
     graph_utils.make_data_set_from_elements(tf.compat.v1.get_default_graph(), [{
         'x': np.array([1])
     }], [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))])
-
-  def test_one_shot_dataset_with_defuns(self):
-    with tf.Graph().as_default() as graph:
-      ds1 = tf.data.Dataset.from_tensor_slices([1, 1])
-      it1 = ds1.make_one_shot_iterator()
-      sh1 = it1.string_handle()
-
-      dtype = tf.int32
-      shape = tf.TensorShape([])
-
-      def make():
-        it2 = tf.data.Iterator.from_string_handle(sh1, dtype, shape)
-        return tf.data.Dataset.range(1).repeat().map(lambda _: it2.get_next())
-
-      ds2 = graph_utils.OneShotDataset(
-          make, computation_types.TensorType(dtype, shape))
-
-      @tf.function
-      def foo():
-        return ds2.reduce(np.int32(0), lambda x, y: x + y)
-
-      result = foo()
-
-    with tf.compat.v1.Session(graph=graph) as sess:
-      self.assertEqual(sess.run(result), 2)
 
   def test_make_dataset_from_variant_tensor_constructs_dataset(self):
     with tf.Graph().as_default():
