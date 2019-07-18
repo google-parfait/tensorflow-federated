@@ -14,7 +14,7 @@
 
 Object to hold a dataset and a mapping of clients to examples.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -53,7 +53,7 @@ element of the client datasets.
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 ```python
@@ -72,7 +72,7 @@ A `tf.data.Dataset` object.
 
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 ```python

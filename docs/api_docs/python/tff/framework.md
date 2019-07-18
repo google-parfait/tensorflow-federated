@@ -12,7 +12,7 @@
 
 Interfaces for extensions, selectively lifted out of `impl`.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/framework/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/framework/__init__.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

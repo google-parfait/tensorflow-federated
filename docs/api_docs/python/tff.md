@@ -9,7 +9,7 @@
 
 TensorFlow Federated Library.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

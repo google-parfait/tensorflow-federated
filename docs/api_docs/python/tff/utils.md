@@ -7,7 +7,7 @@
 
 Utility classes/functions built on top of TensorFlow Federated Core API.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

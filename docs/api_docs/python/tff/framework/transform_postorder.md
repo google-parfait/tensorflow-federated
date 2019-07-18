@@ -14,7 +14,7 @@ tff.framework.transform_postorder(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformation_utils.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

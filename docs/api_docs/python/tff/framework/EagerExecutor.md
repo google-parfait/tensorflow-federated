@@ -16,7 +16,7 @@ The eager executor only runs TensorFlow, synchronously, in eager mode.
 
 Inherits From: [`Executor`](../../tff/framework/Executor.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -53,7 +53,7 @@ NOTE: This component is only available in Python 3.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
 source</a>
 
 ```python
@@ -79,7 +79,7 @@ Creates a new instance of an eager executor.
 
 <h3 id="create_call"><code>create_call</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
 source</a>
 
 ```python
@@ -107,7 +107,7 @@ An instance of `EagerValue` representing the result of the call.
 
 <h3 id="create_selection"><code>create_selection</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
 source</a>
 
 ```python
@@ -138,7 +138,7 @@ An instance of `EagerValue` that represents the constructed selection.
 
 <h3 id="create_tuple"><code>create_tuple</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
 source</a>
 
 ```python
@@ -157,7 +157,7 @@ An instance of `EagerValue` that represents the constructed tuple.
 
 <h3 id="create_value"><code>create_value</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
 source</a>
 
 ```python

@@ -18,7 +18,7 @@ A `tf.simulation.ClientData` that maps a set of files to a dataset.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -27,7 +27,7 @@ This mapping is restricted to one file per user.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py">View
 source</a>
 
 ```python
@@ -79,7 +79,7 @@ element of the client datasets.
 
 <h3 id="create_from_dir"><code>create_from_dir</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py">View
 source</a>
 
 ```python
@@ -111,7 +111,7 @@ object.
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py">View
 source</a>
 
 ```python
@@ -130,7 +130,7 @@ A `tf.data.Dataset` object.
 
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 ```python

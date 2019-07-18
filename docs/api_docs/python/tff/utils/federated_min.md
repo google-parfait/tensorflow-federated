@@ -12,7 +12,7 @@ Aggregation to find the minimum value from the
 tff.utils.federated_min(value)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/federated_aggregations.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/federated_aggregations.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

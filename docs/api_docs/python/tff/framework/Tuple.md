@@ -21,7 +21,7 @@ A tuple with named or unnamed elements in TFF's internal language.
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -36,7 +36,7 @@ pointwise could be represented as `(arg -> <fn(arg[0]),fn(arg[1])>)`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
 source</a>
 
 ```python
@@ -70,7 +70,7 @@ Returns the TFF type of this object (an instance of
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -81,7 +81,7 @@ Return self==value.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -90,7 +90,7 @@ __getitem__(key)
 
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -99,7 +99,7 @@ __iter__()
 
 <h3 id="__len__"><code>__len__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -108,7 +108,7 @@ __len__()
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -119,7 +119,7 @@ Return self!=value.
 
 <h3 id="from_proto"><code>from_proto</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
 source</a>
 
 ```python

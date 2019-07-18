@@ -11,7 +11,7 @@ Computes a sum of elements in a sequence.
 tff.sequence_sum(value)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

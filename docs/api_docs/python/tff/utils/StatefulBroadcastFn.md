@@ -12,7 +12,7 @@
 
 A simple container for a stateful broadcast function.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -28,7 +28,7 @@ stateless_federated_broadcast = tff.utils.StatefulBroadcastFn(
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
 
 ```python
@@ -56,7 +56,7 @@ Creates the StatefulFn.
 
 <h3 id="__call__"><code>__call__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
 
 ```python
@@ -93,7 +93,7 @@ A tuple of <a href="../../tff/Value.md"><code>tff.Value</code></a>s
 
 <h3 id="initialize"><code>initialize</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
 
 ```python

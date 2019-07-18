@@ -16,7 +16,7 @@ tff.learning.from_compiled_keras_model(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

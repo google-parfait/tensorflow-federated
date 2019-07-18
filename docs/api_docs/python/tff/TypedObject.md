@@ -10,7 +10,7 @@
 
 An abstract interface for things that possess TFF type signatures.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/typed_object.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/typed_object.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

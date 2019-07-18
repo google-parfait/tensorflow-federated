@@ -19,7 +19,7 @@ A selection by name or index from a tuple-typed value in TFF's language.
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -30,7 +30,7 @@ the value of `foo`).
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
 source</a>
 
 ```python
@@ -80,7 +80,7 @@ Returns the TFF type of this object (an instance of
 
 <h3 id="from_proto"><code>from_proto</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
 source</a>
 
 ```python

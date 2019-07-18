@@ -11,7 +11,7 @@ Strips `comp`'s placement, returning a single call to map, apply or value.
 tff.framework.unwrap_placement(comp)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

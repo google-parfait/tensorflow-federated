@@ -15,7 +15,7 @@ tff.to_value(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/values.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/values.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
