@@ -22,7 +22,6 @@ from __future__ import print_function
 import collections
 import functools
 import itertools
-import logging
 
 import attr
 import numpy as np
@@ -35,7 +34,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import dtype_utils
 from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import type_utils
@@ -357,88 +355,9 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
         'graph.'.format(repr(parameter_type)))
 
 
-class OneShotDataset(typed_object.TypedObject):
-  """A factory of `tf.data.Dataset`-like objects based on a no-argument lambda.
-
-  This factory supports the same methods as the data sets constructed by the
-  lambda. Upon invocation, it constructs a new data set by invoking the lambda,
-  then forwards the call to that data set. A new data set is created per call.
-  """
-
-  # TODO(b/129956296): Eventually delete this deprecated class.
-
-  def __init__(self, fn, element_type):
-    """Constructs this factory from `fn`.
-
-    Args:
-      fn: A no-argument callable that creates instances of `tf.data.Dataset`.
-      element_type: The type of elements.
-    """
-    # TODO(b/131426323) Possibly reuse TensorFlow's @deprecation.deprecated()
-    # here if possible.
-    logging.warning('OneShotDataset is deprecated.')
-    py_typecheck.check_type(element_type, computation_types.Type)
-    self._type_signature = computation_types.SequenceType(element_type)
-    self._fn = fn
-
-  @property
-  def type_signature(self):
-    """Returns the TFF type of this object (an instance of `tff.Type`)."""
-    return self._type_signature
-
-  def __getattr__(self, name):
-    return getattr(self._fn(), name)
-
-
 # TODO(b/129956296): Eventually delete this deprecated declaration.
 DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, tf.compat.v1.data.Dataset,
-                                tf.compat.v2.data.Dataset, OneShotDataset)
-
-
-def make_dataset_from_string_handle(handle, type_spec):
-  """Constructs a `tf.data.Dataset` from a string handle tensor and type spec.
-
-  Args:
-    handle: The tensor that represents the string handle.
-    type_spec: The type spec of elements of the data set, either an instance of
-      `types.Type` or something convertible to it.
-
-  Returns:
-    A corresponding instance of `tf.data.Dataset`.
-  """
-  # TODO(b/129956296): Eventually delete this deprecated code path.
-
-  type_spec = computation_types.to_type(type_spec)
-  tf_dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
-
-  def make(handle=handle, tf_dtypes=tf_dtypes, shapes=shapes):
-    """An embedded no-argument function that constructs the data set on-demand.
-
-    This is invoked by `OneShotDataset` on each access to the data set argument
-    passed to the body of the TF computation to ensure that the iterators and
-    tje map are constructed in the appropriate context (e.g., in a defun).
-
-    Args:
-      handle: Captured from the local (above).
-      tf_dtypes: Captured from the local (above).
-      shapes: Captured from the local (above).
-
-    Returns:
-      An instance of `tf.data.Dataset`.
-    """
-    with handle.graph.as_default():
-      it = tf.data.Iterator.from_string_handle(handle, tf_dtypes, shapes)
-      # In order to convert an iterator into something that looks like a data
-      # set, we create a dummy data set that consists of an infinite sequence
-      # of zeroes, and filter it through a map function that invokes
-      # 'it.get_next()' for each of those zeroes.
-      # TODO(b/113112108): Possibly replace this with something more canonical
-      # if and when we can find adequate support for abstractly defined data
-      # sets (at the moment of this writing it does not appear to exist yet).
-      return tf.data.Dataset.range(1).repeat().map(lambda _: it.get_next())
-
-  # NOTE: To revert to the old behavior, simply invoke `make()` here directly.
-  return OneShotDataset(make, type_spec)
+                                tf.compat.v2.data.Dataset)
 
 
 def make_dataset_from_variant_tensor(variant_tensor, type_spec):
@@ -572,16 +491,6 @@ def capture_result_from_graph(result, graph):
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
                     variant_tensor_name=variant_tensor.name)))
-  elif isinstance(result, OneShotDataset):
-    # TODO(b/129956296): Eventually delete this deprecated code path.
-    element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(result),
-        tf.compat.v1.data.get_output_shapes(result))
-    handle_name = result.make_one_shot_iterator().string_handle().name
-    return (computation_types.SequenceType(element_type),
-            pb.TensorFlow.Binding(
-                sequence=pb.TensorFlow.SequenceBinding(
-                    iterator_string_handle_name=handle_name)))
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         py_typecheck.type_string(type(result))))
@@ -760,11 +669,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
           'Expected a sequence binding, found {}.'.format(binding_oneof))
     else:
       sequence_oneof = binding.sequence.WhichOneof('binding')
-      if sequence_oneof == 'iterator_string_handle_name':
-        # TODO(b/129956296): Eventually delete this deprecated code path.
-        handle = output_map[binding.sequence.iterator_string_handle_name]
-        return make_dataset_from_string_handle(handle, type_spec.element)
-      elif sequence_oneof == 'variant_tensor_name':
+      if sequence_oneof == 'variant_tensor_name':
         variant_tensor = output_map[binding.sequence.variant_tensor_name]
         return make_dataset_from_variant_tensor(variant_tensor,
                                                 type_spec.element)
