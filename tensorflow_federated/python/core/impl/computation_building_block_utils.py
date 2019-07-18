@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import six
 
+from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl import computation_building_blocks
 
 
@@ -47,3 +49,33 @@ def is_identity_function(comp):
   return (isinstance(comp, computation_building_blocks.Lambda) and
           isinstance(comp.result, computation_building_blocks.Reference) and
           comp.parameter_name == comp.result.name)
+
+
+def count_tensorflow_ops_in(comp):
+  """Counts TF ops in `comp` if `comp` is a TF block."""
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if (not isinstance(comp, computation_building_blocks.CompiledComputation)
+     ) or (comp.proto.WhichOneof('computation') != 'tensorflow'):
+    raise ValueError('Please pass a '
+                     '`computation_building_blocks.CompiledComputation` of the '
+                     '`tensorflow` variety to `count_tensorflow_ops_in`.')
+  graph_def = serialization_utils.unpack_graph_def(
+      comp.proto.tensorflow.graph_def)
+  return len(graph_def.node)
+
+
+def count_tensorflow_variables_in(comp):
+  """Counts TF Variables in `comp` if `comp` is a TF block."""
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if (not isinstance(comp, computation_building_blocks.CompiledComputation)
+     ) or (comp.proto.WhichOneof('computation') != 'tensorflow'):
+    raise ValueError('Please pass a '
+                     '`computation_building_blocks.CompiledComputation` of the '
+                     '`tensorflow` variety to `count_tensorflow_variables_in`.')
+  graph_def = serialization_utils.unpack_graph_def(
+      comp.proto.tensorflow.graph_def)
+  # TODO(b/137887596): Follow up on ways to count Variables on the GraphDef
+  # level.
+  return len([x for x in graph_def.node if 'variable' in str(x.op).lower()])
