@@ -19,7 +19,7 @@ backed by an HDF5 file.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -34,7 +34,7 @@ group, in a similar fashion to `tf.data.Dataset.from_tensor_slices()`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py">View
 source</a>
 
 ```python
@@ -83,7 +83,7 @@ element of the client datasets.
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py">View
 source</a>
 
 ```python
@@ -102,7 +102,7 @@ A `tf.data.Dataset` object.
 
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 ```python

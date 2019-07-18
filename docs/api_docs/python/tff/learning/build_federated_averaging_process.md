@@ -17,7 +17,7 @@ tff.learning.build_federated_averaging_process(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

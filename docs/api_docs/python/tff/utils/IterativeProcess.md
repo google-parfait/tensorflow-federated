@@ -12,7 +12,7 @@
 
 A process that includes an initialization and iterated computation.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
@@ -47,7 +47,7 @@ for round in range(num_rounds):
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
 
 ```python

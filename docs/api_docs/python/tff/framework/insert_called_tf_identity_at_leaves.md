@@ -11,7 +11,7 @@ Inserts an identity TF graph called on References under `comp`.
 tff.framework.insert_called_tf_identity_at_leaves(comp)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

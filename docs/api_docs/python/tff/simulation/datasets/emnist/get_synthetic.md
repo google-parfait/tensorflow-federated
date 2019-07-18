@@ -11,7 +11,7 @@ Quickly returns a small synthetic dataset, useful for unit tests, etc.
 tff.simulation.datasets.emnist.get_synthetic(num_clients=2)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

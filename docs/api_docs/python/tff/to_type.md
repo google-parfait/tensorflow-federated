@@ -12,7 +12,7 @@ Converts the argument into an instance of
 tff.to_type(spec)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

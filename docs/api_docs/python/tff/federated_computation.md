@@ -11,7 +11,7 @@ Decorates/wraps Python functions as TFF federated/composite computations.
 tff.federated_computation(*args)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

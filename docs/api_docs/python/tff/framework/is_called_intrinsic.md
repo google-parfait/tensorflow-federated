@@ -14,7 +14,7 @@ tff.framework.is_called_intrinsic(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_block_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_block_utils.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

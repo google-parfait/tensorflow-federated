@@ -7,7 +7,7 @@
 
 Datasets for running Federated Learning experiments in simulation.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/__init__.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

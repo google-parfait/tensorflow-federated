@@ -11,7 +11,7 @@ Builds the TFF computation for federated evaluation of the given model.
 tff.learning.build_federated_evaluation(model_fn)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_evaluation.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_evaluation.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

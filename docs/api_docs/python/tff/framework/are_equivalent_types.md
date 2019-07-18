@@ -14,7 +14,7 @@ tff.framework.are_equivalent_types(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

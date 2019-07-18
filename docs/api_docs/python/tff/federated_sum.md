@@ -12,7 +12,7 @@ Computes a sum at <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> of a
 tff.federated_sum(value)
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

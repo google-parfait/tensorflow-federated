@@ -7,7 +7,7 @@
 
 Module for the federated EMNIST experimental dataset.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/__init__.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

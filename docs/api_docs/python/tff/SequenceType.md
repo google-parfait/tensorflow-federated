@@ -16,14 +16,14 @@ representing types of sequences in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -46,7 +46,7 @@ Constructs a new instance from the given `element` type.
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -74,7 +74,7 @@ with differently named type variables in their definitions.
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python

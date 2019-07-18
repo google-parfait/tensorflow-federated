@@ -14,7 +14,7 @@ tff.framework.merge_tuple_intrinsics(
 )
 ```
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->

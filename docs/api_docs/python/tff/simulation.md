@@ -7,7 +7,7 @@
 
 The public API for experimenters running federated learning simulations.
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/__init__.py">View
 source</a>
 
 <!-- Placeholder for "Used in" -->
