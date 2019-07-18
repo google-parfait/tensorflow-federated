@@ -195,7 +195,7 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
         self.evaluate(tf.reduce_sum(first_state.model.trainable.a)) +
         self.evaluate(tf.reduce_sum(first_state.model.trainable.b)), 0)
     self.assertEqual(metric_outputs.num_examples, 0)
-    self.assertTrue(tf.is_nan(metric_outputs.loss))
+    self.assertTrue(tf.math.is_nan(metric_outputs.loss))
 
 
 if __name__ == '__main__':
