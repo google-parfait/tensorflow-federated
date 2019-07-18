@@ -22,13 +22,18 @@ from absl.testing import absltest
 
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
+from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tree_analysis
+from tensorflow_federated.python.core.impl import type_serialization
 
 
 class IntrinsicsWhitelistedTest(absltest.TestCase):
@@ -208,6 +213,100 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
     with self.assertRaisesRegex(ValueError, 'accumulate_parameter'):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(
           broadcasted_aggregate)
+
+
+class CountTensorFlowOpsTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      tree_analysis.count_tensorflow_ops_under(None)
+
+  def test_returns_zero_no_tensorflow(self):
+    no_tensorflow_comp = computation_test_utils.create_nested_syntax_tree()
+    tf_count = tree_analysis.count_tensorflow_ops_under(no_tensorflow_comp)
+    self.assertEqual(tf_count, 0)
+
+  def test_single_tensorflow_node_count_agrees_with_node_count(self):
+    integer_identity = computation_constructing_utils.create_compiled_identity(
+        tf.int32)
+    node_tf_op_count = computation_building_block_utils.count_tensorflow_ops_in(
+        integer_identity)
+    tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(
+        integer_identity)
+    self.assertEqual(node_tf_op_count, tree_tf_op_count)
+
+  def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
+    integer_identity = computation_constructing_utils.create_compiled_identity(
+        tf.int32)
+    node_tf_op_count = computation_building_block_utils.count_tensorflow_ops_in(
+        integer_identity)
+    tf_tuple = computation_building_blocks.Tuple(
+        [integer_identity, integer_identity])
+    tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(tf_tuple)
+    self.assertEqual(tree_tf_op_count, 2 * node_tf_op_count)
+
+
+def _pack_noarg_graph(graph_def, return_type, result_binding):
+  packed_graph_def = serialization_utils.pack_graph_def(graph_def)
+  function_type = computation_types.FunctionType(None, return_type)
+  proto = pb.Computation(
+      type=type_serialization.serialize_type(function_type),
+      tensorflow=pb.TensorFlow(
+          graph_def=packed_graph_def, parameter=None, result=result_binding))
+  building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
+      proto)
+  return building_block
+
+
+def _create_no_variable_tensorflow():
+  with tf.Graph().as_default() as g:
+    a = tf.constant(0, name='variable1')
+    b = tf.constant(1, name='variable2')
+    c = a + b
+
+  result_type, result_binding = graph_utils.capture_result_from_graph(c, g)
+
+  return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
+
+
+def _create_two_variable_tensorflow():
+  with tf.Graph().as_default() as g:
+    a = tf.Variable(0, name='variable1')
+    b = tf.Variable(1, name='variable2')
+    c = a + b
+
+  result_type, result_binding = graph_utils.capture_result_from_graph(c, g)
+
+  return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
+
+
+class CountTensorFlowVariablesTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      tree_analysis.count_tensorflow_variables_under(None)
+
+  def test_returns_zero_no_tensorflow(self):
+    no_tensorflow_comp = computation_test_utils.create_nested_syntax_tree()
+    variable_count = tree_analysis.count_tensorflow_variables_under(
+        no_tensorflow_comp)
+    self.assertEqual(variable_count, 0)
+
+  def test_returns_zero_tensorflow_with_no_variables(self):
+    no_variable_comp = _create_no_variable_tensorflow()
+    variable_count = tree_analysis.count_tensorflow_variables_under(
+        no_variable_comp)
+    self.assertEqual(variable_count, 0)
+
+  def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
+    two_variable_comp = _create_two_variable_tensorflow()
+    node_tf_variable_count = computation_building_block_utils.count_tensorflow_variables_in(
+        two_variable_comp)
+    tf_tuple = computation_building_blocks.Tuple(
+        [two_variable_comp, two_variable_comp])
+    tree_tf_variable_count = tree_analysis.count_tensorflow_variables_under(
+        tf_tuple)
+    self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)
 
 
 if __name__ == '__main__':

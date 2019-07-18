@@ -77,7 +77,26 @@ py_test(
 py_library(
     name = "computation_building_block_utils",
     srcs = ["computation_building_block_utils.py"],
-    deps = [":computation_building_blocks"],
+    deps = [
+        ":computation_building_blocks",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+    ],
+)
+
+py_test(
+    name = "computation_building_block_utils_test",
+    size = "small",
+    srcs = ["computation_building_block_utils_test.py"],
+    deps = [
+        ":computation_building_block_utils",
+        ":computation_building_blocks",
+        ":graph_utils",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
 )
 
 py_library(
@@ -1121,6 +1140,7 @@ py_library(
     name = "tree_analysis",
     srcs = ["tree_analysis.py"],
     deps = [
+        ":computation_building_block_utils",
         ":computation_building_blocks",
         ":intrinsic_defs",
         ":placement_literals",
@@ -1134,11 +1154,16 @@ py_test(
     name = "tree_analysis_test",
     srcs = ["tree_analysis_test.py"],
     deps = [
+        ":computation_building_block_utils",
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":computation_test_utils",
+        ":graph_utils",
         ":intrinsic_defs",
         ":tree_analysis",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
     ],

@@ -211,6 +211,8 @@ def create_nested_syntax_tree():
   parameter*, so that if we were actually executing this call the argument will
   be thrown away.
 
+  All leaf nodes are instances of `computation_building_blocks.Data`.
+
                             Call
                            /    \
                  Lambda('arg')   Data('k')

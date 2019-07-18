@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
@@ -246,3 +247,71 @@ def check_broadcast_not_dependent_on_aggregate(tree):
   if broadcast_dependent:
     raise ValueError('Detected broadcast dependent on aggregate. '
                      'Examples are: {}'.format(examples))
+
+
+def count_tensorflow_ops_under(comp):
+  """Counts total TF ops in any TensorFlow computations under `comp`.
+
+  Notice that this function is designed for the purpose of instrumentation,
+  in particular to check the size and constituents of the TensorFlow
+  artifacts generated.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      whose TF ops we wish to count.
+
+  Returns:
+    `integer` count of number of TF ops present in any
+    `computation_building_blocks.CompiledComputation` of the TensorFlow
+    variety under `comp`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
+  total_tf_ops = [0]
+
+  def _count_tf_ops(inner_comp):
+    if isinstance(
+        inner_comp, computation_building_blocks.CompiledComputation
+    ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
+      total_tf_ops[
+          0] += computation_building_block_utils.count_tensorflow_ops_in(
+              inner_comp)
+    return inner_comp, False
+
+  transformation_utils.transform_postorder(comp, _count_tf_ops)
+  return total_tf_ops[0]
+
+
+def count_tensorflow_variables_under(comp):
+  """Counts total TF variables in any TensorFlow computations under `comp`.
+
+  Notice that this function is designed for the purpose of instrumentation,
+  in particular to check the size and constituents of the TensorFlow
+  artifacts generated.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      whose TF variables we wish to count.
+
+  Returns:
+    `integer` count of number of TF variables present in any
+    `computation_building_blocks.CompiledComputation` of the TensorFlow
+    variety under `comp`.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
+  total_tf_vars = [0]
+
+  def _count_tf_vars(inner_comp):
+    if isinstance(
+        inner_comp, computation_building_blocks.CompiledComputation
+    ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
+      total_tf_vars[
+          0] += computation_building_block_utils.count_tensorflow_variables_in(
+              inner_comp)
+    return inner_comp, False
+
+  transformation_utils.transform_postorder(comp, _count_tf_vars)
+  return total_tf_vars[0]
