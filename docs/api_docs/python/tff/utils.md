@@ -33,14 +33,14 @@ container for a stateful broadcast function.
 [`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target`
 from `source`.
 
+[`create_variables(...)`](../tff/utils/create_variables.md): Creates a set of
+variables that matches the given `type_spec`.
+
 [`federated_max(...)`](../tff/utils/federated_max.md): Aggregation to find the
 maximum value from the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 [`federated_min(...)`](../tff/utils/federated_min.md): Aggregation to find the
 minimum value from the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
-
-[`get_variables(...)`](../tff/utils/get_variables.md): Creates a set of
-variables that matches the given `type_spec`.
 
 [`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to
 `source`.

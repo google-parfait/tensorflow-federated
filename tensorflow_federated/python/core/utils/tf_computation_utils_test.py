@@ -33,16 +33,17 @@ class TfComputationUtilsTest(test.TestCase):
     self.assertEqual(var.shape, expected_shape)
     self.assertEqual(var.dtype, expected_dtype)
 
-  def test_get_variables_with_tensor_type(self):
-    x = tf_computation_utils.get_variables('foo', tf.int32)
+  def test_create_variables_with_tensor_type(self):
+    x = tf_computation_utils.create_variables('foo', tf.int32)
     self.assertIsInstance(x, tf.Variable)
     self.assertIs(x.dtype.base_dtype, tf.int32)
     self.assertEqual(x.shape, tf.TensorShape([]))
     self.assertEqual(str(x.name), 'foo:0')
 
-  def test_get_variables_with_named_tuple_type(self):
-    x = tf_computation_utils.get_variables('foo', [('x', tf.int32),
-                                                   ('y', tf.string), tf.bool])
+  def test_create_variables_with_named_tuple_type(self):
+    x = tf_computation_utils.create_variables('foo',
+                                              [('x', tf.int32),
+                                               ('y', tf.string), tf.bool])
     self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
     self.assertLen(x, 3)
     self.assertEqual(dir(x), ['x', 'y'])
@@ -52,7 +53,7 @@ class TfComputationUtilsTest(test.TestCase):
 
   def test_assign_with_unordered_dict(self):
     with tf.Graph().as_default() as graph:
-      v = tf.get_variable('foo', dtype=tf.int32, shape=[])
+      v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
       c = tf.constant(10, dtype=tf.int32, shape=[])
       v_dict = {'bar': v}
       c_dict = {'bar': c}
@@ -65,7 +66,7 @@ class TfComputationUtilsTest(test.TestCase):
 
   def test_assign_with_anonymous_tuple(self):
     with tf.Graph().as_default() as graph:
-      v = tf.get_variable('foo', dtype=tf.int32, shape=[])
+      v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
       c = tf.constant(10, dtype=tf.int32, shape=[])
       v_tuple = anonymous_tuple.AnonymousTuple([('bar', v)])
       c_tuple = anonymous_tuple.AnonymousTuple([('bar', c)])
@@ -78,7 +79,7 @@ class TfComputationUtilsTest(test.TestCase):
 
   def test_assign_with_no_nesting(self):
     with tf.Graph().as_default() as graph:
-      v = tf.get_variable('foo', dtype=tf.int32, shape=[])
+      v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
       c = tf.constant(10, dtype=tf.int32, shape=[])
       op = tf_computation_utils.assign(v, c)
     with tf.compat.v1.Session(graph=graph) as sess:

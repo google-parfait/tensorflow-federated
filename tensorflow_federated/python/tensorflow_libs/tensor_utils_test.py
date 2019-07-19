@@ -203,17 +203,6 @@ class TensorUtilsTest(test.TestCase):
     self.assertFalse(
         tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar')))
 
-  @test.graph_mode_test
-  def test_metrics_sum(self):
-    with self.session() as sess:
-      v = tf.compat.v1.placeholder(tf.float32)
-      sum_tensor, update_op = tensor_utils.metrics_sum(v)
-      sess.run(tf.compat.v1.local_variables_initializer())
-      sess.run(update_op, feed_dict={v: [1.0, 2.0]})
-      self.assertEqual(sess.run(sum_tensor), 3.0)
-      sess.run(update_op, feed_dict={v: [3.0]})
-      self.assertEqual(sess.run(sum_tensor), 6.0)
-
   def test_same_dimension(self):
     self.assertTrue(
         tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(None)))

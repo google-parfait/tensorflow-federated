@@ -1,14 +1,14 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tff.utils.get_variables" />
+<meta itemprop="name" content="tff.utils.create_variables" />
 <meta itemprop="path" content="Stable" />
 </div>
 
-# tff.utils.get_variables
+# tff.utils.create_variables
 
 Creates a set of variables that matches the given `type_spec`.
 
 ```python
-tff.utils.get_variables(
+tff.utils.create_variables(
     name,
     type_spec,
     **kwargs
@@ -20,6 +20,9 @@ source</a>
 
 <!-- Placeholder for "Used in" -->
 
+Unlike `tf.get_variables`, this method will always create new variables, and
+will not retrieve variables previously created with the same name.
+
 #### Args:
 
 *   <b>`name`</b>: The common name to use for the scope in which all of the
@@ -28,8 +31,8 @@ source</a>
     <a href="../../tff/Type.md"><code>tff.Type</code></a> or something
     convertible to it. The type signature may only be composed of tensor types
     and named tuples, possibly nested.
-*   <b>`**kwargs`</b>: Additional keyword args to pass to `tf.get_variable`
-    calls.
+*   <b>`**kwargs`</b>: Additional keyword args to pass to `tf.Variable`
+    construction.
 
 #### Returns:
 
