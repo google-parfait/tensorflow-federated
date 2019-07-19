@@ -262,7 +262,9 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(
         str(
             self._checked_capture_result(
-                tf.get_variable('foo', dtype=tf.int32, shape=[]))), 'int32')
+                tf.Variable(
+                    initial_value=0, name='foo', dtype=tf.int32, shape=[]))),
+        'int32')
 
   @test.graph_mode_test
   def test_capture_result_with_list_of_constants(self):

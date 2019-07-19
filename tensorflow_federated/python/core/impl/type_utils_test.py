@@ -679,35 +679,35 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
       type_utils.type_to_tf_structure(computation_types.NamedTupleType([]))
 
   def test_type_from_tensors_single(self):
-    v = tf.get_variable('a', dtype=tf.float32, shape=[])
+    v = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
     result = type_utils.type_from_tensors(v)
     self.assertEqual(str(result), 'float32')
 
   def test_type_from_tensors_non_convert_tensors(self):
-    v1 = tf.get_variable('foo', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
     v2 = {'bar'}
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
     with self.assertRaises(TypeError):
       type_utils.type_from_tensors(d)
 
   def test_type_from_tensors_nested_tensors(self):
-    v1 = tf.get_variable('foo', dtype=tf.int32, shape=[])
-    v2 = tf.get_variable('bar', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
+    v2 = tf.Variable(0, name='bar', dtype=tf.int32, shape=[])
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
     result = type_utils.type_from_tensors(d)
     self.assertEqual(str(result), '<v1=int32,v2=int32>')
 
   def test_type_from_tensors_list_tensors(self):
-    v1 = tf.get_variable('a', dtype=tf.float32, shape=[])
-    v2 = tf.get_variable('b', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
+    v2 = tf.Variable(0, name='b', dtype=tf.int32, shape=[])
     l = [v1, v2]
     result = type_utils.type_from_tensors(l)
     self.assertEqual(str(result), '<float32,int32>')
 
   def test_type_from_tensors_named_tuple(self):
     test_type = collections.namedtuple('NestedTensors', ['x', 'y'])
-    v1 = tf.get_variable('a', dtype=tf.float32, shape=[])
-    v2 = tf.get_variable('b', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
+    v2 = tf.Variable(0, name='b', dtype=tf.int32, shape=[])
     result = type_utils.type_from_tensors(test_type(v1, v2))
     self.assertEqual(str(result), '<x=float32,y=int32>')
 
