@@ -48,11 +48,11 @@ main() {
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
 
-  local runfiles="bazel-bin/tensorflow_federated/tools/build_pip_package.runfiles"
+  local runfiles="bazel-bin/tensorflow_federated/tools/build/build_pip_package.runfiles"
   cp -LR \
       "${runfiles}/org_tensorflow_federated/tensorflow_federated" \
       "${temp_dir}"
-  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/setup.py" \
+  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/build/setup.py" \
       "${temp_dir}"
 
   pushd "${temp_dir}" > /dev/null
