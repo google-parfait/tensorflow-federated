@@ -35,6 +35,14 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 class Type(object):
   """An abstract interface for all classes that represent TFF types."""
 
+  def compact_representation(self):
+    """Returns the compact string representation of this type."""
+    return _string_representation(self, formatted=False)
+
+  def formatted_representation(self):
+    """Returns the formatted string representation of this type."""
+    return _string_representation(self, formatted=True)
+
   @abc.abstractmethod
   def __repr__(self):
     """Returns a full-form representation of this type."""
@@ -42,7 +50,7 @@ class Type(object):
 
   def __str__(self):
     """Returns a concise representation of this type."""
-    return compact_representation(self)
+    return self.compact_representation()
 
   @abc.abstractmethod
   def __eq__(self, other):
@@ -423,24 +431,6 @@ def to_type(spec):
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
             py_typecheck.type_string(type(spec))))
-
-
-def compact_representation(type_spec):
-  """Returns the compact string representation of a TFF `Type`.
-
-  Args:
-    type_spec: An instance of a TFF `Type`.
-  """
-  return _string_representation(type_spec, formatted=False)
-
-
-def formatted_representation(type_spec):
-  """Returns the formatted string representation of a TFF `Type`.
-
-  Args:
-    type_spec: An instance of a TFF `Type`.
-  """
-  return _string_representation(type_spec, formatted=True)
 
 
 def _string_representation(type_spec, formatted):

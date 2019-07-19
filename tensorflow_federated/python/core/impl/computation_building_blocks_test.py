@@ -41,8 +41,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x.name, 'foo')
     self.assertEqual(str(x.type_signature), 'int32')
     self.assertEqual(repr(x), 'Reference(\'foo\', TensorType(tf.int32))')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x), 'foo')
+    self.assertEqual(x.compact_representation(), 'foo')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -61,12 +60,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(y), 'Selection(Reference(\'foo\', NamedTupleType(['
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', name=\'bar\')')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(y), 'foo.bar')
+    self.assertEqual(y.compact_representation(), 'foo.bar')
     z = computation_building_blocks.Selection(x, name='baz')
     self.assertEqual(str(z.type_signature), 'bool')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(z), 'foo.baz')
+    self.assertEqual(z.compact_representation(), 'foo.baz')
     with self.assertRaises(ValueError):
       _ = computation_building_blocks.Selection(x, name='bak')
     x0 = computation_building_blocks.Selection(x, index=0)
@@ -77,12 +74,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(x0), 'Selection(Reference(\'foo\', NamedTupleType(['
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', index=0)')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x0), 'foo[0]')
+    self.assertEqual(x0.compact_representation(), 'foo[0]')
     x1 = computation_building_blocks.Selection(x, index=1)
     self.assertEqual(str(x1.type_signature), 'bool')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x1), 'foo[1]')
+    self.assertEqual(x1.compact_representation(), 'foo[1]')
     with self.assertRaises(ValueError):
       _ = computation_building_blocks.Selection(x, index=2)
     with self.assertRaises(ValueError):
@@ -110,17 +105,14 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(z),
         'Tuple([(None, Reference(\'foo\', TensorType(tf.int32))), (\'y\', '
         'Reference(\'bar\', TensorType(tf.bool)))])')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(z), '<foo,y=bar>')
+    self.assertEqual(z.compact_representation(), '<foo,y=bar>')
     self.assertEqual(dir(z), ['y'])
     self.assertIs(z.y, y)
     self.assertLen(z, 2)
     self.assertIs(z[0], x)
     self.assertIs(z[1], y)
-    self.assertEqual(
-        ','.join(
-            computation_building_blocks.compact_representation(e)
-            for e in iter(z)), 'foo,bar')
+    self.assertEqual(','.join(e.compact_representation() for e in iter(z)),
+                     'foo,bar')
     z_proto = z.proto
     self.assertEqual(
         type_serialization.deserialize_type(z_proto.type), z.type_signature)
@@ -140,8 +132,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(z), 'Call(Reference(\'foo\', '
         'FunctionType(TensorType(tf.int32), TensorType(tf.bool))), '
         'Reference(\'bar\', TensorType(tf.int32)))')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(z), 'foo(bar)')
+    self.assertEqual(z.compact_representation(), 'foo(bar)')
     with self.assertRaises(TypeError):
       computation_building_blocks.Call(x)
     w = computation_building_blocks.Reference('bak', tf.float32)
@@ -170,9 +161,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         str(x.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
     self.assertEqual(x.parameter_name, arg_name)
     self.assertEqual(str(x.parameter_type), '<f=(int32 -> int32),x=int32>')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x.result),
-        'arg.f(arg.f(arg.x))')
+    self.assertEqual(x.result.compact_representation(), 'arg.f(arg.f(arg.x))')
     arg_type_repr = (
         'NamedTupleType(['
         '(\'f\', FunctionType(TensorType(tf.int32), TensorType(tf.int32))), '
@@ -183,9 +172,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         'Call(Selection(Reference(\'arg\', {0}), name=\'f\'), '
         'Selection(Reference(\'arg\', {0}), name=\'x\'))))'.format(
             arg_type_repr))
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x),
-        '(arg -> arg.f(arg.f(arg.x)))')
+    self.assertEqual(x.compact_representation(), '(arg -> arg.f(arg.f(arg.x)))')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -204,10 +191,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
               computation_building_blocks.Reference('x', (tf.int32, tf.int32)),
               index=0))], computation_building_blocks.Reference('y', tf.int32))
     self.assertEqual(str(x.type_signature), 'int32')
-    self.assertEqual([(k, computation_building_blocks.compact_representation(v))
-                      for k, v in x.locals], [('x', 'arg'), ('y', 'x[0]')])
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x.result), 'y')
+    self.assertEqual([(k, v.compact_representation()) for k, v in x.locals],
+                     [('x', 'arg'), ('y', 'x[0]')])
+    self.assertEqual(x.result.compact_representation(), 'y')
     self.assertEqual(
         repr(x), 'Block([(\'x\', Reference(\'arg\', '
         'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]))), '
@@ -215,9 +201,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)])), '
         'index=0))], '
         'Reference(\'y\', TensorType(tf.int32)))')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x),
-        '(let x=arg,y=x[0] in y)')
+    self.assertEqual(x.compact_representation(), '(let x=arg,y=x[0] in y)')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -237,8 +221,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(
         repr(x), 'Intrinsic(\'add_one\', '
         'FunctionType(TensorType(tf.int32), TensorType(tf.int32)))')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x), 'add_one')
+    self.assertEqual(x.compact_representation(), 'add_one')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -252,8 +235,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         computation_types.FunctionType([tf.int32, tf.int32], tf.int32))
     self.assertEqual(str(x.type_signature), '(<int32,int32> -> int32)')
     self.assertEqual(x.uri, 'generic_plus')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x), 'generic_plus')
+    self.assertEqual(x.compact_representation(), 'generic_plus')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -290,9 +272,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         str(concrete_federated_map.type_signature),
         '(<(int32 -> float32),{int32}@CLIENTS> -> {float32}@CLIENTS)')
     self.assertEqual(concrete_federated_map.uri, 'federated_map')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(
-            concrete_federated_map), 'federated_map')
+    self.assertEqual(concrete_federated_map.compact_representation(),
+                     'federated_map')
     concrete_federated_map_proto = concrete_federated_map.proto
     self.assertEqual(
         type_serialization.deserialize_type(concrete_federated_map_proto.type),
@@ -310,8 +291,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x.uri, '/tmp/mydata')
     self.assertEqual(
         repr(x), 'Data(\'/tmp/mydata\', SequenceType(TensorType(tf.int32)))')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x), '/tmp/mydata')
+    self.assertEqual(x.compact_representation(), '/tmp/mydata')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -330,12 +310,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
             r'CompiledComputation\([0-9a-f]+, '
             r'FunctionType\(TensorType\(tf\.int32\), '
             r'TensorType\(tf\.int32\)\)\)', repr(x)))
-    self.assertTrue(
-        re.match(r'comp#[0-9a-f]+',
-                 computation_building_blocks.compact_representation(x)))
+    self.assertTrue(re.match(r'comp#[0-9a-f]+', x.compact_representation()))
     y = computation_building_blocks.CompiledComputation(comp, name='foo')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(y), 'comp#foo')
+    self.assertEqual(y.compact_representation(), 'comp#foo')
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_placement_class(self):
@@ -343,8 +320,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(str(x.type_signature), 'placement')
     self.assertEqual(x.uri, 'clients')
     self.assertEqual(repr(x), 'Placement(\'clients\')')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(x), 'CLIENTS')
+    self.assertEqual(x.compact_representation(), 'CLIENTS')
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature)
@@ -364,30 +340,20 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     target2 = computation_building_blocks.ComputationBuildingBlock.from_proto(
         proto)
     proto2 = target2.proto
-    self.assertEqual(
-        computation_building_blocks.compact_representation(target),
-        computation_building_blocks.compact_representation(target2))
+    self.assertEqual(target.compact_representation(),
+                     target2.compact_representation())
     self.assertEqual(str(proto), str(proto2))
 
 
 class RepresentationTest(absltest.TestCase):
 
-  def test_raises_type_error(self):
-    with self.assertRaises(TypeError):
-      computation_building_blocks.compact_representation(None)
-    with self.assertRaises(TypeError):
-      computation_building_blocks.formatted_representation(None)
-    with self.assertRaises(TypeError):
-      computation_building_blocks.structural_representation(None)
-
   def test_returns_string_for_block(self):
     data = computation_building_blocks.Data('data', tf.int32)
     ref = computation_building_blocks.Reference('c', tf.int32)
     comp = computation_building_blocks.Block((('a', data), ('b', data)), ref)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, '(let a=data,b=data in c)')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     # pyformat: disable
     self.assertEqual(
         formatted_string,
@@ -397,8 +363,7 @@ class RepresentationTest(absltest.TestCase):
         ' in c)'
     )
     # pyformat: enable
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -413,13 +378,11 @@ class RepresentationTest(absltest.TestCase):
     fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg = computation_building_blocks.Data('data', tf.int32)
     comp = computation_building_blocks.Call(fn, arg)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, '(a -> a)(data)')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, '(a -> a)(data)')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -436,13 +399,11 @@ class RepresentationTest(absltest.TestCase):
         lambda: tf.constant(1), None, context_stack_impl.context_stack)
     compiled = computation_building_blocks.CompiledComputation(proto, 'a')
     comp = computation_building_blocks.Call(compiled)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'comp#a()')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'comp#a()')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -456,47 +417,39 @@ class RepresentationTest(absltest.TestCase):
     proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         lambda: tf.constant(1), None, context_stack_impl.context_stack)
     comp = computation_building_blocks.CompiledComputation(proto, 'a')
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'comp#a')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'comp#a')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     self.assertEqual(structural_string, 'Compiled(a)')
 
   def test_returns_string_for_data(self):
     comp = computation_building_blocks.Data('data', tf.int32)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'data')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'data')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     self.assertEqual(structural_string, 'data')
 
   def test_returns_string_for_intrinsic(self):
     comp = computation_building_blocks.Intrinsic('intrinsic', tf.int32)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'intrinsic')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'intrinsic')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     self.assertEqual(structural_string, 'intrinsic')
 
   def test_returns_string_for_lambda(self):
     ref = computation_building_blocks.Reference('a', tf.int32)
     comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, '(a -> a)')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, '(a -> a)')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -508,37 +461,31 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_placement(self):
     comp = computation_building_blocks.Placement(placements.CLIENTS)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'CLIENTS')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'CLIENTS')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     self.assertEqual(structural_string, 'Placement')
 
   def test_returns_string_for_reference(self):
     comp = computation_building_blocks.Reference('a', tf.int32)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'a')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'a')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     self.assertEqual(structural_string, 'Ref(a)')
 
   def test_returns_string_for_selection_with_name(self):
     ref = computation_building_blocks.Reference('a', (('b', tf.int32),
                                                       ('c', tf.bool)))
     comp = computation_building_blocks.Selection(ref, name='b')
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'a.b')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'a.b')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -552,13 +499,11 @@ class RepresentationTest(absltest.TestCase):
     ref = computation_building_blocks.Reference('a', (('b', tf.int32),
                                                       ('c', tf.bool)))
     comp = computation_building_blocks.Selection(ref, index=0)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'a[0]')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'a[0]')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -571,10 +516,9 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_tuple_with_names(self):
     data = computation_building_blocks.Data('data', tf.int32)
     comp = computation_building_blocks.Tuple((('a', data), ('b', data)))
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, '<a=data,b=data>')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     # pyformat: disable
     self.assertEqual(
         formatted_string,
@@ -584,8 +528,7 @@ class RepresentationTest(absltest.TestCase):
         '>'
     )
     # pyformat: enable
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -598,10 +541,9 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_tuple_with_no_names(self):
     data = computation_building_blocks.Data('data', tf.int32)
     comp = computation_building_blocks.Tuple((data, data))
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, '<data,data>')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     # pyformat: disable
     self.assertEqual(
         formatted_string,
@@ -611,8 +553,7 @@ class RepresentationTest(absltest.TestCase):
         '>'
     )
     # pyformat: enable
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -627,12 +568,11 @@ class RepresentationTest(absltest.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(
         compact_string,
         'federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     # pyformat: disable
     self.assertEqual(
         formatted_string,
@@ -645,8 +585,7 @@ class RepresentationTest(absltest.TestCase):
         '>)'
     )
     # pyformat: enable
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -663,10 +602,9 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_federated_map(self):
     comp = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'federated_map(<(a -> a),data>)')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     # pyformat: disable
     self.assertEqual(
         formatted_string,
@@ -676,8 +614,7 @@ class RepresentationTest(absltest.TestCase):
         '>)'
     )
     # pyformat: enable
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -700,13 +637,11 @@ class RepresentationTest(absltest.TestCase):
     arg = computation_building_blocks.Call(compiled)
 
     comp = computation_building_blocks.Call(fn, arg)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'a(comp#bbbbb())')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     self.assertEqual(formatted_string, 'a(comp#bbbbb())')
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,
@@ -725,10 +660,9 @@ class RepresentationTest(absltest.TestCase):
     sel = computation_building_blocks.Selection(tup, index=0)
     fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, sel)
     comp = computation_building_blocks.Call(fn, data)
-    compact_string = computation_building_blocks.compact_representation(comp)
+    compact_string = comp.compact_representation()
     self.assertEqual(compact_string, '(a -> <a,data,data,data,data>[0])(data)')
-    formatted_string = computation_building_blocks.formatted_representation(
-        comp)
+    formatted_string = comp.formatted_representation()
     # pyformat: disable
     self.assertEqual(
         formatted_string,
@@ -741,8 +675,7 @@ class RepresentationTest(absltest.TestCase):
         '>[0])(data)'
     )
     # pyformat: enable
-    structural_string = computation_building_blocks.structural_representation(
-        comp)
+    structural_string = comp.structural_representation()
     # pyformat: disable
     self.assertEqual(
         structural_string,

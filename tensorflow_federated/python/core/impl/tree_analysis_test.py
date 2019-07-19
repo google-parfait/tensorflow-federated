@@ -58,9 +58,7 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
             computation_types.FederatedType(tf.int32, placements.CLIENTS),
             computation_types.FederatedType(tf.int32, placements.SERVER)))
 
-    with self.assertRaisesRegex(
-        ValueError,
-        computation_building_blocks.compact_representation(intrinsic)):
+    with self.assertRaisesRegex(ValueError, intrinsic.compact_representation()):
       tree_analysis.check_intrinsics_whitelisted_for_reduction(intrinsic)
 
 

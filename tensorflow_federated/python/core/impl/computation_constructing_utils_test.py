@@ -569,7 +569,7 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
         good_type, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(lam),
+        lam.formatted_representation(),
         '(let\n'
         '  value_comp_placeholder=x\n'
         ' in (lambda_arg -> <\n'
@@ -588,7 +588,7 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
         good_type, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(lam),
+        lam.formatted_representation(),
         '(let\n'
         '  value_comp_placeholder=x\n'
         ' in (lambda_arg -> <\n'
@@ -716,7 +716,7 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
         federated_comp, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(federated_setattr),
+        federated_setattr.formatted_representation(),
         'federated_map(<\n'
         '  (let\n'
         '    value_comp_placeholder=x\n'
@@ -744,7 +744,7 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
         federated_comp, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(federated_setattr),
+        federated_setattr.formatted_representation(),
         'federated_apply(<\n'
         '  (let\n'
         '    value_comp_placeholder=x\n'
@@ -785,7 +785,7 @@ class CreateComputationAppendingTest(absltest.TestCase):
     comp = computation_constructing_utils.create_computation_appending(
         comp1, comp2)
     self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
+        comp.compact_representation(),
         '(let comps=<<x,x>,y> in <comps[0][0],comps[0][1],comps[1]>)')
     self.assertEqual(str(comp.type_signature), '<int32,int32,int32>')
 
@@ -799,7 +799,7 @@ class CreateComputationAppendingTest(absltest.TestCase):
     comp = computation_constructing_utils.create_computation_appending(
         comp1, ('c', comp2))
     self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
+        comp.compact_representation(),
         '(let comps=<<a=x,b=x>,y> in <a=comps[0][0],b=comps[0][1],c=comps[1]>)')
     self.assertEqual(str(comp.type_signature), '<a=int32,b=int32,c=int32>')
 
@@ -904,9 +904,8 @@ class CreateFederatedAggregateTest(absltest.TestCase):
                                                 report_ref)
     comp = computation_constructing_utils.create_federated_aggregate(
         value, zero, accumulate, merge, report)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -929,9 +928,8 @@ class CreateFederatedApplyTest(absltest.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_apply(fn, arg)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_apply(<(x -> x),y>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_apply(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -945,9 +943,7 @@ class CreateFederatedBroadcastTest(absltest.TestCase):
     value_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_broadcast(value)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_broadcast(v)')
+    self.assertEqual(comp.compact_representation(), 'federated_broadcast(v)')
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
@@ -961,9 +957,7 @@ class CreateFederatedCollectTest(absltest.TestCase):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_collect(value)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_collect(v)')
+    self.assertEqual(comp.compact_representation(), 'federated_collect(v)')
     self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
 
 
@@ -986,9 +980,8 @@ class CreateFederatedMapTest(absltest.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_map(fn, arg)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map(<(x -> x),y>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
@@ -1013,9 +1006,8 @@ class CreateFederatedMapAllEqualTest(absltest.TestCase):
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_map_all_equal(
         fn, arg)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map_all_equal(<(x -> x),y>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map_all_equal(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
@@ -1038,9 +1030,8 @@ class CreateFederatedMapOrApplyTest(absltest.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_map_or_apply(fn, arg)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_apply(<(x -> x),y>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_apply(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
   def test_returns_federated_map(self):
@@ -1049,9 +1040,8 @@ class CreateFederatedMapOrApplyTest(absltest.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_federated_map_or_apply(fn, arg)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map(<(x -> x),y>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
@@ -1065,9 +1055,7 @@ class CreateFederatedMeanTest(absltest.TestCase):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_mean(value, None)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_mean(v)')
+    self.assertEqual(comp.compact_representation(), 'federated_mean(v)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
   def test_returns_federated_weighted_mean(self):
@@ -1076,9 +1064,8 @@ class CreateFederatedMeanTest(absltest.TestCase):
     weight_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     weight = computation_building_blocks.Data('w', weight_type)
     comp = computation_constructing_utils.create_federated_mean(value, weight)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_weighted_mean(<v,w>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_weighted_mean(<v,w>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -1117,9 +1104,8 @@ class CreateFederatedReduceTest(absltest.TestCase):
     op = computation_building_blocks.Lambda('x', op_type, op_result)
     comp = computation_constructing_utils.create_federated_reduce(
         value, zero, op)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_reduce(<v,z,(x -> o)>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_reduce(<v,z,(x -> o)>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -1133,9 +1119,7 @@ class CreateFederatedSumTest(absltest.TestCase):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_sum(value)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_sum(v)')
+    self.assertEqual(comp.compact_representation(), 'federated_sum(v)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -1157,7 +1141,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_unzip(value)
     self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
+        comp.compact_representation(),
         '(let value=v in <federated_map(<(arg -> arg[0]),value>)>)')
     self.assertEqual(str(comp.type_signature), '<{int32}@CLIENTS>')
 
@@ -1168,7 +1152,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_unzip(value)
     self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
+        comp.compact_representation(),
         '(let value=v in <a=federated_map(<(arg -> arg[0]),value>)>)')
     self.assertEqual(str(comp.type_signature), '<a={int32}@CLIENTS>')
 
@@ -1179,7 +1163,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         '(let\n'
         '  value=v\n'
         ' in <\n'
@@ -1206,7 +1190,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         '(let\n'
         '  value=v\n'
         ' in <\n'
@@ -1231,7 +1215,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         '(let\n'
         '  value=v\n'
         ' in <\n'
@@ -1254,7 +1238,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_unzip(value)
     self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
+        comp.compact_representation(),
         '(let value=v in <federated_apply(<(arg -> arg[0]),value>)>)')
     self.assertEqual(str(comp.type_signature), '<int32@SERVER>')
 
@@ -1265,7 +1249,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_unzip(value)
     self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
+        comp.compact_representation(),
         '(let value=v in <a=federated_apply(<(arg -> arg[0]),value>)>)')
     self.assertEqual(str(comp.type_signature), '<a=int32@SERVER>')
 
@@ -1276,7 +1260,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         '(let\n'
         '  value=v\n'
         ' in <\n'
@@ -1302,7 +1286,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         '(let\n'
         '  value=v\n'
         ' in <\n'
@@ -1327,7 +1311,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         '(let\n'
         '  value=v\n'
         ' in <\n'
@@ -1366,18 +1350,16 @@ class CreateFederatedValueTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', tf.int32)
     comp = computation_constructing_utils.create_federated_value(
         value, placement_literals.CLIENTS)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_value_at_clients(v)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_value_at_clients(v)')
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
   def test_returns_federated_value_at_server(self):
     value = computation_building_blocks.Data('v', tf.int32)
     comp = computation_constructing_utils.create_federated_value(
         value, placement_literals.SERVER)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_value_at_server(v)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_value_at_server(v)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -1399,9 +1381,8 @@ class CreateFederatedZipTest(absltest.TestCase):
     value_type = computation_types.NamedTupleType((type_signature,))
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_zip(value)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map(<(arg -> <arg>),v[0]>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map(<(arg -> <arg>),v[0]>)')
     self.assertEqual(str(comp.type_signature), '{<int32>}@CLIENTS')
 
   def test_returns_federated_map_with_one_value_unnamed_tuple(self):
@@ -1409,9 +1390,8 @@ class CreateFederatedZipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     tup = computation_building_blocks.Tuple((value,))
     comp = computation_constructing_utils.create_federated_zip(tup)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map(<(arg -> <arg>),<v>[0]>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map(<(arg -> <arg>),<v>[0]>)')
     self.assertEqual(str(comp.type_signature), '{<int32>}@CLIENTS')
 
   def test_returns_federated_map_with_one_value_named(self):
@@ -1420,9 +1400,8 @@ class CreateFederatedZipTest(absltest.TestCase):
     value_type = computation_types.NamedTupleType((('a', type_signature),))
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_federated_zip(value)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map(<(arg -> <a=arg>),v[0]>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map(<(arg -> <a=arg>),v[0]>)')
     self.assertEqual(str(comp.type_signature), '{<a=int32>}@CLIENTS')
 
   def test_returns_federated_map_with_one_value_named_tuple(self):
@@ -1430,9 +1409,8 @@ class CreateFederatedZipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     tup = computation_building_blocks.Tuple((('a', value),))
     comp = computation_constructing_utils.create_federated_zip(tup)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_map(<(arg -> <a=arg>),<a=v>[0]>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_map(<(arg -> <a=arg>),<a=v>[0]>)')
     self.assertEqual(str(comp.type_signature), '{<a=int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_two_values_unnamed(self):
@@ -1444,7 +1422,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1471,7 +1449,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1503,7 +1481,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    a=x[0],\n'
@@ -1530,7 +1508,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    a=x[0],\n'
@@ -1562,7 +1540,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1603,7 +1581,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1652,7 +1630,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    a=x[0],\n'
@@ -1697,7 +1675,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    a=x[0],\n'
@@ -1749,7 +1727,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1795,7 +1773,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_map(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1837,9 +1815,8 @@ class CreateFederatedZipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     tup = computation_building_blocks.Tuple((value,))
     comp = computation_constructing_utils.create_federated_zip(tup)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_apply(<(arg -> <arg>),<v>[0]>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_apply(<(arg -> <arg>),<v>[0]>)')
     self.assertEqual(str(comp.type_signature), '<int32>@SERVER')
 
   def test_returns_federated_apply_with_one_value_named(self):
@@ -1847,9 +1824,8 @@ class CreateFederatedZipTest(absltest.TestCase):
     value = computation_building_blocks.Data('v', value_type)
     tup = computation_building_blocks.Tuple((('a', value),))
     comp = computation_constructing_utils.create_federated_zip(tup)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'federated_apply(<(arg -> <a=arg>),<a=v>[0]>)')
+    self.assertEqual(comp.compact_representation(),
+                     'federated_apply(<(arg -> <a=arg>),<a=v>[0]>)')
     self.assertEqual(str(comp.type_signature), '<a=int32>@SERVER')
 
   def test_returns_federated_zip_at_server_with_two_values_unnamed(self):
@@ -1861,7 +1837,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_apply(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1890,7 +1866,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_apply(<\n'
         '  (x -> <\n'
         '    a=x[0],\n'
@@ -1919,7 +1895,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_apply(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -1964,7 +1940,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_apply(<\n'
         '  (x -> <\n'
         '    a=x[0],\n'
@@ -2012,7 +1988,7 @@ class CreateFederatedZipTest(absltest.TestCase):
     comp = computation_constructing_utils.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(comp),
+        comp.formatted_representation(),
         'federated_apply(<\n'
         '  (x -> <\n'
         '    x[0],\n'
@@ -2066,9 +2042,8 @@ class CreateSequenceMapTest(absltest.TestCase):
     arg_type = computation_types.SequenceType(tf.int32)
     arg = computation_building_blocks.Data('y', arg_type)
     comp = computation_constructing_utils.create_sequence_map(fn, arg)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'sequence_map(<(x -> x),y>)')
+    self.assertEqual(comp.compact_representation(),
+                     'sequence_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32*')
 
 
@@ -2107,9 +2082,8 @@ class CreateSequenceReduceTest(absltest.TestCase):
     op = computation_building_blocks.Lambda('x', op_type, op_result)
     comp = computation_constructing_utils.create_sequence_reduce(
         value, zero, op)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'sequence_reduce(<v,z,(x -> o)>)')
+    self.assertEqual(comp.compact_representation(),
+                     'sequence_reduce(<v,z,(x -> o)>)')
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
@@ -2123,9 +2097,7 @@ class CreateSequenceSumTest(absltest.TestCase):
     value_type = computation_types.SequenceType(tf.int32)
     value = computation_building_blocks.Data('v', value_type)
     comp = computation_constructing_utils.create_sequence_sum(value)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        'sequence_sum(v)')
+    self.assertEqual(comp.compact_representation(), 'sequence_sum(v)')
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
@@ -2214,7 +2186,7 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
     named_tuple = computation_constructing_utils.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     self.assertRegexMatch(
-        computation_building_blocks.compact_representation(named_tuple),
+        named_tuple.compact_representation(),
         [r'federated_(map|apply)\(<\(x -> <a=x\[0\],b=x\[1\]>\),data>\)'])
 
   @parameterized.named_parameters(
@@ -2228,7 +2200,7 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
     named_tuple = computation_constructing_utils.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     self.assertRegexMatch(
-        computation_building_blocks.compact_representation(named_tuple),
+        named_tuple.compact_representation(),
         [r'federated_(map|apply)\(<\(x -> <a=x\[0\],b=x\[1\]>\),data>\)'])
 
 
@@ -2295,12 +2267,10 @@ class CreateZipTest(absltest.TestCase):
     tup_2 = computation_building_blocks.Tuple((tup_1, tup_1))
     comp = tup_2
     new_comp = computation_constructing_utils.create_zip(comp)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        '<<a,b,c>,<a,b,c>>')
+    self.assertEqual(comp.compact_representation(), '<<a,b,c>,<a,b,c>>')
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(new_comp),
+        new_comp.formatted_representation(),
         '(let\n'
         '  _var1=<\n'
         '    <\n'
@@ -2345,12 +2315,11 @@ class CreateZipTest(absltest.TestCase):
     tup_2 = computation_building_blocks.Tuple((('g', tup_1), ('h', tup_1)))
     comp = tup_2
     new_comp = computation_constructing_utils.create_zip(comp)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        '<g=<d=a,e=b,f=c>,h=<d=a,e=b,f=c>>')
+    self.assertEqual(comp.compact_representation(),
+                     '<g=<d=a,e=b,f=c>,h=<d=a,e=b,f=c>>')
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(new_comp),
+        new_comp.formatted_representation(),
         '(let\n'
         '  _var1=<\n'
         '    g=<\n'
@@ -2395,11 +2364,10 @@ class CreateZipTest(absltest.TestCase):
     ref = computation_building_blocks.Reference('a', type_signature_2)
     comp = ref
     new_comp = computation_constructing_utils.create_zip(comp)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp), 'a')
+    self.assertEqual(comp.compact_representation(), 'a')
     # pyformat: disable
     self.assertEqual(
-        computation_building_blocks.formatted_representation(new_comp),
+        new_comp.formatted_representation(),
         '<\n'
         '  <\n'
         '    a[0][0],\n'

@@ -1217,8 +1217,7 @@ def insert_called_tf_identity_at_leaves(comp):
         '`computation_building_blocks.Lambda` whose parameter '
         'and result types can both be stamped into TensorFlow '
         'graphs. You have called in on a {} of type signature {}.'.format(
-            computation_building_blocks.compact_representation(comp),
-            comp.type_signature))
+            comp.compact_representation(), comp.type_signature))
 
   def _should_decorate(comp):
     return (isinstance(comp, computation_building_blocks.Reference) and
@@ -1329,9 +1328,8 @@ def unwrap_placement(comp):
     raise ValueError(
         '`unwrap_placement` can only handle computations with at most a single '
         'unbound reference; you have passed in the computation {} with {} '
-        'unbound references.'.format(
-            computation_building_blocks.compact_representation(comp),
-            len(root_unbound_references)))
+        'unbound references.'.format(comp.compact_representation(),
+                                     len(root_unbound_references)))
 
   if len(root_unbound_references) == 1:
     unbound_reference_name = root_unbound_references.pop()
