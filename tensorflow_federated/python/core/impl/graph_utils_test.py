@@ -57,20 +57,12 @@ class GraphUtilsTest(test.TestCase):
     elif binding_oneof == 'sequence':
       self.assertIsInstance(val, graph_utils.DATASET_REPRESENTATION_TYPES)
       sequence_oneof = binding.sequence.WhichOneof('binding')
-      if sequence_oneof == 'iterator_string_handle_name':
-        # TODO(b/129956296): Eventually delete this deprecated code path.
-        handle = graph.get_tensor_by_name(
-            binding.sequence.iterator_string_handle_name)
-        self.assertIn(
-            str(handle.op.type), ['Placeholder', 'IteratorToStringHandle'])
-        self.assertEqual(handle.dtype, tf.string)
-      else:
-        self.assertEqual(sequence_oneof, 'variant_tensor_name')
-        variant_tensor = graph.get_tensor_by_name(
-            binding.sequence.variant_tensor_name)
-        op = str(variant_tensor.op.type)
-        self.assertTrue((op == 'Placeholder') or ('Dataset' in op))
-        self.assertEqual(variant_tensor.dtype, tf.variant)
+      self.assertEqual(sequence_oneof, 'variant_tensor_name')
+      variant_tensor = graph.get_tensor_by_name(
+          binding.sequence.variant_tensor_name)
+      op = str(variant_tensor.op.type)
+      self.assertTrue((op == 'Placeholder') or ('Dataset' in op))
+      self.assertEqual(variant_tensor.dtype, tf.variant)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       output_dtypes, output_shapes = (
           type_utils.type_to_tf_dtypes_and_shapes(type_spec.element))
@@ -423,11 +415,9 @@ class GraphUtilsTest(test.TestCase):
 
   def test_compute_map_from_bindings_with_sequence(self):
     source = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(
-            iterator_string_handle_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
     target = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(
-            iterator_string_handle_name='bar'))
+        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='bar'))
     result = graph_utils.compute_map_from_bindings(source, target)
     self.assertEqual(str(result), 'OrderedDict([(\'foo\', \'bar\')])')
 
@@ -441,8 +431,7 @@ class GraphUtilsTest(test.TestCase):
 
   def test_extract_tensor_names_from_binding_with_sequence(self):
     binding = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(
-            iterator_string_handle_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
     result = graph_utils.extract_tensor_names_from_binding(binding)
     self.assertEqual(str(sorted(result)), '[\'foo\']')
 

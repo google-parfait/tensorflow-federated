@@ -521,15 +521,14 @@ def _repack_binding_with_new_name(binding, name_map):
             for e in binding.tuple.element
         ]))
   elif binding.WhichOneof('binding') == 'sequence':
-    handle_name = binding.sequence.iterator_string_handle_name
-    if handle_name:
-      return pb.TensorFlow.Binding(
-          sequence=pb.TensorFlow.SequenceBinding(
-              iterator_string_handle_name=name_map[handle_name]))
-    else:
+    sequence_oneof = binding.sequence.WhichOneof('binding')
+    if sequence_oneof == 'variant_tensor_name':
       return pb.TensorFlow.Binding(
           sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name=name_map[
               binding.sequence.variant_tensor_name]))
+    else:
+      raise ValueError(
+          'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))
   else:
     raise TypeError
 
