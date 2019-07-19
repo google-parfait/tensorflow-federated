@@ -225,7 +225,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     transfomed_comp, modified = transformation_utils.transform_postorder(
         comp, tx_fn)
     self.assertEqual(
-        computation_building_blocks.compact_representation(transfomed_comp),
+        transfomed_comp.compact_representation(),
         'F6((FEDERATED_arg -> F5(F2(F1(FEDERATED_arg)[0])(F4(F3(FEDERATED_arg)[1])))))'
     )
     self.assertTrue(modified)
@@ -240,9 +240,8 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     same_comp, modified = transformation_utils.transform_postorder(
         comp, transform_noop)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(same_comp),
-        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(same_comp.compact_representation(),
+                     comp.compact_representation())
     self.assertFalse(modified)
 
   @parameterized.named_parameters(
@@ -371,9 +370,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
         comp, transform_noop, empty_context_tree)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(same_comp),
-        computation_building_blocks.compact_representation(comp))
+    self.assertEqual(same_comp.compact_representation(),
+                     comp.compact_representation())
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks())
@@ -1203,9 +1201,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     dummy_tracker = transformation_utils.ReferenceCounter(
         'x', computation_building_blocks.Data('bound_data', tf.int32))
     self.assertEqual(dummy_tracker.name, 'x')
-    self.assertEqual(
-        computation_building_blocks.compact_representation(dummy_tracker.value),
-        'bound_data')
+    self.assertEqual(dummy_tracker.value.compact_representation(), 'bound_data')
     self.assertEqual(dummy_tracker.count, 0)
 
   def test_reference_tracker_updates(self):
@@ -1250,9 +1246,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     result = computation_building_blocks.Tuple([ref, ref])
     simple_block = computation_building_blocks.Block(simple_block.locals,
                                                      result)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(simple_block),
-        '(let x=data in <x,x>)')
+    self.assertEqual(simple_block.compact_representation(),
+                     '(let x=data in <x,x>)')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         simple_block)
 
@@ -1276,9 +1271,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     second_block = computation_building_blocks.Block([('x', first_block)],
                                                      outer_block_output)
 
-    self.assertEqual(
-        computation_building_blocks.compact_representation(second_block),
-        '(let x=(let x=data in x) in x)')
+    self.assertEqual(second_block.compact_representation(),
+                     '(let x=(let x=data in x) in x)')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         second_block)
 
@@ -1311,9 +1305,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     block_input = computation_building_blocks.Data('data', tf.int32)
     block = computation_building_blocks.Block([('x', block_input)],
                                               called_lambda)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(block),
-        '(let x=data in (x -> x)(x))')
+    self.assertEqual(block.compact_representation(),
+                     '(let x=data in (x -> x)(x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         block)
 
@@ -1340,9 +1333,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     outer_x = computation_building_blocks.Reference('x', tf.int32)
     call = computation_building_blocks.Call(inner_lambda, outer_x)
     outer_lambda = computation_building_blocks.Lambda('x', tf.int32, call)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(outer_lambda),
-        '(x -> (x -> x)(x))')
+    self.assertEqual(outer_lambda.compact_representation(),
+                     '(x -> (x -> x)(x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         outer_lambda)
 
@@ -1372,9 +1364,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     block = computation_building_blocks.Block([('arg', selected)], internal_arg)
     lam = computation_building_blocks.Lambda('arg', arg_comp.type_signature,
                                              block)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(lam),
-        '(arg -> (let arg=arg[0] in arg))')
+    self.assertEqual(lam.compact_representation(),
+                     '(arg -> (let arg=arg[0] in arg))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         lam)
 
@@ -1403,9 +1394,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     lower_block = computation_building_blocks.Block([('x', used1)], ref)
     higher_block = computation_building_blocks.Block([('used1', used2)],
                                                      lower_block)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(higher_block),
-        '(let used1=used2 in (let x=used1 in x))')
+    self.assertEqual(higher_block.compact_representation(),
+                     '(let used1=used2 in (let x=used1 in x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         higher_block)
 
@@ -1433,10 +1423,8 @@ class TransformationUtilsTest(parameterized.TestCase):
                                                                  used1)
     user_inlined_higher_block = computation_building_blocks.Block(
         [('used1', used2)], user_inlined_lower_block)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(
-            user_inlined_higher_block),
-        '(let used1=used2 in (let x=used1 in used1))')
+    self.assertEqual(user_inlined_higher_block.compact_representation(),
+                     '(let used1=used2 in (let x=used1 in used1))')
     second_context_stack = transformation_utils.get_count_of_references_to_variables(
         user_inlined_higher_block)
 
@@ -1470,9 +1458,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     used1 = computation_building_blocks.Data('used1', tf.int32)
     outer_block = computation_building_blocks.Block([('x', used), ('y', used1)],
                                                     mediate_tuple)
-    self.assertEqual(
-        computation_building_blocks.compact_representation(outer_block),
-        '(let x=used,y=used1 in <x,(let x=y in x)>)')
+    self.assertEqual(outer_block.compact_representation(),
+                     '(let x=used,y=used1 in <x,(let x=y in x)>)')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         outer_block)
 

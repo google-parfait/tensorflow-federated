@@ -48,9 +48,8 @@ class ValueUtilsTest(parameterized.TestCase):
 
     comp, _ = transformations.uniquify_compiled_computation_names(
         value_impl.ValueImpl.get_comp(curried))
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
+    self.assertEqual(comp.compact_representation(),
+                     '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
 
 
 if __name__ == '__main__':

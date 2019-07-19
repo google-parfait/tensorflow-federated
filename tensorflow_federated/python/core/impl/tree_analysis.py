@@ -73,11 +73,10 @@ def check_has_single_placement(comp, single_placement):
     """Checks that the placement in `type_spec` matches `single_placement`."""
     if (isinstance(comp.type_signature, computation_types.FederatedType) and
         comp.type_signature.placement != single_placement):
-      raise ValueError(
-          'Comp contains a placement other than {}; '
-          'placement {} on comp {} inside the structure. '.format(
-              single_placement, comp.type_signature.placement,
-              computation_building_blocks.compact_representation(comp)))
+      raise ValueError('Comp contains a placement other than {}; '
+                       'placement {} on comp {} inside the structure. '.format(
+                           single_placement, comp.type_signature.placement,
+                           comp.compact_representation()))
     return comp, False
 
   transformation_utils.transform_postorder(comp, _check_single_placement)
@@ -113,12 +112,11 @@ def check_intrinsics_whitelisted_for_reduction(comp):
   )
 
   def _check_whitelisted(comp):
-    if isinstance(comp, computation_building_blocks.Intrinsic
-                 ) and comp.uri not in uri_whitelist:
+    if (isinstance(comp, computation_building_blocks.Intrinsic) and
+        comp.uri not in uri_whitelist):
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
-          'broadcast, the intrinsic {}'.format(
-              computation_building_blocks.compact_representation(comp)))
+          'broadcast, the intrinsic {}'.format(comp.compact_representation()))
     return comp, False
 
   transformation_utils.transform_postorder(comp, _check_whitelisted)

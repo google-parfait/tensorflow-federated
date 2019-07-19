@@ -827,10 +827,10 @@ class BoundVariableTracker(object):
                    computation_building_blocks.ComputationBuildingBlock) and
         isinstance(other.value,
                    computation_building_blocks.ComputationBuildingBlock)):
-      return (computation_building_blocks.compact_representation(
-          self.value) == computation_building_blocks.compact_representation(
-              other.value) and type_utils.are_equivalent_types(
-                  self.value.type_signature, other.value.type_signature))
+      return (self.value.compact_representation() ==
+              other.value.compact_representation() and
+              type_utils.are_equivalent_types(self.value.type_signature,
+                                              other.value.type_signature))
     return self.value is other.value
 
   def __ne__(self, other):

@@ -3,6 +3,8 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="__eq__"/>
 <meta itemprop="property" content="__ne__"/>
+<meta itemprop="property" content="compact_representation"/>
+<meta itemprop="property" content="formatted_representation"/>
 </div>
 
 # tff.Type
@@ -56,3 +58,25 @@ __ne__(other)
 ```
 
 Return self!=value.
+
+<h3 id="compact_representation"><code>compact_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
+```python
+compact_representation()
+```
+
+Returns the compact string representation of this type.
+
+<h3 id="formatted_representation"><code>formatted_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
+```python
+formatted_representation()
+```
+
+Returns the formatted string representation of this type.

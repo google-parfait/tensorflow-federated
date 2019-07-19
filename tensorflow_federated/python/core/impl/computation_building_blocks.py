@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import enum
+import enum  # pylint: disable=g-bad-import-order
 import zlib
 
 import six
@@ -108,6 +108,18 @@ class ComputationBuildingBlock(typed_object.TypedObject):
   def type_signature(self):
     return self._type_signature
 
+  def compact_representation(self):
+    """Returns the compact string representation of this building block."""
+    return _string_representation(self, formatted=False)
+
+  def formatted_representation(self):
+    """Returns the formatted string representation of this building block."""
+    return _string_representation(self, formatted=True)
+
+  def structural_representation(self):
+    """Returns the structural string representation of this building block."""
+    return _structural_representation(self)
+
   @abc.abstractproperty
   def proto(self):
     """Returns a serialized form of this object as a pb.Computation instance."""
@@ -123,7 +135,7 @@ class ComputationBuildingBlock(typed_object.TypedObject):
 
   def __str__(self):
     """Returns a concise representation of this computation building block."""
-    return compact_representation(self)
+    return self.compact_representation()
 
 
 class Reference(ComputationBuildingBlock):
@@ -841,24 +853,6 @@ class Placement(ComputationBuildingBlock):
     return 'Placement(\'{}\')'.format(self.uri)
 
 
-def compact_representation(comp):
-  """Returns the compact string representation of the given `comp`.
-
-  Args:
-    comp: An instance of a TFF `ComputationBuildingBlock`.
-  """
-  return _string_representation(comp, formatted=False)
-
-
-def formatted_representation(comp):
-  """Returns the formatted string representation of the given `comp`.
-
-  Args:
-    comp: An instance of a TFF `ComputationBuildingBlock`.
-  """
-  return _string_representation(comp, formatted=True)
-
-
 def _string_representation(comp, formatted):
   """Returns the string representation of a `ComputationBuildingBlock`.
 
@@ -996,7 +990,7 @@ def _string_representation(comp, formatted):
     return ''.join(lines)
 
 
-def structural_representation(comp):
+def _structural_representation(comp):
   """Returns the structural string representation of the given `comp`.
 
   This functions creates and returns a string representing the structure of the
