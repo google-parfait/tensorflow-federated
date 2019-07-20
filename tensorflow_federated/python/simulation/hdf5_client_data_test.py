@@ -32,16 +32,19 @@ from tensorflow_federated.python.simulation import hdf5_client_data
 
 TEST_DATA = {
     'CLIENT A': {
+        'w': np.asarray([100, 200, 300], dtype='i8'),
         'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
         'y': np.asarray([4.0, 5.0, 6.0], dtype='f4'),
         'z': np.asarray(['a', 'b', 'c'], dtype='S'),
     },
     'CLIENT B': {
+        'w': np.asarray([1000], dtype='i8'),
         'x': np.asarray([[10, 11]], dtype='i4'),
         'y': np.asarray([7.0], dtype='f4'),
         'z': np.asarray(['d'], dtype='S'),
     },
     'CLIENT C': {
+        'w': np.asarray([10000, 20000], dtype='i8'),
         'x': np.asarray([[100, 101], [200, 201]], dtype='i4'),
         'y': np.asarray([8.0, 9.0], dtype='f4'),
         'z': np.asarray(['e', 'f'], dtype='S'),
@@ -57,8 +60,8 @@ def create_fake_hdf5():
     examples_group = f.create_group('examples')
     for user_id, data in six.iteritems(TEST_DATA):
       user_group = examples_group.create_group(user_id)
-      for name, values in six.iteritems(data):
-        user_group.create_dataset(name, data=values)
+      for name, values in sorted(six.iteritems(data)):
+        user_group.create_dataset(name, data=values, dtype=values.dtype)
   return filepath
 
 
@@ -81,6 +84,7 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_output_shapes_property(self):
     expected_shapes = {
+        'w': tf.TensorShape([]),
         'x': tf.TensorShape([2]),
         'y': tf.TensorShape([]),
         'z': tf.TensorShape([]),
@@ -90,7 +94,12 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertDictEqual(client_data.output_shapes, expected_shapes)
 
   def test_output_types_property(self):
-    expected_types = {'x': tf.int32, 'y': tf.float32, 'z': tf.string}
+    expected_types = {
+        'w': tf.int64,
+        'x': tf.int32,
+        'y': tf.float32,
+        'z': tf.string,
+    }
     client_data = hdf5_client_data.HDF5ClientData(
         HDF5ClientDataTest.test_data_filepath)
     self.assertDictEqual(client_data.output_types, expected_types)
