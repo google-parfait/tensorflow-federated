@@ -1,5 +1,17 @@
 # Lint as: python3
-# TODO: copyright notice
+# Copyright 2019, Krishna Pillutla and Sham M. Kakade and Zaid Harchaoui.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Test Robust Aggregation with Numpy Implementation."""
 
@@ -160,8 +172,7 @@ def get_mean(dataset):
 
 
 def get_means_and_weights(federated_train_data):
-  """Compute mean of each client's dataset and stack them into a matrix.
-  Also return weights proportional to the number of datapoints in each dataset."""
+  """Return mean of each client's dataset and weight for each client."""
   outs = [get_mean(ds) for ds in federated_train_data]
   means, counts = zip(*outs)
   weights = np.asarray(counts, dtype=np.float32) / sum(counts)
@@ -187,6 +198,7 @@ def aggregation_fn_np(
 
 class RobustAggregationTest(tf.test.TestCase):
   """Class to test Robust Aggregation."""
+
   def test_all(self):
     """Main test for Robust Aggregation."""
     model_fn = get_model_fn()

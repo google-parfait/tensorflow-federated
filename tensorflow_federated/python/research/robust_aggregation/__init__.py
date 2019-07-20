@@ -1,4 +1,19 @@
-# TODO: copyright notice
+# Lint as: python3
+# Copyright 2019, Krishna Pillutla and Sham M. Kakade and Zaid Harchaoui.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Simple implementation of the RFA Algorithm for robust aggregation."""
 
 from .rfa import build_stateless_robust_aggregation
 from .rfa import build_robust_federated_aggregation_process
@@ -6,4 +21,3 @@ from .rfa import build_robust_federated_aggregation_process
 __all__ = ['build_stateless_robust_aggregation',
            'build_robust_federated_aggregation_process'
           ]
-
