@@ -31,6 +31,5 @@ py_test(
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "//tensorflow_federated/python/examples/mnist:models",
     ],
 )
