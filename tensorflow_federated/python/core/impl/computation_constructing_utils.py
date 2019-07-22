@@ -1205,6 +1205,75 @@ def create_federated_zip(value):
     return create_named_federated_tuple(unnamed_zip, names_to_add)
 
 
+def create_generic_constant(type_spec, scalar_value):
+  """Creates constant for a combination of federated, tuple and tensor types.
+
+  Args:
+    type_spec: Instance of `computation_types.Type` containing only federated,
+      tuple or tensor types for which we wish to construct a generic constant.
+      May also be something convertible to a `computation_types.Type` via
+      `computation_types.to_type`.
+    scalar_value: The scalar value we wish this constant to have.
+
+  Returns:
+    Instance of `computation_building_blocks.ComputationBuildingBlock`
+    representing `scalar_value` packed into `type_spec`.
+
+  Raises:
+    TypeError: If types don't match their specification in the args section.
+      Notice validation of consistency of `type_spec` with `scalar_value` is not
+      the rsponsibility of this function.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
+  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
+      or inferred_scalar_value_type.shape != tf.TensorShape(())):
+    raise TypeError('Must pass a scalar value to '
+                    '`create_tensorflow_constant`; encountered a value '
+                    '{}'.format(scalar_value))
+  if not type_utils.type_tree_contains_only(type_spec, (
+      computation_types.FederatedType,
+      computation_types.NamedTupleType,
+      computation_types.TensorType,
+  )):
+    raise TypeError
+  if type_utils.type_tree_contains_only(type_spec, (
+      computation_types.NamedTupleType,
+      computation_types.TensorType,
+  )):
+    return create_tensorflow_constant(type_spec, scalar_value)
+  elif isinstance(type_spec, computation_types.FederatedType):
+    unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
+    if type_spec.placement == placement_literals.CLIENTS:
+      placement_federated_type = computation_types.FederatedType(
+          type_spec.member, type_spec.placement, all_equal=True)
+      placement_fn_type = computation_types.FunctionType(
+          type_spec.member, placement_federated_type)
+      placement_function = computation_building_blocks.Intrinsic(
+          intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri, placement_fn_type)
+    elif type_spec.placement == placement_literals.SERVER:
+      placement_federated_type = computation_types.FederatedType(
+          type_spec.member, type_spec.placement, all_equal=True)
+      placement_fn_type = computation_types.FunctionType(
+          type_spec.member, placement_federated_type)
+      placement_function = computation_building_blocks.Intrinsic(
+          intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type)
+    return computation_building_blocks.Call(placement_function, unplaced_zero)
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    elements = []
+    for k in range(len(type_spec)):
+      elements.append(create_generic_constant(type_spec[k], scalar_value))
+    names = [name for name, _ in anonymous_tuple.to_elements(type_spec)]
+    packed_elements = computation_building_blocks.Tuple(elements)
+    named_tuple = create_named_tuple(packed_elements, names)
+    return named_tuple
+  else:
+    raise ValueError(
+        'The type_spec {} has slipped through all our '
+        'generic constant cases, and failed to raise.'.format(type_spec))
+
+
 def _create_chain_zipped_values(value):
   r"""Creates a chain of called federated zip with two values.
 
