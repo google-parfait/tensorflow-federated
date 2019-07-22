@@ -764,15 +764,11 @@ py_library(
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":context_stack_base",
-        ":intrinsic_defs",
-        ":placement_literals",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//third_party/py/six",
-        "//third_party/py/tensorflow",
     ],
 )
 

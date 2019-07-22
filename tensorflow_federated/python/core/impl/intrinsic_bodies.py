@@ -168,8 +168,8 @@ def get_intrinsic_bodies(context_stack):
 
   def federated_sum(x):
     zero = value_impl.ValueImpl(
-        intrinsic_utils.create_generic_constant(x.type_signature.member, 0),
-        context_stack)
+        computation_constructing_utils.create_generic_constant(
+            x.type_signature.member, 0), context_stack)
     plus_op = value_impl.ValueImpl(
         intrinsic_utils.create_binary_operator_with_upcast(
             computation_types.NamedTupleType(
