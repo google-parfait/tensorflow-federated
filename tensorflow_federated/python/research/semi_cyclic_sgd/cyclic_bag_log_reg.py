@@ -107,7 +107,7 @@ class Model(object):
     pred = tf.nn.softmax(tf.matmul(features, w) + b)
 
     loss = tf.reduce_mean(
-        -tf.reduce_sum(labels * tf.log(pred), reduction_indices=1))
+        -tf.reduce_sum(labels * tf.math.log(pred), reduction_indices=1))
     train_op = self.optimizer.minimize(
         loss=loss, global_step=tf.train.get_or_create_global_step())
 
