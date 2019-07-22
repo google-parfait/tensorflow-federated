@@ -16,8 +16,8 @@
 # Tool to build the TensorFlow Federated pip package.
 #
 # Usage:
-#   bazel build //tensorflow_federated/tools:build_pip_package
-#   bazel-bin/tensorflow_federated/tools/build_pip_package "/tmp/tensorflow_federated"
+#   bazel build //tensorflow_federated/tools/development:build_pip_package
+#   bazel-bin/tensorflow_federated/tools/development/build_pip_package "/tmp/tensorflow_federated"
 #
 # Arguments:
 #   output_dir: An output directory directory.
