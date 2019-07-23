@@ -32,21 +32,24 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_constructors
+from tensorflow_federated.python.core.impl import value_impl
 
 
-def _create_lambda_to_identity(parameter_name, parameter_type=tf.int32):
-  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
-  return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+def zero_for(type_spec, context_stack):
+  type_spec = computation_types.to_type(type_spec)
+  return value_impl.ValueImpl(
+      computation_constructing_utils.create_generic_constant(type_spec, 0),
+      context_stack)
 
 
 class ReferenceExecutorTest(test.TestCase):
@@ -839,8 +842,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.federated_computation
     def foo():
-      return intrinsic_utils.zero_for(tf.int32,
-                                      context_stack_impl.context_stack)
+      return zero_for(tf.int32, context_stack_impl.context_stack)
 
     self.assertEqual(str(foo.type_signature), '( -> int32)')
     self.assertEqual(foo(), 0)
@@ -849,7 +851,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.federated_computation
     def foo():
-      return intrinsic_utils.zero_for(
+      return zero_for(
           computation_types.TensorType(tf.float32, [2, 3]),
           context_stack_impl.context_stack)
 
@@ -862,8 +864,8 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.federated_computation
     def foo():
-      return intrinsic_utils.zero_for([('A', tf.int32), ('B', tf.float32)],
-                                      context_stack_impl.context_stack)
+      return zero_for([('A', tf.int32), ('B', tf.float32)],
+                      context_stack_impl.context_stack)
 
     self.assertEqual(str(foo.type_signature), '( -> <A=int32,B=float32>)')
     self.assertEqual(str(foo()), '<A=0,B=0.0>')
@@ -872,8 +874,9 @@ class ReferenceExecutorTest(test.TestCase):
 
     @computations.federated_computation
     def foo():
-      return intrinsic_utils.zero_for(
-          computation_types.FederatedType(tf.int32, placements.SERVER, True),
+      return zero_for(
+          computation_types.FederatedType(
+              tf.int32, placements.SERVER, all_equal=True),
           context_stack_impl.context_stack)
 
     self.assertEqual(str(foo.type_signature), '( -> int32@SERVER)')
@@ -1301,7 +1304,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
   def test_merge_tuple_intrinsics_executes_with_federated_apply(self):
     ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     ref = computation_building_blocks.Reference('a', ref_type)
-    fn = _create_lambda_to_identity('b')
+    fn = computation_test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = computation_constructing_utils.create_federated_apply(
         fn, arg)
@@ -1340,7 +1343,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
   def test_merge_tuple_intrinsics_executes_with_federated_map(self):
     ref_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref = computation_building_blocks.Reference('a', ref_type)
-    fn = _create_lambda_to_identity('b')
+    fn = computation_test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = computation_constructing_utils.create_federated_map(
         fn, arg)
