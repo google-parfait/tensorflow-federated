@@ -5,10 +5,13 @@
 
 # Module: tff.simulation.datasets
 
-Datasets for running Federated Learning experiments in simulation.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/__init__.py">View
 source</a>
+
+Datasets for running Federated Learning experiments in simulation.
 
 <!-- Placeholder for "Used in" -->
 

@@ -5,6 +5,12 @@
 
 # tff.learning.build_federated_averaging_process
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py">View
+source</a>
+
 Builds the TFF computations for optimization using federated averaging.
 
 ```python
@@ -16,9 +22,6 @@ tff.learning.build_federated_averaging_process(
     stateful_model_broadcast_fn=None
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_averaging.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

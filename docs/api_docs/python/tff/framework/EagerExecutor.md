@@ -10,14 +10,17 @@
 
 # tff.framework.EagerExecutor
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
+source</a>
+
 ## Class `EagerExecutor`
 
 The eager executor only runs TensorFlow, synchronously, in eager mode.
 
 Inherits From: [`Executor`](../../tff/framework/Executor.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/eager_executor.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

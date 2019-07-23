@@ -5,6 +5,12 @@
 
 # tff.simulation.datasets.emnist.load_data
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py">View
+source</a>
+
 Loads the Federated EMNIST dataset.
 
 ```python
@@ -13,9 +19,6 @@ tff.simulation.datasets.emnist.load_data(
     cache_dir=None
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

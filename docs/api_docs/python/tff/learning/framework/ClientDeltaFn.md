@@ -7,12 +7,15 @@
 
 # tff.learning.framework.ClientDeltaFn
 
-## Class `ClientDeltaFn`
-
-Represents a client computation that produces an update to a model.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
 source</a>
+
+## Class `ClientDeltaFn`
+
+Represents a client computation that produces an update to a model.
 
 <!-- Placeholder for "Used in" -->
 

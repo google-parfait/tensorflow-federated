@@ -13,15 +13,18 @@
 
 # tff.framework.CompiledComputation
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
+source</a>
+
 ## Class `CompiledComputation`
 
 A representation of a fully constructed and serialized computation.
 
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

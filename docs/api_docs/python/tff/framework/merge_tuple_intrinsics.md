@@ -5,6 +5,12 @@
 
 # tff.framework.merge_tuple_intrinsics
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Merges all the tuples of intrinsics in `comp` into one intrinsic.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.merge_tuple_intrinsics(
     uri
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

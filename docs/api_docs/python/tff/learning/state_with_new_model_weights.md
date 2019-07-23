@@ -5,6 +5,12 @@
 
 # tff.learning.state_with_new_model_weights
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
+source</a>
+
 Returns a `ServerState` with updated model weights.
 
 ```python
@@ -14,9 +20,6 @@ tff.learning.state_with_new_model_weights(
     non_trainable_weights
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

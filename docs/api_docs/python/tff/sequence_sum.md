@@ -5,14 +5,17 @@
 
 # tff.sequence_sum
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Computes a sum of elements in a sequence.
 
 ```python
 tff.sequence_sum(value)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

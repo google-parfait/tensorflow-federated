@@ -5,15 +5,18 @@
 
 # tff.to_type
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
 Converts the argument into an instance of
 <a href="../tff/Type.md"><code>tff.Type</code></a>.
 
 ```python
 tff.to_type(spec)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

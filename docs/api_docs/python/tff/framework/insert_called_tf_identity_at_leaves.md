@@ -5,14 +5,17 @@
 
 # tff.framework.insert_called_tf_identity_at_leaves
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Inserts an identity TF graph called on References under `comp`.
 
 ```python
 tff.framework.insert_called_tf_identity_at_leaves(comp)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -5,14 +5,17 @@
 
 # tff.simulation.datasets.stackoverflow.load_data
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/stackoverflow/load_data.py">View
+source</a>
+
 Loads the federated Stackoverflow dataset.
 
 ```python
 tff.simulation.datasets.stackoverflow.load_data(cache_dir=None)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/stackoverflow/load_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

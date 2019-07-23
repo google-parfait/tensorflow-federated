@@ -5,10 +5,13 @@
 
 # Module: tff.simulation
 
-The public API for experimenters running federated learning simulations.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/__init__.py">View
 source</a>
+
+The public API for experimenters running federated learning simulations.
 
 <!-- Placeholder for "Used in" -->
 

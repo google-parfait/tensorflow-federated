@@ -9,12 +9,15 @@
 
 # tff.learning.framework.ClientOutput
 
-## Class `ClientOutput`
-
-Structure for outputs returned from clients during federated optimization.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
 source</a>
+
+## Class `ClientOutput`
+
+Structure for outputs returned from clients during federated optimization.
 
 <!-- Placeholder for "Used in" -->
 

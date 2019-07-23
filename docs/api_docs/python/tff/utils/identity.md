@@ -5,14 +5,17 @@
 
 # tff.utils.identity
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py">View
+source</a>
+
 Applies `tf.identity` pointwise to `source`.
 
 ```python
 tff.utils.identity(source)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

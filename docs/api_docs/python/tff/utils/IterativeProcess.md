@@ -8,12 +8,15 @@
 
 # tff.utils.IterativeProcess
 
-## Class `IterativeProcess`
-
-A process that includes an initialization and iterated computation.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
+
+## Class `IterativeProcess`
+
+A process that includes an initialization and iterated computation.
 
 <!-- Placeholder for "Used in" -->
 

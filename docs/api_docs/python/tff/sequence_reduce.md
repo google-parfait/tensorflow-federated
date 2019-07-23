@@ -5,6 +5,12 @@
 
 # tff.sequence_reduce
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Reduces a TFF sequence `value` given a `zero` and reduction operator `op`.
 
 ```python
@@ -14,9 +20,6 @@ tff.sequence_reduce(
     op
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

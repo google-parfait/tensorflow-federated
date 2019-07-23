@@ -10,12 +10,15 @@
 
 # tff.simulation.ClientData
 
-## Class `ClientData`
-
-Object to hold a dataset and a mapping of clients to examples.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
+
+## Class `ClientData`
+
+Object to hold a dataset and a mapping of clients to examples.
 
 <!-- Placeholder for "Used in" -->
 

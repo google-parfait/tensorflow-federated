@@ -5,10 +5,13 @@
 
 # Module: tff.utils
 
-Utility classes/functions built on top of TensorFlow Federated Core API.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/__init__.py">View
 source</a>
+
+Utility classes/functions built on top of TensorFlow Federated Core API.
 
 <!-- Placeholder for "Used in" -->
 
