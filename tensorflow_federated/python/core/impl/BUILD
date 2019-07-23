@@ -16,6 +16,7 @@ py_library(
         ":computation_impl",
         ":context_stack_base",
         ":transformations",
+        ":value_transformations",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -206,6 +207,7 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":computation_constructing_utils",
+        ":type_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
     ],
@@ -747,7 +749,7 @@ py_library(
     deps = [
         ":computation_building_blocks",
         ":context_stack_impl",
-        ":transformations",
+        ":value_transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -1062,9 +1064,6 @@ py_library(
         ":computation_building_block_utils",
         ":computation_building_blocks",
         ":computation_constructing_utils",
-        ":context_stack_base",
-        ":federated_computation_utils",
-        ":intrinsic_bodies",
         ":intrinsic_defs",
         ":transformation_utils",
         ":tree_analysis",
@@ -1275,6 +1274,37 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:value_base",
+    ],
+)
+
+py_library(
+    name = "value_transformations",
+    srcs = ["value_transformations.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":context_stack_base",
+        ":federated_computation_utils",
+        ":intrinsic_bodies",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_library(
+    name = "value_transformations_test",
+    srcs = ["value_transformations_test.py"],
+    deps = [
+        ":computation_building_blocks",
+        ":computation_test_utils",
+        ":context_stack_impl",
+        ":intrinsic_defs",
+        ":tree_analysis",
+        ":value_transformations",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
     ],
 )
 
