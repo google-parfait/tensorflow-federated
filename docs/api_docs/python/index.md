@@ -103,6 +103,9 @@
 *   <a href="./tff/simulation/datasets/emnist/load_data.md"><code>tff.simulation.datasets.emnist.load_data</code></a>
 *   <a href="./tff/simulation/datasets/shakespeare.md"><code>tff.simulation.datasets.shakespeare</code></a>
 *   <a href="./tff/simulation/datasets/shakespeare/load_data.md"><code>tff.simulation.datasets.shakespeare.load_data</code></a>
+*   <a href="./tff/simulation/datasets/stackoverflow.md"><code>tff.simulation.datasets.stackoverflow</code></a>
+*   <a href="./tff/simulation/datasets/stackoverflow/load_data.md"><code>tff.simulation.datasets.stackoverflow.load_data</code></a>
+*   <a href="./tff/simulation/datasets/stackoverflow/load_word_counts.md"><code>tff.simulation.datasets.stackoverflow.load_word_counts</code></a>
 *   <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *   <a href="./tff/to_type.md"><code>tff.to_type</code></a>
 *   <a href="./tff/to_value.md"><code>tff.to_value</code></a>
