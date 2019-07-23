@@ -11,14 +11,17 @@
 
 # tff.simulation.TransformingClientData
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/transforming_client_data.py">View
+source</a>
+
 ## Class `TransformingClientData`
 
 Transforms client data, potentially expanding by adding pseudo-clients.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/transforming_client_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

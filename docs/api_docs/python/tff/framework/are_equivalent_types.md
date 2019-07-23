@@ -5,6 +5,12 @@
 
 # tff.framework.are_equivalent_types
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py">View
+source</a>
+
 Determines whether `type1` and `type2` are equivalent.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.are_equivalent_types(
     type2
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

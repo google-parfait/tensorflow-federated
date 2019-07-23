@@ -12,14 +12,17 @@
 
 # tff.simulation.FilePerUserClientData
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py">View
+source</a>
+
 ## Class `FilePerUserClientData`
 
 A `tf.simulation.ClientData` that maps a set of files to a dataset.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/file_per_user_client_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -8,12 +8,15 @@
 
 # tff.utils.StatefulAggregateFn
 
-## Class `StatefulAggregateFn`
-
-A simple container for a stateful aggregation function.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
 source</a>
+
+## Class `StatefulAggregateFn`
+
+A simple container for a stateful aggregation function.
 
 <!-- Placeholder for "Used in" -->
 

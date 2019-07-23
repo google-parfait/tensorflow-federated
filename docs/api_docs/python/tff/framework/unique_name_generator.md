@@ -5,6 +5,12 @@
 
 # tff.framework.unique_name_generator
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py">View
+source</a>
+
 Yields a new unique name that does not exist in `comp`.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.unique_name_generator(
     prefix='_var'
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -5,14 +5,17 @@
 
 # tff.framework.uniquify_reference_names
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Replaces all the bound reference names in `comp` with unique names.
 
 ```python
 tff.framework.uniquify_reference_names(comp)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -11,14 +11,17 @@
 
 # tff.simulation.FromTensorSlicesClientData
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/from_tensor_slices_client_data.py">View
+source</a>
+
 ## Class `FromTensorSlicesClientData`
 
 ClientData based on `tf.data.Dataset.from_tensor_slices`.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/from_tensor_slices_client_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

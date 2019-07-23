@@ -5,6 +5,12 @@
 
 # tff.utils.update_state
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
+source</a>
+
 Returns a new `state` with new values for fields in `kwargs`.
 
 ```python
@@ -13,9 +19,6 @@ tff.utils.update_state(
     **kwargs
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/computation_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

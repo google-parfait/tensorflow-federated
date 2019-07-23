@@ -5,14 +5,17 @@
 
 # tff.federated_computation
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py">View
+source</a>
+
 Decorates/wraps Python functions as TFF federated/composite computations.
 
 ```python
 tff.federated_computation(*args)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

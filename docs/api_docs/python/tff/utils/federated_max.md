@@ -5,15 +5,18 @@
 
 # tff.utils.federated_max
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/federated_aggregations.py">View
+source</a>
+
 Aggregation to find the maximum value from the
 <a href="../../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 ```python
 tff.utils.federated_max(value)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/federated_aggregations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

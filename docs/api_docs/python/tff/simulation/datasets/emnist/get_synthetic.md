@@ -5,14 +5,17 @@
 
 # tff.simulation.datasets.emnist.get_synthetic
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py">View
+source</a>
+
 Quickly returns a small synthetic dataset, useful for unit tests, etc.
 
 ```python
 tff.simulation.datasets.emnist.get_synthetic(num_clients=2)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

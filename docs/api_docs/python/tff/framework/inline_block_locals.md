@@ -5,6 +5,12 @@
 
 # tff.framework.inline_block_locals
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Inlines the block variables in `comp` whitelisted by `variable_names`.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.inline_block_locals(
     variable_names=None
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

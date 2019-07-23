@@ -12,12 +12,15 @@
 
 # tff.learning.Model
 
-## Class `Model`
-
-Represents a model for use in TensorFlow Federated.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
 source</a>
+
+## Class `Model`
+
+Represents a model for use in TensorFlow Federated.
 
 <!-- Placeholder for "Used in" -->
 

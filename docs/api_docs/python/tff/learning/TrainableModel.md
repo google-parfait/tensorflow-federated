@@ -13,14 +13,17 @@
 
 # tff.learning.TrainableModel
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
+source</a>
+
 ## Class `TrainableModel`
 
 A Model with an additional method for (local) training.
 
 Inherits From: [`Model`](../../tff/learning/Model.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

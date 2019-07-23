@@ -5,14 +5,17 @@
 
 # tff.framework.set_default_executor
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/set_default_executor.py">View
+source</a>
+
 Places an `executor`-backed execution context at the top of the stack.
 
 ```python
 tff.framework.set_default_executor(executor=None)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/set_default_executor.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

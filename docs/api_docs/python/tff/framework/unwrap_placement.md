@@ -5,14 +5,17 @@
 
 # tff.framework.unwrap_placement
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Strips `comp`'s placement, returning a single call to map, apply or value.
 
 ```python
 tff.framework.unwrap_placement(comp)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

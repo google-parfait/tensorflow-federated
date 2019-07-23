@@ -9,12 +9,15 @@
 
 # tff.framework.Executor
 
-## Class `Executor`
-
-Represents the abstract interface that all executors must implement.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_base.py">View
 source</a>
+
+## Class `Executor`
+
+Represents the abstract interface that all executors must implement.
 
 <!-- Placeholder for "Used in" -->
 

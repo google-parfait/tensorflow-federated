@@ -5,6 +5,12 @@
 
 # tff.to_value
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/values.py">View
+source</a>
+
 Converts the argument into an instance of the abstract class
 <a href="../tff/Value.md"><code>tff.Value</code></a>.
 
@@ -14,9 +20,6 @@ tff.to_value(
     type_spec=None
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/values.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
