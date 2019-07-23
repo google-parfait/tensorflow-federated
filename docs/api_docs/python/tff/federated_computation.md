@@ -17,7 +17,12 @@ Decorates/wraps Python functions as TFF federated/composite computations.
 tff.federated_computation(*args)
 ```
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_1)
+*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
+*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
+*   [Federated Learning for Text Generation](https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation)
 
 The term *federated computation* as used here refers to any computation that
 uses TFF programming abstractions. Examples of such computations may include

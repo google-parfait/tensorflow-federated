@@ -20,7 +20,9 @@ tff.sequence_map(
 )
 ```
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
 
 This function supports two modes of usage:
 

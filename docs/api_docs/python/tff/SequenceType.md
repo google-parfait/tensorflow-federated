@@ -24,7 +24,10 @@ representing types of sequences in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_1)
+*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
 
 <h2 id="__init__"><code>__init__</code></h2>
 
