@@ -759,18 +759,6 @@ py_test(
 )
 
 py_library(
-    name = "intrinsic_utils",
-    srcs = ["intrinsic_utils.py"],
-    deps = [
-        ":computation_constructing_utils",
-        ":context_stack_base",
-        ":value_impl",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-    ],
-)
-
-py_library(
     name = "lambda_executor",
     srcs = ["lambda_executor.py"],
     srcs_version = "PY3",
@@ -878,16 +866,17 @@ py_test(
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":computation_impl",
+        ":computation_test_utils",
         ":computation_wrapper_instances",
         ":context_stack_impl",
         ":graph_utils",
         ":intrinsic_bodies",
         ":intrinsic_defs",
         ":intrinsic_factory",
-        ":intrinsic_utils",
         ":reference_executor",
         ":transformations",
         ":type_constructors",
+        ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
