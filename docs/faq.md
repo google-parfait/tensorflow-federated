@@ -22,6 +22,27 @@ notebook.
 Our near-term future roadmap includes a high-performance runtime for experiments
 with very large data sets and large numbers of clients.
 
+## How can I ensure randomness in TFF matches my expectations?
+
+Since TFF has federated computing baked into its core, the writer of TFF should
+not assume control over where and how TensorFlow `Session`s are entered, or
+`run` is called within those sessions. The semantics of randomness can depend on
+entry and exit of TensorFlow `Session`s if seeds are set. We recommend using
+TensorFlow 2-style radomness, using for example
+`tf.random.experimental.Generator` as of TF 1.14. This uses a `tf.Variable` to
+manage its internal state.
+
+To help manage expectations, TFF allows for the TensorFlow it serializes to have
+op-level seeds set, but not graph-level seeds. This is because the semantics of
+op-level seeds should be clearer in the TFF setting: a deterministic sequence
+will be generated upon each invocation of a function wrapped as a
+`tf_computation`, and only within this invocation will any guarantees made by
+the pseudorandom number generator hold. Notice that this is not quite the same
+as the semantics of calling a `tf.function` in eager mode; TFF effectively
+enters and exits a unique `tf.Session` each time the `tf_computation` is
+invoked, while repeatedly calling a function in eager mode is analogous to
+calling `sess.run` on the output tensor repeatedly within the same session.
+
 ## How can I contribute?
 
 See the [README](../README.md) and
