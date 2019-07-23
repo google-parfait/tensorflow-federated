@@ -41,6 +41,14 @@ class SerializationUtilsTest(absltest.TestCase):
     output_value = serialization_utils.unpack_graph_def(any_pb)
     self.assertEqual(input_value, output_value)
 
+  def test_pack_graph_seed_set_raises(self):
+    with tf.Graph().as_default() as g:
+      tf.random.set_random_seed(1234)
+      tf.random.normal([1])
+    input_value = g.as_graph_def()
+    with self.assertRaisesRegex(ValueError, 'graph-level random seed'):
+      serialization_utils.pack_graph_def(input_value)
+
   def test_pack_graph_def_fails_non_graph_def_arg(self):
     with self.assertRaisesRegex(TypeError, 'found str'):
       serialization_utils.pack_graph_def('not a graphdef')
