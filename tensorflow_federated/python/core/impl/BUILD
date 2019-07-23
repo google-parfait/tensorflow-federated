@@ -47,6 +47,7 @@ py_library(
         ":computation_building_blocks",
         ":computation_constructing_utils",
         ":graph_utils",
+        ":proto_transformations",
         ":transformation_utils",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -67,6 +68,7 @@ py_test(
         ":computation_building_blocks",
         ":computation_wrapper_instances",
         ":context_stack_impl",
+        ":proto_transformations",
         ":tensorflow_serialization",
         ":tree_analysis",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -836,6 +838,31 @@ py_test(
     size = "small",
     srcs = ["placement_literals_test.py"],
     deps = [":placement_literals"],
+)
+
+py_library(
+    name = "proto_transformations",
+    srcs = ["proto_transformations.py"],
+    deps = [
+        ":graph_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+    ],
+)
+
+py_test(
+    name = "proto_transformations_test",
+    size = "small",
+    srcs = ["proto_transformations_test.py"],
+    deps = [
+        ":computation_building_block_utils",
+        ":computation_building_blocks",
+        ":computation_wrapper_instances",
+        ":context_stack_impl",
+        ":proto_transformations",
+        ":tensorflow_serialization",
+    ],
 )
 
 py_library(

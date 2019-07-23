@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl import compiled_computation_transform
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import tree_analysis
 
@@ -78,16 +79,17 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
         [tf.int32, tf.float32])
 
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=0)
     second_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=1)
 
+    self.assertEqual(first_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(first_element_selected.type_signature.result,
                      foo.type_signature.result[0])
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     first_element_selected.proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -95,10 +97,10 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tensor,
                      first_element_selected.proto.tensorflow.result.tensor)
 
+    self.assertEqual(second_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     second_element_selected.proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -111,6 +113,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
                                                              ('b', tf.float32)])
 
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='a')
@@ -122,8 +125,8 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(second_element_selected.type_signature.result,
                      computation_types.to_type(tf.float32))
 
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     first_element_selected.proto.tensorflow.graph_def)
+    self.assertEqual(first_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -131,10 +134,10 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tensor,
                      first_element_selected.proto.tensorflow.result.tensor)
 
+    self.assertEqual(second_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     second_element_selected.proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -154,6 +157,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     ])
 
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=0)
@@ -164,8 +168,8 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(second_element_selected.type_signature.result,
                      nested_type2)
 
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     first_element_selected.proto.tensorflow.graph_def)
+    self.assertEqual(first_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -173,10 +177,10 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tuple,
                      first_element_selected.proto.tensorflow.result.tuple)
 
+    self.assertEqual(second_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     second_element_selected.proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -194,6 +198,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
         ('x', nested_type1), ('y', nested_type2)
     ])
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='x')
@@ -204,8 +209,8 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(second_element_selected.type_signature.result,
                      nested_type2)
 
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     first_element_selected.proto.tensorflow.graph_def)
+    self.assertEqual(first_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -213,10 +218,10 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tuple,
                      first_element_selected.proto.tensorflow.result.tuple)
 
+    self.assertEqual(second_element_selected.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
-    self.assertEqual(foo.proto.tensorflow.graph_def,
-                     second_element_selected.proto.tensorflow.graph_def)
     self.assertEqual(foo.proto.tensorflow.parameter,
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -283,17 +288,34 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
         foo, [0, 1])
 
-    self.assertEqual(mapped_to_identity.proto, foo.proto)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.parameter,
+                     foo.proto.tensorflow.parameter)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.result,
+                     foo.proto.tensorflow.result)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.initialize_op,
+                     foo.proto.tensorflow.initialize_op)
+    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
+    self.assertEqual(mapped_to_identity.type_signature, foo.type_signature)
 
   def test_permute_graph_inputs_identity_permutation_leaves_names_alone(self):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32)])
     foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
         foo, [0, 1])
 
-    self.assertEqual(mapped_to_identity.proto, foo.proto)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.parameter,
+                     foo.proto.tensorflow.parameter)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.result,
+                     foo.proto.tensorflow.result)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.initialize_op,
+                     foo.proto.tensorflow.initialize_op)
+    self.assertEqual(mapped_to_identity.proto.tensorflow.graph_def,
+                     foo_pruned_proto.tensorflow.graph_def)
     self.assertEqual(mapped_to_identity.type_signature, foo.type_signature)
 
   def test_permute_graph_inputs_flip_input_order_changes_only_parameters(self):
@@ -312,8 +334,9 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
                      permuted_arg_type)
     self.assertEqual(permuted_inputs.type_signature.result,
                      foo.type_signature.result)
+    pruned_foo_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
     self.assertEqual(permuted_inputs.proto.tensorflow.graph_def,
-                     foo.proto.tensorflow.graph_def)
+                     pruned_foo_proto.tensorflow.graph_def)
     self.assertEqual(permuted_inputs.proto.tensorflow.initialize_op,
                      foo.proto.tensorflow.initialize_op)
     self.assertEqual(permuted_inputs.proto.tensorflow.result,
