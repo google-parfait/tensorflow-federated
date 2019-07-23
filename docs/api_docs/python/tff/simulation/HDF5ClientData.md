@@ -11,6 +11,12 @@
 
 # tff.simulation.HDF5ClientData
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py">View
+source</a>
+
 ## Class `HDF5ClientData`
 
 A
@@ -18,9 +24,6 @@ A
 backed by an HDF5 file.
 
 Inherits From: [`ClientData`](../../tff/simulation/ClientData.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/hdf5_client_data.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

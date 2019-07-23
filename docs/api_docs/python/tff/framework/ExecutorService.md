@@ -12,12 +12,15 @@
 
 # tff.framework.ExecutorService
 
-## Class `ExecutorService`
-
-A wrapper around a target executor that makes it into a gRPC service.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py">View
 source</a>
+
+## Class `ExecutorService`
+
+A wrapper around a target executor that makes it into a gRPC service.
 
 <!-- Placeholder for "Used in" -->
 

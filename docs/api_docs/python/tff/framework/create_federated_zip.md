@@ -5,14 +5,17 @@
 
 # tff.framework.create_federated_zip
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py">View
+source</a>
+
 Creates a called federated zip.
 
 ```python
 tff.framework.create_federated_zip(value)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

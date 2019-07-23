@@ -5,10 +5,13 @@
 
 # Module: tff.simulation.datasets.shakespeare
 
-Module for the Shakespeare federated experimental dataset.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/__init__.py">View
 source</a>
+
+Module for the Shakespeare federated experimental dataset.
 
 <!-- Placeholder for "Used in" -->
 

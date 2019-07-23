@@ -15,6 +15,12 @@
 
 # tff.learning.framework.EnhancedTrainableModel
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
+source</a>
+
 ## Class `EnhancedTrainableModel`
 
 A wrapper around a Model that adds sanity checking and metadata helpers.
@@ -22,9 +28,6 @@ A wrapper around a Model that adds sanity checking and metadata helpers.
 Inherits From:
 [`EnhancedModel`](../../../tff/learning/framework/EnhancedModel.md),
 [`TrainableModel`](../../../tff/learning/TrainableModel.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

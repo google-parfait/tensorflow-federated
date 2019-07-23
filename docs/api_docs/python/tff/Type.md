@@ -9,12 +9,15 @@
 
 # tff.Type
 
-## Class `Type`
-
-An abstract interface for all classes that represent TFF types.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
+
+## Class `Type`
+
+An abstract interface for all classes that represent TFF types.
 
 <!-- Placeholder for "Used in" -->
 

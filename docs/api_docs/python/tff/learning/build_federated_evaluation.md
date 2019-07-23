@@ -5,14 +5,17 @@
 
 # tff.learning.build_federated_evaluation
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_evaluation.py">View
+source</a>
+
 Builds the TFF computation for federated evaluation of the given model.
 
 ```python
 tff.learning.build_federated_evaluation(model_fn)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/federated_evaluation.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

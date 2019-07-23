@@ -10,14 +10,17 @@
 
 # tff.Value
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
+source</a>
+
 ## Class `Value`
 
 An abstract base class for all values in the bodies of TFF computations.
 
 Inherits From: [`TypedObject`](../tff/TypedObject.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

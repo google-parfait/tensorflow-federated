@@ -5,6 +5,12 @@
 
 # tff.federated_mean
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Computes a <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> mean of
 `value` placed on <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
@@ -14,9 +20,6 @@ tff.federated_mean(
     weight=None
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -5,6 +5,12 @@
 
 # tff.federated_reduce
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Reduces `value` from <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> to
 <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> using a reduction `op`.
 
@@ -15,9 +21,6 @@ tff.federated_reduce(
     op
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

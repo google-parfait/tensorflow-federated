@@ -7,12 +7,15 @@
 
 # tff.framework.TFParser
 
-## Class `TFParser`
-
-Callable taking subset of TFF AST constructs to CompiledComputations.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
 source</a>
+
+## Class `TFParser`
+
+Callable taking subset of TFF AST constructs to CompiledComputations.
 
 <!-- Placeholder for "Used in" -->
 

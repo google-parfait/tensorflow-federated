@@ -5,6 +5,12 @@
 
 # tff.utils.create_variables
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py">View
+source</a>
+
 Creates a set of variables that matches the given `type_spec`.
 
 ```python
@@ -14,9 +20,6 @@ tff.utils.create_variables(
     **kwargs
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

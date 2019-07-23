@@ -10,12 +10,15 @@
 
 # tff.learning.framework.ModelWeights
 
-## Class `ModelWeights`
-
-A container for the trainable and non-trainable variables of a `Model`.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
+
+## Class `ModelWeights`
+
+A container for the trainable and non-trainable variables of a `Model`.
 
 <!-- Placeholder for "Used in" -->
 

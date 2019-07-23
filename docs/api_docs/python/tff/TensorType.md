@@ -12,15 +12,18 @@
 
 # tff.TensorType
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
 ## Class `TensorType`
 
 An implementation of <a href="../tff/Type.md"><code>tff.Type</code></a>
 representing types of tensors in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

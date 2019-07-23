@@ -5,10 +5,13 @@
 
 # Module: tff.learning.framework
 
-The public API for contributors who develop federated learning algorithms.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/__init__.py">View
 source</a>
+
+The public API for contributors who develop federated learning algorithms.
 
 <!-- Placeholder for "Used in" -->
 

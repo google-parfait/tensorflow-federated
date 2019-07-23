@@ -7,13 +7,16 @@
 
 # tff.learning.BatchOutput
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
+source</a>
+
 ## Class `BatchOutput`
 
 A structure that holds the output of a
 <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

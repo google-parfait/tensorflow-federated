@@ -7,10 +7,13 @@
 
 # Module: tff
 
-TensorFlow Federated Library.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py">View
 source</a>
+
+TensorFlow Federated Library.
 
 <!-- Placeholder for "Used in" -->
 

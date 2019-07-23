@@ -5,14 +5,17 @@
 
 # tff.framework.create_local_executor
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_stacks.py">View
+source</a>
+
 Constructs an executor to execute computations on the local machine.
 
 ```python
 tff.framework.create_local_executor(num_clients)
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_stacks.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

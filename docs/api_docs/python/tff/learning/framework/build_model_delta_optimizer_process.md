@@ -5,6 +5,12 @@
 
 # tff.learning.framework.build_model_delta_optimizer_process
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
+source</a>
+
 Constructs
 <a href="../../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
 for Federated Averaging or SGD.
@@ -18,9 +24,6 @@ tff.learning.framework.build_model_delta_optimizer_process(
     stateful_model_broadcast_fn=build_stateless_broadcaster()
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
