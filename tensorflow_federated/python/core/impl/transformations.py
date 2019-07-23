@@ -1125,6 +1125,7 @@ class TFParser(object):
         compiled_computation_transforms.LambdaWrappingGraph(),
         compiled_computation_transforms.TupleCalledGraphs(),
         compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(),
+        compiled_computation_transforms.CalledGraphOnReplicatedArg(),
     ]
 
   def __call__(self, comp):
@@ -1152,8 +1153,7 @@ class TFParser(object):
         comp, computation_building_blocks.ComputationBuildingBlock)
     for option in self._parse_library:
       if option.should_transform(comp):
-        transformed, ind = option.transform(comp)
-        return transformed, ind
+        return option.transform(comp)
     return comp, False
 
 
@@ -1192,7 +1192,7 @@ def insert_called_tf_identity_at_leaves(comp):
   Args:
     comp: Instance of `computation_building_blocks.Lambda` whose AST we will
       traverse, replacing appropriate instances of
-      `computation_building_blocks.Reference` with graphs representing thei
+      `computation_building_blocks.Reference` with graphs representing the
       identity function of the appropriate type called on the same reference.
       `comp` must declare a parameter and result type which are both able to be
       stamped in to a TensorFlow graph.

@@ -49,7 +49,7 @@ bound into TensorFlow. This pattern is enforced here as parameter validation on
 
 *   <b>`comp`</b>: Instance of `computation_building_blocks.Lambda` whose AST we
     will traverse, replacing appropriate instances of
-    `computation_building_blocks.Reference` with graphs representing thei
+    `computation_building_blocks.Reference` with graphs representing the
     identity function of the appropriate type called on the same reference.
     `comp` must declare a parameter and result type which are both able to be
     stamped in to a TensorFlow graph.

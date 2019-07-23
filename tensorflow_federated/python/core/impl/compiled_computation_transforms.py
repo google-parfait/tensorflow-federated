@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import graph_utils
+from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.tensorflow_libs import graph_merge
@@ -113,7 +114,8 @@ def select_graph_output(comp, name=None, index=None):
           initialize_op=proto.tensorflow.initialize_op,
           parameter=proto.tensorflow.parameter,
           result=result))
-  return computation_building_blocks.CompiledComputation(selected_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(selected_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 def permute_graph_inputs(comp, input_permutation):
@@ -222,7 +224,8 @@ def permute_graph_inputs(comp, input_permutation):
               tuple=pb.TensorFlow.NamedTupleBinding(
                   element=new_parameter_bindings)),
           result=proto.tensorflow.result))
-  return computation_building_blocks.CompiledComputation(permuted_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(permuted_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 def bind_graph_parameter_as_tuple(comp, name=None):
@@ -271,8 +274,9 @@ def bind_graph_parameter_as_tuple(comp, name=None):
           initialize_op=proto.tensorflow.initialize_op,
           parameter=new_parameter_binding,
           result=proto.tensorflow.result))
-
-  return computation_building_blocks.CompiledComputation(input_padded_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(
+      input_padded_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 def bind_graph_result_as_tuple(comp, name=None):
@@ -321,8 +325,9 @@ def bind_graph_result_as_tuple(comp, name=None):
           initialize_op=proto.tensorflow.initialize_op,
           parameter=proto.tensorflow.parameter,
           result=new_result_binding))
-
-  return computation_building_blocks.CompiledComputation(result_as_tuple_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(
+      result_as_tuple_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 def pad_graph_inputs_to_match_type(comp, type_signature):
@@ -450,8 +455,9 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
           initialize_op=proto.tensorflow.initialize_op,
           parameter=new_parameter_binding,
           result=proto.tensorflow.result))
-
-  return computation_building_blocks.CompiledComputation(input_padded_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(
+      input_padded_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 def _unpack_proto_into_graph_spec(tf_block_proto):
@@ -684,7 +690,8 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
 
   constructed_proto = pb.Computation(
       type=serialized_function_type, tensorflow=tf_result_proto)
-  return computation_building_blocks.CompiledComputation(constructed_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(constructed_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 def compose_tensorflow_blocks(tf_comps):
@@ -768,7 +775,8 @@ def compose_tensorflow_blocks(tf_comps):
 
   constructed_proto = pb.Computation(
       type=serialized_function_type, tensorflow=tf_result_proto)
-  return computation_building_blocks.CompiledComputation(constructed_proto)
+  proto_pruned = proto_transformations.prune_tensorflow_proto(constructed_proto)
+  return computation_building_blocks.CompiledComputation(proto_pruned)
 
 
 class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
@@ -869,10 +877,11 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
-    return computation_building_blocks.Call(
-        select_graph_output(
-            comp.source.function, index=comp.index, name=comp.name),
-        comp.source.argument), True
+    selected = select_graph_output(
+        comp.source.function, index=comp.index, name=comp.name)
+    pruned = computation_building_blocks.CompiledComputation(
+        proto_transformations.prune_tensorflow_proto(selected.proto))
+    return computation_building_blocks.Call(pruned, comp.source.argument), True
 
 
 class LambdaWrappingGraph(transformation_utils.TransformSpec):
@@ -979,7 +988,7 @@ def _construct_padding(list_of_indices, tuple_type):
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
     tuple_type: Instance of `computation_types.NamedTupleType` as described in
-      the docstring o `_remap_graph_inputs`.
+      the docstring of `_remap_graph_inputs`.
 
   Returns:
     An instance of `computation_types.NamedTupleType` containing
@@ -1171,8 +1180,11 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
 
     graph_with_wrapped_parameter = bind_graph_parameter_as_tuple(
         comp.result.function, name=name)
-    return _remap_graph_inputs(graph_with_wrapped_parameter,
-                               [index_of_selection], comp.parameter_type), True
+    remapped = _remap_graph_inputs(graph_with_wrapped_parameter,
+                                   [index_of_selection], comp.parameter_type)
+    pruned = computation_building_blocks.CompiledComputation(
+        proto_transformations.prune_tensorflow_proto(remapped.proto))
+    return pruned, True
 
 
 class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
@@ -1190,7 +1202,7 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
                                /    \
             CompiledComputation(x)   Tuple
                                     / ... \
-                          Selection(x)     Selection(y)
+                          Selection(a)     Selection(b)
                                |                |
                             Ref(arg)           Ref(arg)
 
@@ -1246,5 +1258,8 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
         parameter_map.append(sel.index)
       else:
         parameter_map.append(parameter_names.index(sel.name))
-    return _remap_graph_inputs(comp.result.function, parameter_map,
-                               comp.parameter_type), True
+    inputs_mapped = _remap_graph_inputs(comp.result.function, parameter_map,
+                                        comp.parameter_type)
+    pruned = computation_building_blocks.CompiledComputation(
+        proto_transformations.prune_tensorflow_proto(inputs_mapped.proto))
+    return pruned, True
