@@ -228,6 +228,14 @@ toc:
           path: /federated/api_docs/python/tff/simulation/datasets/shakespeare
         - title: load_data
           path: /federated/api_docs/python/tff/simulation/datasets/shakespeare/load_data
+      - title: stackoverflow
+        section:
+        - title: Overview
+          path: /federated/api_docs/python/tff/simulation/datasets/stackoverflow
+        - title: load_data
+          path: /federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_data
+        - title: load_word_counts
+          path: /federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_word_counts
   - title: tff.utils
     section:
     - title: Overview

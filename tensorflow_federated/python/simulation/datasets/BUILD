@@ -8,5 +8,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/simulation/datasets/emnist",
         "//tensorflow_federated/python/simulation/datasets/shakespeare",
+        "//tensorflow_federated/python/simulation/datasets/stackoverflow",
     ],
 )

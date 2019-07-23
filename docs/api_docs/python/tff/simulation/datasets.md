@@ -19,3 +19,6 @@ federated EMNIST experimental dataset.
 
 [`shakespeare`](../../tff/simulation/datasets/shakespeare.md) module: Module for
 the Shakespeare federated experimental dataset.
+
+[`stackoverflow`](../../tff/simulation/datasets/stackoverflow.md) module: Module
+for the Stackoverflow federated experimental dataset.
