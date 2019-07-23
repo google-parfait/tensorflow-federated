@@ -24,6 +24,75 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
+from tensorflow_federated.python.core.impl import type_utils
+
+
+def create_chained_calls(functions, arg):
+  r"""Creates a chain of `n` calls.
+
+       Call
+      /    \
+  Comp      ...
+               \
+                Call
+               /    \
+           Comp      Comp
+
+  The first functional computation in `functions` must have a parameter type
+  that is assignable from the type of `arg`, each other functional computation
+  in `functions` must have a parameter type that is assignable from the previous
+  functional computations result type.
+
+  Args:
+    functions: A Python list of functional computations.
+    arg: A `computation_building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A `computation_building_blocks.Call`.
+  """
+  for fn in functions:
+    if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
+      raise TypeError(
+          'The parameter of the function is of type {}, and the argument is of '
+          'an incompatible type {}.'.format(
+              str(fn.parameter_type), str(arg.type_signature)))
+    call = computation_building_blocks.Call(fn, arg)
+    arg = call
+  return call
+
+
+def create_dummy_block(comp, variable_name, variable_type=tf.int32):
+  r"""Returns an identity block.
+
+           Block
+          /     \
+  [x=data]       Comp
+
+  Args:
+    comp: The computation to use as the result.
+    variable_name: The name of the variable.
+    variable_type: The type of the variable.
+  """
+  data = computation_building_blocks.Data('data', variable_type)
+  return computation_building_blocks.Block([(variable_name, data)], comp)
+
+
+def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
+  r"""Returns a dummy called intrinsic.
+
+            Call
+           /    \
+  intrinsic      Ref(x)
+
+  Args:
+    parameter_name: The name of the parameter.
+    parameter_type: The type of the parameter.
+  """
+  intrinsic_type = computation_types.FunctionType(parameter_type,
+                                                  parameter_type)
+  intrinsic = computation_building_blocks.Intrinsic('intrinsic', intrinsic_type)
+  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
+  return computation_building_blocks.Call(intrinsic, ref)
 
 
 def create_dummy_called_federated_aggregate(accumulate_parameter_name,
@@ -93,7 +162,7 @@ def create_dummy_called_federated_broadcast(value_type=tf.int32):
   federated_map      data
 
   Args:
-    value_type: The type of the parameter.
+    value_type: The type of the value.
   """
   federated_type = computation_types.FederatedType(value_type,
                                                    placements.SERVER)
@@ -178,9 +247,19 @@ def create_identity_block(variable_name, comp):
   return computation_building_blocks.Block([(variable_name, comp)], ref)
 
 
-def create_identity_block_with_dummy_data(variable_name):
-  r"""Returns an identity block with a dummy `Data` computation."""
-  data = computation_building_blocks.Data('data', tf.int32)
+def create_identity_block_with_dummy_data(variable_name,
+                                          variable_type=tf.int32):
+  r"""Returns an identity block with a dummy `Data` computation.
+
+           Block
+          /     \
+  [x=data]       Ref(x)
+
+  Args:
+    variable_name: The name of the variable.
+    variable_type: The type of the variable.
+  """
+  data = computation_building_blocks.Data('data', variable_type)
   return create_identity_block(variable_name, data)
 
 
@@ -197,6 +276,26 @@ def create_identity_function(parameter_name, parameter_type=tf.int32):
   """
   ref = computation_building_blocks.Reference(parameter_name, parameter_type)
   return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+
+
+def create_lambda_to_dummy_called_intrinsic(parameter_name,
+                                            parameter_type=tf.int32):
+  r"""Returns a lambda to call a dummy intrinsic.
+
+            Lambda(x)
+            |
+            Call
+           /    \
+  intrinsic      Ref(x)
+
+  Args:
+    parameter_name: The name of the parameter.
+    parameter_type: The type of the parameter.
+  """
+  call = create_dummy_called_intrinsic(
+      parameter_name=parameter_name, parameter_type=parameter_type)
+  return computation_building_blocks.Lambda(parameter_name, parameter_type,
+                                            call)
 
 
 def create_nested_syntax_tree():

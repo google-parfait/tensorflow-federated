@@ -23,8 +23,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_building_blocks
@@ -43,44 +41,6 @@ from tensorflow_federated.python.core.impl import type_utils
 def _computation_impl_to_building_block(comp):
   return computation_building_blocks.ComputationBuildingBlock.from_proto(
       comp._computation_proto)
-
-
-def _create_chained_calls(functions, arg):
-  r"""Creates a chain of `n` calls.
-
-       Call
-      /    \
-  Comp      ...
-               \
-                Call
-               /    \
-           Comp      Comp
-
-  The first functional computation in `functions` must have a parameter type
-  that is assignable from the type of `arg`, each other functional computation
-  in `functions` must have a parameter type that is assignable from the previous
-  functional computations result type.
-
-  Args:
-    functions: A Python list of functional computations.
-    arg: A `computation_building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A `computation_building_blocks.Call`.
-  """
-  py_typecheck.check_type(arg,
-                          computation_building_blocks.ComputationBuildingBlock)
-  for fn in functions:
-    py_typecheck.check_type(
-        fn, computation_building_blocks.ComputationBuildingBlock)
-    if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
-      raise TypeError(
-          'The parameter of the function is of type {}, and the argument is of '
-          'an incompatible type {}.'.format(
-              str(fn.parameter_type), str(arg.type_signature)))
-    call = computation_building_blocks.Call(fn, arg)
-    arg = call
-  return call
 
 
 def _create_chained_dummy_federated_applys(functions, arg):
@@ -117,49 +77,11 @@ def _create_chained_dummy_federated_maps(functions, arg):
   return call
 
 
-def _create_lambda_to_dummy_intrinsic(parameter_name, parameter_type=tf.int32):
-  r"""Creates a lambda to call a dummy intrinsic.
-
-  Lambda(x)
-           \
-            Call
-           /    \
-  Intrinsic      Ref(x)
-
-  Args:
-    parameter_name: The name of the parameter.
-    parameter_type: The type of the parameter.
-
-  Returns:
-    A `computation_building_blocks.Lambda`.
-  """
-  py_typecheck.check_type(parameter_type, tf.dtypes.DType)
-  call = _create_dummy_called_intrinsic(
-      parameter_name=parameter_name, parameter_type=parameter_type)
-  return computation_building_blocks.Lambda(parameter_name, parameter_type,
-                                            call)
-
-
 def _create_lambda_to_dummy_cast(parameter_name, parameter_type, result_type):
   py_typecheck.check_type(parameter_type, tf.dtypes.DType)
   py_typecheck.check_type(result_type, tf.dtypes.DType)
   arg = computation_building_blocks.Data('data', result_type)
   return computation_building_blocks.Lambda(parameter_name, parameter_type, arg)
-
-
-def _create_dummy_block(comp, variable_name, variable_type=tf.int32):
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  data = computation_building_blocks.Data('data', variable_type)
-  return computation_building_blocks.Block([(variable_name, data)], comp)
-
-
-def _create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
-  intrinsic_type = computation_types.FunctionType(parameter_type,
-                                                  parameter_type)
-  intrinsic = computation_building_blocks.Intrinsic('intrinsic', intrinsic_type)
-  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
-  return computation_building_blocks.Call(intrinsic, ref)
 
 
 def _create_compiled_computation(py_fn, arg_type):
@@ -172,15 +94,6 @@ def _count_called_intrinsics(comp, uri=None):
 
   def _predicate(comp):
     return computation_building_block_utils.is_called_intrinsic(comp, uri)
-
-  return tree_analysis.count(comp, _predicate)
-
-
-def _count_intrinsics(comp, uri):
-
-  def _predicate(comp):
-    return (isinstance(comp, computation_building_blocks.Intrinsic) and
-            uri is not None and comp.uri == uri)
 
   return tree_analysis.count(comp, _predicate)
 
@@ -199,7 +112,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_block_result_intrinsic(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     block = computation_building_blocks.Block((('a', data),), called_intrinsic)
     comp = block
 
@@ -213,7 +127,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_block_result_block_one_var_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((('b', called_intrinsic),), ref)
@@ -231,7 +146,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_block_result_block_multiple_vars_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((
@@ -253,7 +169,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_block_variables_block_one_var_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((('b', called_intrinsic),),
@@ -272,7 +189,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_block_variables_block_multiple_vars_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((
@@ -293,7 +211,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_block_variables_block_one_var_bound_by_lambda(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((('b', called_intrinsic),),
@@ -314,7 +233,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_block_variables_block_multiple_vars_bound_by_lambda(
       self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((
@@ -337,7 +257,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_block_variables_block_one_var_bound_by_block(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((('b', called_intrinsic),),
@@ -361,7 +282,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_block_variables_block_multiple_vars_bound_by_block(
       self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((
@@ -388,7 +310,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_call_intrinsic(self):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='b')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='b')
     call = computation_building_blocks.Call(fn, called_intrinsic)
     comp = call
 
@@ -402,7 +325,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_call_block_one_var(self):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='b')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='b')
     ref = computation_building_blocks.Reference('c',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((('c', called_intrinsic),), ref)
@@ -420,7 +344,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_call_block_multiple_vars(self):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='b')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='b')
     ref = computation_building_blocks.Reference('c',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((
@@ -440,7 +365,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_lambda_intrinsic_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     fn = computation_building_blocks.Lambda('b', tf.int32, called_intrinsic)
     comp = fn
 
@@ -453,7 +379,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_lambda_intrinsic_bound_by_lambda(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     fn = computation_building_blocks.Lambda('a', tf.int32, called_intrinsic)
     comp = fn
 
@@ -466,7 +393,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_lambda_block_one_var_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((('b', called_intrinsic),), ref)
@@ -483,7 +411,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_lambda_block_multiple_vars_unbound(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((
@@ -503,8 +432,10 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_lambda_block_first_var_unbound(self):
-    called_intrinsic_1 = _create_dummy_called_intrinsic(parameter_name='a')
-    called_intrinsic_2 = _create_dummy_called_intrinsic(parameter_name='b')
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='b')
     ref = computation_building_blocks.Reference(
         'c', called_intrinsic_2.type_signature)
     block = computation_building_blocks.Block((
@@ -525,8 +456,10 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_lambda_block_last_var_unbound(self):
-    called_intrinsic_1 = _create_dummy_called_intrinsic(parameter_name='a')
-    called_intrinsic_2 = _create_dummy_called_intrinsic(parameter_name='b')
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='b')
     ref = computation_building_blocks.Reference(
         'c', called_intrinsic_2.type_signature)
     block = computation_building_blocks.Block((
@@ -548,7 +481,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_lambda_block_one_var_bound_by_block(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((
@@ -569,8 +503,10 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_lambda_block_multiple_vars_bound_by_block(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    called_intrinsic_1 = _create_dummy_called_intrinsic(parameter_name='a')
-    called_intrinsic_2 = _create_dummy_called_intrinsic(parameter_name='b')
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
+    called_intrinsic_2 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='b')
     ref = computation_building_blocks.Reference(
         'c', called_intrinsic_2.type_signature)
     block = computation_building_blocks.Block((
@@ -592,7 +528,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_selection_intrinsic(self):
     parameter_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    called_intrinsic = _create_dummy_called_intrinsic(
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
         parameter_name='a', parameter_type=parameter_type)
     sel = computation_building_blocks.Selection(called_intrinsic, index=0)
     comp = sel
@@ -610,7 +546,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
         ('a', tf.int32),
         ('b', tf.int32),
     ))
-    called_intrinsic = _create_dummy_called_intrinsic(
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
         parameter_name='c', parameter_type=parameter_type)
     sel = computation_building_blocks.Selection(called_intrinsic, index=0)
     comp = sel
@@ -625,7 +561,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_selection_block_one_var(self):
     parameter_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    called_intrinsic = _create_dummy_called_intrinsic(
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
         parameter_name='a', parameter_type=parameter_type)
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
@@ -644,7 +580,7 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_from_selection_block_multiple_vars(self):
     parameter_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    called_intrinsic = _create_dummy_called_intrinsic(
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
         parameter_name='a', parameter_type=parameter_type)
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
@@ -665,7 +601,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_one_intrinsic(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     tup = computation_building_blocks.Tuple((called_intrinsic,))
     comp = tup
 
@@ -678,7 +615,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_multiple_intrinsics(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     tup = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     comp = tup
@@ -694,7 +632,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_named_intrinsics(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     tup = computation_building_blocks.Tuple((
         ('b', called_intrinsic),
         ('c', called_intrinsic),
@@ -712,7 +651,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_one_block_one_var(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((('b', called_intrinsic),), ref)
@@ -729,7 +669,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_one_block_multiple_vars(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((
@@ -749,7 +690,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_multiple_blocks_one_var(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((('b', called_intrinsic),),
@@ -772,7 +714,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_tuple_multiple_blocks_multiple_vars(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref_1 = computation_building_blocks.Reference(
         'b', called_intrinsic.type_signature)
     block_1 = computation_building_blocks.Block((
@@ -803,7 +746,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_one_intrinsic(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     tup = computation_building_blocks.Tuple((called_intrinsic,))
     sel = computation_building_blocks.Selection(tup, index=0)
     block = computation_building_blocks.Block((('b', data),), sel)
@@ -828,7 +772,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_extracts_multiple_intrinsics(self):
     data = computation_building_blocks.Data('data', tf.int32)
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     tup = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
     sel = computation_building_blocks.Selection(tup, index=0)
@@ -857,7 +802,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_multiple_intrinsics_dependent_bindings(self):
-    called_intrinsic_1 = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic_1 = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     fn_1 = computation_building_blocks.Lambda('a', tf.int32, called_intrinsic_1)
     data = computation_building_blocks.Data('data', tf.int32)
     call_1 = computation_building_blocks.Call(fn_1, data)
@@ -880,7 +826,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_extract_from_block_variables_intrinsic(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((('b', called_intrinsic),), ref)
@@ -896,7 +843,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_extract_from_lambda_block_one_var_bound_by_lambda(self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((('b', called_intrinsic),), ref)
@@ -914,7 +862,8 @@ class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_does_not_extract_from_lambda_block_multiple_vars_bound_by_lambda(
       self):
-    called_intrinsic = _create_dummy_called_intrinsic(parameter_name='a')
+    called_intrinsic = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
     ref = computation_building_blocks.Reference('b',
                                                 called_intrinsic.type_signature)
     block = computation_building_blocks.Block((
@@ -1313,7 +1262,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
-    block = _create_dummy_block(call, variable_name='b')
+    block = computation_test_utils.create_dummy_block(call, variable_name='b')
     comp = block
 
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
@@ -1391,7 +1340,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = computation_building_blocks.Data('data', arg_type)
     call_1 = computation_constructing_utils.create_federated_map(fn, arg)
-    block = _create_dummy_block(call_1, variable_name='b')
+    block = computation_test_utils.create_dummy_block(call_1, variable_name='b')
     call_2 = computation_constructing_utils.create_federated_map(fn, block)
     comp = call_2
 
@@ -2400,7 +2349,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
         parameter_name='a')
     calls = computation_building_blocks.Tuple(
         (called_intrinsic, called_intrinsic))
-    block = _create_dummy_block(calls, variable_name='a')
+    block = computation_test_utils.create_dummy_block(calls, variable_name='a')
     comp = block
 
     transformed_comp, modified = transformations.merge_tuple_intrinsics(
@@ -2704,7 +2653,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
   def test_removes_nested_federated_map(self):
     called_intrinsic = computation_test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    block = _create_dummy_block(called_intrinsic, variable_name='b')
+    block = computation_test_utils.create_dummy_block(
+        called_intrinsic, variable_name='b')
     comp = block
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
@@ -2735,7 +2685,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_remove_dummy_intrinsic(self):
-    comp = _create_dummy_called_intrinsic(parameter_name='a')
+    comp = computation_test_utils.create_dummy_called_intrinsic(
+        parameter_name='a')
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
         comp)
@@ -2788,7 +2739,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(fn, arg)
-    block = _create_dummy_block(call, variable_name='b')
+    block = computation_test_utils.create_dummy_block(call, variable_name='b')
     comp = block
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
@@ -2804,7 +2755,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
   def test_replaces_chained_called_lambdas(self):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg = computation_building_blocks.Data('data', tf.int32)
-    call = _create_chained_calls([fn, fn], arg)
+    call = computation_test_utils.create_chained_calls([fn, fn], arg)
     comp = call
 
     transformed_comp, modified = transformations.replace_called_lambda_with_block(
@@ -2831,7 +2782,7 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
 
   def test_does_not_replace_separated_called_lambda(self):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
-    block = _create_dummy_block(fn, variable_name='b')
+    block = computation_test_utils.create_dummy_block(fn, variable_name='b')
     arg = computation_building_blocks.Data('data', tf.int32)
     call = computation_building_blocks.Call(block, arg)
     comp = call
@@ -2843,108 +2794,6 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
                      comp.compact_representation())
     self.assertEqual(transformed_comp.compact_representation(),
                      '(let b=data in (a -> a))(data)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertFalse(modified)
-
-
-class ReplaceIntrinsicWithCallableTest(absltest.TestCase):
-
-  def test_raises_type_error_with_none_comp(self):
-    uri = 'intrinsic'
-    body = lambda x: x
-
-    with self.assertRaises(TypeError):
-      transformations.replace_intrinsic_with_callable(
-          None, uri, body, context_stack_impl.context_stack)
-
-  def test_raises_type_error_with_none_uri(self):
-    comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    body = lambda x: x
-
-    with self.assertRaises(TypeError):
-      transformations.replace_intrinsic_with_callable(
-          comp, None, body, context_stack_impl.context_stack)
-
-  def test_raises_type_error_with_none_body(self):
-    comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    uri = 'intrinsic'
-
-    with self.assertRaises(TypeError):
-      transformations.replace_intrinsic_with_callable(
-          comp, uri, None, context_stack_impl.context_stack)
-
-  def test_raises_type_error_with_none_context_stack(self):
-    comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    uri = 'intrinsic'
-    body = lambda x: x
-
-    with self.assertRaises(TypeError):
-      transformations.replace_intrinsic_with_callable(comp, uri, body, None)
-
-  def test_replaces_intrinsic(self):
-    comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    uri = 'intrinsic'
-    body = lambda x: x
-
-    transformed_comp, modified = transformations.replace_intrinsic_with_callable(
-        comp, uri, body, context_stack_impl.context_stack)
-
-    self.assertEqual(comp.compact_representation(), '(a -> intrinsic(a))')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(a -> (intrinsic_arg -> intrinsic_arg)(a))')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
-
-  def test_replaces_nested_intrinsic(self):
-    fn = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    block = _create_dummy_block(fn, variable_name='b')
-    comp = block
-    uri = 'intrinsic'
-    body = lambda x: x
-
-    transformed_comp, modified = transformations.replace_intrinsic_with_callable(
-        comp, uri, body, context_stack_impl.context_stack)
-
-    self.assertEqual(comp.compact_representation(),
-                     '(let b=data in (a -> intrinsic(a)))')
-    self.assertEqual(
-        transformed_comp.compact_representation(),
-        '(let b=data in (a -> (intrinsic_arg -> intrinsic_arg)(a)))')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
-
-  def test_replaces_chained_intrinsics(self):
-    fn = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    arg = computation_building_blocks.Data('data', tf.int32)
-    call = _create_chained_calls([fn, fn], arg)
-    comp = call
-    uri = 'intrinsic'
-    body = lambda x: x
-
-    transformed_comp, modified = transformations.replace_intrinsic_with_callable(
-        comp, uri, body, context_stack_impl.context_stack)
-
-    self.assertEqual(comp.compact_representation(),
-                     '(a -> intrinsic(a))((a -> intrinsic(a))(data))')
-    self.assertEqual(
-        transformed_comp.compact_representation(),
-        '(a -> (intrinsic_arg -> intrinsic_arg)(a))((a -> (intrinsic_arg -> intrinsic_arg)(a))(data))'
-    )
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
-
-  def test_does_not_replace_other_intrinsic(self):
-    comp = _create_lambda_to_dummy_intrinsic(parameter_name='a')
-    uri = 'other'
-    body = lambda x: x
-
-    transformed_comp, modified = transformations.replace_intrinsic_with_callable(
-        comp, uri, body, context_stack_impl.context_stack)
-
-    self.assertEqual(transformed_comp.compact_representation(),
-                     comp.compact_representation())
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(a -> intrinsic(a))')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -4020,71 +3869,6 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
     self.assertEqual(unwrapped.argument[0].type_signature,
                      computation_types.FunctionType(tf.int32, tf.int32))
-
-
-class ReduceIntrinsicBodiesTest(absltest.TestCase):
-
-  def test_raises_on_none(self):
-    context_stack = context_stack_impl.context_stack
-    with self.assertRaises(TypeError):
-      transformations.replace_all_intrinsics_with_bodies(None, context_stack)
-
-  def test_federated_weighted_mean_reduces(self):
-    uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
-    context_stack = context_stack_impl.context_stack
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_mean(x, x)
-
-    foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
-        foo._computation_proto)
-    count_before_reduction = _count_intrinsics(foo_building_block, uri)
-    reduced, modified = transformations.replace_all_intrinsics_with_bodies(
-        foo_building_block, context_stack)
-    count_after_reduction = _count_intrinsics(reduced, uri)
-    self.assertGreater(count_before_reduction, 0)
-    self.assertEqual(count_after_reduction, 0)
-    self.assertTrue(modified)
-
-  def test_federated_sum_reduces(self):
-    uri = intrinsic_defs.FEDERATED_SUM.uri
-    context_stack = context_stack_impl.context_stack
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_sum(x)
-
-    foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
-        foo._computation_proto)
-
-    count_before_reduction = _count_intrinsics(foo_building_block, uri)
-    reduced, modified = transformations.replace_all_intrinsics_with_bodies(
-        foo_building_block, context_stack)
-    count_after_reduction = _count_intrinsics(reduced, uri)
-    self.assertGreater(count_before_reduction, 0)
-    self.assertEqual(count_after_reduction, 0)
-    self.assertTrue(modified)
-
-  def test_generic_divide_reduces(self):
-    uri = intrinsic_defs.GENERIC_DIVIDE.uri
-    context_stack = context_stack_impl.context_stack
-    comp = computation_building_blocks.Intrinsic(
-        uri, computation_types.FunctionType([tf.float32, tf.float32],
-                                            tf.float32))
-
-    count_before_reduction = _count_intrinsics(comp, uri)
-    reduced, modified = transformations.replace_all_intrinsics_with_bodies(
-        comp, context_stack)
-    count_after_reduction = _count_intrinsics(reduced, uri)
-
-    self.assertGreater(count_before_reduction, 0)
-    self.assertEqual(count_after_reduction, 0)
-    tree_analysis.check_intrinsics_whitelisted_for_reduction(reduced)
-    self.assertTrue(modified)
-
 
 if __name__ == '__main__':
   absltest.main()
