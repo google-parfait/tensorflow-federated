@@ -164,6 +164,7 @@ py_test(
         ":context_stack_impl",
         ":intrinsic_defs",
         ":placement_literals",
+        ":type_constructors",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -568,7 +569,6 @@ py_library(
         ":executor_base",
         ":executor_value_base",
         ":intrinsic_defs",
-        ":intrinsic_utils",
         ":placement_literals",
         ":type_constructors",
         ":type_serialization",
@@ -678,7 +678,6 @@ py_library(
         ":context_stack_base",
         ":intrinsic_defs",
         ":intrinsic_factory",
-        ":intrinsic_utils",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -763,28 +762,10 @@ py_library(
     name = "intrinsic_utils",
     srcs = ["intrinsic_utils.py"],
     deps = [
-        ":computation_building_blocks",
         ":computation_constructing_utils",
         ":context_stack_base",
-        ":type_utils",
         ":value_impl",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-    ],
-)
-
-py_test(
-    name = "intrinsic_utils_test",
-    size = "small",
-    srcs = ["intrinsic_utils_test.py"],
-    deps = [
-        ":computation_building_blocks",
-        ":computation_wrapper_instances",
-        ":intrinsic_defs",
-        ":intrinsic_utils",
-        ":placement_literals",
-        ":type_constructors",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )

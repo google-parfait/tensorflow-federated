@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
@@ -635,7 +634,7 @@ class FederatedExecutor(executor_base.Executor):
     # TODO(b/134543154): Replace with something that produces a section of
     # plain TensorFlow code instead of constructing a lambda (so that this
     # can be executed directly on top of a plain TensorFlow-based executor).
-    multiply_blk = intrinsic_utils.create_binary_operator_with_upcast(
+    multiply_blk = computation_constructing_utils.create_binary_operator_with_upcast(
         zipped_arg.type_signature.member, tf.multiply)
     sum_of_products = await self._compute_intrinsic_federated_sum(
         await self._compute_intrinsic_federated_map(
@@ -653,7 +652,7 @@ class FederatedExecutor(executor_base.Executor):
         await self.create_tuple(
             anonymous_tuple.AnonymousTuple([(None, sum_of_products),
                                             (None, total_weight)])))
-    divide_blk = intrinsic_utils.create_binary_operator_with_upcast(
+    divide_blk = computation_constructing_utils.create_binary_operator_with_upcast(
         divide_arg.type_signature.member, tf.divide)
     return await self._compute_intrinsic_federated_apply(
         FederatedExecutorValue(

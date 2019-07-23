@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl import intrinsic_utils
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 
@@ -171,7 +170,7 @@ def get_intrinsic_bodies(context_stack):
         computation_constructing_utils.create_generic_constant(
             x.type_signature.member, 0), context_stack)
     plus_op = value_impl.ValueImpl(
-        intrinsic_utils.create_binary_operator_with_upcast(
+        computation_constructing_utils.create_binary_operator_with_upcast(
             computation_types.NamedTupleType(
                 [x.type_signature.member, x.type_signature.member]), tf.add),
         context_stack)
@@ -203,7 +202,7 @@ def get_intrinsic_bodies(context_stack):
       return value_impl.ValueImpl(named_divided, context_stack)
     arg = _pack_binary_operator_args(x, y)
     arg_comp = value_impl.ValueImpl.get_comp(arg)
-    divided = intrinsic_utils.apply_binary_operator_with_upcast(
+    divided = computation_constructing_utils.apply_binary_operator_with_upcast(
         arg_comp, tf.divide)
     return value_impl.ValueImpl(divided, context_stack)
 
@@ -225,7 +224,7 @@ def get_intrinsic_bodies(context_stack):
       return value_impl.ValueImpl(named_multiplied, context_stack)
     arg = _pack_binary_operator_args(x, y)
     arg_comp = value_impl.ValueImpl.get_comp(arg)
-    multiplied = intrinsic_utils.apply_binary_operator_with_upcast(
+    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
         arg_comp, tf.multiply)
     return value_impl.ValueImpl(multiplied, context_stack)
 
@@ -247,7 +246,8 @@ def get_intrinsic_bodies(context_stack):
       return value_impl.ValueImpl(named_added, context_stack)
     arg = _pack_binary_operator_args(x, y)
     arg_comp = value_impl.ValueImpl.get_comp(arg)
-    added = intrinsic_utils.apply_binary_operator_with_upcast(arg_comp, tf.add)
+    added = computation_constructing_utils.apply_binary_operator_with_upcast(
+        arg_comp, tf.add)
     return value_impl.ValueImpl(added, context_stack)
 
   # - FEDERATED_ZIP(x, y) := GENERIC_ZIP(x, y)
