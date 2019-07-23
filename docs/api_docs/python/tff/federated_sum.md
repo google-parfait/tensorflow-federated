@@ -18,7 +18,9 @@ Computes a sum at <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> of a
 tff.federated_sum(value)
 ```
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
 
 #### Args:
 

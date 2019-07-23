@@ -22,7 +22,11 @@ tff.learning.from_compiled_keras_model(
 )
 ```
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
+*   [Federated Learning for Text Generation](https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation)
+*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
 
 #### Args:
 

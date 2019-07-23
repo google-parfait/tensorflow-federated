@@ -17,7 +17,9 @@ Applies `tf.identity` pointwise to `source`.
 tff.utils.identity(source)
 ```
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
 
 This utility function provides the exact same behavior as `tf.identity`, but it
 generalizes to a wider class of objects, including ordinary tensors, variables,

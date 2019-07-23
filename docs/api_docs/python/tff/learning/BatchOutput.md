@@ -18,7 +18,9 @@ source</a>
 A structure that holds the output of a
 <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a>.
 
-<!-- Placeholder for "Used in" -->
+### Used in the tutorials:
+
+*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
 
 NOTE: All fields are optional (may be None).
 
