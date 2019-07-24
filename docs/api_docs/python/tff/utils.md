@@ -36,6 +36,9 @@ container for a stateful broadcast function.
 [`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target`
 from `source`.
 
+[`build_encoded_broadcast(...)`](../tff/utils/build_encoded_broadcast.md):
+Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
+
 [`create_variables(...)`](../tff/utils/create_variables.md): Creates a set of
 variables that matches the given `type_spec`.
 

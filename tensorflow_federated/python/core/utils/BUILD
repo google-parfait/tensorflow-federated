@@ -10,6 +10,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":computation_utils",
+        ":encoding_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
     ],
@@ -59,9 +60,9 @@ py_library(
     name = "encoding_utils",
     srcs = ["encoding_utils.py"],
     deps = [
-        "//tensorflow_federated",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/learning:model_utils",
+        ":computation_utils",
+        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/framework",
     ],
 )
 
@@ -70,11 +71,10 @@ py_test(
     size = "medium",
     srcs = ["encoding_utils_test.py"],
     deps = [
+        ":computation_utils",
         ":encoding_utils",
-        "//tensorflow_federated",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/learning:model_examples",
-        "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/core/api",
     ],
 )
 

@@ -182,6 +182,8 @@ toc:
       section:
       - title: Overview
         path: /federated/api_docs/python/tff/learning/framework
+      - title: build_encoded_broadcast_from_model
+        path: /federated/api_docs/python/tff/learning/framework/build_encoded_broadcast_from_model
       - title: build_model_delta_optimizer_process
         path: /federated/api_docs/python/tff/learning/framework/build_model_delta_optimizer_process
       - title: ClientDeltaFn
@@ -242,6 +244,8 @@ toc:
       path: /federated/api_docs/python/tff/utils
     - title: assign
       path: /federated/api_docs/python/tff/utils/assign
+    - title: build_encoded_broadcast
+      path: /federated/api_docs/python/tff/utils/build_encoded_broadcast
     - title: create_variables
       path: /federated/api_docs/python/tff/utils/create_variables
     - title: federated_max

@@ -26,13 +26,13 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import tensorflow_federated as tff
-from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
-def build_broadcast(values, encoders):
+def build_encoded_broadcast(values, encoders):
   """Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
 
   Args:
@@ -67,7 +67,7 @@ def build_broadcast(values, encoders):
   fed_state_type = tff.FederatedType(initial_state_fn.type_signature.result,
                                      tff.SERVER)
   fed_value_type = tff.FederatedType(
-      tff.framework.type_from_tensors(values), tff.SERVER)
+      tff_framework.type_from_tensors(values), tff.SERVER)
 
   @tff.federated_computation(fed_state_type, fed_value_type)
   def encoded_broadcast_fn(state, value):
@@ -84,7 +84,7 @@ def build_broadcast(values, encoders):
     client_value = tff.federated_map(decode_fn, client_encoded_value)
     return new_state, client_value
 
-  return tff.utils.StatefulBroadcastFn(
+  return StatefulBroadcastFn(
       initialize_fn=initial_state_fn, next_fn=encoded_broadcast_fn)
 
 
@@ -122,48 +122,3 @@ def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
         encoders, lambda e, val: e.decode(val), encoders, encoded_value)
 
   return encode, decode
-
-
-def broadcast_from_encoder_fn(values, encoder_fn):
-  """Builds `StatefulBroadcastFn` for `values`.
-
-  This method creates a `SimpleEncoder` for every value in `values`, as
-  returned by `encoder_fn`.
-
-  Args:
-    values: A possible nested structure of values to be broadcasted.
-    encoder_fn: A Python callable with a single argument, which is expected to
-      be a `tf.Tensor` of shape and dtype to be encoded.
-
-  Returns:
-    A `StatefulBroadcastFn` for encoding and broadcasting `values`.
-
-  Raises:
-    TypeError: If `encoder_fn` is not a callable object.
-  """
-  py_typecheck.check_callable(encoder_fn)
-  encoders = tf.nest.map_structure(encoder_fn, values)
-  return build_broadcast(values, encoders)
-
-
-def broadcast_from_model_fn_encoder_fn(model_fn, encoder_fn):
-  """Builds `StatefulBroadcastFn` for weights of model returned by `model_fn`.
-
-  This
-
-  Args:
-    model_fn: A Python callable with no arguments function that returns a
-      `tff.learning.Model`.
-    encoder_fn: A Python callable with a single argument, which is expected to
-      be a `tf.Tensor` of shape and dtype to be encoded.
-
-  Returns:
-    A `StatefulBroadcastFn` for encoding and broadcasting the weights of model
-    created by `model_fn`.
-
-  Raises:
-    TypeError: If `model_fn` or `encoder_fn` are not callable objects.
-  """
-  py_typecheck.check_callable(encoder_fn)
-  value = model_utils.enhance(model_fn()).weights
-  return broadcast_from_encoder_fn(value, encoder_fn)
