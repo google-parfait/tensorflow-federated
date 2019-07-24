@@ -5,6 +5,12 @@
 
 # tff.learning.framework.build_encoded_broadcast_from_model
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/encoding_utils.py">View
+source</a>
+
 Builds `StatefulBroadcastFn` for weights of model returned by `model_fn`.
 
 ```python
@@ -13,9 +19,6 @@ tff.learning.framework.build_encoded_broadcast_from_model(
     encoder_fn
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/encoding_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
