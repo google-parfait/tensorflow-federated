@@ -52,7 +52,7 @@ main() {
   cp -LR \
       "${runfiles}/org_tensorflow_federated/tensorflow_federated" \
       "${temp_dir}"
-  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/development/build/setup.py" \
+  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/development/setup.py" \
       "${temp_dir}"
 
   pushd "${temp_dir}" > /dev/null
