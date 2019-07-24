@@ -29,7 +29,7 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('endpoint', '[::]:10000', 'endpoint to listen on')
+flags.DEFINE_integer('port', '8000', 'port to listen on')
 flags.DEFINE_integer('threads', '10', 'number of worker threads in thread pool')
 flags.DEFINE_string('private_key', '', 'the private key for SSL/TLS setup')
 flags.DEFINE_string('certificate_chain', '', 'the cert for SSL/TLS setup')
@@ -37,32 +37,39 @@ flags.DEFINE_string('certificate_chain', '', 'the cert for SSL/TLS setup')
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
-def _port(endpoint):
-  split = endpoint.split(':')
-  return int(split[-1])
-
-
 def main(argv):
   del argv
   tf.compat.v1.enable_v2_behavior()
 
-  # TODO(b/134543154): Replace this with the complete local executor stack.
-  executor = tff.framework.EagerExecutor()
+  service = tff.framework.ExecutorService(
+      tff.framework.LambdaExecutor(
+          tff.framework.ConcurrentExecutor(tff.framework.EagerExecutor())))
 
-  service = tff.framework.ExecutorService(executor)
   server = grpc.server(
       concurrent.futures.ThreadPoolExecutor(max_workers=FLAGS.threads))
 
-  with open(FLAGS.private_key, 'rb') as f:
-    private_key = f.read()
-  with open(FLAGS.certificate_chain, 'rb') as f:
-    certificate_chain = f.read()
-  server_creds = grpc.ssl_server_credentials(((
-      private_key,
-      certificate_chain,
-  ),))
+  if FLAGS.private_key:
+    if FLAGS.certificate_chain:
+      with open(FLAGS.private_key, 'rb') as f:
+        private_key = f.read()
+      with open(FLAGS.certificate_chain, 'rb') as f:
+        certificate_chain = f.read()
+      server_creds = grpc.ssl_server_credentials(((
+          private_key,
+          certificate_chain,
+      ),))
+    else:
+      raise ValueError(
+          'Private key has been specified, but the certificate chain missing.')
+  else:
+    server_creds = None
 
-  server.add_secure_port(FLAGS.endpoint, server_creds)
+  full_port_string = '[::]:{}'.format(str(FLAGS.port))
+  if server_creds is not None:
+    server.add_secure_port(full_port_string, server_creds)
+  else:
+    server.add_insecure_port(full_port_string)
+
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
   server.start()
 
