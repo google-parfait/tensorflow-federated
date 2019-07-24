@@ -83,6 +83,7 @@
 *   <a href="./tff/learning/framework/EnhancedModel.md"><code>tff.learning.framework.EnhancedModel</code></a>
 *   <a href="./tff/learning/framework/EnhancedTrainableModel.md"><code>tff.learning.framework.EnhancedTrainableModel</code></a>
 *   <a href="./tff/learning/framework/ModelWeights.md"><code>tff.learning.framework.ModelWeights</code></a>
+*   <a href="./tff/learning/framework/build_encoded_broadcast_from_model.md"><code>tff.learning.framework.build_encoded_broadcast_from_model</code></a>
 *   <a href="./tff/learning/framework/build_model_delta_optimizer_process.md"><code>tff.learning.framework.build_model_delta_optimizer_process</code></a>
 *   <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
 *   <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
@@ -114,6 +115,7 @@
 *   <a href="./tff/utils/StatefulAggregateFn.md"><code>tff.utils.StatefulAggregateFn</code></a>
 *   <a href="./tff/utils/StatefulBroadcastFn.md"><code>tff.utils.StatefulBroadcastFn</code></a>
 *   <a href="./tff/utils/assign.md"><code>tff.utils.assign</code></a>
+*   <a href="./tff/utils/build_encoded_broadcast.md"><code>tff.utils.build_encoded_broadcast</code></a>
 *   <a href="./tff/utils/create_variables.md"><code>tff.utils.create_variables</code></a>
 *   <a href="./tff/utils/federated_max.md"><code>tff.utils.federated_max</code></a>
 *   <a href="./tff/utils/federated_min.md"><code>tff.utils.federated_min</code></a>

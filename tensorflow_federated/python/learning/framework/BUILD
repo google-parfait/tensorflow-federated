@@ -1,7 +1,4 @@
-package(default_visibility = [
-    "//tensorflow_federated/python/core/utils:__subpackages__",
-    "//tensorflow_federated/python/learning:__subpackages__",
-])
+package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -11,8 +8,32 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        ":encoding_utils",
         ":optimizer_utils",
         "//tensorflow_federated/python/learning:model_utils",
+    ],
+)
+
+py_library(
+    name = "encoding_utils",
+    srcs = ["encoding_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/learning:model_utils",
+    ],
+)
+
+py_test(
+    name = "encoding_utils_test",
+    size = "medium",
+    srcs = ["encoding_utils_test.py"],
+    deps = [
+        ":encoding_utils",
+        ":optimizer_utils",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/learning:model_examples",
     ],
 )
 
