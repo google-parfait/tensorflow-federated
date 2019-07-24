@@ -5,6 +5,12 @@
 
 # tff.utils.build_encoded_broadcast
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/encoding_utils.py">View
+source</a>
+
 Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
 
 ```python
@@ -13,9 +19,6 @@ tff.utils.build_encoded_broadcast(
     encoders
 )
 ```
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/encoding_utils.py">View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
