@@ -109,6 +109,41 @@ class IntrinsicBodiesTest(absltest.TestCase):
         foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]),
         anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 3.)]))
 
+  def test_federated_mean_with_ints(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.FEDERATED_MEAN.uri](x)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> float64@SERVER)')
+
+    self.assertEqual(foo([1]), 1.)
+    self.assertEqual(foo([1, 2, 3]), 2.)
+
+  def test_federated_mean_named_tuple_with_tensor(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.FederatedType([('a', tf.float32), ('b', tf.float32)],
+                                        placements.CLIENTS))
+    def foo(x):
+      return bodies[intrinsic_defs.FEDERATED_MEAN.uri](x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({<a=float32,b=float32>}@CLIENTS -> <a=float32,b=float32>@SERVER)')
+
+    self.assertEqual(
+        foo([[1., 1.]]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
+    self.assertEqual(
+        foo([[1., 1.], [1., 2.], [1., 3.]]),
+        anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 2.)]))
+
 
 class GenericDivideTest(absltest.TestCase):
 
