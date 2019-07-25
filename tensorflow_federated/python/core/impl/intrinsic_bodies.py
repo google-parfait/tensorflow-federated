@@ -71,12 +71,6 @@ def get_intrinsic_bodies(context_stack):
   # - FEDERATED_VALUE_AT_CLIENTS(x) := GENERIC_PLACE(x, CLIENTS)
   #
   # - FEDERATED_VALUE_AT_SERVER(x) := GENERIC_PLACE(x, SERVER)
-  #
-  # - FEDERATED_MEAN(x) := FEDERATED_WEIGHTED_MEAN(
-  #     x, FEDERATED_VALUE_AT_CLIENTS(GENERIC_ONE))
-  #
-  # - FEDERATED_WEIGHTED_MEAN(x, w) :=
-  #     GENERIC_DIVIDE(FEDERATED_SUM(GENERIC_MULTIPLY(x, w)), w)
 
   def _pack_binary_operator_args(x, y):
     """Packs arguments to binary operator into a single arg."""
@@ -145,11 +139,10 @@ def get_intrinsic_bodies(context_stack):
     top_level_mismatch_string = (
         '{} does not accept arguments of type {} and '
         '{}, as they are mismatched at the top level.'.format(
-            x.type_signature, y.type_signature, op_name))
+            op_name, x.type_signature, y.type_signature))
     if isinstance(x.type_signature, computation_types.FederatedType):
       if (not isinstance(y.type_signature, computation_types.FederatedType) or
           x.type_signature.placement != y.type_signature.placement or
-          x.type_signature.all_equal != y.type_signature.all_equal or
           not type_utils.is_binary_op_with_upcast_compatible_pair(
               x.type_signature.member, y.type_signature.member)):
         raise TypeError(top_level_mismatch_string)
@@ -164,6 +157,13 @@ def get_intrinsic_bodies(context_stack):
     multiplied = generic_multiply(arg)
     summed = federated_sum(intrinsics.federated_zip([multiplied, w]))
     return generic_divide(summed)
+
+  def federated_mean(arg):
+    one = value_impl.ValueImpl(
+        computation_constructing_utils.create_generic_constant(
+            arg.type_signature, 1), context_stack)
+    arg = value_impl.to_value([arg, one], None, context_stack)
+    return federated_weighted_mean(arg)
 
   def federated_sum(x):
     zero = value_impl.ValueImpl(
@@ -308,6 +308,7 @@ def get_intrinsic_bodies(context_stack):
   # - SEQUENCE_REDUCE
 
   return collections.OrderedDict([
+      (intrinsic_defs.FEDERATED_MEAN.uri, federated_mean),
       (intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, federated_weighted_mean),
       (intrinsic_defs.FEDERATED_SUM.uri, federated_sum),
       (intrinsic_defs.GENERIC_DIVIDE.uri, generic_divide),
