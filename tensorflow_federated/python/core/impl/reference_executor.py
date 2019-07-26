@@ -364,7 +364,9 @@ def numpy_cast(value, dtype, shape):
   py_typecheck.check_type(dtype, tf.DType)
   py_typecheck.check_type(shape, tf.TensorShape)
   value_as_numpy_array = np.array(value, dtype=dtype.as_numpy_dtype)
-  if list(value_as_numpy_array.shape) != shape.dims:
+  if not (len(value_as_numpy_array.shape) == len(shape.dims) and
+          all(value_as_numpy_array.shape[i] == shape.dims[i] or
+              shape.dims[i].value is None) for i in range(len(shape.dims))):
     raise TypeError('Expected shape {}, found {}.'.format(
         str(shape.dims), str(value_as_numpy_array.shape)))
   # NOTE: We don't want to make things more complicated than necessary by
@@ -896,8 +898,9 @@ class ReferenceExecutor(context_base.Context):
     raise NotImplementedError('Placement is currently unsupported.')
 
   def _sequence_sum(self, arg):
+    inferred_type_spec = type_utils.infer_type(arg.value[0])
     py_typecheck.check_type(arg.type_signature, computation_types.SequenceType)
-    total = self._generic_zero(arg.type_signature.element)
+    total = self._generic_zero(inferred_type_spec)
     for v in arg.value:
       total = self._generic_plus(
           ComputedValue(
