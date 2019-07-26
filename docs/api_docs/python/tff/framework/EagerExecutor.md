@@ -116,8 +116,7 @@ source</a>
 ```python
 create_selection(
     source,
-    index=None,
-    name=None
+    index=None
 )
 ```
 

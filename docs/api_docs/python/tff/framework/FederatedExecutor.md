@@ -83,10 +83,7 @@ Creates a federated executor backed by a collection of target executors.
 source</a>
 
 ```python
-create_call(
-    comp,
-    arg=None
-)
+create_call(comp)
 ```
 
 A coroutine that creates a call to `comp` with optional argument `arg`.
@@ -110,11 +107,7 @@ constructed vall.
 source</a>
 
 ```python
-create_selection(
-    source,
-    index=None,
-    name=None
-)
+create_selection(source)
 ```
 
 A coroutine that creates a selection from `source`.
@@ -161,10 +154,7 @@ constructed tuple.
 source</a>
 
 ```python
-create_value(
-    value,
-    type_spec=None
-)
+create_value(value)
 ```
 
 A coroutine that creates embedded value from `value` of type `type_spec`.
