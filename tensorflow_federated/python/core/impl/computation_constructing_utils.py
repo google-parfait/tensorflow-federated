@@ -980,14 +980,15 @@ def create_federated_mean(value, weight):
                                                 placement_literals.SERVER)
   if weight is not None:
     intrinsic_type = computation_types.FunctionType(
-        (value.type_signature, weight.type_signature), result_type)
+        (type_utils.to_non_all_equal(value.type_signature),
+         type_utils.to_non_all_equal(weight.type_signature)), result_type)
     intrinsic = computation_building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, intrinsic_type)
     values = computation_building_blocks.Tuple((value, weight))
     return computation_building_blocks.Call(intrinsic, values)
   else:
-    intrinsic_type = computation_types.FunctionType(value.type_signature,
-                                                    result_type)
+    intrinsic_type = computation_types.FunctionType(
+        type_utils.to_non_all_equal(value.type_signature), result_type)
     intrinsic = computation_building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MEAN.uri, intrinsic_type)
     return computation_building_blocks.Call(intrinsic, value)

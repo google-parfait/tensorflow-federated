@@ -275,6 +275,28 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
 
+  def test_federated_mean_with_all_equal_client_float32_without_weight(self):
+    federated_all_equal_float = tff.FederatedType(
+        tf.float32, tff.CLIENTS, all_equal=True)
+
+    @tff.federated_computation(federated_all_equal_float)
+    def foo(x):
+      return tff.federated_mean(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(float32@CLIENTS -> float32@SERVER)')
+
+  def test_federated_mean_with_all_equal_client_float32_with_weight(self):
+    federated_all_equal_float = tff.FederatedType(
+        tf.float32, tff.CLIENTS, all_equal=True)
+
+    @tff.federated_computation(federated_all_equal_float)
+    def foo(x):
+      return tff.federated_mean(x, x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(float32@CLIENTS -> float32@SERVER)')
+
   def test_federated_mean_with_client_tuple_with_int32_weight(self):
 
     @tff.federated_computation([
