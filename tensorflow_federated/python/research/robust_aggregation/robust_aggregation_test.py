@@ -28,7 +28,8 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-from tensorflow_federated.python.research.robust_aggregation import build_stateless_robust_aggregation
+# from tensorflow_federated.python.research.robust_aggregation import build_stateless_robust_aggregation
+from rfa import build_stateless_robust_aggregation
 
 dim = 500
 num_data_points = 10
@@ -204,8 +205,8 @@ class RobustAggregationTest(tf.test.TestCase):
     model_fn = get_model_fn()
     federated_train_data = setup_toy_data()
     means, weights = get_means_and_weights(federated_train_data)
-    for num_passes in [2, 3, 5, 10]:
-      for tolerance in [1e-4, 1e-6, 1e-8]:
+    for num_passes in [3, 5]:
+      for tolerance in [1e-6]:
         iterative_process = build_federated_process_for_test(
             model_fn, num_passes, tolerance
         )
