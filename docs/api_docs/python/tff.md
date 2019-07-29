@@ -19,6 +19,9 @@ TensorFlow Federated Library.
 
 ## Modules
 
+[`backends`](./tff/backends.md) module: This directory contains code for
+interfacing custom types of backends.
+
 [`framework`](./tff/framework.md) module: Interfaces for extensions, selectively
 lifted out of `impl`.
 

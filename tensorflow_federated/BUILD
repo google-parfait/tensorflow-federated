@@ -28,6 +28,7 @@ py_library(
         "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/api:value_base",
         "//tensorflow_federated/python/core/api:values",
+        "//tensorflow_federated/python/core/backends",
         "//tensorflow_federated/python/core/framework",
         "//tensorflow_federated/python/core/utils",
         "//tensorflow_federated/python/learning",

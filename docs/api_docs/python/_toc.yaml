@@ -56,6 +56,16 @@ toc:
       path: /federated/api_docs/python/tff/TypedObject
     - title: Value
       path: /federated/api_docs/python/tff/Value
+  - title: tff.backends
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/backends
+    - title: mapreduce
+      section:
+      - title: Overview
+        path: /federated/api_docs/python/tff/backends/mapreduce
+      - title: CanonicalForm
+        path: /federated/api_docs/python/tff/backends/mapreduce/CanonicalForm
   - title: tff.framework
     section:
     - title: Overview

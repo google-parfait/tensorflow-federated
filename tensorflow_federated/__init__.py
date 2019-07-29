@@ -50,6 +50,7 @@ from tensorflow_federated.python.core.api.values import to_value
 # NOTE: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 
@@ -61,6 +62,7 @@ from tensorflow_federated.python import simulation
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "backends",
     "CLIENTS",
     "Computation",
     "FederatedType",

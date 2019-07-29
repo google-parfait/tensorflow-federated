@@ -10,6 +10,9 @@
 *   <a href="./tff/Type.md"><code>tff.Type</code></a>
 *   <a href="./tff/TypedObject.md"><code>tff.TypedObject</code></a>
 *   <a href="./tff/Value.md"><code>tff.Value</code></a>
+*   <a href="./tff/backends.md"><code>tff.backends</code></a>
+*   <a href="./tff/backends/mapreduce.md"><code>tff.backends.mapreduce</code></a>
+*   <a href="./tff/backends/mapreduce/CanonicalForm.md"><code>tff.backends.mapreduce.CanonicalForm</code></a>
 *   <a href="./tff/federated_aggregate.md"><code>tff.federated_aggregate</code></a>
 *   <a href="./tff/federated_apply.md"><code>tff.federated_apply</code></a>
 *   <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>

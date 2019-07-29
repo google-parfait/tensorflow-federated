@@ -19,3 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.core.backends import mapreduce
+
+# Used by doc generation script.
+_allowed_symbols = [
+    "mapreduce",
+]
