@@ -162,9 +162,16 @@ class AnonymousTuple(object):
           tuple(self._name_to_index.items())))
     return self._hash
 
-  def _asdict(self):
-    """Returns an OrderedDict which maps field names to their values."""
-    return to_odict(self)
+  def _asdict(self, recursive=False):
+    """Returns an OrderedDict which maps field names to their values.
+
+    Args:
+      recursive: Whether to convert nested AnonymousTuples recursively.
+
+    Returns:
+      An `OrderedDict`.
+    """
+    return to_odict(self, recursive=recursive)
 
 
 def to_elements(an_anonymous_tuple):
@@ -195,11 +202,12 @@ def to_elements(an_anonymous_tuple):
   # pylint: enable=protected-access
 
 
-def to_odict(anon_tuple):
+def to_odict(anon_tuple, recursive=False):
   """Returns anon_tuple as an `OrderedDict`, if possible.
 
   Args:
     anon_tuple: An `AnonymousTuple`.
+    recursive: Whether to convert nested AnonymousTuples recursively.
 
   Raises:
     ValueError: If the anonymous tuple contains unnamed elements.
@@ -208,12 +216,18 @@ def to_odict(anon_tuple):
     An `OrderedDict`.
   """
   py_typecheck.check_type(anon_tuple, AnonymousTuple)
-  elements = to_elements(anon_tuple)
-  for name, _ in elements:
-    if name is None:
-      raise ValueError('Can\'t convert an AnonymousTuple with unnamed '
-                       'entries to an OrderedDict:\n' + str(anon_tuple))
-  return collections.OrderedDict(elements)
+
+  def _to_odict(elements):
+    for name, _ in elements:
+      if name is None:
+        raise ValueError('Can\'t convert an AnonymousTuple with unnamed '
+                         'entries to an OrderedDict:\n' + str(anon_tuple))
+    return collections.OrderedDict(elements)
+
+  if recursive:
+    return to_container_recursive(anon_tuple, _to_odict)
+  else:
+    return _to_odict(to_elements(anon_tuple))
 
 
 def flatten(structure):
@@ -417,3 +431,36 @@ def from_container(value, recursive=False):
       return value
 
   return _convert(value, recursive, must_be_container=True)
+
+
+def to_container_recursive(value, container_fn):
+  """Recursively converts the AnonymousTuple `value` to a new container type.
+
+  This function is always recursive, since the non-recursive version would
+  be just `container_fn(value)`.
+
+  Note this function will only recurse through `AnonymousTuple`s, so if called
+  on the input
+  `AnonymousTuple([('a', 1), ('b', {'c': AnonymousTuple(...)})])`
+  the inner `AnonymousTuple` will not be converted, because we do not
+  recurse through Python dictionaries.
+
+  Args:
+    value: An `AnonymousTuple`, possibly nested.
+    container_fn: A function that takes a `list` of `(name, value)` tuples ( the
+      elements of an `AnonymousTuple`), and returns a new container holding the
+      same values.
+
+  Returns:
+    A nested container of the type returned by `container_fn`.
+  """
+  py_typecheck.check_type(value, AnonymousTuple)
+  py_typecheck.check_callable(container_fn)
+
+  def recurse(v):
+    if isinstance(v, AnonymousTuple):
+      return to_container_recursive(v, container_fn)
+    else:
+      return v
+
+  return container_fn([(k, recurse(v)) for k, v in to_elements(value)])
