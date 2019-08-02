@@ -12,12 +12,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Simple implementation of the RFA Algorithm for robust aggregation."""
-
-from .rfa import build_stateless_robust_aggregation
-from .rfa import build_robust_federated_aggregation_process
-
-__all__ = ['build_stateless_robust_aggregation',
-           'build_robust_federated_aggregation_process'
-          ]
