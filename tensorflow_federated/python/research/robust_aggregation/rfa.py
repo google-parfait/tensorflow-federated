@@ -12,9 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Simple implementation of the RFA Algorithm for robust aggregation."""
-
 
 from __future__ import absolute_import
 from __future__ import division
@@ -28,9 +26,9 @@ import tensorflow_federated as tff
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-def build_stateless_robust_aggregation(
-    model_type, num_communication_passes=5, tolerance=1e-6
-):
+def build_stateless_robust_aggregation(model_type,
+                                       num_communication_passes=5,
+                                       tolerance=1e-6):
   """ Create TFF function for robust aggregation.
   The robust aggregate is an approximate geometric median
   computed via the smoothed Weiszfeld algorithm.
@@ -53,10 +51,10 @@ def build_stateless_robust_aggregation(
 
   @tff.tf_computation(tf.float32, model_type, model_type)
   def update_weight_fn(weight, server_model, client_model):
-    sqnorms = tf.nest.map_structure(lambda a, b: tf.norm(a-b)**2, server_model, client_model)
+    sqnorms = tf.nest.map_structure(lambda a, b: tf.norm(a - b)**2,
+                                    server_model, client_model)
     sqnorm = tf.reduce_sum(list(six.itervalues(sqnorms)))
     return weight / tf.math.maximum(tolerance, tf.math.sqrt(sqnorm))
-
 
   client_model_type = tff.FederatedType(model_type, tff.CLIENTS)
   client_weight_type = tff.FederatedType(tf.float32, tff.CLIENTS)
@@ -64,25 +62,22 @@ def build_stateless_robust_aggregation(
   @tff.federated_computation(client_model_type, client_weight_type)
   def robust_aggregation_fn(value, weight):
     aggregate = tff.federated_mean(value, weight=weight)
-    for _ in range(num_communication_passes-1):
+    for _ in range(num_communication_passes - 1):
       aggregate_at_client = tff.federated_broadcast(aggregate)
-      updated_weight = tff.federated_map(
-          update_weight_fn,
-          (weight, aggregate_at_client, value)
-      )
+      updated_weight = tff.federated_map(update_weight_fn,
+                                         (weight, aggregate_at_client, value))
       aggregate = tff.federated_mean(value, weight=updated_weight)
     return aggregate
 
   return tff.utils.StatefulAggregateFn(
       initialize_fn=lambda: (),
-      next_fn=lambda state, value, weight: (state, robust_aggregation_fn(value, weight))
-  )
+      next_fn=lambda state, value, weight:
+      (state, robust_aggregation_fn(value, weight)))
 
 
-def build_robust_federated_aggregation_process(
-        model_fn,
-        num_communication_passes=5,
-        tolerance=1e-6):
+def build_robust_federated_aggregation_process(model_fn,
+                                               num_communication_passes=5,
+                                               tolerance=1e-6):
   """Builds the TFF computations for robust federated aggregation using the RFA Algorithm.
 
   Args:
@@ -101,7 +96,6 @@ def build_robust_federated_aggregation_process(
   robust_aggregation_fn = build_stateless_robust_aggregation(
       model_type,
       num_communication_passes=num_communication_passes,
-      tolerance=tolerance
-  )
+      tolerance=tolerance)
   return tff.learning.build_federated_averaging_process(
       model_fn, stateful_delta_aggregate_fn=robust_aggregation_fn)

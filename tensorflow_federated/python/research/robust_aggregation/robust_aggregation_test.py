@@ -12,15 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Test Robust Aggregation with Numpy Implementation."""
 
+from __future__ import absolute_import
+from __future__ import division
 
 import collections
 import numpy as np
 from six.moves import range
 import tensorflow as tf
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
 
 import tensorflow_federated as tff
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -33,34 +33,41 @@ from rfa import build_stateless_robust_aggregation
 dim = 500
 num_data_points = 10
 
+
 def setup_toy_data():
   rng = np.random.RandomState(0)
   data = rng.rand(num_data_points, dim).astype(np.float32)
   labels = rng.rand(num_data_points, 1).astype(np.float32)
-  return [tf.data.Dataset.from_tensor_slices(
-      collections.OrderedDict(
-          [('x', data[i:i+1]), ('y', labels[i:i+1])])).batch(1)
-          for i in range(data.shape[0])]
+  return [
+      tf.data.Dataset.from_tensor_slices(
+          collections.OrderedDict([('x', data[i:i + 1]),
+                                   ('y', labels[i:i + 1])])).batch(1)
+      for i in range(data.shape[0])
+  ]
 
 
 def get_model_fn():
   """Return a function which creates a TFF model."""
+
   def create_compiled_keras_model():
     model = tf.keras.models.Sequential([
         tf.keras.layers.Dense(
-            1, activation=None,
+            1,
+            activation=None,
             kernel_initializer='zeros',
-            use_bias=False, input_shape=(dim,))])
+            use_bias=False,
+            input_shape=(dim,))
+    ])
 
-    model.compile(loss='mse',
-                  optimizer=gradient_descent.SGD(learning_rate=1e-20))
+    model.compile(
+        loss='mse', optimizer=tf.keras.optimizers.SGD(learning_rate=1e-20))
     # only to get the model to compile. We will not actually train this model
     return model
 
   sample_dataset = setup_toy_data()[0]
-  sample_batch = tf.nest.map_structure(
-      lambda x: x.numpy(), iter(sample_dataset).next()
-  )
+  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
+                                       iter(sample_dataset).next())
+
   def model_fn():
     keras_model = create_compiled_keras_model()
     return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
@@ -116,13 +123,11 @@ class DummyClientComputation(optimizer_utils.ClientDeltaFn):
     # Note: this works for a linear model only (as in the example above)
     key = list(model.weights.trainable.keys())[0]
     weights_delta = collections.OrderedDict(
-        {key: example_vector_sum/tf.cast(num_examples_sum, tf.float32)}
-    )
+        {key: example_vector_sum / tf.cast(num_examples_sum, tf.float32)})
 
     aggregated_outputs = model.report_local_outputs()
     weights_delta, has_non_finite_delta = (
-        tensor_utils.zero_all_if_any_non_finite(weights_delta)
-    )
+        tensor_utils.zero_all_if_any_non_finite(weights_delta))
 
     weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
 
@@ -130,7 +135,8 @@ class DummyClientComputation(optimizer_utils.ClientDeltaFn):
         weights_delta, weights_delta_weight, aggregated_outputs,
         tensor_utils.to_odict({
             'num_examples': num_examples_sum,
-            'has_non_finite_delta': has_non_finite_delta}))
+            'has_non_finite_delta': has_non_finite_delta
+        }))
 
 
 def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
@@ -149,15 +155,13 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
     model_type = tff.framework.type_from_tensors(model_fn().weights.trainable)
 
     stateful_delta_aggregate_fn = build_stateless_robust_aggregation(
-        model_type, num_communication_passes=num_passes, tolerance=tolerance
-    )
+        model_type, num_communication_passes=num_passes, tolerance=tolerance)
 
     stateful_model_broadcast_fn = optimizer_utils.build_stateless_broadcaster()
 
     return optimizer_utils.build_model_delta_optimizer_process(
         model_fn, client_fed_avg, server_optimizer_fn,
-        stateful_delta_aggregate_fn, stateful_model_broadcast_fn
-    )
+        stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
 
 
 def get_mean(dataset):
@@ -180,19 +184,20 @@ def get_means_and_weights(federated_train_data):
   return means, weights
 
 
-def aggregation_fn_np(
-    value, weight, num_communication_passes=5, tolerance=1e-6
-):
+def aggregation_fn_np(value, weight, num_communication_passes=5,
+                      tolerance=1e-6):
   """Robust aggregation function of rows of `value` in numpy."""
   tolerance = np.float32(tolerance)
   aggr = np.average(value, axis=0, weights=weight)
-  for _ in range(num_communication_passes-1):
+  for _ in range(num_communication_passes - 1):
     aggr = np.average(
-        value, axis=0,
-        weights=[weight[i] /
-                 np.maximum(tolerance, np.linalg.norm(aggr - value[i, :]))
-                 for i in range(value.shape[0])]
-    )
+        value,
+        axis=0,
+        weights=[
+            weight[i] /
+            np.maximum(tolerance, np.linalg.norm(aggr - value[i, :]))
+            for i in range(value.shape[0])
+        ])
   return aggr
 
 
@@ -207,18 +212,18 @@ class RobustAggregationTest(tf.test.TestCase):
     for num_passes in [3, 5]:
       for tolerance in [1e-4, 1e-6]:
         iterative_process = build_federated_process_for_test(
-            model_fn, num_passes, tolerance
-        )
+            model_fn, num_passes, tolerance)
         state = iterative_process.initialize()
         state, _ = iterative_process.next(state, federated_train_data)
         median_tff = state[0][0][0].reshape(-1)
         median_np = aggregation_fn_np(
-            means, weights,
+            means,
+            weights,
             num_communication_passes=num_passes,
-            tolerance=tolerance
-        )
+            tolerance=tolerance)
         self.assertAllClose(
-            median_tff, median_np,
+            median_tff,
+            median_np,
             msg="""TFF median and np median do not agree for num_passes = {}
             and tolerance = {}""".format(num_passes, tolerance))
 
