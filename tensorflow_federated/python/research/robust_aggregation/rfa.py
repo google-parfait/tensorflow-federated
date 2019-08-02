@@ -25,6 +25,7 @@ from six.moves import range
 
 import tensorflow as tf
 import tensorflow_federated as tff
+from tensorflow_federated.python.common_libs import py_typecheck
 
 
 def build_stateless_robust_aggregation(
