@@ -84,6 +84,7 @@ def build_robust_federated_aggregation_process(
         num_communication_passes=5,
         tolerance=1e-6):
   """Builds the TFF computations for robust federated aggregation using the RFA Algorithm.
+
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
     num_communication_passes: Number of communication passes for the smoothed
