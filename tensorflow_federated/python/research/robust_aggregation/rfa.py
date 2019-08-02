@@ -45,6 +45,7 @@ def build_stateless_robust_aggregation(
     An instance of `tff.utils.StatefulAggregateFn` which implements a
     (stateless) robust aggregate.
   """
+  pytype_check.check_type(num_communication_passes, int)
   if num_communication_passes < 1:
     raise ValueError('Aggregation requires num_communication_passes >= 1')
   # TODO: client weights have been hardcoded as float32
