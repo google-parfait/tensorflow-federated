@@ -51,8 +51,8 @@ There are a number of ways to contribute depending on what you're interested in:
 *   If you are interested in developing new federated learning algorithms, the
     best way to start would be to study the implementations of federated
     averaging and evaluation in `tff.learning`, and to think of extensions to
-    the existing imlementation (or alternative approaches). If you have a
-    proposal for a new algorithm, we recommend to start by staging your project
+    the existing implementation (or alternative approaches). If you have a
+    proposal for a new algorithm, we recommend starting by staging your project
     in the `research` directory and including a colab notebook to showcase the
     new features.
 
