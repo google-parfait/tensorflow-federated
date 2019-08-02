@@ -55,7 +55,7 @@ def build_stateless_robust_aggregation(
   def update_weight_fn(weight, server_model, client_model):
     sqnorms = tf.nest.map_structure(lambda a, b: tf.norm(a-b)**2, server_model, client_model)
     sqnorm = sum(six.itervalues(sqnorms))
-    return weight / tf.maximum(tolerance, tf.sqrt(sqnorm))
+    return weight / tf.math.maximum(tolerance, tf.math.sqrt(sqnorm))
 
 
   client_model_type = tff.FederatedType(model_type, tff.CLIENTS)
