@@ -90,6 +90,7 @@ def build_robust_federated_aggregation_process(
       Weiszfeld algorithm to compute the approximate geometric median.
       The default is 5 and it has to be an interger at least 1.
     tolerance: Tolerance for the smoothed Weiszfeld algorithm. Default 1e-6.
+ 
   Returns:
     A `tff.utils.IterativeProcess`.
   """
