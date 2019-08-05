@@ -11,5 +11,5 @@ pandas~=0.24.0
 portpicker
 six~=1.10
 tensorflow-model-optimization~=0.1.2
-tf-nightly==1.15.0.dev20190730
+tf-nightly==1.15.0.dev20190805
 typing~=3.7.0

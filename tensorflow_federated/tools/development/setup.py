@@ -71,7 +71,7 @@ REQUIRED_PACKAGES = [
     'h5py~=2.6',
     'numpy~=1.14',
     'six~=1.10',
-    'tf-nightly==1.15.0.dev20190730',
+    'tf-nightly==1.15.0.dev20190805',
     'grpcio~=1.8.0',
     'portpicker',
     'tensorflow-model-optimization~=0.1.2',
