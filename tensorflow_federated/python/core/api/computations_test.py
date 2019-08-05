@@ -504,6 +504,39 @@ class FederatedComputationsTest(test.TestCase):
                                  'is not assignable from source type'):
       self.assertEqual(foo(square_drop_y, 10), 100)
 
+  def test_randomness_executed_once(self):
+    self.skipTest(
+        'Blocked on executing computations multiple times, b/138579169.')
+
+    @tff.tf_computation(tf.int32)
+    @tf.function
+    def generate_tuple(x):
+      del x  # Unused
+      random_value = tf.random.normal([1])
+      tup = []
+      for i in range(3):
+        tup.append((i + 1) * random_value[0])
+      return tup
+
+    @tff.federated_computation([tf.float32] * 3)
+    def select_second_index_tff(x):
+      return x[2]
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    def select_random_multiples(x):
+      random_tuples = tff.federated_map(generate_tuple, x)
+      reversed_tuples = tff.federated_zip([
+          tff.federated_map(select_second_index_tff, random_tuples),
+          tff.federated_map(select_second_index_tff, random_tuples),
+          tff.federated_map(select_second_index_tff, random_tuples)
+      ])
+      return reversed_tuples
+
+    first_client = select_random_multiples([0, 0])[0]
+    first_element = first_client[0]
+    for k in range(len(first_client)):
+      self.assertEqual(first_client[k], first_element)
+
 
 if __name__ == '__main__':
   test.main()
