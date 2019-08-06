@@ -687,7 +687,9 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
     v2 = {'bar'}
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
-    with self.assertRaises(TypeError):
+    # TODO(b/122081673): Change Exception back to ValueError once TFF moves to
+    # be TF 2.0 only
+    with self.assertRaisesRegex(Exception, 'supported type'):
       type_utils.type_from_tensors(d)
 
   def test_type_from_tensors_nested_tensors(self):
