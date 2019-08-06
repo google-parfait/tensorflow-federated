@@ -425,7 +425,7 @@ def to_type(spec):
     # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an
     # ordering, which the original container did not have.
     raise TypeError(
-        'Unsupported mapping type {}. Use collections.OrderedDict for'
+        'Unsupported mapping type {}. Use collections.OrderedDict for '
         'mappings.'.format(py_typecheck.type_string(type(spec))))
   else:
     raise TypeError(
