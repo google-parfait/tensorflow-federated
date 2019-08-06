@@ -1342,8 +1342,9 @@ py_library(
     ],
 )
 
-py_library(
+py_test(
     name = "value_transformations_test",
+    size = "small",
     srcs = ["value_transformations_test.py"],
     deps = [
         ":computation_building_blocks",
