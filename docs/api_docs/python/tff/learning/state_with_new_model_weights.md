@@ -21,9 +21,7 @@ tff.learning.state_with_new_model_weights(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Text Generation](https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation)
+<!-- Placeholder for "Used in" -->
 
 #### Args:
 

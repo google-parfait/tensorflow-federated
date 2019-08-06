@@ -17,10 +17,7 @@ Constructs an executor to execute computations on the local machine.
 tff.framework.create_local_executor(num_clients)
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
-*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+<!-- Placeholder for "Used in" -->
 
 The initial temporary implementation requires that the number of clients be
 specified in advance. This limitation will be removed in the near future.

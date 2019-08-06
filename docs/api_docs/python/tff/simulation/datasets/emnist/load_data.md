@@ -20,10 +20,7 @@ tff.simulation.datasets.emnist.load_data(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
-*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+<!-- Placeholder for "Used in" -->
 
 Downloads and caches the dataset locally. If previously downloaded, tries to
 load the dataset from cache.

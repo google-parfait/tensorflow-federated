@@ -17,10 +17,7 @@ Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 tff.tf_computation(*args)
 ```
 
-### Used in the tutorials:
-
-*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_1)
-*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
+<!-- Placeholder for "Used in" -->
 
 This symbol can be used as either a decorator or a wrapper applied to a function
 given to it as an argument. The supported patterns and examples of usage are as

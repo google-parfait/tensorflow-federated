@@ -17,9 +17,7 @@ Builds the TFF computation for federated evaluation of the given model.
 tff.learning.build_federated_evaluation(model_fn)
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
+<!-- Placeholder for "Used in" -->
 
 #### Args:
 

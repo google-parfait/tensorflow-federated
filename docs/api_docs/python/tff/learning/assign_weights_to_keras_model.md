@@ -20,9 +20,7 @@ tff.learning.assign_weights_to_keras_model(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Text Generation](https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation)
+<!-- Placeholder for "Used in" -->
 
 This function may be used to retrieve the model parameters trained by the
 federated averaging process for use in an existing `tf.keras.models.Model`,

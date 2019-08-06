@@ -23,11 +23,7 @@ tff.learning.build_federated_averaging_process(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
-*   [Federated Learning for Text Generation](https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation)
-*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+<!-- Placeholder for "Used in" -->
 
 #### Args:
 

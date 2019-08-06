@@ -17,10 +17,7 @@ Places an `executor`-backed execution context at the top of the stack.
 tff.framework.set_default_executor(executor=None)
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
-*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+<!-- Placeholder for "Used in" -->
 
 NOTE: This function is only available in Python 3.
 
