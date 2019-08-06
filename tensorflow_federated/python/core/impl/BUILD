@@ -9,6 +9,39 @@ py_library(
 )
 
 py_library(
+    name = "caching_executor",
+    srcs = ["caching_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":computation_impl",
+        ":executor_base",
+        ":executor_value_base",
+        ":type_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "caching_executor_test",
+    size = "small",
+    srcs = ["caching_executor_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":caching_executor",
+        ":computation_impl",
+        ":eager_executor",
+        ":executor_test_utils",
+        ":lambda_executor",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_library(
     name = "compiler_pipeline",
     srcs = ["compiler_pipeline.py"],
     deps = [
@@ -467,6 +500,7 @@ py_library(
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
+        ":caching_executor",
         ":concurrent_executor",
         ":eager_executor",
         ":federated_executor",
@@ -478,7 +512,7 @@ py_library(
 
 py_test(
     name = "executor_stacks_test",
-    size = "small",
+    size = "large",
     srcs = ["executor_stacks_test.py"],
     python_version = "PY3",
     deps = [

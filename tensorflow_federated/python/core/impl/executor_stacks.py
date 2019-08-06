@@ -15,6 +15,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import federated_executor
@@ -38,16 +39,22 @@ def create_local_executor(num_clients):
   """
   # TODO(b/134543154): We should not have to specif the number of clients; this
   # needs to go away once we flesh out all the remaining bits ad pieces.
-
   py_typecheck.check_type(num_clients, int)
-  bottom_ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
 
   def _make(n):
-    return [concurrent_executor.ConcurrentExecutor(bottom_ex) for _ in range(n)]
+    result = []
+    for _ in range(n):
+      ex = eager_executor.EagerExecutor()
+      ex = concurrent_executor.ConcurrentExecutor(ex)
+      ex = caching_executor.CachingExecutor(ex)
+      ex = lambda_executor.LambdaExecutor(ex)
+      result.append(ex)
+    return result
 
   return lambda_executor.LambdaExecutor(
-      federated_executor.FederatedExecutor({
-          None: _make(1),
-          placement_literals.SERVER: _make(1),
-          placement_literals.CLIENTS: _make(num_clients)
-      }))
+      caching_executor.CachingExecutor(
+          federated_executor.FederatedExecutor({
+              None: _make(1),
+              placement_literals.SERVER: _make(1),
+              placement_literals.CLIENTS: _make(num_clients)
+          })))
