@@ -171,7 +171,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
 
     graph = tf.Graph()
     with tf.compat.v1.Session(graph=graph) as sess:
-      mgd = tf.saved_model.load(
+      mgd = tf.compat.v1.saved_model.load(
           sess, tags=[tf.saved_model.SERVING], export_dir=outdir)
   finally:
     shutil.rmtree(outdir)
