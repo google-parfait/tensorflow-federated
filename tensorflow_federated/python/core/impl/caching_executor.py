@@ -74,7 +74,6 @@ def _get_hashable_key(value, type_spec):
   elif isinstance(value, pb.Computation):
     return str(value)
   elif isinstance(value, np.ndarray):
-    # TODO(b/138437499): Find something more efficient.
     return '<dtype={},shape={},items={}>'.format(value.dtype, value.shape,
                                                  value.flatten())
   elif isinstance(value, collections.Hashable):
