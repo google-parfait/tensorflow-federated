@@ -147,9 +147,12 @@ def get_intrinsic_bodies(context_stack):
               x.type_signature.member, y.type_signature.member)):
         raise TypeError(top_level_mismatch_string)
     if isinstance(x.type_signature, computation_types.NamedTupleType):
-      if not isinstance(y.type_signature,
-                        computation_types.NamedTupleType) or dir(
-                            x.type_signature) != dir(x.type_signature):
+      if type_utils.is_binary_op_with_upcast_compatible_pair(
+          x.type_signature, y.type_signature):
+        return None
+      elif not isinstance(y.type_signature,
+                          computation_types.NamedTupleType) or dir(
+                              x.type_signature) != dir(y.type_signature):
         raise TypeError(top_level_mismatch_string)
 
   def federated_weighted_mean(arg):
@@ -184,13 +187,27 @@ def get_intrinsic_bodies(context_stack):
         op.type_signature.result)
     return intrinsics.federated_aggregate(x, zero, op, op, identity)
 
+  def _generic_op_can_be_applied(x, y):
+    return type_utils.is_binary_op_with_upcast_compatible_pair(
+        x.type_signature, y.type_signature) or isinstance(
+            x.type_signature, computation_types.FederatedType)
+
+  def _apply_generic_op(op, x, y):
+    arg = _pack_binary_operator_args(x, y)
+    arg_comp = value_impl.ValueImpl.get_comp(arg)
+    result = computation_constructing_utils.apply_binary_operator_with_upcast(
+        arg_comp, op)
+    return value_impl.ValueImpl(result, context_stack)
+
   def generic_divide(arg):
     """Divides two arguments when possible."""
     x = arg[0]
     y = arg[1]
     _check_top_level_compatibility_with_generic_operators(
         x, y, 'Generic divide')
-    if isinstance(x.type_signature, computation_types.NamedTupleType):
+    if _generic_op_can_be_applied(x, y):
+      return _apply_generic_op(tf.divide, x, y)
+    elif isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
       divided = [
@@ -200,11 +217,10 @@ def get_intrinsic_bodies(context_stack):
       named_divided = computation_constructing_utils.create_named_tuple(
           computation_building_blocks.Tuple(divided), names)
       return value_impl.ValueImpl(named_divided, context_stack)
-    arg = _pack_binary_operator_args(x, y)
-    arg_comp = value_impl.ValueImpl.get_comp(arg)
-    divided = computation_constructing_utils.apply_binary_operator_with_upcast(
-        arg_comp, tf.divide)
-    return value_impl.ValueImpl(divided, context_stack)
+    else:
+      raise TypeError(
+          'Generic divide encountered unexpected type {}, {}'.format(
+              x.type_signature, y.type_signature))
 
   def generic_multiply(arg):
     """Multiplies two arguments when possible."""
@@ -212,7 +228,9 @@ def get_intrinsic_bodies(context_stack):
     y = arg[1]
     _check_top_level_compatibility_with_generic_operators(
         x, y, 'Generic multiply')
-    if isinstance(x.type_signature, computation_types.NamedTupleType):
+    if _generic_op_can_be_applied(x, y):
+      return _apply_generic_op(tf.multiply, x, y)
+    elif isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
       multiplied = [
@@ -222,19 +240,20 @@ def get_intrinsic_bodies(context_stack):
       named_multiplied = computation_constructing_utils.create_named_tuple(
           computation_building_blocks.Tuple(multiplied), names)
       return value_impl.ValueImpl(named_multiplied, context_stack)
-    arg = _pack_binary_operator_args(x, y)
-    arg_comp = value_impl.ValueImpl.get_comp(arg)
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
-        arg_comp, tf.multiply)
-    return value_impl.ValueImpl(multiplied, context_stack)
+    else:
+      raise TypeError(
+          'Generic multiply encountered unexpected type {}, {}'.format(
+              x.type_signature, y.type_signature))
 
   def generic_plus(arg):
     """Adds two arguments when possible."""
     x = arg[0]
     y = arg[1]
     _check_top_level_compatibility_with_generic_operators(x, y, 'Generic plus')
+    if _generic_op_can_be_applied(x, y):
+      return _apply_generic_op(tf.add, x, y)
     # TODO(b/136587334): Push this logic down a level
-    if isinstance(x.type_signature, computation_types.NamedTupleType):
+    elif isinstance(x.type_signature, computation_types.NamedTupleType):
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.to_elements(x.type_signature)]
       added = [
@@ -244,11 +263,9 @@ def get_intrinsic_bodies(context_stack):
       named_added = computation_constructing_utils.create_named_tuple(
           computation_building_blocks.Tuple(added), names)
       return value_impl.ValueImpl(named_added, context_stack)
-    arg = _pack_binary_operator_args(x, y)
-    arg_comp = value_impl.ValueImpl.get_comp(arg)
-    added = computation_constructing_utils.apply_binary_operator_with_upcast(
-        arg_comp, tf.add)
-    return value_impl.ValueImpl(added, context_stack)
+    else:
+      raise TypeError('Generic plus encountered unexpected type {}, {}'.format(
+          x.type_signature, y.type_signature))
 
   # - FEDERATED_ZIP(x, y) := GENERIC_ZIP(x, y)
   #

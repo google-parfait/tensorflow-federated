@@ -203,6 +203,24 @@ class GenericDivideTest(absltest.TestCase):
     self.assertEqual(
         foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
+  def test_generic_divide_with_unplaced_named_tuple_and_tensor(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.NamedTupleType([[('a', tf.float32),
+                                           ('b', tf.float32)], tf.float32]))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_DIVIDE.uri](x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<<a=float32,b=float32>,float32> -> <a=float32,b=float32>)')
+
+    self.assertEqual(
+        foo([[1., 1.], 2.]),
+        anonymous_tuple.AnonymousTuple([('a', .5), ('b', .5)]))
+
   def test_generic_divide_with_named_tuple_of_federated_types(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -337,6 +355,24 @@ class GenericMultiplyTest(absltest.TestCase):
     self.assertEqual(foo([1]), [1])
     self.assertEqual(foo([1, 2, 3]), [1, 4, 9])
 
+  def test_generic_multiply_with_unplaced_named_tuple_and_tensor(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.NamedTupleType([[('a', tf.float32),
+                                           ('b', tf.float32)], tf.float32]))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri](x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<<a=float32,b=float32>,float32> -> <a=float32,b=float32>)')
+
+    self.assertEqual(
+        foo([[1., 1.], 2.]),
+        anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]))
+
   def test_federated_generic_multiply_with_unnamed_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -409,15 +445,17 @@ class GenericMultiplyTest(absltest.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]))
+        computation_types.NamedTupleType([('a', tf.float32),
+                                          ('b', tf.float32)]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
     self.assertEqual(
-        str(foo.type_signature), '(<a=int32,b=float32> -> <a=int32,b=float32>)')
+        str(foo.type_signature),
+        '(<a=float32,b=float32> -> <a=float32,b=float32>)')
 
     self.assertEqual(
-        foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
+        foo([1., 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
 
 class GenericAddTest(absltest.TestCase):
@@ -518,6 +556,24 @@ class GenericAddTest(absltest.TestCase):
 
     self.assertEqual(
         foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]))
+
+  def test_generic_add_with_unplaced_named_tuple_and_tensor(self):
+    bodies = intrinsic_bodies.get_intrinsic_bodies(
+        context_stack_impl.context_stack)
+
+    @computations.federated_computation(
+        computation_types.NamedTupleType([[('a', tf.float32),
+                                           ('b', tf.float32)], tf.float32]))
+    def foo(x):
+      return bodies[intrinsic_defs.GENERIC_PLUS.uri](x)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '(<<a=float32,b=float32>,float32> -> <a=float32,b=float32>)')
+
+    self.assertEqual(
+        foo([[1., 1.], 1.]),
+        anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]))
 
   def test_generic_add_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
