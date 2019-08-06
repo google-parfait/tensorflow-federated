@@ -14,7 +14,7 @@ source</a>
 Constructs an executor to execute computations on the local machine.
 
 ```python
-tff.framework.create_local_executor(num_clients)
+tff.framework.create_local_executor(num_clients=None)
 ```
 
 <!-- Placeholder for "Used in" -->
@@ -26,10 +26,15 @@ NOTE: This function is only available in Python 3.
 
 #### Args:
 
-*   <b>`num_clients`</b>: The number of clients.
+*   <b>`num_clients`</b>: The number of clients. If not specified (`None`), then
+    this executor is not federated (can only execute unplaced computations).
 
 #### Returns:
 
 An instance of
 <a href="../../tff/framework/Executor.md"><code>tff.framework.Executor</code></a>
 for single-machine use only.
+
+#### Raises:
+
+*   <b>`ValueError`</b>: If the number of clients is not one or larger.

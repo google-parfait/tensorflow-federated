@@ -41,9 +41,7 @@ def main(argv):
   del argv
   tf.compat.v1.enable_v2_behavior()
 
-  service = tff.framework.ExecutorService(
-      tff.framework.LambdaExecutor(
-          tff.framework.ConcurrentExecutor(tff.framework.EagerExecutor())))
+  service = tff.framework.ExecutorService(tff.framework.create_local_executor())
 
   server = grpc.server(
       concurrent.futures.ThreadPoolExecutor(max_workers=FLAGS.threads))

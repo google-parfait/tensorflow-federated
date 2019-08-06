@@ -72,6 +72,18 @@ class ExecutorStacksTest(absltest.TestCase):
     executor_test_utils.test_mnist_training(
         self, executor_stacks.create_local_executor(1))
 
+  def test_with_no_args(self):
+    set_default_executor.set_default_executor(
+        executor_stacks.create_local_executor())
+
+    @computations.tf_computation
+    def foo():
+      return tf.constant(10)
+
+    self.assertEqual(foo(), 10)
+
+    set_default_executor.set_default_executor()
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
