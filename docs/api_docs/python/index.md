@@ -26,6 +26,7 @@
 *   <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *   <a href="./tff/framework.md"><code>tff.framework</code></a>
 *   <a href="./tff/framework/Block.md"><code>tff.framework.Block</code></a>
+*   <a href="./tff/framework/CachingExecutor.md"><code>tff.framework.CachingExecutor</code></a>
 *   <a href="./tff/framework/Call.md"><code>tff.framework.Call</code></a>
 *   <a href="./tff/framework/CompiledComputation.md"><code>tff.framework.CompiledComputation</code></a>
 *   <a href="./tff/framework/ComputationBuildingBlock.md"><code>tff.framework.ComputationBuildingBlock</code></a>

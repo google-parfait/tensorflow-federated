@@ -25,6 +25,9 @@ Interfaces for extensions, selectively lifted out of `impl`.
 [`class Block`](../tff/framework/Block.md): A representation of a block of code
 in TFF's internal language.
 
+[`class CachingExecutor`](../tff/framework/CachingExecutor.md): The caching
+executor only performs caching.
+
 [`class Call`](../tff/framework/Call.md): A representation of a function
 invocation in TFF's internal language.
 

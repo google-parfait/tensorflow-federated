@@ -76,6 +76,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/Block
     - title: building_block_to_computation
       path: /federated/api_docs/python/tff/framework/building_block_to_computation
+    - title: CachingExecutor
+      path: /federated/api_docs/python/tff/framework/CachingExecutor
     - title: Call
       path: /federated/api_docs/python/tff/framework/Call
     - title: check_has_unique_names

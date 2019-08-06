@@ -71,6 +71,7 @@ from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_s
 if six.PY3:
   # pylint: disable=g-import-not-at-top
   try:
+    from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
     from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
     from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
     from tensorflow_federated.python.core.impl.executor_base import Executor
@@ -89,6 +90,7 @@ if six.PY3:
 # Used by doc generation script.
 _allowed_symbols = [
     "Block",
+    "CachingExecutor",
     "Call",
     "CompiledComputation",
     "ComputationBuildingBlock",
