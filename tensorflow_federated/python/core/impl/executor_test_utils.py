@@ -55,8 +55,7 @@ def _mnist_batch_loss(model, batch):
   predicted_y = tf.nn.softmax(tf.matmul(batch.x, model.weights) + model.bias)
   return -tf.reduce_mean(
       tf.reduce_sum(
-          tf.one_hot(batch.y, 10) * tf.math.log(predicted_y),
-          reduction_indices=[1]))
+          tf.one_hot(batch.y, 10) * tf.math.log(predicted_y), axis=[1]))
 
 
 @computations.tf_computation(_mnist_model_type, _mnist_batch_type)
