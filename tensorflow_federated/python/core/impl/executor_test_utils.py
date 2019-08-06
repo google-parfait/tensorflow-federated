@@ -60,7 +60,7 @@ def _mnist_batch_loss(model, batch):
 
 @computations.tf_computation(_mnist_model_type, _mnist_batch_type)
 def _mnist_batch_train(model, batch):
-  optimizer = tf.train.GradientDescentOptimizer(0.01)
+  optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.01)
   model_vars = tf_computation_utils.create_variables('v', _mnist_model_type)
   assign_vars_op = tf_computation_utils.assign(model_vars, model)
   with tf.control_dependencies([assign_vars_op]):

@@ -130,7 +130,7 @@ class MnistTrainableModel(MnistModel, tff.learning.TrainableModel):
   @tf.function
   def train_on_batch(self, batch):
     output = self.forward_pass(batch)
-    optimizer = tf.train.GradientDescentOptimizer(0.02)
+    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.02)
     optimizer.minimize(output.loss, var_list=self.trainable_variables)
     return output
 
