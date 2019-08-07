@@ -76,6 +76,11 @@ def count_tensorflow_variables_in(comp):
                      '`tensorflow` variety to `count_tensorflow_variables_in`.')
   graph_def = serialization_utils.unpack_graph_def(
       comp.proto.tensorflow.graph_def)
-  # TODO(b/137887596): Follow up on ways to count Variables on the GraphDef
-  # level.
-  return len([x for x in graph_def.node if 'variable' in str(x.op).lower()])
+
+  def _node_is_variable(node):
+    # TODO(b/137887596): Follow up on ways to count Variables on the GraphDef
+    # level.
+    return (str(node.op).lower().startswith('variable') or
+            str(node.op).lower() == 'varhandleop')
+
+  return len([x for x in graph_def.node if _node_is_variable(x)])
