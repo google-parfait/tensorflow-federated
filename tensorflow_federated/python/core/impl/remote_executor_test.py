@@ -14,6 +14,7 @@
 # limitations under the License.
 """Tests for remote_executor.py."""
 
+import collections
 import contextlib
 
 from absl.testing import absltest
@@ -27,6 +28,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_service
 from tensorflow_federated.python.core.impl import executor_test_utils
+from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import remote_executor
 from tensorflow_federated.python.core.impl import set_default_executor
 
@@ -38,13 +40,15 @@ def test_context():
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
   target_executor = eager_executor.EagerExecutor()
-  service = executor_service.ExecutorService(target_executor)
+  tracer = executor_test_utils.TracingExecutor(target_executor)
+  service = executor_service.ExecutorService(tracer)
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
   server.start()
   channel = grpc.insecure_channel('localhost:{}'.format(port))
-  executor = remote_executor.RemoteExecutor(channel)
+  executor = lambda_executor.LambdaExecutor(
+      remote_executor.RemoteExecutor(channel))
   set_default_executor.set_default_executor(executor)
-  yield executor
+  yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
   set_default_executor.set_default_executor()
   try:
     channel.close()
@@ -82,9 +86,30 @@ class RemoteExecutorTest(absltest.TestCase):
 
       self.assertEqual(comp(10, 20), 30)
 
+  def test_with_selection(self):
+    with test_context() as context:
+
+      @computations.tf_computation(tf.int32)
+      def foo(x):
+        return collections.OrderedDict([('A', x + 10), ('B', x + 20)])
+
+      @computations.tf_computation(tf.int32, tf.int32)
+      def bar(x, y):
+        return x + y
+
+      @computations.federated_computation(tf.int32)
+      def baz(x):
+        return bar(foo(x).A, foo(x).B)
+
+      self.assertEqual(baz(100), 230)
+
+      # Make sure exactly two selections happened.
+      self.assertLen(
+          [x for x in context.tracer.trace if x[0] == 'create_selection'], 2)
+
   def test_with_mnist_training_example(self):
-    with test_context() as executor:
-      executor_test_utils.test_mnist_training(self, executor)
+    with test_context() as context:
+      executor_test_utils.test_mnist_training(self, context.executor)
 
 
 if __name__ == '__main__':

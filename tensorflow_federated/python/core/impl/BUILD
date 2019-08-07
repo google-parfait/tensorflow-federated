@@ -963,6 +963,7 @@ py_test(
         ":eager_executor",
         ":executor_service",
         ":executor_test_utils",
+        ":lambda_executor",
         ":remote_executor",
         ":set_default_executor",
         "//tensorflow_federated/python/core/api:computations",

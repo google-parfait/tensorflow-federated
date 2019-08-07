@@ -113,8 +113,21 @@ class RemoteExecutor(executor_base.Executor):
     return RemoteValue(response.value_ref, result_type, self)
 
   async def create_selection(self, source, index=None, name=None):
-    # TODO(b/134543154): Implement this.
-    raise NotImplementedError
+    py_typecheck.check_type(source, RemoteValue)
+    py_typecheck.check_type(source.type_signature,
+                            computation_types.NamedTupleType)
+    if index is not None:
+      py_typecheck.check_type(index, int)
+      py_typecheck.check_none(name)
+      result_type = source.type_signature[index]
+    else:
+      py_typecheck.check_type(name, str)
+      result_type = getattr(source.type_signature, name)
+    response = self._stub.CreateSelection(
+        executor_pb2.CreateSelectionRequest(
+            source_ref=source.value_ref, name=name, index=index))
+    py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
+    return RemoteValue(response.value_ref, result_type, self)
 
   async def _compute(self, value_ref):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
