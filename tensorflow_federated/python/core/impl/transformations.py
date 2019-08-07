@@ -37,63 +37,91 @@ from tensorflow_federated.python.core.impl import tree_analysis
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def _extract_computations_passing_test(comp, predicate):
-  r"""Extracts intrinsics to the scope which binds any variable it depends on.
+def _apply_transforms(comp, transforms):
+  """Applies all `transforms` in a single walk of `comp`.
 
-  This transform traverses `comp` postorder, matches the following pattern, and
-  replaces the following computation containing a called intrinsic:
-
-        ...
-           \
-            Call
-           /    \
-  Intrinsic      ...
-
-  with the following computation containing a block with the extracted called
-  intrinsic:
-
-                  Block
-                 /     \
-         [x=Call]       ...
-           /    \          \
-  Intrinsic      ...        Ref(x)
-
-  The called intrinsics are extracted to the scope which binds any variable the
-  called intrinsic depends. If the called intrinsic is not bound by any
-  computation in `comp` it will be extracted to the root. Both the
-  `parameter_name` of a `computation_building_blocks.Lambda` and the name of any
-  variable defined by a `computation_building_blocks.Block` can affect the scope
-  in which a reference in called intrinsic is bound.
-
-  NOTE: This function will also extract blocks to the scope in which they are
-  bound because block variables can restrict the scope in which intrinsics are
-  bound.
+  This function is private for a reason; TFF does not intend to expose the
+  capability to chain arbitrary transformations in this way, since the
+  application of one transformation may cause the resulting AST to violate the
+  assumptions of another. This function should be used quite selectively and
+  considered extensively in order to avoid such subtle issues.
 
   Args:
-    comp: The computation building block in which to perform the extractions.
-      The names of lambda parameters and block variables in `comp` must be
-      unique.
-    predicate: A function that takes a single computation building block as a
-      argument and returns `True` if the computation should be extracted and
-      `False` otherwise.
+    comp: An instance of `computation_building_blocks.ComputationBuildingBlock`
+      to transform with all elements of `transforms`.
+    transforms: An instance of `transformation_utils.TransformSpec` or iterable
+      thereof, the transformations to apply to `comp`.
 
   Returns:
-    A new computation with the transformation applied or the original `comp`.
+    A transformed version of `comp`, with all transformations in `transforms`
+    applied.
 
   Raises:
-    TypeError: If types do not match.
-    ValueError: If `comp` contains variables with non-unique names.
+    TypeError: If the types don't match.
   """
   py_typecheck.check_type(comp,
                           computation_building_blocks.ComputationBuildingBlock)
-  tree_analysis.check_has_unique_names(comp)
-  name_generator = computation_constructing_utils.unique_name_generator(comp)
-  unbound_references = get_map_of_unbound_references(comp)
+  if isinstance(transforms, transformation_utils.TransformSpec):
+    transforms = [transforms]
+  else:
+    for transform in transforms:
+      py_typecheck.check_type(transform, transformation_utils.TransformSpec)
 
-  def _contains_unbound_reference(comp, names):
+  def _transform(comp):
+    modified = False
+    for transform in transforms:
+      comp, transform_modified = transform.transform(comp)
+      modified = modified or transform_modified
+    return comp, modified
+
+  return transformation_utils.transform_postorder(comp, _transform)
+
+
+class ExtractComputations(transformation_utils.TransformSpec):
+  r"""Extracts computations to the scope which binds any variable it depends on.
+
+  This transform traverses `comp` postorder, matches the `predicate`, and
+  replaces the computations with a LET construct.
+
+  The computations are extracted to the scope which binds any variable each
+  computations depends on. If the computations is not bound by any computation
+  in `comp` it will be extracted to the root. Both the `parameter_name` of a
+  `computation_building_blocks.Lambda` and the name of any variable defined by a
+  `computation_building_blocks.Block` can affect the scope in which a reference
+  in computation is bound.
+
+  NOTE: This function will also extract blocks to the scope in which they are
+  bound because block variables can restrict the scope in which computations are
+  bound.
+  """
+
+  def __init__(self, comp, predicate):
+    """Constructs a new instance.
+
+    Args:
+      comp: The computation building block in which to perform the extractions.
+        The names of lambda parameters and block variables in `comp` must be
+        unique.
+      predicate: A function that takes a single computation building block as a
+        argument and returns `True` if the computation should be extracted and
+        `False` otherwise.
+
+    Raises:
+      TypeError: If types do not match.
+      ValueError: If `comp` contains variables with non-unique names.
+    """
+    py_typecheck.check_type(
+        comp, computation_building_blocks.ComputationBuildingBlock)
+    tree_analysis.check_has_unique_names(comp)
+    self._name_generator = computation_constructing_utils.unique_name_generator(
+        comp)
+    self._predicate = predicate
+    self._unbound_references = get_map_of_unbound_references(comp)
+
+  def _contains_unbound_reference(self, comp, names):
     """Returns `True` if `comp` contains unbound references to `names`.
 
-    This function will update the non-local `unbound_references` captured from
+    This function will update the non-local `_unbound_references` captured from
     the parent context if `comp` is not contained in that collection. This can
     happen when new computations are created and added to the AST.
 
@@ -103,17 +131,17 @@ def _extract_computations_passing_test(comp, predicate):
     """
     if isinstance(names, six.string_types):
       names = (names,)
-    if comp not in unbound_references:
+    if comp not in self._unbound_references:
       references = get_map_of_unbound_references(comp)
-      unbound_references.update(references)
-    return any(n in unbound_references[comp] for n in names)
+      self._unbound_references.update(references)
+    return any(n in self._unbound_references[comp] for n in names)
 
-  def _passes_test_or_block(comp):
+  def _passes_test_or_block(self, comp):
     """Returns `True` if `comp` is a called intrinsic or a block."""
-    return (predicate(comp) or
+    return (self._predicate(comp) or
             isinstance(comp, computation_building_blocks.Block))
 
-  def _should_transform(comp):
+  def should_transform(self, comp):
     """Returns `True` if `comp` should be transformed.
 
     The following `_extract_intrinsic_*` methods all depend on being invoked
@@ -127,31 +155,32 @@ def _extract_computations_passing_test(comp, predicate):
       comp: The computation building block in which to test.
     """
     if isinstance(comp, computation_building_blocks.Block):
-      return (_passes_test_or_block(comp.result) or any(
+      return (self._passes_test_or_block(comp.result) or any(
           isinstance(e, computation_building_blocks.Block)
           for _, e in comp.locals))
     elif isinstance(comp, computation_building_blocks.Call):
-      return (_passes_test_or_block(comp.function) or
-              _passes_test_or_block(comp.argument))
+      return (self._passes_test_or_block(comp.function) or
+              self._passes_test_or_block(comp.argument))
     elif isinstance(comp, computation_building_blocks.Lambda):
-      if predicate(comp.result):
+      if self._predicate(comp.result):
         return True
       if isinstance(comp.result, computation_building_blocks.Block):
         for index, (_, variable) in enumerate(comp.result.locals):
           names = [n for n, _ in comp.result.locals[:index]]
-          if (not _contains_unbound_reference(variable, comp.parameter_name) and
-              not _contains_unbound_reference(variable, names)):
+          if (not self._contains_unbound_reference(variable,
+                                                   comp.parameter_name) and
+              not self._contains_unbound_reference(variable, names)):
             return True
     elif isinstance(comp, computation_building_blocks.Selection):
-      return _passes_test_or_block(comp.source)
+      return self._passes_test_or_block(comp.source)
     elif isinstance(comp, computation_building_blocks.Tuple):
-      return any(_passes_test_or_block(e) for e in comp)
+      return any(self._passes_test_or_block(e) for e in comp)
     return False
 
-  def _extract_from_block(comp):
+  def _extract_from_block(self, comp):
     """Returns a new computation with all intrinsics extracted."""
-    if predicate(comp.result):
-      name = six.next(name_generator)
+    if self._predicate(comp.result):
+      name = six.next(self._name_generator)
       variables = comp.locals
       variables.append((name, comp.result))
       result = computation_building_blocks.Reference(name,
@@ -176,11 +205,11 @@ def _extract_computations_passing_test(comp, predicate):
     variables = _remove_blocks_from_variables(variables)
     return computation_building_blocks.Block(variables, result)
 
-  def _extract_from_call(comp):
+  def _extract_from_call(self, comp):
     """Returns a new computation with all intrinsics extracted."""
     variables = []
-    if predicate(comp.function):
-      name = six.next(name_generator)
+    if self._predicate(comp.function):
+      name = six.next(self._name_generator)
       variables.append((name, comp.function))
       function = computation_building_blocks.Reference(
           name, comp.function.type_signature)
@@ -191,8 +220,8 @@ def _extract_computations_passing_test(comp, predicate):
     else:
       function = comp.function
     if comp.argument is not None:
-      if predicate(comp.argument):
-        name = six.next(name_generator)
+      if self._predicate(comp.argument):
+        name = six.next(self._name_generator)
         variables.append((name, comp.argument))
         argument = computation_building_blocks.Reference(
             name, comp.argument.type_signature)
@@ -206,23 +235,23 @@ def _extract_computations_passing_test(comp, predicate):
       argument = None
     call = computation_building_blocks.Call(function, argument)
     block = computation_building_blocks.Block(variables, call)
-    return _extract_from_block(block)
+    return self._extract_from_block(block)
 
-  def _extract_from_lambda(comp):
+  def _extract_from_lambda(self, comp):
     """Returns a new computation with all intrinsics extracted."""
-    if predicate(comp.result):
-      name = six.next(name_generator)
+    if self._predicate(comp.result):
+      name = six.next(self._name_generator)
       variables = [(name, comp.result)]
       result = computation_building_blocks.Reference(name,
                                                      comp.result.type_signature)
-      if not _contains_unbound_reference(comp.result, comp.parameter_name):
+      if not self._contains_unbound_reference(comp.result, comp.parameter_name):
         fn = computation_building_blocks.Lambda(comp.parameter_name,
                                                 comp.parameter_type, result)
         block = computation_building_blocks.Block(variables, fn)
-        return _extract_from_block(block)
+        return self._extract_from_block(block)
       else:
         block = computation_building_blocks.Block(variables, result)
-        block = _extract_from_block(block)
+        block = self._extract_from_block(block)
         return computation_building_blocks.Lambda(comp.parameter_name,
                                                   comp.parameter_type, block)
     else:
@@ -231,8 +260,8 @@ def _extract_computations_passing_test(comp, predicate):
       retained_variables = []
       for name, variable in block.locals:
         names = [n for n, _ in retained_variables]
-        if (not _contains_unbound_reference(variable, comp.parameter_name) and
-            not _contains_unbound_reference(variable, names)):
+        if (not self._contains_unbound_reference(variable, comp.parameter_name)
+            and not self._contains_unbound_reference(variable, names)):
           extracted_variables.append((name, variable))
         else:
           retained_variables.append((name, variable))
@@ -244,12 +273,12 @@ def _extract_computations_passing_test(comp, predicate):
       fn = computation_building_blocks.Lambda(comp.parameter_name,
                                               comp.parameter_type, result)
       block = computation_building_blocks.Block(extracted_variables, fn)
-      return _extract_from_block(block)
+      return self._extract_from_block(block)
 
-  def _extract_from_selection(comp):
+  def _extract_from_selection(self, comp):
     """Returns a new computation with all intrinsics extracted."""
-    if predicate(comp.source):
-      name = six.next(name_generator)
+    if self._predicate(comp.source):
+      name = six.next(self._name_generator)
       variables = [(name, comp.source)]
       source = computation_building_blocks.Reference(name,
                                                      comp.source.type_signature)
@@ -260,15 +289,15 @@ def _extract_computations_passing_test(comp, predicate):
     selection = computation_building_blocks.Selection(
         source, name=comp.name, index=comp.index)
     block = computation_building_blocks.Block(variables, selection)
-    return _extract_from_block(block)
+    return self._extract_from_block(block)
 
-  def _extract_from_tuple(comp):
+  def _extract_from_tuple(self, comp):
     """Returns a new computation with all intrinsics extracted."""
     variables = []
     elements = []
     for name, element in anonymous_tuple.to_elements(comp):
-      if _passes_test_or_block(element):
-        variable_name = six.next(name_generator)
+      if self._passes_test_or_block(element):
+        variable_name = six.next(self._name_generator)
         variables.append((variable_name, element))
         ref = computation_building_blocks.Reference(variable_name,
                                                     element.type_signature)
@@ -277,25 +306,23 @@ def _extract_computations_passing_test(comp, predicate):
         elements.append((name, element))
     tup = computation_building_blocks.Tuple(elements)
     block = computation_building_blocks.Block(variables, tup)
-    return _extract_from_block(block)
+    return self._extract_from_block(block)
 
-  def _transform(comp):
+  def transform(self, comp):
     """Returns a new transformed computation or `comp`."""
-    if not _should_transform(comp):
+    if not self.should_transform(comp):
       return comp, False
     if isinstance(comp, computation_building_blocks.Block):
-      comp = _extract_from_block(comp)
+      comp = self._extract_from_block(comp)
     elif isinstance(comp, computation_building_blocks.Call):
-      comp = _extract_from_call(comp)
+      comp = self._extract_from_call(comp)
     elif isinstance(comp, computation_building_blocks.Lambda):
-      comp = _extract_from_lambda(comp)
+      comp = self._extract_from_lambda(comp)
     elif isinstance(comp, computation_building_blocks.Selection):
-      comp = _extract_from_selection(comp)
+      comp = self._extract_from_selection(comp)
     elif isinstance(comp, computation_building_blocks.Tuple):
-      comp = _extract_from_tuple(comp)
+      comp = self._extract_from_tuple(comp)
     return comp, True
-
-  return transformation_utils.transform_postorder(comp, _transform)
 
 
 def extract_computations(comp):
@@ -303,7 +330,7 @@ def extract_computations(comp):
   def _predicate(comp):
     return not isinstance(comp, computation_building_blocks.Reference)
 
-  return _extract_computations_passing_test(comp, _predicate)
+  return _apply_transforms(comp, ExtractComputations(comp, _predicate))
 
 
 def extract_intrinsics(comp):
@@ -311,7 +338,7 @@ def extract_intrinsics(comp):
   def _predicate(comp):
     return computation_building_block_utils.is_called_intrinsic(comp)
 
-  return _extract_computations_passing_test(comp, _predicate)
+  return _apply_transforms(comp, ExtractComputations(comp, _predicate))
 
 
 def inline_block_locals(comp, variable_names=None):
