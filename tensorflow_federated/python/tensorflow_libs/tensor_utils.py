@@ -137,7 +137,7 @@ def is_scalar(tensor):
           all(dim == 1 for dim in tensor.get_shape()))
 
 
-def same_dimension(x, y):
+def _same_dimension(x, y):
   """Determines if two `tf.Dimension`s are the same.
 
   Args:
@@ -162,7 +162,7 @@ def same_shape(x, y):
     y: a `tf.TensorShape` object.
 
   Returns:
-    True iff `x` and `y` are either both _unknonw_ shapes (e.g.
+    True iff `x` and `y` are either both _unknown_ shapes (e.g.
     `tf.TensorShape(None)`) or have each dimension the same.
   """
   if x.ndims != y.ndims:
@@ -171,4 +171,4 @@ def same_shape(x, y):
     return y.dims is None
   else:
     return y.dims is not None and all(
-        same_dimension(a, b) for a, b in zip(x.dims, y.dims))
+        _same_dimension(a, b) for a, b in zip(x.dims, y.dims))

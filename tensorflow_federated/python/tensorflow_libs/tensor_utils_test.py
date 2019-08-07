@@ -203,19 +203,6 @@ class TensorUtilsTest(test.TestCase):
     self.assertFalse(
         tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar')))
 
-  def test_same_dimension(self):
-    self.assertTrue(
-        tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(None)))
-    self.assertTrue(
-        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(1)))
-
-    self.assertFalse(
-        tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(1)))
-    self.assertFalse(
-        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(None)))
-    self.assertFalse(
-        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(2)))
-
   def test_same_shape(self):
     self.assertTrue(
         tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape(None)))
