@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import itertools
+
 import six
 from six.moves import range
 from six.moves import zip
@@ -36,7 +37,7 @@ from tensorflow_federated.python.core.impl import tree_analysis
 from tensorflow_federated.python.core.impl import type_utils
 
 
-def extract_intrinsics(comp):
+def _extract_computations_passing_test(comp, predicate):
   r"""Extracts intrinsics to the scope which binds any variable it depends on.
 
   This transform traverses `comp` postorder, matches the following pattern, and
@@ -72,6 +73,9 @@ def extract_intrinsics(comp):
     comp: The computation building block in which to perform the extractions.
       The names of lambda parameters and block variables in `comp` must be
       unique.
+    predicate: A function that takes a single computation building block as a
+      argument and returns `True` if the computation should be extracted and
+      `False` otherwise.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
@@ -104,9 +108,9 @@ def extract_intrinsics(comp):
       unbound_references.update(references)
     return any(n in unbound_references[comp] for n in names)
 
-  def _is_called_intrinsic_or_block(comp):
+  def _passes_test_or_block(comp):
     """Returns `True` if `comp` is a called intrinsic or a block."""
-    return (computation_building_block_utils.is_called_intrinsic(comp) or
+    return (predicate(comp) or
             isinstance(comp, computation_building_blocks.Block))
 
   def _should_transform(comp):
@@ -123,13 +127,14 @@ def extract_intrinsics(comp):
       comp: The computation building block in which to test.
     """
     if isinstance(comp, computation_building_blocks.Block):
-      return (_is_called_intrinsic_or_block(comp.result) or any(
+      return (_passes_test_or_block(comp.result) or any(
           isinstance(e, computation_building_blocks.Block)
           for _, e in comp.locals))
     elif isinstance(comp, computation_building_blocks.Call):
-      return _is_called_intrinsic_or_block(comp.argument)
+      return (_passes_test_or_block(comp.function) or
+              _passes_test_or_block(comp.argument))
     elif isinstance(comp, computation_building_blocks.Lambda):
-      if computation_building_block_utils.is_called_intrinsic(comp.result):
+      if predicate(comp.result):
         return True
       if isinstance(comp.result, computation_building_blocks.Block):
         for index, (_, variable) in enumerate(comp.result.locals):
@@ -138,64 +143,86 @@ def extract_intrinsics(comp):
               not _contains_unbound_reference(variable, names)):
             return True
     elif isinstance(comp, computation_building_blocks.Selection):
-      return _is_called_intrinsic_or_block(comp.source)
+      return _passes_test_or_block(comp.source)
     elif isinstance(comp, computation_building_blocks.Tuple):
-      return any(_is_called_intrinsic_or_block(e) for e in comp)
+      return any(_passes_test_or_block(e) for e in comp)
     return False
 
   def _extract_from_block(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if computation_building_block_utils.is_called_intrinsic(comp.result):
-      called_intrinsic = comp.result
+    if predicate(comp.result):
       name = six.next(name_generator)
       variables = comp.locals
-      variables.append((name, called_intrinsic))
-      result = computation_building_blocks.Reference(
-          name, called_intrinsic.type_signature)
-      return computation_building_blocks.Block(variables, result)
+      variables.append((name, comp.result))
+      result = computation_building_blocks.Reference(name,
+                                                     comp.result.type_signature)
     elif isinstance(comp.result, computation_building_blocks.Block):
-      return computation_building_blocks.Block(comp.locals + comp.result.locals,
-                                               comp.result.result)
+      variables = comp.locals + comp.result.locals
+      result = comp.result.result
     else:
-      variables = []
-      for name, variable in comp.locals:
+      variables = comp.locals
+      result = comp.result
+
+    def _remove_blocks_from_variables(variables):
+      new_variables = []
+      for name, variable in variables:
         if isinstance(variable, computation_building_blocks.Block):
-          variables.extend(variable.locals)
-          variables.append((name, variable.result))
+          new_variables.extend(variable.locals)
+          new_variables.append((name, variable.result))
         else:
-          variables.append((name, variable))
-      return computation_building_blocks.Block(variables, comp.result)
+          new_variables.append((name, variable))
+      return new_variables
+
+    variables = _remove_blocks_from_variables(variables)
+    return computation_building_blocks.Block(variables, result)
 
   def _extract_from_call(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if computation_building_block_utils.is_called_intrinsic(comp.argument):
-      called_intrinsic = comp.argument
+    variables = []
+    if predicate(comp.function):
       name = six.next(name_generator)
-      variables = ((name, called_intrinsic),)
-      result = computation_building_blocks.Reference(
-          name, called_intrinsic.type_signature)
+      variables.append((name, comp.function))
+      function = computation_building_blocks.Reference(
+          name, comp.function.type_signature)
+    elif isinstance(comp.function, computation_building_blocks.Block):
+      block = comp.function
+      variables.extend(block.locals)
+      function = block.result
     else:
-      block = comp.argument
-      variables = block.locals
-      result = block.result
-    call = computation_building_blocks.Call(comp.function, result)
+      function = comp.function
+    if comp.argument is not None:
+      if predicate(comp.argument):
+        name = six.next(name_generator)
+        variables.append((name, comp.argument))
+        argument = computation_building_blocks.Reference(
+            name, comp.argument.type_signature)
+      elif isinstance(comp.argument, computation_building_blocks.Block):
+        block = comp.argument
+        variables.extend(block.locals)
+        argument = block.result
+      else:
+        argument = comp.argument
+    else:
+      argument = None
+    call = computation_building_blocks.Call(function, argument)
     block = computation_building_blocks.Block(variables, call)
     return _extract_from_block(block)
 
   def _extract_from_lambda(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if computation_building_block_utils.is_called_intrinsic(comp.result):
-      called_intrinsic = comp.result
+    if predicate(comp.result):
       name = six.next(name_generator)
-      variables = ((name, called_intrinsic),)
-      ref = computation_building_blocks.Reference(
-          name, called_intrinsic.type_signature)
+      variables = [(name, comp.result)]
+      result = computation_building_blocks.Reference(name,
+                                                     comp.result.type_signature)
       if not _contains_unbound_reference(comp.result, comp.parameter_name):
         fn = computation_building_blocks.Lambda(comp.parameter_name,
-                                                comp.parameter_type, ref)
-        return computation_building_blocks.Block(variables, fn)
+                                                comp.parameter_type, result)
+        block = computation_building_blocks.Block(variables, fn)
+        return _extract_from_block(block)
       else:
-        block = computation_building_blocks.Block(variables, ref)
+        block = computation_building_blocks.Block(variables, result)
+        block = _extract_from_block(block)
         return computation_building_blocks.Lambda(comp.parameter_name,
                                                   comp.parameter_type, block)
     else:
@@ -221,18 +248,17 @@ def extract_intrinsics(comp):
 
   def _extract_from_selection(comp):
     """Returns a new computation with all intrinsics extracted."""
-    if computation_building_block_utils.is_called_intrinsic(comp.source):
-      called_intrinsic = comp.source
+    if predicate(comp.source):
       name = six.next(name_generator)
-      variables = ((name, called_intrinsic),)
-      result = computation_building_blocks.Reference(
-          name, called_intrinsic.type_signature)
+      variables = [(name, comp.source)]
+      source = computation_building_blocks.Reference(name,
+                                                     comp.source.type_signature)
     else:
       block = comp.source
       variables = block.locals
-      result = block.result
+      source = block.result
     selection = computation_building_blocks.Selection(
-        result, name=comp.name, index=comp.index)
+        source, name=comp.name, index=comp.index)
     block = computation_building_blocks.Block(variables, selection)
     return _extract_from_block(block)
 
@@ -241,7 +267,7 @@ def extract_intrinsics(comp):
     variables = []
     elements = []
     for name, element in anonymous_tuple.to_elements(comp):
-      if _is_called_intrinsic_or_block(element):
+      if _passes_test_or_block(element):
         variable_name = six.next(name_generator)
         variables.append((variable_name, element))
         ref = computation_building_blocks.Reference(variable_name,
@@ -270,6 +296,22 @@ def extract_intrinsics(comp):
     return comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
+
+
+def extract_computations(comp):
+
+  def _predicate(comp):
+    return not isinstance(comp, computation_building_blocks.Reference)
+
+  return _extract_computations_passing_test(comp, _predicate)
+
+
+def extract_intrinsics(comp):
+
+  def _predicate(comp):
+    return computation_building_block_utils.is_called_intrinsic(comp)
+
+  return _extract_computations_passing_test(comp, _predicate)
 
 
 def inline_block_locals(comp, variable_names=None):
@@ -772,6 +814,95 @@ def merge_tuple_intrinsics(comp, uri):
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
+
+
+def remove_duplicate_computations(comp):
+  r"""Removes duplicated computations from `comp`.
+
+  This transform traverses `comp` postorder and remove duplicated computation
+  building blocks from `comp`. Additionally, Blocks variables whose value is a
+  Reference and References pointing to References are removed.
+
+  Args:
+    comp: The computation building block in which to perform the removals.
+
+  Returns:
+    A new computation with the transformation applied or the original `comp`.
+
+  Raises:
+    TypeError: If types do not match.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  tree_analysis.check_has_unique_names(comp)
+
+  def _should_transform(comp):
+    """Returns `True` if `comp` should be transformed."""
+    return (isinstance(comp, computation_building_blocks.Block) or
+            isinstance(comp, computation_building_blocks.Reference))
+
+  def _transform(comp, symbol_tree):
+    """Returns a new transformed computation or `comp`."""
+    if not _should_transform(comp):
+      return comp, False
+    if isinstance(comp, computation_building_blocks.Block):
+      variables = []
+      for name, value in comp.locals:
+        symbol_tree.walk_down_one_variable_binding()
+        payload = symbol_tree.get_payload_with_name(name)
+        if (not payload.removed and
+            not isinstance(value, computation_building_blocks.Reference)):
+          variables.append((name, value))
+      if not variables:
+        comp = comp.result
+      else:
+        comp = computation_building_blocks.Block(variables, comp.result)
+      return comp, True
+    elif isinstance(comp, computation_building_blocks.Reference):
+      value = symbol_tree.get_payload_with_name(comp.name).value
+      if value is None:
+        return comp, False
+      while isinstance(value, computation_building_blocks.Reference):
+        new_value = symbol_tree.get_payload_with_name(value.name).value
+        if new_value is None:
+          comp = computation_building_blocks.Reference(value.name,
+                                                       value.type_signature)
+          return comp, True
+        else:
+          value = new_value
+      payloads_with_value = symbol_tree.get_all_payloads_with_value(
+          value, _computations_equal)
+      if payloads_with_value:
+        highest_payload = payloads_with_value[-1]
+        lower_payloads = payloads_with_value[:-1]
+        for payload in lower_payloads:
+          symbol_tree.update_payload_with_name(payload.name)
+        comp = computation_building_blocks.Reference(
+            highest_payload.name, highest_payload.value.type_signature)
+        return comp, True
+    return comp, False
+
+  class TrackRemovedReferences(transformation_utils.BoundVariableTracker):
+    """transformation_utils.SymbolTree node for removing References in ASTs."""
+
+    def __init__(self, name, value):
+      super(TrackRemovedReferences, self).__init__(name, value)
+      self._removed = False
+
+    @property
+    def removed(self):
+      return self._removed
+
+    def update(self, value):
+      self._removed = True
+
+    def __str__(self):
+      return 'Name: {}; value: {}; removed: {}'.format(self.name, self.value,
+                                                       self.removed)
+
+  symbol_tree = transformation_utils.SymbolTree(TrackRemovedReferences)
+  return transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, _transform, symbol_tree)
 
 
 def remove_mapped_or_applied_identity(comp):
@@ -1325,9 +1456,7 @@ def unwrap_placement(comp):
 
     symbol_tree = transformation_utils.SymbolTree(_UnboundVariableIdentifier)
     symbol_tree.ingest_variable_binding(unbound_variable_name, None)
-    symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference(
-            unbound_variable_name, computation_types.AbstractType('T')))
+    symbol_tree.update_payload_with_name(unbound_variable_name)
 
     def _should_transform(comp, symbol_tree):
       return (isinstance(comp, computation_building_blocks.Reference) and
@@ -1523,3 +1652,82 @@ def get_map_of_unbound_references(comp):
 
   transformation_utils.transform_postorder(comp, _update)
   return references
+
+
+def _computations_equal(comp_1, comp_2):
+  """Returns `True` if the computations are equal.
+
+  If you pass objects other than instances of
+  `computation_building_blocks.ComputationBuildingBlock` this function will
+  return `False`. Structurally equaivalent computations with different variable
+  names are not considered to be equal.
+
+  NOTE: This function could be quite expensive if you do not
+  `extract_computations` first. Extracting all comptations reduces the equality
+  of two computations in most cases to an identity check. One notable exception
+  to this is `CompiledComputation` for which equality is delegated to the proto
+  object.
+
+  Args:
+    comp_1: A `computation_building_blocks.ComputationBuildingBlock` to test.
+    comp_2: A `computation_building_blocks.ComputationBuildingBlock` to test.
+
+  Raises:
+    TypeError: If `comp_1` or `comp_2` is not an instance of
+      `computation_building_blocks.ComputationBuildingBlock`.
+    NotImplementedError: If `comp_1` and `comp_2` are an unexpected subclass of
+      `computation_building_blocks.ComputationBuildingBlock`.
+  """
+  py_typecheck.check_type(comp_1,
+                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp_2,
+                          computation_building_blocks.ComputationBuildingBlock)
+  if comp_1 is comp_2:
+    return True
+  # The unidiomatic-typecheck is intentional, for the purposes of equality this
+  # function requires that the types are identical and that a subclass will not
+  # be equal to it's baseclass.
+  if type(comp_1) != type(comp_2):  # pylint: disable=unidiomatic-typecheck
+    return False
+  if comp_1.type_signature != comp_2.type_signature:
+    return False
+  if isinstance(comp_1, computation_building_blocks.Block):
+    if not _computations_equal(comp_1.result, comp_2.result):
+      return False
+    if len(comp_1.locals) != len(comp_2.locals):
+      return False
+    for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
+                                                    comp_2.locals):
+      if name_1 != name_2 or not _computations_equal(value_1, value_2):
+        return False
+    return True
+  elif isinstance(comp_1, computation_building_blocks.Call):
+    return (_computations_equal(comp_1.function, comp_2.function) and
+            (comp_1.argument is None and comp_2.argument is None or
+             _computations_equal(comp_1.argument, comp_2.argument)))
+  elif isinstance(comp_1, computation_building_blocks.CompiledComputation):
+    return comp_1.proto == comp_2.proto
+  elif isinstance(comp_1, computation_building_blocks.Data):
+    return comp_1.uri == comp_2.uri
+  elif isinstance(comp_1, computation_building_blocks.Intrinsic):
+    return comp_1.uri == comp_2.uri
+  elif isinstance(comp_1, computation_building_blocks.Lambda):
+    return (comp_1.parameter_name == comp_2.parameter_name and
+            comp_1.parameter_type == comp_2.parameter_type and
+            _computations_equal(comp_1.result, comp_2.result))
+  elif isinstance(comp_1, computation_building_blocks.Placement):
+    return comp_1.uri == comp_2.uri
+  elif isinstance(comp_1, computation_building_blocks.Reference):
+    return comp_1.name == comp_2.name
+  elif isinstance(comp_1, computation_building_blocks.Selection):
+    return (_computations_equal(comp_1.source, comp_2.source) and
+            comp_1.name == comp_2.name and comp_1.index == comp_2.index)
+  elif isinstance(comp_1, computation_building_blocks.Tuple):
+    # The element names are checked as part of the `type_signature`.
+    if len(comp_1) != len(comp_2):
+      return False
+    for element_1, element_2 in zip(comp_1, comp_2):
+      if not _computations_equal(element_1, element_2):
+        return False
+    return True
+  raise NotImplementedError('Unexpected type found: {}.'.format(type(comp_1)))

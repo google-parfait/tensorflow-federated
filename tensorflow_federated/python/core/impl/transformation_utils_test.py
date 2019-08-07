@@ -510,7 +510,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       if isinstance(comp, computation_building_blocks.Reference):
-        ctxt_tree.update_payload_tracking_reference(comp)
+        ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
 
@@ -531,7 +531,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       if isinstance(comp, computation_building_blocks.Reference):
-        ctxt_tree.update_payload_tracking_reference(comp)
+        ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
 
@@ -553,7 +553,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       if isinstance(comp, computation_building_blocks.Reference):
-        ctxt_tree.update_payload_tracking_reference(comp)
+        ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
 
@@ -724,10 +724,8 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     (complex_symbol_tree, x_tracker, elder_y,
      young_y) = _construct_symbol_tree()
-    complex_symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference('x', tf.int32))
-    complex_symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference('y', tf.int32))
+    complex_symbol_tree.update_payload_with_name('x')
+    complex_symbol_tree.update_payload_with_name('y')
     self.assertEqual(x_tracker.payload.count, 1)
     self.assertEqual(young_y.payload.count, 1)
     self.assertEqual(complex_symbol_tree.get_payload_with_name('x').count, 1)
@@ -780,10 +778,8 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     (complex_symbol_tree, x_tracker, elder_y, young_y,
      misdirect_z) = _construct_symbol_tree()
-    complex_symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference('x', tf.int32))
-    complex_symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference('y', tf.int32))
+    complex_symbol_tree.update_payload_with_name('x')
+    complex_symbol_tree.update_payload_with_name('y')
     self.assertEqual(x_tracker.payload.count, 1)
     self.assertEqual(young_y.payload.count, 1)
     self.assertEqual(elder_y.payload.count, 0)
@@ -792,10 +788,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     with self.assertRaises(NameError):
       complex_symbol_tree.get_payload_with_name('z')
     complex_symbol_tree.pop_scope_up()
-    complex_symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference('y', tf.int32))
-    complex_symbol_tree.update_payload_tracking_reference(
-        computation_building_blocks.Reference('y', tf.int32))
+    complex_symbol_tree.update_payload_with_name('y')
+    complex_symbol_tree.update_payload_with_name('y')
     self.assertEqual(elder_y.payload.count, 2)
     self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 2)
     self.assertEqual(misdirect_z.payload.count, 0)
@@ -808,10 +802,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       symbol_tree.get_payload_with_name(0)
     with self.assertRaises(TypeError):
-      symbol_tree.update_payload_tracking_reference(
-          computation_building_blocks.Data('x', tf.bool))
-    with self.assertRaises(TypeError):
-      symbol_tree.update_payload_tracking_reference(0)
+      symbol_tree.update_payload_with_name(0)
+    with self.assertRaises(ValueError):
+      symbol_tree.update_payload_with_name('x')
 
   def test_symbol_tree_walk_to_scope_beginning_nonempty_scope_moves_to_sentinel(
       self):
@@ -1257,8 +1250,8 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
           simple_block.locals[0][0], simple_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(ref)
-      constructed_context_stack.update_payload_tracking_reference(ref)
+      constructed_context_stack.update_payload_with_name(ref.name)
+      constructed_context_stack.update_payload_with_name(ref.name)
       return constructed_context_stack
 
     self.assertEqual(context_stack, _construct_context_stack())
@@ -1283,13 +1276,13 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(2)
       constructed_context_stack.ingest_variable_binding(
           first_block.locals[0][0], first_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          first_block.result)
+      constructed_context_stack.update_payload_with_name(
+          first_block.result.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.ingest_variable_binding(
           second_block.locals[0][0], second_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          second_block.result)
+      constructed_context_stack.update_payload_with_name(
+          second_block.result.name)
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
 
@@ -1316,11 +1309,11 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(2)
       constructed_context_stack.ingest_variable_binding(block.locals[0][0],
                                                         block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(second_x)
+      constructed_context_stack.update_payload_with_name(second_x.name)
       constructed_context_stack.drop_scope_down(3)
       constructed_context_stack.ingest_variable_binding(
           inner_lambda.parameter_name, None)
-      constructed_context_stack.update_payload_tracking_reference(innermost_x)
+      constructed_context_stack.update_payload_with_name(innermost_x.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
@@ -1344,11 +1337,11 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(0)
       constructed_context_stack.ingest_variable_binding(
           outer_lambda.parameter_name, None)
-      constructed_context_stack.update_payload_tracking_reference(outer_x)
+      constructed_context_stack.update_payload_with_name(outer_x.name)
       constructed_context_stack.drop_scope_down(0)
       constructed_context_stack.ingest_variable_binding(
           inner_lambda.parameter_name, None)
-      constructed_context_stack.update_payload_tracking_reference(inner_x)
+      constructed_context_stack.update_payload_with_name(inner_x.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
@@ -1375,11 +1368,11 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(lam.parameter_name,
                                                         None)
-      constructed_context_stack.update_payload_tracking_reference(arg_comp)
+      constructed_context_stack.update_payload_with_name(arg_comp.name)
       constructed_context_stack.drop_scope_down(2)
       constructed_context_stack.ingest_variable_binding(block.locals[0][0],
                                                         block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(internal_arg)
+      constructed_context_stack.update_payload_with_name(internal_arg.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
@@ -1405,11 +1398,11 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
           higher_block.locals[0][0], higher_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(used1)
+      constructed_context_stack.update_payload_with_name(used1.name)
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
           lower_block.locals[0][0], lower_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(ref)
+      constructed_context_stack.update_payload_with_name(ref.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
@@ -1435,8 +1428,8 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.ingest_variable_binding(
           user_inlined_higher_block.locals[0][0],
           user_inlined_higher_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(used1)
-      constructed_context_stack.update_payload_tracking_reference(used1)
+      constructed_context_stack.update_payload_with_name(used1.name)
+      constructed_context_stack.update_payload_with_name(used1.name)
       constructed_context_stack.drop_scope_down(3)
       constructed_context_stack.ingest_variable_binding(
           user_inlined_lower_block.locals[0][0],
@@ -1471,13 +1464,12 @@ class TransformationUtilsTest(parameterized.TestCase):
           outer_block.locals[0][0], outer_block.locals[0][1])
       constructed_context_stack.ingest_variable_binding(
           outer_block.locals[1][0], outer_block.locals[1][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          intermediate_arg)
-      constructed_context_stack.update_payload_tracking_reference(item1)
+      constructed_context_stack.update_payload_with_name(intermediate_arg.name)
+      constructed_context_stack.update_payload_with_name(item1.name)
       constructed_context_stack.drop_scope_down(6)
       constructed_context_stack.ingest_variable_binding(
           inner_block.locals[0][0], inner_block.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(innermost)
+      constructed_context_stack.update_payload_with_name(innermost.name)
       return constructed_context_stack
 
     self.assertEqual(context_stack, _construct_context_stack())
@@ -1512,20 +1504,16 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(child_id)
       constructed_context_stack.ingest_variable_binding(make_13.locals[0][0],
                                                         make_13.locals[0][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          dummy_x_reference)
+      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
       constructed_context_stack.ingest_variable_binding(make_13.locals[1][0],
                                                         make_13.locals[1][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          dummy_x_reference)
+      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
       constructed_context_stack.ingest_variable_binding(make_13.locals[2][0],
                                                         make_13.locals[2][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          dummy_x_reference)
+      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
       constructed_context_stack.ingest_variable_binding(make_13.locals[3][0],
                                                         make_13.locals[3][1])
-      constructed_context_stack.update_payload_tracking_reference(
-          dummy_x_reference)
+      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
       constructed_context_stack.walk_to_scope_beginning()
       return constructed_context_stack
 

@@ -98,6 +98,406 @@ def _count_called_intrinsics(comp, uri=None):
   return tree_analysis.count(comp, _predicate)
 
 
+def _create_complex_computation():
+  compiled = computation_constructing_utils.create_compiled_identity(
+      tf.int32, 'a')
+  federated_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+  ref = computation_building_blocks.Reference('b', federated_type)
+  called_federated_broadcast = computation_constructing_utils.create_federated_broadcast(
+      ref)
+  called_federated_map = computation_constructing_utils.create_federated_map(
+      compiled, called_federated_broadcast)
+  called_federated_mean = computation_constructing_utils.create_federated_mean(
+      called_federated_map, None)
+  tup = computation_building_blocks.Tuple(
+      [called_federated_mean, called_federated_mean])
+  return computation_building_blocks.Lambda('b', tf.int32, tup)
+
+
+class ExtractComputationsTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none(self):
+    with self.assertRaises(TypeError):
+      transformations.extract_computations(None)
+
+  def test_raises_value_error_with_non_unique_variable_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('a', data), ('a', data)], data)
+    with self.assertRaises(ValueError):
+      transformations.extract_computations(block)
+
+  def test_extracts_from_block_one_comp(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('a', data)], data)
+    comp = block
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '(let a=data in data)')
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let a=data,_var1=data in _var1)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_block_multiple_comps(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    data_3 = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data_2, data_3])
+    block = computation_building_blocks.Block([('a', data_1)], tup)
+    comp = block
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(),
+                     '(let a=data in <data,data>)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  a=data,\n'
+        '  _var1=data,\n'
+        '  _var2=data,\n'
+        '  _var3=<\n'
+        '    _var1,\n'
+        '    _var2\n'
+        '  >,\n'
+        '  _var4=_var3\n'
+        ' in _var4)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_call_one_comp(self):
+    fn = computation_test_utils.create_identity_function('a', tf.int32)
+    data = computation_building_blocks.Data('data', tf.int32)
+    call = computation_building_blocks.Call(fn, data)
+    comp = call
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '(a -> a)(data)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=(a -> a),\n'
+        '  _var2=data,\n'
+        '  _var3=_var1(_var2)\n'
+        ' in _var3)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_call_multiple_comps(self):
+    fn = computation_test_utils.create_identity_function(
+        'a', [tf.int32, tf.int32])
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data_1, data_2])
+    call = computation_building_blocks.Call(fn, tup)
+    comp = call
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '(a -> a)(<data,data>)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var4=(a -> a),\n'
+        '  _var1=data,\n'
+        '  _var2=data,\n'
+        '  _var3=<\n'
+        '    _var1,\n'
+        '    _var2\n'
+        '  >,\n'
+        '  _var5=_var3,\n'
+        '  _var6=_var4(_var5)\n'
+        ' in _var6)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_lambda_one_comp(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    fn = computation_building_blocks.Lambda('a', tf.int32, data)
+    comp = fn
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '(a -> data)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=data,\n'
+        '  _var2=(a -> _var1)\n'
+        ' in _var2)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_lambda_multiple_comps(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data_1, data_2])
+    fn = computation_building_blocks.Lambda('a', tf.int32, tup)
+    comp = fn
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '(a -> <data,data>)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=data,\n'
+        '  _var2=data,\n'
+        '  _var3=<\n'
+        '    _var1,\n'
+        '    _var2\n'
+        '  >,\n'
+        '  _var4=_var3,\n'
+        '  _var5=(a -> _var4)\n'
+        ' in _var5)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_selection_one_comp(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data])
+    sel = computation_building_blocks.Selection(tup, index=0)
+    comp = sel
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '<data>[0]')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=data,\n'
+        '  _var2=<\n'
+        '    _var1\n'
+        '  >,\n'
+        '  _var3=_var2,\n'
+        '  _var4=_var3[0]\n'
+        ' in _var4)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_selection_multiple_comps(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data_1, data_2])
+    sel = computation_building_blocks.Selection(tup, index=0)
+    comp = sel
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '<data,data>[0]')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=data,\n'
+        '  _var2=data,\n'
+        '  _var3=<\n'
+        '    _var1,\n'
+        '    _var2\n'
+        '  >,\n'
+        '  _var4=_var3,\n'
+        '  _var5=_var4[0]\n'
+        ' in _var5)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_tuple_one_comp(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data])
+    comp = tup
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '<data>')
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let _var1=data,_var2=<_var1> in _var2)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_tuple_multiple_comps(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([data_1, data_2])
+    comp = tup
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '<data,data>')
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        '(let _var1=data,_var2=data,_var3=<_var1,_var2> in _var3)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_tuple_named_comps(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tup = computation_building_blocks.Tuple([
+        ('a', data_1),
+        ('b', data_2),
+    ])
+    comp = tup
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '<a=data,b=data>')
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        '(let _var1=data,_var2=data,_var3=<a=_var1,b=_var2> in _var3)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_federated_aggregate(self):
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    comp = called_intrinsic
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var13=federated_aggregate,\n'
+        '  _var7=data,\n'
+        '  _var8=data,\n'
+        '  _var1=data,\n'
+        '  _var2=(a -> _var1),\n'
+        '  _var9=_var2,\n'
+        '  _var3=data,\n'
+        '  _var4=(b -> _var3),\n'
+        '  _var10=_var4,\n'
+        '  _var5=data,\n'
+        '  _var6=(c -> _var5),\n'
+        '  _var11=_var6,\n'
+        '  _var12=<\n'
+        '    _var7,\n'
+        '    _var8,\n'
+        '    _var9,\n'
+        '    _var10,\n'
+        '    _var11\n'
+        '  >,\n'
+        '  _var14=_var12,\n'
+        '  _var15=_var13(_var14)\n'
+        ' in _var15)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_federated_broadcast(self):
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_broadcast(
+    )
+    comp = called_intrinsic
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), 'federated_broadcast(data)')
+    # pyformat: disable
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=federated_broadcast,\n'
+        '  _var2=data,\n'
+        '  _var3=_var1(_var2)\n'
+        ' in _var3)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_complex_comp(self):
+    complex_comp = _create_complex_computation()
+    comp = complex_comp
+
+    transformed_comp, modified = transformations.extract_computations(comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '(b -> <\n'
+        '  federated_mean(federated_map(<\n'
+        '    comp#a,\n'
+        '    federated_broadcast(b)\n'
+        '  >)),\n'
+        '  federated_mean(federated_map(<\n'
+        '    comp#a,\n'
+        '    federated_broadcast(b)\n'
+        '  >))\n'
+        '>)'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(b -> (let\n'
+        '  _var9=federated_mean,\n'
+        '  _var6=federated_map,\n'
+        '  _var3=comp#a,\n'
+        '  _var1=federated_broadcast,\n'
+        '  _var2=_var1(b),\n'
+        '  _var4=_var2,\n'
+        '  _var5=<\n'
+        '    _var3,\n'
+        '    _var4\n'
+        '  >,\n'
+        '  _var7=_var5,\n'
+        '  _var8=_var6(_var7),\n'
+        '  _var10=_var8,\n'
+        '  _var11=_var9(_var10),\n'
+        '  _var23=_var11,\n'
+        '  _var20=federated_mean,\n'
+        '  _var17=federated_map,\n'
+        '  _var14=comp#a,\n'
+        '  _var12=federated_broadcast,\n'
+        '  _var13=_var12(b),\n'
+        '  _var15=_var13,\n'
+        '  _var16=<\n'
+        '    _var14,\n'
+        '    _var15\n'
+        '  >,\n'
+        '  _var18=_var16,\n'
+        '  _var19=_var17(_var18),\n'
+        '  _var21=_var19,\n'
+        '  _var22=_var20(_var21),\n'
+        '  _var24=_var22,\n'
+        '  _var25=<\n'
+        '    _var23,\n'
+        '    _var24\n'
+        '  >,\n'
+        '  _var26=_var25\n'
+        ' in _var26))'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+
 class ExtractIntrinsicsTest(absltest.TestCase):
 
   def test_raises_type_error(self):
@@ -2597,6 +2997,214 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertFalse(modified)
 
 
+class RemoveDuplicateComputationsTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none(self):
+    with self.assertRaises(TypeError):
+      transformations.remove_duplicate_computations(None)
+
+  def test_raises_value_error_with_non_unique_variable_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    block = computation_building_blocks.Block([('a', data), ('a', data)], data)
+    with self.assertRaises(ValueError):
+      transformations.remove_duplicate_computations(block)
+
+  def test_removes_federated_aggregate(self):
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    tup = computation_building_blocks.Tuple([
+        called_intrinsic,
+        called_intrinsic,
+    ])
+    comp = tup
+
+    intermediate_comp, _ = transformations.uniquify_reference_names(comp)
+    intermediate_comp, _ = transformations.extract_computations(
+        intermediate_comp)
+    transformed_comp, modified = transformations.remove_duplicate_computations(
+        intermediate_comp)
+    transformed_comp, _ = transformations.uniquify_reference_names(
+        transformed_comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '<\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >),\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (a -> data),\n'
+        '    (b -> data),\n'
+        '    (c -> data)\n'
+        '  >)\n'
+        '>'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=federated_aggregate,\n'
+        '  _var2=data,\n'
+        '  _var3=data,\n'
+        '  _var5=(_var4 -> _var3),\n'
+        '  _var7=(_var6 -> _var3),\n'
+        '  _var8=data,\n'
+        '  _var10=(_var9 -> _var8),\n'
+        '  _var11=<\n'
+        '    _var2,\n'
+        '    _var3,\n'
+        '    _var5,\n'
+        '    _var7,\n'
+        '    _var10\n'
+        '  >,\n'
+        '  _var12=_var1(_var11),\n'
+        '  _var14=(_var13 -> _var3),\n'
+        '  _var16=(_var15 -> _var3),\n'
+        '  _var18=(_var17 -> _var8),\n'
+        '  _var19=<\n'
+        '    _var2,\n'
+        '    _var3,\n'
+        '    _var14,\n'
+        '    _var16,\n'
+        '    _var18\n'
+        '  >,\n'
+        '  _var20=_var1(_var19),\n'
+        '  _var21=<\n'
+        '    _var12,\n'
+        '    _var20\n'
+        '  >\n'
+        ' in _var21)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_removes_federated_broadcast(self):
+    called_intrinsic = computation_test_utils.create_dummy_called_federated_broadcast(
+    )
+    tup = computation_building_blocks.Tuple([
+        called_intrinsic,
+        called_intrinsic,
+    ])
+    comp = tup
+
+    intermediate_comp, _ = transformations.extract_computations(comp)
+    transformed_comp, modified = transformations.remove_duplicate_computations(
+        intermediate_comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '<\n'
+        '  federated_broadcast(data),\n'
+        '  federated_broadcast(data)\n'
+        '>'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=federated_broadcast,\n'
+        '  _var2=data,\n'
+        '  _var3=_var1(_var2),\n'
+        '  _var9=<\n'
+        '    _var3,\n'
+        '    _var3\n'
+        '  >\n'
+        ' in _var9)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_removes_complex_comp(self):
+    complex_comp = _create_complex_computation()
+    comp = complex_comp
+
+    intermediate_comp, _ = transformations.extract_computations(comp)
+    transformed_comp, modified = transformations.remove_duplicate_computations(
+        intermediate_comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '(b -> <\n'
+        '  federated_mean(federated_map(<\n'
+        '    comp#a,\n'
+        '    federated_broadcast(b)\n'
+        '  >)),\n'
+        '  federated_mean(federated_map(<\n'
+        '    comp#a,\n'
+        '    federated_broadcast(b)\n'
+        '  >))\n'
+        '>)'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(b -> (let\n'
+        '  _var9=federated_mean,\n'
+        '  _var6=federated_map,\n'
+        '  _var3=comp#a,\n'
+        '  _var1=federated_broadcast,\n'
+        '  _var2=_var1(b),\n'
+        '  _var5=<\n'
+        '    _var3,\n'
+        '    _var2\n'
+        '  >,\n'
+        '  _var8=_var6(_var5),\n'
+        '  _var11=_var9(_var8),\n'
+        '  _var25=<\n'
+        '    _var11,\n'
+        '    _var11\n'
+        '  >\n'
+        ' in _var25))'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_removes_chained_references_bound_by_lambda(self):
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    ref_2 = computation_building_blocks.Reference('b', tf.int32)
+    tup = computation_building_blocks.Tuple([ref_2])
+    block = computation_building_blocks.Block([(ref_2.name, ref_1)], tup)
+    fn = computation_building_blocks.Lambda(ref_1.name, ref_1.type_signature,
+                                            block)
+    comp = fn
+
+    intermediate_comp, _ = transformations.extract_computations(comp)
+    transformed_comp, modified = transformations.remove_duplicate_computations(
+        intermediate_comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '(a -> (let\n'
+        '  b=a\n'
+        ' in <\n'
+        '  b\n'
+        '>))'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(a -> (let\n'
+        '  _var1=<\n'
+        '    a\n'
+        '  >\n'
+        ' in _var1))'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+
 class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_raises_type_error(self):
@@ -3869,6 +4477,293 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
     self.assertEqual(unwrapped.argument[0].type_signature,
                      computation_types.FunctionType(tf.int32, tf.int32))
+
+
+class ComputationsEqualTest(absltest.TestCase):
+
+  def test_raises_type_error(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    with self.assertRaises(TypeError):
+      transformations._computations_equal(data, None)
+      transformations._computations_equal(None, data)
+
+  def test_returns_true_for_the_same_comp(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    self.assertTrue(transformations._computations_equal(data, data))
+
+  def test_returns_false_for_comps_with_different_types(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    ref = computation_building_blocks.Reference('a', tf.int32)
+    self.assertFalse(transformations._computations_equal(data, ref))
+    self.assertFalse(transformations._computations_equal(ref, data))
+
+  def test_returns_false_for_blocks_with_different_results(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    comp_1 = computation_building_blocks.Block([], data_1)
+    data_2 = computation_building_blocks.Data('data', tf.float32)
+    comp_2 = computation_building_blocks.Block([], data_2)
+    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_false_for_blocks_with_different_variable_lengths(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    comp_1 = computation_building_blocks.Block([('a', data)], data)
+    comp_2 = computation_building_blocks.Block([('a', data), ('b', data)], data)
+    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_false_for_blocks_with_different_variable_names(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    comp_1 = computation_building_blocks.Block([('a', data)], data)
+    comp_2 = computation_building_blocks.Block([('b', data)], data)
+    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_false_for_blocks_with_different_variable_values(self):
+    data = computation_building_blocks.Data('data', tf.int32)
+    data_1 = computation_building_blocks.Data('data', tf.float32)
+    comp_1 = computation_building_blocks.Block([('a', data_1)], data)
+    data_2 = computation_building_blocks.Data('data', tf.bool)
+    comp_2 = computation_building_blocks.Block([('a', data_2)], data)
+    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_true_for_blocks(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    comp_1 = computation_building_blocks.Block([('a', data_1)], data_1)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    comp_2 = computation_building_blocks.Block([('a', data_2)], data_2)
+    self.assertTrue(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_false_for_calls_with_different_functions(self):
+    function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_1 = computation_building_blocks.Reference('a', function_type_1)
+    arg_1 = computation_building_blocks.Data('data', tf.int32)
+    comp_1 = computation_building_blocks.Call(fn_1, arg_1)
+    function_type_2 = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_2 = computation_building_blocks.Reference('b', function_type_2)
+    arg_2 = computation_building_blocks.Data('data', tf.int32)
+    comp_2 = computation_building_blocks.Call(fn_2, arg_2)
+    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_false_for_calls_with_different_arguments(self):
+    function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_1 = computation_building_blocks.Reference('a', function_type_1)
+    arg_1 = computation_building_blocks.Data('a', tf.int32)
+    comp_1 = computation_building_blocks.Call(fn_1, arg_1)
+    function_type_2 = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_2 = computation_building_blocks.Reference('a', function_type_2)
+    arg_2 = computation_building_blocks.Data('b', tf.int32)
+    comp_2 = computation_building_blocks.Call(fn_2, arg_2)
+    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_true_for_calls(self):
+    function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_1 = computation_building_blocks.Reference('a', function_type_1)
+    arg_1 = computation_building_blocks.Data('data', tf.int32)
+    comp_1 = computation_building_blocks.Call(fn_1, arg_1)
+    function_type_2 = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_2 = computation_building_blocks.Reference('a', function_type_2)
+    arg_2 = computation_building_blocks.Data('data', tf.int32)
+    comp_2 = computation_building_blocks.Call(fn_2, arg_2)
+    self.assertTrue(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_true_for_calls_with_no_arguments(self):
+    function_type_1 = computation_types.FunctionType(None, tf.int32)
+    fn_1 = computation_building_blocks.Reference('a', function_type_1)
+    comp_1 = computation_building_blocks.Call(fn_1)
+    function_type_2 = computation_types.FunctionType(None, tf.int32)
+    fn_2 = computation_building_blocks.Reference('a', function_type_2)
+    comp_2 = computation_building_blocks.Call(fn_2)
+    self.assertTrue(transformations._computations_equal(comp_1, comp_2))
+
+  def test_returns_false_for_compiled_computations_with_different_types(self):
+    compiled_1 = computation_constructing_utils.create_compiled_identity(
+        tf.int32, 'a')
+    compiled_2 = computation_constructing_utils.create_compiled_identity(
+        tf.float32, 'a')
+    self.assertFalse(
+        transformations._computations_equal(compiled_1, compiled_2))
+
+  def test_returns_true_for_compiled_computations(self):
+    compiled_1 = computation_constructing_utils.create_compiled_identity(
+        tf.int32, 'a')
+    compiled_2 = computation_constructing_utils.create_compiled_identity(
+        tf.int32, 'a')
+    self.assertTrue(transformations._computations_equal(compiled_1, compiled_2))
+
+  def test_returns_true_for_compiled_computations_with_different_names(self):
+    compiled_1 = computation_constructing_utils.create_compiled_identity(
+        tf.int32, 'a')
+    compiled_2 = computation_constructing_utils.create_compiled_identity(
+        tf.int32, 'b')
+    self.assertTrue(transformations._computations_equal(compiled_1, compiled_2))
+
+  def test_returns_false_for_data_with_different_types(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.float32)
+    self.assertFalse(transformations._computations_equal(data_1, data_2))
+
+  def test_returns_false_for_data_with_different_names(self):
+    data_1 = computation_building_blocks.Data('a', tf.int32)
+    data_2 = computation_building_blocks.Data('b', tf.int32)
+    self.assertFalse(transformations._computations_equal(data_1, data_2))
+
+  def test_returns_true_for_data(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    self.assertTrue(transformations._computations_equal(data_1, data_2))
+
+  def test_returns_false_for_intrinsics_with_different_types(self):
+    intrinsic_1 = computation_building_blocks.Intrinsic('intrinsic', tf.int32)
+    intrinsic_2 = computation_building_blocks.Intrinsic('intrinsic', tf.float32)
+    self.assertFalse(
+        transformations._computations_equal(intrinsic_1, intrinsic_2))
+
+  def test_returns_false_for_intrinsics_with_different_names(self):
+    intrinsic_1 = computation_building_blocks.Intrinsic('a', tf.int32)
+    intrinsic_2 = computation_building_blocks.Intrinsic('b', tf.int32)
+    self.assertFalse(
+        transformations._computations_equal(intrinsic_1, intrinsic_2))
+
+  def test_returns_true_for_intrinsics(self):
+    intrinsic_1 = computation_building_blocks.Intrinsic('intrinsic', tf.int32)
+    intrinsic_2 = computation_building_blocks.Intrinsic('intrinsic', tf.int32)
+    self.assertTrue(
+        transformations._computations_equal(intrinsic_1, intrinsic_2))
+
+  def test_returns_false_for_lambdas_with_different_parameter_names(self):
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    fn_1 = computation_building_blocks.Lambda('b', ref_1.type_signature, ref_1)
+    ref_2 = computation_building_blocks.Reference('a', tf.int32)
+    fn_2 = computation_building_blocks.Lambda('c', ref_2.type_signature, ref_2)
+    self.assertFalse(transformations._computations_equal(fn_1, fn_2))
+
+  def test_returns_false_for_lambdas_with_different_parameter_types(self):
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    fn_1 = computation_building_blocks.Lambda(ref_1.name, ref_1.type_signature,
+                                              ref_1)
+    ref_2 = computation_building_blocks.Reference('a', tf.float32)
+    fn_2 = computation_building_blocks.Lambda(ref_2.name, ref_2.type_signature,
+                                              ref_2)
+    self.assertFalse(transformations._computations_equal(fn_1, fn_2))
+
+  def test_returns_false_for_lambdas_with_different_results(self):
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    fn_1 = computation_building_blocks.Lambda(ref_1.name, ref_1.type_signature,
+                                              ref_1)
+    ref_2 = computation_building_blocks.Reference('b', tf.int32)
+    fn_2 = computation_building_blocks.Lambda(ref_2.name, ref_2.type_signature,
+                                              ref_2)
+    self.assertFalse(transformations._computations_equal(fn_1, fn_2))
+
+  def test_returns_true_for_lambdas(self):
+    ref_1 = computation_building_blocks.Reference('a', tf.int32)
+    fn_1 = computation_building_blocks.Lambda(ref_1.name, ref_1.type_signature,
+                                              ref_1)
+    ref_2 = computation_building_blocks.Reference('a', tf.int32)
+    fn_2 = computation_building_blocks.Lambda(ref_2.name, ref_2.type_signature,
+                                              ref_2)
+    self.assertTrue(transformations._computations_equal(fn_1, fn_2))
+
+  def test_returns_false_for_placements_with_literals(self):
+    placement_1 = computation_building_blocks.Placement(placements.CLIENTS)
+    placement_2 = computation_building_blocks.Placement(placements.SERVER)
+    self.assertFalse(
+        transformations._computations_equal(placement_1, placement_2))
+
+  def test_returns_true_for_placements(self):
+    placement_1 = computation_building_blocks.Placement(placements.CLIENTS)
+    placement_2 = computation_building_blocks.Placement(placements.CLIENTS)
+    self.assertTrue(
+        transformations._computations_equal(placement_1, placement_2))
+
+  def test_returns_false_for_references_with_different_types(self):
+    reference_1 = computation_building_blocks.Reference('a', tf.int32)
+    reference_2 = computation_building_blocks.Reference('a', tf.float32)
+    self.assertFalse(
+        transformations._computations_equal(reference_1, reference_2))
+
+  def test_returns_false_for_references_with_different_names(self):
+    reference_1 = computation_building_blocks.Reference('a', tf.int32)
+    reference_2 = computation_building_blocks.Reference('b', tf.int32)
+    self.assertFalse(
+        transformations._computations_equal(reference_1, reference_2))
+
+  def test_returns_true_for_references(self):
+    reference_1 = computation_building_blocks.Reference('a', tf.int32)
+    reference_2 = computation_building_blocks.Reference('a', tf.int32)
+    self.assertTrue(
+        transformations._computations_equal(reference_1, reference_2))
+
+  def test_returns_false_for_selections_with_differet_sources(self):
+    ref_1 = computation_building_blocks.Reference('a', [tf.int32, tf.int32])
+    selection_1 = computation_building_blocks.Selection(ref_1, index=0)
+    ref_2 = computation_building_blocks.Reference('b', [tf.int32, tf.int32])
+    selection_2 = computation_building_blocks.Selection(ref_2, index=1)
+    self.assertFalse(
+        transformations._computations_equal(selection_1, selection_2))
+
+  def test_returns_false_for_selections_with_different_indexes(self):
+    ref_1 = computation_building_blocks.Reference('a', [tf.int32, tf.int32])
+    selection_1 = computation_building_blocks.Selection(ref_1, index=0)
+    ref_2 = computation_building_blocks.Reference('a', [tf.int32, tf.int32])
+    selection_2 = computation_building_blocks.Selection(ref_2, index=1)
+    self.assertFalse(
+        transformations._computations_equal(selection_1, selection_2))
+
+  def test_returns_false_for_selections_with_differet_names(self):
+    ref_1 = computation_building_blocks.Reference('a', [('a', tf.int32),
+                                                        ('b', tf.int32)])
+    selection_1 = computation_building_blocks.Selection(ref_1, name='a')
+    ref_2 = computation_building_blocks.Reference('a', [('a', tf.int32),
+                                                        ('b', tf.int32)])
+    selection_2 = computation_building_blocks.Selection(ref_2, name='b')
+    self.assertFalse(
+        transformations._computations_equal(selection_1, selection_2))
+
+  def test_returns_true_for_selections_with_indexes(self):
+    ref_1 = computation_building_blocks.Reference('a', [tf.int32, tf.int32])
+    selection_1 = computation_building_blocks.Selection(ref_1, index=0)
+    ref_2 = computation_building_blocks.Reference('a', [tf.int32, tf.int32])
+    selection_2 = computation_building_blocks.Selection(ref_2, index=0)
+    self.assertTrue(
+        transformations._computations_equal(selection_1, selection_2))
+
+  def test_returns_true_for_selections_with_names(self):
+    ref_1 = computation_building_blocks.Reference('a', [('a', tf.int32),
+                                                        ('b', tf.int32)])
+    selection_1 = computation_building_blocks.Selection(ref_1, name='a')
+    ref_2 = computation_building_blocks.Reference('a', [('a', tf.int32),
+                                                        ('b', tf.int32)])
+    selection_2 = computation_building_blocks.Selection(ref_2, name='a')
+    self.assertTrue(
+        transformations._computations_equal(selection_1, selection_2))
+
+  def test_returns_false_for_tuples_with_different_lengths(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    tuple_1 = computation_building_blocks.Tuple([data_1])
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tuple_2 = computation_building_blocks.Tuple([data_2, data_2])
+    self.assertFalse(transformations._computations_equal(tuple_1, tuple_2))
+
+  def test_returns_false_for_tuples_with_different_names(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    tuple_1 = computation_building_blocks.Tuple([('a', data_1), ('b', data_1)])
+    data_2 = computation_building_blocks.Data('data', tf.float32)
+    tuple_2 = computation_building_blocks.Tuple([('c', data_2), ('d', data_2)])
+    self.assertFalse(transformations._computations_equal(tuple_1, tuple_2))
+
+  def test_returns_false_for_tuples_with_different_elements(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    tuple_1 = computation_building_blocks.Tuple([data_1, data_1])
+    data_2 = computation_building_blocks.Data('data', tf.float32)
+    tuple_2 = computation_building_blocks.Tuple([data_2, data_2])
+    self.assertFalse(transformations._computations_equal(tuple_1, tuple_2))
+
+  def test_returns_true_for_tuples(self):
+    data_1 = computation_building_blocks.Data('data', tf.int32)
+    tuple_1 = computation_building_blocks.Tuple([data_1, data_1])
+    data_2 = computation_building_blocks.Data('data', tf.int32)
+    tuple_2 = computation_building_blocks.Tuple([data_2, data_2])
+    self.assertTrue(transformations._computations_equal(tuple_1, tuple_2))
+
 
 if __name__ == '__main__':
   absltest.main()

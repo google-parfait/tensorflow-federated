@@ -87,12 +87,13 @@ def create_compiled_empty_tuple():
       computation_building_blocks.CompiledComputation(proto), None)
 
 
-def create_compiled_identity(type_signature):
+def create_compiled_identity(type_signature, name=None):
   """Creates CompiledComputation representing identity function.
 
   Args:
     type_signature: Argument convertible to instance of `computation_types.Type`
       via `computation_types.to_type`.
+    name: An optional string name to use as the name of the computation.
 
   Returns:
     An instance of `computation_building_blocks.CompiledComputation`
@@ -115,18 +116,15 @@ def create_compiled_identity(type_signature):
         'x', type_spec, graph)
     result_type, result_binding = graph_utils.capture_result_from_graph(
         parameter_value, graph)
-
   function_type = computation_types.FunctionType(type_spec, result_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
-
   proto = pb.Computation(
       type=serialized_function_type,
       tensorflow=pb.TensorFlow(
           graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
           parameter=parameter_binding,
           result=result_binding))
-
-  return computation_building_blocks.CompiledComputation(proto)
+  return computation_building_blocks.CompiledComputation(proto, name)
 
 
 def create_tensorflow_constant(type_spec, scalar_value):

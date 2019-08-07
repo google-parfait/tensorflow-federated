@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import collections
 import itertools
+import operator
 
 import six
 from six.moves import zip
@@ -152,15 +153,15 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   structure to enforce. In particular, within a `transform` call the following
   invariants hold:
 
-    * `symbol_tree.update_payload_tracking_reference` with an argument `ref` of
-      type `Reference` will call `update` on the `BoundVariableTracker` in
-      `symbol_tree` which tracks the value of `ref` active in the current
-      lexical scope. Will raise a `NameError` if none exists.
+  *  `symbol_tree.update_payload_with_name` with an argument `name` will call
+     `update` on the `BoundVariableTracker` in `symbol_tree` which tracks the
+     value of `ref` active in the current lexical scope. Will raise a
+     `NameError` if none exists.
 
-    * `symbol_tree.get_payload_with_name` with a string argument `name`
-       will return the `BoundVariableTracker` instance from `symbol_tree`
-      which corresponds to the computation bound to the variable `name` in
-      the current lexical scope. Will raise a `NameError` if none exists.
+  *  `symbol_tree.get_payload_with_name` with a string argument `name` will
+     return the `BoundVariableTracker` instance from `symbol_tree` which
+     corresponds to the computation bound to the variable `name` in the current
+     lexical scope. Will raise a `NameError` if none exists.
 
   These recursion invariants are enforced by the framework, and should be
   relied on when designing new transformations that depend on variable
@@ -359,31 +360,53 @@ class SymbolTree(object):
         comp = comp.parent
     raise NameError('Name {} is not available in {}'.format(name, self))
 
-  def update_payload_tracking_reference(self, ref):
-    """Calls `update` if it finds its Reference arg among the available symbols.
+  def get_all_payloads_with_value(self, value, equal_fn=None):
+    """Returns all the payloads whose `value` attribute is equal to `value`.
+
+    Args:
+      value: The value to test.
+      equal_fn: The optional function to use to determine equality, if `None` is
+        specified `operator.is_` is used.
+    """
+    payloads = []
+    if equal_fn is None:
+      equal_fn = operator.is_
+    comp = self.active_node
+    while comp.parent is not None or comp.older_sibling is not None:
+      if comp.payload.value is not None and equal_fn(value, comp.payload.value):
+        payloads.append(comp.payload)
+      if comp.older_sibling is not None:
+        comp = comp.older_sibling
+      elif comp.parent is not None:
+        comp = comp.parent
+    return payloads
+
+  def update_payload_with_name(self, name):
+    """Calls `update` if `name` is found among the available symbols.
 
     If there is no such available symbol, simply does nothing.
 
     Args:
-      ref: Instance of `computation_building_blocks.Reference`; generally, this
-        is the variable a walker has encountered in a TFF AST, and which it is
-        relying on `SymbolTable` to address correctly.
+      name: A string; generally, this is the variable a walker has encountered
+        in a TFF AST, and which it is relying on `SymbolTable` to address
+        correctly.
 
     Raises:
-      NameError: If `ref` is not found among the bound names currently
+      ValueError: If `name` is not found among the bound names currently
         available in `self`.
     """
-    py_typecheck.check_type(ref, computation_building_blocks.Reference)
+    py_typecheck.check_type(name, six.string_types)
     comp = self.active_node
     while comp.parent is not None or comp.older_sibling is not None:
-      if ref.name == comp.payload.name:
-        comp.payload.update(ref)
+      if name == comp.payload.name:
+        comp.payload.update(name)
         return
       if comp.older_sibling is not None:
         comp = comp.older_sibling
       elif comp.parent is not None:
         comp = comp.parent
-    raise NameError('The reference {} is not available in {}'.format(ref, self))
+    raise ValueError('The name \'{}\' is not available in \'{}\'.'.format(
+        name, self))
 
   def walk_to_scope_beginning(self):
     """Walks `active_node` back to the sentinel node beginning current scope.
@@ -957,7 +980,7 @@ def get_count_of_references_to_variables(comp):
 
   def transform_fn(comp, context_tree):
     if _should_transform(comp, context_tree):
-      context_tree.update_payload_tracking_reference(comp)
+      context_tree.update_payload_with_name(comp.name)
     return comp, False
 
   transform_postorder_with_symbol_bindings(comp, transform_fn,

@@ -62,15 +62,14 @@ class CompilerPipeline(object):
                             computation_base.Computation)
     computation_proto = computation_impl.ComputationImpl.get_proto(
         computation_to_compile)
+    py_typecheck.check_type(computation_proto, pb.Computation)
+    comp = computation_building_blocks.ComputationBuildingBlock.from_proto(
+        computation_proto)
 
     # TODO(b/113123410): Add a compiler options argument that characterizes the
     # desired form of the output. To be driven by what the specific backend the
     # pipeline is targeting is able to understand. Pending a more fleshed out
     # design of the backend API.
-
-    py_typecheck.check_type(computation_proto, pb.Computation)
-    comp = computation_building_blocks.ComputationBuildingBlock.from_proto(
-        computation_proto)
 
     # Replace intrinsics with their bodies, for now manually in a fixed order.
     # TODO(b/113123410): Replace this with a more automated implementation that
@@ -80,11 +79,16 @@ class CompilerPipeline(object):
 
     # Replaces called lambdas with LET constructs with a single local symbol.
     comp, _ = transformations.replace_called_lambda_with_block(comp)
-    # TODO(b/113123410): Add more transformations to simplify and optimize the
-    # structure, e.g., such as:
-    # * removing unnecessary lambdas,
-    # * flatteting the structure,
-    # * merging TensorFlow blocks where appropriate,
-    # * ...and so on.
+
+    # Removes maped or applied identities.
+    comp, _ = transformations.remove_mapped_or_applied_identity(comp)
+
+    # Remove duplicate computations. This is important! otherwise the semantics
+    # non-deterministic computations (e.g. a `tff.tf_computation` depending on
+    # `tf.random`) will give unexpected behavior. Additionally, this may reduce
+    # the amount of calls into TF for some ASTs.
+    comp, _ = transformations.uniquify_reference_names(comp)
+    comp, _ = transformations.extract_computations(comp)
+    comp, _ = transformations.remove_duplicate_computations(comp)
 
     return computation_impl.ComputationImpl(comp.proto, self._context_stack)
