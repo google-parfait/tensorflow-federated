@@ -77,6 +77,11 @@ def zero_or_one_arg_fn_to_building_block(fn,
               context_stack))
     else:
       result = fn()
+    if result is None:
+      raise ValueError(
+          'The function defined on line {} of file {} has returned a '
+          '`NoneType`, but all TFF functions must return some non-`None` '
+          'value.'.format(fn.__code__.co_firstlineno, fn.__code__.co_filename))
     result = value_impl.to_value(result, None, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
     if parameter_type is None:

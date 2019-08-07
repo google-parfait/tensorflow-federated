@@ -537,6 +537,13 @@ class FederatedComputationsTest(test.TestCase):
     for k in range(len(first_client)):
       self.assertEqual(first_client[k], first_element)
 
+  def test_raises_none_result(self):
+    with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
+
+      @tff.federated_computation(None)
+      def _():
+        return None
+
 
 if __name__ == '__main__':
   test.main()
