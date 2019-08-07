@@ -136,22 +136,18 @@ def remove_lambdas_and_blocks(comp):
       comp, _transform_fn, symbol_tree)
 
 
-class ExtractComputations(transformation_utils.TransformSpec):
-  r"""Extracts computations to the scope which binds any variable it depends on.
+class ExtractComputation(transformation_utils.TransformSpec):
+  """Extracts a computation if a variable it depends on is not bound.
 
-  This transform traverses `comp` postorder, matches the `predicate`, and
-  replaces the computations with a LET construct.
+  This transforms a computation which matches the `predicate` or is a Block, and
+  replaces the computations with a LET
+  construct if a variable it depends on is not bound by the current scope. Both
+  the `parameter_name` of a `computation_building_blocks.Lambda` and the name of
+  any variable defined by a `computation_building_blocks.Block` can affect the
+  scope in which a reference in computation is bound.
 
-  The computations are extracted to the scope which binds any variable each
-  computations depends on. If the computations is not bound by any computation
-  in `comp` it will be extracted to the root. Both the `parameter_name` of a
-  `computation_building_blocks.Lambda` and the name of any variable defined by a
-  `computation_building_blocks.Block` can affect the scope in which a reference
-  in computation is bound.
-
-  NOTE: This function will also extract blocks to the scope in which they are
-  bound because block variables can restrict the scope in which computations are
-  bound.
+  NOTE: This function extracts `computation_building_block.Block` because block
+  variables can restrict the scope in which computations are bound.
   """
 
   def __init__(self, comp, predicate):
@@ -196,7 +192,7 @@ class ExtractComputations(transformation_utils.TransformSpec):
     return any(n in self._unbound_references[comp] for n in names)
 
   def _passes_test_or_block(self, comp):
-    """Returns `True` if `comp` is a called intrinsic or a block."""
+    """Returns `True` if `comp` matches the `predicate` or is a block."""
     return (self._predicate(comp) or
             isinstance(comp, computation_building_blocks.Block))
 
@@ -204,7 +200,7 @@ class ExtractComputations(transformation_utils.TransformSpec):
     """Returns `True` if `comp` should be transformed.
 
     The following `_extract_intrinsic_*` methods all depend on being invoked
-    after `_should_transform` evaluates to `True` for a given `comp`. Because of
+    after `should_transform` evaluates to `True` for a given `comp`. Because of
     this certain assumptions are made:
 
     * transformation functions will transform a given `comp`
@@ -385,19 +381,41 @@ class ExtractComputations(transformation_utils.TransformSpec):
 
 
 def extract_computations(comp):
+  """Extracts computations to the scope which binds a variable it depends on.
+
+  NOTE: If a computation does not contain a variable that is bound by a
+  computation in `comp` it will be extracted to the root.
+
+  Args:
+    comp: The computation building block in which to perform the transformation.
+
+  Returns:
+    A new computation with the transformation applied or the original `comp`.
+  """
 
   def _predicate(comp):
     return not isinstance(comp, computation_building_blocks.Reference)
 
-  return _apply_transforms(comp, ExtractComputations(comp, _predicate))
+  return _apply_transforms(comp, ExtractComputation(comp, _predicate))
 
 
 def extract_intrinsics(comp):
+  """Extracts intrinsics to the scope which binds a variable it depends on.
+
+  NOTE: If an intrinsic does not contain a variable that is bound by a
+  computation in `comp` it will be extracted to the root.
+
+  Args:
+    comp: The computation building block in which to perform the transformation.
+
+  Returns:
+    A new computation with the transformation applied or the original `comp`.
+  """
 
   def _predicate(comp):
     return computation_building_block_utils.is_called_intrinsic(comp)
 
-  return _apply_transforms(comp, ExtractComputations(comp, _predicate))
+  return _apply_transforms(comp, ExtractComputation(comp, _predicate))
 
 
 class InlineBlock(transformation_utils.TransformSpec):
