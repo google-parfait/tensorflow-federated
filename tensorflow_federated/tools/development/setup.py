@@ -68,6 +68,7 @@ if '--project_name' in sys.argv:
 
 REQUIRED_PACKAGES = [
     'attrs~=18.2',
+    'cachetools~=3.1.1',
     'h5py~=2.6',
     'numpy~=1.14',
     'six~=1.10',

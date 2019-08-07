@@ -6,7 +6,6 @@
 <meta itemprop="property" content="create_selection"/>
 <meta itemprop="property" content="create_tuple"/>
 <meta itemprop="property" content="create_value"/>
-<meta itemprop="property" content="delete_value"/>
 </div>
 
 # tff.framework.CachingExecutor
@@ -31,7 +30,10 @@ Inherits From: [`Executor`](../../tff/framework/Executor.md)
 source</a>
 
 ```python
-__init__(target_executor)
+__init__(
+    target_executor,
+    cache=None
+)
 ```
 
 Creates a new instance of this executor.
@@ -39,6 +41,9 @@ Creates a new instance of this executor.
 #### Args:
 
 *   <b>`target_executor`</b>: An instance of `executor_base.Executor`.
+*   <b>`cache`</b>: The cache to use (must be an instance of
+    `cachetools.Cache`). If unspecified, by default we construct a 1000-element
+    LRU cache.
 
 ## Methods
 
@@ -154,12 +159,3 @@ potentally allows the executor to amortize overhead across multiple calls.
 
 An instance of `executor_value_base.ExecutorValue` that represents the embedded
 value.
-
-<h3 id="delete_value"><code>delete_value</code></h3>
-
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/caching_executor.py">View
-source</a>
-
-```python
-delete_value(value)
-```

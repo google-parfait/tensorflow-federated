@@ -60,6 +60,7 @@ RUN bazel version
 RUN ${PIP} --no-cache-dir install \
     absl-py~=0.7 \
     attrs~=18.2 \
+    cachetools~=3.1.1 \
     enum34~=1.1 \
     grpcio~=1.8.0 \
     h5py~=2.6 \
