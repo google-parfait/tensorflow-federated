@@ -47,9 +47,9 @@ from tensorflow_federated.python.core.impl.transformations import get_map_of_unb
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves
 from tensorflow_federated.python.core.impl.transformations import merge_tuple_intrinsics
+from tensorflow_federated.python.core.impl.transformations import remove_lambdas_and_blocks
 from tensorflow_federated.python.core.impl.transformations import remove_mapped_or_applied_identity
 from tensorflow_federated.python.core.impl.transformations import replace_called_lambda_with_block
-from tensorflow_federated.python.core.impl.transformations import replace_selection_from_tuple_with_element
 from tensorflow_federated.python.core.impl.transformations import TFParser
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.transformations import unwrap_placement
@@ -130,10 +130,10 @@ _allowed_symbols = [
     "is_called_intrinsic",
     "is_tensorflow_compatible_type",
     "merge_tuple_intrinsics",
+    "remove_lambdas_and_blocks",
     "remove_mapped_or_applied_identity",
     "replace_called_lambda_with_block",
     "replace_intrinsics_with_bodies",
-    "replace_selection_from_tuple_with_element",
     "set_default_executor",
     "transform_postorder",
     "transform_type_postorder",

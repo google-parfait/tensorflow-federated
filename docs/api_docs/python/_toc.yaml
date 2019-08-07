@@ -134,14 +134,14 @@ toc:
       path: /federated/api_docs/python/tff/framework/Reference
     - title: RemoteExecutor
       path: /federated/api_docs/python/tff/framework/RemoteExecutor
+    - title: remove_lambdas_and_blocks
+      path: /federated/api_docs/python/tff/framework/remove_lambdas_and_blocks
     - title: remove_mapped_or_applied_identity
       path: /federated/api_docs/python/tff/framework/remove_mapped_or_applied_identity
     - title: replace_called_lambda_with_block
       path: /federated/api_docs/python/tff/framework/replace_called_lambda_with_block
     - title: replace_intrinsics_with_bodies
       path: /federated/api_docs/python/tff/framework/replace_intrinsics_with_bodies
-    - title: replace_selection_from_tuple_with_element
-      path: /federated/api_docs/python/tff/framework/replace_selection_from_tuple_with_element
     - title: Selection
       path: /federated/api_docs/python/tff/framework/Selection
     - title: set_default_executor

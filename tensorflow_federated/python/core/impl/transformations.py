@@ -77,6 +77,65 @@ def _apply_transforms(comp, transforms):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
+def remove_lambdas_and_blocks(comp):
+  """Removes any called lambdas and blocks from `comp`.
+
+  This function will rename all the variables in `comp` in a single walk of the
+  AST, then replace called lambdas with blocks in another walk, since this
+  transformation interacts with scope in delicate ways. It will chain inlining
+  the blocks and collapsing the selection-from-tuple pattern together into a
+  final pass.
+
+  Args:
+    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      from which we want to remove called lambdas and blocks.
+
+  Returns:
+    A transformed version of `comp` which has no called lambdas or blocks, and
+    no extraneous selections from tuples.
+  """
+  py_typecheck.check_type(comp,
+                          computation_building_blocks.ComputationBuildingBlock)
+  comp, _ = uniquify_reference_names(comp)
+  comp, _ = replace_called_lambda_with_block(comp)
+  block_inliner = InlineBlock(comp)
+  selection_replacer = ReplaceSelectionFromTuple(comp)
+  transforms = [block_inliner, selection_replacer]
+  symbol_tree = transformation_utils.SymbolTree(
+      transformation_utils.ReferenceCounter)
+
+  def _transform_fn(comp, symbol_tree):
+    """Transform function chaining inlining and collapsing selections.
+
+    This function is inlined here as opposed to factored out and parameterized
+    by the transforms to apply, due to the delicacy of chaining transformations
+    which rely on state. These transformations should be safe if they appear
+    first in the list of transforms, but due to the difficulty of reasoning
+    about the invariants the transforms can rely on in this setting, there is
+    no function exposed which hoists out the internal logic.
+
+    Args:
+      comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+        we wish to check for inlining and collapsing of selections.
+      symbol_tree: Instance of `computation_building_blocks.SymbolTree` defining
+        the bindings available to `comp`.
+
+    Returns:
+      A transformed version of `comp`.
+    """
+    modified = False
+    for transform in transforms:
+      if transform.global_transform:
+        comp, transform_modified = transform.transform(comp, symbol_tree)
+      else:
+        comp, transform_modified = transform.transform(comp)
+      modified = modified or transform_modified
+    return comp, modified
+
+  return transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, _transform_fn, symbol_tree)
+
+
 class ExtractComputations(transformation_utils.TransformSpec):
   r"""Extracts computations to the scope which binds any variable it depends on.
 
@@ -341,40 +400,51 @@ def extract_intrinsics(comp):
   return _apply_transforms(comp, ExtractComputations(comp, _predicate))
 
 
-def inline_block_locals(comp, variable_names=None):
+class InlineBlock(transformation_utils.TransformSpec):
   """Inlines the block variables in `comp` whitelisted by `variable_names`.
 
-  Args:
-    comp: The computation building block in which to perform the extractions.
-      The names of lambda parameters and block variables in `comp` must be
-      unique.
-    variable_names: A Python list, tuple, or set representing the whitelist of
-      variable names to inline; or None if all variables should be inlined.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    ValueError: If `comp` contains variables with non-unique names.
+  Each invocation of the `transform` method checks for presence of a
+  block-bound `computation_building_blocks.Reference`, and inlines this
+  reference with its appropriate value.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  tree_analysis.check_has_unique_names(comp)
-  if variable_names is not None:
-    py_typecheck.check_type(variable_names, (list, tuple, set))
 
-  def _should_inline_variable(name):
-    return variable_names is None or name in variable_names
+  def __init__(self, comp, variable_names=None):
+    """Initializes the block inliner.
 
-  def _should_transform(comp):
+    Checks that `comp` has unique names, and that `variable_names` is an
+    iterable of string types.
+
+    Args:
+      comp: The top-level computation to inline.
+      variable_names: The variable names to inline. If `None`, inlines all
+        variables.
+
+    Raises:
+      ValueError: If `comp` contains variables with non-unique names.
+      TypeError: If `variable_names` is a non-`list`, `set` or `tuple`, or
+        contains anything other than strings.
+    """
+    super(InlineBlock, self).__init__(global_transform=True)
+    py_typecheck.check_type(
+        comp, computation_building_blocks.ComputationBuildingBlock)
+    tree_analysis.check_has_unique_names(comp)
+    if variable_names is not None:
+      py_typecheck.check_type(variable_names, (list, tuple, set))
+      for name in variable_names:
+        py_typecheck.check_type(name, six.string_types)
+    self._variable_names = variable_names
+
+  def _should_inline_variable(self, name):
+    return self._variable_names is None or name in self._variable_names
+
+  def should_transform(self, comp):
     return ((isinstance(comp, computation_building_blocks.Reference) and
-             _should_inline_variable(comp.name)) or
-            (isinstance(comp, computation_building_blocks.Block) and
-             any(_should_inline_variable(name) for name, _ in comp.locals)))
+             self._should_inline_variable(comp.name)) or
+            (isinstance(comp, computation_building_blocks.Block) and any(
+                self._should_inline_variable(name) for name, _ in comp.locals)))
 
-  def _transform(comp, symbol_tree):
-    """Returns a new transformed computation or `comp`."""
-    if not _should_transform(comp):
+  def transform(self, comp, symbol_tree):
+    if not self.should_transform(comp):
       return comp, False
     if isinstance(comp, computation_building_blocks.Reference):
       try:
@@ -389,7 +459,7 @@ def inline_block_locals(comp, variable_names=None):
     elif isinstance(comp, computation_building_blocks.Block):
       variables = [(name, value)
                    for name, value in comp.locals
-                   if not _should_inline_variable(name)]
+                   if not self._should_inline_variable(name)]
       if not variables:
         comp = comp.result
       else:
@@ -397,10 +467,14 @@ def inline_block_locals(comp, variable_names=None):
       return comp, True
     return comp, False
 
+
+def inline_block_locals(comp, variable_names=None):
+  """Inlines the block variables in `comp` whitelisted by `variable_names`."""
   symbol_tree = transformation_utils.SymbolTree(
       transformation_utils.ReferenceCounter)
+  transform_spec = InlineBlock(comp, variable_names)
   return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform, symbol_tree)
+      comp, transform_spec.transform, symbol_tree)
 
 
 def merge_chained_blocks(comp):
@@ -991,11 +1065,10 @@ def remove_mapped_or_applied_identity(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def replace_called_lambda_with_block(comp):
+class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
   r"""Replaces all the called lambdas in `comp` with a block.
 
-  This transform traverses `comp` postorder, matches the following pattern, and
-  replaces the following computation containing a called lambda:
+  This transform replaces the following computation containing a called lambda:
 
             Call
            /    \
@@ -1012,42 +1085,34 @@ def replace_called_lambda_with_block(comp):
   [x=Comp(y)]       Comp(z)
 
   let x=y in z
-
-  The functional computation `b` and the argument `c` are retained; the other
-  computations are replaced. This transformation is used to facilitate the
-  merging of TFF orchestration logic, in particular to remove unnecessary lambda
-  expressions and as a stepping stone for merging Blocks together.
-
-  Args:
-    comp: The computation building block in which to perform the replacements.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    TypeError: If types do not match.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
 
-  def _should_transform(comp):
+  def __init__(self, comp):
+    super(ReplaceCalledLambdaWithBlock, self).__init__()
+    py_typecheck.check_type(
+        comp, computation_building_blocks.ComputationBuildingBlock)
+
+  def should_transform(self, comp):
     return (isinstance(comp, computation_building_blocks.Call) and
             isinstance(comp.function, computation_building_blocks.Lambda))
 
-  def _transform(comp):
-    if not _should_transform(comp):
+  def transform(self, comp):
+    if not self.should_transform(comp):
       return comp, False
     transformed_comp = computation_building_blocks.Block(
         [(comp.function.parameter_name, comp.argument)], comp.function.result)
     return transformed_comp, True
 
-  return transformation_utils.transform_postorder(comp, _transform)
+
+def replace_called_lambda_with_block(comp):
+  """Replaces all the called lambdas in `comp` with a block."""
+  return _apply_transforms(comp, ReplaceCalledLambdaWithBlock(comp))
 
 
-def replace_selection_from_tuple_with_element(comp):
+class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
   r"""Replaces any selection from a tuple with the underlying tuple element.
 
-  Replaces any occurences of:
+  Invocations of `transform` replace any occurences of:
 
   Selection
            \
@@ -1057,39 +1122,43 @@ def replace_selection_from_tuple_with_element(comp):
 
   with the appropriate Comp, as determined by the `index` or `name` of the
   `Selection`.
-
-  Args:
-    comp: The computation building block in which to perform the replacements.
-
-  Returns:
-    A possibly modified version of comp, without any occurrences of selections
-    from tuples.
-
-  Raises:
-    TypeError: If `comp` is not an instance of
-      `computation_building_blocks.ComputationBuildingBlock`.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
 
-  def _should_transform(comp):
+  def __init__(self, comp):
+    """Initializes `ReplaceSelectionFromTuple`.
+
+    Args:
+      comp: The computation building block in which to perform the replacements.
+
+    Raises:
+      TypeError: If `comp` is not an instance of
+        `computation_building_blocks.ComputationBuildingBlock`.
+    """
+    super(ReplaceSelectionFromTuple, self).__init__()
+    py_typecheck.check_type(
+        comp, computation_building_blocks.ComputationBuildingBlock)
+
+  def should_transform(self, comp):
     return (isinstance(comp, computation_building_blocks.Selection) and
             isinstance(comp.source, computation_building_blocks.Tuple))
 
-  def _get_index_from_name(selection_name, tuple_type_signature):
+  def _get_index_from_name(self, selection_name, tuple_type_signature):
     named_type_signatures = anonymous_tuple.to_elements(tuple_type_signature)
     return [x[0] for x in named_type_signatures].index(selection_name)
 
-  def _transform(comp):
-    if not _should_transform(comp):
+  def transform(self, comp):
+    if not self.should_transform(comp):
       return comp, False
     if comp.name is not None:
-      index = _get_index_from_name(comp.name, comp.source.type_signature)
+      index = self._get_index_from_name(comp.name, comp.source.type_signature)
     else:
       index = comp.index
     return comp.source[index], True
 
-  return transformation_utils.transform_postorder(comp, _transform)
+
+def replace_selection_from_tuple_with_element(comp):
+  """Replaces any selection from a tuple with the underlying tuple element."""
+  return _apply_transforms(comp, ReplaceSelectionFromTuple(comp))
 
 
 def uniquify_compiled_computation_names(comp):

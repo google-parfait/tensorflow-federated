@@ -1043,6 +1043,13 @@ def has_unique_names(comp):
 class TransformSpec(object):
   """"Base class to express the should_transform/transform interface."""
 
+  def __init__(self, global_transform=False):
+    self._global_transform = global_transform
+
+  @property
+  def global_transform(self):
+    return self._global_transform
+
   @abc.abstractmethod
   def should_transform(self, comp):
     pass
