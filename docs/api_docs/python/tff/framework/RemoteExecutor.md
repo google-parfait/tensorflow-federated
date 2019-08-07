@@ -32,7 +32,10 @@ NOTE: This component is only available in Python 3.
 source</a>
 
 ```python
-__init__(channel)
+__init__(
+    channel,
+    rpc_mode='REQUEST_REPLY'
+)
 ```
 
 Creates a remote executor.
@@ -41,6 +44,9 @@ Creates a remote executor.
 
 *   <b>`channel`</b>: An instance of `grpc.Channel` to use for communication
     with the remote executor service.
+*   <b>`rpc_mode`</b>: Optional mode of calling the remote executor. Must be
+    either 'REQUEST_REPLY' or 'STREAMING' (defaults to 'REQUEST_REPLY'). This
+    option will be removed after the request-reply interface is deprecated.
 
 ## Methods
 

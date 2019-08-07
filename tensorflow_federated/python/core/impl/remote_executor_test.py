@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl import set_default_executor
 
 
 @contextlib.contextmanager
-def test_context():
+def test_context(rpc_mode='REQUEST_REPLY'):
   port = portpicker.pick_unused_port()
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
@@ -45,16 +45,20 @@ def test_context():
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
   server.start()
   channel = grpc.insecure_channel('localhost:{}'.format(port))
-  executor = lambda_executor.LambdaExecutor(
-      remote_executor.RemoteExecutor(channel))
+  remote_exec = remote_executor.RemoteExecutor(channel, rpc_mode)
+  executor = lambda_executor.LambdaExecutor(remote_exec)
   set_default_executor.set_default_executor(executor)
-  yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
-  set_default_executor.set_default_executor()
   try:
-    channel.close()
-  except AttributeError:
-    del channel
-  server.stop(None)
+    yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
+  finally:
+    remote_exec.__del__()
+    set_default_executor.set_default_executor()
+    try:
+      channel.close()
+    except AttributeError:
+      pass  # Public gRPC channel doesn't support close()
+    finally:
+      server.stop(None)
 
 
 class RemoteExecutorTest(absltest.TestCase):
@@ -109,6 +113,10 @@ class RemoteExecutorTest(absltest.TestCase):
 
   def test_with_mnist_training_example(self):
     with test_context() as context:
+      executor_test_utils.test_mnist_training(self, context.executor)
+
+  def test_with_mnist_training_example_streaming_rpc(self):
+    with test_context(rpc_mode='STREAMING') as context:
       executor_test_utils.test_mnist_training(self, context.executor)
 
 

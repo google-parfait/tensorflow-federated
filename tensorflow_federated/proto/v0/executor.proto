@@ -33,6 +33,30 @@ service Executor {
   // Causes one or more values in the executor to get disposed of (no longer
   // available for future calls).
   rpc Dispose(DisposeRequest) returns (DisposeResponse) {}
+
+  // Establishes a bidirectional stream with an Executor instance.
+  rpc Execute(stream ExecuteRequest) returns (stream ExecuteResponse) {}
+}
+
+// TODO(b/139061315): Decouple response order from request order
+message ExecuteRequest {
+  oneof request {
+    CreateValueRequest create_value = 1;
+    CreateCallRequest create_call = 2;
+    CreateTupleRequest create_tuple = 3;
+    CreateSelectionRequest create_selection = 4;
+    ComputeRequest compute = 5;
+  }
+}
+
+message ExecuteResponse {
+  oneof response {
+    CreateValueResponse create_value = 1;
+    CreateCallResponse create_call = 2;
+    CreateTupleResponse create_tuple = 3;
+    CreateSelectionResponse create_selection = 4;
+    ComputeResponse compute = 5;
+  }
 }
 
 message CreateValueRequest {

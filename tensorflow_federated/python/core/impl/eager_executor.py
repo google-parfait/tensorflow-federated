@@ -446,7 +446,7 @@ class EagerExecutor(executor_base.Executor):
       py_typecheck.check_type(index, int)
       if name is not None:
         raise ValueError(
-            'Cannot simulatenously specify name {} and index {}.'.format(
+            'Cannot simultaneously specify name {} and index {}.'.format(
                 str(name), str(index)))
       else:
         return EagerValue(source.internal_representation[index],

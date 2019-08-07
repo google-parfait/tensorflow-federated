@@ -261,7 +261,7 @@ class FederatedExecutor(executor_base.Executor):
       py_typecheck.check_type(type_spec, computation_types.Type)
       if isinstance(type_spec, computation_types.FunctionType):
         raise ValueError(
-            'Uncountered a value of a functional TFF type {} and Python type '
+            'Encountered a value of a functional TFF type {} and Python type '
             '{} that is not of one of the recognized representations.'.format(
                 str(type_spec), py_typecheck.type_string(type(value))))
       elif isinstance(type_spec, computation_types.FederatedType):
