@@ -17,6 +17,7 @@
 import os
 
 from absl import flags
+from absl.testing import absltest
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -45,16 +46,16 @@ class UtilsTest(tf.test.TestCase):
 
     for name in ['foo.csv', 'baz.csv.bz2']:
       dataframe = pd.DataFrame(dict(a=[1, 2], b=[4.0, 5.0]))
-      output_file = os.path.join(tf.test.get_temp_dir(), name)
+      output_file = os.path.join(absltest.get_default_test_tmpdir(), name)
       utils.atomic_write_to_csv(dataframe, output_file)
-      dataframe2 = pd.DataFrame.from_csv(output_file)
-      self.assertTrue(dataframe.equals(dataframe2))
+      dataframe2 = pd.read_csv(output_file, index_col=0)
+      pd.testing.assert_frame_equal(dataframe, dataframe2)
 
       # Overwriting
       dataframe3 = pd.DataFrame(dict(a=[1, 2, 3], b=[4.0, 5.0, 6.0]))
       utils.atomic_write_to_csv(dataframe3, output_file)
-      dataframe4 = pd.DataFrame.from_csv(output_file)
-      self.assertTrue(dataframe3.equals(dataframe4))
+      dataframe4 = pd.read_csv(output_file, index_col=0)
+      pd.testing.assert_frame_equal(dataframe3, dataframe4)
 
   def test_iter_grid(self):
     grid = dict(a=[], b=[])
