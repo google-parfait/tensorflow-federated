@@ -19,8 +19,8 @@ import itertools
 import os
 import shutil
 import tempfile
-from typing import Any, Mapping, Text
 
+from typing import Any, Mapping, Text
 from absl import flags
 import numpy as np
 import tensorflow as tf
