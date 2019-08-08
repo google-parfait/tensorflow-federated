@@ -63,7 +63,8 @@ The list of string identifiers for clients in this dataset.
 Returns the shape of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected to have matching
-`tf.data.Dataset.output_shapes` properties.
+`output_shapes` properties when accessed via
+`tf.compat.v1.data.get_output_shapes(dataset)`.
 
 #### Returns:
 
@@ -75,7 +76,8 @@ of an element of the client datasets.
 Returns the type of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected have matching
-`tf.data.Dataset.output_types` properties.
+`output_types` properties when accessed via
+`tf.compat.v1.data.get_output_types(dataset)`.
 
 #### Returns:
 

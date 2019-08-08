@@ -549,8 +549,9 @@ class GraphUtilsTest(test.TestCase):
         tf.compat.v1.get_default_graph(), [],
         computation_types.TensorType(tf.float32, [None, 10]))
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
-    self.assertEqual(ds.output_shapes.as_list(),
-                     tf.TensorShape([0, 10]).as_list())
+    self.assertEqual(
+        tf.compat.v1.data.get_output_shapes(ds).as_list(),
+        tf.TensorShape([0, 10]).as_list())
     self.assertEqual(
         tf.compat.v1.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
@@ -562,7 +563,7 @@ class GraphUtilsTest(test.TestCase):
             computation_types.TensorType(tf.float32, [None, 5])
         ])
     self.assertIsInstance(ds, graph_utils.DATASET_REPRESENTATION_TYPES)
-    self.assertEqual(ds.output_shapes, ([0, 10], [0, 5]))
+    self.assertEqual(tf.compat.v1.data.get_output_shapes(ds), ([0, 10], [0, 5]))
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ints(self):
