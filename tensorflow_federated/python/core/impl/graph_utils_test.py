@@ -1010,13 +1010,13 @@ class GraphUtilsTest(test.TestCase):
 
   def test_get_deps_for_graph_node(self):
     graph_def = tf.compat.v1.GraphDef(node=[
-        tf.NodeDef(name='foo', input=[]),
-        tf.NodeDef(name='bar', input=['foo:0']),
-        tf.NodeDef(name='baz', input=['foo:1', 'bar']),
-        tf.NodeDef(name='bak', input=['bar', '^abc']),
-        tf.NodeDef(name='abc', input=[]),
-        tf.NodeDef(name='def', input=['abc:0']),
-        tf.NodeDef(name='ghi', input=['^def']),
+        tf.compat.v1.NodeDef(name='foo', input=[]),
+        tf.compat.v1.NodeDef(name='bar', input=['foo:0']),
+        tf.compat.v1.NodeDef(name='baz', input=['foo:1', 'bar']),
+        tf.compat.v1.NodeDef(name='bak', input=['bar', '^abc']),
+        tf.compat.v1.NodeDef(name='abc', input=[]),
+        tf.compat.v1.NodeDef(name='def', input=['abc:0']),
+        tf.compat.v1.NodeDef(name='ghi', input=['^def']),
     ])
 
     def _get_deps(x):
@@ -1033,13 +1033,13 @@ class GraphUtilsTest(test.TestCase):
 
   def test_add_control_deps_for_init_op(self):
     graph_def = tf.compat.v1.GraphDef(node=[
-        tf.NodeDef(name='foo', input=[]),
-        tf.NodeDef(name='bar', input=['foo']),
-        tf.NodeDef(name='baz', input=['foo', 'bar']),
-        tf.NodeDef(name='bak', input=['bar', '^abc']),
-        tf.NodeDef(name='abc', input=['def:0']),
-        tf.NodeDef(name='def', input=['^ghi']),
-        tf.NodeDef(name='ghi', input=[]),
+        tf.compat.v1.NodeDef(name='foo', input=[]),
+        tf.compat.v1.NodeDef(name='bar', input=['foo']),
+        tf.compat.v1.NodeDef(name='baz', input=['foo', 'bar']),
+        tf.compat.v1.NodeDef(name='bak', input=['bar', '^abc']),
+        tf.compat.v1.NodeDef(name='abc', input=['def:0']),
+        tf.compat.v1.NodeDef(name='def', input=['^ghi']),
+        tf.compat.v1.NodeDef(name='ghi', input=[]),
     ])
     new_graph_def = graph_utils.add_control_deps_for_init_op(graph_def, 'abc')
     self.assertEqual(
