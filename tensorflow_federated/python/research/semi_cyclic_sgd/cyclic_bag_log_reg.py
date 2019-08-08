@@ -98,8 +98,8 @@ class Model(object):
 
   def create_model(self):
     """Creates a TF model and returns ops necessary to run training/eval."""
-    features = tf.placeholder(tf.float32, [None, self.input_dim])
-    labels = tf.placeholder(tf.float32, [None, self.num_classes])
+    features = tf.compat.v1.placeholder(tf.float32, [None, self.input_dim])
+    labels = tf.compat.v1.placeholder(tf.float32, [None, self.num_classes])
 
     w = tf.Variable(tf.random_normal(shape=[self.input_dim, self.num_classes]))
     b = tf.Variable(tf.random_normal(shape=[self.num_classes]))
