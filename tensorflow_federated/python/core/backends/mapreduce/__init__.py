@@ -31,8 +31,13 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.core.backends.mapreduce.canonical_form import CanonicalForm
+from tensorflow_federated.python.core.backends.mapreduce.canonical_form_utils import get_canonical_form_for_iterative_process
+from tensorflow_federated.python.core.backends.mapreduce.canonical_form_utils import get_iterative_process_for_canonical_form
+
 
 # Used by doc generation script.
 _allowed_symbols = [
     "CanonicalForm",
+    "get_canonical_form_for_iterative_process",
+    "get_iterative_process_for_canonical_form",
 ]

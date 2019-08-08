@@ -29,3 +29,15 @@ by TFF into a form that can be deployed on such systems.
 
 [`class CanonicalForm`](../../tff/backends/mapreduce/CanonicalForm.md):
 Standardized representation of logic deployable to MapReduce-like systems.
+
+## Functions
+
+[`get_canonical_form_for_iterative_process(...)`](../../tff/backends/mapreduce/get_canonical_form_for_iterative_process.md):
+Constructs
+<a href="../../tff/backends/mapreduce/CanonicalForm.md"><code>tff.backends.mapreduce.CanonicalForm</code></a>
+given iterative process.
+
+[`get_iterative_process_for_canonical_form(...)`](../../tff/backends/mapreduce/get_iterative_process_for_canonical_form.md):
+Creates
+<a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
+from a canonical form.

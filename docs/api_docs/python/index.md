@@ -13,6 +13,8 @@
 *   <a href="./tff/backends.md"><code>tff.backends</code></a>
 *   <a href="./tff/backends/mapreduce.md"><code>tff.backends.mapreduce</code></a>
 *   <a href="./tff/backends/mapreduce/CanonicalForm.md"><code>tff.backends.mapreduce.CanonicalForm</code></a>
+*   <a href="./tff/backends/mapreduce/get_canonical_form_for_iterative_process.md"><code>tff.backends.mapreduce.get_canonical_form_for_iterative_process</code></a>
+*   <a href="./tff/backends/mapreduce/get_iterative_process_for_canonical_form.md"><code>tff.backends.mapreduce.get_iterative_process_for_canonical_form</code></a>
 *   <a href="./tff/federated_aggregate.md"><code>tff.federated_aggregate</code></a>
 *   <a href="./tff/federated_apply.md"><code>tff.federated_apply</code></a>
 *   <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>

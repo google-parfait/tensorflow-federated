@@ -66,6 +66,10 @@ toc:
         path: /federated/api_docs/python/tff/backends/mapreduce
       - title: CanonicalForm
         path: /federated/api_docs/python/tff/backends/mapreduce/CanonicalForm
+      - title: get_canonical_form_for_iterative_process
+        path: /federated/api_docs/python/tff/backends/mapreduce/get_canonical_form_for_iterative_process
+      - title: get_iterative_process_for_canonical_form
+        path: /federated/api_docs/python/tff/backends/mapreduce/get_iterative_process_for_canonical_form
   - title: tff.framework
     section:
     - title: Overview
