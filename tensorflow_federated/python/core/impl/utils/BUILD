@@ -7,3 +7,8 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
+
+py_library(
+    name = "dtype_utils",
+    srcs = ["dtype_utils.py"],
+)

@@ -353,12 +353,6 @@ py_test(
 )
 
 py_library(
-    name = "dtype_utils",
-    srcs = ["dtype_utils.py"],
-    visibility = [":utils_visibility"],
-)
-
-py_library(
     name = "eager_executor",
     srcs = ["eager_executor.py"],
     srcs_version = "PY3",
@@ -690,13 +684,13 @@ py_library(
     srcs = ["graph_utils.py"],
     visibility = [":utils_visibility"],
     deps = [
-        ":dtype_utils",
         ":function_utils",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/utils:dtype_utils",
     ],
 )
 
@@ -897,7 +891,6 @@ py_library(
         ":compiler_pipeline",
         ":computation_impl",
         ":context_base",
-        ":dtype_utils",
         ":graph_utils",
         ":intrinsic_defs",
         ":placement_literals",
@@ -911,6 +904,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/utils:dtype_utils",
     ],
 )
 
@@ -1307,7 +1301,6 @@ py_library(
         ":computation_constructing_utils",
         ":computation_impl",
         ":context_stack_base",
-        ":dtype_utils",
         ":function_utils",
         ":graph_utils",
         ":intrinsic_defs",
@@ -1320,6 +1313,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:value_base",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/utils:dtype_utils",
     ],
 )
 
