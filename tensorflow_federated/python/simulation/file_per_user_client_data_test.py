@@ -102,7 +102,7 @@ class FakeUserData(object):
         # close the pre-opened file descriptor immediately to avoid leaking.
         os.close(fd)
         client_file_dict[client_id] = path
-        writer = tf.python_io.TFRecordWriter(path=path)
+        writer = tf.io.TFRecordWriter(path=path)
         writers[client_id] = writer
       writer.write(_create_example(features))
     for writer in six.itervalues(writers):
