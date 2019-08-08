@@ -15,3 +15,25 @@ py_test(
     srcs_version = "PY3",
     deps = [":utils"],
 )
+
+py_library(
+    name = "training_loops",
+    srcs = ["training_loops.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated",
+    ],
+)
+
+py_test(
+    name = "training_loops_test",
+    size = "large",
+    srcs = ["training_loops_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":training_loops",
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/examples/mnist:models",
+    ],
+)
