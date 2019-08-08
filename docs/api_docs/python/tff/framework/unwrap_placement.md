@@ -29,9 +29,9 @@ The other assumptions on inputs of `unwrap_placement` are enumerated as follows:
 2.  The only intrinsics present here are apply or map, zip, and
     federated_value_at_*.
 3.  The type signature of `comp` is federated.
-4.  There are no instances of `computation_building_blocks.Data` of federated
-    type under `comp`; how these would be handled by a function such as this is
-    not entirely clear.
+4.  There are no instances of `building_blocks.Data` of federated type under
+    `comp`; how these would be handled by a function such as this is not
+    entirely clear.
 
 Under these conditions, `unwrap_placement` will produce a single call to
 federated_map, federated_apply or federated_value, depending on the placement
@@ -40,9 +40,8 @@ will remain under `comp`.
 
 #### Args:
 
-*   <b>`comp`</b>: Instance of
-    `computation_building_blocks.ComputationBuildingBlock` satisfying the
-    assumptions above.
+*   <b>`comp`</b>: Instance of `building_blocks.ComputationBuildingBlock`
+    satisfying the assumptions above.
 
 #### Returns:
 

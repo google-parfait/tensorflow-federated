@@ -22,7 +22,7 @@ import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def is_called_intrinsic(comp, uri=None):
@@ -39,26 +39,25 @@ def is_called_intrinsic(comp, uri=None):
   """
   if isinstance(uri, six.string_types):
     uri = [uri]
-  return (isinstance(comp, computation_building_blocks.Call) and
-          isinstance(comp.function, computation_building_blocks.Intrinsic) and
+  return (isinstance(comp, building_blocks.Call) and
+          isinstance(comp.function, building_blocks.Intrinsic) and
           (uri is None or comp.function.uri in uri))
 
 
 def is_identity_function(comp):
   """Returns `True` if `comp` is an identity function, otherwise `False`."""
-  return (isinstance(comp, computation_building_blocks.Lambda) and
-          isinstance(comp.result, computation_building_blocks.Reference) and
+  return (isinstance(comp, building_blocks.Lambda) and
+          isinstance(comp.result, building_blocks.Reference) and
           comp.parameter_name == comp.result.name)
 
 
 def count_tensorflow_ops_in(comp):
   """Counts TF ops in `comp` if `comp` is a TF block."""
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  if (not isinstance(comp, computation_building_blocks.CompiledComputation)
-     ) or (comp.proto.WhichOneof('computation') != 'tensorflow'):
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  if (not isinstance(comp, building_blocks.CompiledComputation)) or (
+      comp.proto.WhichOneof('computation') != 'tensorflow'):
     raise ValueError('Please pass a '
-                     '`computation_building_blocks.CompiledComputation` of the '
+                     '`building_blocks.CompiledComputation` of the '
                      '`tensorflow` variety to `count_tensorflow_ops_in`.')
   graph_def = serialization_utils.unpack_graph_def(
       comp.proto.tensorflow.graph_def)
@@ -67,12 +66,11 @@ def count_tensorflow_ops_in(comp):
 
 def count_tensorflow_variables_in(comp):
   """Counts TF Variables in `comp` if `comp` is a TF block."""
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  if (not isinstance(comp, computation_building_blocks.CompiledComputation)
-     ) or (comp.proto.WhichOneof('computation') != 'tensorflow'):
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  if (not isinstance(comp, building_blocks.CompiledComputation)) or (
+      comp.proto.WhichOneof('computation') != 'tensorflow'):
     raise ValueError('Please pass a '
-                     '`computation_building_blocks.CompiledComputation` of the '
+                     '`building_blocks.CompiledComputation` of the '
                      '`tensorflow` variety to `count_tensorflow_variables_in`.')
   graph_def = serialization_utils.unpack_graph_def(
       comp.proto.tensorflow.graph_def)

@@ -29,13 +29,13 @@ federated values type signature.
 
 #### Args:
 
-*   <b>`value`</b>: A `computation_building_blocks.ComputationBuildingBlock`
-    with a `type_signature` of type `computation_types.NamedTupleType`
-    containing at least one element.
+*   <b>`value`</b>: A `building_blocks.ComputationBuildingBlock` with a
+    `type_signature` of type `computation_types.NamedTupleType` containing at
+    least one element.
 
 #### Returns:
 
-A `computation_building_blocks.Call`.
+A `building_blocks.Call`.
 
 #### Raises:
 

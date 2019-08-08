@@ -23,7 +23,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
@@ -31,6 +30,7 @@ from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class IntrinsicFactory(object):
@@ -496,8 +496,8 @@ class IntrinsicFactory(object):
       result_type = computation_types.SequenceType(fn.type_signature.result)
       intrinsic_type = computation_types.FunctionType(
           (fn.type_signature, parameter_type), result_type)
-      intrinsic = computation_building_blocks.Intrinsic(
-          intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type)
+      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_MAP.uri,
+                                            intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       local_fn = value_utils.get_curried(intrinsic_impl)(fn)
       if arg.type_signature.placement is placements.SERVER:
@@ -556,13 +556,12 @@ class IntrinsicFactory(object):
           zero.type_signature,
           op.type_signature,
       ), op.type_signature.result)
-      intrinsic = computation_building_blocks.Intrinsic(
-          intrinsic_defs.SEQUENCE_REDUCE.uri, intrinsic_type)
-      ref = computation_building_blocks.Reference('arg', value_type)
-      tup = computation_building_blocks.Tuple((ref, zero, op))
-      call = computation_building_blocks.Call(intrinsic, tup)
-      fn = computation_building_blocks.Lambda(ref.name, ref.type_signature,
-                                              call)
+      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_REDUCE.uri,
+                                            intrinsic_type)
+      ref = building_blocks.Reference('arg', value_type)
+      tup = building_blocks.Tuple((ref, zero, op))
+      call = building_blocks.Call(intrinsic, tup)
+      fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)
       if value.type_signature.placement is placements.SERVER:
         return self.federated_apply(fn_impl, value)
@@ -604,8 +603,8 @@ class IntrinsicFactory(object):
     elif isinstance(value.type_signature, computation_types.FederatedType):
       intrinsic_type = computation_types.FunctionType(
           value.type_signature.member, value.type_signature.member.element)
-      intrinsic = computation_building_blocks.Intrinsic(
-          intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type)
+      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_SUM.uri,
+                                            intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       if value.type_signature.placement is placements.SERVER:
         return self.federated_apply(intrinsic_impl, value)

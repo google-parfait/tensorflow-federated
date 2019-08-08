@@ -16,10 +16,10 @@
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class TransformingExecutor(executor_base.Executor):
@@ -56,13 +56,10 @@ class TransformingExecutor(executor_base.Executor):
           type_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
       return await self.create_value(
-          computation_building_blocks.ComputationBuildingBlock.from_proto(
-              value), type_spec)
-    elif isinstance(value,
-                    computation_building_blocks.ComputationBuildingBlock):
+          building_blocks.ComputationBuildingBlock.from_proto(value), type_spec)
+    elif isinstance(value, building_blocks.ComputationBuildingBlock):
       value = self._transformation_fn(value)
-      py_typecheck.check_type(
-          value, computation_building_blocks.ComputationBuildingBlock)
+      py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
       return await self._target_executor.create_value(value.proto, type_spec)
     else:
       return await self._target_executor.create_value(value, type_spec)

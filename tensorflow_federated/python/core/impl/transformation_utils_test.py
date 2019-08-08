@@ -25,13 +25,13 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def _to_building_block(comp):
@@ -41,12 +41,12 @@ def _to_building_block(comp):
     comp: An instance of `computation_impl.ComputationImpl`.
 
   Returns:
-    A instance of `computation_building_blocks.ComputationBuildingBlock`
+    A instance of `building_blocks.ComputationBuildingBlock`
     representing the `computation_impl.ComputationImpl`.
   """
   py_typecheck.check_type(comp, computation_impl.ComputationImpl)
   proto = computation_impl.ComputationImpl.get_proto(comp)
-  return computation_building_blocks.ComputationBuildingBlock.from_proto(proto)
+  return building_blocks.ComputationBuildingBlock.from_proto(proto)
 
 
 def _construct_complex_symbol_tree():
@@ -64,9 +64,9 @@ def _construct_complex_symbol_tree():
 
 def _construct_simple_block(type_signature):
   """Constructs minimal example of LET construct in TFF."""
-  test_arg = computation_building_blocks.Data('data', type_signature)
-  result = computation_building_blocks.Reference('x', test_arg.type_signature)
-  simple_block = computation_building_blocks.Block([('x', test_arg)], result)
+  test_arg = building_blocks.Data('data', type_signature)
+  result = building_blocks.Reference('x', test_arg.type_signature)
+  simple_block = building_blocks.Block([('x', test_arg)], result)
   return simple_block
 
 
@@ -114,38 +114,36 @@ class TrivialBoundVariableTracker(transformation_utils.BoundVariableTracker):
 
 def _construct_trivial_instance_of_all_computation_building_blocks():
   cbb_list = []
-  ref_to_x = computation_building_blocks.Reference('x', tf.int32)
+  ref_to_x = building_blocks.Reference('x', tf.int32)
   cbb_list.append(('reference', ref_to_x))
-  lam = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
+  lam = building_blocks.Lambda('x', tf.int32, ref_to_x)
   cbb_list.append(('lambda', lam))
-  block = computation_building_blocks.Block([('x', ref_to_x)], lam)
+  block = building_blocks.Block([('x', ref_to_x)], lam)
   cbb_list.append(('block', block))
-  data = computation_building_blocks.Data('x', tf.int32)
+  data = building_blocks.Data('x', tf.int32)
   cbb_list.append(('data', data))
   function_type = computation_types.FunctionType(tf.int32, tf.int32)
-  intrinsic = computation_building_blocks.Intrinsic('dummy_intrinsic',
-                                                    function_type)
+  intrinsic = building_blocks.Intrinsic('dummy_intrinsic', function_type)
   cbb_list.append(('intrinsic', intrinsic))
-  tff_tuple = computation_building_blocks.Tuple([ref_to_x])
+  tff_tuple = building_blocks.Tuple([ref_to_x])
   cbb_list.append(('tuple', tff_tuple))
-  selection = computation_building_blocks.Selection(tff_tuple, index=0)
+  selection = building_blocks.Selection(tff_tuple, index=0)
   cbb_list.append(('selection', selection))
-  call = computation_building_blocks.Call(lam, ref_to_x)
+  call = building_blocks.Call(lam, ref_to_x)
   cbb_list.append(('call', call))
   fn = lambda: tf.constant(1)
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       fn, None, context_stack_impl.context_stack)
-  compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
+  compiled_comp = building_blocks.CompiledComputation(tf_comp)
   cbb_list.append(('compiled_comp', compiled_comp))
-  placement = computation_building_blocks.Placement(placement_literals.CLIENTS)
+  placement = building_blocks.Placement(placement_literals.CLIENTS)
   cbb_list.append(('placement', placement))
   return cbb_list
 
 
 def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
   """Returns the number of nodes in `comp` matching `predicate`."""
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   count = [0]  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility.
 
   def fn(comp):
@@ -160,8 +158,7 @@ def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
 def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
     comp, predicate=None):
   """Returns the number of nodes in `comp` matching `predicate`."""
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
   count = [0]  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility.
 
@@ -188,7 +185,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       transformation_utils.transform_postorder(None, transform)
 
   def test_transform_postorder_fails_on_none_transform(self):
-    comp = computation_building_blocks.Data('x', tf.int32)
+    comp = building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder(comp, None)
 
@@ -211,9 +208,8 @@ class TransformationUtilsTest(parameterized.TestCase):
         def _fn(x):
           intrinsic_type = computation_types.FunctionType(
               x.type_signature, x.type_signature)
-          intrinsic = computation_building_blocks.Intrinsic(
-              'F{}'.format(n), intrinsic_type)
-          call = computation_building_blocks.Call(intrinsic, x)
+          intrinsic = building_blocks.Intrinsic('F{}'.format(n), intrinsic_type)
+          call = building_blocks.Call(intrinsic, x)
           return call, True
 
         yield _fn
@@ -268,7 +264,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, computation_building_blocks.Data):
+      if isinstance(comp, building_blocks.Data):
         leaf_name_order.append(comp.uri)
       return comp, False
 
@@ -283,7 +279,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, computation_building_blocks.Block):
+      if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           leaf_name_order.append(name)
       return comp, False
@@ -297,7 +293,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     This test is split from the one above because it tests extra cases
     in `transform_postorder`; in particular, all instances of
-    `computation_building_blocks.ComputationBuildingBlock` which kick off
+    `building_blocks.ComputationBuildingBlock` which kick off
     recursive calls of `transform_postorder` are exercised in this test,
     while only a subset are exercised in the above. For example, if the
     logic ingesting a `Call` breaks, this test will fail and the one above
@@ -308,10 +304,10 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, computation_building_blocks.Block):
+      if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           leaf_name_order.append(name)
-      elif isinstance(comp, computation_building_blocks.Data):
+      elif isinstance(comp, building_blocks.Data):
         leaf_name_order.append(comp.uri)
       return comp, False
 
@@ -339,7 +335,7 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_transform_postorder_with_symbol_bindings_fails_on_none_transform(
       self):
     empty_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
-    dummy_comp = computation_building_blocks.Reference('x', tf.int32)
+    dummy_comp = building_blocks.Reference('x', tf.int32)
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
@@ -347,7 +343,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_with_symbol_bindings_fails_on_none_symbol_tree(
       self):
-    dummy_comp = computation_building_blocks.Reference('x', tf.int32)
+    dummy_comp = building_blocks.Reference('x', tf.int32)
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -385,11 +381,10 @@ class TransformationUtilsTest(parameterized.TestCase):
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
         comp, transform_noop, empty_context_tree)
-    if not isinstance(comp, (computation_building_blocks.CompiledComputation,
-                             computation_building_blocks.Data,
-                             computation_building_blocks.Intrinsic,
-                             computation_building_blocks.Placement,
-                             computation_building_blocks.Reference)):
+    if not isinstance(comp,
+                      (building_blocks.CompiledComputation,
+                       building_blocks.Data, building_blocks.Intrinsic,
+                       building_blocks.Placement, building_blocks.Reference)):
       self.assertEqual(id(comp), id(same_comp))
 
   def test_transform_postorder_with_symbol_bindings_hits_all_nodes_once(self):
@@ -402,16 +397,13 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(with_hooks_count, simple_count)
 
   @parameterized.named_parameters(
-      ('reference', computation_building_blocks.Reference),
-      ('lambda', computation_building_blocks.Lambda),
-      ('block', computation_building_blocks.Block),
-      ('data', computation_building_blocks.Data),
-      ('intrinsic', computation_building_blocks.Intrinsic),
-      ('tuple', computation_building_blocks.Tuple),
-      ('selection', computation_building_blocks.Selection),
-      ('call', computation_building_blocks.Call),
-      ('compiled_computation', computation_building_blocks.CompiledComputation),
-      ('placement', computation_building_blocks.Placement))
+      ('reference', building_blocks.Reference),
+      ('lambda', building_blocks.Lambda), ('block', building_blocks.Block),
+      ('data', building_blocks.Data), ('intrinsic', building_blocks.Intrinsic),
+      ('tuple', building_blocks.Tuple),
+      ('selection', building_blocks.Selection), ('call', building_blocks.Call),
+      ('compiled_computation', building_blocks.CompiledComputation),
+      ('placement', building_blocks.Placement))
   def test_transform_postorder_with_symbol_bindings_counts_each_type_correctly(
       self, cbb_type):
     complex_ast = computation_test_utils.create_nested_syntax_tree()
@@ -429,7 +421,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, computation_building_blocks.Data):
+      if isinstance(comp, building_blocks.Data):
         leaf_order.append(comp.uri)
       return comp, False
 
@@ -445,7 +437,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, computation_building_blocks.Block):
+      if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           block_locals_order.append(name)
       return comp, False
@@ -486,10 +478,10 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, computation_building_blocks.Block):
+      if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           named_node_order.append(name)
-      elif isinstance(comp, computation_building_blocks.Data):
+      elif isinstance(comp, building_blocks.Data):
         named_node_order.append(comp.uri)
       return comp, False
 
@@ -503,13 +495,13 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(named_node_order, correct_results)
 
   def test_transform_postorder_with_symbol_bindings_binds_lambda_param(self):
-    result = computation_building_blocks.Reference('x', tf.int32)
-    lam = computation_building_blocks.Lambda('x', tf.int32, result)
+    result = building_blocks.Reference('x', tf.int32)
+    lam = building_blocks.Lambda('x', tf.int32, result)
     empty_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
     value_holder = []
 
     def transform(comp, ctxt_tree):
-      if isinstance(comp, computation_building_blocks.Reference):
+      if isinstance(comp, building_blocks.Reference):
         ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
@@ -523,14 +515,14 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_with_symbol_bindings_binds_single_block_local(
       self):
-    result = computation_building_blocks.Reference('x', tf.int32)
-    arg = computation_building_blocks.Data('input_data', tf.int32)
-    block = computation_building_blocks.Block([('x', arg)], result)
+    result = building_blocks.Reference('x', tf.int32)
+    arg = building_blocks.Data('input_data', tf.int32)
+    block = building_blocks.Block([('x', arg)], result)
     empty_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
     value_holder = []
 
     def transform(comp, ctxt_tree):
-      if isinstance(comp, computation_building_blocks.Reference):
+      if isinstance(comp, building_blocks.Reference):
         ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
@@ -544,15 +536,15 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_with_symbol_bindings_binds_sequential_block_locals(
       self):
-    result = computation_building_blocks.Reference('x', tf.int32)
-    arg = computation_building_blocks.Data('input_data', tf.int32)
-    arg2 = computation_building_blocks.Reference('x', tf.int32)
-    block = computation_building_blocks.Block([('x', arg), ('x', arg2)], result)
+    result = building_blocks.Reference('x', tf.int32)
+    arg = building_blocks.Data('input_data', tf.int32)
+    arg2 = building_blocks.Reference('x', tf.int32)
+    block = building_blocks.Block([('x', arg), ('x', arg2)], result)
     empty_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
     value_holder = []
 
     def transform(comp, ctxt_tree):
-      if isinstance(comp, computation_building_blocks.Reference):
+      if isinstance(comp, building_blocks.Reference):
         ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
@@ -885,7 +877,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     with self.assertRaises(TypeError):
       symbol_tree.ingest_variable_binding(
-          0, computation_building_blocks.Reference('x', tf.int32))
+          0, building_blocks.Reference('x', tf.int32))
     with self.assertRaises(TypeError):
       symbol_tree.ingest_variable_binding('x', 0)
 
@@ -895,7 +887,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(0)
     symbol_tree.ingest_variable_binding(
-        'x', computation_building_blocks.Reference('x', tf.int32))
+        'x', building_blocks.Reference('x', tf.int32))
     shadow_symbol_tree._add_child(
         0,
         transformation_utils.SequentialBindingNode(
@@ -903,15 +895,14 @@ class TransformationUtilsTest(parameterized.TestCase):
     shadow_symbol_tree._move_to_child(0)
     shadow_symbol_tree._add_younger_sibling(
         transformation_utils.SequentialBindingNode(
-            FakeTracker('FakeTracker',
-                        computation_building_blocks.Reference('x', tf.int32))))
+            FakeTracker('FakeTracker', building_blocks.Reference('x',
+                                                                 tf.int32))))
     self.assertEqual(symbol_tree, shadow_symbol_tree)
 
   def test_ingest_variable_binding_adds_node_to_empty_tree(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
-    payload_to_add = FakeTracker(
-        'x', computation_building_blocks.Data('a', tf.int32))
+    payload_to_add = FakeTracker('x', building_blocks.Data('a', tf.int32))
     shadow_symbol_tree._add_younger_sibling(
         transformation_utils.SequentialBindingNode(payload_to_add))
 
@@ -923,27 +914,25 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_ingest_variable_binding_adds_node_to_nonempty_tree(self):
     symbol_tree = _construct_complex_symbol_tree()
     shadow_symbol_tree = _construct_complex_symbol_tree()
-    payload_to_add = FakeTracker(
-        'x', computation_building_blocks.Data('a', tf.int32))
+    payload_to_add = FakeTracker('x', building_blocks.Data('a', tf.int32))
     shadow_symbol_tree._add_younger_sibling(
         transformation_utils.SequentialBindingNode(payload_to_add))
 
-    symbol_tree.ingest_variable_binding(
-        'x', computation_building_blocks.Data('a', tf.int32))
+    symbol_tree.ingest_variable_binding('x',
+                                        building_blocks.Data('a', tf.int32))
 
     self.assertEqual(symbol_tree, shadow_symbol_tree)
 
   def test_ingest_variable_overwrites_existing_node_with_same_name(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding(
-        'y', computation_building_blocks.Data('b', tf.int32))
+    symbol_tree.ingest_variable_binding('y',
+                                        building_blocks.Data('b', tf.int32))
     resolved_y = symbol_tree.get_payload_with_name('y')
     self.assertEqual(resolved_y.value.uri, 'b')
     self.assertEqual(str(resolved_y.value.type_signature), 'int32')
     symbol_tree.walk_to_scope_beginning()
-    symbol_tree.ingest_variable_binding(
-        'y', computation_building_blocks.Data('d', tf.bool))
+    symbol_tree.ingest_variable_binding('y', building_blocks.Data('d', tf.bool))
     changed_y = symbol_tree.get_payload_with_name('y')
     self.assertEqual(changed_y.value.uri, 'd')
     self.assertEqual(str(changed_y.value.type_signature), 'bool')
@@ -951,34 +940,31 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_ingest_variable_overwrite_leaves_unrelated_node_alone(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(0)
-    symbol_tree.ingest_variable_binding(
-        'x', computation_building_blocks.Data('a', tf.bool))
+    symbol_tree.ingest_variable_binding('x', building_blocks.Data('a', tf.bool))
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding(
-        'y', computation_building_blocks.Data('b', tf.int32))
+    symbol_tree.ingest_variable_binding('y',
+                                        building_blocks.Data('b', tf.int32))
     resolved_x = symbol_tree.get_payload_with_name('x')
     self.assertEqual(resolved_x.value.uri, 'a')
     self.assertEqual(str(resolved_x.value.type_signature), 'bool')
     symbol_tree.pop_scope_up()
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding(
-        'y', computation_building_blocks.Data('d', tf.bool))
+    symbol_tree.ingest_variable_binding('y', building_blocks.Data('d', tf.bool))
     same_x = symbol_tree.get_payload_with_name('x')
     self.assertEqual(same_x.value, resolved_x.value)
 
   def test_ingest_variable_raises_error_on_name_conflict(self):
     symbol_tree = _construct_complex_symbol_tree()
     symbol_tree.drop_scope_down(0)
-    symbol_tree.ingest_variable_binding(
-        'x', computation_building_blocks.Data('a', tf.bool))
+    symbol_tree.ingest_variable_binding('x', building_blocks.Data('a', tf.bool))
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding(
-        'y', computation_building_blocks.Data('b', tf.int32))
+    symbol_tree.ingest_variable_binding('y',
+                                        building_blocks.Data('b', tf.int32))
     symbol_tree.pop_scope_up()
     symbol_tree.drop_scope_down(1)
     with self.assertRaises(ValueError):
-      symbol_tree.ingest_variable_binding(
-          'z', computation_building_blocks.Data('c', tf.int32))
+      symbol_tree.ingest_variable_binding('z',
+                                          building_blocks.Data('c', tf.int32))
 
   def test_symbol_tree_add_sibling(self):
     fake_node = transformation_utils.SequentialBindingNode(
@@ -1162,7 +1148,7 @@ class TransformationUtilsTest(parameterized.TestCase):
         id(second_trivial_instance.parent), id(third_trivial_instance.parent))
 
   def test_bound_variable_tracker_equality_names(self):
-    data = computation_building_blocks.Data('bound_data', tf.int32)
+    data = building_blocks.Data('bound_data', tf.int32)
     dummy_tracker = TrivialBoundVariableTracker('x', data)
     second_dummy_tracker = TrivialBoundVariableTracker('x', data)
     self.assertEqual(dummy_tracker, second_dummy_tracker)
@@ -1173,9 +1159,9 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_bound_variable_tracker_equality_values(self):
     dummy_tracker = TrivialBoundVariableTracker(
-        'x', computation_building_blocks.Data('bound_data', tf.int32))
+        'x', building_blocks.Data('bound_data', tf.int32))
     second_dummy_tracker = TrivialBoundVariableTracker(
-        'x', computation_building_blocks.Data('other_data', tf.int32))
+        'x', building_blocks.Data('other_data', tf.int32))
     self.assertNotEqual(dummy_tracker, second_dummy_tracker)
 
   def test_outer_context_pointer_equality(self):
@@ -1192,20 +1178,20 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_reference_tracker_initializes(self):
     dummy_tracker = transformation_utils.ReferenceCounter(
-        'x', computation_building_blocks.Data('bound_data', tf.int32))
+        'x', building_blocks.Data('bound_data', tf.int32))
     self.assertEqual(dummy_tracker.name, 'x')
     self.assertEqual(dummy_tracker.value.compact_representation(), 'bound_data')
     self.assertEqual(dummy_tracker.count, 0)
 
   def test_reference_tracker_updates(self):
     dummy_tracker = transformation_utils.ReferenceCounter(
-        'x', computation_building_blocks.Data('bound_data', tf.int32))
+        'x', building_blocks.Data('bound_data', tf.int32))
     for k in range(10):
       dummy_tracker.update()
       self.assertEqual(dummy_tracker.count, k + 1)
 
   def test_reference_tracker_equality_instances(self):
-    data = computation_building_blocks.Data('bound_data', tf.int32)
+    data = building_blocks.Data('bound_data', tf.int32)
     dummy_tracker = transformation_utils.ReferenceCounter('x', data)
     second_dummy_tracker = transformation_utils.ReferenceCounter('x', data)
     self.assertEqual(dummy_tracker, second_dummy_tracker)
@@ -1236,9 +1222,8 @@ class TransformationUtilsTest(parameterized.TestCase):
       self):
     simple_block = _construct_simple_block(tf.int32)
     ref = simple_block.result
-    result = computation_building_blocks.Tuple([ref, ref])
-    simple_block = computation_building_blocks.Block(simple_block.locals,
-                                                     result)
+    result = building_blocks.Tuple([ref, ref])
+    simple_block = building_blocks.Block(simple_block.locals, result)
     self.assertEqual(simple_block.compact_representation(),
                      '(let x=data in <x,x>)')
     context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1259,10 +1244,10 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_get_count_of_references_to_variables_nested_blocks_conflicting_names(
       self):
     first_block = _construct_simple_block(tf.int32)
-    outer_block_output = computation_building_blocks.Reference(
-        'x', first_block.type_signature)
-    second_block = computation_building_blocks.Block([('x', first_block)],
-                                                     outer_block_output)
+    outer_block_output = building_blocks.Reference('x',
+                                                   first_block.type_signature)
+    second_block = building_blocks.Block([('x', first_block)],
+                                         outer_block_output)
 
     self.assertEqual(second_block.compact_representation(),
                      '(let x=(let x=data in x) in x)')
@@ -1290,14 +1275,12 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_get_count_of_references_to_variables_block_lambda_name_conflict(
       self):
-    innermost_x = computation_building_blocks.Reference('x', tf.int32)
-    inner_lambda = computation_building_blocks.Lambda('x', tf.int32,
-                                                      innermost_x)
-    second_x = computation_building_blocks.Reference('x', tf.int32)
-    called_lambda = computation_building_blocks.Call(inner_lambda, second_x)
-    block_input = computation_building_blocks.Data('data', tf.int32)
-    block = computation_building_blocks.Block([('x', block_input)],
-                                              called_lambda)
+    innermost_x = building_blocks.Reference('x', tf.int32)
+    inner_lambda = building_blocks.Lambda('x', tf.int32, innermost_x)
+    second_x = building_blocks.Reference('x', tf.int32)
+    called_lambda = building_blocks.Call(inner_lambda, second_x)
+    block_input = building_blocks.Data('data', tf.int32)
+    block = building_blocks.Block([('x', block_input)], called_lambda)
     self.assertEqual(block.compact_representation(),
                      '(let x=data in (x -> x)(x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1321,11 +1304,11 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_lambda_name_conflict(self):
-    inner_x = computation_building_blocks.Reference('x', tf.int32)
-    inner_lambda = computation_building_blocks.Lambda('x', tf.int32, inner_x)
-    outer_x = computation_building_blocks.Reference('x', tf.int32)
-    call = computation_building_blocks.Call(inner_lambda, outer_x)
-    outer_lambda = computation_building_blocks.Lambda('x', tf.int32, call)
+    inner_x = building_blocks.Reference('x', tf.int32)
+    inner_lambda = building_blocks.Lambda('x', tf.int32, inner_x)
+    outer_x = building_blocks.Reference('x', tf.int32)
+    call = building_blocks.Call(inner_lambda, outer_x)
+    outer_lambda = building_blocks.Lambda('x', tf.int32, call)
     self.assertEqual(outer_lambda.compact_representation(),
                      '(x -> (x -> x)(x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1350,13 +1333,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_get_count_of_references_to_variables_block_local_overwriting_name_in_scope(
       self):
-    arg_comp = computation_building_blocks.Reference('arg',
-                                                     [tf.int32, tf.int32])
-    selected = computation_building_blocks.Selection(arg_comp, index=0)
-    internal_arg = computation_building_blocks.Reference('arg', tf.int32)
-    block = computation_building_blocks.Block([('arg', selected)], internal_arg)
-    lam = computation_building_blocks.Lambda('arg', arg_comp.type_signature,
-                                             block)
+    arg_comp = building_blocks.Reference('arg', [tf.int32, tf.int32])
+    selected = building_blocks.Selection(arg_comp, index=0)
+    internal_arg = building_blocks.Reference('arg', tf.int32)
+    block = building_blocks.Block([('arg', selected)], internal_arg)
+    lam = building_blocks.Lambda('arg', arg_comp.type_signature, block)
     self.assertEqual(lam.compact_representation(),
                      '(arg -> (let arg=arg[0] in arg))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1381,12 +1362,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_get_count_of_references_to_variables_nested_block_no_name_conflict(
       self):
-    used1 = computation_building_blocks.Reference('used1', tf.int32)
-    used2 = computation_building_blocks.Data('used2', tf.int32)
-    ref = computation_building_blocks.Reference('x', used1.type_signature)
-    lower_block = computation_building_blocks.Block([('x', used1)], ref)
-    higher_block = computation_building_blocks.Block([('used1', used2)],
-                                                     lower_block)
+    used1 = building_blocks.Reference('used1', tf.int32)
+    used2 = building_blocks.Data('used2', tf.int32)
+    ref = building_blocks.Reference('x', used1.type_signature)
+    lower_block = building_blocks.Block([('x', used1)], ref)
+    higher_block = building_blocks.Block([('used1', used2)], lower_block)
     self.assertEqual(higher_block.compact_representation(),
                      '(let used1=used2 in (let x=used1 in x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1410,12 +1390,11 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_nested_block_no_overwrite(self):
-    used1 = computation_building_blocks.Reference('used1', tf.int32)
-    used2 = computation_building_blocks.Data('used2', tf.int32)
-    user_inlined_lower_block = computation_building_blocks.Block([('x', used1)],
-                                                                 used1)
-    user_inlined_higher_block = computation_building_blocks.Block(
-        [('used1', used2)], user_inlined_lower_block)
+    used1 = building_blocks.Reference('used1', tf.int32)
+    used2 = building_blocks.Data('used2', tf.int32)
+    user_inlined_lower_block = building_blocks.Block([('x', used1)], used1)
+    user_inlined_higher_block = building_blocks.Block([('used1', used2)],
+                                                      user_inlined_lower_block)
     self.assertEqual(user_inlined_higher_block.compact_representation(),
                      '(let used1=used2 in (let x=used1 in used1))')
     second_context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1441,16 +1420,15 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(second_context_stack, _construct_second_context_stack())
 
   def test_get_count_of_references_to_variables_mixed_scope(self):
-    innermost = computation_building_blocks.Reference('x', tf.int32)
-    intermediate_arg = computation_building_blocks.Reference('y', tf.int32)
-    inner_block = computation_building_blocks.Block([('x', intermediate_arg)],
-                                                    innermost)
-    item1 = computation_building_blocks.Reference('x', tf.int32)
-    mediate_tuple = computation_building_blocks.Tuple([item1, inner_block])
-    used = computation_building_blocks.Data('used', tf.int32)
-    used1 = computation_building_blocks.Data('used1', tf.int32)
-    outer_block = computation_building_blocks.Block([('x', used), ('y', used1)],
-                                                    mediate_tuple)
+    innermost = building_blocks.Reference('x', tf.int32)
+    intermediate_arg = building_blocks.Reference('y', tf.int32)
+    inner_block = building_blocks.Block([('x', intermediate_arg)], innermost)
+    item1 = building_blocks.Reference('x', tf.int32)
+    mediate_tuple = building_blocks.Tuple([item1, inner_block])
+    used = building_blocks.Data('used', tf.int32)
+    used1 = building_blocks.Data('used1', tf.int32)
+    outer_block = building_blocks.Block([('x', used), ('y', used1)],
+                                        mediate_tuple)
     self.assertEqual(outer_block.compact_representation(),
                      '(let x=used,y=used1 in <x,(let x=y in x)>)')
     context_stack = transformation_utils.get_count_of_references_to_variables(
@@ -1476,21 +1454,21 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_get_count_of_references_to_variables_sequential_overwrite_in_block_locals(
       self):
-    add_one = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    add_one = building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
             computations.tf_computation(lambda x: x + 1, tf.int32)))
 
-    make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    make_10 = building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
             computations.tf_computation(lambda: tf.constant(10))))
 
-    dummy_x_reference = computation_building_blocks.Reference('x', tf.int32)
+    dummy_x_reference = building_blocks.Reference('x', tf.int32)
 
-    make_13 = computation_building_blocks.Block(
-        [('x', computation_building_blocks.Call(make_10)),
-         ('x', computation_building_blocks.Call(add_one, dummy_x_reference)),
-         ('x', computation_building_blocks.Call(add_one, dummy_x_reference)),
-         ('x', computation_building_blocks.Call(add_one, dummy_x_reference))],
+    make_13 = building_blocks.Block(
+        [('x', building_blocks.Call(make_10)),
+         ('x', building_blocks.Call(add_one, dummy_x_reference)),
+         ('x', building_blocks.Call(add_one, dummy_x_reference)),
+         ('x', building_blocks.Call(add_one, dummy_x_reference))],
         dummy_x_reference)
 
     references = transformation_utils.get_count_of_references_to_variables(
@@ -1528,28 +1506,28 @@ class GetUniqueNamesTest(absltest.TestCase):
       transformation_utils.get_unique_names(None)
 
   def test_returns_names_single_lambda(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref)
     names = transformation_utils.get_unique_names(lambda_1)
     self.assertCountEqual(names, ('x',))
 
   def test_returns_names_nested_lambdas_with_different_variable_name(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref)
-    lambda_2 = computation_building_blocks.Lambda('y', tf.int32, lambda_1)
+    ref = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref)
+    lambda_2 = building_blocks.Lambda('y', tf.int32, lambda_1)
     names = transformation_utils.get_unique_names(lambda_2)
     self.assertCountEqual(names, ('x', 'y'))
 
   def test_returns_names_single_block(self):
-    data = computation_building_blocks.Data('x', tf.int32)
-    block = computation_building_blocks.Block([('x', data)], data)
+    data = building_blocks.Data('x', tf.int32)
+    block = building_blocks.Block([('x', data)], data)
     names = transformation_utils.get_unique_names(block)
     self.assertCountEqual(names, ('x',))
 
   def test_returns_names_nested_blocks_with_different_variable_name(self):
-    data = computation_building_blocks.Data('x', tf.int32)
-    block_1 = computation_building_blocks.Block([('x', data)], data)
-    block_2 = computation_building_blocks.Block([('y', data)], block_1)
+    data = building_blocks.Data('x', tf.int32)
+    block_1 = building_blocks.Block([('x', data)], data)
+    block_2 = building_blocks.Block([('y', data)], block_1)
     names = transformation_utils.get_unique_names(block_2)
     self.assertCountEqual(names, ('x', 'y'))
 
@@ -1561,64 +1539,62 @@ class HasUniqueNamesTest(absltest.TestCase):
       transformation_utils.has_unique_names(None)
 
   def test_returns_true_on_single_lambda(self):
-    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
     self.assertTrue(transformation_utils.has_unique_names(lambda_1))
 
   def test_returns_false_on_nested_lambdas_with_same_variable_name(self):
-    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
-    lambda_2 = computation_building_blocks.Lambda('x', tf.int32, lambda_1)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    lambda_2 = building_blocks.Lambda('x', tf.int32, lambda_1)
     self.assertFalse(transformation_utils.has_unique_names(lambda_2))
 
   def test_returns_true_on_nested_lambdas_with_different_variable_name(self):
-    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, ref_to_x)
-    lambda_2 = computation_building_blocks.Lambda('y', tf.int32, lambda_1)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    lambda_2 = building_blocks.Lambda('y', tf.int32, lambda_1)
     self.assertTrue(transformation_utils.has_unique_names(lambda_2))
 
   def test_returns_true_on_single_block(self):
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    single_block = computation_building_blocks.Block([('x', x_data)], x_data)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], x_data)
     self.assertTrue(transformation_utils.has_unique_names(single_block))
 
   def test_returns_false_on_sequential_binding_of_same_variable_in_block(self):
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    block = computation_building_blocks.Block([('x', x_data), ('x', x_data)],
-                                              x_data)
+    x_data = building_blocks.Data('x', tf.int32)
+    block = building_blocks.Block([('x', x_data), ('x', x_data)], x_data)
     self.assertFalse(transformation_utils.has_unique_names(block))
 
   def test_returns_false_on_sequential_binding_of_different_variable_in_block(
       self):
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    block = computation_building_blocks.Block([('x', x_data), ('y', x_data)],
-                                              x_data)
+    x_data = building_blocks.Data('x', tf.int32)
+    block = building_blocks.Block([('x', x_data), ('y', x_data)], x_data)
     self.assertTrue(transformation_utils.has_unique_names(block))
 
   def test_returns_false_block_rebinding_of_lambda_variable(self):
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    single_block = computation_building_blocks.Block([('x', x_data)], x_data)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, single_block)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], x_data)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, single_block)
     self.assertFalse(transformation_utils.has_unique_names(lambda_1))
 
   def test_returns_true_block_binding_of_new_variable(self):
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    single_block = computation_building_blocks.Block([('x', x_data)], x_data)
-    lambda_1 = computation_building_blocks.Lambda('y', tf.int32, single_block)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], x_data)
+    lambda_1 = building_blocks.Lambda('y', tf.int32, single_block)
     self.assertTrue(transformation_utils.has_unique_names(lambda_1))
 
   def test_returns_false_lambda_rebinding_of_block_variable(self):
-    x_ref = computation_building_blocks.Reference('x', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('x', tf.int32, x_ref)
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    single_block = computation_building_blocks.Block([('x', x_data)], lambda_1)
+    x_ref = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, x_ref)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], lambda_1)
     self.assertFalse(transformation_utils.has_unique_names(single_block))
 
   def test_returns_true_lambda_binding_of_new_variable(self):
-    y_ref = computation_building_blocks.Reference('y', tf.int32)
-    lambda_1 = computation_building_blocks.Lambda('y', tf.int32, y_ref)
-    x_data = computation_building_blocks.Data('x', tf.int32)
-    single_block = computation_building_blocks.Block([('x', x_data)], lambda_1)
+    y_ref = building_blocks.Reference('y', tf.int32)
+    lambda_1 = building_blocks.Lambda('y', tf.int32, y_ref)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], lambda_1)
     self.assertTrue(transformation_utils.has_unique_names(single_block))
 
 

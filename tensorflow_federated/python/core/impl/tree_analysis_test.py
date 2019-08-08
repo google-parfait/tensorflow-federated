@@ -27,13 +27,13 @@ from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_building_block_utils
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tree_analysis
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class IntrinsicsWhitelistedTest(absltest.TestCase):
@@ -43,7 +43,7 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
       tree_analysis.check_intrinsics_whitelisted_for_reduction(None)
 
   def test_passes_with_federated_map(self):
-    intrinsic = computation_building_blocks.Intrinsic(
+    intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MAP.uri,
         computation_types.FunctionType([
             computation_types.FunctionType(tf.int32, tf.float32),
@@ -52,7 +52,7 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
     tree_analysis.check_intrinsics_whitelisted_for_reduction(intrinsic)
 
   def test_raises_with_federated_mean(self):
-    intrinsic = computation_building_blocks.Intrinsic(
+    intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MEAN.uri,
         computation_types.FunctionType(
             computation_types.FederatedType(tf.int32, placements.CLIENTS),
@@ -63,8 +63,7 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
 
 
 def dummy_intrinsic_predicate(x):
-  return isinstance(
-      x, computation_building_blocks.Intrinsic) and x.uri == 'dummy_intrinsic'
+  return isinstance(x, building_blocks.Intrinsic) and x.uri == 'dummy_intrinsic'
 
 
 class NodesDependentOnPredicateTest(absltest.TestCase):
@@ -74,7 +73,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
       tree_analysis.extract_nodes_consuming(None, lambda x: True)
 
   def test_raises_on_none_predicate(self):
-    data = computation_building_blocks.Data('dummy', [])
+    data = building_blocks.Data('dummy', [])
     with self.assertRaises(TypeError):
       tree_analysis.extract_nodes_consuming(data, None)
 
@@ -92,74 +91,63 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertEmpty(all_nodes)
 
   def test_propogates_dependence_up_through_lambda(self):
-    dummy_intrinsic = computation_building_blocks.Intrinsic(
-        'dummy_intrinsic', tf.int32)
-    lam = computation_building_blocks.Lambda('x', tf.int32, dummy_intrinsic)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    lam = building_blocks.Lambda('x', tf.int32, dummy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         lam, dummy_intrinsic_predicate)
     self.assertIn(lam, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_result(self):
-    dummy_intrinsic = computation_building_blocks.Intrinsic(
-        'dummy_intrinsic', tf.int32)
-    integer_reference = computation_building_blocks.Reference('int', tf.int32)
-    block = computation_building_blocks.Block([('x', integer_reference)],
-                                              dummy_intrinsic)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    integer_reference = building_blocks.Reference('int', tf.int32)
+    block = building_blocks.Block([('x', integer_reference)], dummy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         block, dummy_intrinsic_predicate)
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_locals(self):
-    dummy_intrinsic = computation_building_blocks.Intrinsic(
-        'dummy_intrinsic', tf.int32)
-    integer_reference = computation_building_blocks.Reference('int', tf.int32)
-    block = computation_building_blocks.Block([('x', dummy_intrinsic)],
-                                              integer_reference)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    integer_reference = building_blocks.Reference('int', tf.int32)
+    block = building_blocks.Block([('x', dummy_intrinsic)], integer_reference)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         block, dummy_intrinsic_predicate)
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_tuple(self):
-    dummy_intrinsic = computation_building_blocks.Intrinsic(
-        'dummy_intrinsic', tf.int32)
-    integer_reference = computation_building_blocks.Reference('int', tf.int32)
-    tup = computation_building_blocks.Tuple(
-        [integer_reference, dummy_intrinsic])
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    integer_reference = building_blocks.Reference('int', tf.int32)
+    tup = building_blocks.Tuple([integer_reference, dummy_intrinsic])
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         tup, dummy_intrinsic_predicate)
     self.assertIn(tup, dependent_nodes)
 
   def test_propogates_dependence_up_through_selection(self):
-    dummy_intrinsic = computation_building_blocks.Intrinsic(
-        'dummy_intrinsic', [tf.int32])
-    selection = computation_building_blocks.Selection(dummy_intrinsic, index=0)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', [tf.int32])
+    selection = building_blocks.Selection(dummy_intrinsic, index=0)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         selection, dummy_intrinsic_predicate)
     self.assertIn(selection, dependent_nodes)
 
   def test_propogates_dependence_up_through_call(self):
-    dummy_intrinsic = computation_building_blocks.Intrinsic(
-        'dummy_intrinsic', tf.int32)
-    ref_to_x = computation_building_blocks.Reference('x', tf.int32)
-    identity_lambda = computation_building_blocks.Lambda(
-        'x', tf.int32, ref_to_x)
-    called_lambda = computation_building_blocks.Call(identity_lambda,
-                                                     dummy_intrinsic)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    identity_lambda = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    called_lambda = building_blocks.Call(identity_lambda, dummy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         called_lambda, dummy_intrinsic_predicate)
     self.assertIn(called_lambda, dependent_nodes)
 
   def test_propogates_dependence_into_binding_to_reference(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    ref_to_x = computation_building_blocks.Reference('x', fed_type)
-    federated_zero = computation_building_blocks.Intrinsic(
-        intrinsic_defs.GENERIC_ZERO.uri, fed_type)
+    ref_to_x = building_blocks.Reference('x', fed_type)
+    federated_zero = building_blocks.Intrinsic(intrinsic_defs.GENERIC_ZERO.uri,
+                                               fed_type)
 
     def federated_zero_predicate(x):
-      return isinstance(x, computation_building_blocks.Intrinsic
+      return isinstance(x, building_blocks.Intrinsic
                        ) and x.uri == intrinsic_defs.GENERIC_ZERO.uri
 
-    block = computation_building_blocks.Block([('x', federated_zero)], ref_to_x)
+    block = building_blocks.Block([('x', federated_zero)], ref_to_x)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         block, federated_zero_predicate)
     self.assertIn(ref_to_x, dependent_nodes)
@@ -174,21 +162,19 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
     broadcast = computation_test_utils.create_dummy_called_federated_broadcast()
     value_type = broadcast.type_signature
-    zero = computation_building_blocks.Data('zero', value_type.member)
-    accumulate_result = computation_building_blocks.Data(
-        'accumulate_result', value_type.member)
-    accumulate = computation_building_blocks.Lambda(
-        'accumulate_parameter', [value_type.member, value_type.member],
-        accumulate_result)
-    merge_result = computation_building_blocks.Data('merge_result',
-                                                    value_type.member)
-    merge = computation_building_blocks.Lambda(
-        'merge_parameter', [value_type.member, value_type.member], merge_result)
-    report_result = computation_building_blocks.Data('report_result',
-                                                     value_type.member)
-    report = computation_building_blocks.Lambda('report_parameter',
-                                                value_type.member,
-                                                report_result)
+    zero = building_blocks.Data('zero', value_type.member)
+    accumulate_result = building_blocks.Data('accumulate_result',
+                                             value_type.member)
+    accumulate = building_blocks.Lambda('accumulate_parameter',
+                                        [value_type.member, value_type.member],
+                                        accumulate_result)
+    merge_result = building_blocks.Data('merge_result', value_type.member)
+    merge = building_blocks.Lambda('merge_parameter',
+                                   [value_type.member, value_type.member],
+                                   merge_result)
+    report_result = building_blocks.Data('report_result', value_type.member)
+    report = building_blocks.Lambda('report_parameter', value_type.member,
+                                    report_result)
     aggregate_dependent_on_broadcast = computation_constructing_utils.create_federated_aggregate(
         broadcast, zero, accumulate, merge, report)
     tree_analysis.check_broadcast_not_dependent_on_aggregate(
@@ -238,8 +224,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
         tf.int32)
     node_tf_op_count = computation_building_block_utils.count_tensorflow_ops_in(
         integer_identity)
-    tf_tuple = computation_building_blocks.Tuple(
-        [integer_identity, integer_identity])
+    tf_tuple = building_blocks.Tuple([integer_identity, integer_identity])
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(tf_tuple)
     self.assertEqual(tree_tf_op_count, 2 * node_tf_op_count)
 
@@ -251,8 +236,7 @@ def _pack_noarg_graph(graph_def, return_type, result_binding):
       type=type_serialization.serialize_type(function_type),
       tensorflow=pb.TensorFlow(
           graph_def=packed_graph_def, parameter=None, result=result_binding))
-  building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
-      proto)
+  building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
   return building_block
 
 
@@ -300,8 +284,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     two_variable_comp = _create_two_variable_tensorflow()
     node_tf_variable_count = computation_building_block_utils.count_tensorflow_variables_in(
         two_variable_comp)
-    tf_tuple = computation_building_blocks.Tuple(
-        [two_variable_comp, two_variable_comp])
+    tf_tuple = building_blocks.Tuple([two_variable_comp, two_variable_comp])
     tree_tf_variable_count = tree_analysis.count_tensorflow_variables_under(
         tf_tuple)
     self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)

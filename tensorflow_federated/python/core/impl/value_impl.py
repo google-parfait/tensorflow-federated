@@ -31,7 +31,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
@@ -42,6 +41,7 @@ from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -52,12 +52,11 @@ class ValueImpl(value_base.Value):
     """Constructs a value of the given type.
 
     Args:
-      comp: An instance of computation_building_blocks.ComputationBuildingBlock
+      comp: An instance of building_blocks.ComputationBuildingBlock
         that contains the logic that computes this value.
       context_stack: The context stack to use.
     """
-    py_typecheck.check_type(
-        comp, computation_building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     super(ValueImpl, self).__setattr__('_comp', comp)
     super(ValueImpl, self).__setattr__('_context_stack', context_stack)
@@ -108,11 +107,10 @@ class ValueImpl(value_base.Value):
     if name not in dir(self._comp.type_signature):
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
-    if isinstance(self._comp, computation_building_blocks.Tuple):
+    if isinstance(self._comp, building_blocks.Tuple):
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
-        computation_building_blocks.Selection(self._comp, name=name),
-        self._context_stack)
+        building_blocks.Selection(self._comp, name=name), self._context_stack)
 
   def __setattr__(self, name, value):
     py_typecheck.check_type(name, six.string_types)
@@ -133,8 +131,7 @@ class ValueImpl(value_base.Value):
               str(self._comp.type_signature)))
     named_tuple_setattr_lambda = computation_constructing_utils.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
-    new_comp = computation_building_blocks.Call(named_tuple_setattr_lambda,
-                                                self._comp)
+    new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
     super(ValueImpl, self).__setattr__('_comp', new_comp)
 
   def __len__(self):
@@ -167,11 +164,11 @@ class ValueImpl(value_base.Value):
       if key < 0 or key >= elem_length:
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key))
-      if isinstance(self._comp, computation_building_blocks.Tuple):
+      if isinstance(self._comp, building_blocks.Tuple):
         return ValueImpl(self._comp[key], self._context_stack)
       else:
         return ValueImpl(
-            computation_building_blocks.Selection(self._comp, index=key),
+            building_blocks.Selection(self._comp, index=key),
             self._context_stack)
     elif isinstance(key, slice):
       index_range = range(*key.indices(elem_length))
@@ -211,8 +208,7 @@ class ValueImpl(value_base.Value):
       arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
     else:
       arg = None
-    return ValueImpl(
-        computation_building_blocks.Call(self._comp, arg), self._context_stack)
+    return ValueImpl(building_blocks.Call(self._comp, arg), self._context_stack)
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
@@ -221,8 +217,8 @@ class ValueImpl(value_base.Value):
       raise TypeError('Cannot add {} and {}.'.format(
           str(self.type_signature), str(other.type_signature)))
     return ValueImpl(
-        computation_building_blocks.Call(
-            computation_building_blocks.Intrinsic(
+        building_blocks.Call(
+            building_blocks.Intrinsic(
                 intrinsic_defs.GENERIC_PLUS.uri,
                 computation_types.FunctionType(
                     [self.type_signature, self.type_signature],
@@ -246,8 +242,8 @@ def _wrap_constant_as_value(const, context_stack):
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       lambda: tf.constant(const), None, context_stack)
-  compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
-  called_comp = computation_building_blocks.Call(compiled_comp)
+  compiled_comp = building_blocks.CompiledComputation(tf_comp)
+  called_comp = building_blocks.Call(compiled_comp)
   return ValueImpl(called_comp, context_stack)
 
 
@@ -288,8 +284,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       _create_dataset_from_elements, None, context_stack)
   return ValueImpl(
-      computation_building_blocks.Call(
-          computation_building_blocks.CompiledComputation(tf_comp)),
+      building_blocks.Call(building_blocks.CompiledComputation(tf_comp)),
       context_stack)
 
 
@@ -332,21 +327,20 @@ def to_value(arg, type_spec, context_stack):
     type_utils.check_well_formed(type_spec)
   if isinstance(arg, ValueImpl):
     result = arg
-  elif isinstance(arg, computation_building_blocks.ComputationBuildingBlock):
+  elif isinstance(arg, building_blocks.ComputationBuildingBlock):
     result = ValueImpl(arg, context_stack)
   elif isinstance(arg, placement_literals.PlacementLiteral):
-    result = ValueImpl(
-        computation_building_blocks.Placement(arg), context_stack)
+    result = ValueImpl(building_blocks.Placement(arg), context_stack)
   elif isinstance(arg, computation_base.Computation):
     result = ValueImpl(
-        computation_building_blocks.CompiledComputation(
+        building_blocks.CompiledComputation(
             computation_impl.ComputationImpl.get_proto(arg)), context_stack)
   elif type_spec is not None and isinstance(type_spec,
                                             computation_types.SequenceType):
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(
-        computation_building_blocks.Tuple([
+        building_blocks.Tuple([
             (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
             for k, v in anonymous_tuple.to_elements(arg)
         ]), context_stack)
@@ -361,14 +355,14 @@ def to_value(arg, type_spec, context_stack):
       items = six.iteritems(arg)
     else:
       items = sorted(six.iteritems(arg))
-    value = computation_building_blocks.Tuple([
+    value = building_blocks.Tuple([
         (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
         for k, v in items
     ])
     result = ValueImpl(value, context_stack)
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(
-        computation_building_blocks.Tuple([
+        building_blocks.Tuple([
             ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg
         ]), context_stack)
   elif isinstance(arg, dtype_utils.TENSOR_REPRESENTATION_TYPES):

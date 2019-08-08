@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_test_utils
@@ -43,6 +42,7 @@ from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def zero_for(type_spec, context_stack):
@@ -658,28 +658,27 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(new_arg.value.A, [10, 10, 10])
 
   def test_execute_with_nested_lambda(self):
-    int32_add = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    int32_add = building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
             computations.tf_computation(tf.add, [tf.int32, tf.int32])))
 
-    curried_int32_add = computation_building_blocks.Lambda(
+    curried_int32_add = building_blocks.Lambda(
         'x', tf.int32,
-        computation_building_blocks.Lambda(
+        building_blocks.Lambda(
             'y', tf.int32,
-            computation_building_blocks.Call(
+            building_blocks.Call(
                 int32_add,
-                computation_building_blocks.Tuple([
-                    (None, computation_building_blocks.Reference('x',
-                                                                 tf.int32)),
-                    (None, computation_building_blocks.Reference('y', tf.int32))
+                building_blocks.Tuple([
+                    (None, building_blocks.Reference('x', tf.int32)),
+                    (None, building_blocks.Reference('y', tf.int32))
                 ]))))
 
-    make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    make_10 = building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
             computations.tf_computation(lambda: tf.constant(10))))
 
-    add_10 = computation_building_blocks.Call(
-        curried_int32_add, computation_building_blocks.Call(make_10))
+    add_10 = building_blocks.Call(curried_int32_add,
+                                  building_blocks.Call(make_10))
 
     add_10_computation = computation_impl.ComputationImpl(
         add_10.proto, context_stack_impl.context_stack)
@@ -687,26 +686,25 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(add_10_computation(5), 15)
 
   def test_execute_with_block(self):
-    add_one = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    add_one = building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
             computations.tf_computation(lambda x: x + 1, tf.int32)))
 
-    make_10 = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    make_10 = building_blocks.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
             computations.tf_computation(lambda: tf.constant(10))))
 
-    make_13 = computation_building_blocks.Block(
-        [('x', computation_building_blocks.Call(make_10)),
+    make_13 = building_blocks.Block(
+        [('x', building_blocks.Call(make_10)),
          ('x',
-          computation_building_blocks.Call(
-              add_one, computation_building_blocks.Reference('x', tf.int32))),
+          building_blocks.Call(add_one, building_blocks.Reference(
+              'x', tf.int32))),
          ('x',
-          computation_building_blocks.Call(
-              add_one, computation_building_blocks.Reference('x', tf.int32))),
+          building_blocks.Call(add_one, building_blocks.Reference(
+              'x', tf.int32))),
          ('x',
-          computation_building_blocks.Call(
-              add_one, computation_building_blocks.Reference('x', tf.int32)))],
-        computation_building_blocks.Reference('x', tf.int32))
+          building_blocks.Call(add_one, building_blocks.Reference(
+              'x', tf.int32)))], building_blocks.Reference('x', tf.int32))
 
     make_13_computation = computation_impl.ComputationImpl(
         make_13.proto, context_stack_impl.context_stack)
@@ -1186,9 +1184,9 @@ class ReferenceExecutorTest(test.TestCase):
 class UnwrapPlacementIntegrationTest(test.TestCase):
 
   def test_unwrap_placement_with_federated_map_executes_correctly(self):
-    int_ref = computation_building_blocks.Reference('x', tf.int32)
-    int_id = computation_building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = computation_building_blocks.Reference(
+    int_ref = building_blocks.Reference('x', tf.int32)
+    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
+    fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     applied_id = computation_constructing_utils.create_federated_map_or_apply(
         int_id, fed_ref)
@@ -1197,9 +1195,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     placement_unwrapped, modified = transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
-    lambda_wrapping_id = computation_building_blocks.Lambda(
-        'x', fed_ref.type_signature, second_applied_id)
-    lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
+    lambda_wrapping_id = building_blocks.Lambda('x', fed_ref.type_signature,
+                                                second_applied_id)
+    lambda_wrapping_placement_unwrapped = building_blocks.Lambda(
         'x', fed_ref.type_signature, placement_unwrapped)
     executable_identity = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_id)
@@ -1210,9 +1208,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
       self.assertEqual(executable_identity([k]), executable_unwrapped([k]))
 
   def test_unwrap_placement_with_federated_apply_executes_correctly(self):
-    int_ref = computation_building_blocks.Reference('x', tf.int32)
-    int_id = computation_building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = computation_building_blocks.Reference(
+    int_ref = building_blocks.Reference('x', tf.int32)
+    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
+    fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     applied_id = computation_constructing_utils.create_federated_map_or_apply(
         int_id, fed_ref)
@@ -1221,9 +1219,9 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     placement_unwrapped, modified = transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
-    lambda_wrapping_id = computation_building_blocks.Lambda(
-        'x', fed_ref.type_signature, second_applied_id)
-    lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
+    lambda_wrapping_id = building_blocks.Lambda('x', fed_ref.type_signature,
+                                                second_applied_id)
+    lambda_wrapping_placement_unwrapped = building_blocks.Lambda(
         'x', fed_ref.type_signature, placement_unwrapped)
     executable_identity = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_id)
@@ -1235,7 +1233,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
 
   def test_unwrap_placement_with_federated_zip_at_server_executes_correctly(
       self):
-    fed_tuple = computation_building_blocks.Reference(
+    fed_tuple = building_blocks.Reference(
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
                                         placements.SERVER))
@@ -1244,9 +1242,10 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     placement_unwrapped, modified = transformations.unwrap_placement(zipped)
     self.assertTrue(modified)
 
-    lambda_wrapping_zip = computation_building_blocks.Lambda(
-        'tup', fed_tuple.type_signature, zipped)
-    lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
+    lambda_wrapping_zip = building_blocks.Lambda('tup',
+                                                 fed_tuple.type_signature,
+                                                 zipped)
+    lambda_wrapping_placement_unwrapped = building_blocks.Lambda(
         'tup', fed_tuple.type_signature, placement_unwrapped)
     executable_zip = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_zip)
@@ -1260,7 +1259,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
 
   def test_unwrap_placement_with_federated_zip_at_clients_executes_correctly(
       self):
-    fed_tuple = computation_building_blocks.Reference(
+    fed_tuple = building_blocks.Reference(
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
                                         placements.CLIENTS))
@@ -1268,9 +1267,10 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     zipped = computation_constructing_utils.create_federated_zip(unzipped)
     placement_unwrapped, modified = transformations.unwrap_placement(zipped)
     self.assertTrue(modified)
-    lambda_wrapping_zip = computation_building_blocks.Lambda(
-        'tup', fed_tuple.type_signature, zipped)
-    lambda_wrapping_placement_unwrapped = computation_building_blocks.Lambda(
+    lambda_wrapping_zip = building_blocks.Lambda('tup',
+                                                 fed_tuple.type_signature,
+                                                 zipped)
+    lambda_wrapping_placement_unwrapped = building_blocks.Lambda(
         'tup', fed_tuple.type_signature, placement_unwrapped)
     executable_zip = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapping_zip)
@@ -1289,23 +1289,21 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref_type = computation_types.NamedTupleType(
         (value_type, tf.float32, tf.float32, tf.float32, tf.bool))
-    ref = computation_building_blocks.Reference('a', ref_type)
-    value = computation_building_blocks.Selection(ref, index=0)
-    zero = computation_building_blocks.Selection(ref, index=1)
+    ref = building_blocks.Reference('a', ref_type)
+    value = building_blocks.Selection(ref, index=0)
+    zero = building_blocks.Selection(ref, index=1)
     accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
-    accumulate_result = computation_building_blocks.Selection(ref, index=2)
-    accumulate = computation_building_blocks.Lambda('b', accumulate_type,
-                                                    accumulate_result)
+    accumulate_result = building_blocks.Selection(ref, index=2)
+    accumulate = building_blocks.Lambda('b', accumulate_type, accumulate_result)
     merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
-    merge_result = computation_building_blocks.Selection(ref, index=3)
-    merge = computation_building_blocks.Lambda('c', merge_type, merge_result)
-    report_result = computation_building_blocks.Selection(ref, index=4)
-    report = computation_building_blocks.Lambda('d', tf.float32, report_result)
+    merge_result = building_blocks.Selection(ref, index=3)
+    merge = building_blocks.Lambda('c', merge_type, merge_result)
+    report_result = building_blocks.Selection(ref, index=4)
+    report = building_blocks.Lambda('d', tf.float32, report_result)
     called_intrinsic = computation_constructing_utils.create_federated_aggregate(
         value, zero, accumulate, merge, report)
-    tup = computation_building_blocks.Tuple(
-        (called_intrinsic, called_intrinsic))
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
@@ -1320,14 +1318,13 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
   def test_merge_tuple_intrinsics_executes_with_federated_apply(self):
     ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    ref = computation_building_blocks.Reference('a', ref_type)
+    ref = building_blocks.Reference('a', ref_type)
     fn = computation_test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = computation_constructing_utils.create_federated_apply(
         fn, arg)
-    tup = computation_building_blocks.Tuple(
-        (called_intrinsic, called_intrinsic))
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_APPLY.uri)
 
@@ -1341,12 +1338,11 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
   def test_merge_tuple_intrinsics_executes_with_federated_broadcast(self):
     self.skipTest('b/135279151')
     ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    ref = computation_building_blocks.Reference('a', ref_type)
+    ref = building_blocks.Reference('a', ref_type)
     called_intrinsic = computation_constructing_utils.create_federated_broadcast(
         ref)
-    tup = computation_building_blocks.Tuple(
-        (called_intrinsic, called_intrinsic))
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
 
@@ -1359,14 +1355,13 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
   def test_merge_tuple_intrinsics_executes_with_federated_map(self):
     ref_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    ref = computation_building_blocks.Reference('a', ref_type)
+    ref = building_blocks.Reference('a', ref_type)
     fn = computation_test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = computation_constructing_utils.create_federated_map(
         fn, arg)
-    tup = computation_building_blocks.Tuple(
-        (called_intrinsic, called_intrinsic))
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, tup)
+    tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 

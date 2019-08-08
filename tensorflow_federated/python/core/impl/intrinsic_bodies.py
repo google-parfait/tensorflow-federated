@@ -26,13 +26,13 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def get_intrinsic_bodies(context_stack):
@@ -82,7 +82,7 @@ def get_intrinsic_bodies(context_stack):
 
     if _only_tuple_or_tensor(x) and _only_tuple_or_tensor(y):
       arg = value_impl.ValueImpl(
-          computation_building_blocks.Tuple([
+          building_blocks.Tuple([
               value_impl.ValueImpl.get_comp(x),
               value_impl.ValueImpl.get_comp(y)
           ]), context_stack)
@@ -96,7 +96,7 @@ def get_intrinsic_bodies(context_stack):
             'compatible; see `type_utils.is_binary_op_with_upcast_compatible_pair` '
             'for more details.'.format(x.type_signature, y.type_signature))
       packed_arg = value_impl.ValueImpl(
-          computation_building_blocks.Tuple([
+          building_blocks.Tuple([
               value_impl.ValueImpl.get_comp(x),
               value_impl.ValueImpl.get_comp(y)
           ]), context_stack)
@@ -215,7 +215,7 @@ def get_intrinsic_bodies(context_stack):
           for i in range(len(names))
       ]
       named_divided = computation_constructing_utils.create_named_tuple(
-          computation_building_blocks.Tuple(divided), names)
+          building_blocks.Tuple(divided), names)
       return value_impl.ValueImpl(named_divided, context_stack)
     else:
       raise TypeError(
@@ -238,7 +238,7 @@ def get_intrinsic_bodies(context_stack):
           for i in range(len(names))
       ]
       named_multiplied = computation_constructing_utils.create_named_tuple(
-          computation_building_blocks.Tuple(multiplied), names)
+          building_blocks.Tuple(multiplied), names)
       return value_impl.ValueImpl(named_multiplied, context_stack)
     else:
       raise TypeError(
@@ -261,7 +261,7 @@ def get_intrinsic_bodies(context_stack):
           for i in range(len(names))
       ]
       named_added = computation_constructing_utils.create_named_tuple(
-          computation_building_blocks.Tuple(added), names)
+          building_blocks.Tuple(added), names)
       return value_impl.ValueImpl(named_added, context_stack)
     else:
       raise TypeError('Generic plus encountered unexpected type {}, {}'.format(

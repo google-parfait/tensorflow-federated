@@ -21,11 +21,11 @@ from __future__ import print_function
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_transformations
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class CompilerPipeline(object):
@@ -63,7 +63,7 @@ class CompilerPipeline(object):
     computation_proto = computation_impl.ComputationImpl.get_proto(
         computation_to_compile)
     py_typecheck.check_type(computation_proto, pb.Computation)
-    comp = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    comp = building_blocks.ComputationBuildingBlock.from_proto(
         computation_proto)
 
     # TODO(b/113123410): Add a compiler options argument that characterizes the

@@ -20,13 +20,13 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class LambdaExecutorScope(object):
@@ -423,7 +423,7 @@ def _check_no_unbound_references(comp):
     ValueError: If `comp` has unbound references.
   """
   py_typecheck.check_type(comp, pb.Computation)
-  blk = computation_building_blocks.ComputationBuildingBlock.from_proto(comp)
+  blk = building_blocks.ComputationBuildingBlock.from_proto(comp)
   unbound_map = transformations.get_map_of_unbound_references(blk)
   unbound_refs = unbound_map[blk]
   if unbound_refs:

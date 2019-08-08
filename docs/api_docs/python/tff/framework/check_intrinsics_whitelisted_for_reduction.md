@@ -21,10 +21,9 @@ tff.framework.check_intrinsics_whitelisted_for_reduction(comp)
 
 #### Args:
 
-*   <b>`comp`</b>: Instance of
-    `computation_building_blocks.ComputationBuildingBlock` to check for presence
-    of intrinsics not currently immediately reducible to `FEDERATED_AGGREGATE`
-    or `FEDERATED_BROADCAST`, or local processing.
+*   <b>`comp`</b>: Instance of `building_blocks.ComputationBuildingBlock` to
+    check for presence of intrinsics not currently immediately reducible to
+    `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
 
 #### Raises:
 

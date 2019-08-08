@@ -22,8 +22,8 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def get_curried(fn):
@@ -49,13 +49,10 @@ def get_curried(fn):
   param_elements = anonymous_tuple.to_elements(fn.type_signature.parameter)
   references = []
   for idx, (_, elem_type) in enumerate(param_elements):
-    references.append(
-        computation_building_blocks.Reference('arg{}'.format(idx), elem_type))
-  result = computation_building_blocks.Call(
-      value_impl.ValueImpl.get_comp(fn),
-      computation_building_blocks.Tuple(references))
+    references.append(building_blocks.Reference('arg{}'.format(idx), elem_type))
+  result = building_blocks.Call(
+      value_impl.ValueImpl.get_comp(fn), building_blocks.Tuple(references))
   for ref in references[::-1]:
-    result = computation_building_blocks.Lambda(ref.name, ref.type_signature,
-                                                result)
+    result = building_blocks.Lambda(ref.name, ref.type_signature, result)
   return value_impl.ValueImpl(result,
                               value_impl.ValueImpl.get_context_stack(fn))

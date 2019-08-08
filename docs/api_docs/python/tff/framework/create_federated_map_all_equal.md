@@ -28,18 +28,18 @@ tff.framework.create_federated_map_all_equal(
 Intrinsic Tuple | [Comp, Comp]
 
 NOTE: The `fn` is required to be deterministic and therefore should contain no
-`computation_building_blocks.CompiledComputations`.
+`building_blocks.CompiledComputations`.
 
 #### Args:
 
-*   <b>`fn`</b>: A `computation_building_blocks.ComputationBuildingBlock` to use
-    as the function.
-*   <b>`arg`</b>: A `computation_building_blocks.ComputationBuildingBlock` to
-    use as the argument.
+*   <b>`fn`</b>: A `building_blocks.ComputationBuildingBlock` to use as the
+    function.
+*   <b>`arg`</b>: A `building_blocks.ComputationBuildingBlock` to use as the
+    argument.
 
 #### Returns:
 
-A `computation_building_blocks.Call`.
+A `building_blocks.Call`.
 
 #### Raises:
 

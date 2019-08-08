@@ -39,7 +39,6 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import compiler_pipeline
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import dtype_utils
@@ -50,6 +49,7 @@ from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class ComputedValue(object):
@@ -322,7 +322,7 @@ def run_tensorflow(comp, arg):
   """Runs a compiled TensorFlow computation `comp` with argument `arg`.
 
   Args:
-    comp: An instance of `computation_building_blocks.CompiledComputation` with
+    comp: An instance of `building_blocks.CompiledComputation` with
       embedded TensorFlow code.
     arg: An instance of `ComputedValue` that represents the argument, or `None`
       if the compuation expects no argument.
@@ -330,7 +330,7 @@ def run_tensorflow(comp, arg):
   Returns:
     An instance of `ComputedValue` with the result.
   """
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if arg is not None:
     py_typecheck.check_type(arg, ComputedValue)
   with tf.Graph().as_default() as graph:
@@ -722,14 +722,14 @@ class ReferenceExecutor(context_base.Context):
       comp: An instance of `computation_base.Computation`.
 
     Returns:
-      An instance of `computation_building_blocks.ComputationBuildingBlock` that
+      An instance of `building_blocks.ComputationBuildingBlock` that
       contains the compiled logic of `comp`.
     """
     py_typecheck.check_type(comp, computation_base.Computation)
     if self._compiler is not None:
       comp = self._compiler.compile(comp)
     comp, _ = transformations.uniquify_compiled_computation_names(
-        computation_building_blocks.ComputationBuildingBlock.from_proto(
+        building_blocks.ComputationBuildingBlock.from_proto(
             computation_impl.ComputationImpl.get_proto(comp)))
     return comp
 
@@ -738,7 +738,7 @@ class ReferenceExecutor(context_base.Context):
 
     Args:
       comp: An instance of
-        `computation_building_blocks.ComputationBuildingBlock`.
+        `building_blocks.ComputationBuildingBlock`.
       context: An instance of `ComputationContext`.
 
     Returns:
@@ -751,25 +751,25 @@ class ReferenceExecutor(context_base.Context):
       NotImplementedError: For computation building blocks that are not yet
         supported by this executor.
     """
-    if isinstance(comp, computation_building_blocks.CompiledComputation):
+    if isinstance(comp, building_blocks.CompiledComputation):
       return self._compute_compiled(comp, context)
-    elif isinstance(comp, computation_building_blocks.Call):
+    elif isinstance(comp, building_blocks.Call):
       return self._compute_call(comp, context)
-    elif isinstance(comp, computation_building_blocks.Tuple):
+    elif isinstance(comp, building_blocks.Tuple):
       return self._compute_tuple(comp, context)
-    elif isinstance(comp, computation_building_blocks.Reference):
+    elif isinstance(comp, building_blocks.Reference):
       return self._compute_reference(comp, context)
-    elif isinstance(comp, computation_building_blocks.Selection):
+    elif isinstance(comp, building_blocks.Selection):
       return self._compute_selection(comp, context)
-    elif isinstance(comp, computation_building_blocks.Lambda):
+    elif isinstance(comp, building_blocks.Lambda):
       return self._compute_lambda(comp, context)
-    elif isinstance(comp, computation_building_blocks.Block):
+    elif isinstance(comp, building_blocks.Block):
       return self._compute_block(comp, context)
-    elif isinstance(comp, computation_building_blocks.Intrinsic):
+    elif isinstance(comp, building_blocks.Intrinsic):
       return self._compute_intrinsic(comp, context)
-    elif isinstance(comp, computation_building_blocks.Data):
+    elif isinstance(comp, building_blocks.Data):
       return self._compute_data(comp, context)
-    elif isinstance(comp, computation_building_blocks.Placement):
+    elif isinstance(comp, building_blocks.Placement):
       return self._compute_placement(comp, context)
     else:
       raise NotImplementedError(
@@ -777,8 +777,7 @@ class ReferenceExecutor(context_base.Context):
           'by the reference executor: {}.'.format(str(type(comp)), str(comp)))
 
   def _compute_compiled(self, comp, context):
-    py_typecheck.check_type(comp,
-                            computation_building_blocks.CompiledComputation)
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     computation_oneof = comp.proto.WhichOneof('computation')
     if computation_oneof != 'tensorflow':
       raise ValueError(
@@ -789,7 +788,7 @@ class ReferenceExecutor(context_base.Context):
                            comp.type_signature)
 
   def _compute_call(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Call)
+    py_typecheck.check_type(comp, building_blocks.Call)
     computed_fn = self._compute(comp.function, context)
     py_typecheck.check_type(computed_fn.type_signature,
                             computation_types.FunctionType)
@@ -808,7 +807,7 @@ class ReferenceExecutor(context_base.Context):
     return result
 
   def _compute_tuple(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Tuple)
+    py_typecheck.check_type(comp, building_blocks.Tuple)
     result_elements = []
     result_type_elements = []
     for k, v in anonymous_tuple.to_elements(comp):
@@ -824,7 +823,7 @@ class ReferenceExecutor(context_base.Context):
         ]))
 
   def _compute_selection(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Selection)
+    py_typecheck.check_type(comp, building_blocks.Selection)
     source = self._compute(comp.source, context)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
@@ -840,7 +839,7 @@ class ReferenceExecutor(context_base.Context):
     return ComputedValue(result_value, result_type)
 
   def _compute_lambda(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Lambda)
+    py_typecheck.check_type(comp, building_blocks.Lambda)
     py_typecheck.check_type(context, ComputationContext)
 
     def _wrap(arg):
@@ -857,12 +856,12 @@ class ReferenceExecutor(context_base.Context):
                          comp.type_signature)
 
   def _compute_reference(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Reference)
+    py_typecheck.check_type(comp, building_blocks.Reference)
     py_typecheck.check_type(context, ComputationContext)
     return context.resolve_reference(comp.name)
 
   def _compute_block(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Block)
+    py_typecheck.check_type(comp, building_blocks.Block)
     py_typecheck.check_type(context, ComputationContext)
     for local_name, local_comp in comp.locals:
       local_val = self._compute(local_comp, context)
@@ -870,7 +869,7 @@ class ReferenceExecutor(context_base.Context):
     return self._compute(comp.result, context)
 
   def _compute_intrinsic(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Intrinsic)
+    py_typecheck.check_type(comp, building_blocks.Intrinsic)
     my_method = self._intrinsic_method_dict.get(comp.uri)
     if my_method is not None:
       # The interpretation of `my_method` depends on whether the intrinsic
@@ -890,11 +889,11 @@ class ReferenceExecutor(context_base.Context):
           comp.uri))
 
   def _compute_data(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Data)
+    py_typecheck.check_type(comp, building_blocks.Data)
     raise NotImplementedError('Data is currently unsupported.')
 
   def _compute_placement(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Placement)
+    py_typecheck.check_type(comp, building_blocks.Placement)
     raise NotImplementedError('Placement is currently unsupported.')
 
   def _sequence_sum(self, arg):

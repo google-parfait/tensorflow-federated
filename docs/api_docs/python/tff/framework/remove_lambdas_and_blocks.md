@@ -27,9 +27,8 @@ pass.
 
 #### Args:
 
-*   <b>`comp`</b>: Instance of
-    `computation_building_blocks.ComputationBuildingBlock` from which we want to
-    remove called lambdas and blocks.
+*   <b>`comp`</b>: Instance of `building_blocks.ComputationBuildingBlock` from
+    which we want to remove called lambdas and blocks.
 
 #### Returns:
 

@@ -21,10 +21,10 @@ import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def zero_or_one_arg_fn_to_building_block(fn,
@@ -47,7 +47,7 @@ def zero_or_one_arg_fn_to_building_block(fn,
       If not `None`, it must be a string.
 
   Returns:
-    An instance of `computation_building_blocks.ComputationBuildingBlock` that
+    An instance of `building_blocks.ComputationBuildingBlock` that
     contains the logic from `fn`.
 
   Raises:
@@ -72,8 +72,7 @@ def zero_or_one_arg_fn_to_building_block(fn,
     if parameter_type is not None:
       result = fn(
           value_impl.ValueImpl(
-              computation_building_blocks.Reference(parameter_name,
-                                                    parameter_type),
+              building_blocks.Reference(parameter_name, parameter_type),
               context_stack))
     else:
       result = fn()
@@ -87,5 +86,4 @@ def zero_or_one_arg_fn_to_building_block(fn,
     if parameter_type is None:
       return result_comp
     else:
-      return computation_building_blocks.Lambda(parameter_name, parameter_type,
-                                                result_comp)
+      return building_blocks.Lambda(parameter_name, parameter_type, result_comp)

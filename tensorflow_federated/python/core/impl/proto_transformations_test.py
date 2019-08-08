@@ -22,17 +22,17 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl import computation_building_block_utils
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def _create_compiled_computation(py_fn, arg_type):
   proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       py_fn, arg_type, context_stack_impl.context_stack)
-  return computation_building_blocks.CompiledComputation(proto)
+  return building_blocks.CompiledComputation(proto)
 
 
 class PruneTensorFlowProtoTest(absltest.TestCase):
@@ -56,7 +56,7 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
       return x
 
     comp = _create_compiled_computation(fn, tf.int32)
-    pruned = computation_building_blocks.CompiledComputation(
+    pruned = building_blocks.CompiledComputation(
         proto_transformations.prune_tensorflow_proto(comp.proto))
     ops_before = computation_building_block_utils.count_tensorflow_ops_in(comp)
     ops_after = computation_building_block_utils.count_tensorflow_ops_in(pruned)
@@ -71,8 +71,7 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
     comp = _create_compiled_computation(bad_fn, tf.int32)
     ops_before = computation_building_block_utils.count_tensorflow_ops_in(comp)
     reduced_proto = proto_transformations.prune_tensorflow_proto(comp.proto)
-    reduced_comp = computation_building_blocks.CompiledComputation(
-        reduced_proto)
+    reduced_comp = building_blocks.CompiledComputation(reduced_proto)
     ops_after = computation_building_block_utils.count_tensorflow_ops_in(
         reduced_comp)
     self.assertLess(ops_after, ops_before)
@@ -85,8 +84,7 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
 
     comp = _create_compiled_computation(bad_fn, tf.int32)
     reduced_proto = proto_transformations.prune_tensorflow_proto(comp.proto)
-    reduced_comp = computation_building_blocks.CompiledComputation(
-        reduced_proto)
+    reduced_comp = building_blocks.CompiledComputation(reduced_proto)
 
     orig_executable = computation_wrapper_instances.building_block_to_computation(
         comp)

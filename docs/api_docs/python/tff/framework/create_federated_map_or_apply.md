@@ -29,14 +29,14 @@ Intrinsic Tuple | [Comp, Comp]
 
 #### Args:
 
-*   <b>`fn`</b>: A `computation_building_blocks.ComputationBuildingBlock` to use
-    as the function.
-*   <b>`arg`</b>: A `computation_building_blocks.ComputationBuildingBlock` to
-    use as the argument.
+*   <b>`fn`</b>: A `building_blocks.ComputationBuildingBlock` to use as the
+    function.
+*   <b>`arg`</b>: A `building_blocks.ComputationBuildingBlock` to use as the
+    argument.
 
 #### Returns:
 
-A `computation_building_blocks.Call`.
+A `building_blocks.Call`.
 
 #### Raises:
 

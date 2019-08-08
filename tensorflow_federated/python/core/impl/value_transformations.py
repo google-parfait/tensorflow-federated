@@ -22,11 +22,11 @@ import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def replace_intrinsics_with_callable(comp, uri, body, context_stack):
@@ -51,16 +51,14 @@ def replace_intrinsics_with_callable(comp, uri, body, context_stack):
   Raises:
     TypeError: If types do not match.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(uri, six.string_types)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if not callable(body):
     raise TypeError('The body of the intrinsic must be a callable.')
 
   def _should_transform(comp):
-    return (isinstance(comp, computation_building_blocks.Intrinsic) and
-            comp.uri == uri and
+    return (isinstance(comp, building_blocks.Intrinsic) and comp.uri == uri and
             isinstance(comp.type_signature, computation_types.FunctionType))
 
   def _transform(comp):
@@ -79,21 +77,20 @@ def replace_all_intrinsics_with_bodies(comp, context_stack):
   """Iterates over all intrinsic bodies, inlining the intrinsics in `comp`.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` in
+    comp: Instance of `building_blocks.ComputationBuildingBlock` in
       which we wish to replace all intrinsics with their bodies.
     context_stack: Instance of `context_stack_base.ContextStack`, the context
       stack to use for the bodies of the intrinsics.
 
   Returns:
-    Instance of `computation_building_blocks.ComputationBuildingBlock` with all
+    Instance of `building_blocks.ComputationBuildingBlock` with all
     the intrinsics from `intrinsic_bodies.py` inlined with their bodies, along
     with a Boolean indicating whether there was any inlining in fact done.
 
   Raises:
     TypeError: If the types don't match.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   bodies = intrinsic_bodies.get_intrinsic_bodies(context_stack)
   transformed = False
