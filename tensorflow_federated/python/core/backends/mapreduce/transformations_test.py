@@ -28,18 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
-
-
-def _count(comp, predicate):
-  count = [0]
-
-  def _update(comp):
-    if predicate(comp):
-      count[0] += 1
-    return comp, False
-
-  tff.framework.transform_postorder(comp, _update)
-  return count[0]
+from tensorflow_federated.python.core.impl import tree_analysis
 
 
 class TransformationsTest(absltest.TestCase):
@@ -223,12 +212,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
       return tff.framework.is_called_intrinsic(comp, uri)
 
     self.assertIsInstance(comp, tff.framework.Lambda)
-    self.assertEqual(_count(comp, _predicate), 3)
+    self.assertEqual(tree_analysis.count(comp, _predicate), 3)
     self.assertIsInstance(before, tff.framework.Lambda)
-    self.assertEqual(_count(before, _predicate), 0)
+    self.assertEqual(tree_analysis.count(before, _predicate), 0)
     self.assertEqual(before.parameter_type, comp.parameter_type)
     self.assertIsInstance(after, tff.framework.Lambda)
-    self.assertEqual(_count(after, _predicate), 0)
+    self.assertEqual(tree_analysis.count(after, _predicate), 0)
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
   def test_returns_comps_with_federated_aggregate(self):
@@ -242,12 +231,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
       return tff.framework.is_called_intrinsic(comp, uri)
 
     self.assertIsInstance(comp, tff.framework.Lambda)
-    self.assertEqual(_count(comp, _predicate), 2)
+    self.assertEqual(tree_analysis.count(comp, _predicate), 2)
     self.assertIsInstance(before, tff.framework.Lambda)
-    self.assertEqual(_count(before, _predicate), 0)
+    self.assertEqual(tree_analysis.count(before, _predicate), 0)
     self.assertEqual(before.parameter_type, comp.parameter_type)
     self.assertIsInstance(after, tff.framework.Lambda)
-    self.assertEqual(_count(after, _predicate), 0)
+    self.assertEqual(tree_analysis.count(after, _predicate), 0)
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
 
