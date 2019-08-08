@@ -112,9 +112,9 @@ class FakeUserData(object):
   def create_test_dataset_fn(self, client_id):
     client_path = self._client_data_file_dict[client_id]
     features = {
-        '0': tf.FixedLenFeature(shape=[], dtype=tf.int64),
-        '1': tf.FixedLenFeature(shape=[], dtype=tf.float32),
-        '2': tf.FixedLenFeature(shape=[2], dtype=tf.float32),
+        '0': tf.io.FixedLenFeature(shape=[], dtype=tf.int64),
+        '1': tf.io.FixedLenFeature(shape=[], dtype=tf.float32),
+        '2': tf.io.FixedLenFeature(shape=[2], dtype=tf.float32),
     }
 
     def parse_example(e):
