@@ -150,8 +150,8 @@ class ConcreteClientData(ClientData):
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
 
     example_dataset = create_tf_dataset_for_client_fn(client_ids[0])
-    self._output_types = example_dataset.output_types
-    self._output_shapes = example_dataset.output_shapes
+    self._output_types = tf.compat.v1.data.get_output_types(example_dataset)
+    self._output_shapes = tf.compat.v1.data.get_output_shapes(example_dataset)
 
   @property
   def client_ids(self):
