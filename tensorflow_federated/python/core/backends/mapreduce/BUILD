@@ -77,6 +77,6 @@ py_test(
         ":transformations",
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
-        "//tensorflow_federated/python/core/impl:tree_analysis",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )

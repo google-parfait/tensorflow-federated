@@ -28,7 +28,7 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
-from tensorflow_federated.python.core.impl import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
 class TransformationsTest(absltest.TestCase):

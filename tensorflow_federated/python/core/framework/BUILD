@@ -8,6 +8,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl:computation_building_block_utils",
         "//tensorflow_federated/python/core/impl:computation_constructing_utils",
         "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
@@ -15,7 +16,6 @@ py_library(
         "//tensorflow_federated/python/core/impl:intrinsic_reductions",
         "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:transformations",
-        "//tensorflow_federated/python/core/impl:tree_analysis",
         "//tensorflow_federated/python/core/impl:type_utils",
     ] + select({
         "//tensorflow_federated:py2_mode": [],

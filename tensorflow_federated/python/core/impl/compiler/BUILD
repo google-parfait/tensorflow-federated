@@ -1,6 +1,7 @@
 package(default_visibility = [
-    "//tensorflow_federated/python/core/api:__pkg__",
-    "//tensorflow_federated/python/core/framework:__pkg__",
+    "//tensorflow_federated/python/core/api:__subpackages__",
+    "//tensorflow_federated/python/core/backends:__subpackages__",
+    "//tensorflow_federated/python/core/framework:__subpackages__",
     "//tensorflow_federated/python/core/impl:__pkg__",
 ])
 
@@ -40,6 +41,39 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl:computation_constructing_utils",
         "//tensorflow_federated/python/core/impl:computation_test_utils",
+        "//tensorflow_federated/python/core/impl:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl:type_serialization",
+    ],
+)
+
+py_library(
+    name = "tree_analysis",
+    srcs = ["tree_analysis.py"],
+    deps = [
+        ":building_blocks",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:computation_building_block_utils",
+        "//tensorflow_federated/python/core/impl:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl:placement_literals",
+        "//tensorflow_federated/python/core/impl:transformation_utils",
+    ],
+)
+
+py_test(
+    name = "tree_analysis_test",
+    srcs = ["tree_analysis_test.py"],
+    deps = [
+        ":building_blocks",
+        ":tree_analysis",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:computation_building_block_utils",
+        "//tensorflow_federated/python/core/impl:computation_constructing_utils",
+        "//tensorflow_federated/python/core/impl:computation_test_utils",
+        "//tensorflow_federated/python/core/impl:graph_utils",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
         "//tensorflow_federated/python/core/impl:type_serialization",
     ],

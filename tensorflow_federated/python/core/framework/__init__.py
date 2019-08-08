@@ -30,6 +30,9 @@ from tensorflow_federated.python.core.impl.compiler.building_blocks import Place
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Reference
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Selection
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Tuple
+from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
+from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
+from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.computation_building_block_utils import is_called_intrinsic
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_all_equal
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_or_apply
@@ -53,9 +56,6 @@ from tensorflow_federated.python.core.impl.transformations import replace_called
 from tensorflow_federated.python.core.impl.transformations import TFParser
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.transformations import unwrap_placement
-from tensorflow_federated.python.core.impl.tree_analysis import check_broadcast_not_dependent_on_aggregate
-from tensorflow_federated.python.core.impl.tree_analysis import check_has_unique_names
-from tensorflow_federated.python.core.impl.tree_analysis import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compatible_type

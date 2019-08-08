@@ -125,10 +125,10 @@ py_test(
         ":context_stack_impl",
         ":proto_transformations",
         ":tensorflow_serialization",
-        ":tree_analysis",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )
 
@@ -1117,12 +1117,12 @@ py_library(
         ":computation_constructing_utils",
         ":intrinsic_defs",
         ":transformation_utils",
-        ":tree_analysis",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )
 
@@ -1141,12 +1141,12 @@ py_test(
         ":tensorflow_serialization",
         ":transformation_utils",
         ":transformations",
-        ":tree_analysis",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )
 
@@ -1176,41 +1176,6 @@ py_test(
         ":type_constructors",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-    ],
-)
-
-py_library(
-    name = "tree_analysis",
-    srcs = ["tree_analysis.py"],
-    visibility = [":compiler_visibility"],
-    deps = [
-        ":computation_building_block_utils",
-        ":intrinsic_defs",
-        ":placement_literals",
-        ":transformation_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-    ],
-)
-
-py_test(
-    name = "tree_analysis_test",
-    srcs = ["tree_analysis_test.py"],
-    visibility = [":compiler_visibility"],
-    deps = [
-        ":computation_building_block_utils",
-        ":computation_constructing_utils",
-        ":computation_test_utils",
-        ":graph_utils",
-        ":intrinsic_defs",
-        ":tree_analysis",
-        ":type_serialization",
-        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
     ],
 )
@@ -1358,13 +1323,13 @@ py_test(
         ":computation_test_utils",
         ":context_stack_impl",
         ":intrinsic_defs",
-        ":tree_analysis",
         ":value_transformations",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )
 
