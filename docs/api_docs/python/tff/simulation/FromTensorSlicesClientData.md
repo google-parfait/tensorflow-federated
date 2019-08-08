@@ -7,6 +7,7 @@
 <meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="create_tf_dataset_for_client"/>
 <meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
+<meta itemprop="property" content="preprocess"/>
 </div>
 
 # tff.simulation.FromTensorSlicesClientData
@@ -126,3 +127,14 @@ performed.
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+<h3 id="preprocess"><code>preprocess</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
+```python
+preprocess(preprocess_fn)
+```
+
+Applies `preprocess_fn` to each client's data.
