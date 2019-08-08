@@ -129,7 +129,7 @@ class EagerExecutorTest(parameterized.TestCase):
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
-        with tf.control_dependencies([tf.assign_add(v, 20)]):
+        with tf.control_dependencies([v.assign_add(20)]):
           return tf.add(x, v)
 
     fn = eager_executor.embed_tensorflow_computation(
@@ -413,7 +413,7 @@ class EagerExecutorTest(parameterized.TestCase):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
         with tf.control_dependencies([tf.assign(v, x)]):
-          with tf.control_dependencies([tf.assign_add(v, 10)]):
+          with tf.control_dependencies([v.assign_add(10)]):
             return tf.identity(v)
 
     fn = loop.run_until_complete(ex.create_value(comp))
