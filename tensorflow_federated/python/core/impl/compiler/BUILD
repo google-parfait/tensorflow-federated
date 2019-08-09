@@ -73,8 +73,8 @@ py_test(
         "//tensorflow_federated/python/core/impl:computation_building_block_utils",
         "//tensorflow_federated/python/core/impl:computation_constructing_utils",
         "//tensorflow_federated/python/core/impl:computation_test_utils",
-        "//tensorflow_federated/python/core/impl:graph_utils",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
         "//tensorflow_federated/python/core/impl:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:graph_utils",
     ],
 )

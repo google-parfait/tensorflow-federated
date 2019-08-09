@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for graph_utils.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -30,11 +29,8 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import graph_utils
-from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.utils import graph_utils
 
 
 class GraphUtilsTest(test.TestCase):
@@ -917,90 +913,6 @@ class GraphUtilsTest(test.TestCase):
       with tf.Graph().as_default():
         graph_utils.make_dataset_from_variant_tensor(
             tf.data.experimental.to_variant(tf.data.Dataset.range(5)), 'a')
-
-  def test_fetch_value_with_nested_datasets(self):
-
-    def return_two_datasets():
-      return [tf.data.Dataset.range(5), tf.data.Dataset.range(5)]
-
-    executable_return_two_datasets = computation_impl.ComputationImpl(
-        tensorflow_serialization.serialize_py_fn_as_tf_computation(
-            return_two_datasets, None, context_stack_impl.context_stack)[0],
-        context_stack_impl.context_stack)
-
-    x = executable_return_two_datasets()
-    self.assertEqual(x[0], list(range(5)))
-    self.assertEqual(x[1], list(range(5)))
-
-  def test_fetch_value_with_dataset_and_tensor(self):
-
-    def return_dataset_and_tensor():
-      return [tf.constant(0), tf.data.Dataset.range(5), tf.constant(5)]
-
-    executable_return_dataset_and_tensor = computation_impl.ComputationImpl(
-        tensorflow_serialization.serialize_py_fn_as_tf_computation(
-            return_dataset_and_tensor, None,
-            context_stack_impl.context_stack)[0],
-        context_stack_impl.context_stack)
-
-    x = executable_return_dataset_and_tensor()
-    self.assertEqual(x[0], 0)
-    self.assertEqual(x[1], list(range(5)))
-    self.assertEqual(x[2], 5)
-
-  def test_fetch_value_with_datasets_nested_at_second_level(self):
-
-    def return_two_datasets():
-      return [
-          tf.constant(0), [tf.data.Dataset.range(5),
-                           tf.data.Dataset.range(5)]
-      ]
-
-    executable_return_two_datasets = computation_impl.ComputationImpl(
-        tensorflow_serialization.serialize_py_fn_as_tf_computation(
-            return_two_datasets, None, context_stack_impl.context_stack)[0],
-        context_stack_impl.context_stack)
-
-    x = executable_return_two_datasets()
-    self.assertEqual(x[0], 0)
-    self.assertEqual(x[1][0], list(range(5)))
-    self.assertEqual(x[1][1], list(range(5)))
-
-  def test_fetch_value_with_empty_dataset_and_tensors(self):
-
-    def return_dataset():
-      ds1 = tf.data.Dataset.from_tensor_slices([[1, 1], [1, 1]])
-      return [tf.constant([0., 0.]), ds1.batch(5).take(0)]
-
-    executable_return_dataset = computation_impl.ComputationImpl(
-        tensorflow_serialization.serialize_py_fn_as_tf_computation(
-            return_dataset, None, context_stack_impl.context_stack)[0],
-        context_stack_impl.context_stack)
-
-    x = executable_return_dataset()
-    self.assertEqual(x[0][0], 0.)
-    self.assertEqual(x[0][1], 0.)
-    self.assertEqual(str(x[1][0]), str(np.zeros([0, 2], dtype=np.int32)))
-
-  def test_fetch_value_with_empty_structured_dataset_and_tensors(self):
-
-    def return_dataset():
-      ds1 = tf.data.Dataset.from_tensor_slices(
-          collections.OrderedDict([('a', [1, 1]), ('b', [1, 1])]))
-      return [tf.constant([0., 0.]), ds1.batch(5).take(0)]
-
-    executable_return_dataset = computation_impl.ComputationImpl(
-        tensorflow_serialization.serialize_py_fn_as_tf_computation(
-            return_dataset, None, context_stack_impl.context_stack)[0],
-        context_stack_impl.context_stack)
-
-    x = executable_return_dataset()
-    self.assertEqual(x[0][0], 0.)
-    self.assertEqual(x[0][1], 0.)
-    self.assertAllClose(x[1][0].a, np.zeros([0], dtype=np.int32))
-    self.assertAllClose(x[1][0].b, np.zeros([0], dtype=np.int32))
-    self.assertTrue(np.array_equal(x[1][0].a, np.zeros([0], dtype=np.int32)))
-    self.assertTrue(np.array_equal(x[1][0].b, np.zeros([0], dtype=np.int32)))
 
   def test_to_node_name(self):
     self.assertEqual(graph_utils.to_node_name('foo'), 'foo')

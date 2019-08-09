@@ -42,3 +42,31 @@ py_test(
         "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )
+
+py_library(
+    name = "graph_utils",
+    srcs = ["graph_utils.py"],
+    deps = [
+        ":dtype_utils",
+        ":function_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:type_utils",
+    ],
+)
+
+py_test(
+    name = "graph_utils_test",
+    size = "small",
+    srcs = ["graph_utils_test.py"],
+    deps = [
+        ":graph_utils",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:type_utils",
+    ],
+)

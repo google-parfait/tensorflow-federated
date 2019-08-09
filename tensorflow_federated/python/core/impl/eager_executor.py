@@ -27,9 +27,9 @@ from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
-from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.utils import graph_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
