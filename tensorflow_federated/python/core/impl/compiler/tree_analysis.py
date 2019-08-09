@@ -20,10 +20,10 @@ from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -265,9 +265,8 @@ def count_tensorflow_ops_under(comp):
     if isinstance(
         inner_comp, building_blocks.CompiledComputation
     ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
-      total_tf_ops[
-          0] += computation_building_block_utils.count_tensorflow_ops_in(
-              inner_comp)
+      total_tf_ops[0] += building_block_analysis.count_tensorflow_ops_in(
+          inner_comp)
     return inner_comp, False
 
   transformation_utils.transform_postorder(comp, _count_tf_ops)
@@ -298,9 +297,8 @@ def count_tensorflow_variables_under(comp):
     if isinstance(
         inner_comp, building_blocks.CompiledComputation
     ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
-      total_tf_vars[
-          0] += computation_building_block_utils.count_tensorflow_variables_in(
-              inner_comp)
+      total_tf_vars[0] += building_block_analysis.count_tensorflow_variables_in(
+          inner_comp)
     return inner_comp, False
 
   transformation_utils.transform_postorder(comp, _count_tf_vars)

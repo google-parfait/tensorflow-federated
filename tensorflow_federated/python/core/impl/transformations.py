@@ -28,11 +28,11 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
-from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -401,7 +401,7 @@ def extract_intrinsics(comp):
   """
 
   def _predicate(comp):
-    return computation_building_block_utils.is_called_intrinsic(comp)
+    return building_block_analysis.is_called_intrinsic(comp)
 
   return _apply_transforms(comp, ExtractComputation(comp, _predicate))
 
@@ -584,14 +584,13 @@ def merge_chained_federated_maps_or_applys(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a chained federated map."""
-    if computation_building_block_utils.is_called_intrinsic(
-        comp, (
-            intrinsic_defs.FEDERATED_APPLY.uri,
-            intrinsic_defs.FEDERATED_MAP.uri,
-        )):
+    if building_block_analysis.is_called_intrinsic(comp, (
+        intrinsic_defs.FEDERATED_APPLY.uri,
+        intrinsic_defs.FEDERATED_MAP.uri,
+    )):
       outer_arg = comp.argument[1]
-      if computation_building_block_utils.is_called_intrinsic(
-          outer_arg, comp.function.uri):
+      if building_block_analysis.is_called_intrinsic(outer_arg,
+                                                     comp.function.uri):
         return True
     return False
 
@@ -734,11 +733,10 @@ def merge_tuple_intrinsics(comp, uri):
   name_generator = computation_constructing_utils.unique_name_generator(comp)
 
   def _should_transform(comp):
-    return (isinstance(comp, building_blocks.Tuple) and
-            comp and computation_building_block_utils.is_called_intrinsic(
-                comp[0], uri) and all(
-                    computation_building_block_utils.is_called_intrinsic(
-                        element, comp[0].function.uri) for element in comp))
+    return (isinstance(comp, building_blocks.Tuple) and comp and
+            building_block_analysis.is_called_intrinsic(comp[0], uri) and all(
+                building_block_analysis.is_called_intrinsic(
+                    element, comp[0].function.uri) for element in comp))
 
   def _transform_args_with_type(comps, type_signature):
     """Transforms a Python `list` of computations.
@@ -1044,8 +1042,7 @@ def remove_mapped_or_applied_identity(comp):
             intrinsic_defs.SEQUENCE_MAP.uri,
         )):
       called_function = comp.argument[0]
-      return computation_building_block_utils.is_identity_function(
-          called_function)
+      return building_block_analysis.is_identity_function(called_function)
     return False
 
   def _transform(comp):

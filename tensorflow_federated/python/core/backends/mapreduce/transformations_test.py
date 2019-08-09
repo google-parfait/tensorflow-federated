@@ -27,12 +27,12 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
-from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -237,7 +237,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         comp, uri)
 
     def _predicate(comp):
-      return computation_building_block_utils.is_called_intrinsic(comp, uri)
+      return building_block_analysis.is_called_intrinsic(comp, uri)
 
     self.assertIsInstance(comp, building_blocks.Lambda)
     self.assertEqual(tree_analysis.count(comp, _predicate), 3)
@@ -256,7 +256,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         comp, uri)
 
     def _predicate(comp):
-      return computation_building_block_utils.is_called_intrinsic(comp, uri)
+      return building_block_analysis.is_called_intrinsic(comp, uri)
 
     self.assertIsInstance(comp, building_blocks.Lambda)
     self.assertEqual(tree_analysis.count(comp, _predicate), 2)

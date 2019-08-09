@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import six
 
+from tensorflow_federated.python.core.impl.compiler.building_block_analysis import is_called_intrinsic
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Block
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Call
 from tensorflow_federated.python.core.impl.compiler.building_blocks import CompiledComputation
@@ -33,7 +34,6 @@ from tensorflow_federated.python.core.impl.compiler.building_blocks import Tuple
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
-from tensorflow_federated.python.core.impl.computation_building_block_utils import is_called_intrinsic
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_all_equal
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_map_or_apply
 from tensorflow_federated.python.core.impl.computation_constructing_utils import create_federated_zip

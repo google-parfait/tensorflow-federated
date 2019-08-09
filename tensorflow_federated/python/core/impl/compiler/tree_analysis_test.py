@@ -25,11 +25,11 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.utils import graph_utils
@@ -212,7 +212,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
   def test_single_tensorflow_node_count_agrees_with_node_count(self):
     integer_identity = computation_constructing_utils.create_compiled_identity(
         tf.int32)
-    node_tf_op_count = computation_building_block_utils.count_tensorflow_ops_in(
+    node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
         integer_identity)
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(
         integer_identity)
@@ -221,7 +221,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
   def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
     integer_identity = computation_constructing_utils.create_compiled_identity(
         tf.int32)
-    node_tf_op_count = computation_building_block_utils.count_tensorflow_ops_in(
+    node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
         integer_identity)
     tf_tuple = building_blocks.Tuple([integer_identity, integer_identity])
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(tf_tuple)
@@ -281,7 +281,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
 
   def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
     two_variable_comp = _create_two_variable_tensorflow()
-    node_tf_variable_count = computation_building_block_utils.count_tensorflow_variables_in(
+    node_tf_variable_count = building_block_analysis.count_tensorflow_variables_in(
         two_variable_comp)
     tf_tuple = building_blocks.Tuple([two_variable_comp, two_variable_comp])
     tree_tf_variable_count = tree_analysis.count_tensorflow_variables_under(

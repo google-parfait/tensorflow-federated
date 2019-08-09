@@ -24,7 +24,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_block_utils
 from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
@@ -34,6 +33,7 @@ from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -89,7 +89,7 @@ def _create_compiled_computation(py_fn, arg_type):
 def _count_called_intrinsics(comp, uri=None):
 
   def _predicate(comp):
-    return computation_building_block_utils.is_called_intrinsic(comp, uri)
+    return building_block_analysis.is_called_intrinsic(comp, uri)
 
   return tree_analysis.count(comp, _predicate)
 

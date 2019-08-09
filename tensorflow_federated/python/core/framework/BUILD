@@ -7,9 +7,9 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
+        "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
-        "//tensorflow_federated/python/core/impl:computation_building_block_utils",
         "//tensorflow_federated/python/core/impl:computation_constructing_utils",
         "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
