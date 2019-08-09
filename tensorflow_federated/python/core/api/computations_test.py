@@ -502,7 +502,7 @@ class FederatedComputationsTest(test.TestCase):
     self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
     with self.assertRaisesRegexp(TypeError,
                                  'is not assignable from source type'):
-      self.assertEqual(foo(square_drop_y, 10), 100)
+      foo(square_drop_y, 10)
 
   def test_randomness_executed_once(self):
     self.skipTest(
