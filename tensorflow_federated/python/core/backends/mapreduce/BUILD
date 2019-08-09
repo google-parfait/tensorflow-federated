@@ -40,9 +40,15 @@ py_test(
     size = "large",
     srcs = ["canonical_form_utils_test.py"],
     deps = [
+        ":canonical_form",
         ":canonical_form_utils",
         ":test_utils",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/utils:computation_utils",
     ],
 )
 

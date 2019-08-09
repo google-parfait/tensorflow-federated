@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for canonical_form_utils.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,44 +20,48 @@ from __future__ import print_function
 import collections
 
 from absl.testing import absltest
-
 import numpy as np
 import tensorflow as tf
 
-import tensorflow_federated as tff
-
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
+from tensorflow_federated.python.core.impl import computation_wrapper_instances
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.utils import computation_utils
 
 
 class CanonicalFormUtilsTest(absltest.TestCase):
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
-    it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     next_comp = test_utils.computation_to_building_block(it.next)
-    top_level_param = tff.framework.Reference(next_comp.parameter_name,
-                                              next_comp.parameter_type)
-    first_result = tff.framework.Call(next_comp, top_level_param)
-    middle_param = tff.framework.Tuple([
-        tff.framework.Selection(first_result, index=0),
-        tff.framework.Selection(top_level_param, index=1)
+    top_level_param = building_blocks.Reference(next_comp.parameter_name,
+                                                next_comp.parameter_type)
+    first_result = building_blocks.Call(next_comp, top_level_param)
+    middle_param = building_blocks.Tuple([
+        building_blocks.Selection(first_result, index=0),
+        building_blocks.Selection(top_level_param, index=1)
     ])
-    second_result = tff.framework.Call(next_comp, middle_param)
-    not_reducible = tff.framework.Lambda(next_comp.parameter_name,
-                                         next_comp.parameter_type,
-                                         second_result)
-    not_reducible_it = tff.utils.IterativeProcess(
+    second_result = building_blocks.Call(next_comp, middle_param)
+    not_reducible = building_blocks.Lambda(next_comp.parameter_name,
+                                           next_comp.parameter_type,
+                                           second_result)
+    not_reducible_it = computation_utils.IterativeProcess(
         it.initialize,
-        tff.framework.building_block_to_computation(not_reducible))
+        computation_wrapper_instances.building_block_to_computation(
+            not_reducible))
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
-      tff.backends.mapreduce.get_canonical_form_for_iterative_process(
+      canonical_form_utils.get_canonical_form_for_iterative_process(
           not_reducible_it)
 
   def test_get_iterative_process_for_canonical_form(self):
     cf = test_utils.get_temperature_sensor_example()
-    it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
 
     state = it.initialize()
     self.assertEqual(str(state), '<num_rounds=0>')
@@ -75,21 +78,21 @@ class CanonicalFormUtilsTest(absltest.TestCase):
 
   def test_get_canonical_form_for_iterative_process(self):
     cf = test_utils.get_temperature_sensor_example()
-    it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(it)
-    self.assertIsInstance(cf, tff.backends.mapreduce.CanonicalForm)
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
   def test_get_canonical_form_mnist_training(self):
-    it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_mnist_training_example())
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(it)
-    self.assertIsInstance(cf, tff.backends.mapreduce.CanonicalForm)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
   def test_temperature_example_round_trip_(self):
-    it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_temperature_sensor_example())
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(it)
-    new_it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
+    new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state = new_it.initialize()
     self.assertEqual(str(state), '<num_rounds=0>')
 
@@ -104,10 +107,10 @@ class CanonicalFormUtilsTest(absltest.TestCase):
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
   def test_mnist_training_round_trip(self):
-    it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_mnist_training_example())
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(it)
-    new_it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
+    new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state1 = it.initialize()
     state2 = new_it.initialize()
     self.assertEqual(str(state1), str(state2))
@@ -131,9 +134,9 @@ class CanonicalFormUtilsTest(absltest.TestCase):
 
   def test_get_canonical_form_from_fl_api(self):
     it = test_utils.construct_example_training_comp()
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(it)
-    new_it = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
-    self.assertIsInstance(cf, tff.backends.mapreduce.CanonicalForm)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
+    new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
     self.assertEqual(it.initialize.type_signature,
                      new_it.initialize.type_signature)
     # Notice next type_signatures need not be equal, since we may have appended
@@ -180,41 +183,43 @@ class CanonicalFormUtilsTest(absltest.TestCase):
     self.assertEqual(metrics.loss, alt_metrics.loss)
 
 
-INIT_TYPE = tff.FederatedType(tf.float32, tff.SERVER)
+INIT_TYPE = computation_types.FederatedType(tf.float32, placements.SERVER)
 S1_TYPE = INIT_TYPE
-C1_TYPE = tff.FederatedType(tf.float32, tff.CLIENTS)
-S6_TYPE = tff.FederatedType(tf.float64, tff.SERVER)
-S7_TYPE = tff.FederatedType(tf.bool, tff.SERVER)
-C6_TYPE = tff.FederatedType(tf.int64, tff.CLIENTS)
-S2_TYPE = tff.FederatedType([tf.float32], tff.SERVER)
-C2_TYPE = tff.FederatedType(S2_TYPE.member, tff.CLIENTS)
-C5_TYPE = tff.FederatedType([tf.float64], tff.CLIENTS)
-ZERO_TYPE = tff.TensorType(tf.int64)
-ACCUMULATE_TYPE = tff.FunctionType([ZERO_TYPE, C5_TYPE.member], ZERO_TYPE)
-MERGE_TYPE = tff.FunctionType([ZERO_TYPE, ZERO_TYPE], ZERO_TYPE)
-REPORT_TYPE = tff.FunctionType(ZERO_TYPE, tf.int64)
-S3_TYPE = tff.FederatedType(REPORT_TYPE.result, tff.SERVER)
+C1_TYPE = computation_types.FederatedType(tf.float32, placements.CLIENTS)
+S6_TYPE = computation_types.FederatedType(tf.float64, placements.SERVER)
+S7_TYPE = computation_types.FederatedType(tf.bool, placements.SERVER)
+C6_TYPE = computation_types.FederatedType(tf.int64, placements.CLIENTS)
+S2_TYPE = computation_types.FederatedType([tf.float32], placements.SERVER)
+C2_TYPE = computation_types.FederatedType(S2_TYPE.member, placements.CLIENTS)
+C5_TYPE = computation_types.FederatedType([tf.float64], placements.CLIENTS)
+ZERO_TYPE = computation_types.TensorType(tf.int64)
+ACCUMULATE_TYPE = computation_types.FunctionType([ZERO_TYPE, C5_TYPE.member],
+                                                 ZERO_TYPE)
+MERGE_TYPE = computation_types.FunctionType([ZERO_TYPE, ZERO_TYPE], ZERO_TYPE)
+REPORT_TYPE = computation_types.FunctionType(ZERO_TYPE, tf.int64)
+S3_TYPE = computation_types.FederatedType(REPORT_TYPE.result, placements.SERVER)
 
 
 def _create_next_type_with_s1_type(x):
-  param_type = tff.NamedTupleType([x, C1_TYPE])
-  result_type = tff.NamedTupleType([S6_TYPE, S7_TYPE, C6_TYPE])
-  return tff.FunctionType(param_type, result_type)
+  param_type = computation_types.NamedTupleType([x, C1_TYPE])
+  result_type = computation_types.NamedTupleType([S6_TYPE, S7_TYPE, C6_TYPE])
+  return computation_types.FunctionType(param_type, result_type)
 
 
 def _create_before_broadcast_type_with_s1_type(x):
-  return tff.FunctionType(tff.NamedTupleType([x, C1_TYPE]), S2_TYPE)
+  return computation_types.FunctionType(
+      computation_types.NamedTupleType([x, C1_TYPE]), S2_TYPE)
 
 
 def _create_before_aggregate_with_c2_type(x):
-  return tff.FunctionType(
+  return computation_types.FunctionType(
       [[S1_TYPE, C1_TYPE], x],
       [C5_TYPE, ZERO_TYPE, ACCUMULATE_TYPE, MERGE_TYPE, REPORT_TYPE])
 
 
 def _create_after_aggregate_with_s3_type(x):
-  return tff.FunctionType([[[S1_TYPE, C1_TYPE], C2_TYPE], x],
-                          [S6_TYPE, S7_TYPE, C6_TYPE])
+  return computation_types.FunctionType([[[S1_TYPE, C1_TYPE], C2_TYPE], x],
+                                        [S6_TYPE, S7_TYPE, C6_TYPE])
 
 
 class TypeCheckTest(absltest.TestCase):
@@ -225,9 +230,10 @@ class TypeCheckTest(absltest.TestCase):
 
   def test_init_passes_with_float_at_server(self):
     cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
-        tff.FederatedType(tf.float32, tff.SERVER))
-    self.assertIsInstance(cf_types['initialize_type'], tff.FederatedType)
-    self.assertEqual(cf_types['initialize_type'].placement, tff.SERVER)
+        computation_types.FederatedType(tf.float32, placements.SERVER))
+    self.assertIsInstance(cf_types['initialize_type'],
+                          computation_types.FederatedType)
+    self.assertEqual(cf_types['initialize_type'].placement, placements.SERVER)
 
   def test_next_succeeds_match_with_init_type(self):
     cf_types = {'initialize_type': INIT_TYPE}
@@ -244,7 +250,7 @@ class TypeCheckTest(absltest.TestCase):
   def test_next_fails_mismatch_with_init_type(self):
     cf_types = {'initialize_type': INIT_TYPE}
     next_type = _create_next_type_with_s1_type(
-        tff.FederatedType(tf.int32, tff.SERVER))
+        computation_types.FederatedType(tf.int32, placements.SERVER))
     with self.assertRaisesRegex(TypeError, 'next'):
       canonical_form_utils.pack_next_comp_type_signature(next_type, cf_types)
 
@@ -259,10 +265,12 @@ class TypeCheckTest(absltest.TestCase):
         canonical_form_utils.check_and_pack_before_broadcast_type_signature(
             good_before_broadcast_type, cf_types))
     # Checking contents of the returned dict.
-    self.assertEqual(packed_types['s2_type'],
-                     tff.FederatedType(C2_TYPE.member, tff.SERVER))
-    self.assertEqual(packed_types['prepare_type'],
-                     tff.FunctionType(S1_TYPE.member, S2_TYPE.member))
+    self.assertEqual(
+        packed_types['s2_type'],
+        computation_types.FederatedType(C2_TYPE.member, placements.SERVER))
+    self.assertEqual(
+        packed_types['prepare_type'],
+        computation_types.FunctionType(S1_TYPE.member, S2_TYPE.member))
 
   def test_before_broadcast_fails_mismatch_with_next_type(self):
     cf_types = {'initialize_type': INIT_TYPE}
@@ -270,7 +278,7 @@ class TypeCheckTest(absltest.TestCase):
     cf_types = canonical_form_utils.pack_next_comp_type_signature(
         next_type, cf_types)
     bad_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        tff.FederatedType(tf.int32, tff.SERVER))
+        computation_types.FederatedType(tf.int32, placements.SERVER))
     with self.assertRaisesRegex(TypeError, 'before_broadcast'):
       canonical_form_utils.check_and_pack_before_broadcast_type_signature(
           bad_before_broadcast_type, cf_types)
@@ -308,13 +316,14 @@ class TypeCheckTest(absltest.TestCase):
         canonical_form_utils.check_and_pack_before_broadcast_type_signature(
             good_before_broadcast_type, cf_types))
     bad_before_aggregate_type = _create_before_aggregate_with_c2_type(
-        tff.FederatedType(tf.int32, tff.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
     with self.assertRaisesRegex(TypeError, 'before_aggregate'):
       canonical_form_utils.check_and_pack_before_aggregate_type_signature(
           bad_before_aggregate_type, cf_types)
 
   def test_after_aggregate_succeeds_and_packs(self):
-    good_init_type = tff.FederatedType(tf.float32, tff.SERVER)
+    good_init_type = computation_types.FederatedType(tf.float32,
+                                                     placements.SERVER)
     cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
         good_init_type)
     next_type = _create_next_type_with_s1_type(S1_TYPE)
@@ -336,23 +345,26 @@ class TypeCheckTest(absltest.TestCase):
     # Checking contents of the returned dict.
     self.assertEqual(
         packed_types['s4_type'],
-        tff.FederatedType([S1_TYPE.member, S3_TYPE.member], tff.SERVER))
+        computation_types.FederatedType([S1_TYPE.member, S3_TYPE.member],
+                                        placements.SERVER))
     self.assertEqual(
         packed_types['c3_type'],
-        tff.FederatedType([C1_TYPE.member, C2_TYPE.member], tff.CLIENTS))
+        computation_types.FederatedType([C1_TYPE.member, C2_TYPE.member],
+                                        placements.CLIENTS))
     self.assertEqual(
         packed_types['update_type'],
-        tff.FunctionType(packed_types['s4_type'].member,
-                         packed_types['s5_type'].member))
+        computation_types.FunctionType(packed_types['s4_type'].member,
+                                       packed_types['s5_type'].member))
 
   def test_after_aggregate_raises_mismatch_with_before_aggregate(self):
-    good_init_type = tff.FederatedType(tf.float32, tff.SERVER)
+    good_init_type = computation_types.FederatedType(tf.float32,
+                                                     placements.SERVER)
     cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
         good_init_type)
     next_type = _create_next_type_with_s1_type(
-        tff.FederatedType(tf.float32, tff.SERVER))
+        computation_types.FederatedType(tf.float32, placements.SERVER))
     good_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        tff.FederatedType(tf.float32, tff.SERVER))
+        computation_types.FederatedType(tf.float32, placements.SERVER))
     cf_types = canonical_form_utils.pack_next_comp_type_signature(
         next_type, cf_types)
     cf_types = (
@@ -363,7 +375,7 @@ class TypeCheckTest(absltest.TestCase):
         canonical_form_utils.check_and_pack_before_aggregate_type_signature(
             good_before_aggregate_type, cf_types))
     bad_after_aggregate_type = _create_after_aggregate_with_s3_type(
-        tff.FederatedType(tf.int32, tff.SERVER))
+        computation_types.FederatedType(tf.int32, placements.SERVER))
 
     with self.assertRaisesRegex(TypeError, 'after_aggregate'):
       canonical_form_utils.check_and_pack_after_aggregate_type_signature(
