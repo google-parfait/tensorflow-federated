@@ -23,10 +23,10 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_utils
-from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.utils import function_utils
 
 
 def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
