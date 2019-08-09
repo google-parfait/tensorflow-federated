@@ -118,7 +118,7 @@ class FakeUserData(object):
     }
 
     def parse_example(e):
-      feature_dict = tf.parse_single_example(serialized=e, features=features)
+      feature_dict = tf.io.parse_single_example(serialized=e, features=features)
       return tuple(feature_dict[k] for k in sorted(six.iterkeys(feature_dict)))
 
     return tf.data.TFRecordDataset(client_path).map(parse_example)
