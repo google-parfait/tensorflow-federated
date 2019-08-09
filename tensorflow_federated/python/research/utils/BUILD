@@ -4,16 +4,22 @@ licenses(["notice"])  # Apache 2.0
 
 py_library(
     name = "utils",
-    srcs = ["utils.py"],
+    srcs = ["__init__.py"],
+    deps = [":utils_impl"],
+)
+
+py_library(
+    name = "utils_impl",
+    srcs = ["utils_impl.py"],
     srcs_version = "PY3",
 )
 
 py_test(
-    name = "utils_test",
-    srcs = ["utils_test.py"],
+    name = "utils_impl_test",
+    srcs = ["utils_impl_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":utils"],
+    deps = [":utils_impl"],
 )
 
 py_library(

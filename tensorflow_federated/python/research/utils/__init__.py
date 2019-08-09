@@ -25,14 +25,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.research.utils.utils import atomic_write_to_csv
-from tensorflow_federated.python.research.utils.utils import define_optimizer_flags
-from tensorflow_federated.python.research.utils.utils import get_optimizer_from_flags
-from tensorflow_federated.python.research.utils.utils import iter_grids
+from tensorflow_federated.python.research.utils.utils_impl import atomic_write_to_csv
+from tensorflow_federated.python.research.utils.utils_impl import define_optimizer_flags
+from tensorflow_federated.python.research.utils.utils_impl import get_optimizer_from_flags
+from tensorflow_federated.python.research.utils.utils_impl import iter_grid
 
 # Used by doc generation script.
 _allowed_symbols = [
-    "iter_grids",
+    "iter_grid",
     "atomic_write_to_csv",
     "define_optimizer_flags",
     "get_optimizer_from_flags",

@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.utils import utils
+from tensorflow_federated.python.research.utils import utils_impl as utils
 
 FLAGS = flags.FLAGS
 
