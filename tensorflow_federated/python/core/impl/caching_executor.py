@@ -18,6 +18,7 @@ import asyncio
 import collections
 import cachetools
 import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -76,7 +77,11 @@ def _get_hashable_key(value, type_spec):
   elif isinstance(value, np.ndarray):
     return '<dtype={},shape={},items={}>'.format(value.dtype, value.shape,
                                                  value.flatten())
-  elif isinstance(value, collections.Hashable):
+  elif (isinstance(value, collections.Hashable) and
+        not isinstance(value, (tf.Tensor, tf.Variable))):
+    # TODO(b/139200385): Currently Tensor and Variable returns True for
+    #   `isinstance(value, collections.Hashable)` even when it's not hashable.
+    #   Hence this workaround.
     return value
   else:
     return HashableWrapper(value)
