@@ -39,6 +39,13 @@ def _make_executor_and_tracer_for_test(support_lambdas=False):
   return ex, tracer
 
 
+def _tensor_to_id(iterable):
+  # Tensor is not hashable in TF 2.0 so we hash it using id().
+  return [
+      item if not isinstance(item, tf.Tensor) else id(item) for item in iterable
+  ]
+
+
 class CachingExecutorTest(absltest.TestCase):
 
   def test_with_integer_constant(self):
@@ -58,7 +65,7 @@ class CachingExecutorTest(absltest.TestCase):
                       ('compute', 1, c1)]
     self.assertLen(tracer.trace, len(expected_trace))
     for x, y in zip(tracer.trace, expected_trace):
-      self.assertCountEqual(x, y)
+      self.assertCountEqual(_tensor_to_id(x), _tensor_to_id(y))
 
   def test_with_no_arg_tf_computation(self):
     ex, tracer = _make_executor_and_tracer_for_test()
@@ -92,7 +99,7 @@ class CachingExecutorTest(absltest.TestCase):
                       ('compute', 2, c4)]
     self.assertLen(tracer.trace, len(expected_trace))
     for x, y in zip(tracer.trace, expected_trace):
-      self.assertCountEqual(x, y)
+      self.assertCountEqual(_tensor_to_id(x), _tensor_to_id(y))
 
   def test_with_one_arg_tf_computation(self):
     ex, tracer = _make_executor_and_tracer_for_test()
@@ -124,7 +131,7 @@ class CachingExecutorTest(absltest.TestCase):
     ]
     self.assertLen(tracer.trace, len(expected_trace))
     for x, y in zip(tracer.trace, expected_trace):
-      self.assertCountEqual(x, y)
+      self.assertCountEqual(_tensor_to_id(x), _tensor_to_id(y))
 
   def test_with_tuple_of_unnamed_elements(self):
     ex, _ = _make_executor_and_tracer_for_test()
