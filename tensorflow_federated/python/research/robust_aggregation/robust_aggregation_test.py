@@ -77,11 +77,13 @@ def get_model_fn():
 
 class DummyClientComputation(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for example.
+  
   Designed to mimic the class `ClientFedAvg` from federated_averaging.py
   """
 
   def __init__(self, model, client_weight_fn=None):
     """Creates the client computation for Federated Averaging.
+    
     Args:
       model: A `tff.learning.TrainableModel`.
       client_weight_fn: Optional argument is ignored
@@ -102,13 +104,13 @@ class DummyClientComputation(optimizer_utils.ClientDeltaFn):
 
     @tf.function
     def reduce_fn_num_examples(num_examples_sum, batch):
-      """Count number of examples"""
+      """Count number of examples."""
       num_examples_in_batch = tf.shape(batch['x'])[0]
       return num_examples_sum + num_examples_in_batch
 
     @tf.function
     def reduce_fn_dataset_mean(sum_vector, batch):
-      """Sum all the examples in the local dataset"""
+      """Sum all the examples in the local dataset."""
       sum_batch = tf.reshape(tf.reduce_sum(batch['x'], [0]), (-1, 1))
       return sum_vector + sum_batch
 
@@ -140,7 +142,9 @@ class DummyClientComputation(optimizer_utils.ClientDeltaFn):
 
 
 def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
-  """ Analogue of `build_federated_averaging_process`, but with
+  """Build a test FedAvg process with a dummy client computation.
+  
+  Analogue of `build_federated_averaging_process`, but with
   client_fed_avg replaced by the dummy mean computation defined above.
   """
 
@@ -151,7 +155,8 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
 
   # Build robust aggregation function
   with tf.Graph().as_default():
-    # workaround since keras automatically appends "_n" to the nth call of `model_fn`
+    # workaround since keras automatically appends "_n" to the nth call of
+    # `model_fn`
     model_type = tff.framework.type_from_tensors(model_fn().weights.trainable)
 
     stateful_delta_aggregate_fn = build_stateless_robust_aggregation(

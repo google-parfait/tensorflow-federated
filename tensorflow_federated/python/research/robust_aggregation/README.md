@@ -14,6 +14,7 @@ It works as a drop-in replacement to `tff.learning.build_federated_averaging_pro
 for vanilla FedAvg. It can be used in the 
 [TFF EMIST tutorial](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
 as follows:
+
 ```
 from tensorflow_federated.python.research.robust_aggregation import build_robust_federated_aggregation_process
 # dataset setup, model setup, etc. from tutorial

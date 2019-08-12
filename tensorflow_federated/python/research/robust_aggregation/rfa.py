@@ -30,6 +30,7 @@ def build_stateless_robust_aggregation(model_type,
                                        num_communication_passes=5,
                                        tolerance=1e-6):
   """ Create TFF function for robust aggregation.
+  
   The robust aggregate is an approximate geometric median
   computed via the smoothed Weiszfeld algorithm.
 
@@ -44,7 +45,7 @@ def build_stateless_robust_aggregation(model_type,
     An instance of `tff.utils.StatefulAggregateFn` which implements a
     (stateless) robust aggregate.
   """
-  pytype_check.check_type(num_communication_passes, int)
+  py_typecheck.check_type(num_communication_passes, int)
   if num_communication_passes < 1:
     raise ValueError('Aggregation requires num_communication_passes >= 1')
   # TODO: client weights have been hardcoded as float32
