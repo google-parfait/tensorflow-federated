@@ -54,7 +54,7 @@ class TracingExecutorTest(absltest.TestCase):
 
     self.assertLen(ex.trace, len(expected_trace))
     for x, y in zip(ex.trace, expected_trace):
-      self.assertCountEqual(x, y)
+      self.assertEqual(x, y)
 
 
 if __name__ == '__main__':
