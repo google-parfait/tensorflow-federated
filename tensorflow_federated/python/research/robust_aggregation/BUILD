@@ -7,13 +7,13 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
-        ":rfa",
+        ":robust_federated_aggregation",
     ],
 )
 
 py_library(
-    name = "rfa",
-    srcs = ["rfa.py"],
+    name = "robust_federated_aggregation",
+    srcs = ["robust_federated_aggregation.py"],
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow_federated",
@@ -22,11 +22,11 @@ py_library(
 
 
 py_test(
-    name = "robust_aggregation_test",
+    name = "robust_federated_aggregation_test",
     size = "large",
-    srcs = ["robust_aggregation_test.py"],
+    srcs = ["robust_federated_aggregation_test.py"],
     deps = [
-        ":rfa",
+        ":robust_federated_aggregation",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",

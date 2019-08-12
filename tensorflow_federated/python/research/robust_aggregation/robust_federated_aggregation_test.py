@@ -28,7 +28,8 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-from tensorflow_federated.python.research.robust_aggregation import rfa
+from tensorflow_federated.python.research.robust_aggregation import (
+    robust_federated_aggregation as rfa)
 
 dim = 500
 num_data_points = 10
@@ -159,7 +160,7 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
     # `model_fn`
     model_type = tff.framework.type_from_tensors(model_fn().weights.trainable)
 
-    stateful_delta_aggregate_fn = build_stateless_robust_aggregation(
+    stateful_delta_aggregate_fn = rfa.build_stateless_robust_aggregation(
         model_type, num_communication_passes=num_passes, tolerance=tolerance)
 
     stateful_model_broadcast_fn = optimizer_utils.build_stateless_broadcaster()
