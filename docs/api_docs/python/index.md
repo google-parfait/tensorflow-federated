@@ -1,5 +1,7 @@
 # All symbols in TensorFlow Federated
 
+## Primary symbols
+
 *   <a href="./tff.md"><code>tff</code></a>
 *   <a href="./tff/Computation.md"><code>tff.Computation</code></a>
 *   <a href="./tff/FederatedType.md"><code>tff.FederatedType</code></a>
