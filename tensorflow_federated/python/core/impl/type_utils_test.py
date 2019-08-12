@@ -792,16 +792,6 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
   def test_is_sum_compatible_negative_examples(self, type_spec):
     self.assertFalse(type_utils.is_sum_compatible(type_spec))
 
-  def test_check_federated_value_placement(self):
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    def _(x):
-      type_utils.check_federated_value_placement(x, placements.CLIENTS)
-      with self.assertRaises(TypeError):
-        type_utils.check_federated_value_placement(x, placements.SERVER)
-      return x
-
   @parameterized.parameters(tf.float32, tf.float64, ([('x', tf.float32),
                                                       ('y', tf.float64)],),
                             computation_types.FederatedType(

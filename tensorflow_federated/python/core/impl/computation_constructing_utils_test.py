@@ -36,6 +36,7 @@ from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl import value_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -434,10 +435,10 @@ class CreateFederatedGetattrCallTest(parameterized.TestCase):
                           computation_types.FederatedType)
     self.assertEqual(str(name_a.type_signature.member), 'int32')
     self.assertEqual(str(name_b.type_signature.member), 'bool')
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(name_a, None, context_stack_impl.context_stack),
         placement)
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(name_b, None, context_stack_impl.context_stack),
         placement)
     with self.assertRaisesRegex(ValueError, 'has no element of name c'):
@@ -470,10 +471,10 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
     self.assertIsInstance(idx_1.type_signature, computation_types.FederatedType)
     self.assertEqual(str(idx_0.type_signature.member), 'int32')
     self.assertEqual(str(idx_1.type_signature.member), 'bool')
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(idx_0, None, context_stack_impl.context_stack),
         placement)
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(idx_1, None, context_stack_impl.context_stack),
         placement)
     flipped = computation_constructing_utils.create_federated_getitem_call(
@@ -481,7 +482,7 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
     self.assertIsInstance(flipped.type_signature,
                           computation_types.FederatedType)
     self.assertEqual(str(flipped.type_signature.member), '<b=bool,a=int32>')
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(flipped, None, context_stack_impl.context_stack),
         placement)
 
@@ -502,10 +503,10 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
                           computation_types.FederatedType)
     self.assertEqual(str(unnamed_idx_0.type_signature.member), 'int32')
     self.assertEqual(str(unnamed_idx_1.type_signature.member), 'bool')
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(unnamed_idx_0, None,
                             context_stack_impl.context_stack), placement)
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(unnamed_idx_1, None,
                             context_stack_impl.context_stack), placement)
     unnamed_flipped = computation_constructing_utils.create_federated_getitem_call(
@@ -513,7 +514,7 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
     self.assertIsInstance(unnamed_flipped.type_signature,
                           computation_types.FederatedType)
     self.assertEqual(str(unnamed_flipped.type_signature.member), '<bool,int32>')
-    type_utils.check_federated_value_placement(
+    value_utils.check_federated_value_placement(
         value_impl.to_value(unnamed_flipped, None,
                             context_stack_impl.context_stack), placement)
 

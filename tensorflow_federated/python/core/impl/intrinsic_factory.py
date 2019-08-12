@@ -64,8 +64,8 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be aggregated')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be aggregated')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
     py_typecheck.check_type(zero, value_base.Value)
@@ -127,8 +127,8 @@ class IntrinsicFactory(object):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         arg = self.federated_zip(arg)
-    type_utils.check_federated_value_placement(arg, placements.SERVER,
-                                               'the argument')
+    value_utils.check_federated_value_placement(arg, placements.SERVER,
+                                                'the argument')
     if not arg.type_signature.all_equal:
       raise TypeError('The argument should be equal at all locations.')
 
@@ -157,8 +157,8 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.SERVER,
-                                               'value to be broadcasted')
+    value_utils.check_federated_value_placement(value, placements.SERVER,
+                                                'value to be broadcasted')
 
     if not value.type_signature.all_equal:
       raise TypeError('The broadcasted value should be equal at all locations.')
@@ -180,8 +180,8 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be collected')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be collected')
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = computation_constructing_utils.create_federated_collect(value)
@@ -211,8 +211,8 @@ class IntrinsicFactory(object):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         arg = self.federated_zip(arg)
-    type_utils.check_federated_value_placement(arg, placements.CLIENTS,
-                                               'value to be mapped')
+    value_utils.check_federated_value_placement(arg, placements.CLIENTS,
+                                                'value to be mapped')
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
@@ -259,8 +259,8 @@ class IntrinsicFactory(object):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         arg = self.federated_zip(arg)
-    type_utils.check_federated_value_placement(arg, placements.CLIENTS,
-                                               'value to be mapped')
+    value_utils.check_federated_value_placement(arg, placements.CLIENTS,
+                                                'value to be mapped')
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
@@ -307,8 +307,8 @@ class IntrinsicFactory(object):
     # variable.
 
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be averaged')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be averaged')
     if not type_utils.is_average_compatible(value.type_signature):
       raise TypeError(
           'The value type {} is not compatible with the average operator.'
@@ -316,8 +316,8 @@ class IntrinsicFactory(object):
 
     if weight is not None:
       weight = value_impl.to_value(weight, None, self._context_stack)
-      type_utils.check_federated_value_placement(weight, placements.CLIENTS,
-                                                 'weight to use in averaging')
+      value_utils.check_federated_value_placement(weight, placements.CLIENTS,
+                                                  'weight to use in averaging')
       py_typecheck.check_type(weight.type_signature.member,
                               computation_types.TensorType)
       if weight.type_signature.member.shape.ndims != 0:
@@ -354,8 +354,8 @@ class IntrinsicFactory(object):
     # at this level of the API should probably be optional. TBD.
 
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be reduced')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be reduced')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
     py_typecheck.check_type(zero, value_base.Value)
@@ -392,8 +392,8 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be summed')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be summed')
 
     if not type_utils.is_sum_compatible(value.type_signature):
       raise TypeError(

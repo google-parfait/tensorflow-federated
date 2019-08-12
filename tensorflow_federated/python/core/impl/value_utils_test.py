@@ -22,7 +22,9 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_context
@@ -50,6 +52,16 @@ class ValueUtilsTest(parameterized.TestCase):
         value_impl.ValueImpl.get_comp(curried))
     self.assertEqual(comp.compact_representation(),
                      '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
+
+  def test_check_federated_value_placement(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def _(x):
+      value_utils.check_federated_value_placement(x, placements.CLIENTS)
+      with self.assertRaises(TypeError):
+        value_utils.check_federated_value_placement(x, placements.SERVER)
+      return x
 
 
 if __name__ == '__main__':

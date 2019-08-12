@@ -881,7 +881,7 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
         'All selected arguments should be of federated type; your selections '
         'have resulted in the list of types {}'.format(type_list))
   placement = type_list[0].placement
-  if not all(x.placement == placement for x in type_list):
+  if not all(x.placement is placement for x in type_list):
     raise ValueError(
         'In order to zip the argument to the lower-level lambda together, all '
         'selected arguments should be at the same placement. Your selections '

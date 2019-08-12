@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
+
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -56,3 +58,26 @@ def get_curried(fn):
     result = building_blocks.Lambda(ref.name, ref.type_signature, result)
   return value_impl.ValueImpl(result,
                               value_impl.ValueImpl.get_context_stack(fn))
+
+
+def check_federated_value_placement(value, placement, label=None):
+  """Checks that `value` is a federated value placed at `placement`.
+
+  Args:
+    value: The value to check, an instance of value_base.Value.
+    placement: The expected placement.
+    label: An optional string label that describes `value`.
+
+  Raises:
+    TypeError: if `value` is not a value_base.Value of a federated type with
+      the expected placement `placement`.
+  """
+  py_typecheck.check_type(value, value_base.Value)
+  py_typecheck.check_type(value.type_signature, computation_types.FederatedType)
+  if label is not None:
+    py_typecheck.check_type(label, six.string_types)
+  if value.type_signature.placement is not placement:
+    raise TypeError('The {} should be placed at {}, but it '
+                    'is placed at {}.'.format(
+                        label if label else 'value', str(placement),
+                        str(value.type_signature.placement)))
