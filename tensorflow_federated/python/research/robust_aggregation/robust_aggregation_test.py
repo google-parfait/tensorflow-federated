@@ -28,7 +28,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-from rfa import build_stateless_robust_aggregation
+from tensorflow_federated.python.research.robust_aggregation import rfa
 
 dim = 500
 num_data_points = 10
