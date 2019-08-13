@@ -62,7 +62,7 @@ RUN ${PIP} --no-cache-dir install \
     attrs~=18.2 \
     cachetools~=3.1.1 \
     enum34~=1.1 \
-    grpcio~=1.8.0 \
+    grpcio~=1.22.0 \
     h5py~=2.6 \
     matplotlib~=3.0 \
     numpy~=1.14 \
