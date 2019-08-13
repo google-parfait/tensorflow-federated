@@ -24,6 +24,10 @@ import numpy as np
 import tensorflow as tf
 
 import tensorflow_federated as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.backends.mapreduce import canonical_form
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def get_temperature_sensor_example():
@@ -35,26 +39,29 @@ def get_temperature_sensor_example():
   Returns:
     An instance of `canonical_form.CanonicalForm`.
   """
-  @tff.tf_computation
+
+  @computations.tf_computation
   def initialize():
     return {'num_rounds': tf.constant(0)}
 
   # The state of the server is a singleton tuple containing just the integer
   # counter `num_rounds`.
-  server_state_type = tff.NamedTupleType([('num_rounds', tf.int32)])
+  server_state_type = computation_types.NamedTupleType([('num_rounds', tf.int32)
+                                                       ])
 
-  @tff.tf_computation(server_state_type)
+  @computations.tf_computation(server_state_type)
   def prepare(state):
     return {'max_temperature': 32.0 + tf.cast(state.num_rounds, tf. float32)}
 
   # The initial state of the client is a singleton tuple containing a single
   # float `max_temperature`, which is the threshold received from the server.
-  client_state_type = tff.NamedTupleType([('max_temperature', tf.float32)])
+  client_state_type = computation_types.NamedTupleType([('max_temperature',
+                                                         tf.float32)])
 
   # The client data is a sequence of floats.
-  client_data_type = tff.SequenceType(tf.float32)
+  client_data_type = computation_types.SequenceType(tf.float32)
 
-  @tff.tf_computation(client_data_type, client_state_type)
+  @computations.tf_computation(client_data_type, client_state_type)
   def work(data, state):
     reduce_result = data.reduce(
         {'num': np.int32(0), 'max': np.float32(-459.67)},
@@ -63,33 +70,33 @@ def get_temperature_sensor_example():
             {'num_readings': reduce_result['num']})
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
-  client_update_type = tff.NamedTupleType([('is_over', tf.bool)])
+  client_update_type = computation_types.NamedTupleType([('is_over', tf.bool)])
 
   # The accumulator for client updates is a pair of counters, one for the
   # number of clients over threshold, and the other for the total number of
   # client updates processed so far.
-  accumulator_type = tff.NamedTupleType([
-      ('num_total', tf.int32), ('num_over', tf.int32)])
+  accumulator_type = computation_types.NamedTupleType([('num_total', tf.int32),
+                                                       ('num_over', tf.int32)])
 
-  @tff.tf_computation
+  @computations.tf_computation
   def zero():
     return collections.OrderedDict([
         ('num_total', tf.constant(0)), ('num_over', tf.constant(0))])
 
-  @tff.tf_computation(accumulator_type, client_update_type)
+  @computations.tf_computation(accumulator_type, client_update_type)
   def accumulate(accumulator, update):
     return collections.OrderedDict([
         ('num_total', accumulator.num_total + 1),
         ('num_over',
          accumulator.num_over + tf.cast(update.is_over, tf.int32))])
 
-  @tff.tf_computation(accumulator_type, accumulator_type)
+  @computations.tf_computation(accumulator_type, accumulator_type)
   def merge(accumulator1, accumulator2):
     return collections.OrderedDict([
         ('num_total', accumulator1.num_total + accumulator2.num_total),
         ('num_over', accumulator1.num_over + accumulator2.num_over)])
 
-  @tff.tf_computation(merge.type_signature.result)
+  @computations.tf_computation(merge.type_signature.result)
   def report(accumulator):
     return {'ratio_over_threshold': (
         tf.cast(accumulator['num_over'], tf.float32) /
@@ -97,15 +104,16 @@ def get_temperature_sensor_example():
 
   # The type of the combined update is a singleton tuple containing a float
   # named `ratio_over_threshold`.
-  combined_update_type = tff.NamedTupleType(
-      [('ratio_over_threshold', tf.float32)])
+  combined_update_type = computation_types.NamedTupleType([
+      ('ratio_over_threshold', tf.float32)
+  ])
 
-  @tff.tf_computation(server_state_type, combined_update_type)
+  @computations.tf_computation(server_state_type, combined_update_type)
   def update(state, update):
     return ({'num_rounds': state.num_rounds + 1}, update)
 
-  return tff.backends.mapreduce.CanonicalForm(initialize, prepare, work, zero,
-                                              accumulate, merge, report, update)
+  return canonical_form.CanonicalForm(initialize, prepare, work, zero,
+                                      accumulate, merge, report, update)
 
 
 def get_mnist_training_example():
@@ -119,7 +127,7 @@ def get_mnist_training_example():
       collections.namedtuple('ServerState', 'model num_rounds'))
 
   # Start with a model filled with zeros, and the round counter set to zero.
-  @tff.tf_computation
+  @computations.tf_computation
   def initialize():
     return server_state_nt(
         model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
@@ -133,14 +141,14 @@ def get_mnist_training_example():
 
   # Pass the model to the client, along with a dynamically adjusted learning
   # rate that starts at 0.1 and decays exponentially by a factor of 0.9.
-  @tff.tf_computation(server_state_tff_type)
+  @computations.tf_computation(server_state_tff_type)
   def prepare(state):
     learning_rate = 0.1 * tf.pow(0.9, tf.cast(state.num_rounds, tf.float32))
     return client_state_nt(model=state.model, learning_rate=learning_rate)
 
   batch_nt = collections.namedtuple('Batch', 'x y')
   batch_tff_type = batch_nt(x=(tf.float32, [None, 784]), y=(tf.int32, [None]))
-  dataset_tff_type = tff.SequenceType(batch_tff_type)
+  dataset_tff_type = computation_types.SequenceType(batch_tff_type)
   model_tff_type = model_nt(
       weights=(tf.float32, [784, 10]), bias=(tf.float32, [10]))
   client_state_tff_type = client_state_nt(
@@ -152,7 +160,7 @@ def get_mnist_training_example():
   # Train the model locally, emit the loclaly-trained model and the number of
   # examples as an update, and the average loss and the number of examples as
   # local client stats.
-  @tff.tf_computation(dataset_tff_type, client_state_tff_type)
+  @computations.tf_computation(dataset_tff_type, client_state_tff_type)
   def work(data, state):  # pylint: disable=missing-docstring
     model_vars = model_nt(
         weights=tf.Variable(initial_value=state.model.weights, name='weights'),
@@ -191,7 +199,7 @@ def get_mnist_training_example():
   accumulator_nt = update_nt
 
   # Initialize accumulators for aggregation with zero model and zero examples.
-  @tff.tf_computation
+  @computations.tf_computation
   def zero():
     return accumulator_nt(
         model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
@@ -204,7 +212,7 @@ def get_mnist_training_example():
 
   # We add an update to an accumulator with the update's model multipled by the
   # number of examples, so we can compute a weighted average in the end.
-  @tff.tf_computation(accumulator_tff_type, update_tff_type)
+  @computations.tf_computation(accumulator_tff_type, update_tff_type)
   def accumulate(accumulator, update):
     scaling_factor = tf.cast(update.num_examples, tf.float32)
     scaled_model = tf.nest.map_structure(
@@ -215,7 +223,7 @@ def get_mnist_training_example():
         loss=accumulator.loss + update.loss * scaling_factor)
 
   # Merging accumulators does not involve scaling.
-  @tff.tf_computation(accumulator_tff_type, accumulator_tff_type)
+  @computations.tf_computation(accumulator_tff_type, accumulator_tff_type)
   def merge(accumulator1, accumulator2):
     return accumulator_nt(
         model=tf.nest.map_structure(
@@ -227,7 +235,7 @@ def get_mnist_training_example():
 
   # The result of aggregation is produced by dividing the accumulated model by
   # the total number of examples. Same for loss.
-  @tff.tf_computation(accumulator_tff_type)
+  @computations.tf_computation(accumulator_tff_type)
   def report(accumulator):
     scaling_factor = 1.0 / tf.cast(accumulator.num_examples, tf.float32)
     scaled_model = model_nt(
@@ -243,7 +251,7 @@ def get_mnist_training_example():
 
   # Pass the newly averaged model along with an incremented round counter over
   # to the next round, and output the counters and loss as server metrics.
-  @tff.tf_computation(server_state_tff_type, report_tff_type)
+  @computations.tf_computation(server_state_tff_type, report_tff_type)
   def update(state, report):
     num_rounds = state.num_rounds + 1
     return (
@@ -253,8 +261,8 @@ def get_mnist_training_example():
             num_examples=report.num_examples,
             loss=report.loss))
 
-  return tff.backends.mapreduce.CanonicalForm(initialize, prepare, work, zero,
-                                              accumulate, merge, report, update)
+  return canonical_form.CanonicalForm(initialize, prepare, work, zero,
+                                      accumulate, merge, report, update)
 
 
 def construct_example_training_comp():
@@ -291,5 +299,5 @@ def construct_example_training_comp():
 
 
 def computation_to_building_block(comp):
-  return tff.framework.ComputationBuildingBlock.from_proto(
+  return building_blocks.ComputationBuildingBlock.from_proto(
       comp._computation_proto)  # pylint: disable=protected-access
