@@ -505,8 +505,6 @@ class FederatedComputationsTest(test.TestCase):
       foo(square_drop_y, 10)
 
   def test_randomness_executed_once(self):
-    self.skipTest(
-        'Blocked on executing computations multiple times, b/138579169.')
 
     @tff.tf_computation(tf.int32)
     @tf.function
