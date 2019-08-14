@@ -51,12 +51,9 @@ tutorials and try it out yourself!
 # TODO(b/124800187): Keep in sync with the contents of README.
 
 import sys
-
 import setuptools
 
 DOCLINES = __doc__.split('\n')
-
-_VERSION = '0.7.0'
 
 project_name = 'tensorflow_federated'
 
@@ -65,6 +62,11 @@ if '--project_name' in sys.argv:
   project_name = sys.argv[project_name_idx + 1]
   sys.argv.remove('--project_name')
   sys.argv.pop(project_name_idx)
+
+with open('tensorflow_federated/version.py') as fp:
+  globals_dict = {}
+  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
+  VERSION = globals_dict['__version__']
 
 REQUIRED_PACKAGES = [
     'attrs~=18.2',
@@ -80,7 +82,7 @@ REQUIRED_PACKAGES = [
 
 setuptools.setup(
     name=project_name,
-    version=_VERSION.replace('-', ''),
+    version=VERSION,
     packages=setuptools.find_packages(exclude=('tools')),
     description=DOCLINES[0],
     long_description='\n'.join(DOCLINES[2:]),

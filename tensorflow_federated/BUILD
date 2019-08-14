@@ -4,22 +4,11 @@ licenses(["notice"])  # Apache 2.0
 
 exports_files(["LICENSE"])
 
-config_setting(
-    name = "py2_mode",
-    flag_values = {"@bazel_tools//tools/python:python_version": "PY2"},
-    visibility = [":__subpackages__"],
-)
-
-config_setting(
-    name = "py3_mode",
-    flag_values = {"@bazel_tools//tools/python:python_version": "PY3"},
-    visibility = [":__subpackages__"],
-)
-
 py_library(
     name = "tensorflow_federated",
     srcs = ["__init__.py"],
     deps = [
+        ":version",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -34,4 +23,21 @@ py_library(
         "//tensorflow_federated/python/learning",
         "//tensorflow_federated/python/simulation",
     ],
+)
+
+config_setting(
+    name = "py2_mode",
+    flag_values = {"@bazel_tools//tools/python:python_version": "PY2"},
+    visibility = [":__subpackages__"],
+)
+
+config_setting(
+    name = "py3_mode",
+    flag_values = {"@bazel_tools//tools/python:python_version": "PY3"},
+    visibility = [":__subpackages__"],
+)
+
+py_library(
+    name = "version",
+    srcs = ["version.py"],
 )
