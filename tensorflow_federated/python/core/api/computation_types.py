@@ -86,7 +86,8 @@ class TensorType(Type):
       dtype: An instance of `tf.DType`.
       shape: An optional instance of `tf.TensorShape` or an argument that can be
         passed to its constructor (such as a `list` or a `tuple`), or `None` for
-        the default scalar shape. Unspecified shapes are not supported.
+        the default scalar shape. TensorShapes with unknown rank are not
+        supported.
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -131,7 +132,11 @@ class TensorType(Type):
 
 
 class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
-  """An implementation of `tff.Type` representing named tuple types in TFF."""
+  """An implementation of `tff.Type` representing named tuple types in TFF.
+
+  Elements initialized by name can be accessed as `foo.name`, and otherwise by
+  index, `foo[index]`.
+  """
 
   def __init__(self, elements):
     """Constructs a new instance from the given element types.
@@ -231,7 +236,8 @@ class FunctionType(Type):
 
     Args:
       parameter: A specification of the parameter type, either an instance of
-        `tff.Type` or something convertible to it by `tff.to_type`.
+        `tff.Type` or something convertible to it by `tff.to_type`. Multiple
+        input arguments can be specified as a single `tff.NamedTupleType`.
       result: A specification of the result type, either an instance of
         `tff.Type` or something convertible to it by `tff.to_type`.
     """

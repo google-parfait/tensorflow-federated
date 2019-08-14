@@ -28,6 +28,9 @@ Inherits From: [`Type`](../tff/Type.md)
 
 <!-- Placeholder for "Used in" -->
 
+Elements initialized by name can be accessed as `foo.name`, and otherwise by
+index, `foo[index]`.
+
 <h2 id="__init__"><code>__init__</code></h2>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View

@@ -46,7 +46,8 @@ Constructs a new instance from the given `dtype` and `shape`.
 *   <b>`dtype`</b>: An instance of `tf.DType`.
 *   <b>`shape`</b>: An optional instance of `tf.TensorShape` or an argument that
     can be passed to its constructor (such as a `list` or a `tuple`), or `None`
-    for the default scalar shape. Unspecified shapes are not supported.
+    for the default scalar shape. TensorShapes with unknown rank are not
+    supported.
 
 #### Raises:
 

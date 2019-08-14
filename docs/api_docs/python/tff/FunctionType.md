@@ -46,7 +46,9 @@ Constructs a new instance from the given `parameter` and `result` types.
 *   <b>`parameter`</b>: A specification of the parameter type, either an
     instance of <a href="../tff/Type.md"><code>tff.Type</code></a> or something
     convertible to it by
-    <a href="../tff/to_type.md"><code>tff.to_type</code></a>.
+    <a href="../tff/to_type.md"><code>tff.to_type</code></a>. Multiple input
+    arguments can be specified as a single
+    <a href="../tff/NamedTupleType.md"><code>tff.NamedTupleType</code></a>.
 *   <b>`result`</b>: A specification of the result type, either an instance of
     <a href="../tff/Type.md"><code>tff.Type</code></a> or something convertible
     to it by <a href="../tff/to_type.md"><code>tff.to_type</code></a>.
