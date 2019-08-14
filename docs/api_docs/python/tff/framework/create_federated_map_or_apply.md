@@ -8,7 +8,7 @@
 <table class="tfo-notebook-buttons tfo-api" align="left">
 </table>
 
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py">View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_block_factory.py">View
 source</a>
 
 Creates a called federated map or apply depending on `arg`s placement.

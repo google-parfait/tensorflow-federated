@@ -22,8 +22,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -126,7 +126,7 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
   report_result = building_blocks.Data('data', tf.bool)
   report = building_blocks.Lambda(report_parameter_name, tf.float32,
                                   report_result)
-  return computation_constructing_utils.create_federated_aggregate(
+  return building_block_factory.create_federated_aggregate(
       value, zero, accumulate, merge, report)
 
 
@@ -149,7 +149,7 @@ def create_dummy_called_federated_apply(parameter_name,
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
   arg = building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_apply(fn, arg)
+  return building_block_factory.create_federated_apply(fn, arg)
 
 
 def create_dummy_called_federated_broadcast(value_type=tf.int32):
@@ -165,7 +165,7 @@ def create_dummy_called_federated_broadcast(value_type=tf.int32):
   federated_type = computation_types.FederatedType(value_type,
                                                    placements.SERVER)
   value = building_blocks.Data('data', federated_type)
-  return computation_constructing_utils.create_federated_broadcast(value)
+  return building_block_factory.create_federated_broadcast(value)
 
 
 def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
@@ -186,7 +186,7 @@ def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
   arg = building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_map(fn, arg)
+  return building_block_factory.create_federated_map(fn, arg)
 
 
 def create_dummy_called_federated_map_all_equal(parameter_name,
@@ -209,7 +209,7 @@ def create_dummy_called_federated_map_all_equal(parameter_name,
   arg_type = computation_types.FederatedType(
       parameter_type, placements.CLIENTS, all_equal=True)
   arg = building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_map_all_equal(fn, arg)
+  return building_block_factory.create_federated_map_all_equal(fn, arg)
 
 
 def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
@@ -226,7 +226,7 @@ def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.SequenceType(parameter_type)
   arg = building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_sequence_map(fn, arg)
+  return building_block_factory.create_sequence_map(fn, arg)
 
 
 def create_identity_block(variable_name, comp):

@@ -28,11 +28,11 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -165,8 +165,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
     """
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     tree_analysis.check_has_unique_names(comp)
-    self._name_generator = computation_constructing_utils.unique_name_generator(
-        comp)
+    self._name_generator = building_block_factory.unique_name_generator(comp)
     self._predicate = predicate
     self._unbound_references = get_map_of_unbound_references(comp)
 
@@ -580,7 +579,7 @@ def merge_chained_federated_maps_or_applys(comp):
     TypeError: If types do not match.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  name_generator = computation_constructing_utils.unique_name_generator(comp)
+  name_generator = building_block_factory.unique_name_generator(comp)
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a chained federated map."""
@@ -730,7 +729,7 @@ def merge_tuple_intrinsics(comp, uri):
     raise ValueError(
         'The value of `uri` is expected to be on of {}, found {}'.format(
             expected_uri, uri))
-  name_generator = computation_constructing_utils.unique_name_generator(comp)
+  name_generator = building_block_factory.unique_name_generator(comp)
 
   def _should_transform(comp):
     return (isinstance(comp, building_blocks.Tuple) and comp and
@@ -801,7 +800,7 @@ def merge_tuple_intrinsics(comp, uri):
     """
     del type_signature  # Unused
     values = building_blocks.Tuple(comps)
-    return computation_constructing_utils.create_federated_zip(values)
+    return building_block_factory.create_federated_zip(values)
 
   def _transform_args_with_functional_types(comps, type_signature):
     r"""Transforms a Python `list` of computations with functional types.
@@ -841,7 +840,7 @@ def merge_tuple_intrinsics(comp, uri):
     arg_name = six.next(name_generator)
     arg_ref = building_blocks.Reference(arg_name, arg_type)
     if isinstance(type_signature.parameter, computation_types.NamedTupleType):
-      arg = computation_constructing_utils.create_zip(arg_ref)
+      arg = building_block_factory.create_zip(arg_ref)
     else:
       arg = arg_ref
     elements = []
@@ -901,10 +900,9 @@ def merge_tuple_intrinsics(comp, uri):
     intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
     intrinsic = building_blocks.Intrinsic(uri, intrinsic_type)
     call = building_blocks.Call(intrinsic, arg)
-    tup = computation_constructing_utils.create_federated_unzip(call)
+    tup = building_block_factory.create_federated_unzip(call)
     names = [name for name, _ in named_comps]
-    transformed_comp = computation_constructing_utils.create_named_tuple(
-        tup, names)
+    transformed_comp = building_block_factory.create_named_tuple(tup, names)
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
@@ -1164,8 +1162,7 @@ def uniquify_compiled_computation_names(comp):
     TypeError: If types do not match.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  name_generator = computation_constructing_utils.unique_name_generator(
-      None, prefix='')
+  name_generator = building_block_factory.unique_name_generator(None, prefix='')
 
   def _should_transform(comp):
     return isinstance(comp, building_blocks.CompiledComputation)
@@ -1194,7 +1191,7 @@ def uniquify_reference_names(comp):
       are guaranteed to be unique.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  name_generator = computation_constructing_utils.unique_name_generator(None)
+  name_generator = building_block_factory.unique_name_generator(None)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""
@@ -1384,7 +1381,7 @@ def insert_called_tf_identity_at_leaves(comp):
             type_utils.is_tensorflow_compatible_type(comp.type_signature))
 
   def _decorate(comp):
-    identity_function = computation_constructing_utils.create_compiled_identity(
+    identity_function = building_block_factory.create_compiled_identity(
         comp.type_signature)
     return building_blocks.Call(identity_function, comp)
 
@@ -1477,7 +1474,7 @@ def unwrap_placement(comp):
 
   tree_analysis.check_has_single_placement(comp, single_placement)
 
-  name_generator = computation_constructing_utils.unique_name_generator(comp)
+  name_generator = building_block_factory.unique_name_generator(comp)
 
   all_unbound_references = get_map_of_unbound_references(comp)
   root_unbound_references = all_unbound_references[comp]
@@ -1660,7 +1657,7 @@ def unwrap_placement(comp):
   placement_removed, _ = _remove_placement(unbound_variable_renamed)
 
   if unbound_reference_name is None:
-    return computation_constructing_utils.create_federated_value(
+    return building_block_factory.create_federated_value(
         placement_removed, single_placement), True
 
   ref_to_fed_arg = building_blocks.Reference(unbound_reference_name,
@@ -1669,7 +1666,7 @@ def unwrap_placement(comp):
   lambda_wrapping_placement_removal = building_blocks.Lambda(
       new_reference_name, unbound_reference_type.member, placement_removed)
 
-  called_intrinsic = computation_constructing_utils.create_federated_map_or_apply(
+  called_intrinsic = building_block_factory.create_federated_map_or_apply(
       lambda_wrapping_placement_removal, ref_to_fed_arg)
 
   return called_intrinsic, True

@@ -31,13 +31,13 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.utils import dtype_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
@@ -96,7 +96,7 @@ class ValueImpl(value_base.Value):
         and isinstance(self._comp.type_signature.member,
                        computation_types.NamedTupleType)):
       return ValueImpl(
-          computation_constructing_utils.create_federated_getattr_call(
+          building_block_factory.create_federated_getattr_call(
               self._comp, name), self._context_stack)
     elif not isinstance(self._comp.type_signature,
                         computation_types.NamedTupleType):
@@ -119,7 +119,7 @@ class ValueImpl(value_base.Value):
                   computation_types.FederatedType) and isinstance(
                       self._comp.type_signature.member,
                       computation_types.NamedTupleType):
-      new_comp = computation_constructing_utils.create_federated_setattr_call(
+      new_comp = building_block_factory.create_federated_setattr_call(
           self._comp, name, value_comp)
       super(ValueImpl, self).__setattr__('_comp', new_comp)
       return
@@ -129,7 +129,7 @@ class ValueImpl(value_base.Value):
           'Operator setattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
               str(self._comp.type_signature)))
-    named_tuple_setattr_lambda = computation_constructing_utils.create_named_tuple_setattr_lambda(
+    named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
     super(ValueImpl, self).__setattr__('_comp', new_comp)
@@ -151,8 +151,8 @@ class ValueImpl(value_base.Value):
         and isinstance(self._comp.type_signature.member,
                        computation_types.NamedTupleType)):
       return ValueImpl(
-          computation_constructing_utils.create_federated_getitem_call(
-              self._comp, key), self._context_stack)
+          building_block_factory.create_federated_getitem_call(self._comp, key),
+          self._context_stack)
     if not isinstance(self._comp.type_signature,
                       computation_types.NamedTupleType):
       raise TypeError(

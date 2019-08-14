@@ -26,12 +26,12 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -163,17 +163,17 @@ def get_intrinsic_bodies(context_stack):
 
   def federated_mean(arg):
     one = value_impl.ValueImpl(
-        computation_constructing_utils.create_generic_constant(
-            arg.type_signature, 1), context_stack)
+        building_block_factory.create_generic_constant(arg.type_signature, 1),
+        context_stack)
     arg = value_impl.to_value([arg, one], None, context_stack)
     return federated_weighted_mean(arg)
 
   def federated_sum(x):
     zero = value_impl.ValueImpl(
-        computation_constructing_utils.create_generic_constant(
-            x.type_signature.member, 0), context_stack)
+        building_block_factory.create_generic_constant(x.type_signature.member,
+                                                       0), context_stack)
     plus_op = value_impl.ValueImpl(
-        computation_constructing_utils.create_binary_operator_with_upcast(
+        building_block_factory.create_binary_operator_with_upcast(
             computation_types.NamedTupleType(
                 [x.type_signature.member, x.type_signature.member]), tf.add),
         context_stack)
@@ -183,7 +183,7 @@ def get_intrinsic_bodies(context_stack):
     x = arg[0]
     zero = arg[1]
     op = arg[2]
-    identity = computation_constructing_utils.create_compiled_identity(
+    identity = building_block_factory.create_compiled_identity(
         op.type_signature.result)
     return intrinsics.federated_aggregate(x, zero, op, op, identity)
 
@@ -195,7 +195,7 @@ def get_intrinsic_bodies(context_stack):
   def _apply_generic_op(op, x, y):
     arg = _pack_binary_operator_args(x, y)
     arg_comp = value_impl.ValueImpl.get_comp(arg)
-    result = computation_constructing_utils.apply_binary_operator_with_upcast(
+    result = building_block_factory.apply_binary_operator_with_upcast(
         arg_comp, op)
     return value_impl.ValueImpl(result, context_stack)
 
@@ -214,7 +214,7 @@ def get_intrinsic_bodies(context_stack):
           value_impl.ValueImpl.get_comp(generic_divide([x[i], y[i]]))
           for i in range(len(names))
       ]
-      named_divided = computation_constructing_utils.create_named_tuple(
+      named_divided = building_block_factory.create_named_tuple(
           building_blocks.Tuple(divided), names)
       return value_impl.ValueImpl(named_divided, context_stack)
     else:
@@ -237,7 +237,7 @@ def get_intrinsic_bodies(context_stack):
           value_impl.ValueImpl.get_comp(generic_multiply([x[i], y[i]]))
           for i in range(len(names))
       ]
-      named_multiplied = computation_constructing_utils.create_named_tuple(
+      named_multiplied = building_block_factory.create_named_tuple(
           building_blocks.Tuple(multiplied), names)
       return value_impl.ValueImpl(named_multiplied, context_stack)
     else:
@@ -260,7 +260,7 @@ def get_intrinsic_bodies(context_stack):
           value_impl.ValueImpl.get_comp(generic_plus([x[i], y[i]]))
           for i in range(len(names))
       ]
-      named_added = computation_constructing_utils.create_named_tuple(
+      named_added = building_block_factory.create_named_tuple(
           building_blocks.Tuple(added), names)
       return value_impl.ValueImpl(named_added, context_stack)
     else:

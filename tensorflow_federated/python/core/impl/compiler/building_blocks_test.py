@@ -25,10 +25,10 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -294,7 +294,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_compiled_computation_class(self):
-    x = computation_constructing_utils.create_compiled_identity(tf.int32, 'a')
+    x = building_block_factory.create_compiled_identity(tf.int32, 'a')
     self.assertEqual(x.type_signature.compact_representation(),
                      '(int32 -> int32)')
     self.assertIsInstance(x.proto, pb.Computation)
@@ -304,7 +304,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         'CompiledComputation(\'a\', FunctionType(TensorType(tf.int32), TensorType(tf.int32)))'
     )
     self.assertTrue(x.compact_representation(), 'comp#a')
-    y = computation_constructing_utils.create_compiled_identity(tf.int32)
+    y = building_block_factory.create_compiled_identity(tf.int32)
     self._serialize_deserialize_roundtrip_test(y)
 
   def test_basic_functionality_of_placement_class(self):
@@ -401,8 +401,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_compiled_computation(self):
-    comp = computation_constructing_utils.create_compiled_identity(
-        tf.int32, 'a')
+    comp = building_block_factory.create_compiled_identity(tf.int32, 'a')
     compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'comp#a')
     formatted_string = comp.formatted_representation()

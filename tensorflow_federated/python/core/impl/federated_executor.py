@@ -22,7 +22,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
@@ -31,6 +30,7 @@ from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 
 
 class FederatedExecutorValue(executor_value_base.ExecutorValue):
@@ -634,7 +634,7 @@ class FederatedExecutor(executor_base.Executor):
     # TODO(b/134543154): Replace with something that produces a section of
     # plain TensorFlow code instead of constructing a lambda (so that this
     # can be executed directly on top of a plain TensorFlow-based executor).
-    multiply_blk = computation_constructing_utils.create_binary_operator_with_upcast(
+    multiply_blk = building_block_factory.create_binary_operator_with_upcast(
         zipped_arg.type_signature.member, tf.multiply)
     sum_of_products = await self._compute_intrinsic_federated_sum(
         await self._compute_intrinsic_federated_map(
@@ -652,7 +652,7 @@ class FederatedExecutor(executor_base.Executor):
         await self.create_tuple(
             anonymous_tuple.AnonymousTuple([(None, sum_of_products),
                                             (None, total_weight)])))
-    divide_blk = computation_constructing_utils.create_binary_operator_with_upcast(
+    divide_blk = building_block_factory.create_binary_operator_with_upcast(
         divide_arg.type_signature.member, tf.divide)
     return await self._compute_intrinsic_federated_apply(
         FederatedExecutorValue(
@@ -679,7 +679,7 @@ async def _embed_tf_scalar_constant(executor, type_spec, val):
   # separate library, so that it can be used in other places.
   py_typecheck.check_type(executor, executor_base.Executor)
   fn_building_block = (
-      computation_constructing_utils.create_tensorflow_constant(type_spec, val))
+      building_block_factory.create_tensorflow_constant(type_spec, val))
   embedded_val = await executor.create_call(await executor.create_value(
       fn_building_block.function.proto,
       fn_building_block.function.type_signature))
@@ -704,8 +704,7 @@ async def _embed_tf_binary_operator(executor, type_spec, op):
   # TODO(b/134543154): There is an opportunity here to import something more
   # in line with the usage (no building block wrapping, etc.)
   fn_building_block = (
-      computation_constructing_utils.create_tensorflow_binary_operator(
-          type_spec, op))
+      building_block_factory.create_tensorflow_binary_operator(type_spec, op))
   embedded_val = await executor.create_value(fn_building_block.proto,
                                              fn_building_block.type_signature)
   type_utils.check_equivalent_types(embedded_val.type_signature,

@@ -10,7 +10,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
-        "//tensorflow_federated/python/core/impl:computation_constructing_utils",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
         "//tensorflow_federated/python/core/impl:intrinsic_reductions",

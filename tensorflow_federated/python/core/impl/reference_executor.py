@@ -318,6 +318,7 @@ def capture_computed_value_from_graph(value, type_spec):
   return ComputedValue(to_representation_for_type(value, type_spec), type_spec)
 
 
+# TODO(b/139439722): Consolidate implementation to run a TF comp with an arg.
 def run_tensorflow(comp, arg):
   """Runs a compiled TensorFlow computation `comp` with argument `arg`.
 

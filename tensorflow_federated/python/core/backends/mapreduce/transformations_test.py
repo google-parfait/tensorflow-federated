@@ -27,12 +27,12 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -172,8 +172,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
                                  building_blocks.Reference('x', tf.int32))
     arg = building_blocks.Reference(
         'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    mapped_fn = computation_constructing_utils.create_federated_map_or_apply(
-        lam, arg)
+    mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
     extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
         mapped_fn)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
@@ -189,8 +188,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
                                  building_blocks.Reference('x', tf.int32))
     arg = building_blocks.Reference(
         'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    mapped_fn = computation_constructing_utils.create_federated_map_or_apply(
-        lam, arg)
+    mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
     extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
         mapped_fn)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
@@ -721,7 +719,7 @@ class NormalizedBitTest(absltest.TestCase):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_identity = building_blocks.Lambda('x', tf.int32, int_ref)
     federated_int_ref = building_blocks.Reference('y', fed_type_all_equal)
-    called_federated_map_all_equal = computation_constructing_utils.create_federated_map_all_equal(
+    called_federated_map_all_equal = building_block_factory.create_federated_map_all_equal(
         int_identity, federated_int_ref)
     normalized_federated_map = mapreduce_transformations.normalize_all_equal_bit(
         called_federated_map_all_equal)

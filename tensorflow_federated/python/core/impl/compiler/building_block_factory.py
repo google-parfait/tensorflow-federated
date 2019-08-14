@@ -1133,9 +1133,9 @@ def create_federated_zip(value):
   if length == 0:
     raise ValueError('federated_zip is only supported on non-empty tuples.')
   first_name, first_type_signature = named_type_signatures[0]
-  if first_type_signature.placement is placement_literals.CLIENTS:
+  if first_type_signature.placement == placement_literals.CLIENTS:
     map_fn = create_federated_map
-  elif first_type_signature.placement is placement_literals.SERVER:
+  elif first_type_signature.placement == placement_literals.SERVER:
     map_fn = create_federated_apply
   else:
     raise TypeError('Unsupported placement {}.'.format(
@@ -1193,14 +1193,14 @@ def create_generic_constant(type_spec, scalar_value):
     return create_tensorflow_constant(type_spec, scalar_value)
   elif isinstance(type_spec, computation_types.FederatedType):
     unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
-    if type_spec.placement is placement_literals.CLIENTS:
+    if type_spec.placement == placement_literals.CLIENTS:
       placement_federated_type = computation_types.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True)
       placement_fn_type = computation_types.FunctionType(
           type_spec.member, placement_federated_type)
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri, placement_fn_type)
-    elif type_spec.placement is placement_literals.SERVER:
+    elif type_spec.placement == placement_literals.SERVER:
       placement_federated_type = computation_types.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True)
       placement_fn_type = computation_types.FunctionType(

@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_test_utils
@@ -35,6 +34,7 @@ from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -309,7 +309,7 @@ class FederatedExecutorTest(parameterized.TestCase):
         (ten_on_server, '<int32,int32>@SERVER', 1, '<10,10>'),
         (ten_on_clients, '{<int32,int32>}@CLIENTS', 3, ['<10,10>'] * 3)
     ]:
-      comp = computation_constructing_utils.create_zip_two_values(
+      comp = building_block_factory.create_zip_two_values(
           building_blocks.Tuple([
               building_blocks.ComputationBuildingBlock.from_proto(
                   computation_impl.ComputationImpl.get_proto(ten))

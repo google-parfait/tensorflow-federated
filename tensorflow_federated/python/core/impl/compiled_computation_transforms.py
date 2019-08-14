@@ -28,10 +28,10 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.utils import graph_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
@@ -832,7 +832,7 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
-    preprocess_arg_comp = computation_constructing_utils.create_compiled_input_replication(
+    preprocess_arg_comp = building_block_factory.create_compiled_input_replication(
         comp.argument[0].type_signature, len(comp.argument))
     logic_of_tf_comp = comp.function
     composed_tf = compose_tensorflow_blocks(
@@ -942,7 +942,7 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     if len(comp) == 0:  # pylint: disable=g-explicit-length-test
-      return computation_constructing_utils.create_compiled_empty_tuple(), True
+      return building_block_factory.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
     name_list = [x[0] for x in anonymous_tuple.to_elements(comp.type_signature)]

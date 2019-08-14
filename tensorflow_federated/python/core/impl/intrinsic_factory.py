@@ -23,13 +23,13 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -101,7 +101,7 @@ class IntrinsicFactory(object):
     accumulate = value_impl.ValueImpl.get_comp(accumulate)
     merge = value_impl.ValueImpl.get_comp(merge)
     report = value_impl.ValueImpl.get_comp(report)
-    comp = computation_constructing_utils.create_federated_aggregate(
+    comp = building_block_factory.create_federated_aggregate(
         value, zero, accumulate, merge, report)
     return value_impl.ValueImpl(comp, self._context_stack)
 
@@ -141,7 +141,7 @@ class IntrinsicFactory(object):
 
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
-    comp = computation_constructing_utils.create_federated_apply(fn, arg)
+    comp = building_block_factory.create_federated_apply(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_broadcast(self, value):
@@ -164,7 +164,7 @@ class IntrinsicFactory(object):
       raise TypeError('The broadcasted value should be equal at all locations.')
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_broadcast(value)
+    comp = building_block_factory.create_federated_broadcast(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_collect(self, value):
@@ -184,7 +184,7 @@ class IntrinsicFactory(object):
                                                 'value to be collected')
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_collect(value)
+    comp = building_block_factory.create_federated_collect(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map(self, fn, arg):
@@ -229,7 +229,7 @@ class IntrinsicFactory(object):
 
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
-    comp = computation_constructing_utils.create_federated_map(fn, arg)
+    comp = building_block_factory.create_federated_map(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map_all_equal(self, fn, arg):
@@ -277,8 +277,7 @@ class IntrinsicFactory(object):
 
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
-    comp = computation_constructing_utils.create_federated_map_all_equal(
-        fn, arg)
+    comp = building_block_factory.create_federated_map_all_equal(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_mean(self, value, weight):
@@ -332,7 +331,7 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     if weight is not None:
       weight = value_impl.ValueImpl.get_comp(weight)
-    comp = computation_constructing_utils.create_federated_mean(value, weight)
+    comp = building_block_factory.create_federated_mean(value, weight)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_reduce(self, value, zero, op):
@@ -375,8 +374,7 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
-    comp = computation_constructing_utils.create_federated_reduce(
-        value, zero, op)
+    comp = building_block_factory.create_federated_reduce(value, zero, op)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_sum(self, value):
@@ -401,7 +399,7 @@ class IntrinsicFactory(object):
               value.type_signature))
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_sum(value)
+    comp = building_block_factory.create_federated_sum(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_value(self, value, placement):
@@ -423,8 +421,7 @@ class IntrinsicFactory(object):
     value = value_impl.to_value(value, None, self._context_stack)
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_value(
-        value, placement)
+    comp = building_block_factory.create_federated_value(value, placement)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_zip(self, value):
@@ -466,7 +463,7 @@ class IntrinsicFactory(object):
                 ','.join(str(type.placement) for type in value.type_signature)))
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    comp = building_block_factory.create_federated_zip(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def sequence_map(self, fn, arg):
@@ -489,7 +486,7 @@ class IntrinsicFactory(object):
     if isinstance(arg.type_signature, computation_types.SequenceType):
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
-      return computation_constructing_utils.create_sequence_map(fn, arg)
+      return building_block_factory.create_sequence_map(fn, arg)
     elif isinstance(arg.type_signature, computation_types.FederatedType):
       parameter_type = computation_types.SequenceType(
           fn.type_signature.parameter)
@@ -547,8 +544,7 @@ class IntrinsicFactory(object):
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
     if isinstance(value.type_signature, computation_types.SequenceType):
-      return computation_constructing_utils.create_sequence_reduce(
-          value, zero, op)
+      return building_block_factory.create_sequence_reduce(value, zero, op)
     else:
       value_type = computation_types.SequenceType(element_type)
       intrinsic_type = computation_types.FunctionType((
@@ -599,7 +595,7 @@ class IntrinsicFactory(object):
 
     if isinstance(value.type_signature, computation_types.SequenceType):
       value = value_impl.ValueImpl.get_comp(value)
-      return computation_constructing_utils.create_sequence_sum(value)
+      return building_block_factory.create_sequence_sum(value)
     elif isinstance(value.type_signature, computation_types.FederatedType):
       intrinsic_type = computation_types.FunctionType(
           value.type_signature.member, value.type_signature.member.element)

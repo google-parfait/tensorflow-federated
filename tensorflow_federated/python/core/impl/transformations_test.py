@@ -24,7 +24,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
@@ -34,6 +33,7 @@ from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -53,7 +53,7 @@ def _create_chained_dummy_federated_applys(functions, arg):
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
               str(fn.parameter_type), str(arg.type_signature.member)))
-    call = computation_constructing_utils.create_federated_apply(fn, arg)
+    call = building_block_factory.create_federated_apply(fn, arg)
     arg = call
   return call
 
@@ -68,7 +68,7 @@ def _create_chained_dummy_federated_maps(functions, arg):
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
               str(fn.parameter_type), str(arg.type_signature.member)))
-    call = computation_constructing_utils.create_federated_map(fn, arg)
+    call = building_block_factory.create_federated_map(fn, arg)
     arg = call
   return call
 
@@ -95,15 +95,14 @@ def _count_called_intrinsics(comp, uri=None):
 
 
 def _create_complex_computation():
-  compiled = computation_constructing_utils.create_compiled_identity(
-      tf.int32, 'a')
+  compiled = building_block_factory.create_compiled_identity(tf.int32, 'a')
   federated_type = computation_types.FederatedType(tf.int32, placements.SERVER)
   ref = building_blocks.Reference('b', federated_type)
-  called_federated_broadcast = computation_constructing_utils.create_federated_broadcast(
+  called_federated_broadcast = building_block_factory.create_federated_broadcast(
       ref)
-  called_federated_map = computation_constructing_utils.create_federated_map(
+  called_federated_map = building_block_factory.create_federated_map(
       compiled, called_federated_broadcast)
-  called_federated_mean = computation_constructing_utils.create_federated_mean(
+  called_federated_mean = building_block_factory.create_federated_mean(
       called_federated_map, None)
   tup = building_blocks.Tuple([called_federated_mean, called_federated_mean])
   return building_blocks.Lambda('b', tf.int32, tup)
@@ -1681,7 +1680,7 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
-    call = computation_constructing_utils.create_federated_map(fn, arg)
+    call = building_block_factory.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
@@ -1699,9 +1698,9 @@ class MergeChainedFederatedMapOrApplysTest(absltest.TestCase):
     fn = computation_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
-    call_1 = computation_constructing_utils.create_federated_map(fn, arg)
+    call_1 = building_block_factory.create_federated_map(fn, arg)
     block = computation_test_utils.create_dummy_block(call_1, variable_name='b')
-    call_2 = computation_constructing_utils.create_federated_map(fn, block)
+    call_2 = building_block_factory.create_federated_map(fn, block)
     comp = call_2
 
     transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
@@ -2561,8 +2560,7 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     fn = building_blocks.Lambda('b', tf.int32, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
-    called_intrinsic = computation_constructing_utils.create_federated_map(
-        fn, arg)
+    called_intrinsic = building_block_factory.create_federated_map(fn, arg)
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
@@ -3191,7 +3189,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
-    call = computation_constructing_utils.create_federated_map(fn, arg)
+    call = building_block_factory.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
@@ -4064,8 +4062,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     ref_to_y = building_blocks.Reference(
         'y', computation_types.FunctionType(tf.int32, tf.float32))
-    applied = computation_constructing_utils.create_federated_apply(
-        ref_to_y, ref_to_x)
+    applied = building_block_factory.create_federated_apply(ref_to_y, ref_to_x)
     with self.assertRaises(ValueError):
       transformations.unwrap_placement(applied)
 
@@ -4108,9 +4105,9 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.SERVER))
-    applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
     placement_unwrapped, modified = transformations.unwrap_placement(
         second_applied_id)
@@ -4130,9 +4127,9 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.SERVER))
-    applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
     placement_unwrapped, modified = transformations.unwrap_placement(
         second_applied_id)
@@ -4170,11 +4167,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.SERVER))
-    applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    third_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    third_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, second_applied_id)
     placement_unwrapped, modified = transformations.unwrap_placement(
         second_applied_id)
@@ -4192,9 +4189,9 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
     placement_unwrapped, modified = transformations.unwrap_placement(
         second_applied_id)
@@ -4231,11 +4228,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
         'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    third_applied_id = computation_constructing_utils.create_federated_map_or_apply(
+    third_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, second_applied_id)
     placement_unwrapped, modified = transformations.unwrap_placement(
         third_applied_id)
@@ -4253,8 +4250,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
                                         placements.SERVER))
-    unzipped = computation_constructing_utils.create_federated_unzip(fed_tuple)
-    zipped = computation_constructing_utils.create_federated_zip(unzipped)
+    unzipped = building_block_factory.create_federated_unzip(fed_tuple)
+    zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, modified = transformations.unwrap_placement(zipped)
     self.assertTrue(modified)
 
@@ -4272,8 +4269,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
                                         placements.CLIENTS))
-    unzipped = computation_constructing_utils.create_federated_unzip(fed_tuple)
-    zipped = computation_constructing_utils.create_federated_zip(unzipped)
+    unzipped = building_block_factory.create_federated_unzip(fed_tuple)
+    zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, modified = transformations.unwrap_placement(zipped)
     self.assertTrue(modified)
 
@@ -4292,12 +4289,12 @@ class UnwrapPlacementTest(parameterized.TestCase):
       self):
     int_data = building_blocks.Data('x', tf.int32)
     float_data = building_blocks.Data('x', tf.float32)
-    fed_int = computation_constructing_utils.create_federated_value(
+    fed_int = building_block_factory.create_federated_value(
         int_data, placements.SERVER)
-    fed_float = computation_constructing_utils.create_federated_value(
+    fed_float = building_block_factory.create_federated_value(
         float_data, placements.SERVER)
     tup = building_blocks.Tuple([fed_int, fed_float])
-    zipped = computation_constructing_utils.create_federated_zip(tup)
+    zipped = building_block_factory.create_federated_zip(tup)
     placement_unwrapped, modified = transformations.unwrap_placement(zipped)
     self.assertTrue(modified)
 
@@ -4317,12 +4314,12 @@ class UnwrapPlacementTest(parameterized.TestCase):
       self):
     int_data = building_blocks.Data('x', tf.int32)
     float_data = building_blocks.Data('x', tf.float32)
-    fed_int = computation_constructing_utils.create_federated_value(
+    fed_int = building_block_factory.create_federated_value(
         int_data, placements.CLIENTS)
-    fed_float = computation_constructing_utils.create_federated_value(
+    fed_float = building_block_factory.create_federated_value(
         float_data, placements.CLIENTS)
     tup = building_blocks.Tuple([fed_int, fed_float])
-    zipped = computation_constructing_utils.create_federated_zip(tup)
+    zipped = building_block_factory.create_federated_zip(tup)
     placement_unwrapped, modified = transformations.unwrap_placement(zipped)
     self.assertTrue(modified)
     # These two types are no longer literally equal, since we have unwrapped the
@@ -4472,25 +4469,20 @@ class ComputationsEqualTest(absltest.TestCase):
     self.assertTrue(transformations._computations_equal(comp_1, comp_2))
 
   def test_returns_false_for_compiled_computations_with_different_types(self):
-    compiled_1 = computation_constructing_utils.create_compiled_identity(
-        tf.int32, 'a')
-    compiled_2 = computation_constructing_utils.create_compiled_identity(
+    compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    compiled_2 = building_block_factory.create_compiled_identity(
         tf.float32, 'a')
     self.assertFalse(
         transformations._computations_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations(self):
-    compiled_1 = computation_constructing_utils.create_compiled_identity(
-        tf.int32, 'a')
-    compiled_2 = computation_constructing_utils.create_compiled_identity(
-        tf.int32, 'a')
+    compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    compiled_2 = building_block_factory.create_compiled_identity(tf.int32, 'a')
     self.assertTrue(transformations._computations_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations_with_different_names(self):
-    compiled_1 = computation_constructing_utils.create_compiled_identity(
-        tf.int32, 'a')
-    compiled_2 = computation_constructing_utils.create_compiled_identity(
-        tf.int32, 'b')
+    compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    compiled_2 = building_block_factory.create_compiled_identity(tf.int32, 'b')
     self.assertTrue(transformations._computations_equal(compiled_1, compiled_2))
 
   def test_returns_false_for_data_with_different_types(self):
