@@ -29,6 +29,8 @@ from tensorflow_federated.python.research.utils.utils_impl import atomic_write_t
 from tensorflow_federated.python.research.utils.utils_impl import define_optimizer_flags
 from tensorflow_federated.python.research.utils.utils_impl import get_optimizer_from_flags
 from tensorflow_federated.python.research.utils.utils_impl import iter_grid
+from tensorflow_federated.python.research.utils.utils_impl import record_new_flags
+
 
 # Used by doc generation script.
 _allowed_symbols = [
@@ -36,4 +38,5 @@ _allowed_symbols = [
     "atomic_write_to_csv",
     "define_optimizer_flags",
     "get_optimizer_from_flags",
+    "record_new_flags",
 ]

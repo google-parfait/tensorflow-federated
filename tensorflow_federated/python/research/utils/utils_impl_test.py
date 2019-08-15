@@ -76,6 +76,13 @@ class UtilsTest(tf.test.TestCase):
             dict(a=2, b='b', c=4.0)
         ])
 
+  def test_record_new_flags(self):
+    with utils.record_new_flags() as hparam_flags:
+      flags.DEFINE_string('exp_name', 'name', 'Unique name for the experiment.')
+      flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
+
+    self.assertCountEqual(hparam_flags, ['exp_name', 'random_seed'])
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

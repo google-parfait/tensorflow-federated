@@ -15,6 +15,7 @@
 """Utilities supporting experiments."""
 
 import collections
+import contextlib
 import itertools
 import os
 import shutil
@@ -159,3 +160,28 @@ def get_optimizer_from_flags(prefix: str) -> tf.keras.optimizers.Optimizer:
     return flags.FLAGS[full_name].value
 
   return tf.keras.optimizers.SGD(learning_rate=flag_value('learning_rate'))
+
+
+@contextlib.contextmanager
+def record_new_flags():
+  """A context manager that returns all flags created in it's scope.
+
+  This is useful to define all of the flags which should be considered
+  hyperparameters of the training run, without needing to repeat them.
+
+  Example usage:
+  ```python
+  with record_new_flags() as hparam_flags:
+      flags.DEFINE_string('exp_name', 'name', 'Unique name for the experiment.')
+      flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
+  ```
+
+  Check `research/emnist/run_experiment.py` for more details about the usage.
+
+  Yields:
+    A list of all newly created flags.
+  """
+  old_flags = set(iter(flags.FLAGS))
+  new_flags = []
+  yield new_flags
+  new_flags.extend([f for f in flags.FLAGS if f not in old_flags])
