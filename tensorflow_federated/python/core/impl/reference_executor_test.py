@@ -172,8 +172,14 @@ class ReferenceExecutorTest(test.TestCase):
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
       with tf.compat.v1.Session(graph=graph) as sess:
-        v_val = tensorflow_utils.fetch_value_in_session(sess, stamped_v)
-    self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
+        stampped_v_val = tensorflow_utils.fetch_value_in_session(
+            sess, stamped_v)
+    elements = anonymous_tuple.to_elements(stampped_v_val)
+    self.assertEqual(elements[0], ('x', 10))
+    self.assertEqual(elements[1][0], 'y')
+    nested_elements = anonymous_tuple.to_elements(elements[1][1])
+    self.assertEqual(nested_elements[0][0], 'z')
+    self.assertAlmostEqual(nested_elements[0][1], 0.6)
 
   def test_computation_context_resolve_reference(self):
     c1 = reference_executor.ComputationContext()

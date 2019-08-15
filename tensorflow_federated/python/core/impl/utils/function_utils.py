@@ -229,7 +229,7 @@ def unpack_args_from_tuple(tuple_with_args):
     TypeError: if 'tuple_with_args' is of a wrong type.
   """
   if not is_argument_tuple(tuple_with_args):
-    raise TypeError('Not an argument tuple: {}.'.format(str(tuple_with_args)))
+    raise TypeError('Not an argument tuple: {}.'.format(tuple_with_args))
   if isinstance(tuple_with_args, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(tuple_with_args)
   elif isinstance(tuple_with_args, value_base.Value):
@@ -292,9 +292,9 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
     py_typecheck.check_type(context, context_base.Context)
     if not is_argument_tuple(type_spec):
       raise TypeError(
-          'Parameter type {} does not have a structure of an argument '
-          'tuple, and cannot be populated from multiple positional and '
-          'keyword arguments'.format(str(type_spec)))
+          'Parameter type {} does not have a structure of an argument tuple, '
+          'and cannot be populated from multiple positional and keyword '
+          'arguments'.format(type_spec))
     else:
       result_elements = []
       positions_used = set()
@@ -361,7 +361,7 @@ def pack_args(parameter_type, args, kwargs, context):
     if not args and not kwargs:
       raise TypeError(
           'Declared a parameter of type {}, but got no arguments.'.format(
-              str(parameter_type)))
+              parameter_type))
     else:
       single_positional_arg = (len(args) == 1) and not kwargs
       if not isinstance(parameter_type, computation_types.NamedTupleType):
@@ -371,7 +371,7 @@ def pack_args(parameter_type, args, kwargs, context):
           raise TypeError(
               'Parameter type {} is compatible only with a single positional '
               'argument, but found {} positional and {} keyword args.'.format(
-                  str(parameter_type), len(args), len(kwargs)))
+                  parameter_type, len(args), len(kwargs)))
         else:
           arg = args[0]
       elif single_positional_arg:
@@ -381,7 +381,7 @@ def pack_args(parameter_type, args, kwargs, context):
             'Parameter type {} does not have a structure of an argument '
             'tuple, and cannot be populated from multiple positional and '
             'keyword arguments; please construct a tuple before the '
-            'call.'.format(str(parameter_type)))
+            'call.'.format(parameter_type))
       else:
         arg = pack_args_into_anonymous_tuple(args, kwargs, parameter_type,
                                              context)
@@ -416,16 +416,15 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
     else:
       raise TypeError(
           'The argspec {} of the supplied function cannot be interpreted as a '
-          'body of a no-parameter computation.'.format(str(argspec)))
+          'body of a no-parameter computation.'.format(argspec))
 
   unpack_required = not is_argspec_compatible_with_types(
       argspec, parameter_type)
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function with argspec {} cannot accept a value of '
-        'type {} as a single argument.'.format(
-            str(argspec), str(parameter_type)))
+        'The supplied function with argspec {} cannot accept a value of type '
+        '{} as a single argument.'.format(argspec, parameter_type))
   if is_argument_tuple(parameter_type):
     arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
     unpack_possible = is_argspec_compatible_with_types(argspec, *arg_types,
@@ -435,15 +434,15 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if not unpack_possible and should_unpack is True:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function with argspec {} cannot accept a value of '
-        'type {} as multiple positional and/or keyword arguments. '
-        'That is, the argument cannot be unpacked, but unpacking '
-        'was requested.'.format(str(argspec), str(parameter_type)))
+        'The supplied function with argspec {} cannot accept a value of type '
+        '{} as multiple positional and/or keyword arguments. That is, the '
+        'argument cannot be unpacked, but unpacking was requested.'.format(
+            argspec, parameter_type))
   if unpack_required and not unpack_possible:
     raise TypeError(
-        'The supplied function with argspec {} cannot accept a value of '
-        'type {} as either a single argument or multiple positional and/or '
-        'keyword arguments.'.format(str(argspec), str(parameter_type)))
+        'The supplied function with argspec {} cannot accept a value of type '
+        '{} as either a single argument or multiple positional and/or keyword '
+        'arguments.'.format(argspec, parameter_type))
   if not unpack_required and unpack_possible and should_unpack is None:
     # The supplied function could accept a value as either a single argument,
     # or as multiple positional and/or keyword arguments, and the caller did
@@ -523,7 +522,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
     else:
       raise TypeError(
           'The argspec {} of the supplied function cannot be interpreted as a '
-          'body of a no-parameter computation.'.format(str(argspec)))
+          'body of a no-parameter computation.'.format(argspec))
   else:
     if infer_unpack_needed(fn, parameter_type, unpack):
       arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
@@ -555,9 +554,9 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
           element_value = arg[idx]
           actual_type = type_utils.infer_type(element_value)
           if not type_utils.is_assignable_from(expected_type, actual_type):
-            raise TypeError('Expected element at position {} to be '
-                            'of type {}, found {}.'.format(
-                                idx, str(expected_type), str(actual_type)))
+            raise TypeError(
+                'Expected element at position {} to be of type {}, found {}.'
+                .format(idx, expected_type, actual_type))
           if isinstance(element_value, anonymous_tuple.AnonymousTuple):
             element_value = type_utils.convert_to_py_container(
                 element_value, expected_type)
@@ -567,9 +566,9 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
           element_value = getattr(arg, name)
           actual_type = type_utils.infer_type(element_value)
           if not type_utils.is_assignable_from(expected_type, actual_type):
-            raise TypeError('Expected element named {} to be '
-                            'of type {}, found {}.'.format(
-                                name, str(expected_type), str(actual_type)))
+            raise TypeError(
+                'Expected element named {} to be of type {}, found {}.'.format(
+                    name, expected_type, actual_type))
           if type_utils.is_anon_tuple_with_py_container(element_value,
                                                         expected_type):
             element_value = type_utils.convert_to_py_container(
@@ -590,7 +589,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
         arg_type = type_utils.infer_type(arg)
         if not type_utils.is_assignable_from(parameter_type, arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
-              str(parameter_type), str(arg_type)))
+              parameter_type, arg_type))
         if type_utils.is_anon_tuple_with_py_container(arg, parameter_type):
           arg = type_utils.convert_to_py_container(arg, parameter_type)
         return fn(arg)
@@ -676,7 +675,7 @@ class PolymorphicFunction(object):
       if concrete_fn.type_signature.parameter != arg_type:
         raise TypeError(
             'Expected a concrete function that takes parameter {}, got one '
-            'that takes {}.'.format(
-                str(arg_type), str(concrete_fn.type_signature.parameter)))
+            'that takes {}.'.format(arg_type,
+                                    concrete_fn.type_signature.parameter))
       self._concrete_function_cache[key] = concrete_fn
     return concrete_fn(packed_arg)

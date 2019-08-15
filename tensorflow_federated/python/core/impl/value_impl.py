@@ -85,9 +85,9 @@ class ValueImpl(value_base.Value):
     if not isinstance(self._comp.type_signature,
                       computation_types.NamedTupleType):
       raise TypeError(
-          'Operator dir() is only suppored for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+          'Operator dir() is only suppored for named tuples, but the object on '
+          'which it has been invoked is of type {}.'.format(
+              self._comp.type_signature))
     return dir(self._comp.type_signature)
 
   def __getattr__(self, name):
@@ -103,7 +103,7 @@ class ValueImpl(value_base.Value):
       raise TypeError(
           'Operator getattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+              self._comp.type_signature))
     if name not in dir(self._comp.type_signature):
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
@@ -128,7 +128,7 @@ class ValueImpl(value_base.Value):
       raise TypeError(
           'Operator setattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+              self._comp.type_signature))
     named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
@@ -141,8 +141,8 @@ class ValueImpl(value_base.Value):
     if not isinstance(type_signature, computation_types.NamedTupleType):
       raise TypeError(
           'Operator len() is only supported for (possibly federated) named '
-          'tuples, but the object on which it has been invoked is of type '
-          '{}.'.format(str(self._comp.type_signature)))
+          'tuples, but the object on which it has been invoked is of type {}.'
+          .format(self._comp.type_signature))
     return len(type_signature)
 
   def __getitem__(self, key):
@@ -158,7 +158,7 @@ class ValueImpl(value_base.Value):
       raise TypeError(
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+              self._comp.type_signature))
     elem_length = len(self._comp.type_signature)
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
@@ -184,8 +184,8 @@ class ValueImpl(value_base.Value):
     if not isinstance(type_signature, computation_types.NamedTupleType):
       raise TypeError(
           'Operator iter() is only supported for (possibly federated) named '
-          'tuples, but the object on which it has been invoked is of type '
-          '{}.'.format(str(self._comp.type_signature)))
+          'tuples, but the object on which it has been invoked is of type {}.'
+          .format(self._comp.type_signature))
     for index in range(len(type_signature)):
       yield self[index]
 
@@ -193,10 +193,9 @@ class ValueImpl(value_base.Value):
     if not isinstance(self._comp.type_signature,
                       computation_types.FunctionType):
       raise SyntaxError(
-          'Function-like invocation is only supported for values of '
-          'functional types, but the value being invoked is of type '
-          '{} that does not support invocation.'.format(
-              str(self._comp.type_signature)))
+          'Function-like invocation is only supported for values of functional '
+          'types, but the value being invoked is of type {} that does not '
+          'support invocation.'.format(self._comp.type_signature))
     if args or kwargs:
       args = [to_value(x, None, self._context_stack) for x in args]
       kwargs = {
@@ -214,8 +213,8 @@ class ValueImpl(value_base.Value):
     other = to_value(other, None, self._context_stack)
     if not type_utils.are_equivalent_types(self.type_signature,
                                            other.type_signature):
-      raise TypeError('Cannot add {} and {}.'.format(
-          str(self.type_signature), str(other.type_signature)))
+      raise TypeError('Cannot add {} and {}.'.format(self.type_signature,
+                                                     other.type_signature))
     return ValueImpl(
         building_blocks.Call(
             building_blocks.Intrinsic(
@@ -273,7 +272,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
     if not type_utils.is_assignable_from(element_type, elem_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(
-              str(element_type), str(elem_type)))
+              element_type, elem_type))
 
   # Defines a no-arg function that builds a `tf.data.Dataset` from the elements.
   def _create_dataset_from_elements():
@@ -381,7 +380,6 @@ def to_value(arg, type_spec, context_stack):
   if (type_spec is not None and
       not type_utils.is_assignable_from(type_spec, result.type_signature)):
     raise TypeError(
-        'The supplied argument maps to TFF type {}, which is incompatible '
-        'with the requested type {}.'.format(
-            str(result.type_signature), str(type_spec)))
+        'The supplied argument maps to TFF type {}, which is incompatible with '
+        'the requested type {}.'.format(result.type_signature, type_spec))
   return result

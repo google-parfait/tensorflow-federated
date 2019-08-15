@@ -262,9 +262,9 @@ class IterativeProcess(object):
     """
     py_typecheck.check_type(initialize_fn, tff.Computation)
     if initialize_fn.type_signature.parameter is not None:
-      raise TypeError('initialize_fn must be a no-arg tff.Computation, '
-                      'but found parameter ' +
-                      str(initialize_fn.type_signature))
+      raise TypeError(
+          'initialize_fn must be a no-arg tff.Computation, but found parameter '
+          '{}'.format(initialize_fn.type_signature))
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, tff.Computation)

@@ -86,7 +86,7 @@ class ComputationBuildingBlock(typed_object.TypedObject):
         raise ValueError(
             'The type {} derived from the computation structure does not '
             'match the type {} declared in its signature'.format(
-                str(deserialized.type_signature), str(type_spec)))
+                deserialized.type_signature, type_spec))
       return deserialized
     else:
       raise NotImplementedError(
@@ -219,7 +219,7 @@ class Selection(ComputationBuildingBlock):
       return cls(selection, index=computation_proto.selection.index)
     else:
       raise ValueError('Unknown selection type \'{}\' in {}.'.format(
-          selection_oneof, str(computation_proto)))
+          selection_oneof, computation_proto))
 
   def __init__(self, source, name=None, index=None):
     """A selection from 'source' by a string or numeric 'name_or_index'.
@@ -250,7 +250,7 @@ class Selection(ComputationBuildingBlock):
     if not isinstance(source_type, computation_types.NamedTupleType):
       raise TypeError(
           'Expected the source of selection to be a TFF named tuple, '
-          'instead found it to be of type {}.'.format(str(source_type)))
+          'instead found it to be of type {}.'.format(source_type))
     if name is not None:
       py_typecheck.check_type(name, six.string_types)
       if not name:
@@ -274,7 +274,8 @@ class Selection(ComputationBuildingBlock):
         raise ValueError(
             'The index of the selected element {} does not fit into the '
             'valid range 0..{} determined by the source type '
-            'signature.'.format(index, str(len(elements) - 1)))
+            'signature.'.format(index,
+                                len(elements) - 1))
 
   @property
   def proto(self):
@@ -352,7 +353,7 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
           raise ValueError('Unexpected tuple element with empty string name.')
         return (e[0], e[1])
       else:
-        raise TypeError('Unexpected tuple element: {}.'.format(str(e)))
+        raise TypeError('Unexpected tuple element: {}.'.format(e))
 
     elements = [_map_element(e) for e in elements]
     ComputationBuildingBlock.__init__(
@@ -423,19 +424,18 @@ class Call(ComputationBuildingBlock):
     if not isinstance(fn.type_signature, computation_types.FunctionType):
       raise TypeError('Expected fn to be of a functional type, '
                       'but found that its type is {}.'.format(
-                          str(fn.type_signature)))
+                          fn.type_signature))
     if fn.type_signature.parameter is not None:
       if arg is None:
         raise TypeError('The invoked function expects an argument of type {}, '
                         'but got None instead.'.format(
-                            str(fn.type_signature.parameter)))
+                            fn.type_signature.parameter))
       if not type_utils.is_assignable_from(fn.type_signature.parameter,
                                            arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '
-            'type {}.'.format(
-                str(fn.type_signature.parameter), str(arg.type_signature)))
+            'type {}.'.format(fn.type_signature.parameter, arg.type_signature))
     elif arg is not None:
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
@@ -616,8 +616,7 @@ class Block(ComputationBuildingBlock):
         raise TypeError(
             'Expected the locals to be a list of 2-element tuples with string '
             'name as their first element, but this is not the case for the '
-            'local at position {} in the sequence: {}.'.format(
-                index, str(element)))
+            'local at position {} in the sequence: {}.'.format(index, element))
       name = element[0]
       value = element[1]
       py_typecheck.check_type(value, ComputationBuildingBlock)

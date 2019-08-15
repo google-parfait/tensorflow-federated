@@ -74,7 +74,7 @@ def create_variables(name, type_spec, **kwargs):
   else:
     raise TypeError(
         'Expected a TFF type signature composed of tensors and named tuples, '
-        'found {}.'.format(str(type_spec)))
+        'found {}.'.format(type_spec))
 
 
 def assign(target, source):
@@ -132,7 +132,7 @@ def identity(source):
   def _mapping_fn(x):
     if not tf.is_tensor(x):
       raise TypeError('Expected a tensor, found {}.'.format(
-          str(py_typecheck.type_string(type(x)))))
+          py_typecheck.type_string(type(x))))
     if hasattr(x, 'read_value'):
       x = x.read_value()
     return tf.identity(x)

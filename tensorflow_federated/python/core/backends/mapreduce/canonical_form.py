@@ -317,8 +317,8 @@ class CanonicalForm(object):
     if (not isinstance(work.type_signature.result, tff.NamedTupleType) or
         len(work.type_signature.result) != 2):
       raise TypeError(
-          'The `work` computation returns a result  of type {} that is not '
-          'a two-tuple.'.format(str(work.type_signature.result)))
+          'The `work` computation returns a result  of type {} that is not a '
+          'two-tuple.'.format(work.type_signature.result))
 
     expected_accumulate_type = tff.FunctionType(
         [zero.type_signature.result, work.type_signature.result[0]],

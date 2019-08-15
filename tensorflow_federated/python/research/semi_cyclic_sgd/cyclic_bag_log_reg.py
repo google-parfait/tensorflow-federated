@@ -198,8 +198,8 @@ class CyclicDataGenerator(object):
     elif row[0] == '0':
       row[0] = 0
     else:
-      raise ValueError('label neither 0 nor 1, but: type %s, value %s' %
-                       (type(row[0]), str(row[0])))
+      raise ValueError('label neither 0 nor 1, but: type {}, value {}'.format(
+          type(row[0]), row[0]))
     row[5] = su.line_to_word_ids(row[5], vocab)
 
 
@@ -282,7 +282,7 @@ class NonIidDataGenerator(CyclicDataGenerator):
           # No biasing, add unconditionally.
           self.data[group].append([row[1:], label])
     for g in range(0, self.num_groups):
-      logger.log('group %d: %d examples' % (g, len(self.data[g])))
+      logger.log('group {}: {} examples'.format(g, len(self.data[g])))
       random.shuffle(self.data[g])
 
 

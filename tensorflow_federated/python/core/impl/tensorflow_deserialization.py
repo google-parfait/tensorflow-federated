@@ -82,19 +82,19 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
       else:
         raise TypeError(
             'The computation declared no parameters; encountered an unexpected '
-            'argument {}.'.format(str(arg)))
+            'argument {}.'.format(arg))
     elif arg is None:
       raise TypeError(
           'The computation declared a parameter of type {}, but the argument '
-          'was not supplied.'.format(str(type_spec.parameter)))
+          'was not supplied.'.format(type_spec.parameter))
     else:
       arg_type, arg_binding = tensorflow_utils.capture_result_from_graph(
           arg, graph)
       if not type_utils.is_assignable_from(type_spec.parameter, arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
-            'is of a mismatching type {}.'.format(
-                str(type_spec.parameter), str(arg_type)))
+            'is of a mismatching type {}.'.format(type_spec.parameter,
+                                                  arg_type))
       else:
         input_map = {
             k: graph.get_tensor_by_name(v) for k, v in six.iteritems(

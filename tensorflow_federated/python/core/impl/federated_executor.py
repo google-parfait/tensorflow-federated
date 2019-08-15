@@ -101,10 +101,10 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
       else:
         return results
     else:
-      raise RuntimeError('Computing values of type {} represented as {} is not '
-                         'supported in this executor.'.format(
-                             str(self._type_signature),
-                             py_typecheck.type_string(type(self._value))))
+      raise RuntimeError(
+          'Computing values of type {} represented as {} is not supported in '
+          'this executor.'.format(self._type_signature,
+                                  py_typecheck.type_string(type(self._value))))
 
 
 class FederatedExecutor(executor_base.Executor):
@@ -183,7 +183,7 @@ class FederatedExecutor(executor_base.Executor):
         if pl_cardinality != 1:
           raise ValueError(
               'Unsupported cardinality for placement "{}": {}.'.format(
-                  str(pl), str(pl_cardinality)))
+                  pl, pl_cardinality))
 
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
@@ -191,7 +191,7 @@ class FederatedExecutor(executor_base.Executor):
       if not type_utils.is_concrete_instance_of(type_spec,
                                                 value.type_signature):
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
-            str(type_spec), value.uri))
+            type_spec, value.uri))
       else:
         return FederatedExecutorValue(value, type_spec)
     if isinstance(value, placement_literals.PlacementLiteral):
@@ -263,13 +263,13 @@ class FederatedExecutor(executor_base.Executor):
         raise ValueError(
             'Encountered a value of a functional TFF type {} and Python type '
             '{} that is not of one of the recognized representations.'.format(
-                str(type_spec), py_typecheck.type_string(type(value))))
+                type_spec, py_typecheck.type_string(type(value))))
       elif isinstance(type_spec, computation_types.FederatedType):
         children = self._target_executors.get(type_spec.placement)
         if not children:
           raise ValueError(
               'Placement "{}" is not configured in this executor.'.format(
-                  str(type_spec.placement)))
+                  type_spec.placement))
         py_typecheck.check_type(children, list)
         if not type_spec.all_equal:
           py_typecheck.check_type(value, (list, tuple, set, frozenset))
@@ -284,7 +284,7 @@ class FederatedExecutor(executor_base.Executor):
           raise ValueError(
               'Federated value contains {} items, but the placement {} in this '
               'executor is configured with {} participants.'.format(
-                  len(value), str(type_spec.placement), len(children)))
+                  len(value), type_spec.placement, len(children)))
         child_vals = await asyncio.gather(*[
             c.create_value(v, type_spec.member)
             for v, c in zip(value, children)
@@ -373,7 +373,7 @@ class FederatedExecutor(executor_base.Executor):
     if isinstance(arg_type, computation_types.FederatedType):
       raise TypeError(
           'Cannot delegate an argument of a federated type {}.'.format(
-              str(arg_type)))
+              arg_type))
     if isinstance(arg, executor_value_base.ExecutorValue):
       return arg
     elif isinstance(arg, anonymous_tuple.AnonymousTuple):

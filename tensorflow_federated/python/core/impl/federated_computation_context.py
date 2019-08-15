@@ -59,7 +59,7 @@ class FederatedComputationContext(context_base.Context):
     name_count = 0
     while name in ancestor_names:
       name_count = name_count + 1
-      name = '{}_{}'.format(suggested_name, str(name_count))
+      name = '{}_{}'.format(suggested_name, name_count)
     self._context_stack = context_stack
     self._parent = parent
     self._name = name
@@ -89,7 +89,7 @@ class FederatedComputationContext(context_base.Context):
       return ret_val
     elif arg is not None:
       raise ValueError(
-          'A computation of type {} does not expect any arguments, '
-          'but got an argument {}.'.format(str(fn.type_signature), str(arg)))
+          'A computation of type {} does not expect any arguments, but got an '
+          'argument {}.'.format(fn.type_signature, arg))
     else:
       return fn

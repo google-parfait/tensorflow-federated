@@ -62,7 +62,7 @@ def main(argv):
   else:
     server_creds = None
 
-  full_port_string = '[::]:{}'.format(str(FLAGS.port))
+  full_port_string = '[::]:{}'.format(FLAGS.port)
   if server_creds is not None:
     server.add_secure_port(full_port_string, server_creds)
   else:

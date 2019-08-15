@@ -91,7 +91,7 @@ def check_extraction_result(before_extraction, extracted):
           'We expect to parse down to a `tff_framework.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
           'Instead we have the computation {} of type {}'.format(
-              before_extraction.type_signature, str(extracted),
+              before_extraction.type_signature, extracted,
               extracted.type_signature))
   else:
     if not isinstance(extracted, tff_framework.Call):
@@ -99,7 +99,7 @@ def check_extraction_result(before_extraction, extracted):
           'We expect to parse down to a `tff_framework.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
           'have the computation {} of type {}'.format(
-              before_extraction.type_signature, str(extracted),
+              before_extraction.type_signature, extracted,
               extracted.type_signature))
     if not isinstance(extracted.function, tff_framework.CompiledComputation):
       raise CanonicalFormCompilationError(
@@ -107,8 +107,8 @@ def check_extraction_result(before_extraction, extracted):
           'to a called TensorFlow block. Instead we hav a call to the '
           'computation {} of type {}. This likely means that we the '
           'computation {} represents a case the Tff-to-TF parser is missing.'
-          .format(before_extraction.type_signature, str(extracted.function),
-                  extracted.function.type_signature, str(before_extraction)))
+          .format(before_extraction.type_signature, extracted.function,
+                  extracted.function.type_signature, before_extraction))
   if not tff_framework.are_equivalent_types(before_extraction.type_signature,
                                             extracted.type_signature):
     raise CanonicalFormCompilationError(
@@ -747,8 +747,8 @@ def _check_for_missed_binding(comp, newly_bound_lambda):
     raise ValueError(
         'We have failed to bind args to our lower-level lambda correctly; our '
         'original comp was {}, but we have left the unbound reference {} in '
-        'the comp {}'.format(
-            str(comp), newly_unbound_references, str(newly_bound_lambda)))
+        'the comp {}'.format(comp, newly_unbound_references,
+                             newly_bound_lambda))
 
 
 def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):

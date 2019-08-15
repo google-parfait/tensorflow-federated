@@ -281,7 +281,7 @@ class CachingExecutor(executor_base.Executor):
       to_gather.append(v.target_future)
       if k is not None:
         py_typecheck.check_type(k, str)
-        element_strings.append('{}={}'.format(k, str(v.identifier)))
+        element_strings.append('{}={}'.format(k, v.identifier))
         type_elements.append((k, v.type_signature))
       else:
         element_strings.append(str(v.identifier))

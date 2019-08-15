@@ -92,11 +92,12 @@ class AnonymousTuple(object):
       if name is None:
         continue
       if name == '_asdict':
-        raise ValueError('The name "_asdict" is reserved for a method, '
-                         'as with namedtuples.')
+        raise ValueError(
+            'The name "_asdict" is reserved for a method, as with namedtuples.')
       elif name in self._name_to_index:
-        raise ValueError('AnonymousTuple does not support duplicated '
-                         'names, but found ' + str([e[0] for e in elements]))
+        raise ValueError(
+            'AnonymousTuple does not support duplicated names, but found {}'
+            .format([e[0] for e in elements]))
       self._name_to_index[name] = idx
     self._hash = None
 
@@ -123,7 +124,7 @@ class AnonymousTuple(object):
       if key < 0 or key >= len(self._element_array):
         raise IndexError(
             'Element index {} is out of range, tuple has {} elements.'.format(
-                str(key), str(len(self._element_array))))
+                key, len(self._element_array)))
     return self._element_array[key]
 
   def __getattr__(self, name):
@@ -151,7 +152,7 @@ class AnonymousTuple(object):
 
   def __str__(self):
     return '<{}>'.format(','.join(
-        ('{}={}'.format(e[0], str(e[1])) if e[0] is not None else str(e[1]))
+        ('{}={}'.format(e[0], e[1]) if e[0] is not None else str(e[1]))
         for e in to_elements(self)))
 
   def __hash__(self):
@@ -220,8 +221,9 @@ def to_odict(anon_tuple, recursive=False):
   def _to_odict(elements):
     for name, _ in elements:
       if name is None:
-        raise ValueError('Can\'t convert an AnonymousTuple with unnamed '
-                         'entries to an OrderedDict:\n' + str(anon_tuple))
+        raise ValueError(
+            'Can\'t convert an AnonymousTuple with unnamed entries to an '
+            'OrderedDict: {}'.format(anon_tuple))
     return collections.OrderedDict(elements)
 
   if recursive:

@@ -83,8 +83,7 @@ class ComputedValue(object):
     return self._value
 
   def __str__(self):
-    return 'ComputedValue({}, {})'.format(
-        str(self._value), str(self._type_signature))
+    return 'ComputedValue({}, {})'.format(self._value, self._type_signature)
 
 
 def to_representation_for_type(value, type_spec, callable_handler=None):
@@ -162,7 +161,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
-          'the type spec {}.'.format(str(inferred_type_spec), str(type_spec)))
+          'the type spec {}.'.format(inferred_type_spec, type_spec))
     return value
   elif isinstance(type_spec, computation_types.NamedTupleType):
     type_spec_elements = anonymous_tuple.to_elements(type_spec)
@@ -179,8 +178,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       raise TypeError(
           'The number of elements {} in the value tuple {} does not match the '
           'number of elements {} in the type spec {}.'.format(
-              len(value_elements), str(value), len(type_spec_elements),
-              str(type_spec)))
+              len(value_elements), value, len(type_spec_elements), type_spec))
     result_elements = []
     for index, (type_elem_name, type_elem) in enumerate(type_spec_elements):
       value_elem_name, value_elem = value_elements[index]
@@ -231,7 +229,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       raise TypeError(
           'Unable to determine a valid value representation for a federated '
           'type with non-equal members placed at {}.'.format(
-              str(type_spec.placement)))
+              type_spec.placement))
     elif not isinstance(value, (list, tuple)):
       raise ValueError('Please pass a list or tuple to any function that'
                        ' expects a federated type placed at {};'
@@ -244,8 +242,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   else:
     raise NotImplementedError(
         'Unable to determine valid value representation for {} for what '
-        'is currently an unsupported TFF type {}.'.format(
-            str(value), str(type_spec)))
+        'is currently an unsupported TFF type {}.'.format(value, type_spec))
 
 
 def stamp_computed_value_into_graph(value, graph):
@@ -297,7 +294,7 @@ def stamp_computed_value_into_graph(value, graph):
     else:
       raise NotImplementedError(
           'Unable to embed a computed value of type {} in graph.'.format(
-              str(value.type_signature)))
+              value.type_signature))
 
 
 def capture_computed_value_from_graph(value, type_spec):
@@ -369,7 +366,7 @@ def numpy_cast(value, dtype, shape):
           all(value_as_numpy_array.shape[i] == shape.dims[i] or
               shape.dims[i].value is None) for i in range(len(shape.dims))):
     raise TypeError('Expected shape {}, found {}.'.format(
-        str(shape.dims), str(value_as_numpy_array.shape)))
+        shape.dims, value_as_numpy_array.shape))
   # NOTE: We don't want to make things more complicated than necessary by
   # returning the result as an array if it's just a plain scalar, so we
   # special-case this by pulling the singleton `np.ndarray`'s element out.
@@ -409,7 +406,7 @@ def multiply_by_scalar(value, multiplier):
   else:
     raise NotImplementedError(
         'Multiplying vlues of type {} by a scalar is unsupported.'.format(
-            str(value.type_signature)))
+            value.type_signature))
 
 
 def get_cardinalities(value):
@@ -446,12 +443,12 @@ def get_cardinalities(value):
         elif result[k] != v:
           raise ValueError(
               'Mismatching cardinalities for {}: {} vs. {}.'.format(
-                  str(k), str(result[k]), str(v)))
+                  k, result[k], v))
     return result
   else:
     raise NotImplementedError(
         'Unable to get cardinalities from a value of TFF type {}.'.format(
-            str(value.type_signature)))
+            value.type_signature))
 
 
 class ComputationContext(object):
@@ -523,8 +520,8 @@ class ComputationContext(object):
     elif self._parent_context is not None:
       return self._parent_context.get_cardinality(placement)
     else:
-      raise ValueError('Unable to determine the cardinality for {}.'.format(
-          str(placement)))
+      raise ValueError(
+          'Unable to determine the cardinality for {}.'.format(placement))
 
 
 def fit_argument(arg, type_spec, context):
@@ -579,7 +576,7 @@ def fit_argument(arg, type_spec, context):
                              type_spec)
     elif type_spec.all_equal:
       raise TypeError('Cannot fit a non all-equal {} into all-equal {}.'.format(
-          str(arg.type_signature), str(type_spec)))
+          arg.type_signature, type_spec))
     else:
       py_typecheck.check_type(arg.value, list)
 
@@ -682,7 +679,7 @@ class ReferenceExecutor(context_base.Context):
     if not isinstance(computed_comp.type_signature,
                       computation_types.FunctionType):
       if arg is not None:
-        raise TypeError('Unexpected argument {}.'.format(str(arg)))
+        raise TypeError('Unexpected argument {}.'.format(arg))
       else:
         value = computed_comp.value
         result_type = fn.type_signature.result
@@ -775,7 +772,7 @@ class ReferenceExecutor(context_base.Context):
     else:
       raise NotImplementedError(
           'A computation building block of a type {} not currently recognized '
-          'by the reference executor: {}.'.format(str(type(comp)), str(comp)))
+          'by the reference executor: {}.'.format(type(comp), comp))
 
   def _compute_compiled(self, comp, context):
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
@@ -849,8 +846,7 @@ class ReferenceExecutor(context_base.Context):
                                            arg.type_signature):
         raise TypeError(
             'Expected the type of argument {} to be {}, found {}.'.format(
-                str(comp.parameter_name), str(comp.parameter_type),
-                str(arg.type_signature)))
+                comp.parameter_name, comp.parameter_type, arg.type_signature))
       return ComputationContext(context, {comp.parameter_name: arg})
 
     return ComputedValue(lambda x: self._compute(comp.result, _wrap(x)),
@@ -1004,7 +1000,7 @@ class ReferenceExecutor(context_base.Context):
          computation_types.AbstractType, computation_types.PlacementType)):
       raise TypeError(
           'The generic_zero is not well-defined for TFF type {}.'.format(
-              str(type_spec)))
+              type_spec))
     elif isinstance(type_spec, computation_types.FederatedType):
       if type_spec.all_equal:
         return ComputedValue(
@@ -1018,19 +1014,19 @@ class ReferenceExecutor(context_base.Context):
     else:
       raise NotImplementedError(
           'Generic zero support for {} is not implemented yet.'.format(
-              str(type_spec)))
+              type_spec))
 
   def _generic_plus(self, arg):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
     if len(arg.type_signature) != 2:
       raise TypeError('Generic plus is undefined for tuples of size {}.'.format(
-          str(len(arg.type_signature))))
+          len(arg.type_signature)))
     element_type = arg.type_signature[0]
     if arg.type_signature[1] != element_type:
       raise TypeError('Generic plus is undefined for two-tuples of different '
-                      'types ({} vs. {}).'.format(
-                          str(element_type), str(arg.type_signature[1])))
+                      'types ({} vs. {}).'.format(element_type,
+                                                  arg.type_signature[1]))
     if isinstance(element_type, computation_types.TensorType):
       val = numpy_cast(arg.value[0] + arg.value[1], element_type.dtype,
                        element_type.shape)
@@ -1160,7 +1156,7 @@ class ReferenceExecutor(context_base.Context):
                             computation_types.NamedTupleType)
     if len(arg.type_signature) != 5:
       raise TypeError('Expected a 5-tuple, found {}.'.format(
-          str(arg.type_signature)))
+          arg.type_signature))
     root_accumulator = self._federated_reduce(
         ComputedValue(
             anonymous_tuple.from_container([arg.value[k] for k in range(3)]),

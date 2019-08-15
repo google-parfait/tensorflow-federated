@@ -129,9 +129,9 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
       # For a given argument or kwarg, we shouldn't have both:
       if (have_names and have_nones):
         raise ValueError(
-            'A mix of named and unnamed entries are not supported inside '
-            'a nested structure representing a single argument in a call '
-            'to a TensorFlow or Python function.\n' + str(parameter_type))
+            'A mix of named and unnamed entries are not supported inside a '
+            'nested structure representing a single argument in a call to a '
+            'TensorFlow or Python function.\n{}'.format(parameter_type))
       tf_typespec = anonymous_tuple.AnonymousTuple(element_typespec_pairs)
       return (tf_typespec,
               pb.TensorFlow.Binding(
@@ -146,7 +146,7 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
   def get_arg_name(i):
     name = arg_names[i]
     if not isinstance(name, six.string_types):
-      raise ValueError('arg_names must be strings, but got' + str(name))
+      raise ValueError('arg_names must be strings, but got: {}'.format(name))
     return name
 
   # Main logic --- process arg_types and kwarg_types:
@@ -380,7 +380,7 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
   if variant_tensor.dtype != tf.variant:
     raise TypeError(
         'Expected `variant_tensor` to be of a variant type, found {}.'.format(
-            str(variant_tensor.dtype)))
+            variant_tensor.dtype))
   return tf.data.experimental.from_variant(
       variant_tensor,
       structure=(type_utils.type_to_tf_structure(
@@ -676,7 +676,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
         raise ValueError(
             'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))
   else:
-    raise ValueError('Unsupported type \'{}\'.'.format(str(type_spec)))
+    raise ValueError('Unsupported type \'{}\'.'.format(type_spec))
 
 
 def nested_structures_equal(x, y):
@@ -734,11 +734,11 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
       ])
     else:
       raise TypeError(
-          'Expected a named tuple type with either all elements named '
-          'or all unnamed, got {}.'.format(str(type_spec)))
+          'Expected a named tuple type with either all elements named or all '
+          'unnamed, got {}.'.format(type_spec))
   else:
-    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
-        str(type_spec)))
+    raise TypeError(
+        'Expected a tensor or named tuple type, found {}.'.format(type_spec))
 
 
 def _make_dummy_element_for_type_spec(type_spec):
@@ -777,8 +777,8 @@ def _make_dummy_element_for_type_spec(type_spec):
       elem_list.append(_make_dummy_element_for_type_spec(elem_type))
     return elem_list
   else:
-    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
-        str(type_spec)))
+    raise TypeError(
+        'Expected a tensor or named tuple type, found {}.'.format(type_spec))
 
 
 def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
@@ -815,8 +815,8 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
       value = tuple([v for _, v in elements])
     else:
       raise TypeError(
-          'Expected an anonymous tuple to either have all elements named '
-          'or all unnamed, got {}.'.format(str(value)))
+          'Expected an anonymous tuple to either have all elements named or '
+          'all unnamed, got {}.'.format(value))
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(structure, list)
     structure.append(value)
@@ -828,25 +828,25 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
       if isinstance(value, dict):
         if set(value.keys()) != set(k for k, _ in elements):
           raise TypeError('Value {} does not match type {}.'.format(
-              str(value), str(type_spec)))
+              value, type_spec))
         for elem_name, elem_type in elements:
           append_to_list_structure_for_element_type_spec(
               structure[elem_name], value[elem_name], elem_type)
       elif isinstance(value, (list, tuple)):
         if len(value) != len(elements):
           raise TypeError('Value {} does not match type {}.'.format(
-              str(value), str(type_spec)))
+              value, type_spec))
         for idx, (elem_name, elem_type) in enumerate(elements):
           append_to_list_structure_for_element_type_spec(
               structure[elem_name], value[idx], elem_type)
       else:
         raise TypeError('Unexpected type of value {} for TFF type {}.'.format(
-            py_typecheck.type_string(type(value)), str(type_spec)))
+            py_typecheck.type_string(type(value)), type_spec))
     elif isinstance(structure, tuple):
       py_typecheck.check_type(value, (list, tuple))
       if len(value) != len(elements):
         raise TypeError('Value {} does not match type {}.'.format(
-            str(value), str(type_spec)))
+            value, type_spec))
       for idx, (_, elem_type) in enumerate(elements):
         append_to_list_structure_for_element_type_spec(structure[idx],
                                                        value[idx], elem_type)
@@ -855,8 +855,8 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
           'Invalid nested structure, unexpected container type {}.'.format(
               py_typecheck.type_string(type(structure))))
   else:
-    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
-        str(type_spec)))
+    raise TypeError(
+        'Expected a tensor or named tuple type, found {}.'.format(type_spec))
 
 
 def to_tensor_slices_from_list_structure_for_element_type_spec(
@@ -909,8 +909,8 @@ def to_tensor_slices_from_list_structure_for_element_type_spec(
           'Invalid nested structure, unexpected container type {}.'.format(
               py_typecheck.type_string(type(structure))))
   else:
-    raise TypeError('Expected a tensor or named tuple type, found {}.'.format(
-        str(type_spec)))
+    raise TypeError(
+        'Expected a tensor or named tuple type, found {}.'.format(type_spec))
 
 
 def make_data_set_from_elements(graph, elements, element_type):
@@ -990,7 +990,7 @@ def make_data_set_from_elements(graph, elements, element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(
-              str(element_type), str(ds_element_type)))
+              element_type, ds_element_type))
     return ds
 
   if graph is not None:
@@ -1052,7 +1052,7 @@ def fetch_value_in_session(sess, value):
       elif tf.is_tensor(v):
         flat_tensors.append(v)
       else:
-        raise ValueError('Unsupported value type {}.'.format(str(v)))
+        raise ValueError('Unsupported value type {}.'.format(v))
     flat_computed_tensors = sess.run(flat_tensors)
     flattened_results = _interleave_dataset_results_and_tensors(
         dataset_results, flat_computed_tensors)

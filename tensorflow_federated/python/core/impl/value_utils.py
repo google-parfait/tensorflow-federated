@@ -77,7 +77,7 @@ def check_federated_value_placement(value, placement, label=None):
   if label is not None:
     py_typecheck.check_type(label, six.string_types)
   if value.type_signature.placement is not placement:
-    raise TypeError('The {} should be placed at {}, but it '
-                    'is placed at {}.'.format(
-                        label if label else 'value', str(placement),
-                        str(value.type_signature.placement)))
+    raise TypeError(
+        'The {} should be placed at {}, but it is placed at {}.'.format(
+            label if label else 'value', placement,
+            value.type_signature.placement))

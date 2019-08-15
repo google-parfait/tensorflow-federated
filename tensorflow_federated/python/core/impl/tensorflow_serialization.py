@@ -47,8 +47,8 @@ def finalize_binding(binding, tensor_info_map):
   """
   if not binding:
     if tensor_info_map:
-      raise ValueError('Empty binding, but non-empty tensor_info_map {}:\n' +
-                       str(tensor_info_map))
+      raise ValueError('Empty binding, but non-empty tensor_info_map {}'.format(
+          tensor_info_map))
     return
   if isinstance(binding, pb.TensorFlow.Binding):
     sub_binding = getattr(binding, binding.WhichOneof('binding'))
