@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
@@ -49,9 +49,9 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     TypeError: If arguments are of the wrong types, e.g., in `comp` is not a
       TensorFlow computation.
   """
-  # TODO(b/134543154): Decide whether this belongs in `graph_utils.py` since
-  # it deals exclusively with eager mode. Incubate here, and potentially move
-  # there, once stable.
+  # TODO(b/134543154): Decide whether this belongs in `tensorflow_utils.py`
+  # since it deals exclusively with eager mode. Incubate here, and potentially
+  # move there, once stable.
 
   py_typecheck.check_type(comp, pb.Computation)
   comp_type = type_serialization.deserialize_type(comp.type)
@@ -75,12 +75,12 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     result_type = type_spec
 
   if param_type is not None:
-    input_tensor_names = graph_utils.extract_tensor_names_from_binding(
+    input_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
         comp.tensorflow.parameter)
   else:
     input_tensor_names = []
 
-  output_tensor_names = graph_utils.extract_tensor_names_from_binding(
+  output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
       comp.tensorflow.result)
 
   def function_to_wrap(*args):  # pylint: disable=missing-docstring
@@ -90,7 +90,8 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
     init_op = comp.tensorflow.initialize_op
     if init_op:
-      graph_def = graph_utils.add_control_deps_for_init_op(graph_def, init_op)
+      graph_def = tensorflow_utils.add_control_deps_for_init_op(
+          graph_def, init_op)
 
     def _import_fn():
       return tf.import_graph_def(
@@ -237,8 +238,8 @@ def to_representation_for_type(value, type_spec=None, device=None):
     return anonymous_tuple.AnonymousTuple(result_elem)
   elif isinstance(type_spec, computation_types.SequenceType):
     if isinstance(value, list):
-      value = graph_utils.make_data_set_from_elements(None, value,
-                                                      type_spec.element)
+      value = tensorflow_utils.make_data_set_from_elements(
+          None, value, type_spec.element)
     py_typecheck.check_type(
         value,
         (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset))

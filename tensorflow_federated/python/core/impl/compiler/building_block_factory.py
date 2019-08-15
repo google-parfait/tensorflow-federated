@@ -36,7 +36,7 @@ from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def unique_name_generator(comp, prefix='_var'):
@@ -70,8 +70,8 @@ def create_compiled_empty_tuple():
     `building_blocks.CompiledComputation`.
   """
   with tf.Graph().as_default() as graph:
-    result_type, result_binding = graph_utils.capture_result_from_graph([],
-                                                                        graph)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        [], graph)
 
   function_type = computation_types.FunctionType(None, result_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
@@ -111,9 +111,9 @@ def create_compiled_identity(type_signature, name=None):
         'sequence or tuple types; you have tried to construct a TF block with '
         'parameter of type {}'.format(type_spec))
   with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
-    result_type, result_binding = graph_utils.capture_result_from_graph(
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         parameter_value, graph)
   function_type = computation_types.FunctionType(type_spec, result_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
@@ -193,7 +193,7 @@ def create_tensorflow_constant(type_spec, scalar_value):
 
   with tf.Graph().as_default() as graph:
     result = _create_result_tensor(type_spec, scalar_value)
-  _, result_binding = graph_utils.capture_result_from_graph(result, graph)
+  _, result_binding = tensorflow_utils.capture_result_from_graph(result, graph)
 
   function_type = computation_types.FunctionType(None, type_spec)
   serialized_function_type = type_serialization.serialize_type(function_type)
@@ -237,10 +237,10 @@ def create_compiled_input_replication(type_signature, n_replicas):
         'parameter of type {}'.format(type_spec))
   py_typecheck.check_type(n_replicas, int)
   with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
     result = [parameter_value] * n_replicas
-    result_type, result_binding = graph_utils.capture_result_from_graph(
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
   function_type = computation_types.FunctionType(type_spec, result_type)
@@ -290,10 +290,10 @@ def create_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
   tensor_spec = computation_types.TensorType(scalar_type, shape=())
 
   with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', tensor_spec, graph)
     result = tf.broadcast_to(parameter_value, new_shape)
-    result_type, result_binding = graph_utils.capture_result_from_graph(
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
   function_type = computation_types.FunctionType(
@@ -353,9 +353,9 @@ def create_tensorflow_binary_operator(operand_type, operator):
                     '`computation_types.NamedTupleType`; this is disallowed '
                     'in the generic operators.'.format(operand_type))
   with tf.Graph().as_default() as graph:
-    operand_1_value, operand_1_binding = graph_utils.stamp_parameter_in_graph(
+    operand_1_value, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', operand_type, graph)
-    operand_2_value, operand_2_binding = graph_utils.stamp_parameter_in_graph(
+    operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
         'y', operand_type, graph)
 
     if isinstance(operand_type, computation_types.TensorType):
@@ -368,7 +368,7 @@ def create_tensorflow_binary_operator(operand_type, operator):
                       'The whitelist in '
                       '`type_utils.is_generic_op_compatible_type` has allowed '
                       'it to pass, and should be updated.'.format(operand_type))
-    result_type, result_binding = graph_utils.capture_result_from_graph(
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)
 
   function_type = computation_types.FunctionType(

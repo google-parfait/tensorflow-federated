@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
@@ -435,7 +435,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
       stamp_name = 'name'
     else:
       stamp_name = name
-    _, stamped_binding = graph_utils.stamp_parameter_in_graph(
+    _, stamped_binding = tensorflow_utils.stamp_parameter_in_graph(
         stamp_name, type_spec, g)
     parameter_bindings.append(stamped_binding)
     parameter_type_elements.append((name, type_spec))
@@ -480,11 +480,11 @@ def _unpack_proto_into_graph_spec(tf_block_proto):
   graph_result_binding = tf_block_proto.tensorflow.result
 
   if graph_parameter_binding.WhichOneof('binding') is not None:
-    graph_parameter_list = graph_utils.extract_tensor_names_from_binding(
+    graph_parameter_list = tensorflow_utils.extract_tensor_names_from_binding(
         graph_parameter_binding)
   else:
     graph_parameter_list = []
-  graph_result_list = graph_utils.extract_tensor_names_from_binding(
+  graph_result_list = tensorflow_utils.extract_tensor_names_from_binding(
       graph_result_binding)
   return graph_merge.GraphSpec(graph, graph_init_op_name, graph_parameter_list,
                                graph_result_list)

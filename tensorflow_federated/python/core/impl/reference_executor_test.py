@@ -42,7 +42,7 @@ from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def zero_for(type_spec, context_stack):
@@ -159,7 +159,7 @@ class ReferenceExecutorTest(test.TestCase):
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
       with tf.compat.v1.Session(graph=graph) as sess:
-        v_result = graph_utils.fetch_value_in_session(sess, stamped_v)
+        v_result = tensorflow_utils.fetch_value_in_session(sess, stamped_v)
     self.assertTrue(np.array_equal(v_result, np.array([1, 2, 3])))
 
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
@@ -172,7 +172,7 @@ class ReferenceExecutorTest(test.TestCase):
     with tf.Graph().as_default() as graph:
       stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
       with tf.compat.v1.Session(graph=graph) as sess:
-        v_val = graph_utils.fetch_value_in_session(sess, stamped_v)
+        v_val = tensorflow_utils.fetch_value_in_session(sess, stamped_v)
     self.assertEqual(str(v_val), '<x=10,y=<z=0.6>>')
 
   def test_computation_context_resolve_reference(self):

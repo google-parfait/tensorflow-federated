@@ -109,7 +109,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_merge",
     ],
 )
@@ -301,7 +301,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:typed_object",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_merge",
     ],
 )
@@ -743,7 +743,7 @@ py_library(
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -782,7 +782,7 @@ py_library(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/utils:dtype_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -810,7 +810,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -881,7 +881,7 @@ py_library(
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -909,7 +909,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_keys",
     ],
 )
@@ -1157,7 +1157,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/utils:dtype_utils",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 

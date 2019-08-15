@@ -41,7 +41,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.utils import dtype_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -277,7 +277,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
 
   # Defines a no-arg function that builds a `tf.data.Dataset` from the elements.
   def _create_dataset_from_elements():
-    return graph_utils.make_data_set_from_elements(
+    return tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(), elements, element_type)
 
   # Wraps the dataset as a value backed by a no-argument TensorFlow computation.

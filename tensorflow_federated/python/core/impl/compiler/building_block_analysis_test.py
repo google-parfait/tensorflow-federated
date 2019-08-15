@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 class CountTensorFlowOpsTest(absltest.TestCase):
@@ -47,7 +47,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
       b = tf.constant(1)
       c = a + b
 
-    _, result_binding = graph_utils.capture_result_from_graph(c, g)
+    _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
     function_type = computation_types.FunctionType(None, tf.int32)
@@ -74,7 +74,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       b = tf.constant(1)
       c = a + b
 
-    _, result_binding = graph_utils.capture_result_from_graph(c, g)
+    _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
     function_type = computation_types.FunctionType(None, tf.int32)
@@ -94,7 +94,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       b = tf.constant(1, name='variable2')
       c = a + b
 
-    _, result_binding = graph_utils.capture_result_from_graph(c, g)
+    _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
     function_type = computation_types.FunctionType(None, tf.int32)
@@ -114,7 +114,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       b = tf.Variable(1, name='variable2')
       c = a + b
 
-    _, result_binding = graph_utils.capture_result_from_graph(c, g)
+    _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
     function_type = computation_types.FunctionType(None, tf.int32)

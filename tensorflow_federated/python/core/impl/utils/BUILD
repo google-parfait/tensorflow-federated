@@ -44,8 +44,8 @@ py_test(
 )
 
 py_library(
-    name = "graph_utils",
-    srcs = ["graph_utils.py"],
+    name = "tensorflow_utils",
+    srcs = ["tensorflow_utils.py"],
     deps = [
         ":dtype_utils",
         ":function_utils",
@@ -58,11 +58,11 @@ py_library(
 )
 
 py_test(
-    name = "graph_utils_test",
+    name = "tensorflow_utils_test",
     size = "small",
-    srcs = ["graph_utils_test.py"],
+    srcs = ["tensorflow_utils_test.py"],
     deps = [
-        ":graph_utils",
+        ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",

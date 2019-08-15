@@ -33,7 +33,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def deserialize_and_call_tf_computation(computation_proto, arg, graph):
@@ -88,7 +88,8 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
           'The computation declared a parameter of type {}, but the argument '
           'was not supplied.'.format(str(type_spec.parameter)))
     else:
-      arg_type, arg_binding = graph_utils.capture_result_from_graph(arg, graph)
+      arg_type, arg_binding = tensorflow_utils.capture_result_from_graph(
+          arg, graph)
       if not type_utils.is_assignable_from(type_spec.parameter, arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
@@ -97,10 +98,10 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
       else:
         input_map = {
             k: graph.get_tensor_by_name(v) for k, v in six.iteritems(
-                graph_utils.compute_map_from_bindings(
+                tensorflow_utils.compute_map_from_bindings(
                     computation_proto.tensorflow.parameter, arg_binding))
         }
-    return_elements = graph_utils.extract_tensor_names_from_binding(
+    return_elements = tensorflow_utils.extract_tensor_names_from_binding(
         computation_proto.tensorflow.result)
     orig_init_op_name = computation_proto.tensorflow.initialize_op
     if orig_init_op_name:
@@ -125,6 +126,6 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     output_map = {k: v for k, v in zip(return_elements, output_tensors)}
     new_init_op_name = output_map.pop(orig_init_op_name, None)
     return (new_init_op_name,
-            graph_utils.assemble_result_from_graph(
+            tensorflow_utils.assemble_result_from_graph(
                 type_spec.result, computation_proto.tensorflow.result,
                 output_map))

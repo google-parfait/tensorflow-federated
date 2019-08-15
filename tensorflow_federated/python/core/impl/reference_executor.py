@@ -49,7 +49,7 @@ from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.utils import dtype_utils
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 class ComputedValue(object):
@@ -292,7 +292,7 @@ def stamp_computed_value_into_graph(value, graph):
         stamped_elements.append((k, stamped_v))
       return anonymous_tuple.AnonymousTuple(stamped_elements)
     elif isinstance(value.type_signature, computation_types.SequenceType):
-      return graph_utils.make_data_set_from_elements(
+      return tensorflow_utils.make_data_set_from_elements(
           graph, value.value, value.type_signature.element)
     else:
       raise NotImplementedError(
@@ -342,7 +342,7 @@ def run_tensorflow(comp, arg):
   with tf.compat.v1.Session(graph=graph) as sess:
     if init_op:
       sess.run(init_op)
-    result_val = graph_utils.fetch_value_in_session(sess, result)
+    result_val = tensorflow_utils.fetch_value_in_session(sess, result)
   return capture_computed_value_from_graph(result_val,
                                            comp.type_signature.result)
 

@@ -36,7 +36,7 @@ from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def _stamp_value_into_graph(value, type_signature, graph):
@@ -77,8 +77,8 @@ def _stamp_value_into_graph(value, type_signature, graph):
       stamped_elements.append((name, stamped_element))
     return anonymous_tuple.AnonymousTuple(stamped_elements)
   elif isinstance(type_signature, computation_types.SequenceType):
-    return graph_utils.make_data_set_from_elements(graph, value,
-                                                   type_signature.element)
+    return tensorflow_utils.make_data_set_from_elements(graph, value,
+                                                        type_signature.element)
   else:
     raise NotImplementedError(
         'Unable to stamp a value of type {} in graph.'.format(type_signature))
@@ -108,7 +108,7 @@ def _run_tensorflow(computation_proto, arg=None):
   with tf.compat.v1.Session(graph=graph) as sess:
     if init_op:
       sess.run(init_op)
-    result = graph_utils.fetch_value_in_session(sess, result)
+    result = tensorflow_utils.fetch_value_in_session(sess, result)
   return result
 
 

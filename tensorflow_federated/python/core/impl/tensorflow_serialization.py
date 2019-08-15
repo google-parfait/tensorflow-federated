@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_keys
 
 
@@ -108,7 +108,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   # to get_concrete_fn below.
   unpack = function_utils.infer_unpack_needed(target, parameter_type, unpack)
   arg_typespecs, kwarg_typespecs, parameter_binding = (
-      graph_utils.get_tf_typespec_and_binding(
+      tensorflow_utils.get_tf_typespec_and_binding(
           parameter_type, arg_names=argspec.args, unpack=unpack))
 
   # Pseudo-global to be appended to once when target_poly below is traced.
@@ -132,7 +132,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   def target_poly(*args, **kwargs):
     result = target(*args, **kwargs)
     result_dict, result_type, result_binding = (
-        graph_utils.get_tf2_result_dict_and_binding(result))
+        tensorflow_utils.get_tf2_result_dict_and_binding(result))
     assert not type_and_binding_slot
     # A "side channel" python output.
     type_and_binding_slot.append((result_type, result_binding))
@@ -254,7 +254,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
             'Expected the target to declare exactly one parameter, '
             'found {}.'.format(repr(argspec.args)))
       parameter_name = argspec.args[0]
-      parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           parameter_name, parameter_type, graph)
       args.append(parameter_value)
     else:
@@ -302,7 +302,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       else:
         init_op_name = None
 
-    result_type, result_binding = graph_utils.capture_result_from_graph(
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
   annotated_type = computation_types.FunctionType(parameter_type, result_type)

@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def prune_tensorflow_proto(proto):
@@ -45,14 +45,14 @@ def prune_tensorflow_proto(proto):
                     'protos of the \'tensorflow\' variety; you have passed '
                     'one of variety {}.'.format(computation_oneof))
   if proto.tensorflow.parameter.WhichOneof('binding'):
-    parameter_tensor_names = graph_utils.extract_tensor_names_from_binding(
+    parameter_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
         proto.tensorflow.parameter)
     parameter_names = [
         ':'.join(x.split(':')[:-1]) for x in parameter_tensor_names
     ]
   else:
     parameter_names = []
-  return_tensor_names = graph_utils.extract_tensor_names_from_binding(
+  return_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
       proto.tensorflow.result)
   return_names = [':'.join(x.split(':')[:-1]) for x in return_tensor_names]
   graph_def = serialization_utils.unpack_graph_def(proto.tensorflow.graph_def)

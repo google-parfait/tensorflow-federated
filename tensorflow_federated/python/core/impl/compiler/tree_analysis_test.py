@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_analys
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.utils import graph_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 class IntrinsicsWhitelistedTest(absltest.TestCase):
@@ -243,7 +243,7 @@ def _create_no_variable_tensorflow():
     b = tf.constant(1, name='variable2')
     c = a + b
 
-  result_type, result_binding = graph_utils.capture_result_from_graph(c, g)
+  result_type, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
   return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
 
@@ -254,7 +254,7 @@ def _create_two_variable_tensorflow():
     b = tf.Variable(1, name='variable2')
     c = a + b
 
-  result_type, result_binding = graph_utils.capture_result_from_graph(c, g)
+  result_type, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
   return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
 

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for interacting with and manipulating TensorFlow graphs."""
-# TODO(b/132704092): Rename graph_utils.py to tensorflow_utils.py
 
 from __future__ import absolute_import
 from __future__ import division

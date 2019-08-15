@@ -34,7 +34,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -53,7 +53,7 @@ py_library(
         "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:type_serialization",
         "//tensorflow_federated/python/core/impl:type_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -74,7 +74,7 @@ py_test(
         "//tensorflow_federated/python/core/impl:type_constructors",
         "//tensorflow_federated/python/core/impl:type_serialization",
         "//tensorflow_federated/python/core/impl:type_utils",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -140,6 +140,6 @@ py_test(
         "//tensorflow_federated/python/core/impl:computation_test_utils",
         "//tensorflow_federated/python/core/impl:intrinsic_defs",
         "//tensorflow_federated/python/core/impl:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:graph_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
