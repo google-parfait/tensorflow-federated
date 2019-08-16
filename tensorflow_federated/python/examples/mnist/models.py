@@ -21,7 +21,6 @@ from __future__ import print_function
 import collections
 
 import tensorflow as tf
-
 import tensorflow_federated as tff
 
 

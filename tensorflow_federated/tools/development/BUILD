@@ -18,7 +18,6 @@ sh_binary(
         "//tensorflow_federated/python/core/impl",
         "//tensorflow_federated/python/core/impl/compiler",
         "//tensorflow_federated/python/core/impl/utils",
-        "//tensorflow_federated/python/examples",
         "//tensorflow_federated/python/tensorflow_libs",
     ],
 )
