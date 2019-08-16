@@ -29,6 +29,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core import framework as tff_framework
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
+from tensorflow_federated.python.tensorflow_libs import nest as nest_contrib
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
@@ -106,19 +107,20 @@ def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
   @tff.tf_computation(state_type, value_type)
   def encode(state, value):
     """Encode tf_computation."""
-    encoded_structure = tf.contrib.framework.nest.map_structure_up_to(
+    encoded_structure = nest_contrib.map_structure_up_to(
         encoders, lambda state, value, e: e.encode(value, state), state, value,
         encoders)
-    encoded_value = tf.contrib.framework.nest.map_structure_up_to(
-        encoders, lambda s: s[0], encoded_structure)
-    new_state = tf.contrib.framework.nest.map_structure_up_to(
-        encoders, lambda s: s[1], encoded_structure)
+    encoded_value = nest_contrib.map_structure_up_to(encoders, lambda s: s[0],
+                                                     encoded_structure)
+    new_state = nest_contrib.map_structure_up_to(encoders, lambda s: s[1],
+                                                 encoded_structure)
     return new_state, encoded_value
 
   @tff.tf_computation(encode.type_signature.result[1])
   def decode(encoded_value):
     """Decode tf_computation."""
-    return tf.contrib.framework.nest.map_structure_up_to(
-        encoders, lambda e, val: e.decode(val), encoders, encoded_value)
+    return nest_contrib.map_structure_up_to(encoders,
+                                            lambda e, val: e.decode(val),
+                                            encoders, encoded_value)
 
   return encode, decode

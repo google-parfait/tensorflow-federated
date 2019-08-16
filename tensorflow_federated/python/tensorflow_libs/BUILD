@@ -41,3 +41,14 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
     ],
 )
+
+py_library(
+    name = "nest",
+    srcs = ["nest.py"],
+)
+
+py_test(
+    name = "nest_test",
+    srcs = ["nest_test.py"],
+    deps = [":nest"],
+)

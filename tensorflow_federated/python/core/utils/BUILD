@@ -63,6 +63,7 @@ py_library(
         ":computation_utils",
         "//tensorflow_federated/python/core/api",
         "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/tensorflow_libs:nest",
     ],
 )
 
