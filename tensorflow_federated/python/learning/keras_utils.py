@@ -249,7 +249,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 
   @tff.tf_computation(member_type)
   def report(accumulators):
-    """Insert `accumulators` back into the kera metric to obtain result."""
+    """Insert `accumulators` back into the keras metric to obtain result."""
     # NOTE: the following call requires that `metric_type` have a no argument
     # __init__ method, which will restrict the types of metrics that can be
     # used. This is somewhat limiting, but the pattern to use default arguments
