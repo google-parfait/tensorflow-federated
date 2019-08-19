@@ -403,8 +403,8 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
     A `bool` indicating whether or not to unpack.
   """
   if should_unpack not in [True, False, None]:
-    raise TypeError('The unpack argument has an unexpected value {}.'.format(
-        repr(should_unpack)))
+    raise TypeError('The unpack argument has an unexpected value {!r}.'.format(
+        should_unpack))
   unpack = should_unpack  # Default return value.
   argspec = get_argspec(fn)
 
@@ -510,8 +510,8 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
   # TODO(b/113112885): Revisit whether the 3-way 'unpack' knob is sufficient
   # for our needs, or more options are needed.
   if unpack not in [True, False, None]:
-    raise TypeError('The unpack argument has an unexpected value {}.'.format(
-        repr(unpack)))
+    raise TypeError(
+        'The unpack argument has an unexpected value {!r}.'.format(unpack))
   argspec = get_argspec(fn)
   parameter_type = computation_types.to_type(parameter_type)
   if parameter_type is None:

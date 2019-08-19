@@ -83,7 +83,7 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertNotEqual(
         x, anonymous_tuple.AnonymousTuple([('foo', 20), ('bar', 30)]))
     self.assertEqual(anonymous_tuple.to_elements(x), v)
-    self.assertEqual(repr(x), 'AnonymousTuple([(foo, 20)])')
+    self.assertEqual(repr(x), 'AnonymousTuple([(\'foo\', 20)])')
     self.assertEqual(str(x), '<foo=20>')
     self.assertEqual(anonymous_tuple.to_odict(x), collections.OrderedDict(v))
 
@@ -108,7 +108,7 @@ class AnonymousTupleTest(absltest.TestCase):
                                            (None, 30)]))
     self.assertEqual(anonymous_tuple.to_elements(x), v)
     self.assertEqual(
-        repr(x), 'AnonymousTuple([(None, 10), (foo, 20), (bar, 30)])')
+        repr(x), 'AnonymousTuple([(None, 10), (\'foo\', 20), (\'bar\', 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
     with self.assertRaisesRegex(ValueError, 'unnamed'):
       anonymous_tuple.to_odict(x)

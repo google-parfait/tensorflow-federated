@@ -83,7 +83,7 @@ class AnonymousTuple(object):
       if not py_typecheck.is_name_value_pair(e, name_required=False):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
-            'element is a string, found {}.'.format(repr(e)))
+            'element is a string, found {!r}.'.format(e))
 
     self._element_array = tuple(e[1] for e in elements)
     self._name_to_index = {}
@@ -148,12 +148,17 @@ class AnonymousTuple(object):
 
   def __repr__(self):
     return 'AnonymousTuple([{}])'.format(', '.join(
-        '({}, {})'.format(e[0], repr(e[1])) for e in to_elements(self)))
+        '({!r}, {!r})'.format(n, v) for n, v in to_elements(self)))
 
   def __str__(self):
-    return '<{}>'.format(','.join(
-        ('{}={}'.format(e[0], e[1]) if e[0] is not None else str(e[1]))
-        for e in to_elements(self)))
+
+    def _element_str(element):
+      name, value = element
+      if name is not None:
+        return '{}={}'.format(name, value)
+      return str(value)
+
+    return '<{}>'.format(','.join(_element_str(e) for e in to_elements(self)))
 
   def __hash__(self):
     if self._hash is None:

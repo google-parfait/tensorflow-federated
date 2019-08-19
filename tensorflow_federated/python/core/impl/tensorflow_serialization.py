@@ -97,8 +97,8 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   argspec = function_utils.get_argspec(target)
   if argspec.args and parameter_type is None:
     raise ValueError(
-        'Expected the target to declare no parameters, found {}.'.format(
-            repr(argspec.args)))
+        'Expected the target to declare no parameters, found {!r}.'.format(
+            argspec.args))
 
   # In the codepath for TF V1 based serialization (tff.tf_computation),
   # we get the "wrapped" function to serialize. Here, target is the
@@ -251,8 +251,8 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
     if parameter_type is not None:
       if len(argspec.args) != 1:
         raise ValueError(
-            'Expected the target to declare exactly one parameter, '
-            'found {}.'.format(repr(argspec.args)))
+            'Expected the target to declare exactly one parameter, found {!r}.'
+            .format(argspec.args))
       parameter_name = argspec.args[0]
       parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           parameter_name, parameter_type, graph)
@@ -260,8 +260,8 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
     else:
       if argspec.args:
         raise ValueError(
-            'Expected the target to declare no parameters, found {}.'.format(
-                repr(argspec.args)))
+            'Expected the target to declare no parameters, found {!r}.'.format(
+                argspec.args))
       parameter_binding = None
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):

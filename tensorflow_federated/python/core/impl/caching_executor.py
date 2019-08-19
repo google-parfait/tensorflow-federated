@@ -104,7 +104,7 @@ class CachedValueIdentifier(collections.Hashable):
     # pylint: enable=protected-access
 
   def __repr__(self):
-    return 'CachedValueIdentifier({})'.format(self._identifier)
+    return 'CachedValueIdentifier({!r})'.format(self._identifier)
 
   def __str__(self):
     return self._identifier

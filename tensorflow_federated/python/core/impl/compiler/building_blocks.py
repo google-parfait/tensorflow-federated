@@ -194,9 +194,9 @@ class Reference(ComputationBuildingBlock):
     return self._context
 
   def __repr__(self):
-    return 'Reference(\'{}\', {}{})'.format(
-        self._name, repr(self.type_signature),
-        ', {}'.format(repr(self._context)) if self._context is not None else '')
+    return 'Reference(\'{}\', {!r}{})'.format(
+        self._name, self.type_signature,
+        ', {!r}'.format(self._context) if self._context is not None else '')
 
 
 class Selection(ComputationBuildingBlock):
@@ -301,10 +301,9 @@ class Selection(ComputationBuildingBlock):
 
   def __repr__(self):
     if self._name is not None:
-      return 'Selection({}, name={})'.format(
-          repr(self._source), '\'{}\''.format(self._name))
+      return 'Selection({!r}, name=\'{}\')'.format(self._source, self._name)
     else:
-      return 'Selection({}, index={})'.format(repr(self._source), self._index)
+      return 'Selection({!r}, index={})'.format(self._source, self._index)
 
 
 class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
@@ -378,10 +377,14 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         tuple=pb.Tuple(element=elements))
 
   def __repr__(self):
+
+    def _element_repr(element):
+      name, value = element
+      name_repr = '\'{}\''.format(name) if name is not None else 'None'
+      return '({}, {!r})'.format(name_repr, value)
+
     return 'Tuple([{}])'.format(', '.join(
-        '({}, {})'.format('\'{}\''.format(e[0]) if e[0] is not None else 'None',
-                          repr(e[1]))
-        for e in anonymous_tuple.to_elements(self)))
+        _element_repr(e) for e in anonymous_tuple.to_elements(self)))
 
 
 class Call(ComputationBuildingBlock):
@@ -466,9 +469,9 @@ class Call(ComputationBuildingBlock):
 
   def __repr__(self):
     if self._argument is not None:
-      return 'Call({}, {})'.format(repr(self._function), repr(self._argument))
+      return 'Call({!r}, {!r})'.format(self._function, self._argument)
     else:
-      return 'Call({})'.format(repr(self._function))
+      return 'Call({!r})'.format(self._function)
 
 
 class Lambda(ComputationBuildingBlock):
@@ -541,9 +544,9 @@ class Lambda(ComputationBuildingBlock):
     return self._result
 
   def __repr__(self):
-    return ('Lambda(\'{}\', {}, {})'.format(self._parameter_name,
-                                            repr(self._parameter_type),
-                                            repr(self._result)))
+    return 'Lambda(\'{}\', {!r}, {!r})'.format(self._parameter_name,
+                                               self._parameter_type,
+                                               self._result)
 
 
 class Block(ComputationBuildingBlock):
@@ -648,9 +651,9 @@ class Block(ComputationBuildingBlock):
     return self._result
 
   def __repr__(self):
-    return ('Block([{}], {})'.format(
-        ', '.join('(\'{}\', {})'.format(k, repr(v)) for k, v in self._locals),
-        repr(self._result)))
+    return 'Block([{}], {!r})'.format(
+        ', '.join('(\'{}\', {!r})'.format(k, v) for k, v in self._locals),
+        self._result)
 
 
 class Intrinsic(ComputationBuildingBlock):
@@ -709,7 +712,7 @@ class Intrinsic(ComputationBuildingBlock):
     return self._uri
 
   def __repr__(self):
-    return 'Intrinsic(\'{}\', {})'.format(self._uri, repr(self.type_signature))
+    return 'Intrinsic(\'{}\', {!r})'.format(self._uri, self.type_signature)
 
 
 class Data(ComputationBuildingBlock):
@@ -759,7 +762,7 @@ class Data(ComputationBuildingBlock):
     return self._uri
 
   def __repr__(self):
-    return 'Data(\'{}\', {})'.format(self._uri, repr(self.type_signature))
+    return 'Data(\'{}\', {!r})'.format(self._uri, self.type_signature)
 
 
 class CompiledComputation(ComputationBuildingBlock):
@@ -805,8 +808,8 @@ class CompiledComputation(ComputationBuildingBlock):
     return self._name
 
   def __repr__(self):
-    return 'CompiledComputation({}, {})'.format(self._name,
-                                                repr(self.type_signature))
+    return 'CompiledComputation(\'{}\', {!r})'.format(self._name,
+                                                      self.type_signature)
 
 
 class Placement(ComputationBuildingBlock):
