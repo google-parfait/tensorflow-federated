@@ -22,6 +22,6 @@ If you use these baselines and need to cite this work, please use:
     author       = {H. Brendan McMahan},
     title        = {{Federated EMNIST Baseline Training}},
     year         = 2019,
-    url          =  {https://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/research/emnist_baseline}
+    url          =  {https://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/research/baselines/emnist}
     }
 ```
