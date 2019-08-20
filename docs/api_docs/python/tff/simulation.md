@@ -25,9 +25,6 @@ Federated Learning experiments in simulation.
 [`class ClientData`](../tff/simulation/ClientData.md): Object to hold a dataset
 and a mapping of clients to examples.
 
-[`class ConcreteClientData`](../tff/simulation/ConcreteClientData.md): A generic
-`ClientData` object.
-
 [`class FilePerUserClientData`](../tff/simulation/FilePerUserClientData.md): A
 `tf.simulation.ClientData` that maps a set of files to a dataset.
 

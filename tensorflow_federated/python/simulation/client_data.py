@@ -122,6 +122,21 @@ class ClientData(object):
 
     return ConcreteClientData(self.client_ids, get_dataset)
 
+  @classmethod
+  def from_clients_and_fn(cls, client_ids, create_tf_dataset_for_client_fn):
+    """Constructs a `ClientData` based on the given function.
+
+    Args:
+      client_ids: A non-empty list of client_ids which are valid inputs to the
+        create_tf_dataset_for_client_fn.
+      create_tf_dataset_for_client_fn: A function that takes a client_id from
+        the above list, and returns a `tf.data.Dataset`.
+
+    Returns:
+      A `ClientData`.
+    """
+    return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
+
 
 class ConcreteClientData(ClientData):
   """A generic `ClientData` object.

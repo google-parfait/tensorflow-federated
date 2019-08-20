@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow_federated.python.simulation import client_data as cd
 
 
-class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
+class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_concrete_client_data(self):
     client_ids = [1, 2, 3]
@@ -33,7 +33,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       num_examples = client_id
       return tf.data.Dataset.range(num_examples)
 
-    client_data = cd.ConcreteClientData(
+    client_data = cd.ClientData.from_clients_and_fn(
         client_ids=client_ids,
         create_tf_dataset_for_client_fn=create_dataset_fn)
 

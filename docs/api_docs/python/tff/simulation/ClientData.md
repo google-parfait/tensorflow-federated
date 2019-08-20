@@ -6,6 +6,7 @@
 <meta itemprop="property" content="output_types"/>
 <meta itemprop="property" content="create_tf_dataset_for_client"/>
 <meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
+<meta itemprop="property" content="from_clients_and_fn"/>
 <meta itemprop="property" content="preprocess"/>
 </div>
 
@@ -102,6 +103,33 @@ performed.
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+<h3 id="from_clients_and_fn"><code>from_clients_and_fn</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
+```python
+@classmethod
+from_clients_and_fn(
+    cls,
+    client_ids,
+    create_tf_dataset_for_client_fn
+)
+```
+
+Constructs a `ClientData` based on the given function.
+
+#### Args:
+
+*   <b>`client_ids`</b>: A non-empty list of client_ids which are valid inputs
+    to the create_tf_dataset_for_client_fn.
+*   <b>`create_tf_dataset_for_client_fn`</b>: A function that takes a client_id
+    from the above list, and returns a `tf.data.Dataset`.
+
+#### Returns:
+
+A `ClientData`.
 
 <h3 id="preprocess"><code>preprocess</code></h3>
 

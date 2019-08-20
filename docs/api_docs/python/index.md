@@ -101,7 +101,6 @@
 *   <a href="./tff/sequence_sum.md"><code>tff.sequence_sum</code></a>
 *   <a href="./tff/simulation.md"><code>tff.simulation</code></a>
 *   <a href="./tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
-*   <a href="./tff/simulation/ConcreteClientData.md"><code>tff.simulation.ConcreteClientData</code></a>
 *   <a href="./tff/simulation/FilePerUserClientData.md"><code>tff.simulation.FilePerUserClientData</code></a>
 *   <a href="./tff/simulation/FromTensorSlicesClientData.md"><code>tff.simulation.FromTensorSlicesClientData</code></a>
 *   <a href="./tff/simulation/HDF5ClientData.md"><code>tff.simulation.HDF5ClientData</code></a>
