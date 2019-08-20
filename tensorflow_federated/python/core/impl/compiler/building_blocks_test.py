@@ -25,11 +25,11 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import test_utils
 
 
 class ComputationBuildingBlocksTest(absltest.TestCase):
@@ -547,7 +547,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_federated_aggregate(self):
-    comp = computation_test_utils.create_dummy_called_federated_aggregate(
+    comp = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -583,8 +583,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_federated_map(self):
-    comp = computation_test_utils.create_dummy_called_federated_map(
-        parameter_name='a')
+    comp = test_utils.create_dummy_called_federated_map(parameter_name='a')
     compact_string = comp.compact_representation()
     self.assertEqual(compact_string, 'federated_map(<(a -> a),data>)')
     formatted_string = comp.formatted_representation()

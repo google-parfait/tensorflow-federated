@@ -160,19 +160,6 @@ py_test(
 )
 
 py_library(
-    name = "computation_test_utils",
-    srcs = ["computation_test_utils.py"],
-    visibility = [":compiler_visibility"],
-    deps = [
-        ":type_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-    ],
-)
-
-py_library(
     name = "computation_wrapper",
     srcs = ["computation_wrapper.py"],
     deps = [
@@ -792,7 +779,6 @@ py_test(
     srcs = ["reference_executor_test.py"],
     deps = [
         ":computation_impl",
-        ":computation_test_utils",
         ":computation_wrapper_instances",
         ":context_stack_impl",
         ":intrinsic_bodies",
@@ -810,6 +796,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
@@ -974,7 +961,6 @@ py_test(
     visibility = [":compiler_visibility"],
     deps = [
         ":computation_impl",
-        ":computation_test_utils",
         ":context_stack_impl",
         ":placement_literals",
         ":tensorflow_serialization",
@@ -983,6 +969,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:test_utils",
     ],
 )
 
@@ -1011,7 +998,6 @@ py_test(
     srcs = ["transformations_test.py"],
     visibility = [":compiler_visibility"],
     deps = [
-        ":computation_test_utils",
         ":computation_wrapper_instances",
         ":context_stack_impl",
         ":intrinsic_defs",
@@ -1025,6 +1011,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )
@@ -1200,7 +1187,6 @@ py_test(
     size = "small",
     srcs = ["value_transformations_test.py"],
     deps = [
-        ":computation_test_utils",
         ":context_stack_impl",
         ":intrinsic_defs",
         ":value_transformations",
@@ -1209,6 +1195,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )

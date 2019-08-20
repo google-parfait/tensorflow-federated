@@ -25,12 +25,12 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -77,14 +77,14 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
       tree_analysis.extract_nodes_consuming(data, None)
 
   def test_adds_all_nodes_to_set_with_constant_true_predicate(self):
-    nested_tree = computation_test_utils.create_nested_syntax_tree()
+    nested_tree = test_utils.create_nested_syntax_tree()
     all_nodes = tree_analysis.extract_nodes_consuming(nested_tree,
                                                       lambda x: True)
     node_count = tree_analysis.count(nested_tree)
     self.assertLen(all_nodes, node_count)
 
   def test_adds_no_nodes_to_set_with_constant_false_predicate(self):
-    nested_tree = computation_test_utils.create_nested_syntax_tree()
+    nested_tree = test_utils.create_nested_syntax_tree()
     all_nodes = tree_analysis.extract_nodes_consuming(nested_tree,
                                                       lambda x: False)
     self.assertEmpty(all_nodes)
@@ -159,7 +159,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(None)
 
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
-    broadcast = computation_test_utils.create_dummy_called_federated_broadcast()
+    broadcast = test_utils.create_dummy_called_federated_broadcast()
     value_type = broadcast.type_signature
     zero = building_blocks.Data('zero', value_type.member)
     accumulate_result = building_blocks.Data('accumulate_result',
@@ -180,7 +180,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
         aggregate_dependent_on_broadcast)
 
   def test_finds_broadcast_dependent_on_aggregate(self):
-    aggregate = computation_test_utils.create_dummy_called_federated_aggregate(
+    aggregate = test_utils.create_dummy_called_federated_aggregate(
         'accumulate_parameter', 'merge_parameter', 'report_parameter')
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
@@ -189,7 +189,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
           broadcasted_aggregate)
 
   def test_returns_correct_example_of_broadcast_dependent_on_aggregate(self):
-    aggregate = computation_test_utils.create_dummy_called_federated_aggregate(
+    aggregate = test_utils.create_dummy_called_federated_aggregate(
         'accumulate_parameter', 'merge_parameter', 'report_parameter')
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
@@ -205,7 +205,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
       tree_analysis.count_tensorflow_ops_under(None)
 
   def test_returns_zero_no_tensorflow(self):
-    no_tensorflow_comp = computation_test_utils.create_nested_syntax_tree()
+    no_tensorflow_comp = test_utils.create_nested_syntax_tree()
     tf_count = tree_analysis.count_tensorflow_ops_under(no_tensorflow_comp)
     self.assertEqual(tf_count, 0)
 
@@ -266,7 +266,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       tree_analysis.count_tensorflow_variables_under(None)
 
   def test_returns_zero_no_tensorflow(self):
-    no_tensorflow_comp = computation_test_utils.create_nested_syntax_tree()
+    no_tensorflow_comp = test_utils.create_nested_syntax_tree()
     variable_count = tree_analysis.count_tensorflow_variables_under(
         no_tensorflow_comp)
     self.assertEqual(variable_count, 0)

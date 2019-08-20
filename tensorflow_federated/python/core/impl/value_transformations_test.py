@@ -23,11 +23,11 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
@@ -51,7 +51,7 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
           None, uri, body, context_stack_impl.context_stack)
 
   def test_raises_type_error_with_none_uri(self):
-    comp = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
+    comp = test_utils.create_lambda_to_dummy_called_intrinsic(
         parameter_name='a')
     body = lambda x: x
 
@@ -60,7 +60,7 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
           comp, None, body, context_stack_impl.context_stack)
 
   def test_raises_type_error_with_none_body(self):
-    comp = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
+    comp = test_utils.create_lambda_to_dummy_called_intrinsic(
         parameter_name='a')
     uri = 'intrinsic'
 
@@ -69,7 +69,7 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
           comp, uri, None, context_stack_impl.context_stack)
 
   def test_raises_type_error_with_none_context_stack(self):
-    comp = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
+    comp = test_utils.create_lambda_to_dummy_called_intrinsic(
         parameter_name='a')
     uri = 'intrinsic'
     body = lambda x: x
@@ -79,7 +79,7 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
           comp, uri, body, None)
 
   def test_replaces_intrinsic(self):
-    comp = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
+    comp = test_utils.create_lambda_to_dummy_called_intrinsic(
         parameter_name='a')
     uri = 'intrinsic'
     body = lambda x: x
@@ -94,9 +94,8 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_nested_intrinsic(self):
-    fn = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
-        parameter_name='a')
-    block = computation_test_utils.create_dummy_block(fn, variable_name='b')
+    fn = test_utils.create_lambda_to_dummy_called_intrinsic(parameter_name='a')
+    block = test_utils.create_dummy_block(fn, variable_name='b')
     comp = block
     uri = 'intrinsic'
     body = lambda x: x
@@ -113,10 +112,9 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_replaces_chained_intrinsics(self):
-    fn = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
-        parameter_name='a')
+    fn = test_utils.create_lambda_to_dummy_called_intrinsic(parameter_name='a')
     arg = building_blocks.Data('data', tf.int32)
-    call = computation_test_utils.create_chained_calls([fn, fn], arg)
+    call = test_utils.create_chained_calls([fn, fn], arg)
     comp = call
     uri = 'intrinsic'
     body = lambda x: x
@@ -134,7 +132,7 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_replace_other_intrinsic(self):
-    comp = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
+    comp = test_utils.create_lambda_to_dummy_called_intrinsic(
         parameter_name='a')
     uri = 'other'
     body = lambda x: x

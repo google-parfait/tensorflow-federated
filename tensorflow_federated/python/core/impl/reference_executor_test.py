@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
@@ -42,6 +41,7 @@ from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -1325,7 +1325,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
   def test_merge_tuple_intrinsics_executes_with_federated_apply(self):
     ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     ref = building_blocks.Reference('a', ref_type)
-    fn = computation_test_utils.create_identity_function('b')
+    fn = test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = building_block_factory.create_federated_apply(fn, arg)
     tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
@@ -1360,7 +1360,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
   def test_merge_tuple_intrinsics_executes_with_federated_map(self):
     ref_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref = building_blocks.Reference('a', ref_type)
-    fn = computation_test_utils.create_identity_function('b')
+    fn = test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = building_block_factory.create_federated_map(fn, arg)
     tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
