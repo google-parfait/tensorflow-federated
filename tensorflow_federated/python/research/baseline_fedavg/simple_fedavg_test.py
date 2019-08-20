@@ -114,7 +114,10 @@ class MnistModel(tff.learning.Model):
   def forward_pass(self, batch, training=True):
     del training
     loss, predictions = mnist_forward_pass(self._variables, batch)
-    return tff.learning.BatchOutput(loss=loss, predictions=predictions)
+    return tff.learning.BatchOutput(
+        loss=loss,
+        predictions=predictions,
+        num_examples=tf.shape(predictions)[0])
 
   @tf.function
   def report_local_outputs(self):

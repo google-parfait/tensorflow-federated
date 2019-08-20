@@ -3,6 +3,7 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="loss"/>
 <meta itemprop="property" content="predictions"/>
+<meta itemprop="property" content="num_examples"/>
 </div>
 
 # tff.learning.BatchOutput
@@ -26,9 +27,12 @@ NOTE: All fields are optional (may be None).
     multiple losses, it is the sum of all the individual losses.
 -   `predictions`: Tensor of predictions on the examples. The first dimension
     must be the same size (the size of the batch).
+-   `num_examples`: Number of examples seen in the batch.
 
 ## Properties
 
 <h3 id="loss"><code>loss</code></h3>
 
 <h3 id="predictions"><code>predictions</code></h3>
+
+<h3 id="num_examples"><code>num_examples</code></h3>

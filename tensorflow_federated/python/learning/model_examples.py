@@ -99,7 +99,8 @@ class LinearRegression(model.Model):
     self._num_batches.assign_add(1)
 
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
-    return model.BatchOutput(loss=average_loss, predictions=predictions)
+    return model.BatchOutput(
+        loss=average_loss, predictions=predictions, num_examples=num_examples)
 
   @tf.function
   def report_local_outputs(self):

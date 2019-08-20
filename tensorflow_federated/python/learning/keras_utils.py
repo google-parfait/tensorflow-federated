@@ -434,7 +434,10 @@ class _KerasModel(model_lib.Model):
     for metric in self.get_metrics():
       metric.update_state(y_true=y_true, y_pred=predictions)
 
-    return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
+    return model_lib.BatchOutput(
+        loss=batch_loss,
+        predictions=predictions,
+        num_examples=tf.shape(inputs)[0])
 
   @tf.function
   def forward_pass(self, batch_input, training=True):
