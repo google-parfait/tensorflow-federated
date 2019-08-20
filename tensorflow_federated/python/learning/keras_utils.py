@@ -194,15 +194,15 @@ def from_compiled_keras_model(keras_model, dummy_batch):
     ValueError: If `keras_model` was *not* compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
+  # Optimizer attribute is only set after calling tf.keras.Model.compile().
+  if not keras_model.optimizer:
+    raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
+                     'instead.')
   dummy_tensors = _preprocess_dummy_batch(dummy_batch)
   # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
   # until the model has been called on input. The work-around is to call
   # Model.test_on_batch() once before asking for metrics.
   keras_model.test_on_batch(**dummy_tensors)
-  # Optimizer attribute is only set after calling tf.keras.Model.compile().
-  if not hasattr(keras_model, 'optimizer'):
-    raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
-                     'instead.')
   return model_utils.enhance(_TrainableKerasModel(keras_model, dummy_tensors))
 
 

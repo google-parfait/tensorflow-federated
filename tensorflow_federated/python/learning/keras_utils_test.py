@@ -117,6 +117,15 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
           dummy_batch=_create_dummy_batch(1),
           loss=tf.keras.losses.MeanSquaredError())
 
+  def test_from_compiled_keras_model_fails_on_uncompiled_model(self):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=1)
+
+    with self.assertRaisesRegex(ValueError, '`keras_model` must be compiled'):
+      keras_utils.from_compiled_keras_model(
+          keras_model=keras_model,
+          dummy_batch=_create_dummy_batch(feature_dims=1))
+
   # Test class for batches using namedtuple.
   _make_test_batch = collections.namedtuple('TestBatch', ['x', 'y'])
 
