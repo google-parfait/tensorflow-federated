@@ -87,7 +87,8 @@ versions.
 
 TensorFlow Federated                                         | TensorFlow
 ------------------------------------------------------------ | ----------
-[master](https://github.com/tensorflow/federated)            | [tf-nightly 1.x](https://pypi.org/project/tf-nightly/)
+[master](https://github.com/tensorflow/federated)            | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
+[0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0) | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
 [0.7.0](https://github.com/tensorflow/federated/tree/v0.7.0) | [tf-nightly 1.15.0.dev20190711](https://pypi.org/project/tf-nightly/1.15.0.dev20190711/)
 [0.6.0](https://github.com/tensorflow/federated/tree/v0.6.0) | [tf-nightly 1.15.0.dev20190626](https://pypi.org/project/tf-nightly/1.15.0.dev20190626/)
 [0.5.0](https://github.com/tensorflow/federated/tree/v0.5.0) | [tf-nightly 1.14.1.dev20190528](https://pypi.org/project/tf-nightly/1.14.1.dev20190528/)
