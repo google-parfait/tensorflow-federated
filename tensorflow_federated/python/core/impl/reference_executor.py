@@ -39,17 +39,17 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import compiler_pipeline
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import dtype_utils
-from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.utils import dtype_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 class ComputedValue(object):
@@ -83,8 +83,7 @@ class ComputedValue(object):
     return self._value
 
   def __str__(self):
-    return 'ComputedValue({}, {})'.format(
-        str(self._value), str(self._type_signature))
+    return 'ComputedValue({}, {})'.format(self._value, self._type_signature)
 
 
 def to_representation_for_type(value, type_spec, callable_handler=None):
@@ -162,7 +161,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
-          'the type spec {}.'.format(str(inferred_type_spec), str(type_spec)))
+          'the type spec {}.'.format(inferred_type_spec, type_spec))
     return value
   elif isinstance(type_spec, computation_types.NamedTupleType):
     type_spec_elements = anonymous_tuple.to_elements(type_spec)
@@ -179,8 +178,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       raise TypeError(
           'The number of elements {} in the value tuple {} does not match the '
           'number of elements {} in the type spec {}.'.format(
-              len(value_elements), str(value), len(type_spec_elements),
-              str(type_spec)))
+              len(value_elements), value, len(type_spec_elements), type_spec))
     result_elements = []
     for index, (type_elem_name, type_elem) in enumerate(type_spec_elements):
       value_elem_name, value_elem = value_elements[index]
@@ -231,7 +229,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       raise TypeError(
           'Unable to determine a valid value representation for a federated '
           'type with non-equal members placed at {}.'.format(
-              str(type_spec.placement)))
+              type_spec.placement))
     elif not isinstance(value, (list, tuple)):
       raise ValueError('Please pass a list or tuple to any function that'
                        ' expects a federated type placed at {};'
@@ -244,8 +242,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   else:
     raise NotImplementedError(
         'Unable to determine valid value representation for {} for what '
-        'is currently an unsupported TFF type {}.'.format(
-            str(value), str(type_spec)))
+        'is currently an unsupported TFF type {}.'.format(value, type_spec))
 
 
 def stamp_computed_value_into_graph(value, graph):
@@ -292,12 +289,12 @@ def stamp_computed_value_into_graph(value, graph):
         stamped_elements.append((k, stamped_v))
       return anonymous_tuple.AnonymousTuple(stamped_elements)
     elif isinstance(value.type_signature, computation_types.SequenceType):
-      return graph_utils.make_data_set_from_elements(
+      return tensorflow_utils.make_data_set_from_elements(
           graph, value.value, value.type_signature.element)
     else:
       raise NotImplementedError(
           'Unable to embed a computed value of type {} in graph.'.format(
-              str(value.type_signature)))
+              value.type_signature))
 
 
 def capture_computed_value_from_graph(value, type_spec):
@@ -318,11 +315,12 @@ def capture_computed_value_from_graph(value, type_spec):
   return ComputedValue(to_representation_for_type(value, type_spec), type_spec)
 
 
+# TODO(b/139439722): Consolidate implementation to run a TF comp with an arg.
 def run_tensorflow(comp, arg):
   """Runs a compiled TensorFlow computation `comp` with argument `arg`.
 
   Args:
-    comp: An instance of `computation_building_blocks.CompiledComputation` with
+    comp: An instance of `building_blocks.CompiledComputation` with
       embedded TensorFlow code.
     arg: An instance of `ComputedValue` that represents the argument, or `None`
       if the compuation expects no argument.
@@ -330,7 +328,7 @@ def run_tensorflow(comp, arg):
   Returns:
     An instance of `ComputedValue` with the result.
   """
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if arg is not None:
     py_typecheck.check_type(arg, ComputedValue)
   with tf.Graph().as_default() as graph:
@@ -341,7 +339,7 @@ def run_tensorflow(comp, arg):
   with tf.compat.v1.Session(graph=graph) as sess:
     if init_op:
       sess.run(init_op)
-    result_val = graph_utils.fetch_value_in_session(sess, result)
+    result_val = tensorflow_utils.fetch_value_in_session(sess, result)
   return capture_computed_value_from_graph(result_val,
                                            comp.type_signature.result)
 
@@ -368,7 +366,7 @@ def numpy_cast(value, dtype, shape):
           all(value_as_numpy_array.shape[i] == shape.dims[i] or
               shape.dims[i].value is None) for i in range(len(shape.dims))):
     raise TypeError('Expected shape {}, found {}.'.format(
-        str(shape.dims), str(value_as_numpy_array.shape)))
+        shape.dims, value_as_numpy_array.shape))
   # NOTE: We don't want to make things more complicated than necessary by
   # returning the result as an array if it's just a plain scalar, so we
   # special-case this by pulling the singleton `np.ndarray`'s element out.
@@ -408,7 +406,7 @@ def multiply_by_scalar(value, multiplier):
   else:
     raise NotImplementedError(
         'Multiplying vlues of type {} by a scalar is unsupported.'.format(
-            str(value.type_signature)))
+            value.type_signature))
 
 
 def get_cardinalities(value):
@@ -445,12 +443,12 @@ def get_cardinalities(value):
         elif result[k] != v:
           raise ValueError(
               'Mismatching cardinalities for {}: {} vs. {}.'.format(
-                  str(k), str(result[k]), str(v)))
+                  k, result[k], v))
     return result
   else:
     raise NotImplementedError(
         'Unable to get cardinalities from a value of TFF type {}.'.format(
-            str(value.type_signature)))
+            value.type_signature))
 
 
 class ComputationContext(object):
@@ -522,8 +520,8 @@ class ComputationContext(object):
     elif self._parent_context is not None:
       return self._parent_context.get_cardinality(placement)
     else:
-      raise ValueError('Unable to determine the cardinality for {}.'.format(
-          str(placement)))
+      raise ValueError(
+          'Unable to determine the cardinality for {}.'.format(placement))
 
 
 def fit_argument(arg, type_spec, context):
@@ -578,7 +576,7 @@ def fit_argument(arg, type_spec, context):
                              type_spec)
     elif type_spec.all_equal:
       raise TypeError('Cannot fit a non all-equal {} into all-equal {}.'.format(
-          str(arg.type_signature), str(type_spec)))
+          arg.type_signature, type_spec))
     else:
       py_typecheck.check_type(arg.value, list)
 
@@ -681,7 +679,7 @@ class ReferenceExecutor(context_base.Context):
     if not isinstance(computed_comp.type_signature,
                       computation_types.FunctionType):
       if arg is not None:
-        raise TypeError('Unexpected argument {}.'.format(str(arg)))
+        raise TypeError('Unexpected argument {}.'.format(arg))
       else:
         value = computed_comp.value
         result_type = fn.type_signature.result
@@ -722,14 +720,14 @@ class ReferenceExecutor(context_base.Context):
       comp: An instance of `computation_base.Computation`.
 
     Returns:
-      An instance of `computation_building_blocks.ComputationBuildingBlock` that
+      An instance of `building_blocks.ComputationBuildingBlock` that
       contains the compiled logic of `comp`.
     """
     py_typecheck.check_type(comp, computation_base.Computation)
     if self._compiler is not None:
       comp = self._compiler.compile(comp)
     comp, _ = transformations.uniquify_compiled_computation_names(
-        computation_building_blocks.ComputationBuildingBlock.from_proto(
+        building_blocks.ComputationBuildingBlock.from_proto(
             computation_impl.ComputationImpl.get_proto(comp)))
     return comp
 
@@ -738,7 +736,7 @@ class ReferenceExecutor(context_base.Context):
 
     Args:
       comp: An instance of
-        `computation_building_blocks.ComputationBuildingBlock`.
+        `building_blocks.ComputationBuildingBlock`.
       context: An instance of `ComputationContext`.
 
     Returns:
@@ -751,34 +749,33 @@ class ReferenceExecutor(context_base.Context):
       NotImplementedError: For computation building blocks that are not yet
         supported by this executor.
     """
-    if isinstance(comp, computation_building_blocks.CompiledComputation):
+    if isinstance(comp, building_blocks.CompiledComputation):
       return self._compute_compiled(comp, context)
-    elif isinstance(comp, computation_building_blocks.Call):
+    elif isinstance(comp, building_blocks.Call):
       return self._compute_call(comp, context)
-    elif isinstance(comp, computation_building_blocks.Tuple):
+    elif isinstance(comp, building_blocks.Tuple):
       return self._compute_tuple(comp, context)
-    elif isinstance(comp, computation_building_blocks.Reference):
+    elif isinstance(comp, building_blocks.Reference):
       return self._compute_reference(comp, context)
-    elif isinstance(comp, computation_building_blocks.Selection):
+    elif isinstance(comp, building_blocks.Selection):
       return self._compute_selection(comp, context)
-    elif isinstance(comp, computation_building_blocks.Lambda):
+    elif isinstance(comp, building_blocks.Lambda):
       return self._compute_lambda(comp, context)
-    elif isinstance(comp, computation_building_blocks.Block):
+    elif isinstance(comp, building_blocks.Block):
       return self._compute_block(comp, context)
-    elif isinstance(comp, computation_building_blocks.Intrinsic):
+    elif isinstance(comp, building_blocks.Intrinsic):
       return self._compute_intrinsic(comp, context)
-    elif isinstance(comp, computation_building_blocks.Data):
+    elif isinstance(comp, building_blocks.Data):
       return self._compute_data(comp, context)
-    elif isinstance(comp, computation_building_blocks.Placement):
+    elif isinstance(comp, building_blocks.Placement):
       return self._compute_placement(comp, context)
     else:
       raise NotImplementedError(
           'A computation building block of a type {} not currently recognized '
-          'by the reference executor: {}.'.format(str(type(comp)), str(comp)))
+          'by the reference executor: {}.'.format(type(comp), comp))
 
   def _compute_compiled(self, comp, context):
-    py_typecheck.check_type(comp,
-                            computation_building_blocks.CompiledComputation)
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     computation_oneof = comp.proto.WhichOneof('computation')
     if computation_oneof != 'tensorflow':
       raise ValueError(
@@ -789,7 +786,7 @@ class ReferenceExecutor(context_base.Context):
                            comp.type_signature)
 
   def _compute_call(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Call)
+    py_typecheck.check_type(comp, building_blocks.Call)
     computed_fn = self._compute(comp.function, context)
     py_typecheck.check_type(computed_fn.type_signature,
                             computation_types.FunctionType)
@@ -808,7 +805,7 @@ class ReferenceExecutor(context_base.Context):
     return result
 
   def _compute_tuple(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Tuple)
+    py_typecheck.check_type(comp, building_blocks.Tuple)
     result_elements = []
     result_type_elements = []
     for k, v in anonymous_tuple.to_elements(comp):
@@ -824,7 +821,7 @@ class ReferenceExecutor(context_base.Context):
         ]))
 
   def _compute_selection(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Selection)
+    py_typecheck.check_type(comp, building_blocks.Selection)
     source = self._compute(comp.source, context)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
@@ -840,7 +837,7 @@ class ReferenceExecutor(context_base.Context):
     return ComputedValue(result_value, result_type)
 
   def _compute_lambda(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Lambda)
+    py_typecheck.check_type(comp, building_blocks.Lambda)
     py_typecheck.check_type(context, ComputationContext)
 
     def _wrap(arg):
@@ -849,20 +846,19 @@ class ReferenceExecutor(context_base.Context):
                                            arg.type_signature):
         raise TypeError(
             'Expected the type of argument {} to be {}, found {}.'.format(
-                str(comp.parameter_name), str(comp.parameter_type),
-                str(arg.type_signature)))
+                comp.parameter_name, comp.parameter_type, arg.type_signature))
       return ComputationContext(context, {comp.parameter_name: arg})
 
     return ComputedValue(lambda x: self._compute(comp.result, _wrap(x)),
                          comp.type_signature)
 
   def _compute_reference(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Reference)
+    py_typecheck.check_type(comp, building_blocks.Reference)
     py_typecheck.check_type(context, ComputationContext)
     return context.resolve_reference(comp.name)
 
   def _compute_block(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Block)
+    py_typecheck.check_type(comp, building_blocks.Block)
     py_typecheck.check_type(context, ComputationContext)
     for local_name, local_comp in comp.locals:
       local_val = self._compute(local_comp, context)
@@ -870,7 +866,7 @@ class ReferenceExecutor(context_base.Context):
     return self._compute(comp.result, context)
 
   def _compute_intrinsic(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Intrinsic)
+    py_typecheck.check_type(comp, building_blocks.Intrinsic)
     my_method = self._intrinsic_method_dict.get(comp.uri)
     if my_method is not None:
       # The interpretation of `my_method` depends on whether the intrinsic
@@ -890,11 +886,11 @@ class ReferenceExecutor(context_base.Context):
           comp.uri))
 
   def _compute_data(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Data)
+    py_typecheck.check_type(comp, building_blocks.Data)
     raise NotImplementedError('Data is currently unsupported.')
 
   def _compute_placement(self, comp, context):
-    py_typecheck.check_type(comp, computation_building_blocks.Placement)
+    py_typecheck.check_type(comp, building_blocks.Placement)
     raise NotImplementedError('Placement is currently unsupported.')
 
   def _sequence_sum(self, arg):
@@ -1004,7 +1000,7 @@ class ReferenceExecutor(context_base.Context):
          computation_types.AbstractType, computation_types.PlacementType)):
       raise TypeError(
           'The generic_zero is not well-defined for TFF type {}.'.format(
-              str(type_spec)))
+              type_spec))
     elif isinstance(type_spec, computation_types.FederatedType):
       if type_spec.all_equal:
         return ComputedValue(
@@ -1018,19 +1014,19 @@ class ReferenceExecutor(context_base.Context):
     else:
       raise NotImplementedError(
           'Generic zero support for {} is not implemented yet.'.format(
-              str(type_spec)))
+              type_spec))
 
   def _generic_plus(self, arg):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
     if len(arg.type_signature) != 2:
       raise TypeError('Generic plus is undefined for tuples of size {}.'.format(
-          str(len(arg.type_signature))))
+          len(arg.type_signature)))
     element_type = arg.type_signature[0]
     if arg.type_signature[1] != element_type:
       raise TypeError('Generic plus is undefined for two-tuples of different '
-                      'types ({} vs. {}).'.format(
-                          str(element_type), str(arg.type_signature[1])))
+                      'types ({} vs. {}).'.format(element_type,
+                                                  arg.type_signature[1]))
     if isinstance(element_type, computation_types.TensorType):
       val = numpy_cast(arg.value[0] + arg.value[1], element_type.dtype,
                        element_type.shape)
@@ -1160,7 +1156,7 @@ class ReferenceExecutor(context_base.Context):
                             computation_types.NamedTupleType)
     if len(arg.type_signature) != 5:
       raise TypeError('Expected a 5-tuple, found {}.'.format(
-          str(arg.type_signature)))
+          arg.type_signature))
     root_accumulator = self._federated_reduce(
         ComputedValue(
             anonymous_tuple.from_container([arg.value[k] for k in range(3)]),

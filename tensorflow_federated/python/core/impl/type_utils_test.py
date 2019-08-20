@@ -30,11 +30,11 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class TypeUtilsTest(test.TestCase, parameterized.TestCase):
@@ -47,7 +47,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         str(
             type_utils.infer_type(
                 value_impl.ValueImpl(
-                    computation_building_blocks.Reference('foo', tf.bool),
+                    building_blocks.Reference('foo', tf.bool),
                     context_stack_impl.context_stack))), 'bool')
 
   def test_infer_type_with_scalar_int_tensor(self):
@@ -687,7 +687,9 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
     v2 = {'bar'}
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
-    with self.assertRaises(TypeError):
+    # TODO(b/122081673): Change Exception back to ValueError once TFF moves to
+    # be TF 2.0 only
+    with self.assertRaisesRegex(Exception, 'supported type'):
       type_utils.type_from_tensors(d)
 
   def test_type_from_tensors_nested_tensors(self):
@@ -789,16 +791,6 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                             computation_types.AbstractType('T'))
   def test_is_sum_compatible_negative_examples(self, type_spec):
     self.assertFalse(type_utils.is_sum_compatible(type_spec))
-
-  def test_check_federated_value_placement(self):
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    def _(x):
-      type_utils.check_federated_value_placement(x, placements.CLIENTS)
-      with self.assertRaises(TypeError):
-        type_utils.check_federated_value_placement(x, placements.SERVER)
-      return x
 
   @parameterized.parameters(tf.float32, tf.float64, ([('x', tf.float32),
                                                       ('y', tf.float64)],),
@@ -1122,7 +1114,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertFalse(
         type_utils.is_anon_tuple_with_py_container(
             value_impl.ValueImpl(
-                computation_building_blocks.Data('nothing', tf.int32),
+                building_blocks.Data('nothing', tf.int32),
                 context_stack_impl.context_stack),
             computation_types.NamedTupleTypeWithPyContainerType(
                 [('a', tf.float32)], dict)))

@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
+
 from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computation_types import FederatedType
 from tensorflow_federated.python.core.api.computation_types import FunctionType
@@ -50,6 +52,7 @@ from tensorflow_federated.python.core.api.values import to_value
 # NOTE: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 
@@ -61,6 +64,7 @@ from tensorflow_federated.python import simulation
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "backends",
     "CLIENTS",
     "Computation",
     "FederatedType",

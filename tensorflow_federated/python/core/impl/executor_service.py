@@ -19,6 +19,7 @@ import functools
 import threading
 import traceback
 import uuid
+import weakref
 
 from absl import logging
 import grpc
@@ -56,12 +57,32 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
     self._event_loop = asyncio.new_event_loop()
     self._thread = threading.Thread(
-        target=functools.partial(run_loop, self._event_loop))
+        target=functools.partial(run_loop, self._event_loop), daemon=True)
     self._thread.start()
 
-  def __del__(self):
-    self._event_loop.call_soon_threadsafe(self._event_loop.stop)
-    self._thread.join()
+    def finalize(loop, thread):
+      loop.call_soon_threadsafe(loop.stop)
+      thread.join()
+
+    weakref.finalize(self, finalize, self._event_loop, self._thread)
+
+  def Execute(self, request_iter, context):
+    for v in request_iter:
+      which = v.WhichOneof('request')
+      if not which:
+        raise RuntimeError('Must set a request type')
+      if which == 'create_value':
+        yield executor_pb2.ExecuteResponse(
+            create_value=self.CreateValue(v.create_value, context))
+      elif which == 'create_call':
+        yield executor_pb2.ExecuteResponse(
+            create_call=self.CreateCall(v.create_call, context))
+      elif which == 'create_tuple':
+        yield executor_pb2.ExecuteResponse(
+            create_tuple=self.CreateTuple(v.create_tuple, context))
+      elif which == 'compute':
+        yield executor_pb2.ExecuteResponse(
+            compute=self.Compute(v.compute, context))
 
   def CreateValue(self, request, context):
     """Creates a value embedded in the executor.

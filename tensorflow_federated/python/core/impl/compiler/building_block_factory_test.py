@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for computation_constructing_utils.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,29 +25,103 @@ from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_constructing_utils
-from tensorflow_federated.python.core.impl import computation_wrapper_instances
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import type_constructors
+from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
+
+
+def _stamp_value_into_graph(value, type_signature, graph):
+  """Stamps `value` in `graph` as an object of type `type_signature`.
+
+  Args:
+    value: An value to stamp.
+    type_signature: An instance of `computation_types.Type`.
+    graph: The graph to stamp in.
+
+  Returns:
+    A Python object made of tensors stamped into `graph`, `tf.data.Dataset`s,
+    and `anonymous_tuple.AnonymousTuple`s that structurally corresponds to the
+    value passed at input.
+  """
+  py_typecheck.check_type(type_signature, computation_types.Type)
+  py_typecheck.check_type(graph, tf.Graph)
+  if value is None:
+    return None
+  if isinstance(type_signature, computation_types.TensorType):
+    if isinstance(value, np.ndarray):
+      value_type = computation_types.TensorType(
+          tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
+      type_utils.check_assignable_from(type_signature, value_type)
+      with graph.as_default():
+        return tf.constant(value)
+    else:
+      with graph.as_default():
+        return tf.constant(
+            value, dtype=type_signature.dtype, shape=type_signature.shape)
+  elif isinstance(type_signature, computation_types.NamedTupleType):
+    if isinstance(value, (list, dict)):
+      value = anonymous_tuple.from_container(value)
+    stamped_elements = []
+    named_type_signatures = anonymous_tuple.to_elements(type_signature)
+    for (name, type_signature), element in zip(named_type_signatures, value):
+      stamped_element = _stamp_value_into_graph(element, type_signature, graph)
+      stamped_elements.append((name, stamped_element))
+    return anonymous_tuple.AnonymousTuple(stamped_elements)
+  elif isinstance(type_signature, computation_types.SequenceType):
+    return tensorflow_utils.make_data_set_from_elements(graph, value,
+                                                        type_signature.element)
+  else:
+    raise NotImplementedError(
+        'Unable to stamp a value of type {} in graph.'.format(type_signature))
+
+
+# TODO(b/139439722): Consolidate implementation to run a TF comp with an arg.
+def _run_tensorflow(computation_proto, arg=None):
+  """Runs a TensorFlow computation with argument `arg`.
+
+  Args:
+    computation_proto: An instance of `pb.Computation`.
+    arg: The argument to invoke the computation with, or None if the computation
+      does not specify a parameter type and does not expects one.
+
+  Returns:
+    The result of the computation.
+  """
+  with tf.Graph().as_default() as graph:
+    type_signature = type_serialization.deserialize_type(computation_proto.type)
+    if type_signature.parameter is not None:
+      stamped_arg = _stamp_value_into_graph(arg, type_signature.parameter,
+                                            graph)
+    else:
+      stamped_arg = None
+    init_op, result = tensorflow_deserialization.deserialize_and_call_tf_computation(
+        computation_proto, stamped_arg, graph)
+  with tf.compat.v1.Session(graph=graph) as sess:
+    if init_op:
+      sess.run(init_op)
+    result = tensorflow_utils.fetch_value_in_session(sess, result)
+  return result
 
 
 class UniqueNameGeneratorTest(absltest.TestCase):
 
   def test_does_not_raise_type_error_with_none_comp(self):
     try:
-      computation_constructing_utils.unique_name_generator(None)
+      building_block_factory.unique_name_generator(None)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
   def test_returns_unique_names_with_none_comp_and_none_prefix(self):
-    name_generator = computation_constructing_utils.unique_name_generator(
+    name_generator = building_block_factory.unique_name_generator(
         None, prefix=None)
     names = set(six.next(name_generator) for _ in range(10))
     first_name = list(names)[0]
@@ -57,22 +130,22 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     self.assertTrue(all(n.startswith(prefix) for n in names))
 
   def test_returns_unique_names_with_none_comp_and_unset_prefix(self):
-    name_generator = computation_constructing_utils.unique_name_generator(None)
+    name_generator = building_block_factory.unique_name_generator(None)
     names = set(six.next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_var') for n in names))
 
   def test_returns_unique_names_with_none_comp_and_prefix(self):
-    name_generator = computation_constructing_utils.unique_name_generator(
+    name_generator = building_block_factory.unique_name_generator(
         None, prefix='_test')
     names = set(six.next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_test') for n in names))
 
   def test_returns_unique_names_with_comp_and_none_prefix(self):
-    ref = computation_building_blocks.Reference('a', tf.int32)
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    name_generator = computation_constructing_utils.unique_name_generator(
+    ref = building_blocks.Reference('a', tf.int32)
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = building_block_factory.unique_name_generator(
         comp, prefix=None)
     names = set(six.next(name_generator) for _ in range(10))
     first_name = list(names)[0]
@@ -81,26 +154,26 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     self.assertTrue(all(n.startswith(prefix) for n in names))
 
   def test_returns_unique_names_with_comp_and_unset_prefix(self):
-    ref = computation_building_blocks.Reference('a', tf.int32)
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    name_generator = computation_constructing_utils.unique_name_generator(comp)
+    ref = building_blocks.Reference('a', tf.int32)
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = building_block_factory.unique_name_generator(comp)
     names = set(six.next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_var') for n in names))
 
   def test_returns_unique_names_with_comp_and_prefix(self):
-    ref = computation_building_blocks.Reference('a', tf.int32)
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    name_generator = computation_constructing_utils.unique_name_generator(
+    ref = building_blocks.Reference('a', tf.int32)
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = building_block_factory.unique_name_generator(
         comp, prefix='_test')
     names = set(six.next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_test') for n in names))
 
   def test_returns_unique_names_with_conflicting_prefix(self):
-    ref = computation_building_blocks.Reference('_test', tf.int32)
-    comp = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    name_generator = computation_constructing_utils.unique_name_generator(
+    ref = building_blocks.Reference('_test', tf.int32)
+    comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    name_generator = building_block_factory.unique_name_generator(
         comp, prefix='_test')
     names = set(six.next(name_generator) for _ in range(10))
     first_name = list(names)[0]
@@ -112,181 +185,167 @@ class UniqueNameGeneratorTest(absltest.TestCase):
 class CreateCompiledEmptyTupleTest(absltest.TestCase):
 
   def test_constructs_correct_type(self):
-    empty_tuple = computation_constructing_utils.create_compiled_empty_tuple()
+    empty_tuple = building_block_factory.create_compiled_empty_tuple()
     self.assertEqual(empty_tuple.type_signature,
-                     computation_building_blocks.Tuple([]).type_signature)
+                     building_blocks.Tuple([]).type_signature)
 
   def test_constructs_called_graph(self):
-    empty_tuple = computation_constructing_utils.create_compiled_empty_tuple()
-    self.assertIsInstance(empty_tuple, computation_building_blocks.Call)
+    empty_tuple = building_block_factory.create_compiled_empty_tuple()
+    self.assertIsInstance(empty_tuple, building_blocks.Call)
     self.assertIsNone(empty_tuple.argument)
     self.assertIsInstance(empty_tuple.function,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
 
 
 class CreateCompiledIdentityTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_identity(None)
+      building_block_factory.create_compiled_identity(None)
 
   def test_raises_on_federated_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_identity(
+      building_block_factory.create_compiled_identity(
           computation_types.FederatedType(tf.int32, placement_literals.SERVER))
 
   def test_raises_on_federated_type_under_tuple(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_identity([
+      building_block_factory.create_compiled_identity([
           computation_types.FederatedType(tf.int32, placement_literals.SERVER)
       ])
 
   def test_integer_identity_type_signature(self):
-    int_identity = computation_constructing_utils.create_compiled_identity(
-        tf.int32)
-    self.assertIsInstance(int_identity,
-                          computation_building_blocks.CompiledComputation)
+    int_identity = building_block_factory.create_compiled_identity(tf.int32)
+    self.assertIsInstance(int_identity, building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(tf.int32, tf.int32)
     self.assertEqual(int_identity.type_signature, expected_type_signature)
 
   def test_integer_identity_acts_as_identity(self):
-    int_identity = computation_constructing_utils.create_compiled_identity(
-        tf.int32)
-    executable_identity = computation_wrapper_instances.building_block_to_computation(
-        int_identity)
+    int_identity = building_block_factory.create_compiled_identity(tf.int32)
     for k in range(10):
-      self.assertEqual(executable_identity(k), k)
+      result = _run_tensorflow(int_identity.proto, k)
+      self.assertEqual(result, k)
 
   def test_unnamed_tuple_identity_type_signature(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_identity = computation_constructing_utils.create_compiled_identity(
-        tuple_type)
-    self.assertIsInstance(tuple_identity,
-                          computation_building_blocks.CompiledComputation)
+    tuple_identity = building_block_factory.create_compiled_identity(tuple_type)
+    self.assertIsInstance(tuple_identity, building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         tuple_type, tuple_type)
     self.assertEqual(tuple_identity.type_signature, expected_type_signature)
 
   def test_unnamed_tuple_identity_acts_as_identity(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_identity = computation_constructing_utils.create_compiled_identity(
-        tuple_type)
-    executable_identity = computation_wrapper_instances.building_block_to_computation(
-        tuple_identity)
+    tuple_identity = building_block_factory.create_compiled_identity(tuple_type)
     for k in range(10):
-      self.assertEqual(executable_identity([k, 10. - k])[0], k)
-      self.assertEqual(executable_identity([k, 10. - k])[1], 10. - k)
+      result = _run_tensorflow(tuple_identity.proto, [k, 10. - k])
+      self.assertLen(result, 2)
+      self.assertEqual(result[0], k)
+      self.assertEqual(result[1], 10. - k)
 
   def test_named_tuple_identity_type_signature(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_identity = computation_constructing_utils.create_compiled_identity(
-        tuple_type)
-    self.assertIsInstance(tuple_identity,
-                          computation_building_blocks.CompiledComputation)
+    tuple_identity = building_block_factory.create_compiled_identity(tuple_type)
+    self.assertIsInstance(tuple_identity, building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         tuple_type, tuple_type)
     self.assertEqual(tuple_identity.type_signature, expected_type_signature)
 
   def test_named_tuple_identity_acts_as_identity(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_identity = computation_constructing_utils.create_compiled_identity(
-        tuple_type)
-    executable_identity = computation_wrapper_instances.building_block_to_computation(
-        tuple_identity)
+    tuple_identity = building_block_factory.create_compiled_identity(tuple_type)
     for k in range(10):
-      self.assertEqual(executable_identity({'a': k, 'b': 10. - k}).a, k)
-      self.assertEqual(executable_identity({'a': k, 'b': 10. - k}).b, 10. - k)
+      result = _run_tensorflow(tuple_identity.proto, {'a': k, 'b': 10. - k})
+      self.assertLen(result, 2)
+      self.assertEqual(result.a, k)
+      self.assertEqual(result.b, 10. - k)
 
   def test_sequence_identity_type_signature(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_identity = computation_constructing_utils.create_compiled_identity(
+    sequence_identity = building_block_factory.create_compiled_identity(
         sequence_type)
     self.assertIsInstance(sequence_identity,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         sequence_type, sequence_type)
     self.assertEqual(sequence_identity.type_signature, expected_type_signature)
 
   def test_sequence_identity_acts_as_identity(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_identity = computation_constructing_utils.create_compiled_identity(
+    sequence_identity = building_block_factory.create_compiled_identity(
         sequence_type)
-    executable_identity = computation_wrapper_instances.building_block_to_computation(
-        sequence_identity)
     seq = list(range(10))
-    self.assertEqual(executable_identity(seq), seq)
+    result = _run_tensorflow(sequence_identity.proto, seq)
+    self.assertEqual(result, seq)
 
 
 class CreateCompiledInputReplicationTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_input_replication(None, 2)
+      building_block_factory.create_compiled_input_replication(None, 2)
 
   def test_raises_on_none_int(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_input_replication(
-          tf.int32, None)
+      building_block_factory.create_compiled_input_replication(tf.int32, None)
 
   def test_raises_on_federated_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_input_replication(
+      building_block_factory.create_compiled_input_replication(
           computation_types.FederatedType(tf.int32, placement_literals.SERVER),
           2)
 
   def test_raises_on_federated_type_under_tuple(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_compiled_input_replication([
+      building_block_factory.create_compiled_input_replication([
           computation_types.FederatedType(tf.int32, placement_literals.SERVER)
       ])
 
   def test_integer_input_duplicate_type_signature(self):
-    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    int_duplicate_input = building_block_factory.create_compiled_input_replication(
         tf.int32, 2)
     self.assertIsInstance(int_duplicate_input,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         tf.int32, [tf.int32, tf.int32])
     self.assertEqual(int_duplicate_input.type_signature,
                      expected_type_signature)
 
   def test_integer_input_duplicate_duplicates_input(self):
-    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    int_duplicate_input = building_block_factory.create_compiled_input_replication(
         tf.int32, 2)
-    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
-        int_duplicate_input)
     for k in range(10):
-      self.assertEqual(executable_duplicate_input(k)[0], k)
-      self.assertEqual(executable_duplicate_input(k)[1], k)
-      self.assertLen(executable_duplicate_input(k), 2)
+      result = _run_tensorflow(int_duplicate_input.proto, k)
+      self.assertLen(result, 2)
+      self.assertEqual(result[0], k)
+      self.assertEqual(result[1], k)
 
   def test_integer_input_triplicate_type_signature(self):
-    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    int_duplicate_input = building_block_factory.create_compiled_input_replication(
         tf.int32, 3)
     self.assertIsInstance(int_duplicate_input,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         tf.int32, [tf.int32, tf.int32, tf.int32])
     self.assertEqual(int_duplicate_input.type_signature,
                      expected_type_signature)
 
   def test_integer_input_triplicate_triplicates_input(self):
-    int_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    int_duplicate_input = building_block_factory.create_compiled_input_replication(
         tf.int32, 3)
-    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
-        int_duplicate_input)
     for k in range(10):
-      self.assertEqual(executable_duplicate_input(k)[0], k)
-      self.assertEqual(executable_duplicate_input(k)[1], k)
-      self.assertEqual(executable_duplicate_input(k)[2], k)
-      self.assertLen(executable_duplicate_input(k), 3)
+      result = _run_tensorflow(int_duplicate_input.proto, k)
+      self.assertLen(result, 3)
+      self.assertEqual(result[0], k)
+      self.assertEqual(result[1], k)
+      self.assertEqual(result[2], k)
 
   def test_unnamed_tuple_input_duplicate_type_signature(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    tuple_duplicate_input = building_block_factory.create_compiled_input_replication(
         tuple_type, 2)
     self.assertIsInstance(tuple_duplicate_input,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         tuple_type, [tuple_type, tuple_type])
     self.assertEqual(tuple_duplicate_input.type_signature,
@@ -294,23 +353,22 @@ class CreateCompiledInputReplicationTest(absltest.TestCase):
 
   def test_unnamed_tuple_input_duplicate_duplicates_input(self):
     tuple_type = [tf.int32, tf.float32]
-    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    tuple_duplicate_input = building_block_factory.create_compiled_input_replication(
         tuple_type, 2)
-    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
-        tuple_duplicate_input)
     for k in range(10):
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[0][0], k)
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[1][0], k)
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[0][1], 10. - k)
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[1][1], 10. - k)
-      self.assertLen(executable_duplicate_input([k, 10. - k]), 2)
+      result = _run_tensorflow(tuple_duplicate_input.proto, [k, 10. - k])
+      self.assertLen(result, 2)
+      self.assertEqual(result[0][0], k)
+      self.assertEqual(result[1][0], k)
+      self.assertEqual(result[0][1], 10. - k)
+      self.assertEqual(result[1][1], 10. - k)
 
   def test_named_tuple_input_duplicate_type_signature(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    tuple_duplicate_input = building_block_factory.create_compiled_input_replication(
         tuple_type, 2)
     self.assertIsInstance(tuple_duplicate_input,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         tuple_type, [tuple_type, tuple_type])
     self.assertEqual(tuple_duplicate_input.type_signature,
@@ -318,23 +376,22 @@ class CreateCompiledInputReplicationTest(absltest.TestCase):
 
   def test_named_tuple_input_duplicate_duplicates_input(self):
     tuple_type = [('a', tf.int32), ('b', tf.float32)]
-    tuple_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    tuple_duplicate_input = building_block_factory.create_compiled_input_replication(
         tuple_type, 2)
-    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
-        tuple_duplicate_input)
     for k in range(10):
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[0].a, k)
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[1].a, k)
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[0].b, 10. - k)
-      self.assertEqual(executable_duplicate_input([k, 10. - k])[1].b, 10. - k)
-      self.assertLen(executable_duplicate_input([k, 10. - k]), 2)
+      result = _run_tensorflow(tuple_duplicate_input.proto, [k, 10. - k])
+      self.assertLen(result, 2)
+      self.assertEqual(result[0].a, k)
+      self.assertEqual(result[1].a, k)
+      self.assertEqual(result[0].b, 10. - k)
+      self.assertEqual(result[1].b, 10. - k)
 
   def test_sequence_input_duplicate_type_signature(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    sequence_duplicate_input = building_block_factory.create_compiled_input_replication(
         sequence_type, 2)
     self.assertIsInstance(sequence_duplicate_input,
-                          computation_building_blocks.CompiledComputation)
+                          building_blocks.CompiledComputation)
     expected_type_signature = computation_types.FunctionType(
         sequence_type, [sequence_type, sequence_type])
     self.assertEqual(sequence_duplicate_input.type_signature,
@@ -342,95 +399,87 @@ class CreateCompiledInputReplicationTest(absltest.TestCase):
 
   def test_sequence_input_duplicate_duplicates_input(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    sequence_duplicate_input = computation_constructing_utils.create_compiled_input_replication(
+    sequence_duplicate_input = building_block_factory.create_compiled_input_replication(
         sequence_type, 2)
-    executable_duplicate_input = computation_wrapper_instances.building_block_to_computation(
-        sequence_duplicate_input)
     seq = list(range(10))
-    self.assertEqual(executable_duplicate_input(seq)[0], seq)
-    self.assertEqual(executable_duplicate_input(seq)[1], seq)
-    self.assertLen(executable_duplicate_input(seq), 2)
+    result = _run_tensorflow(sequence_duplicate_input.proto, seq)
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], seq)
+    self.assertEqual(result[1], seq)
 
 
 class CreateFederatedGetitemCompTest(parameterized.TestCase):
 
-  def test_fails_value(self):
-    x = computation_building_blocks.Reference(
-        'x', computation_types.to_type([tf.int32]))
+  def test_raises_type_error_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_getitem_comp(
-          value_impl.to_value(x), 0)
+      building_block_factory.create_federated_getitem_comp(None, 0)
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
                                   ('server', placement_literals.SERVER))
   def test_returns_comp(self, placement):
-    federated_value = computation_building_blocks.Reference(
+    federated_value = building_blocks.Reference(
         'test',
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
                                         placement))
-    get_0_comp = computation_constructing_utils.create_federated_getitem_comp(
+    get_0_comp = building_block_factory.create_federated_getitem_comp(
         federated_value, 0)
     self.assertEqual(str(get_0_comp), '(x -> x[0])')
-    get_slice_comp = computation_constructing_utils.create_federated_getitem_comp(
+    get_slice_comp = building_block_factory.create_federated_getitem_comp(
         federated_value, slice(None, None, -1))
     self.assertEqual(str(get_slice_comp), '(x -> <b=x[1],a=x[0]>)')
 
 
 class CreateFederatedGetattrCompTest(parameterized.TestCase):
 
-  def test_fails_value(self):
-    x = computation_building_blocks.Reference(
-        'x', computation_types.to_type([('x', tf.int32)]))
+  def test_raises_type_error_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_getattr_comp(
-          value_impl.to_value(x), 'x')
+      building_block_factory.create_federated_getattr_comp(None, 'x')
 
   @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
                                   ('server', placement_literals.SERVER))
   def test_returns_comp(self, placement):
-    federated_value = computation_building_blocks.Reference(
+    federated_value = building_blocks.Reference(
         'test',
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
                                         placement))
-    get_a_comp = computation_constructing_utils.create_federated_getattr_comp(
+    get_a_comp = building_block_factory.create_federated_getattr_comp(
         federated_value, 'a')
     self.assertEqual(str(get_a_comp), '(x -> x.a)')
-    get_b_comp = computation_constructing_utils.create_federated_getattr_comp(
+    get_b_comp = building_block_factory.create_federated_getattr_comp(
         federated_value, 'b')
     self.assertEqual(str(get_b_comp), '(x -> x.b)')
-    non_federated_arg = computation_building_blocks.Reference(
+    non_federated_arg = building_blocks.Reference(
         'test',
         computation_types.NamedTupleType([('a', tf.int32), ('b', tf.bool)]))
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_federated_getattr_comp(
+      _ = building_block_factory.create_federated_getattr_comp(
           non_federated_arg, 'a')
     with self.assertRaisesRegex(ValueError, 'has no element of name c'):
-      _ = computation_constructing_utils.create_federated_getattr_comp(
+      _ = building_block_factory.create_federated_getattr_comp(
           federated_value, 'c')
 
 
 class CreateFederatedGetattrCallTest(parameterized.TestCase):
 
-  def test_fails_value(self):
-    x = computation_building_blocks.Reference(
-        'x', computation_types.to_type([('x', tf.int32)]))
+  def test_raises_type_error_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_getattr_call(
-          value_impl.to_value(x), 'x')
+      building_block_factory.create_federated_getattr_call(None, 'x')
 
-  @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
-                                  ('server', placement_literals.SERVER))
+  @parameterized.named_parameters(
+      ('clients', placement_literals.CLIENTS),
+      ('server', placement_literals.SERVER),
+  )
   def test_returns_named(self, placement):
-    federated_comp_named = computation_building_blocks.Reference(
+    federated_comp_named = building_blocks.Reference(
         'test',
         computation_types.FederatedType([('a', tf.int32),
                                          ('b', tf.bool), tf.int32], placement))
     self.assertEqual(
         str(federated_comp_named.type_signature.member),
         '<a=int32,b=bool,int32>')
-    name_a = computation_constructing_utils.create_federated_getattr_call(
+    name_a = building_block_factory.create_federated_getattr_call(
         federated_comp_named, 'a')
-    name_b = computation_constructing_utils.create_federated_getattr_call(
+    name_b = building_block_factory.create_federated_getattr_call(
         federated_comp_named, 'b')
     self.assertIsInstance(name_a.type_signature,
                           computation_types.FederatedType)
@@ -438,68 +487,82 @@ class CreateFederatedGetattrCallTest(parameterized.TestCase):
                           computation_types.FederatedType)
     self.assertEqual(str(name_a.type_signature.member), 'int32')
     self.assertEqual(str(name_b.type_signature.member), 'bool')
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(name_a, None, context_stack_impl.context_stack),
-        placement)
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(name_b, None, context_stack_impl.context_stack),
-        placement)
+    try:
+      type_utils.check_federated_type(
+          name_a.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
+    try:
+      type_utils.check_federated_type(
+          name_b.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
     with self.assertRaisesRegex(ValueError, 'has no element of name c'):
-      _ = computation_constructing_utils.create_federated_getattr_call(
+      _ = building_block_factory.create_federated_getattr_call(
           federated_comp_named, 'c')
 
 
 class CreateFederatedGetitemCallTest(parameterized.TestCase):
 
   def test_fails_value(self):
-    x = computation_building_blocks.Reference(
-        'x', computation_types.to_type([tf.int32]))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_getitem_call(
-          value_impl.to_value(x), 0)
+      building_block_factory.create_federated_getitem_call(None, 0)
 
-  @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
-                                  ('server', placement_literals.SERVER))
+  @parameterized.named_parameters(
+      ('clients', placement_literals.CLIENTS),
+      ('server', placement_literals.SERVER),
+  )
   def test_returns_named(self, placement):
-    federated_comp_named = computation_building_blocks.Reference(
+    federated_comp_named = building_blocks.Reference(
         'test',
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
                                         placement))
     self.assertEqual(
         str(federated_comp_named.type_signature.member), '<a=int32,b=bool>')
-    idx_0 = computation_constructing_utils.create_federated_getitem_call(
+    idx_0 = building_block_factory.create_federated_getitem_call(
         federated_comp_named, 0)
-    idx_1 = computation_constructing_utils.create_federated_getitem_call(
+    idx_1 = building_block_factory.create_federated_getitem_call(
         federated_comp_named, 1)
     self.assertIsInstance(idx_0.type_signature, computation_types.FederatedType)
     self.assertIsInstance(idx_1.type_signature, computation_types.FederatedType)
     self.assertEqual(str(idx_0.type_signature.member), 'int32')
     self.assertEqual(str(idx_1.type_signature.member), 'bool')
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(idx_0, None, context_stack_impl.context_stack),
-        placement)
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(idx_1, None, context_stack_impl.context_stack),
-        placement)
-    flipped = computation_constructing_utils.create_federated_getitem_call(
+    try:
+      type_utils.check_federated_type(idx_0.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
+    try:
+      type_utils.check_federated_type(idx_1.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
+    flipped = building_block_factory.create_federated_getitem_call(
         federated_comp_named, slice(None, None, -1))
     self.assertIsInstance(flipped.type_signature,
                           computation_types.FederatedType)
     self.assertEqual(str(flipped.type_signature.member), '<b=bool,a=int32>')
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(flipped, None, context_stack_impl.context_stack),
-        placement)
+    try:
+      type_utils.check_federated_type(
+          flipped.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
 
-  @parameterized.named_parameters(('clients', placement_literals.CLIENTS),
-                                  ('server', placement_literals.SERVER))
+  @parameterized.named_parameters(
+      ('clients', placement_literals.CLIENTS),
+      ('server', placement_literals.SERVER),
+  )
   def test_returns_unnamed(self, placement):
-    federated_comp_unnamed = computation_building_blocks.Reference(
+    federated_comp_unnamed = building_blocks.Reference(
         'test', computation_types.FederatedType([tf.int32, tf.bool], placement))
     self.assertEqual(
         str(federated_comp_unnamed.type_signature.member), '<int32,bool>')
-    unnamed_idx_0 = computation_constructing_utils.create_federated_getitem_call(
+    unnamed_idx_0 = building_block_factory.create_federated_getitem_call(
         federated_comp_unnamed, 0)
-    unnamed_idx_1 = computation_constructing_utils.create_federated_getitem_call(
+    unnamed_idx_1 = building_block_factory.create_federated_getitem_call(
         federated_comp_unnamed, 1)
     self.assertIsInstance(unnamed_idx_0.type_signature,
                           computation_types.FederatedType)
@@ -507,20 +570,29 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
                           computation_types.FederatedType)
     self.assertEqual(str(unnamed_idx_0.type_signature.member), 'int32')
     self.assertEqual(str(unnamed_idx_1.type_signature.member), 'bool')
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(unnamed_idx_0, None,
-                            context_stack_impl.context_stack), placement)
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(unnamed_idx_1, None,
-                            context_stack_impl.context_stack), placement)
-    unnamed_flipped = computation_constructing_utils.create_federated_getitem_call(
+    try:
+      type_utils.check_federated_type(
+          unnamed_idx_0.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
+    try:
+      type_utils.check_federated_type(
+          unnamed_idx_1.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
+    unnamed_flipped = building_block_factory.create_federated_getitem_call(
         federated_comp_unnamed, slice(None, None, -1))
     self.assertIsInstance(unnamed_flipped.type_signature,
                           computation_types.FederatedType)
     self.assertEqual(str(unnamed_flipped.type_signature.member), '<bool,int32>')
-    type_utils.check_federated_value_placement(
-        value_impl.to_value(unnamed_flipped, None,
-                            context_stack_impl.context_stack), placement)
+    try:
+      type_utils.check_federated_type(
+          unnamed_flipped.type_signature, placement=placement)
+    except TypeError:
+      self.fail(
+          'Function \'check_federated_type\' raised TypeError unexpectedly.')
 
 
 class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
@@ -528,45 +600,45 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
   def test_fails_on_bad_type(self):
     bad_type = computation_types.FederatedType([('a', tf.int32)],
                                                placement_literals.CLIENTS)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    value_comp = building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
+      _ = building_block_factory.create_named_tuple_setattr_lambda(
           bad_type, 'a', value_comp)
 
   def test_fails_on_none_name(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32)])
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    value_comp = building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
+      _ = building_block_factory.create_named_tuple_setattr_lambda(
           good_type, None, value_comp)
 
   def test_fails_on_none_value(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32)])
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
+      _ = building_block_factory.create_named_tuple_setattr_lambda(
           good_type, 'a', None)
 
   def test_fails_implicit_type_conversion(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32),
                                                   ('b', tf.bool)])
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    value_comp = building_blocks.Data('x', tf.int32)
     with self.assertRaisesRegex(TypeError, 'incompatible type'):
-      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
+      _ = building_block_factory.create_named_tuple_setattr_lambda(
           good_type, 'b', value_comp)
 
   def test_fails_unknown_name(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32),
                                                   ('b', tf.bool)])
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    value_comp = building_blocks.Data('x', tf.int32)
     with self.assertRaises(AttributeError):
-      _ = computation_constructing_utils.create_named_tuple_setattr_lambda(
+      _ = building_block_factory.create_named_tuple_setattr_lambda(
           good_type, 'c', value_comp)
 
   def test_replaces_single_element(self):
     good_type = computation_types.NamedTupleType([('a', tf.int32),
                                                   ('b', tf.bool)])
-    value_comp = computation_building_blocks.Data('x', tf.int32)
-    lam = computation_constructing_utils.create_named_tuple_setattr_lambda(
+    value_comp = building_blocks.Data('x', tf.int32)
+    lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -584,8 +656,8 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
     good_type = computation_types.NamedTupleType([('a', tf.int32),
                                                   (None, tf.float32),
                                                   ('b', tf.bool)])
-    value_comp = computation_building_blocks.Data('x', tf.int32)
-    lam = computation_constructing_utils.create_named_tuple_setattr_lambda(
+    value_comp = building_blocks.Data('x', tf.int32)
+    lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -604,8 +676,8 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
     good_type = computation_types.NamedTupleType([('a', tf.int32),
                                                   (None, tf.float32),
                                                   ('b', tf.bool)])
-    value_comp = computation_building_blocks.Data('x', tf.int32)
-    lam = computation_constructing_utils.create_named_tuple_setattr_lambda(
+    value_comp = building_blocks.Data('x', tf.int32)
+    lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     self.assertTrue(
         type_utils.are_equivalent_types(lam.type_signature.parameter,
@@ -615,20 +687,20 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
 class CreateFederatedSetatterCallTest(parameterized.TestCase):
 
   def test_fails_on_none_federated_comp(self):
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    value_comp = building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_federated_setattr_call(
+      _ = building_block_factory.create_federated_setattr_call(
           None, 'a', value_comp)
 
   def test_fails_non_federated_type(self):
     bad_type = computation_types.NamedTupleType([('a', tf.int32),
                                                  (None, tf.float32),
                                                  ('b', tf.bool)])
-    bad_comp = computation_building_blocks.Data('data', bad_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    bad_comp = building_blocks.Data('data', bad_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_federated_setattr_call(
+      _ = building_block_factory.create_federated_setattr_call(
           bad_comp, 'a', value_comp)
 
   def test_fails_on_none_name(self):
@@ -637,11 +709,11 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type,
                                                 placement_literals.CLIENTS)
-    acceptable_comp = computation_building_blocks.Data('data', good_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    acceptable_comp = building_blocks.Data('data', good_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_federated_setattr_call(
+      _ = building_block_factory.create_federated_setattr_call(
           acceptable_comp, None, value_comp)
 
   def test_fails_on_none_value(self):
@@ -650,10 +722,10 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type,
                                                 placement_literals.CLIENTS)
-    acceptable_comp = computation_building_blocks.Data('data', good_type)
+    acceptable_comp = building_blocks.Data('data', good_type)
 
     with self.assertRaises(TypeError):
-      _ = computation_constructing_utils.create_federated_setattr_call(
+      _ = building_block_factory.create_federated_setattr_call(
           acceptable_comp, 'a', None)
 
   def test_constructs_correct_intrinsic_clients(self):
@@ -662,11 +734,10 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type,
                                                 placement_literals.CLIENTS)
-    federated_comp = computation_building_blocks.Data('federated_comp',
-                                                      good_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    federated_comp = building_blocks.Data('federated_comp', good_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
+    federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertEqual(federated_setattr.function.uri,
                      intrinsic_defs.FEDERATED_MAP.uri)
@@ -677,11 +748,10 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type,
                                                 placement_literals.SERVER)
-    federated_comp = computation_building_blocks.Data('federated_comp',
-                                                      good_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    federated_comp = building_blocks.Data('federated_comp', good_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
+    federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertEqual(federated_setattr.function.uri,
                      intrinsic_defs.FEDERATED_APPLY.uri)
@@ -693,11 +763,10 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          (None, tf.float32),
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type, placement)
-    federated_comp = computation_building_blocks.Data('federated_comp',
-                                                      good_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    federated_comp = building_blocks.Data('federated_comp', good_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
+    federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertTrue(
         type_utils.are_equivalent_types(federated_setattr.type_signature,
@@ -709,11 +778,10 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type,
                                                 placement_literals.CLIENTS)
-    federated_comp = computation_building_blocks.Data('federated_comp',
-                                                      good_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    federated_comp = building_blocks.Data('federated_comp', good_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
+    federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -737,11 +805,10 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
                                                          ('b', tf.bool)])
     good_type = computation_types.FederatedType(named_tuple_type,
                                                 placement_literals.SERVER)
-    federated_comp = computation_building_blocks.Data('federated_comp',
-                                                      good_type)
-    value_comp = computation_building_blocks.Data('x', tf.int32)
+    federated_comp = building_blocks.Data('federated_comp', good_type)
+    value_comp = building_blocks.Data('x', tf.int32)
 
-    federated_setattr = computation_constructing_utils.create_federated_setattr_call(
+    federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     # pyformat: disable
     self.assertEqual(
@@ -763,41 +830,40 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
 class CreateComputationAppendingTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_comp1(self):
-    comp2 = computation_building_blocks.Data('y', tf.int32)
+    comp2 = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_computation_appending(None, comp2)
+      building_block_factory.create_computation_appending(None, comp2)
 
   def test_raises_type_error_with_none_comp2(self):
-    value = computation_building_blocks.Data('x', tf.int32)
-    comp1 = computation_building_blocks.Tuple([value, value])
+    value = building_blocks.Data('x', tf.int32)
+    comp1 = building_blocks.Tuple([value, value])
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_computation_appending(comp1, None)
+      building_block_factory.create_computation_appending(comp1, None)
 
   def test_raises_type_error_with_comp1_bad_type(self):
-    comp1 = computation_building_blocks.Data('x', tf.int32)
-    comp2 = computation_building_blocks.Data('y', tf.int32)
+    comp1 = building_blocks.Data('x', tf.int32)
+    comp2 = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_computation_appending(comp1, comp2)
+      building_block_factory.create_computation_appending(comp1, comp2)
 
   def test_returns_comp_unnamed(self):
-    value = computation_building_blocks.Data('x', tf.int32)
-    comp1 = computation_building_blocks.Tuple([value, value])
-    comp2 = computation_building_blocks.Data('y', tf.int32)
-    comp = computation_constructing_utils.create_computation_appending(
-        comp1, comp2)
+    value = building_blocks.Data('x', tf.int32)
+    comp1 = building_blocks.Tuple([value, value])
+    comp2 = building_blocks.Data('y', tf.int32)
+    comp = building_block_factory.create_computation_appending(comp1, comp2)
     self.assertEqual(
         comp.compact_representation(),
         '(let comps=<<x,x>,y> in <comps[0][0],comps[0][1],comps[1]>)')
     self.assertEqual(str(comp.type_signature), '<int32,int32,int32>')
 
   def test_returns_comp_named(self):
-    value = computation_building_blocks.Data('x', tf.int32)
-    comp1 = computation_building_blocks.Tuple((
+    value = building_blocks.Data('x', tf.int32)
+    comp1 = building_blocks.Tuple((
         ('a', value),
         ('b', value),
     ))
-    comp2 = computation_building_blocks.Data('y', tf.int32)
-    comp = computation_constructing_utils.create_computation_appending(
+    comp2 = building_blocks.Data('y', tf.int32)
+    comp = building_block_factory.create_computation_appending(
         comp1, ('c', comp2))
     self.assertEqual(
         comp.compact_representation(),
@@ -808,102 +874,92 @@ class CreateComputationAppendingTest(absltest.TestCase):
 class CreateFederatedAggregateTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    zero = computation_building_blocks.Data('z', tf.int32)
+    zero = building_blocks.Data('z', tf.int32)
     accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    accumulate_result = computation_building_blocks.Data('a', tf.int32)
-    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
-                                                    accumulate_result)
+    accumulate_result = building_blocks.Data('a', tf.int32)
+    accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    merge_result = computation_building_blocks.Data('m', tf.int32)
-    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
-    report_ref = computation_building_blocks.Reference('r', tf.int32)
-    report = computation_building_blocks.Lambda(report_ref.name,
-                                                report_ref.type_signature,
-                                                report_ref)
+    merge_result = building_blocks.Data('m', tf.int32)
+    merge = building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = building_blocks.Reference('r', tf.int32)
+    report = building_blocks.Lambda(report_ref.name, report_ref.type_signature,
+                                    report_ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_aggregate(
-          None, zero, accumulate, merge, report)
+      building_block_factory.create_federated_aggregate(None, zero, accumulate,
+                                                        merge, report)
 
   def test_raises_type_error_with_none_zero(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
+    value = building_blocks.Data('v', value_type)
     accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    accumulate_result = computation_building_blocks.Data('a', tf.int32)
-    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
-                                                    accumulate_result)
+    accumulate_result = building_blocks.Data('a', tf.int32)
+    accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    merge_result = computation_building_blocks.Data('m', tf.int32)
-    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
-    report_ref = computation_building_blocks.Reference('r', tf.int32)
-    report = computation_building_blocks.Lambda(report_ref.name,
-                                                report_ref.type_signature,
-                                                report_ref)
+    merge_result = building_blocks.Data('m', tf.int32)
+    merge = building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = building_blocks.Reference('r', tf.int32)
+    report = building_blocks.Lambda(report_ref.name, report_ref.type_signature,
+                                    report_ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_aggregate(
-          value, None, accumulate, merge, report)
+      building_block_factory.create_federated_aggregate(value, None, accumulate,
+                                                        merge, report)
 
   def test_raises_type_error_with_none_accumulate(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    merge_result = computation_building_blocks.Data('m', tf.int32)
-    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
-    report_ref = computation_building_blocks.Reference('r', tf.int32)
-    report = computation_building_blocks.Lambda(report_ref.name,
-                                                report_ref.type_signature,
-                                                report_ref)
+    merge_result = building_blocks.Data('m', tf.int32)
+    merge = building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = building_blocks.Reference('r', tf.int32)
+    report = building_blocks.Lambda(report_ref.name, report_ref.type_signature,
+                                    report_ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_aggregate(
-          value, zero, None, merge, report)
+      building_block_factory.create_federated_aggregate(value, zero, None,
+                                                        merge, report)
 
   def test_raises_type_error_with_none_merge(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    accumulate_result = computation_building_blocks.Data('a', tf.int32)
-    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
-                                                    accumulate_result)
-    report_ref = computation_building_blocks.Reference('r', tf.int32)
-    report = computation_building_blocks.Lambda(report_ref.name,
-                                                report_ref.type_signature,
-                                                report_ref)
+    accumulate_result = building_blocks.Data('a', tf.int32)
+    accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
+    report_ref = building_blocks.Reference('r', tf.int32)
+    report = building_blocks.Lambda(report_ref.name, report_ref.type_signature,
+                                    report_ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_aggregate(
-          value, zero, accumulate, None, report)
+      building_block_factory.create_federated_aggregate(value, zero, accumulate,
+                                                        None, report)
 
   def test_raises_type_error_with_none_report(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    accumulate_result = computation_building_blocks.Data('a', tf.int32)
-    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
-                                                    accumulate_result)
+    accumulate_result = building_blocks.Data('a', tf.int32)
+    accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    merge_result = computation_building_blocks.Data('m', tf.int32)
-    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
+    merge_result = building_blocks.Data('m', tf.int32)
+    merge = building_blocks.Lambda('x', merge_type, merge_result)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_aggregate(
-          value, zero, accumulate, merge, None)
+      building_block_factory.create_federated_aggregate(value, zero, accumulate,
+                                                        merge, None)
 
   def test_returns_federated_aggregate(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     accumulate_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    accumulate_result = computation_building_blocks.Data('a', tf.int32)
-    accumulate = computation_building_blocks.Lambda('x', accumulate_type,
-                                                    accumulate_result)
+    accumulate_result = building_blocks.Data('a', tf.int32)
+    accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    merge_result = computation_building_blocks.Data('m', tf.int32)
-    merge = computation_building_blocks.Lambda('x', merge_type, merge_result)
-    report_ref = computation_building_blocks.Reference('r', tf.int32)
-    report = computation_building_blocks.Lambda(report_ref.name,
-                                                report_ref.type_signature,
-                                                report_ref)
-    comp = computation_constructing_utils.create_federated_aggregate(
+    merge_result = building_blocks.Data('m', tf.int32)
+    merge = building_blocks.Lambda('x', merge_type, merge_result)
+    report_ref = building_blocks.Reference('r', tf.int32)
+    report = building_blocks.Lambda(report_ref.name, report_ref.type_signature,
+                                    report_ref)
+    comp = building_block_factory.create_federated_aggregate(
         value, zero, accumulate, merge, report)
     self.assertEqual(comp.compact_representation(),
                      'federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)')
@@ -913,22 +969,22 @@ class CreateFederatedAggregateTest(absltest.TestCase):
 class CreateFederatedApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = computation_building_blocks.Data('y', tf.int32)
+    arg = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_apply(None, arg)
+      building_block_factory.create_federated_apply(None, arg)
 
   def test_raises_type_error_with_none_arg(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_apply(fn, None)
+      building_block_factory.create_federated_apply(fn, None)
 
   def test_returns_federated_apply(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    arg = computation_building_blocks.Data('y', arg_type)
-    comp = computation_constructing_utils.create_federated_apply(fn, arg)
+    arg = building_blocks.Data('y', arg_type)
+    comp = building_block_factory.create_federated_apply(fn, arg)
     self.assertEqual(comp.compact_representation(),
                      'federated_apply(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
@@ -938,12 +994,12 @@ class CreateFederatedBroadcastTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_broadcast(None)
+      building_block_factory.create_federated_broadcast(None)
 
   def test_returns_federated_broadcast(self):
     value_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_broadcast(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_broadcast(value)
     self.assertEqual(comp.compact_representation(), 'federated_broadcast(v)')
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
@@ -952,12 +1008,12 @@ class CreateFederatedCollectTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_collect(None)
+      building_block_factory.create_federated_collect(None)
 
   def test_returns_federated_collect(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_collect(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_collect(value)
     self.assertEqual(comp.compact_representation(), 'federated_collect(v)')
     self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
 
@@ -965,22 +1021,22 @@ class CreateFederatedCollectTest(absltest.TestCase):
 class CreateFederatedMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = computation_building_blocks.Data('y', tf.int32)
+    arg = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map(None, arg)
+      building_block_factory.create_federated_map(None, arg)
 
   def test_raises_type_error_with_none_arg(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map(fn, None)
+      building_block_factory.create_federated_map(fn, None)
 
   def test_returns_federated_map(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
-    comp = computation_constructing_utils.create_federated_map(fn, arg)
+    arg = building_blocks.Data('y', arg_type)
+    comp = building_block_factory.create_federated_map(fn, arg)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
@@ -989,24 +1045,23 @@ class CreateFederatedMapTest(absltest.TestCase):
 class CreateFederatedMapAllEqualTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = computation_building_blocks.Data('y', tf.int32)
+    arg = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map_all_equal(None, arg)
+      building_block_factory.create_federated_map_all_equal(None, arg)
 
   def test_raises_type_error_with_none_arg(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map_all_equal(fn, None)
+      building_block_factory.create_federated_map_all_equal(fn, None)
 
   def test_returns_federated_map_all_equal(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.FederatedType(
         tf.int32, placements.CLIENTS, all_equal=True)
-    arg = computation_building_blocks.Data('y', arg_type)
-    comp = computation_constructing_utils.create_federated_map_all_equal(
-        fn, arg)
+    arg = building_blocks.Data('y', arg_type)
+    comp = building_block_factory.create_federated_map_all_equal(fn, arg)
     self.assertEqual(comp.compact_representation(),
                      'federated_map_all_equal(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
@@ -1015,32 +1070,32 @@ class CreateFederatedMapAllEqualTest(absltest.TestCase):
 class CreateFederatedMapOrApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = computation_building_blocks.Data('y', tf.int32)
+    arg = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map_or_apply(None, arg)
+      building_block_factory.create_federated_map_or_apply(None, arg)
 
   def test_raises_type_error_with_none_arg(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_map_or_apply(fn, None)
+      building_block_factory.create_federated_map_or_apply(fn, None)
 
   def test_returns_federated_apply(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    arg = computation_building_blocks.Data('y', arg_type)
-    comp = computation_constructing_utils.create_federated_map_or_apply(fn, arg)
+    arg = building_blocks.Data('y', arg_type)
+    comp = building_block_factory.create_federated_map_or_apply(fn, arg)
     self.assertEqual(comp.compact_representation(),
                      'federated_apply(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
   def test_returns_federated_map(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    arg = computation_building_blocks.Data('y', arg_type)
-    comp = computation_constructing_utils.create_federated_map_or_apply(fn, arg)
+    arg = building_blocks.Data('y', arg_type)
+    comp = building_block_factory.create_federated_map_or_apply(fn, arg)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
@@ -1050,21 +1105,21 @@ class CreateFederatedMeanTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_mean(None, None)
+      building_block_factory.create_federated_mean(None, None)
 
   def test_returns_federated_mean(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_mean(value, None)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_mean(value, None)
     self.assertEqual(comp.compact_representation(), 'federated_mean(v)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
   def test_returns_federated_weighted_mean(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
+    value = building_blocks.Data('v', value_type)
     weight_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    weight = computation_building_blocks.Data('w', weight_type)
-    comp = computation_constructing_utils.create_federated_mean(value, weight)
+    weight = building_blocks.Data('w', weight_type)
+    comp = building_block_factory.create_federated_mean(value, weight)
     self.assertEqual(comp.compact_representation(),
                      'federated_weighted_mean(<v,w>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
@@ -1073,38 +1128,37 @@ class CreateFederatedMeanTest(absltest.TestCase):
 class CreateFederatedReduceTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    zero = computation_building_blocks.Data('z', tf.int32)
+    zero = building_blocks.Data('z', tf.int32)
     op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    op_result = computation_building_blocks.Data('o', tf.int32)
-    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    op_result = building_blocks.Data('o', tf.int32)
+    op = building_blocks.Lambda('x', op_type, op_result)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_reduce(None, zero, op)
+      building_block_factory.create_federated_reduce(None, zero, op)
 
   def test_raises_type_error_with_none_zero(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
+    value = building_blocks.Data('v', value_type)
     op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    op_result = computation_building_blocks.Data('o', tf.int32)
-    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    op_result = building_blocks.Data('o', tf.int32)
+    op = building_blocks.Lambda('x', op_type, op_result)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_reduce(value, None, op)
+      building_block_factory.create_federated_reduce(value, None, op)
 
   def test_raises_type_error_with_none_op(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_reduce(value, zero, None)
+      building_block_factory.create_federated_reduce(value, zero, None)
 
   def test_returns_federated_reduce(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    op_result = computation_building_blocks.Data('o', tf.int32)
-    op = computation_building_blocks.Lambda('x', op_type, op_result)
-    comp = computation_constructing_utils.create_federated_reduce(
-        value, zero, op)
+    op_result = building_blocks.Data('o', tf.int32)
+    op = building_blocks.Lambda('x', op_type, op_result)
+    comp = building_block_factory.create_federated_reduce(value, zero, op)
     self.assertEqual(comp.compact_representation(),
                      'federated_reduce(<v,z,(x -> o)>)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
@@ -1114,12 +1168,12 @@ class CreateFederatedSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_sum(None)
+      building_block_factory.create_federated_sum(None)
 
   def test_returns_federated_sum(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_sum(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_sum(value)
     self.assertEqual(comp.compact_representation(), 'federated_sum(v)')
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
@@ -1128,19 +1182,19 @@ class CreateFederatedUnzipTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_unzip(None)
+      building_block_factory.create_federated_unzip(None)
 
   def test_returns_tuple_federated_map_with_empty_value(self):
     value_type = computation_types.FederatedType([], placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
+    value = building_blocks.Data('v', value_type)
     with self.assertRaises(ValueError):
-      computation_constructing_utils.create_federated_unzip(value)
+      building_block_factory.create_federated_unzip(value)
 
   def test_returns_tuple_federated_map_with_one_value_unnamed(self):
     value_type = computation_types.FederatedType((tf.int32,),
                                                  placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
         '(let value=v in <federated_map(<(arg -> arg[0]),value>)>)')
@@ -1150,8 +1204,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     type_signature = computation_types.NamedTupleType((('a', tf.int32),))
     value_type = computation_types.FederatedType(type_signature,
                                                  placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
         '(let value=v in <a=federated_map(<(arg -> arg[0]),value>)>)')
@@ -1160,8 +1214,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
   def test_returns_tuple_federated_map_with_two_values_unnamed(self):
     value_type = computation_types.FederatedType((tf.int32, tf.int32),
                                                  placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1187,8 +1241,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
         (('a', tf.int32), ('b', tf.int32)))
     value_type = computation_types.FederatedType(type_signature,
                                                  placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1212,8 +1266,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
   def test_returns_tuple_federated_map_with_two_values_different_typed(self):
     value_type = computation_types.FederatedType((tf.int32, tf.bool),
                                                  placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1236,8 +1290,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
 
   def test_returns_tuple_federated_apply_with_one_value_unnamed(self):
     value_type = computation_types.FederatedType((tf.int32,), placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
         '(let value=v in <federated_apply(<(arg -> arg[0]),value>)>)')
@@ -1247,8 +1301,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     type_signature = computation_types.NamedTupleType((('a', tf.int32),))
     value_type = computation_types.FederatedType(type_signature,
                                                  placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
         '(let value=v in <a=federated_apply(<(arg -> arg[0]),value>)>)')
@@ -1257,8 +1311,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
   def test_returns_tuple_federated_apply_with_two_values_unnamed(self):
     value_type = computation_types.FederatedType((tf.int32, tf.int32),
                                                  placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1283,8 +1337,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
         (('a', tf.int32), ('b', tf.int32)))
     value_type = computation_types.FederatedType(type_signature,
                                                  placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1308,8 +1362,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
   def test_returns_tuple_federated_apply_with_two_values_different_typed(self):
     value_type = computation_types.FederatedType((tf.int32, tf.bool),
                                                  placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_unzip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_unzip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1334,30 +1388,30 @@ class CreateFederatedValueTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_value(
-          None, placement_literals.CLIENTS)
+      building_block_factory.create_federated_value(None,
+                                                    placement_literals.CLIENTS)
 
   def test_raises_type_error_with_none_placement(self):
-    value = computation_building_blocks.Data('v', tf.int32)
+    value = building_blocks.Data('v', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_value(value, None)
+      building_block_factory.create_federated_value(value, None)
 
   def test_raises_type_error_with_unknown_placement(self):
-    value = computation_building_blocks.Data('v', tf.int32)
+    value = building_blocks.Data('v', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_value(value, 'unknown')
+      building_block_factory.create_federated_value(value, 'unknown')
 
   def test_returns_federated_value_at_clients(self):
-    value = computation_building_blocks.Data('v', tf.int32)
-    comp = computation_constructing_utils.create_federated_value(
+    value = building_blocks.Data('v', tf.int32)
+    comp = building_block_factory.create_federated_value(
         value, placement_literals.CLIENTS)
     self.assertEqual(comp.compact_representation(),
                      'federated_value_at_clients(v)')
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
   def test_returns_federated_value_at_server(self):
-    value = computation_building_blocks.Data('v', tf.int32)
-    comp = computation_constructing_utils.create_federated_value(
+    value = building_blocks.Data('v', tf.int32)
+    comp = building_block_factory.create_federated_value(
         value, placement_literals.SERVER)
     self.assertEqual(comp.compact_representation(),
                      'federated_value_at_server(v)')
@@ -1368,29 +1422,29 @@ class CreateFederatedZipTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_federated_zip(None)
+      building_block_factory.create_federated_zip(None)
 
   def test_raises_value_error_with_empty_value(self):
     value_type = computation_types.NamedTupleType([])
-    value = computation_building_blocks.Data('v', value_type)
+    value = building_blocks.Data('v', value_type)
     with self.assertRaises(ValueError):
-      computation_constructing_utils.create_federated_zip(value)
+      building_block_factory.create_federated_zip(value)
 
   def test_returns_federated_map_with_one_value_unnamed(self):
     type_signature = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     value_type = computation_types.NamedTupleType((type_signature,))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(arg -> <arg>),v[0]>)')
     self.assertEqual(str(comp.type_signature), '{<int32>}@CLIENTS')
 
   def test_returns_federated_map_with_one_value_unnamed_tuple(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((value,))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((value,))
+    comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(arg -> <arg>),<v>[0]>)')
     self.assertEqual(str(comp.type_signature), '{<int32>}@CLIENTS')
@@ -1399,17 +1453,17 @@ class CreateFederatedZipTest(absltest.TestCase):
     type_signature = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     value_type = computation_types.NamedTupleType((('a', type_signature),))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(arg -> <a=arg>),v[0]>)')
     self.assertEqual(str(comp.type_signature), '{<a=int32>}@CLIENTS')
 
   def test_returns_federated_map_with_one_value_named_tuple(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((('a', value),))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((('a', value),))
+    comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(arg -> <a=arg>),<a=v>[0]>)')
     self.assertEqual(str(comp.type_signature), '{<a=int32>}@CLIENTS')
@@ -1419,8 +1473,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                      placements.CLIENTS)
     value_type = computation_types.NamedTupleType(
         (type_signature, type_signature))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1445,9 +1499,9 @@ class CreateFederatedZipTest(absltest.TestCase):
 
   def test_returns_federated_zip_at_clients_with_two_values_unnamed_tuple(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((value, value))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((value, value))
+    comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1478,8 +1532,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                      placements.CLIENTS)
     value_type = computation_types.NamedTupleType(
         (('a', type_signature), ('b', type_signature)))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1504,9 +1558,9 @@ class CreateFederatedZipTest(absltest.TestCase):
 
   def test_returns_federated_zip_at_clients_with_two_values_named_tuple(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((('a', value), ('b', value)))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((('a', value), ('b', value)))
+    comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1537,8 +1591,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                      placements.CLIENTS)
     value_type = computation_types.NamedTupleType(
         (type_signature, type_signature, type_signature))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1577,9 +1631,9 @@ class CreateFederatedZipTest(absltest.TestCase):
   def test_returns_federated_zip_at_clients_with_three_values_unnamed_tuple(
       self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((value, value, value))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((value, value, value))
+    comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1627,8 +1681,8 @@ class CreateFederatedZipTest(absltest.TestCase):
         ('b', type_signature),
         ('c', type_signature),
     ))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1667,13 +1721,13 @@ class CreateFederatedZipTest(absltest.TestCase):
 
   def test_returns_federated_zip_at_clients_with_three_values_named_tuple(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((
         ('a', value),
         ('b', value),
         ('c', value),
     ))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1724,8 +1778,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                       placements.CLIENTS)
     value_type = computation_types.NamedTupleType(
         (type_signature1, type_signature2, type_signature3))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1764,14 +1818,14 @@ class CreateFederatedZipTest(absltest.TestCase):
   def test_returns_federated_zip_at_clients_with_three_values_different_typed_tuple(
       self):
     value_type1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value1 = computation_building_blocks.Data('v1', value_type1)
+    value1 = building_blocks.Data('v1', value_type1)
     value_type2 = computation_types.FederatedType(tf.float32,
                                                   placements.CLIENTS)
-    value2 = computation_building_blocks.Data('v2', value_type2)
+    value2 = building_blocks.Data('v2', value_type2)
     value_type3 = computation_types.FederatedType(tf.bool, placements.CLIENTS)
-    value3 = computation_building_blocks.Data('v3', value_type3)
-    tup = computation_building_blocks.Tuple((value1, value2, value3))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value3 = building_blocks.Data('v3', value_type3)
+    tup = building_blocks.Tuple((value1, value2, value3))
+    comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1813,18 +1867,18 @@ class CreateFederatedZipTest(absltest.TestCase):
 
   def test_returns_federated_apply_with_one_value_unnamed(self):
     value_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((value,))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((value,))
+    comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_apply(<(arg -> <arg>),<v>[0]>)')
     self.assertEqual(str(comp.type_signature), '<int32>@SERVER')
 
   def test_returns_federated_apply_with_one_value_named(self):
     value_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-    value = computation_building_blocks.Data('v', value_type)
-    tup = computation_building_blocks.Tuple((('a', value),))
-    comp = computation_constructing_utils.create_federated_zip(tup)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple((('a', value),))
+    comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_apply(<(arg -> <a=arg>),<a=v>[0]>)')
     self.assertEqual(str(comp.type_signature), '<a=int32>@SERVER')
@@ -1834,8 +1888,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                      placements.SERVER)
     value_type = computation_types.NamedTupleType(
         (type_signature, type_signature))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1863,8 +1917,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                      placements.SERVER)
     value_type = computation_types.NamedTupleType(
         (('a', type_signature), ('b', type_signature)))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1892,8 +1946,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                      placements.SERVER)
     value_type = computation_types.NamedTupleType(
         (type_signature, type_signature, type_signature))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1937,8 +1991,8 @@ class CreateFederatedZipTest(absltest.TestCase):
         ('b', type_signature),
         ('c', type_signature),
     ))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -1985,8 +2039,8 @@ class CreateFederatedZipTest(absltest.TestCase):
                                                       placements.SERVER)
     value_type = computation_types.NamedTupleType(
         (type_signature1, type_signature2, type_signature3))
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_zip(value)
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
@@ -2027,89 +2081,79 @@ class CreateGenericConstantTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_generic_constant(None, 0)
+      building_block_factory.create_generic_constant(None, 0)
 
   def test_raises_non_scalar(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_generic_constant([tf.int32], [0])
+      building_block_factory.create_generic_constant([tf.int32], [0])
 
   def test_constructs_tensor_zero(self):
     tensor_type = computation_types.TensorType(tf.float32, [2, 2])
-    tensor_zero = computation_constructing_utils.create_generic_constant(
-        tensor_type, 0)
+    tensor_zero = building_block_factory.create_generic_constant(tensor_type, 0)
     self.assertEqual(tensor_zero.type_signature, tensor_type)
-    self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
-    executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
-        tensor_zero.function)
-    self.assertTrue(np.array_equal(executable_noarg_fn(), np.zeros([2, 2])))
+    self.assertIsInstance(tensor_zero, building_blocks.Call)
+    self.assertTrue(
+        np.array_equal(
+            _run_tensorflow(tensor_zero.function.proto), np.zeros([2, 2])))
 
   def test_create_unnamed_tuple_zero(self):
     tuple_type = [computation_types.TensorType(tf.float32, [2, 2])] * 2
-    tuple_zero = computation_constructing_utils.create_generic_constant(
-        tuple_type, 0)
+    tuple_zero = building_block_factory.create_generic_constant(tuple_type, 0)
     self.assertEqual(tuple_zero.type_signature,
                      computation_types.to_type(tuple_type))
-    self.assertIsInstance(tuple_zero, computation_building_blocks.Call)
-    executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
-        tuple_zero.function)
-    self.assertLen(executable_noarg_fn(), 2)
-    self.assertTrue(np.array_equal(executable_noarg_fn()[0], np.zeros([2, 2])))
-    self.assertTrue(np.array_equal(executable_noarg_fn()[1], np.zeros([2, 2])))
+    self.assertIsInstance(tuple_zero, building_blocks.Call)
+    result = _run_tensorflow(tuple_zero.function.proto)
+    self.assertLen(result, 2)
+    self.assertTrue(np.array_equal(result[0], np.zeros([2, 2])))
+    self.assertTrue(np.array_equal(result[1], np.zeros([2, 2])))
 
   def test_create_named_tuple_one(self):
     tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
                   ('b', computation_types.TensorType(tf.float32, [2, 2]))]
-    tuple_zero = computation_constructing_utils.create_generic_constant(
-        tuple_type, 1)
+    tuple_zero = building_block_factory.create_generic_constant(tuple_type, 1)
     self.assertEqual(tuple_zero.type_signature,
                      computation_types.to_type(tuple_type))
-    self.assertIsInstance(tuple_zero, computation_building_blocks.Call)
-    executable_noarg_fn = computation_wrapper_instances.building_block_to_computation(
-        tuple_zero.function)
-    self.assertLen(executable_noarg_fn(), 2)
-    self.assertTrue(np.array_equal(executable_noarg_fn().a, np.ones([2, 2])))
-    self.assertTrue(np.array_equal(executable_noarg_fn().b, np.ones([2, 2])))
+    self.assertIsInstance(tuple_zero, building_blocks.Call)
+    result = _run_tensorflow(tuple_zero.function.proto)
+    self.assertLen(result, 2)
+    self.assertTrue(np.array_equal(result.a, np.ones([2, 2])))
+    self.assertTrue(np.array_equal(result.b, np.ones([2, 2])))
 
   def test_create_federated_tensor_one(self):
     fed_type = computation_types.FederatedType(
         computation_types.TensorType(tf.float32, [2, 2]),
         placement_literals.CLIENTS)
-    fed_zero = computation_constructing_utils.create_generic_constant(
-        fed_type, 1)
+    fed_zero = building_block_factory.create_generic_constant(fed_type, 1)
     self.assertEqual(fed_zero.type_signature.member, fed_type.member)
     self.assertEqual(fed_zero.type_signature.placement, fed_type.placement)
     self.assertTrue(fed_zero.type_signature.all_equal)
-    self.assertIsInstance(fed_zero, computation_building_blocks.Call)
-    self.assertIsInstance(fed_zero.function,
-                          computation_building_blocks.Intrinsic)
+    self.assertIsInstance(fed_zero, building_blocks.Call)
+    self.assertIsInstance(fed_zero.function, building_blocks.Intrinsic)
     self.assertEqual(fed_zero.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
-    self.assertIsInstance(fed_zero.argument, computation_building_blocks.Call)
-    executable_unplaced_fn = computation_wrapper_instances.building_block_to_computation(
-        fed_zero.argument.function)
-    self.assertTrue(np.array_equal(executable_unplaced_fn(), np.ones([2, 2])))
+    self.assertIsInstance(fed_zero.argument, building_blocks.Call)
+    self.assertTrue(
+        np.array_equal(
+            _run_tensorflow(fed_zero.argument.function.proto), np.ones([2, 2])))
 
   def test_create_federated_named_tuple_one(self):
     tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
                   ('b', computation_types.TensorType(tf.float32, [2, 2]))]
     fed_type = computation_types.FederatedType(tuple_type,
                                                placement_literals.SERVER)
-    fed_zero = computation_constructing_utils.create_generic_constant(
-        fed_type, 1)
+    fed_zero = building_block_factory.create_generic_constant(fed_type, 1)
     self.assertEqual(fed_zero.type_signature.member, fed_type.member)
     self.assertEqual(fed_zero.type_signature.placement, fed_type.placement)
     self.assertTrue(fed_zero.type_signature.all_equal)
-    self.assertIsInstance(fed_zero, computation_building_blocks.Call)
-    self.assertIsInstance(fed_zero.function,
-                          computation_building_blocks.Intrinsic)
+    self.assertIsInstance(fed_zero, building_blocks.Call)
+    self.assertIsInstance(fed_zero.function, building_blocks.Intrinsic)
     self.assertEqual(fed_zero.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri)
-    self.assertIsInstance(fed_zero.argument, computation_building_blocks.Call)
-    executable_unplaced_fn = computation_wrapper_instances.building_block_to_computation(
-        fed_zero.argument.function)
-    self.assertLen(executable_unplaced_fn(), 2)
-    self.assertTrue(np.array_equal(executable_unplaced_fn().a, np.ones([2, 2])))
-    self.assertTrue(np.array_equal(executable_unplaced_fn().b, np.ones([2, 2])))
+    self.assertIsInstance(fed_zero.argument, building_blocks.Call)
+    result = _run_tensorflow(fed_zero.argument.function.proto)
+    self.assertLen(result, 2)
+    self.assertTrue(np.array_equal(result.a, np.ones([2, 2])))
+    self.assertTrue(np.array_equal(result.b, np.ones([2, 2])))
 
   def test_create_named_tuple_of_federated_tensors_zero(self):
     fed_type = computation_types.FederatedType(
@@ -2117,40 +2161,39 @@ class CreateGenericConstantTest(absltest.TestCase):
         placement_literals.CLIENTS,
         all_equal=True)
     tuple_type = [('a', fed_type), ('b', fed_type)]
-    zero = computation_constructing_utils.create_generic_constant(tuple_type, 0)
+    zero = building_block_factory.create_generic_constant(tuple_type, 0)
     fed_zero = zero.argument[0]
-
     self.assertEqual(zero.type_signature, computation_types.to_type(tuple_type))
-    self.assertIsInstance(fed_zero.function,
-                          computation_building_blocks.Intrinsic)
+    self.assertIsInstance(fed_zero.function, building_blocks.Intrinsic)
     self.assertEqual(fed_zero.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
-    self.assertIsInstance(fed_zero.argument, computation_building_blocks.Call)
-    executable_unplaced_fn = computation_wrapper_instances.building_block_to_computation(
-        fed_zero.argument.function)
-    self.assertTrue(np.array_equal(executable_unplaced_fn(), np.zeros([2, 2])))
+    self.assertIsInstance(fed_zero.argument, building_blocks.Call)
+    self.assertTrue(
+        np.array_equal(
+            _run_tensorflow(fed_zero.argument.function.proto), np.zeros([2,
+                                                                         2])))
 
 
 class CreateSequenceMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg_type = computation_types.SequenceType(tf.int32)
-    arg = computation_building_blocks.Data('y', arg_type)
+    arg = building_blocks.Data('y', arg_type)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_sequence_map(None, arg)
+      building_block_factory.create_sequence_map(None, arg)
 
   def test_raises_type_error_with_none_arg(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_sequence_map(fn, None)
+      building_block_factory.create_sequence_map(fn, None)
 
   def test_returns_sequence_map(self):
-    ref = computation_building_blocks.Reference('x', tf.int32)
-    fn = computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    ref = building_blocks.Reference('x', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.SequenceType(tf.int32)
-    arg = computation_building_blocks.Data('y', arg_type)
-    comp = computation_constructing_utils.create_sequence_map(fn, arg)
+    arg = building_blocks.Data('y', arg_type)
+    comp = building_block_factory.create_sequence_map(fn, arg)
     self.assertEqual(comp.compact_representation(),
                      'sequence_map(<(x -> x),y>)')
     self.assertEqual(str(comp.type_signature), 'int32*')
@@ -2159,38 +2202,37 @@ class CreateSequenceMapTest(absltest.TestCase):
 class CreateSequenceReduceTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    zero = computation_building_blocks.Data('z', tf.int32)
+    zero = building_blocks.Data('z', tf.int32)
     op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    op_result = computation_building_blocks.Data('o', tf.int32)
-    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    op_result = building_blocks.Data('o', tf.int32)
+    op = building_blocks.Lambda('x', op_type, op_result)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_sequence_reduce(None, zero, op)
+      building_block_factory.create_sequence_reduce(None, zero, op)
 
   def test_raises_type_error_with_none_zero(self):
     value_type = computation_types.SequenceType(tf.int32)
-    value = computation_building_blocks.Data('v', value_type)
+    value = building_blocks.Data('v', value_type)
     op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    op_result = computation_building_blocks.Data('o', tf.int32)
-    op = computation_building_blocks.Lambda('x', op_type, op_result)
+    op_result = building_blocks.Data('o', tf.int32)
+    op = building_blocks.Lambda('x', op_type, op_result)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_sequence_reduce(value, None, op)
+      building_block_factory.create_sequence_reduce(value, None, op)
 
   def test_raises_type_error_with_none_op(self):
     value_type = computation_types.SequenceType(tf.int32)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_sequence_reduce(value, zero, None)
+      building_block_factory.create_sequence_reduce(value, zero, None)
 
   def test_returns_sequence_reduce(self):
     value_type = computation_types.SequenceType(tf.int32)
-    value = computation_building_blocks.Data('v', value_type)
-    zero = computation_building_blocks.Data('z', tf.int32)
+    value = building_blocks.Data('v', value_type)
+    zero = building_blocks.Data('z', tf.int32)
     op_type = computation_types.NamedTupleType((tf.int32, tf.int32))
-    op_result = computation_building_blocks.Data('o', tf.int32)
-    op = computation_building_blocks.Lambda('x', op_type, op_result)
-    comp = computation_constructing_utils.create_sequence_reduce(
-        value, zero, op)
+    op_result = building_blocks.Data('o', tf.int32)
+    op = building_blocks.Lambda('x', op_type, op_result)
+    comp = building_block_factory.create_sequence_reduce(value, zero, op)
     self.assertEqual(comp.compact_representation(),
                      'sequence_reduce(<v,z,(x -> o)>)')
     self.assertEqual(str(comp.type_signature), 'int32')
@@ -2200,12 +2242,12 @@ class CreateSequenceSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_sequence_sum(None)
+      building_block_factory.create_sequence_sum(None)
 
   def test_returns_federated_sum(self):
     value_type = computation_types.SequenceType(tf.int32)
-    value = computation_building_blocks.Data('v', value_type)
-    comp = computation_constructing_utils.create_sequence_sum(value)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_sequence_sum(value)
     self.assertEqual(comp.compact_representation(), 'sequence_sum(v)')
     self.assertEqual(str(comp.type_signature), 'int32')
 
@@ -2214,45 +2256,40 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_federated_tuple(None, ['a'])
+      building_block_factory.create_named_federated_tuple(None, ['a'])
 
   def test_raises_non_federated_type(self):
-    bad_comp = computation_building_blocks.Data(
-        'x', computation_types.to_type(tf.int32))
+    bad_comp = building_blocks.Data('x', computation_types.to_type(tf.int32))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_federated_tuple(
-          bad_comp, ['a'])
+      building_block_factory.create_named_federated_tuple(bad_comp, ['a'])
 
   def test_raises_federated_non_tuple(self):
-    bad_comp = computation_building_blocks.Data(
+    bad_comp = building_blocks.Data(
         'x',
         computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_federated_tuple(
-          bad_comp, ['a'])
+      building_block_factory.create_named_federated_tuple(bad_comp, ['a'])
 
   def test_raises_on_naked_string(self):
-    data_tuple = computation_building_blocks.Data(
+    data_tuple = building_blocks.Data(
         'x',
         computation_types.FederatedType([tf.int32], placement_literals.CLIENTS))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_federated_tuple(
-          data_tuple, 'a')
+      building_block_factory.create_named_federated_tuple(data_tuple, 'a')
 
   def test_raises_list_of_ints(self):
-    data_tuple = computation_building_blocks.Data(
+    data_tuple = building_blocks.Data(
         'x',
         computation_types.FederatedType([tf.int32], placement_literals.SERVER))
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_federated_tuple(
-          data_tuple, [1])
+      building_block_factory.create_named_federated_tuple(data_tuple, [1])
 
   def test_raises_wrong_list_length(self):
-    data_tuple = computation_building_blocks.Data(
+    data_tuple = building_blocks.Data(
         'x',
         computation_types.FederatedType([tf.int32], placement_literals.SERVER))
     with self.assertRaises(ValueError):
-      computation_constructing_utils.create_named_federated_tuple(
+      building_block_factory.create_named_federated_tuple(
           data_tuple, ['a', 'b'])
 
   @parameterized.named_parameters(
@@ -2262,8 +2299,8 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
   def test_constructs_correct_type_from_unnamed_tuple(self, placement):
     fed_type = computation_types.FederatedType([tf.int32, tf.float32],
                                                placement)
-    data_tuple = computation_building_blocks.Data('x', fed_type)
-    named_tuple = computation_constructing_utils.create_named_federated_tuple(
+    data_tuple = building_blocks.Data('x', fed_type)
+    named_tuple = building_block_factory.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     expected_result_type = computation_types.FederatedType([('a', tf.int32),
                                                             ('b', tf.float32)],
@@ -2277,8 +2314,8 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
   def test_constructs_correct_type_from_named_tuple(self, placement):
     fed_type = computation_types.FederatedType([('c', tf.int32),
                                                 ('d', tf.float32)], placement)
-    data_tuple = computation_building_blocks.Data('x', fed_type)
-    named_tuple = computation_constructing_utils.create_named_federated_tuple(
+    data_tuple = building_blocks.Data('x', fed_type)
+    named_tuple = building_block_factory.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     expected_result_type = computation_types.FederatedType([('a', tf.int32),
                                                             ('b', tf.float32)],
@@ -2291,8 +2328,8 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
   )
   def test_only_names_unnamed_tuple(self, placement):
     ntt = computation_types.FederatedType([tf.int32, tf.float32], placement)
-    data_tuple = computation_building_blocks.Data('data', ntt)
-    named_tuple = computation_constructing_utils.create_named_federated_tuple(
+    data_tuple = building_blocks.Data('data', ntt)
+    named_tuple = building_block_factory.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     self.assertRegexMatch(
         named_tuple.compact_representation(),
@@ -2305,8 +2342,8 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
   def test_only_overwrites_existing_names_in_tuple(self, placement):
     fed_type = computation_types.FederatedType([('c', tf.int32),
                                                 ('d', tf.float32)], placement)
-    data_tuple = computation_building_blocks.Data('data', fed_type)
-    named_tuple = computation_constructing_utils.create_named_federated_tuple(
+    data_tuple = building_blocks.Data('data', fed_type)
+    named_tuple = building_block_factory.create_named_federated_tuple(
         data_tuple, ['a', 'b'])
     self.assertRegexMatch(
         named_tuple.compact_representation(),
@@ -2317,36 +2354,35 @@ class CreateNamedTupleTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_tuple(None, ('a',))
+      building_block_factory.create_named_tuple(None, ('a',))
 
   def test_raises_type_error_with_wrong_comp_type(self):
-    comp = computation_building_blocks.Data('data', tf.int32)
+    comp = building_blocks.Data('data', tf.int32)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_tuple(comp, ('a',))
+      building_block_factory.create_named_tuple(comp, ('a',))
 
   def test_raises_type_error_with_wrong_names_type_string(self):
     type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
-    comp = computation_building_blocks.Data('data', type_signature)
+    comp = building_blocks.Data('data', type_signature)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_tuple(comp, 'a')
+      building_block_factory.create_named_tuple(comp, 'a')
 
   def test_raises_type_error_with_wrong_names_type_ints(self):
     type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
-    comp = computation_building_blocks.Data('data', type_signature)
+    comp = building_blocks.Data('data', type_signature)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_named_tuple(comp, 'a')
+      building_block_factory.create_named_tuple(comp, 'a')
 
   def test_raises_value_error_with_wrong_lengths(self):
     type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
-    comp = computation_building_blocks.Data('data', type_signature)
+    comp = building_blocks.Data('data', type_signature)
     with self.assertRaises(ValueError):
-      computation_constructing_utils.create_named_tuple(comp, ('a',))
+      building_block_factory.create_named_tuple(comp, ('a',))
 
   def test_creates_named_tuple_from_unamed_tuple(self):
     type_signature = computation_types.NamedTupleType((tf.int32, tf.int32))
-    comp = computation_building_blocks.Data('data', type_signature)
-    named_comp = computation_constructing_utils.create_named_tuple(
-        comp, ('a', 'b'))
+    comp = building_blocks.Data('data', type_signature)
+    named_comp = building_block_factory.create_named_tuple(comp, ('a', 'b'))
     expected_type_signature = computation_types.NamedTupleType(
         (('a', tf.int32), ('b', tf.int32)))
     self.assertEqual(named_comp.type_signature, expected_type_signature)
@@ -2354,9 +2390,8 @@ class CreateNamedTupleTest(absltest.TestCase):
   def test_creates_named_tuple_from_named_tuple(self):
     type_signature = computation_types.NamedTupleType(
         (('a', tf.int32), ('b', tf.int32)))
-    comp = computation_building_blocks.Data('data', type_signature)
-    named_comp = computation_constructing_utils.create_named_tuple(
-        comp, ('c', 'd'))
+    comp = building_blocks.Data('data', type_signature)
+    named_comp = building_block_factory.create_named_tuple(comp, ('c', 'd'))
     expected_type_signature = computation_types.NamedTupleType(
         (('c', tf.int32), ('d', tf.int32)))
     self.assertEqual(named_comp.type_signature, expected_type_signature)
@@ -2366,16 +2401,16 @@ class CreateZipTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_zip(None)
+      building_block_factory.create_zip(None)
 
   def test_zips_tuple_unnamed(self):
-    data_1 = computation_building_blocks.Data('a', tf.int32)
-    data_2 = computation_building_blocks.Data('b', tf.float32)
-    data_3 = computation_building_blocks.Data('c', tf.bool)
-    tup_1 = computation_building_blocks.Tuple((data_1, data_2, data_3))
-    tup_2 = computation_building_blocks.Tuple((tup_1, tup_1))
+    data_1 = building_blocks.Data('a', tf.int32)
+    data_2 = building_blocks.Data('b', tf.float32)
+    data_3 = building_blocks.Data('c', tf.bool)
+    tup_1 = building_blocks.Tuple((data_1, data_2, data_3))
+    tup_2 = building_blocks.Tuple((tup_1, tup_1))
     comp = tup_2
-    new_comp = computation_constructing_utils.create_zip(comp)
+    new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(), '<<a,b,c>,<a,b,c>>')
     # pyformat: disable
     self.assertEqual(
@@ -2416,14 +2451,13 @@ class CreateZipTest(absltest.TestCase):
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
 
   def test_zips_tuple_named(self):
-    data_1 = computation_building_blocks.Data('a', tf.int32)
-    data_2 = computation_building_blocks.Data('b', tf.float32)
-    data_3 = computation_building_blocks.Data('c', tf.bool)
-    tup_1 = computation_building_blocks.Tuple(
-        (('d', data_1), ('e', data_2), ('f', data_3)))
-    tup_2 = computation_building_blocks.Tuple((('g', tup_1), ('h', tup_1)))
+    data_1 = building_blocks.Data('a', tf.int32)
+    data_2 = building_blocks.Data('b', tf.float32)
+    data_3 = building_blocks.Data('c', tf.bool)
+    tup_1 = building_blocks.Tuple((('d', data_1), ('e', data_2), ('f', data_3)))
+    tup_2 = building_blocks.Tuple((('g', tup_1), ('h', tup_1)))
     comp = tup_2
-    new_comp = computation_constructing_utils.create_zip(comp)
+    new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(),
                      '<g=<d=a,e=b,f=c>,h=<d=a,e=b,f=c>>')
     # pyformat: disable
@@ -2470,9 +2504,9 @@ class CreateZipTest(absltest.TestCase):
         [tf.int32, tf.float32, tf.bool])
     type_signature_2 = computation_types.NamedTupleType(
         [type_signature_1, type_signature_1])
-    ref = computation_building_blocks.Reference('a', type_signature_2)
+    ref = building_blocks.Reference('a', type_signature_2)
     comp = ref
-    new_comp = computation_constructing_utils.create_zip(comp)
+    new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(), 'a')
     # pyformat: disable
     self.assertEqual(
@@ -2504,45 +2538,41 @@ class CreateTensorFlowBroadcastFunctionTest(absltest.TestCase):
 
   def test_raises_python_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
+      building_block_factory.create_tensorflow_to_broadcast_scalar(
           int, tf.TensorShape([]))
 
   def test_raises_list_for_shape(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
+      building_block_factory.create_tensorflow_to_broadcast_scalar(
           tf.int32, [1, 1])
 
   def test_raises_partially_defined(self):
     with self.assertRaises(ValueError):
-      computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
+      building_block_factory.create_tensorflow_to_broadcast_scalar(
           tf.int32, tf.TensorShape([None, 1]))
 
   def test_constructs_identity_scalar_function(self):
-    int_identity = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
+    int_identity = building_block_factory.create_tensorflow_to_broadcast_scalar(
         tf.int32, tf.TensorShape([]))
-    executable_int_identity = computation_wrapper_instances.building_block_to_computation(
-        int_identity)
     for k in range(5):
-      self.assertEqual(executable_int_identity(k), k)
+      result = _run_tensorflow(int_identity.proto, k)
+      self.assertEqual(result, k)
 
   def test_broadcasts_ints_to_nonempty_shape(self):
-    int_broadcast = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
+    int_broadcast = building_block_factory.create_tensorflow_to_broadcast_scalar(
         tf.int32, tf.TensorShape([2, 2]))
-    executable_int_broadcast = computation_wrapper_instances.building_block_to_computation(
-        int_broadcast)
     for k in range(5):
       self.assertTrue(
           np.array_equal(
-              executable_int_broadcast(k), np.array([[k, k], [k, k]])))
+              _run_tensorflow(int_broadcast.proto, k), np.array([[k, k], [k,
+                                                                          k]])))
 
   def test_broadcasts_bools_to_nonempty_shape(self):
-    int_broadcast = computation_constructing_utils.create_tensorflow_to_broadcast_scalar(
+    int_broadcast = building_block_factory.create_tensorflow_to_broadcast_scalar(
         tf.bool, tf.TensorShape([2, 2]))
-    executable_int_broadcast = computation_wrapper_instances.building_block_to_computation(
-        int_broadcast)
     self.assertTrue(
         np.array_equal(
-            executable_int_broadcast(True),
+            _run_tensorflow(int_broadcast.proto, True),
             np.array([[True, True], [True, True]])))
 
 
@@ -2550,271 +2580,259 @@ class CreateTensorFlowBinaryOpTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_binary_operator(
-          None, tf.add)
+      building_block_factory.create_tensorflow_binary_operator(None, tf.add)
 
   def test_raises_non_callable_op(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_binary_operator(
-          tf.int32, 1)
+      building_block_factory.create_tensorflow_binary_operator(tf.int32, 1)
 
   def test_raises_on_federated_type(self):
     fed_type = computation_types.FederatedType(tf.int32,
                                                placement_literals.SERVER)
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_binary_operator(
-          fed_type, tf.add)
+      building_block_factory.create_tensorflow_binary_operator(fed_type, tf.add)
 
   def test_raises_on_nested_sequence_type(self):
     hiding_sequence_type = computation_types.NamedTupleType(
         [computation_types.SequenceType(tf.int32)])
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_binary_operator(
+      building_block_factory.create_tensorflow_binary_operator(
           hiding_sequence_type, tf.add)
 
   def test_divide_integers(self):
-    integer_division_func = computation_constructing_utils.create_tensorflow_binary_operator(
+    integer_division_func = building_block_factory.create_tensorflow_binary_operator(
         tf.int32, tf.divide)
     self.assertEqual(
         integer_division_func.type_signature,
         computation_types.FunctionType([tf.int32, tf.int32], tf.float64))
-    callable_division = computation_wrapper_instances.building_block_to_computation(
-        integer_division_func)
-    self.assertEqual(callable_division(1, 1), 1)
-    self.assertEqual(callable_division(1, 2), 0.5)
-    self.assertEqual(callable_division(2, 1), 2)
-    self.assertEqual(callable_division(1, 0), np.inf)
+    result_1 = _run_tensorflow(integer_division_func.proto, [1, 1])
+    self.assertEqual(result_1, 1)
+    result_2 = _run_tensorflow(integer_division_func.proto, [1, 2])
+    self.assertEqual(result_2, 0.5)
+    result_3 = _run_tensorflow(integer_division_func.proto, [2, 1])
+    self.assertEqual(result_3, 2)
+    result_4 = _run_tensorflow(integer_division_func.proto, [1, 0])
+    self.assertEqual(result_4, np.inf)
 
   def test_divide_unnamed_tuple(self):
-    division_func = computation_constructing_utils.create_tensorflow_binary_operator(
+    division_func = building_block_factory.create_tensorflow_binary_operator(
         [tf.int32, tf.float32], tf.divide)
     self.assertEqual(
         division_func.type_signature,
         computation_types.FunctionType(
             [[tf.int32, tf.float32], [tf.int32, tf.float32]],
             [tf.float64, tf.float32]))
-    callable_division = computation_wrapper_instances.building_block_to_computation(
-        division_func)
-    self.assertEqual(callable_division([1, 0.], [1, 1.])[0], 1)
-    self.assertEqual(callable_division([1, 0.], [1, 1.])[1], 0.)
+    self.assertEqual(
+        _run_tensorflow(division_func.proto, [[1, 0.], [1, 1.]])[0], 1)
+    self.assertEqual(
+        _run_tensorflow(division_func.proto, [[1, 0.], [1, 1.]])[1], 0.)
 
   def test_divide_named_tuple(self):
-    integer_division_func = computation_constructing_utils.create_tensorflow_binary_operator(
+    integer_division_func = building_block_factory.create_tensorflow_binary_operator(
         [('a', tf.int32), ('b', tf.float32)], tf.divide)
-    callable_division = computation_wrapper_instances.building_block_to_computation(
-        integer_division_func)
     self.assertDictEqual(
-        anonymous_tuple.to_odict(callable_division([1, 0.], [1, 1.])), {
-            'a': 1,
-            'b': 0.
-        })
+        anonymous_tuple.to_odict(
+            _run_tensorflow(integer_division_func.proto, [[1, 0.], [1, 1.]])), {
+                'a': 1,
+                'b': 0.
+            })
 
   def test_multiply_integers(self):
-    integer_multiplication_func = computation_constructing_utils.create_tensorflow_binary_operator(
+    integer_multiplication_func = building_block_factory.create_tensorflow_binary_operator(
         tf.int32, tf.multiply)
-    callable_multiplication = computation_wrapper_instances.building_block_to_computation(
-        integer_multiplication_func)
-    self.assertEqual(callable_multiplication(1, 1), 1)
-    self.assertEqual(callable_multiplication(1, 2), 2)
-    self.assertEqual(callable_multiplication(2, 1), 2)
+    self.assertEqual(
+        _run_tensorflow(integer_multiplication_func.proto, [1, 1]), 1)
+    self.assertEqual(
+        _run_tensorflow(integer_multiplication_func.proto, [1, 2]), 2)
+    self.assertEqual(
+        _run_tensorflow(integer_multiplication_func.proto, [2, 1]), 2)
 
   def test_multiply_named_tuple(self):
-    integer_multiplication_func = computation_constructing_utils.create_tensorflow_binary_operator(
+    integer_multiplication_func = building_block_factory.create_tensorflow_binary_operator(
         [('a', tf.int32), ('b', tf.float32)], tf.multiply)
-    callable_multiplication = computation_wrapper_instances.building_block_to_computation(
-        integer_multiplication_func)
     self.assertDictEqual(
-        anonymous_tuple.to_odict(callable_multiplication([1, 0.], [1, 1.])), {
-            'a': 1,
-            'b': 0.
-        })
+        anonymous_tuple.to_odict(
+            _run_tensorflow(integer_multiplication_func.proto,
+                            [[1, 0.], [1, 1.]])), {
+                                'a': 1,
+                                'b': 0.
+                            })
     self.assertDictEqual(
-        anonymous_tuple.to_odict(callable_multiplication([2, 2.], [1, 1.])), {
-            'a': 2,
-            'b': 2.
-        })
+        anonymous_tuple.to_odict(
+            _run_tensorflow(integer_multiplication_func.proto,
+                            [[2, 2.], [1, 1.]])), {
+                                'a': 2,
+                                'b': 2.
+                            })
 
   def test_add_integers(self):
-    integer_add = computation_constructing_utils.create_tensorflow_binary_operator(
+    integer_add = building_block_factory.create_tensorflow_binary_operator(
         tf.int32, tf.add)
-    callable_add = computation_wrapper_instances.building_block_to_computation(
-        integer_add)
-    self.assertEqual(callable_add(0, 0), 0)
-    self.assertEqual(callable_add(1, 0), 1)
-    self.assertEqual(callable_add(0, 1), 1)
-    self.assertEqual(callable_add(1, 1), 2)
+    result_1 = _run_tensorflow(integer_add.proto, [0, 0])
+    self.assertEqual(result_1, 0)
+    result_2 = _run_tensorflow(integer_add.proto, [1, 0])
+    self.assertEqual(result_2, 1)
+    result_3 = _run_tensorflow(integer_add.proto, [0, 1])
+    self.assertEqual(result_3, 1)
+    result_4 = _run_tensorflow(integer_add.proto, [1, 1])
+    self.assertEqual(result_4, 2)
 
 
 class TensorFlowConstantTest(absltest.TestCase):
 
   def test_raises_on_none_type_spec(self):
     with self.assertRaises(TypeError):
-      computation_constructing_utils.create_tensorflow_constant(None, 0)
+      building_block_factory.create_tensorflow_constant(None, 0)
 
   def test_raises_type_spec_federated_int(self):
     federated_int = computation_types.FederatedType(tf.int32,
                                                     placement_literals.SERVER)
     with self.assertRaisesRegex(TypeError, 'only nested tuples and tensors'):
-      computation_constructing_utils.create_tensorflow_constant(
-          federated_int, 0)
+      building_block_factory.create_tensorflow_constant(federated_int, 0)
 
   def test_raises_non_scalar_value(self):
     non_scalar_value = np.zeros([1])
     with self.assertRaisesRegex(TypeError, 'Must pass a scalar'):
-      computation_constructing_utils.create_tensorflow_constant(
-          tf.int32, non_scalar_value)
+      building_block_factory.create_tensorflow_constant(tf.int32,
+                                                        non_scalar_value)
 
   def test_raises_float_passed_for_int(self):
     with self.assertRaisesRegex(TypeError, 'Only integers'):
-      computation_constructing_utils.create_tensorflow_constant(tf.int32, 1.)
+      building_block_factory.create_tensorflow_constant(tf.int32, 1.)
 
   def test_constructs_integer_tensor_zero(self):
-    tensor_zero = computation_constructing_utils.create_tensorflow_constant(
+    tensor_zero = building_block_factory.create_tensorflow_constant(
         computation_types.TensorType(tf.int32, [2, 2]), 0)
-    self.assertIsInstance(tensor_zero, computation_building_blocks.Call)
-    executable_noarg_zero = computation_wrapper_instances.building_block_to_computation(
-        tensor_zero.function)
+    self.assertIsInstance(tensor_zero, building_blocks.Call)
     self.assertTrue(
-        np.array_equal(executable_noarg_zero(), np.zeros([2, 2],
-                                                         dtype=np.int32)))
+        np.array_equal(
+            _run_tensorflow(tensor_zero.function.proto),
+            np.zeros([2, 2], dtype=np.int32)))
 
   def test_constructs_float_tensor_one(self):
-    tensor_one = computation_constructing_utils.create_tensorflow_constant(
+    tensor_one = building_block_factory.create_tensorflow_constant(
         computation_types.TensorType(tf.float32, [2, 2]), 1.)
-    self.assertIsInstance(tensor_one, computation_building_blocks.Call)
-    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
-        tensor_one.function)
+    self.assertIsInstance(tensor_one, building_blocks.Call)
     self.assertTrue(
-        np.array_equal(executable_noarg_one(), np.ones([2, 2],
-                                                       dtype=np.float32)))
+        np.array_equal(
+            _run_tensorflow(tensor_one.function.proto),
+            np.ones([2, 2], dtype=np.float32)))
 
   def test_constructs_unnamed_tuple_of_float_tensor_ones(self):
     tuple_type = computation_types.NamedTupleType(
         [computation_types.TensorType(tf.float32, [2, 2])] * 2)
-    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
+    tuple_of_ones = building_block_factory.create_tensorflow_constant(
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
-    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
-        tuple_of_ones.function)
+    self.assertIsInstance(tuple_of_ones, building_blocks.Call)
+    result = _run_tensorflow(tuple_of_ones.function.proto)
+    self.assertLen(result, 2)
     self.assertTrue(
-        np.array_equal(executable_noarg_one()[0],
-                       np.ones([2, 2], dtype=np.float32)))
+        np.array_equal(result[0], np.ones([2, 2], dtype=np.float32)))
     self.assertTrue(
-        np.array_equal(executable_noarg_one()[1],
-                       np.ones([2, 2], dtype=np.float32)))
+        np.array_equal(result[1], np.ones([2, 2], dtype=np.float32)))
 
   def test_constructs_named_tuple_of_float_tensor_ones(self):
     tuple_type = computation_types.NamedTupleType([
         ('a', computation_types.TensorType(tf.float32, [2, 2])),
         ('b', computation_types.TensorType(tf.float32, [2, 2]))
     ])
-    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
+    tuple_of_ones = building_block_factory.create_tensorflow_constant(
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
-    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
-        tuple_of_ones.function)
-    self.assertTrue(
-        np.array_equal(executable_noarg_one().a,
-                       np.ones([2, 2], dtype=np.float32)))
-    self.assertTrue(
-        np.array_equal(executable_noarg_one().b,
-                       np.ones([2, 2], dtype=np.float32)))
+    self.assertIsInstance(tuple_of_ones, building_blocks.Call)
+    result = _run_tensorflow(tuple_of_ones.function.proto)
+    self.assertLen(result, 2)
+    self.assertTrue(np.array_equal(result.a, np.ones([2, 2], dtype=np.float32)))
+    self.assertTrue(np.array_equal(result.b, np.ones([2, 2], dtype=np.float32)))
 
   def test_constructs_nested_named_tuple_of_float_tensor_ones(self):
     tuple_type = computation_types.NamedTupleType([[
         ('a', computation_types.TensorType(tf.float32, [2, 2])),
         ('b', computation_types.TensorType(tf.float32, [2, 2]))
     ]])
-    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
+    tuple_of_ones = building_block_factory.create_tensorflow_constant(
         tuple_type, 1.)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
-    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_one = computation_wrapper_instances.building_block_to_computation(
-        tuple_of_ones.function)
+    self.assertIsInstance(tuple_of_ones, building_blocks.Call)
+    result = _run_tensorflow(tuple_of_ones.function.proto)
+    self.assertLen(result, 1)
     self.assertTrue(
-        np.array_equal(executable_noarg_one()[0].a,
-                       np.ones([2, 2], dtype=np.float32)))
+        np.array_equal(result[0].a, np.ones([2, 2], dtype=np.float32)))
     self.assertTrue(
-        np.array_equal(executable_noarg_one()[0].b,
-                       np.ones([2, 2], dtype=np.float32)))
+        np.array_equal(result[0].b, np.ones([2, 2], dtype=np.float32)))
 
   def test_constructs_nested_named_tuple_of_int_and_float_tensor_ones(self):
     tuple_type = computation_types.NamedTupleType([[
         ('a', computation_types.TensorType(tf.int32, [2, 2])),
         ('b', computation_types.TensorType(tf.float32, [2, 2]))
     ]])
-    tuple_of_ones = computation_constructing_utils.create_tensorflow_constant(
+    tuple_of_ones = building_block_factory.create_tensorflow_constant(
         tuple_type, 1)
     self.assertEqual(tuple_of_ones.type_signature, tuple_type)
-    self.assertIsInstance(tuple_of_ones, computation_building_blocks.Call)
-    executable_noarg_zero = computation_wrapper_instances.building_block_to_computation(
-        tuple_of_ones.function)
+    self.assertIsInstance(tuple_of_ones, building_blocks.Call)
+    result = _run_tensorflow(tuple_of_ones.function.proto)
+    self.assertLen(result, 1)
     self.assertTrue(
-        np.array_equal(executable_noarg_zero()[0].a,
-                       np.ones([2, 2], dtype=np.int32)))
+        np.array_equal(result[0].a, np.ones([2, 2], dtype=np.int32)))
     self.assertTrue(
-        np.array_equal(executable_noarg_zero()[0].b,
-                       np.ones([2, 2], dtype=np.float32)))
+        np.array_equal(result[0].b, np.ones([2, 2], dtype=np.float32)))
 
 
 class BinaryOperatorTest(absltest.TestCase):
 
   def test_apply_op_raises_on_none(self):
     with self.assertRaisesRegex(TypeError, 'ComputationBuildingBlock'):
-      computation_constructing_utils.apply_binary_operator_with_upcast(
+      building_block_factory.apply_binary_operator_with_upcast(
           None, tf.multiply)
 
   def test_construct_op_raises_on_none_operator(self):
     with self.assertRaisesRegex(TypeError, 'found non-callable'):
-      computation_constructing_utils.create_binary_operator_with_upcast(
-          tf.int32, None)
+      building_block_factory.create_binary_operator_with_upcast(tf.int32, None)
 
   def test_raises_incompatible_tuple_and_tensor(self):
-    bad_type_ref = computation_building_blocks.Reference(
+    bad_type_ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType([[tf.int32, tf.int32], tf.float32],
                                         placement_literals.CLIENTS))
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      computation_constructing_utils.apply_binary_operator_with_upcast(
+      building_block_factory.apply_binary_operator_with_upcast(
           bad_type_ref, tf.multiply)
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      computation_constructing_utils.create_binary_operator_with_upcast(
+      building_block_factory.create_binary_operator_with_upcast(
           bad_type_ref.type_signature.member, tf.multiply)
 
   def test_raises_non_callable_op(self):
-    bad_type_ref = computation_building_blocks.Reference(
-        'x', [tf.float32, tf.float32])
+    bad_type_ref = building_blocks.Reference('x', [tf.float32, tf.float32])
     with self.assertRaisesRegex(TypeError, 'non-callable'):
-      computation_constructing_utils.apply_binary_operator_with_upcast(
+      building_block_factory.apply_binary_operator_with_upcast(
           bad_type_ref, tf.constant(0))
     with self.assertRaisesRegex(TypeError, 'non-callable'):
-      computation_constructing_utils.create_binary_operator_with_upcast(
+      building_block_factory.create_binary_operator_with_upcast(
           bad_type_ref, tf.constant(0))
 
   def test_raises_tuple_and_nonscalar_tensor(self):
-    bad_type_ref = computation_building_blocks.Reference(
+    bad_type_ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType(
             [[tf.int32, tf.int32],
              computation_types.TensorType(tf.float32, [2])],
             placement_literals.CLIENTS))
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      computation_constructing_utils.apply_binary_operator_with_upcast(
+      building_block_factory.apply_binary_operator_with_upcast(
           bad_type_ref, tf.multiply)
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      computation_constructing_utils.create_binary_operator_with_upcast(
+      building_block_factory.create_binary_operator_with_upcast(
           bad_type_ref.type_signature.member, tf.multiply)
 
   def test_raises_tuple_scalar_multiplied_by_nonscalar(self):
-    bad_type_ref = computation_building_blocks.Reference(
+    bad_type_ref = building_blocks.Reference(
         'x', [tf.int32, computation_types.TensorType(tf.float32, [2])])
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      computation_constructing_utils.apply_binary_operator_with_upcast(
+      building_block_factory.apply_binary_operator_with_upcast(
           bad_type_ref, tf.multiply)
     with self.assertRaisesRegex(TypeError, 'incompatible with upcasted'):
-      computation_constructing_utils.create_binary_operator_with_upcast(
+      building_block_factory.create_binary_operator_with_upcast(
           bad_type_ref.type_signature, tf.multiply)
 
   def test_construct_generic_raises_federated_type(self):
@@ -2823,53 +2841,53 @@ class BinaryOperatorTest(absltest.TestCase):
          computation_types.TensorType(tf.float32, [2])],
         placement_literals.CLIENTS)
     with self.assertRaisesRegex(TypeError, 'argument that is not a two-tuple'):
-      computation_constructing_utils.create_binary_operator_with_upcast(
+      building_block_factory.create_binary_operator_with_upcast(
           bad_type, tf.multiply)
 
   def test_apply_integer_type_signature(self):
-    ref = computation_building_blocks.Reference('x', [tf.int32, tf.int32])
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    ref = building_blocks.Reference('x', [tf.int32, tf.int32])
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(multiplied.type_signature,
                      computation_types.to_type(tf.int32))
 
   def test_construct_integer_type_signature(self):
-    ref = computation_building_blocks.Reference('x', [tf.int32, tf.int32])
-    multiplier = computation_constructing_utils.create_binary_operator_with_upcast(
+    ref = building_blocks.Reference('x', [tf.int32, tf.int32])
+    multiplier = building_block_factory.create_binary_operator_with_upcast(
         ref.type_signature, tf.multiply)
     self.assertEqual(
         multiplier.type_signature,
         type_constructors.binary_op(computation_types.to_type(tf.int32)))
 
   def test_multiply_federated_integer_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType([tf.int32, tf.int32],
                                         placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(
         multiplied.type_signature,
         computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
 
   def test_divide_federated_float_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType([tf.float32, tf.float32],
                                         placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(
         multiplied.type_signature,
         computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
 
   def test_multiply_federated_unnamed_tuple_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType(
             [[tf.int32, tf.float32], [tf.int32, tf.float32]],
             placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(
         multiplied.type_signature,
@@ -2877,13 +2895,13 @@ class BinaryOperatorTest(absltest.TestCase):
                                         placement_literals.CLIENTS))
 
   def test_multiply_federated_named_tuple_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType(
             [[('a', tf.int32),
               ('b', tf.float32)], [('a', tf.int32), ('b', tf.float32)]],
             placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(
         multiplied.type_signature,
@@ -2891,13 +2909,13 @@ class BinaryOperatorTest(absltest.TestCase):
                                         placement_literals.CLIENTS))
 
   def test_divide_federated_named_tuple_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType(
             [[('a', tf.int32),
               ('b', tf.float32)], [('a', tf.int32), ('b', tf.float32)]],
             placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.divide)
     self.assertEqual(
         multiplied.type_signature,
@@ -2905,12 +2923,12 @@ class BinaryOperatorTest(absltest.TestCase):
                                         placement_literals.CLIENTS))
 
   def test_multiply_federated_named_tuple_with_scalar_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
                                         placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(
         multiplied.type_signature,
@@ -2918,9 +2936,9 @@ class BinaryOperatorTest(absltest.TestCase):
                                         placement_literals.CLIENTS))
 
   def test_multiply_named_tuple_with_scalar_type_signature(self):
-    ref = computation_building_blocks.Reference(
-        'x', [[('a', tf.float32), ('b', tf.float32)], tf.float32])
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    ref = building_blocks.Reference('x', [[('a', tf.float32),
+                                           ('b', tf.float32)], tf.float32])
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.multiply)
     self.assertEqual(
         multiplied.type_signature,
@@ -2930,7 +2948,7 @@ class BinaryOperatorTest(absltest.TestCase):
   def test_construct_multiply_op_named_tuple_with_scalar_type_signature(self):
     type_spec = computation_types.to_type([[('a', tf.float32),
                                             ('b', tf.float32)], tf.float32])
-    multiplier = computation_constructing_utils.create_binary_operator_with_upcast(
+    multiplier = building_block_factory.create_binary_operator_with_upcast(
         type_spec, tf.multiply)
     expected_function_type = computation_types.FunctionType(
         type_spec, type_spec[0])
@@ -2939,19 +2957,19 @@ class BinaryOperatorTest(absltest.TestCase):
   def test_construct_divide_op_named_tuple_with_scalar_type_signature(self):
     type_spec = computation_types.to_type([[('a', tf.float32),
                                             ('b', tf.float32)], tf.float32])
-    multiplier = computation_constructing_utils.create_binary_operator_with_upcast(
+    multiplier = building_block_factory.create_binary_operator_with_upcast(
         type_spec, tf.divide)
     expected_function_type = computation_types.FunctionType(
         type_spec, type_spec[0])
     self.assertEqual(multiplier.type_signature, expected_function_type)
 
   def test_divide_federated_named_tuple_with_scalar_type_signature(self):
-    ref = computation_building_blocks.Reference(
+    ref = building_blocks.Reference(
         'x',
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
                                         placement_literals.CLIENTS))
-    multiplied = computation_constructing_utils.apply_binary_operator_with_upcast(
+    multiplied = building_block_factory.apply_binary_operator_with_upcast(
         ref, tf.divide)
     self.assertEqual(
         multiplied.type_signature,

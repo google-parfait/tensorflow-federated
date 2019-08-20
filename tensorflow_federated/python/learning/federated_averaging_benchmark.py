@@ -134,8 +134,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
           tf.matmul(batch.x, model.weights) + model.bias)
       return -tf.reduce_mean(
           tf.reduce_sum(
-              tf.one_hot(batch.y, 10) * tf.math.log(predicted_y),
-              reduction_indices=[1]))
+              tf.one_hot(batch.y, 10) * tf.math.log(predicted_y), axis=[1]))
 
     initial_model = {
         "weights": np.zeros([784, 10], dtype=np.float32),

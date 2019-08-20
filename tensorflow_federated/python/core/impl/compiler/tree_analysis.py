@@ -20,11 +20,11 @@ from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_block_utils
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def count_types(comp, types):
@@ -40,8 +40,7 @@ def count(comp, predicate=None):
       parameter and returns a boolean value. If `None`, all computations are
       counted.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   counter = [0]
 
   def _function(comp):
@@ -57,7 +56,7 @@ def check_has_single_placement(comp, single_placement):
   """Checks that the AST of `comp` contains only `single_placement`.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`.
+    comp: Instance of `building_blocks.ComputationBuildingBlock`.
     single_placement: Instance of `placement_literals.PlacementLiteral` which
       should be the only placement present under `comp`.
 
@@ -65,8 +64,7 @@ def check_has_single_placement(comp, single_placement):
     ValueError: If the AST under `comp` contains any
     `computation_types.FederatedType` other than `single_placement`.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(single_placement, placement_literals.PlacementLiteral)
 
   def _check_single_placement(comp):
@@ -86,7 +84,7 @@ def check_intrinsics_whitelisted_for_reduction(comp):
   """Checks whitelist of intrinsics reducible to aggregate or broadcast.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to
       check for presence of intrinsics not currently immediately reducible to
       `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
 
@@ -97,8 +95,7 @@ def check_intrinsics_whitelisted_for_reduction(comp):
   # TODO(b/135930668): Factor this and other non-transforms (e.g.
   # `check_has_unique_names` out of this file into a structure specified for
   # static analysis of ASTs.
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   uri_whitelist = (
       intrinsic_defs.FEDERATED_AGGREGATE.uri,
       intrinsic_defs.FEDERATED_APPLY.uri,
@@ -112,7 +109,7 @@ def check_intrinsics_whitelisted_for_reduction(comp):
   )
 
   def _check_whitelisted(comp):
-    if (isinstance(comp, computation_building_blocks.Intrinsic) and
+    if (isinstance(comp, building_blocks.Intrinsic) and
         comp.uri not in uri_whitelist):
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
@@ -126,7 +123,7 @@ def check_has_unique_names(comp):
   if not transformation_utils.has_unique_names(comp):
     raise ValueError(
         'This transform should only be called after we have uniquified all '
-        '`computation_building_blocks.Reference` names, since we may be moving '
+        '`building_blocks.Reference` names, since we may be moving '
         'computations with unbound references under constructs which bind '
         'those references.')
 
@@ -138,42 +135,40 @@ def extract_nodes_consuming(tree, predicate):
   predicate is in this set.
 
   Args:
-    tree: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to
       view as an abstract syntax tree, and construct the set of nodes in this
       tree having a dependency on nodes matching `predicate`; that is, the set
       of nodes whose value depends on evaluating nodes matching `predicate`.
     predicate: One-arg callable, accepting arguments of type
-      `computation_building_blocks.ComputationBuildingBlock` and returning a
+      `building_blocks.ComputationBuildingBlock` and returning a
       `bool` indicating match or mismatch with the desired pattern.
 
   Returns:
-    A `set` of `computation_building_blocks.ComputationBuildingBlock` instances
+    A `set` of `building_blocks.ComputationBuildingBlock` instances
     representing the nodes in `tree` dependent on nodes matching `predicate`.
   """
-  py_typecheck.check_type(tree,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_callable(predicate)
   dependent_nodes = set()
 
   def _are_children_in_dependent_set(comp, symbol_tree):
     """Checks if the dependencies of `comp` are present in `dependent_nodes`."""
-    if isinstance(comp, (computation_building_blocks.Intrinsic,
-                         computation_building_blocks.Data,
-                         computation_building_blocks.Placement,
-                         computation_building_blocks.CompiledComputation)):
+    if isinstance(
+        comp, (building_blocks.Intrinsic, building_blocks.Data,
+               building_blocks.Placement, building_blocks.CompiledComputation)):
       return False
-    elif isinstance(comp, computation_building_blocks.Lambda):
+    elif isinstance(comp, building_blocks.Lambda):
       return comp.result in dependent_nodes
-    elif isinstance(comp, computation_building_blocks.Block):
+    elif isinstance(comp, building_blocks.Block):
       return any(x[1] in dependent_nodes
                  for x in comp.locals) or comp.result in dependent_nodes
-    elif isinstance(comp, computation_building_blocks.Tuple):
+    elif isinstance(comp, building_blocks.Tuple):
       return any(x in dependent_nodes for x in comp)
-    elif isinstance(comp, computation_building_blocks.Selection):
+    elif isinstance(comp, building_blocks.Selection):
       return comp.source in dependent_nodes
-    elif isinstance(comp, computation_building_blocks.Call):
+    elif isinstance(comp, building_blocks.Call):
       return comp.function in dependent_nodes or comp.argument in dependent_nodes
-    elif isinstance(comp, computation_building_blocks.Reference):
+    elif isinstance(comp, building_blocks.Reference):
       return _is_reference_dependent(comp, symbol_tree)
 
   def _is_reference_dependent(comp, symbol_tree):
@@ -208,7 +203,7 @@ def check_broadcast_not_dependent_on_aggregate(tree):
 
 
   Args:
-    tree: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to
       check for the presence of a broadcast which ingests the result of an
       aggregate.
 
@@ -216,15 +211,14 @@ def check_broadcast_not_dependent_on_aggregate(tree):
     ValueError: If a broadcast in `tree` consumes the result of an aggregate.
   """
 
-  py_typecheck.check_type(tree,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
 
   def aggregate_predicate(x):
-    return (isinstance(x, computation_building_blocks.Intrinsic) and
+    return (isinstance(x, building_blocks.Intrinsic) and
             x.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
   def broadcast_predicate(x):
-    return (isinstance(x, computation_building_blocks.Intrinsic) and
+    return (isinstance(x, building_blocks.Intrinsic) and
             x.uri == intrinsic_defs.FEDERATED_BROADCAST.uri)
 
   nodes_dependent_on_aggregate = extract_nodes_consuming(
@@ -237,7 +231,7 @@ def check_broadcast_not_dependent_on_aggregate(tree):
   examples = []
 
   for node in nodes_dependent_on_aggregate:
-    if isinstance(node, computation_building_blocks.Call):
+    if isinstance(node, building_blocks.Call):
       if (node.argument in nodes_dependent_on_aggregate and
           node.function in nodes_dependent_on_broadcast):
         broadcast_dependent = True
@@ -255,26 +249,24 @@ def count_tensorflow_ops_under(comp):
   artifacts generated.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+    comp: Instance of `building_blocks.ComputationBuildingBlock`
       whose TF ops we wish to count.
 
   Returns:
     `integer` count of number of TF ops present in any
-    `computation_building_blocks.CompiledComputation` of the TensorFlow
+    `building_blocks.CompiledComputation` of the TensorFlow
     variety under `comp`.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
   total_tf_ops = [0]
 
   def _count_tf_ops(inner_comp):
     if isinstance(
-        inner_comp, computation_building_blocks.CompiledComputation
+        inner_comp, building_blocks.CompiledComputation
     ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
-      total_tf_ops[
-          0] += computation_building_block_utils.count_tensorflow_ops_in(
-              inner_comp)
+      total_tf_ops[0] += building_block_analysis.count_tensorflow_ops_in(
+          inner_comp)
     return inner_comp, False
 
   transformation_utils.transform_postorder(comp, _count_tf_ops)
@@ -289,26 +281,24 @@ def count_tensorflow_variables_under(comp):
   artifacts generated.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+    comp: Instance of `building_blocks.ComputationBuildingBlock`
       whose TF variables we wish to count.
 
   Returns:
     `integer` count of number of TF variables present in any
-    `computation_building_blocks.CompiledComputation` of the TensorFlow
+    `building_blocks.CompiledComputation` of the TensorFlow
     variety under `comp`.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
   total_tf_vars = [0]
 
   def _count_tf_vars(inner_comp):
     if isinstance(
-        inner_comp, computation_building_blocks.CompiledComputation
+        inner_comp, building_blocks.CompiledComputation
     ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
-      total_tf_vars[
-          0] += computation_building_block_utils.count_tensorflow_variables_in(
-              inner_comp)
+      total_tf_vars[0] += building_block_analysis.count_tensorflow_variables_in(
+          inner_comp)
     return inner_comp, False
 
   transformation_utils.transform_postorder(comp, _count_tf_vars)

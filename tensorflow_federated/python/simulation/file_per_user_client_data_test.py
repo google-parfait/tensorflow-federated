@@ -67,8 +67,8 @@ def _create_example(features):
     else:
       # This is hit if the unittest is updated with unknown types, not an error
       # in the object under test. Extend the unittest capabilities to fix.
-      raise NotImplementedError('Cannot handle feature type [%s]' %
-                                type(feature))
+      raise NotImplementedError('Cannot handle feature type [{}]'.format(
+          type(feature)))
   return tf.train.Example(features=tf.train.Features(
       feature=output_features)).SerializeToString()
 
@@ -102,7 +102,7 @@ class FakeUserData(object):
         # close the pre-opened file descriptor immediately to avoid leaking.
         os.close(fd)
         client_file_dict[client_id] = path
-        writer = tf.python_io.TFRecordWriter(path=path)
+        writer = tf.io.TFRecordWriter(path=path)
         writers[client_id] = writer
       writer.write(_create_example(features))
     for writer in six.itervalues(writers):
@@ -112,13 +112,13 @@ class FakeUserData(object):
   def create_test_dataset_fn(self, client_id):
     client_path = self._client_data_file_dict[client_id]
     features = {
-        '0': tf.FixedLenFeature(shape=[], dtype=tf.int64),
-        '1': tf.FixedLenFeature(shape=[], dtype=tf.float32),
-        '2': tf.FixedLenFeature(shape=[2], dtype=tf.float32),
+        '0': tf.io.FixedLenFeature(shape=[], dtype=tf.int64),
+        '1': tf.io.FixedLenFeature(shape=[], dtype=tf.float32),
+        '2': tf.io.FixedLenFeature(shape=[2], dtype=tf.float32),
     }
 
     def parse_example(e):
-      feature_dict = tf.parse_single_example(serialized=e, features=features)
+      feature_dict = tf.io.parse_single_example(serialized=e, features=features)
       return tuple(feature_dict[k] for k in sorted(six.iterkeys(feature_dict)))
 
     return tf.data.TFRecordDataset(client_path).map(parse_example)

@@ -60,13 +60,15 @@ RUN bazel version
 RUN ${PIP} --no-cache-dir install \
     absl-py~=0.7 \
     attrs~=18.2 \
+    cachetools~=3.1.1 \
     enum34~=1.1 \
+    grpcio~=1.22.0 \
     h5py~=2.6 \
     matplotlib~=3.0 \
     numpy~=1.14 \
-    six~=1.10 \
-    tf-nightly \
-    grpcio~=1.8.0 \
+    pandas~=0.24.0 \
     portpicker \
-    tensorflow-model-optimization~=0.1.2
+    six~=1.10 \
+    tensorflow-model-optimization~=0.1.2 \
+    tf-nightly==1.15.0.dev20190805
 RUN pip freeze

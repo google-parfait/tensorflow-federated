@@ -21,8 +21,8 @@ Callable taking subset of TFF AST constructs to CompiledComputations.
 
 When this function is applied via `transformation_utils.transform_postorder` to
 a TFF AST node satisfying its assumptions, the tree under this node will be
-reduced to a single instance of
-`computation_building_blocks.CompiledComputation` representing the same logic.
+reduced to a single instance of `building_blocks.CompiledComputation`
+representing the same logic.
 
 Notice that this function is designed to be applied to what is essentially a
 subtree of a larger TFF AST; once the processing on a single device has been
@@ -44,12 +44,12 @@ the assumptions below.
 5.  The only leaf nodes present under `comp` are compiled computations and
     references to the argument of the top-level lambda which we are hoping to
     replace with a compiled computation. Further, every leaf node which is a
-    reference has as its parent a `computation_building_blocks.Call`, whose
-    associated function is a TF graph. This prevents us from needing to deal
-    with arbitrary nesting of references and TF graphs, and significantly
-    clarifies the reasoning. This can be accomplished by "decorating" the
-    appropriate leaves with called identity TF graphs, the construction of which
-    is provided by a utility module.
+    reference has as its parent a `building_blocks.Call`, whose associated
+    function is a TF graph. This prevents us from needing to deal with arbitrary
+    nesting of references and TF graphs, and significantly clarifies the
+    reasoning. This can be accomplished by "decorating" the appropriate leaves
+    with called identity TF graphs, the construction of which is provided by a
+    utility module.
 6.  There is only a single lambda binding any references present in the AST, and
     it is placed at the root of the AST to which we apply `TFParser`.
 7.  There are no intrinsics present in the AST.
@@ -88,8 +88,8 @@ safe to return early.
 
 #### Args:
 
-*   <b>`comp`</b>: The `computation_building_blocks.ComputationBuildingBlock` to
-    check for possibility of reduction according to the parsing library.
+*   <b>`comp`</b>: The `building_blocks.ComputationBuildingBlock` to check for
+    possibility of reduction according to the parsing library.
 
 #### Returns:
 

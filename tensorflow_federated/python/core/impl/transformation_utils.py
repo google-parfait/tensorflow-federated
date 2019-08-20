@@ -21,14 +21,15 @@ from __future__ import print_function
 import abc
 import collections
 import itertools
+import operator
 
 import six
 from six.moves import zip
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def transform_postorder(comp, transform):
@@ -69,23 +70,22 @@ def transform_postorder(comp, transform):
     NotImplementedError: If the argument is a kind of computation building block
       that is currently not recognized.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
-  if isinstance(
-      comp,
-      (computation_building_blocks.CompiledComputation,
-       computation_building_blocks.Data, computation_building_blocks.Intrinsic,
-       computation_building_blocks.Placement,
-       computation_building_blocks.Reference)):
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  if isinstance(comp, (
+      building_blocks.CompiledComputation,
+      building_blocks.Data,
+      building_blocks.Intrinsic,
+      building_blocks.Placement,
+      building_blocks.Reference,
+  )):
     return transform(comp)
-  elif isinstance(comp, computation_building_blocks.Selection):
+  elif isinstance(comp, building_blocks.Selection):
     source, source_modified = transform_postorder(comp.source, transform)
     if source_modified:
-      comp = computation_building_blocks.Selection(source, comp.name,
-                                                   comp.index)
+      comp = building_blocks.Selection(source, comp.name, comp.index)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or source_modified
-  elif isinstance(comp, computation_building_blocks.Tuple):
+  elif isinstance(comp, building_blocks.Tuple):
     elements = []
     elements_modified = False
     for key, value in anonymous_tuple.to_elements(comp):
@@ -93,27 +93,27 @@ def transform_postorder(comp, transform):
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
-      comp = computation_building_blocks.Tuple(elements)
+      comp = building_blocks.Tuple(elements)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
-  elif isinstance(comp, computation_building_blocks.Call):
+  elif isinstance(comp, building_blocks.Call):
     fn, fn_modified = transform_postorder(comp.function, transform)
     if comp.argument is not None:
       arg, arg_modified = transform_postorder(comp.argument, transform)
     else:
       arg, arg_modified = (None, False)
     if fn_modified or arg_modified:
-      comp = computation_building_blocks.Call(fn, arg)
+      comp = building_blocks.Call(fn, arg)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or fn_modified or arg_modified
-  elif isinstance(comp, computation_building_blocks.Lambda):
+  elif isinstance(comp, building_blocks.Lambda):
     result, result_modified = transform_postorder(comp.result, transform)
     if result_modified:
-      comp = computation_building_blocks.Lambda(comp.parameter_name,
-                                                comp.parameter_type, result)
+      comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                    result)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or result_modified
-  elif isinstance(comp, computation_building_blocks.Block):
+  elif isinstance(comp, building_blocks.Block):
     variables = []
     variables_modified = False
     for key, value in comp.locals:
@@ -122,7 +122,7 @@ def transform_postorder(comp, transform):
       variables_modified = variables_modified or value_modified
     result, result_modified = transform_postorder(comp.result, transform)
     if variables_modified or result_modified:
-      comp = computation_building_blocks.Block(variables, result)
+      comp = building_blocks.Block(variables, result)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or variables_modified or result_modified
   else:
@@ -152,22 +152,22 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   structure to enforce. In particular, within a `transform` call the following
   invariants hold:
 
-    * `symbol_tree.update_payload_tracking_reference` with an argument `ref` of
-      type `Reference` will call `update` on the `BoundVariableTracker` in
-      `symbol_tree` which tracks the value of `ref` active in the current
-      lexical scope. Will raise a `NameError` if none exists.
+  *  `symbol_tree.update_payload_with_name` with an argument `name` will call
+     `update` on the `BoundVariableTracker` in `symbol_tree` which tracks the
+     value of `ref` active in the current lexical scope. Will raise a
+     `NameError` if none exists.
 
-    * `symbol_tree.get_payload_with_name` with a string argument `name`
-       will return the `BoundVariableTracker` instance from `symbol_tree`
-      which corresponds to the computation bound to the variable `name` in
-      the current lexical scope. Will raise a `NameError` if none exists.
+  *  `symbol_tree.get_payload_with_name` with a string argument `name` will
+     return the `BoundVariableTracker` instance from `symbol_tree` which
+     corresponds to the computation bound to the variable `name` in the current
+     lexical scope. Will raise a `NameError` if none exists.
 
   These recursion invariants are enforced by the framework, and should be
   relied on when designing new transformations that depend on variable
   bindings.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` to
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to
       read information from or transform.
     transform: Python function accepting `comp` and `symbol_tree` arguments and
       returning `transformed_comp`.
@@ -176,12 +176,11 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   Returns:
     Returns a possibly modified version of `comp`, an instance
-    of `computation_building_blocks.ComputationBuildingBlock`, along with a
+    of `building_blocks.ComputationBuildingBlock`, along with a
     Boolean with the value `True` if `comp` was transformed and `False` if it
     was not.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(symbol_tree, SymbolTree)
   if not callable(transform):
     raise TypeError('Argument `transform` to '
@@ -193,22 +192,20 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
                                                        ctxt_tree,
                                                        identifier_sequence):
     """Recursive helper function delegated to after binding comp_id sequence."""
-    if isinstance(comp, (computation_building_blocks.CompiledComputation,
-                         computation_building_blocks.Data,
-                         computation_building_blocks.Intrinsic,
-                         computation_building_blocks.Placement,
-                         computation_building_blocks.Reference)):
+    if isinstance(comp, (building_blocks.CompiledComputation,
+                         building_blocks.Data, building_blocks.Intrinsic,
+                         building_blocks.Placement, building_blocks.Reference)):
       return _traverse_leaf(comp, transform_fn, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, computation_building_blocks.Selection):
+    elif isinstance(comp, building_blocks.Selection):
       return _traverse_selection(comp, transform, ctxt_tree,
                                  identifier_sequence)
-    elif isinstance(comp, computation_building_blocks.Tuple):
+    elif isinstance(comp, building_blocks.Tuple):
       return _traverse_tuple(comp, transform, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, computation_building_blocks.Call):
+    elif isinstance(comp, building_blocks.Call):
       return _traverse_call(comp, transform, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, computation_building_blocks.Lambda):
+    elif isinstance(comp, building_blocks.Lambda):
       return _traverse_lambda(comp, transform, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, computation_building_blocks.Block):
+    elif isinstance(comp, building_blocks.Block):
       return _traverse_block(comp, transform, ctxt_tree, identifier_sequence)
     else:
       raise NotImplementedError(
@@ -225,8 +222,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     source, source_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.source, transform, context_tree, identifier_seq)
     if source_modified:
-      comp = computation_building_blocks.Selection(source, comp.name,
-                                                   comp.index)
+      comp = building_blocks.Selection(source, comp.name, comp.index)
     comp, comp_modified = transform(comp, context_tree)
     return comp, comp_modified or source_modified
 
@@ -241,7 +237,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
-      comp = computation_building_blocks.Tuple(elements)
+      comp = building_blocks.Tuple(elements)
     comp, comp_modified = transform(comp, context_tree)
     return comp, comp_modified or elements_modified
 
@@ -256,7 +252,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     else:
       arg, arg_modified = (None, False)
     if fn_modified or arg_modified:
-      comp = computation_building_blocks.Call(fn, arg)
+      comp = building_blocks.Call(fn, arg)
     comp, comp_modified = transform(comp, context_tree)
     return comp, comp_modified or fn_modified or arg_modified
 
@@ -269,8 +265,8 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
         comp.result, transform, context_tree, identifier_seq)
     context_tree.walk_to_scope_beginning()
     if result_modified:
-      comp = computation_building_blocks.Lambda(comp.parameter_name,
-                                                comp.parameter_type, result)
+      comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                    result)
     comp, comp_modified = transform(comp, context_tree)
     context_tree.pop_scope_up()
     return comp, comp_modified or result_modified
@@ -291,7 +287,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
         comp.result, transform, context_tree, identifier_seq)
     context_tree.walk_to_scope_beginning()
     if variables_modified or result_modified:
-      comp = computation_building_blocks.Block(variables, result)
+      comp = building_blocks.Block(variables, result)
     comp, comp_modified = transform(comp, context_tree)
     context_tree.pop_scope_up()
     return comp, comp_modified or variables_modified or result_modified
@@ -359,38 +355,60 @@ class SymbolTree(object):
         comp = comp.parent
     raise NameError('Name {} is not available in {}'.format(name, self))
 
-  def update_payload_tracking_reference(self, ref):
-    """Calls `update` if it finds its Reference arg among the available symbols.
+  def get_all_payloads_with_value(self, value, equal_fn=None):
+    """Returns all the payloads whose `value` attribute is equal to `value`.
+
+    Args:
+      value: The value to test.
+      equal_fn: The optional function to use to determine equality, if `None` is
+        specified `operator.is_` is used.
+    """
+    payloads = []
+    if equal_fn is None:
+      equal_fn = operator.is_
+    comp = self.active_node
+    while comp.parent is not None or comp.older_sibling is not None:
+      if comp.payload.value is not None and equal_fn(value, comp.payload.value):
+        payloads.append(comp.payload)
+      if comp.older_sibling is not None:
+        comp = comp.older_sibling
+      elif comp.parent is not None:
+        comp = comp.parent
+    return payloads
+
+  def update_payload_with_name(self, name):
+    """Calls `update` if `name` is found among the available symbols.
 
     If there is no such available symbol, simply does nothing.
 
     Args:
-      ref: Instance of `computation_building_blocks.Reference`; generally, this
-        is the variable a walker has encountered in a TFF AST, and which it is
-        relying on `SymbolTable` to address correctly.
+      name: A string; generally, this is the variable a walker has encountered
+        in a TFF AST, and which it is relying on `SymbolTable` to address
+        correctly.
 
     Raises:
-      NameError: If `ref` is not found among the bound names currently
+      ValueError: If `name` is not found among the bound names currently
         available in `self`.
     """
-    py_typecheck.check_type(ref, computation_building_blocks.Reference)
+    py_typecheck.check_type(name, six.string_types)
     comp = self.active_node
     while comp.parent is not None or comp.older_sibling is not None:
-      if ref.name == comp.payload.name:
-        comp.payload.update(ref)
+      if name == comp.payload.name:
+        comp.payload.update(name)
         return
       if comp.older_sibling is not None:
         comp = comp.older_sibling
       elif comp.parent is not None:
         comp = comp.parent
-    raise NameError('The reference {} is not available in {}'.format(ref, self))
+    raise ValueError('The name \'{}\' is not available in \'{}\'.'.format(
+        name, self))
 
   def walk_to_scope_beginning(self):
     """Walks `active_node` back to the sentinel node beginning current scope.
 
     `walk_to_scope_beginning` resolves the issue of scope at a node which
     introduces scope in the following manner: each of these nodes (for instance,
-    a `computation_building_blocks.Lambda`) corresponds to a sentinel value of
+    a `building_blocks.Lambda`) corresponds to a sentinel value of
     the `_BeginScopePointer` class, ensuring that these nodes do not have access
     to
     scope that is technically not available to them. That is, we conceptualize
@@ -421,8 +439,8 @@ class SymbolTree(object):
     """Constructs a new scope level for `self`.
 
     Scope levels in `SymbolTree` correspond to scope-introducing nodes in TFF
-    ASTs; that is, either `computation_building_blocks.Block` or
-    `computation_building_blocks.Lambda` nodes. Inside of these levels,
+    ASTs; that is, either `building_blocks.Block` or
+    `building_blocks.Lambda` nodes. Inside of these levels,
     variables are bound in sequence. The implementer of a transformation
     function needing to interact with scope should never need to explicitly walk
     the scope levels `drop_scope_down` constructs; `drop_scope_down` is simply
@@ -431,7 +449,7 @@ class SymbolTree(object):
 
     Args:
       comp_id: Integer representing a unique key for the
-        `computation_building_blocks.ComputationBuildingBlock` which is defines
+        `building_blocks.ComputationBuildingBlock` which is defines
         this scope. Used to differentiate between scopes which both branch from
         the same point in the tree.
     """
@@ -478,7 +496,7 @@ class SymbolTree(object):
     Args:
       name: The string name of the `CompTracker` instance we are constructing or
         updating.
-      value: Instance of `computation_building_blocks.ComputationBuildingBlock`
+      value: Instance of `building_blocks.ComputationBuildingBlock`
         or `None`, as in the `value` to pass to symbol tree's node payload
         constructor.
 
@@ -492,8 +510,7 @@ class SymbolTree(object):
     """
     py_typecheck.check_type(name, six.string_types)
     if value is not None:
-      py_typecheck.check_type(
-          value, computation_building_blocks.ComputationBuildingBlock)
+      py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
     node = SequentialBindingNode(self.payload_type(name=name, value=value))
     if self.active_node.younger_sibling is None:
       self._add_younger_sibling(node)
@@ -666,7 +683,7 @@ class SequentialBindingNode(object):
   `SequentialBindingNode` to its parent.
 
   Sibling-sibling relationships are particular to sequential binding of
-  variables in `computation_building_blocks.Block` constructs; binding
+  variables in `building_blocks.Block` constructs; binding
   a new variable in such a construct corresponds to moving from a
   `SequentialBindingNode` to its (unique) younger sibling.
   """
@@ -728,7 +745,7 @@ class SequentialBindingNode(object):
     """Sets the younger sibling scope of `self` to `node`.
 
     This corresponds to binding a new variable in a
-    `computation_building_blocks.Block` construct.
+    `building_blocks.Block` construct.
 
     This method should not be assumed to be efficient.
 
@@ -785,7 +802,7 @@ class BoundVariableTracker(object):
     Args:
       name: String name of variable to be bound.
       value: Value to bind to this name. Can be instance of
-        `computation_building_blocks.ComputationBuildingBlock` if this
+        `building_blocks.ComputationBuildingBlock` if this
         `BoundVariableTracker` represents a concrete binding to a variable (e.g.
         in a block locals declaration), or `None`, if this
         `BoundVariableTracker` represents merely a variable declaration (e.g. in
@@ -793,8 +810,7 @@ class BoundVariableTracker(object):
     """
     py_typecheck.check_type(name, six.string_types)
     if value is not None:
-      py_typecheck.check_type(
-          value, computation_building_blocks.ComputationBuildingBlock)
+      py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
     self.name = name
     self.value = value
 
@@ -816,17 +832,15 @@ class BoundVariableTracker(object):
   def __eq__(self, other):
     """Base class equality checks names and values equal."""
     # TODO(b/130890785): Delegate value-checking to
-    # `computation_building_blocks.ComputationBuildingBlock`.
+    # `building_blocks.ComputationBuildingBlock`.
     if self is other:
       return True
     if not isinstance(other, BoundVariableTracker):
       return NotImplemented
     if self.name != other.name:
       return False
-    if (isinstance(self.value,
-                   computation_building_blocks.ComputationBuildingBlock) and
-        isinstance(other.value,
-                   computation_building_blocks.ComputationBuildingBlock)):
+    if (isinstance(self.value, building_blocks.ComputationBuildingBlock) and
+        isinstance(other.value, building_blocks.ComputationBuildingBlock)):
       return (self.value.compact_representation() ==
               other.value.compact_representation() and
               type_utils.are_equivalent_types(self.value.type_signature,
@@ -901,7 +915,7 @@ class ReferenceCounter(BoundVariableTracker):
     name: The string name representing the variable whose binding is represented
       by an instance of `ReferenceCounter`.
     value: The value bound to `name`. Can be an instance of
-      `computation_building_blocks.ComputationBuildingBlock` or None if this
+      `building_blocks.ComputationBuildingBlock` or None if this
       binding is simply a placeholder, e.g. in a Lambda.
     count: An integer tracking how many times the variable an instance of
       `ReferenceCounter` represents is referenced in a TFF AST.
@@ -936,7 +950,7 @@ def get_count_of_references_to_variables(comp):
   """Returns `SymbolTree` counting references to each bound variable in `comp`.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`
+    comp: Instance of `building_blocks.ComputationBuildingBlock`
       representing the root of the AST for which we want to read total reference
       counts by context.
 
@@ -944,8 +958,8 @@ def get_count_of_references_to_variables(comp):
     An instance of `SymbolTree` representing root of context tree
     populated with `transformation_utils.ReferenceCounter`s which
     contain the number of times each variable bound by a
-    `computation_building_blocks.Lambda`
-    or `computation_building_blocks.Block` are referenced in their computation's
+    `building_blocks.Lambda`
+    or `building_blocks.Block` are referenced in their computation's
     body.
   """
 
@@ -953,11 +967,11 @@ def get_count_of_references_to_variables(comp):
 
   def _should_transform(comp, context_tree):
     del context_tree  # Unused
-    return isinstance(comp, computation_building_blocks.Reference)
+    return isinstance(comp, building_blocks.Reference)
 
   def transform_fn(comp, context_tree):
     if _should_transform(comp, context_tree):
-      context_tree.update_payload_tracking_reference(comp)
+      context_tree.update_payload_with_name(comp.name)
     return comp, False
 
   transform_postorder_with_symbol_bindings(comp, transform_fn,
@@ -967,14 +981,13 @@ def get_count_of_references_to_variables(comp):
 
 def get_unique_names(comp):
   """Returns the unique names in `comp`."""
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   names = set()
 
   def _update(comp):
-    if isinstance(comp, computation_building_blocks.Block):
+    if isinstance(comp, building_blocks.Block):
       names.update([name for name, _ in comp.locals])
-    elif isinstance(comp, computation_building_blocks.Lambda):
+    elif isinstance(comp, building_blocks.Lambda):
       names.add(comp.parameter_name)
     return comp, False
 
@@ -986,14 +999,13 @@ def has_unique_names(comp):
   """Checks that each variable of `comp` is bound at most once.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock`.
+    comp: Instance of `building_blocks.ComputationBuildingBlock`.
 
   Returns:
     `True` if and only if every variable bound under `comp` uses a unique name.
     Returns `False` if this condition fails.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   names = set()
   # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
   unique = [True]
@@ -1001,12 +1013,12 @@ def has_unique_names(comp):
   def _transform(comp):
     """Binds any names to external `names` set."""
     if unique[0]:
-      if isinstance(comp, computation_building_blocks.Block):
+      if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           if name in names:
             unique[0] = False
           names.add(name)
-      elif isinstance(comp, computation_building_blocks.Lambda):
+      elif isinstance(comp, building_blocks.Lambda):
         if comp.parameter_name in names:
           unique[0] = False
         names.add(comp.parameter_name)
@@ -1019,6 +1031,13 @@ def has_unique_names(comp):
 @six.add_metaclass(abc.ABCMeta)
 class TransformSpec(object):
   """"Base class to express the should_transform/transform interface."""
+
+  def __init__(self, global_transform=False):
+    self._global_transform = global_transform
+
+  @property
+  def global_transform(self):
+    return self._global_transform
 
   @abc.abstractmethod
   def should_transform(self, comp):

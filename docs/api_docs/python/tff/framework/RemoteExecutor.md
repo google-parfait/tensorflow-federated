@@ -32,7 +32,10 @@ NOTE: This component is only available in Python 3.
 source</a>
 
 ```python
-__init__(channel)
+__init__(
+    channel,
+    rpc_mode='REQUEST_REPLY'
+)
 ```
 
 Creates a remote executor.
@@ -41,6 +44,9 @@ Creates a remote executor.
 
 *   <b>`channel`</b>: An instance of `grpc.Channel` to use for communication
     with the remote executor service.
+*   <b>`rpc_mode`</b>: Optional mode of calling the remote executor. Must be
+    either 'REQUEST_REPLY' or 'STREAMING' (defaults to 'REQUEST_REPLY'). This
+    option will be removed after the request-reply interface is deprecated.
 
 ## Methods
 
@@ -50,7 +56,10 @@ Creates a remote executor.
 source</a>
 
 ```python
-create_call(comp)
+create_call(
+    comp,
+    arg=None
+)
 ```
 
 A coroutine that creates a call to `comp` with optional argument `arg`.
@@ -74,7 +83,11 @@ constructed vall.
 source</a>
 
 ```python
-create_selection(source)
+create_selection(
+    source,
+    index=None,
+    name=None
+)
 ```
 
 A coroutine that creates a selection from `source`.
@@ -121,7 +134,10 @@ constructed tuple.
 source</a>
 
 ```python
-create_value(value)
+create_value(
+    value,
+    type_spec=None
+)
 ```
 
 A coroutine that creates embedded value from `value` of type `type_spec`.

@@ -18,12 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import hashlib
 import math
 import os.path
+import struct
 
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation.datasets.emnist import synthetic
 from tensorflow_federated.python.simulation.from_tensor_slices_client_data import FromTensorSlicesClientData
 from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
@@ -79,7 +82,10 @@ def load_data(only_digits=True, cache_dir=None):
         containing the pixels of the handwritten digit, with values in
         the range [0.0, 1.0].
     -   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
-        label of the corresponding pixels.
+        label of the corresponding pixels. Labels [0-9] correspond to the digits
+        classes, labels [10-35] correspond to the uppercase classes (e.g., label
+        11 is 'B'), and labels [36-61] correspond to the lowercase classes
+        (e.g., label 37 is 'b').
 
   Args:
     only_digits: (Optional) whether to only include examples that are from the
@@ -127,11 +133,10 @@ def get_synthetic(num_clients=2):
   number of clients.
 
   Args:
-    num_clients: The number of syntehtic clients to generate.
+    num_clients: The number of synthetic clients to generate.
 
   Returns:
-     Tuple of (train, test) where the tuple elements are
-     `tff.simulation.ClientData` objects matching the characteristics
+     A `tff.simulation.ClientData` object that matches the characteristics
      (other than size) of those provided by
      `tff.simulation.datasets.emnist.load_data`.
   """
@@ -184,7 +189,7 @@ def _compile_transform(angle=0,
 
 
 def _make_transform_fn(raw_client_id, index):
-  """Generates a random affine transform based on the client_id and index.
+  """Generates a pseudorandom affine transform based on the client_id and index.
 
   If the index is 0, `None` is returned so no transform is applied by the
   transforming_client_data.
@@ -199,7 +204,13 @@ def _make_transform_fn(raw_client_id, index):
   if index == 0:
     return None
 
-  np.random.seed((hash(raw_client_id) + index) % (2**32))
+  py_typecheck.check_type(raw_client_id, str)
+  # To be python2 compatible, we need to use struct.unpack() to convert bytes to
+  # int. (In python3, the int.from_bytes() method could be used instead.)
+  _, _, _, stable_hash_of_client_id = struct.unpack(
+      '>IIII',
+      hashlib.md5(raw_client_id.encode()).digest())
+  np.random.seed((stable_hash_of_client_id + index) % (2**32))
 
   def random_scale(min_val):
     b = math.log(min_val)

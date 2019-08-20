@@ -20,9 +20,7 @@ tff.utils.assign(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
+<!-- Placeholder for "Used in" -->
 
 This utility function provides the exact same behavior as `tf.Variable.assign`,
 but it generalizes to a wider class of objects, including ordinary variables as

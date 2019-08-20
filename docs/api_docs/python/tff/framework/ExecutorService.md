@@ -7,6 +7,7 @@
 <meta itemprop="property" content="CreateTuple"/>
 <meta itemprop="property" content="CreateValue"/>
 <meta itemprop="property" content="Dispose"/>
+<meta itemprop="property" content="Execute"/>
 <meta itemprop="property" content="__init__"/>
 </div>
 
@@ -176,3 +177,17 @@ look for alternatives.
 
 Causes one or more values in the executor to get disposed of (no longer
 available for future calls).
+
+<h3 id="Execute"><code>Execute</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py">View
+source</a>
+
+```python
+Execute(
+    request_iter,
+    context
+)
+```
+
+Establishes a bidirectional stream with an Executor instance.

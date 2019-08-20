@@ -56,6 +56,20 @@ toc:
       path: /federated/api_docs/python/tff/TypedObject
     - title: Value
       path: /federated/api_docs/python/tff/Value
+  - title: tff.backends
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/backends
+    - title: mapreduce
+      section:
+      - title: Overview
+        path: /federated/api_docs/python/tff/backends/mapreduce
+      - title: CanonicalForm
+        path: /federated/api_docs/python/tff/backends/mapreduce/CanonicalForm
+      - title: get_canonical_form_for_iterative_process
+        path: /federated/api_docs/python/tff/backends/mapreduce/get_canonical_form_for_iterative_process
+      - title: get_iterative_process_for_canonical_form
+        path: /federated/api_docs/python/tff/backends/mapreduce/get_iterative_process_for_canonical_form
   - title: tff.framework
     section:
     - title: Overview
@@ -66,6 +80,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/Block
     - title: building_block_to_computation
       path: /federated/api_docs/python/tff/framework/building_block_to_computation
+    - title: CachingExecutor
+      path: /federated/api_docs/python/tff/framework/CachingExecutor
     - title: Call
       path: /federated/api_docs/python/tff/framework/Call
     - title: check_has_unique_names
@@ -122,14 +138,14 @@ toc:
       path: /federated/api_docs/python/tff/framework/Reference
     - title: RemoteExecutor
       path: /federated/api_docs/python/tff/framework/RemoteExecutor
+    - title: remove_lambdas_and_blocks
+      path: /federated/api_docs/python/tff/framework/remove_lambdas_and_blocks
     - title: remove_mapped_or_applied_identity
       path: /federated/api_docs/python/tff/framework/remove_mapped_or_applied_identity
     - title: replace_called_lambda_with_block
       path: /federated/api_docs/python/tff/framework/replace_called_lambda_with_block
     - title: replace_intrinsics_with_bodies
       path: /federated/api_docs/python/tff/framework/replace_intrinsics_with_bodies
-    - title: replace_selection_from_tuple_with_element
-      path: /federated/api_docs/python/tff/framework/replace_selection_from_tuple_with_element
     - title: Selection
       path: /federated/api_docs/python/tff/framework/Selection
     - title: set_default_executor

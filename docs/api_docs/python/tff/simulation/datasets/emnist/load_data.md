@@ -20,10 +20,7 @@ tff.simulation.datasets.emnist.load_data(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
-*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+<!-- Placeholder for "Used in" -->
 
 Downloads and caches the dataset locally. If previously downloaded, tries to
 load the dataset from cache.
@@ -68,7 +65,10 @@ following keys and values:
     containing the pixels of the handwritten digit, with values in the range
     [0.0, 1.0].
 -   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
-    label of the corresponding pixels.
+    label of the corresponding pixels. Labels [0-9] correspond to the digits
+    classes, labels [10-35] correspond to the uppercase classes (e.g., label 11
+    is 'B'), and labels [36-61] correspond to the lowercase classes (e.g., label
+    37 is 'b').
 
 #### Args:
 

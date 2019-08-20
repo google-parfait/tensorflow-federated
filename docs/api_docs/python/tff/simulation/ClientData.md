@@ -6,6 +6,7 @@
 <meta itemprop="property" content="output_types"/>
 <meta itemprop="property" content="create_tf_dataset_for_client"/>
 <meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
+<meta itemprop="property" content="preprocess"/>
 </div>
 
 # tff.simulation.ClientData
@@ -33,7 +34,8 @@ The list of string identifiers for clients in this dataset.
 Returns the shape of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected to have matching
-`tf.data.Dataset.output_shapes` properties.
+`output_shapes` properties when accessed via
+`tf.compat.v1.data.get_output_shapes(dataset)`.
 
 #### Returns:
 
@@ -45,7 +47,8 @@ of an element of the client datasets.
 Returns the type of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected have matching
-`tf.data.Dataset.output_types` properties.
+`output_types` properties when accessed via
+`tf.compat.v1.data.get_output_types(dataset)`.
 
 #### Returns:
 
@@ -99,3 +102,14 @@ performed.
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+<h3 id="preprocess"><code>preprocess</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
+```python
+preprocess(preprocess_fn)
+```
+
+Applies `preprocess_fn` to each client's data.

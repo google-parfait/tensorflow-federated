@@ -1,5 +1,7 @@
 # All symbols in TensorFlow Federated
 
+## Primary symbols
+
 *   <a href="./tff.md"><code>tff</code></a>
 *   <a href="./tff/Computation.md"><code>tff.Computation</code></a>
 *   <a href="./tff/FederatedType.md"><code>tff.FederatedType</code></a>
@@ -10,6 +12,11 @@
 *   <a href="./tff/Type.md"><code>tff.Type</code></a>
 *   <a href="./tff/TypedObject.md"><code>tff.TypedObject</code></a>
 *   <a href="./tff/Value.md"><code>tff.Value</code></a>
+*   <a href="./tff/backends.md"><code>tff.backends</code></a>
+*   <a href="./tff/backends/mapreduce.md"><code>tff.backends.mapreduce</code></a>
+*   <a href="./tff/backends/mapreduce/CanonicalForm.md"><code>tff.backends.mapreduce.CanonicalForm</code></a>
+*   <a href="./tff/backends/mapreduce/get_canonical_form_for_iterative_process.md"><code>tff.backends.mapreduce.get_canonical_form_for_iterative_process</code></a>
+*   <a href="./tff/backends/mapreduce/get_iterative_process_for_canonical_form.md"><code>tff.backends.mapreduce.get_iterative_process_for_canonical_form</code></a>
 *   <a href="./tff/federated_aggregate.md"><code>tff.federated_aggregate</code></a>
 *   <a href="./tff/federated_apply.md"><code>tff.federated_apply</code></a>
 *   <a href="./tff/federated_broadcast.md"><code>tff.federated_broadcast</code></a>
@@ -23,6 +30,7 @@
 *   <a href="./tff/federated_zip.md"><code>tff.federated_zip</code></a>
 *   <a href="./tff/framework.md"><code>tff.framework</code></a>
 *   <a href="./tff/framework/Block.md"><code>tff.framework.Block</code></a>
+*   <a href="./tff/framework/CachingExecutor.md"><code>tff.framework.CachingExecutor</code></a>
 *   <a href="./tff/framework/Call.md"><code>tff.framework.Call</code></a>
 *   <a href="./tff/framework/CompiledComputation.md"><code>tff.framework.CompiledComputation</code></a>
 *   <a href="./tff/framework/ComputationBuildingBlock.md"><code>tff.framework.ComputationBuildingBlock</code></a>
@@ -57,10 +65,10 @@
 *   <a href="./tff/framework/is_called_intrinsic.md"><code>tff.framework.is_called_intrinsic</code></a>
 *   <a href="./tff/framework/is_tensorflow_compatible_type.md"><code>tff.framework.is_tensorflow_compatible_type</code></a>
 *   <a href="./tff/framework/merge_tuple_intrinsics.md"><code>tff.framework.merge_tuple_intrinsics</code></a>
+*   <a href="./tff/framework/remove_lambdas_and_blocks.md"><code>tff.framework.remove_lambdas_and_blocks</code></a>
 *   <a href="./tff/framework/remove_mapped_or_applied_identity.md"><code>tff.framework.remove_mapped_or_applied_identity</code></a>
 *   <a href="./tff/framework/replace_called_lambda_with_block.md"><code>tff.framework.replace_called_lambda_with_block</code></a>
 *   <a href="./tff/framework/replace_intrinsics_with_bodies.md"><code>tff.framework.replace_intrinsics_with_bodies</code></a>
-*   <a href="./tff/framework/replace_selection_from_tuple_with_element.md"><code>tff.framework.replace_selection_from_tuple_with_element</code></a>
 *   <a href="./tff/framework/set_default_executor.md"><code>tff.framework.set_default_executor</code></a>
 *   <a href="./tff/framework/transform_postorder.md"><code>tff.framework.transform_postorder</code></a>
 *   <a href="./tff/framework/transform_type_postorder.md"><code>tff.framework.transform_type_postorder</code></a>

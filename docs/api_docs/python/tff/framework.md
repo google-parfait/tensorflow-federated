@@ -25,6 +25,9 @@ Interfaces for extensions, selectively lifted out of `impl`.
 [`class Block`](../tff/framework/Block.md): A representation of a block of code
 in TFF's internal language.
 
+[`class CachingExecutor`](../tff/framework/CachingExecutor.md): The caching
+executor only performs caching.
+
 [`class Call`](../tff/framework/Call.md): A representation of a function
 invocation in TFF's internal language.
 
@@ -128,6 +131,9 @@ Checks `type_spec` against an explicit whitelist for `tf_computation`.
 [`merge_tuple_intrinsics(...)`](../tff/framework/merge_tuple_intrinsics.md):
 Merges all the tuples of intrinsics in `comp` into one intrinsic.
 
+[`remove_lambdas_and_blocks(...)`](../tff/framework/remove_lambdas_and_blocks.md):
+Removes any called lambdas and blocks from `comp`.
+
 [`remove_mapped_or_applied_identity(...)`](../tff/framework/remove_mapped_or_applied_identity.md):
 Removes all the mapped or applied identity functions in `comp`.
 
@@ -136,9 +142,6 @@ Replaces all the called lambdas in `comp` with a block.
 
 [`replace_intrinsics_with_bodies(...)`](../tff/framework/replace_intrinsics_with_bodies.md):
 Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
-
-[`replace_selection_from_tuple_with_element(...)`](../tff/framework/replace_selection_from_tuple_with_element.md):
-Replaces any selection from a tuple with the underlying tuple element.
 
 [`set_default_executor(...)`](../tff/framework/set_default_executor.md): Places
 an `executor`-backed execution context at the top of the stack.

@@ -51,7 +51,7 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
   state = fed_avg.initialize()
   state = fed_avg.next(state, ...)
   ...
-  tff.learning.assign_weights_to_keras_model(state.model, keras_model)
+  tff.learning.assign_weights_to_keras_model(keras_model, state.model)
   ```
 
   Args:

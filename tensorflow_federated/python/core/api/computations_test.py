@@ -502,7 +502,45 @@ class FederatedComputationsTest(test.TestCase):
     self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
     with self.assertRaisesRegexp(TypeError,
                                  'is not assignable from source type'):
-      self.assertEqual(foo(square_drop_y, 10), 100)
+      foo(square_drop_y, 10)
+
+  def test_randomness_executed_once(self):
+
+    @tff.tf_computation(tf.int32)
+    @tf.function
+    def generate_tuple(x):
+      del x  # Unused
+      random_value = tf.random.normal([1])
+      tup = []
+      for i in range(3):
+        tup.append((i + 1) * random_value[0])
+      return tup
+
+    @tff.federated_computation([tf.float32] * 3)
+    def select_second_index_tff(x):
+      return x[2]
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    def select_random_multiples(x):
+      random_tuples = tff.federated_map(generate_tuple, x)
+      reversed_tuples = tff.federated_zip([
+          tff.federated_map(select_second_index_tff, random_tuples),
+          tff.federated_map(select_second_index_tff, random_tuples),
+          tff.federated_map(select_second_index_tff, random_tuples)
+      ])
+      return reversed_tuples
+
+    first_client = select_random_multiples([0, 0])[0]
+    first_element = first_client[0]
+    for k in range(len(first_client)):
+      self.assertEqual(first_client[k], first_element)
+
+  def test_raises_none_result(self):
+    with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
+
+      @tff.federated_computation(None)
+      def _():
+        return None
 
 
 if __name__ == '__main__':

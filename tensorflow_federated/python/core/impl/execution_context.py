@@ -59,7 +59,7 @@ async def _ingest(executor, val, type_spec):
     t_elem = anonymous_tuple.to_elements(type_spec)
     if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
       raise ValueError('Value {} does not match type {}.'.format(
-          str(val), str(type_spec)))
+          val, type_spec))
     ingested = []
     for (_, v), (_, t) in zip(v_elem, t_elem):
       ingested.append(_ingest(executor, v, t))

@@ -172,21 +172,21 @@ def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   return build_keras_dense_layer()
 
 
-def build_linear_regresion_keras_sequential_model(feature_dims=2):
+def build_linear_regression_keras_sequential_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the Sequential API."""
   keras_model = tf.keras.models.Sequential()
   keras_model.add(_dense_all_zeros_layer(feature_dims))
   return keras_model
 
 
-def build_linear_regresion_keras_functional_model(feature_dims=2):
+def build_linear_regression_keras_functional_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the functional API."""
   a = tf.keras.layers.Input(shape=(feature_dims,))
   b = _dense_all_zeros_layer()(a)
   return tf.keras.Model(inputs=a, outputs=b)
 
 
-def build_linear_regresion_keras_subclass_model(feature_dims=2):
+def build_linear_regression_keras_subclass_model(feature_dims=2):
   """Build a linear regression model by sub-classing `tf.keras.Model`."""
   del feature_dims  # unused.
 

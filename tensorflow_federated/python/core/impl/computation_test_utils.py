@@ -22,9 +22,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def create_chained_calls(functions, arg):
@@ -45,10 +45,10 @@ def create_chained_calls(functions, arg):
 
   Args:
     functions: A Python list of functional computations.
-    arg: A `computation_building_blocks.ComputationBuildingBlock`.
+    arg: A `building_blocks.ComputationBuildingBlock`.
 
   Returns:
-    A `computation_building_blocks.Call`.
+    A `building_blocks.Call`.
   """
   for fn in functions:
     if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
@@ -56,7 +56,7 @@ def create_chained_calls(functions, arg):
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
               str(fn.parameter_type), str(arg.type_signature)))
-    call = computation_building_blocks.Call(fn, arg)
+    call = building_blocks.Call(fn, arg)
     arg = call
   return call
 
@@ -73,8 +73,8 @@ def create_dummy_block(comp, variable_name, variable_type=tf.int32):
     variable_name: The name of the variable.
     variable_type: The type of the variable.
   """
-  data = computation_building_blocks.Data('data', variable_type)
-  return computation_building_blocks.Block([(variable_name, data)], comp)
+  data = building_blocks.Data('data', variable_type)
+  return building_blocks.Block([(variable_name, data)], comp)
 
 
 def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
@@ -90,9 +90,9 @@ def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
   """
   intrinsic_type = computation_types.FunctionType(parameter_type,
                                                   parameter_type)
-  intrinsic = computation_building_blocks.Intrinsic('intrinsic', intrinsic_type)
-  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
-  return computation_building_blocks.Call(intrinsic, ref)
+  intrinsic = building_blocks.Intrinsic('intrinsic', intrinsic_type)
+  ref = building_blocks.Reference(parameter_name, parameter_type)
+  return building_blocks.Call(intrinsic, ref)
 
 
 def create_dummy_called_federated_aggregate(accumulate_parameter_name,
@@ -114,21 +114,19 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
     report_parameter_name: The name of the report parameter.
   """
   value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  value = computation_building_blocks.Data('data', value_type)
-  zero = computation_building_blocks.Data('data', tf.float32)
+  value = building_blocks.Data('data', value_type)
+  zero = building_blocks.Data('data', tf.float32)
   accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
-  accumulate_result = computation_building_blocks.Data('data', tf.float32)
-  accumulate = computation_building_blocks.Lambda(accumulate_parameter_name,
-                                                  accumulate_type,
-                                                  accumulate_result)
+  accumulate_result = building_blocks.Data('data', tf.float32)
+  accumulate = building_blocks.Lambda(accumulate_parameter_name,
+                                      accumulate_type, accumulate_result)
   merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
-  merge_result = computation_building_blocks.Data('data', tf.float32)
-  merge = computation_building_blocks.Lambda(merge_parameter_name, merge_type,
-                                             merge_result)
-  report_result = computation_building_blocks.Data('data', tf.bool)
-  report = computation_building_blocks.Lambda(report_parameter_name, tf.float32,
-                                              report_result)
-  return computation_constructing_utils.create_federated_aggregate(
+  merge_result = building_blocks.Data('data', tf.float32)
+  merge = building_blocks.Lambda(merge_parameter_name, merge_type, merge_result)
+  report_result = building_blocks.Data('data', tf.bool)
+  report = building_blocks.Lambda(report_parameter_name, tf.float32,
+                                  report_result)
+  return building_block_factory.create_federated_aggregate(
       value, zero, accumulate, merge, report)
 
 
@@ -150,8 +148,8 @@ def create_dummy_called_federated_apply(parameter_name,
   """
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_apply(fn, arg)
+  arg = building_blocks.Data('data', arg_type)
+  return building_block_factory.create_federated_apply(fn, arg)
 
 
 def create_dummy_called_federated_broadcast(value_type=tf.int32):
@@ -166,8 +164,8 @@ def create_dummy_called_federated_broadcast(value_type=tf.int32):
   """
   federated_type = computation_types.FederatedType(value_type,
                                                    placements.SERVER)
-  value = computation_building_blocks.Data('data', federated_type)
-  return computation_constructing_utils.create_federated_broadcast(value)
+  value = building_blocks.Data('data', federated_type)
+  return building_block_factory.create_federated_broadcast(value)
 
 
 def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
@@ -187,8 +185,8 @@ def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
   """
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_map(fn, arg)
+  arg = building_blocks.Data('data', arg_type)
+  return building_block_factory.create_federated_map(fn, arg)
 
 
 def create_dummy_called_federated_map_all_equal(parameter_name,
@@ -210,8 +208,8 @@ def create_dummy_called_federated_map_all_equal(parameter_name,
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(
       parameter_type, placements.CLIENTS, all_equal=True)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_federated_map_all_equal(fn, arg)
+  arg = building_blocks.Data('data', arg_type)
+  return building_block_factory.create_federated_map_all_equal(fn, arg)
 
 
 def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
@@ -227,8 +225,8 @@ def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
   """
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.SequenceType(parameter_type)
-  arg = computation_building_blocks.Data('data', arg_type)
-  return computation_constructing_utils.create_sequence_map(fn, arg)
+  arg = building_blocks.Data('data', arg_type)
+  return building_block_factory.create_sequence_map(fn, arg)
 
 
 def create_identity_block(variable_name, comp):
@@ -242,9 +240,8 @@ def create_identity_block(variable_name, comp):
     variable_name: The name of the variable.
     comp: The computation to use as the variable.
   """
-  ref = computation_building_blocks.Reference(variable_name,
-                                              comp.type_signature)
-  return computation_building_blocks.Block([(variable_name, comp)], ref)
+  ref = building_blocks.Reference(variable_name, comp.type_signature)
+  return building_blocks.Block([(variable_name, comp)], ref)
 
 
 def create_identity_block_with_dummy_data(variable_name,
@@ -259,7 +256,7 @@ def create_identity_block_with_dummy_data(variable_name,
     variable_name: The name of the variable.
     variable_type: The type of the variable.
   """
-  data = computation_building_blocks.Data('data', variable_type)
+  data = building_blocks.Data('data', variable_type)
   return create_identity_block(variable_name, data)
 
 
@@ -274,8 +271,8 @@ def create_identity_function(parameter_name, parameter_type=tf.int32):
     parameter_name: The name of the parameter.
     parameter_type: The type of the parameter.
   """
-  ref = computation_building_blocks.Reference(parameter_name, parameter_type)
-  return computation_building_blocks.Lambda(ref.name, ref.type_signature, ref)
+  ref = building_blocks.Reference(parameter_name, parameter_type)
+  return building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
 
 def create_lambda_to_dummy_called_intrinsic(parameter_name,
@@ -294,8 +291,7 @@ def create_lambda_to_dummy_called_intrinsic(parameter_name,
   """
   call = create_dummy_called_intrinsic(
       parameter_name=parameter_name, parameter_type=parameter_type)
-  return computation_building_blocks.Lambda(parameter_name, parameter_type,
-                                            call)
+  return building_blocks.Lambda(parameter_name, parameter_type, call)
 
 
 def create_nested_syntax_tree():
@@ -310,7 +306,7 @@ def create_nested_syntax_tree():
   parameter*, so that if we were actually executing this call the argument will
   be thrown away.
 
-  All leaf nodes are instances of `computation_building_blocks.Data`.
+  All leaf nodes are instances of `building_blocks.Data`.
 
                             Call
                            /    \
@@ -353,39 +349,36 @@ def create_nested_syntax_tree():
   [arg, y, z, t, u, v, x, w]
 
   Returns:
-    An instance of `computation_building_blocks.ComputationBuildingBlock`
+    An instance of `building_blocks.ComputationBuildingBlock`
     satisfying the description above.
   """
-  data_c = computation_building_blocks.Data('c', tf.float32)
-  data_d = computation_building_blocks.Data('d', tf.float32)
-  left_most_leaf = computation_building_blocks.Block([('t', data_c)], data_d)
+  data_c = building_blocks.Data('c', tf.float32)
+  data_d = building_blocks.Data('d', tf.float32)
+  left_most_leaf = building_blocks.Block([('t', data_c)], data_d)
 
-  data_e = computation_building_blocks.Data('e', tf.float32)
-  data_f = computation_building_blocks.Data('f', tf.float32)
-  center_leaf = computation_building_blocks.Block([('u', data_e)], data_f)
-  inner_tuple = computation_building_blocks.Tuple([left_most_leaf, center_leaf])
+  data_e = building_blocks.Data('e', tf.float32)
+  data_f = building_blocks.Data('f', tf.float32)
+  center_leaf = building_blocks.Block([('u', data_e)], data_f)
+  inner_tuple = building_blocks.Tuple([left_most_leaf, center_leaf])
 
-  selected = computation_building_blocks.Selection(inner_tuple, index=0)
-  data_g = computation_building_blocks.Data('g', tf.float32)
-  middle_block = computation_building_blocks.Block([('v', selected)], data_g)
+  selected = building_blocks.Selection(inner_tuple, index=0)
+  data_g = building_blocks.Data('g', tf.float32)
+  middle_block = building_blocks.Block([('v', selected)], data_g)
 
-  data_i = computation_building_blocks.Data('i', tf.float32)
-  data_j = computation_building_blocks.Data('j', tf.float32)
-  right_most_endpoint = computation_building_blocks.Block([('w', data_i)],
-                                                          data_j)
+  data_i = building_blocks.Data('i', tf.float32)
+  data_j = building_blocks.Data('j', tf.float32)
+  right_most_endpoint = building_blocks.Block([('w', data_i)], data_j)
 
-  data_h = computation_building_blocks.Data('h', tf.int32)
-  right_child = computation_building_blocks.Block([('x', data_h)],
-                                                  right_most_endpoint)
+  data_h = building_blocks.Data('h', tf.int32)
+  right_child = building_blocks.Block([('x', data_h)], right_most_endpoint)
 
-  result = computation_building_blocks.Tuple([middle_block, right_child])
-  data_a = computation_building_blocks.Data('a', tf.float32)
-  data_b = computation_building_blocks.Data('b', tf.float32)
-  dummy_outer_block = computation_building_blocks.Block([('y', data_a),
-                                                         ('z', data_b)], result)
-  dummy_lambda = computation_building_blocks.Lambda('arg', tf.float32,
-                                                    dummy_outer_block)
-  dummy_arg = computation_building_blocks.Data('k', tf.float32)
-  called_lambda = computation_building_blocks.Call(dummy_lambda, dummy_arg)
+  result = building_blocks.Tuple([middle_block, right_child])
+  data_a = building_blocks.Data('a', tf.float32)
+  data_b = building_blocks.Data('b', tf.float32)
+  dummy_outer_block = building_blocks.Block([('y', data_a), ('z', data_b)],
+                                            result)
+  dummy_lambda = building_blocks.Lambda('arg', tf.float32, dummy_outer_block)
+  dummy_arg = building_blocks.Data('k', tf.float32)
+  called_lambda = building_blocks.Call(dummy_lambda, dummy_arg)
 
   return called_lambda

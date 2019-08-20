@@ -28,19 +28,19 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_constructing_utils
-from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
 def select_graph_output(comp, name=None, index=None):
   r"""Makes `CompiledComputation` with same input as `comp` and output `output`.
 
-  Given an instance of `computation_building_blocks.CompiledComputation` `comp`
+  Given an instance of `building_blocks.CompiledComputation` `comp`
   with type signature (T -> <U, ...,V>), `select_output` returns a
   `CompiledComputation` representing the logic of calling `comp` and then
   selecting `name` or `index` from the resulting `tuple`. Notice that only one
@@ -63,7 +63,7 @@ def select_graph_output(comp, name=None, index=None):
 
 
   Args:
-    comp: Instance of `computation_building_blocks.CompiledComputation` which
+    comp: Instance of `building_blocks.CompiledComputation` which
       must have result type `computation_types.NamedTupleType`, the function
       from which to select `output`.
     name: Instance of `str`, the name of the field to select from the output of
@@ -72,10 +72,10 @@ def select_graph_output(comp, name=None, index=None):
       of `comp`. Optional, but one of `name` or `index` must be specified.
 
   Returns:
-    An instance of `computation_building_blocks.CompiledComputation` as
+    An instance of `building_blocks.CompiledComputation` as
     described, the result of selecting the appropriate output from `comp`.
   """
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if index and name:
     raise ValueError(
         'Please specify at most one of `name` or `index` to `select_outputs`.')
@@ -115,14 +115,14 @@ def select_graph_output(comp, name=None, index=None):
           parameter=proto.tensorflow.parameter,
           result=result))
   proto_pruned = proto_transformations.prune_tensorflow_proto(selected_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 def permute_graph_inputs(comp, input_permutation):
   r"""Remaps input indices of `comp` to match the `input_permutation`.
 
   Changes the order of the parameters `comp`, an instance of
-  `computation_building_blocks.CompiledComputation`. Accepts a permutation
+  `building_blocks.CompiledComputation`. Accepts a permutation
   of the input tuple by index, and applies this permutation to the input
   bindings of `comp`. For example, given a `comp` which accepts a 3-tuple of
   types `[tf.int32, tf.float32, tf.bool]` as its parameter, passing in the
@@ -132,13 +132,13 @@ def permute_graph_inputs(comp, input_permutation):
 
   would change the order of the parameter bindings accepted, so that
   `permute_graph_inputs` returns a
-  `computation_building_blocks.CompiledComputation`
+  `building_blocks.CompiledComputation`
   accepting a 3-tuple of types `[tf.bool, tf.int32, tf.float32]`. Notice that
   we use one-line notation for our permutations, with beginning index 0
   (https://en.wikipedia.org/wiki/Permutation#One-line_notation).
 
   At the AST structural level, this is a no-op, as it simply takes in one
-  instance of `computation_building_blocks.CompiledComputation` and returns
+  instance of `building_blocks.CompiledComputation` and returns
   another. However, it is necessary to make a replacement such as transforming:
 
                           Call
@@ -155,14 +155,14 @@ def permute_graph_inputs(comp, input_permutation):
   permute_graph_inputs(Graph, [...])      Comp
 
   Args:
-    comp: Instance of `computation_building_blocks.CompiledComputation` whose
+    comp: Instance of `building_blocks.CompiledComputation` whose
       parameter bindings we wish to permute.
     input_permutation: The permutation we wish to apply to the parameter
       bindings of `comp` in 0-indexed one-line permutation notation. This can be
       a Python `list` or `tuple` of `int`s.
 
   Returns:
-    An instance of `computation_building_blocks.CompiledComputation` whose
+    An instance of `building_blocks.CompiledComputation` whose
     parameter bindings represent the same as the result of applying
     `input_permutation` to the parameter bindings of `comp`.
 
@@ -170,7 +170,7 @@ def permute_graph_inputs(comp, input_permutation):
     TypeError: If the types specified in the args section do not match.
   """
 
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   py_typecheck.check_type(input_permutation, (tuple, list))
   permutation_length = len(input_permutation)
   for index in input_permutation:
@@ -225,7 +225,7 @@ def permute_graph_inputs(comp, input_permutation):
                   element=new_parameter_bindings)),
           result=proto.tensorflow.result))
   proto_pruned = proto_transformations.prune_tensorflow_proto(permuted_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 def bind_graph_parameter_as_tuple(comp, name=None):
@@ -239,7 +239,7 @@ def bind_graph_parameter_as_tuple(comp, name=None):
   binding.
 
   Args:
-    comp: Instance of `computation_building_blocks.CompiledComputation` whose
+    comp: Instance of `building_blocks.CompiledComputation` whose
       parameter we wish to wrap in a tuple binding.
     name: Optional string argument, the name to assign to the element type in
       the constructed tuple. Defaults to `None`.
@@ -250,9 +250,9 @@ def bind_graph_parameter_as_tuple(comp, name=None):
 
   Raises:
     TypeError: If `comp` is not a
-      `computation_building_blocks.CompiledComputation`.
+      `building_blocks.CompiledComputation`.
   """
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if name is not None:
     py_typecheck.check_type(name, six.string_types)
   proto = comp.proto
@@ -276,21 +276,21 @@ def bind_graph_parameter_as_tuple(comp, name=None):
           result=proto.tensorflow.result))
   proto_pruned = proto_transformations.prune_tensorflow_proto(
       input_padded_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 def bind_graph_result_as_tuple(comp, name=None):
   """Wraps the result of `comp` in a tuple binding.
 
   `bind_graph_result_as_tuple` is used when a
-  `computation_building_blocks.Tuple` of length 1 containing a called graph is
+  `building_blocks.Tuple` of length 1 containing a called graph is
   encountered; this is an equivalent construct to simply calling the graph
   with the same argument, but wrapping the result in as a tuple. This can
   be accomplished purely by manipulating proto bindings, which is the purpose
   of this function.
 
   Args:
-    comp: Instance of `computation_building_blocks.CompiledComputation` whose
+    comp: Instance of `building_blocks.CompiledComputation` whose
       parameter we wish to wrap in a tuple binding.
     name: Optional string argument, the name to assign to the element type in
       the constructed tuple. Defaults to `None`.
@@ -301,9 +301,9 @@ def bind_graph_result_as_tuple(comp, name=None):
 
   Raises:
     TypeError: If `comp` is not a
-      `computation_building_blocks.CompiledComputation`.
+      `building_blocks.CompiledComputation`.
   """
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if name is not None:
     py_typecheck.check_type(name, six.string_types)
   proto = comp.proto
@@ -327,7 +327,7 @@ def bind_graph_result_as_tuple(comp, name=None):
           result=new_result_binding))
   proto_pruned = proto_transformations.prune_tensorflow_proto(
       result_as_tuple_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 def pad_graph_inputs_to_match_type(comp, type_signature):
@@ -366,7 +366,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   to pad only compatible `CompiledComputation`s to a given type signature.
 
   Args:
-    comp: Instance of `computation_building_blocks.CompiledComputation`
+    comp: Instance of `building_blocks.CompiledComputation`
       representing the graph whose inputs we want to pad to match
       `type_signature`.
     type_signature: Instance of `computation_types.NamedTupleType` representing
@@ -374,7 +374,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
 
   Returns:
     A transformed version of `comp`, instance of
-    `computation_building_blocks.CompiledComputation` which takes an argument
+    `building_blocks.CompiledComputation` which takes an argument
     of type `type_signature` and executes the same logic as `comp`. In
     particular, this transformed version will have the same return type as
     the original `comp`.
@@ -388,7 +388,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
       parameter type signature declared by `comp`.
   """
   py_typecheck.check_type(type_signature, computation_types.NamedTupleType)
-  py_typecheck.check_type(comp, computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   proto = comp.proto
   graph_def = proto.tensorflow.graph_def
   graph_parameter_binding = proto.tensorflow.parameter
@@ -435,7 +435,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
       stamp_name = 'name'
     else:
       stamp_name = name
-    _, stamped_binding = graph_utils.stamp_parameter_in_graph(
+    _, stamped_binding = tensorflow_utils.stamp_parameter_in_graph(
         stamp_name, type_spec, g)
     parameter_bindings.append(stamped_binding)
     parameter_type_elements.append((name, type_spec))
@@ -457,7 +457,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
           result=proto.tensorflow.result))
   proto_pruned = proto_transformations.prune_tensorflow_proto(
       input_padded_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 def _unpack_proto_into_graph_spec(tf_block_proto):
@@ -480,11 +480,11 @@ def _unpack_proto_into_graph_spec(tf_block_proto):
   graph_result_binding = tf_block_proto.tensorflow.result
 
   if graph_parameter_binding.WhichOneof('binding') is not None:
-    graph_parameter_list = graph_utils.extract_tensor_names_from_binding(
+    graph_parameter_list = tensorflow_utils.extract_tensor_names_from_binding(
         graph_parameter_binding)
   else:
     graph_parameter_list = []
-  graph_result_list = graph_utils.extract_tensor_names_from_binding(
+  graph_result_list = tensorflow_utils.extract_tensor_names_from_binding(
       graph_result_binding)
   return graph_merge.GraphSpec(graph, graph_init_op_name, graph_parameter_list,
                                graph_result_list)
@@ -582,7 +582,7 @@ def _construct_concatenated_type(type_list):
     type_list: Python `list` or `tuple` of `computation_types.Type`s, which we
       want to use to construct a new parameter or result type for a computation
       representing concatenation of inputs and outputs of two
-      `computation_building_blocks.CompiledComputation`s.
+      `building_blocks.CompiledComputation`s.
 
   Returns:
     Instance of `computation_types.Type` representing the appropriate
@@ -601,7 +601,7 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
   """Concatenates inputs and outputs of its argument to a single TF block.
 
   Takes a Python `list` or `tuple` of instances of
-  `computation_building_blocks.CompiledComputation`, and constructs a single
+  `building_blocks.CompiledComputation`, and constructs a single
   instance of the same building block representing the computations present
   in this list concatenated side-by-side.
 
@@ -615,14 +615,14 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
 
   Args:
     tf_comp_list: Python `list` or `tuple` of
-      `computation_building_blocks.CompiledComputation`s, whose inputs and
+      `building_blocks.CompiledComputation`s, whose inputs and
       outputs we wish to concatenate.
     output_name_list: A list list or tuple of names to give to the result types
       in the concatenated TF computations. The elements of this list or tuple
       must be either string types or None
 
   Returns:
-    A single instance of `computation_building_blocks.CompiledComputation`,
+    A single instance of `building_blocks.CompiledComputation`,
     representing all the computations in `tf_comp_list` concatenated
     side-by-side.
 
@@ -654,8 +654,7 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
       py_typecheck.check_type(name, six.string_types)
   tf_proto_list = []
   for comp in tf_comp_list:
-    py_typecheck.check_type(comp,
-                            computation_building_blocks.CompiledComputation)
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     tf_proto_list.append(comp.proto)
 
   (merged_graph, init_op_name, parameter_name_maps,
@@ -691,7 +690,7 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
   constructed_proto = pb.Computation(
       type=serialized_function_type, tensorflow=tf_result_proto)
   proto_pruned = proto_transformations.prune_tensorflow_proto(constructed_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 def compose_tensorflow_blocks(tf_comps):
@@ -699,7 +698,7 @@ def compose_tensorflow_blocks(tf_comps):
 
   Args:
     tf_comps: List or tuple of instances of
-      `computation_building_blocks.CompiledComputation` representing the
+      `building_blocks.CompiledComputation` representing the
       functions we wish to compose. Notice that these must obey a certain
       invariant; the result type of computation k in this list must be identical
       to the parameter type of computation k-1. Notice also that the order of
@@ -709,7 +708,7 @@ def compose_tensorflow_blocks(tf_comps):
       f2 on its argument, then f1 on the result of this call.
 
   Returns:
-    Instance of `computation_building_blocks.CompiledComputation` representing
+    Instance of `building_blocks.CompiledComputation` representing
     the composition of the functions in `tf_comps`.
 
   Raises:
@@ -727,8 +726,7 @@ def compose_tensorflow_blocks(tf_comps):
   tf_protos = []
   previous_param_type = None
   for comp in tf_comps:
-    py_typecheck.check_type(comp,
-                            computation_building_blocks.CompiledComputation)
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     if previous_param_type is not None:
       if previous_param_type != comp.type_signature.result:
         raise TypeError('The result type of computation k should match the '
@@ -776,18 +774,17 @@ def compose_tensorflow_blocks(tf_comps):
   constructed_proto = pb.Computation(
       type=serialized_function_type, tensorflow=tf_result_proto)
   proto_pruned = proto_transformations.prune_tensorflow_proto(constructed_proto)
-  return computation_building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(proto_pruned)
 
 
 class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
   """`TransformSpec` representing a composition of TF blocks."""
 
   def should_transform(self, comp):
-    return (isinstance(comp, computation_building_blocks.Call) and isinstance(
-        comp.function, computation_building_blocks.CompiledComputation) and
-            isinstance(comp.argument, computation_building_blocks.Call) and
-            isinstance(comp.argument.function,
-                       computation_building_blocks.CompiledComputation))
+    return (isinstance(comp, building_blocks.Call) and
+            isinstance(comp.function, building_blocks.CompiledComputation) and
+            isinstance(comp.argument, building_blocks.Call) and isinstance(
+                comp.argument.function, building_blocks.CompiledComputation))
 
   def transform(self, comp):
     if self.should_transform(comp):
@@ -795,7 +792,7 @@ class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
       function_1 = comp.function
       function_2 = comp.argument.function
       composed_fn = compose_tensorflow_blocks([function_1, function_2])
-      return computation_building_blocks.Call(composed_fn, bottom_arg), True
+      return building_blocks.Call(composed_fn, bottom_arg), True
     return comp, False
 
 
@@ -820,16 +817,14 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    if not isinstance(comp, computation_building_blocks.Call):
+    if not isinstance(comp, building_blocks.Call):
       return False
     function = comp.function
     argument = comp.argument
-    if not isinstance(function,
-                      computation_building_blocks.CompiledComputation):
+    if not isinstance(function, building_blocks.CompiledComputation):
       return False
-    if not (isinstance(argument, computation_building_blocks.Tuple) and all(
-        isinstance(x, computation_building_blocks.Reference)
-        for x in argument)):
+    if not (isinstance(argument, building_blocks.Tuple) and
+            all(isinstance(x, building_blocks.Reference) for x in argument)):
       return False
     first_ref_name = argument[0].name
     return all(x.name == first_ref_name for x in argument)
@@ -837,14 +832,14 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
-    preprocess_arg_comp = computation_constructing_utils.create_compiled_input_replication(
+    preprocess_arg_comp = building_block_factory.create_compiled_input_replication(
         comp.argument[0].type_signature, len(comp.argument))
     logic_of_tf_comp = comp.function
     composed_tf = compose_tensorflow_blocks(
         [logic_of_tf_comp, preprocess_arg_comp])
-    single_arg = computation_building_blocks.Reference(
-        comp.argument[0].name, comp.argument[0].type_signature)
-    called_tf = computation_building_blocks.Call(composed_tf, single_arg)
+    single_arg = building_blocks.Reference(comp.argument[0].name,
+                                           comp.argument[0].type_signature)
+    called_tf = building_blocks.Call(composed_tf, single_arg)
     return called_tf, True
 
 
@@ -869,19 +864,18 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, computation_building_blocks.Selection) and
-            isinstance(comp.source, computation_building_blocks.Call) and
-            isinstance(comp.source.function,
-                       computation_building_blocks.CompiledComputation))
+    return (isinstance(comp, building_blocks.Selection) and
+            isinstance(comp.source, building_blocks.Call) and isinstance(
+                comp.source.function, building_blocks.CompiledComputation))
 
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
     selected = select_graph_output(
         comp.source.function, index=comp.index, name=comp.name)
-    pruned = computation_building_blocks.CompiledComputation(
+    pruned = building_blocks.CompiledComputation(
         proto_transformations.prune_tensorflow_proto(selected.proto))
-    return computation_building_blocks.Call(pruned, comp.source.argument), True
+    return building_blocks.Call(pruned, comp.source.argument), True
 
 
 class LambdaWrappingGraph(transformation_utils.TransformSpec):
@@ -904,12 +898,10 @@ class LambdaWrappingGraph(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, computation_building_blocks.Lambda) and
-            isinstance(comp.result, computation_building_blocks.Call) and
-            isinstance(comp.result.function,
-                       computation_building_blocks.CompiledComputation) and
-            isinstance(comp.result.argument,
-                       computation_building_blocks.Reference) and
+    return (isinstance(comp, building_blocks.Lambda) and
+            isinstance(comp.result, building_blocks.Call) and isinstance(
+                comp.result.function, building_blocks.CompiledComputation) and
+            isinstance(comp.result.argument, building_blocks.Reference) and
             comp.result.argument.name == comp.parameter_name)
 
   def transform(self, comp):
@@ -941,17 +933,16 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, computation_building_blocks.Tuple) and all(
-        isinstance(x, computation_building_blocks.Call) for x in comp) and all(
-            isinstance(x.function,
-                       computation_building_blocks.CompiledComputation)
-            for x in comp))
+    return (isinstance(comp, building_blocks.Tuple) and
+            all(isinstance(x, building_blocks.Call) for x in comp) and all(
+                isinstance(x.function, building_blocks.CompiledComputation)
+                for x in comp))
 
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
     if len(comp) == 0:  # pylint: disable=g-explicit-length-test
-      return computation_constructing_utils.create_compiled_empty_tuple(), True
+      return building_block_factory.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
     name_list = [x[0] for x in anonymous_tuple.to_elements(comp.type_signature)]
@@ -966,11 +957,10 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
       arg = None
     elif len(non_none_arg_list) == 1:
       arg = non_none_arg_list[0]
-      return computation_building_blocks.Call(concatenated_tf, arg), True
+      return building_blocks.Call(concatenated_tf, arg), True
     else:
-      arg = computation_building_blocks.Tuple(non_none_arg_list)
-    called_tf_on_concatenated_arg = computation_building_blocks.Call(
-        concatenated_tf, arg)
+      arg = building_blocks.Tuple(non_none_arg_list)
+    called_tf_on_concatenated_arg = building_blocks.Call(concatenated_tf, arg)
     replicated_arg_check = CalledGraphOnReplicatedArg()
     return replicated_arg_check.transform(
         called_tf_on_concatenated_arg)[0], True
@@ -1090,7 +1080,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
   a parameter of type `tuple_type`.
 
   Args:
-    graph: Instance of `computation_building_blocks.CompiledComputation` whose
+    graph: Instance of `building_blocks.CompiledComputation` whose
       parameter type we are trying to match with `tuple_type` if possible.
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
@@ -1098,7 +1088,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
       above.
 
   Returns:
-    An instance of `computation_building_blocks.CompiledComputation` which
+    An instance of `building_blocks.CompiledComputation` which
     contains the same logic as the input `graph`, but accepts an argument of
     type `tuple_type`.
 
@@ -1110,8 +1100,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
   """
   # TODO(b/133328350): Extend _remap_graph_inputs to allow for multiple reuse of
   # selections.
-  py_typecheck.check_type(graph,
-                          computation_building_blocks.CompiledComputation)
+  py_typecheck.check_type(graph, building_blocks.CompiledComputation)
   py_typecheck.check_type(graph.type_signature.parameter,
                           computation_types.NamedTupleType)
   py_typecheck.check_type(tuple_type, computation_types.NamedTupleType)
@@ -1155,16 +1144,14 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, computation_building_blocks.Lambda) and isinstance(
-        comp.parameter_type, computation_types.NamedTupleType) and
-            isinstance(comp.result, computation_building_blocks.Call) and
-            isinstance(comp.result.function,
-                       computation_building_blocks.CompiledComputation) and
-            isinstance(comp.result.argument,
-                       computation_building_blocks.Selection) and
-            isinstance(comp.result.argument.source,
-                       computation_building_blocks.Reference) and
-            comp.result.argument.source.name == comp.parameter_name)
+    return (
+        isinstance(comp, building_blocks.Lambda) and
+        isinstance(comp.parameter_type, computation_types.NamedTupleType) and
+        isinstance(comp.result, building_blocks.Call) and isinstance(
+            comp.result.function, building_blocks.CompiledComputation) and
+        isinstance(comp.result.argument, building_blocks.Selection) and
+        isinstance(comp.result.argument.source, building_blocks.Reference) and
+        comp.result.argument.source.name == comp.parameter_name)
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -1182,7 +1169,7 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
         comp.result.function, name=name)
     remapped = _remap_graph_inputs(graph_with_wrapped_parameter,
                                    [index_of_selection], comp.parameter_type)
-    pruned = computation_building_blocks.CompiledComputation(
+    pruned = building_blocks.CompiledComputation(
         proto_transformations.prune_tensorflow_proto(remapped.proto))
     return pruned, True
 
@@ -1215,22 +1202,22 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
   """
 
   def should_transform(self, comp):
-    if not (isinstance(comp, computation_building_blocks.Lambda) and
+    if not (isinstance(comp, building_blocks.Lambda) and
             isinstance(comp.parameter_type, computation_types.NamedTupleType)):
       return False
     result = comp.result
-    if not (isinstance(result, computation_building_blocks.Call) and isinstance(
-        result.function, computation_building_blocks.CompiledComputation)):
+    if not (isinstance(result, building_blocks.Call) and
+            isinstance(result.function, building_blocks.CompiledComputation)):
       return False
     compiled_comp_arg = result.argument
-    if not isinstance(compiled_comp_arg, computation_building_blocks.Tuple):
+    if not isinstance(compiled_comp_arg, building_blocks.Tuple):
       return False
     if not all(
-        isinstance(tuple_elem, computation_building_blocks.Selection)
+        isinstance(tuple_elem, building_blocks.Selection)
         for tuple_elem in compiled_comp_arg):
       return False
     if not all(
-        isinstance(tuple_elem.source, computation_building_blocks.Reference)
+        isinstance(tuple_elem.source, building_blocks.Reference)
         for tuple_elem in compiled_comp_arg):
       return False
     if not all(tuple_elem.source.name == comp.parameter_name
@@ -1260,6 +1247,6 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
         parameter_map.append(parameter_names.index(sel.name))
     inputs_mapped = _remap_graph_inputs(comp.result.function, parameter_map,
                                         comp.parameter_type)
-    pruned = computation_building_blocks.CompiledComputation(
+    pruned = building_blocks.CompiledComputation(
         proto_transformations.prune_tensorflow_proto(inputs_mapped.proto))
     return pruned, True

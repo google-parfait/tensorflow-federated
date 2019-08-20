@@ -328,6 +328,31 @@ class AnonymousTupleTest(absltest.TestCase):
         recursive=True)
     self.assertEqual(str(x), '<x=<a=10,b=20>,y=<c=30,d=40>>')
 
+  def test_to_container_recursive(self):
+
+    def odict(**kwargs):
+      return collections.OrderedDict(sorted(list(kwargs.items())))
+
+    # Nested OrderedDicts.
+    s = odict(a=1, b=2, c=odict(d=3, e=odict(f=4, g=5)))
+    x = anonymous_tuple.from_container(s, recursive=True)
+    s2 = x._asdict(recursive=True)
+    self.assertEqual(s, s2)
+
+    # Single OrderedDict.
+    s = odict(a=1, b=2)
+    x = anonymous_tuple.from_container(s)
+    self.assertEqual(x._asdict(recursive=True), s)
+
+    # Single empty OrderedDict.
+    s = odict()
+    x = anonymous_tuple.from_container(s)
+    self.assertEqual(x._asdict(recursive=True), s)
+
+    # Invalid argument.
+    with self.assertRaises(TypeError):
+      anonymous_tuple.from_container(3)
+
 
 if __name__ == '__main__':
   absltest.main()

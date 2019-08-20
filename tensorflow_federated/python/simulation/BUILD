@@ -27,6 +27,14 @@ py_binary(
 py_library(
     name = "client_data",
     srcs = ["client_data.py"],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+)
+
+py_test(
+    name = "client_data_test",
+    size = "small",
+    srcs = ["client_data_test.py"],
+    deps = [":client_data"],
 )
 
 py_library(

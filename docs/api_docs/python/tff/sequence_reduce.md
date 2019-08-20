@@ -21,9 +21,7 @@ tff.sequence_reduce(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
+<!-- Placeholder for "Used in" -->
 
 This method reduces a set of elements of a TFF sequence `value`, using a given
 `zero` in the algebra (i.e., the result of reducing an empty sequence) of some

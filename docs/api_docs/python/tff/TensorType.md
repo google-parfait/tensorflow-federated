@@ -25,9 +25,7 @@ representing types of tensors in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
 
-### Used in the tutorials:
-
-*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
+<!-- Placeholder for "Used in" -->
 
 <h2 id="__init__"><code>__init__</code></h2>
 
@@ -48,7 +46,8 @@ Constructs a new instance from the given `dtype` and `shape`.
 *   <b>`dtype`</b>: An instance of `tf.DType`.
 *   <b>`shape`</b>: An optional instance of `tf.TensorShape` or an argument that
     can be passed to its constructor (such as a `list` or a `tuple`), or `None`
-    for the default scalar shape. Unspecified shapes are not supported.
+    for the default scalar shape. TensorShapes with unknown rank are not
+    supported.
 
 #### Raises:
 

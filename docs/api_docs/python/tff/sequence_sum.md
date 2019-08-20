@@ -17,9 +17,7 @@ Computes a sum of elements in a sequence.
 tff.sequence_sum(value)
 ```
 
-### Used in the tutorials:
-
-*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
+<!-- Placeholder for "Used in" -->
 
 #### Args:
 

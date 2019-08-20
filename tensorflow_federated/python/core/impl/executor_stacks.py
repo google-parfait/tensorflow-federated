@@ -15,6 +15,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import federated_executor
@@ -22,7 +23,7 @@ from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import placement_literals
 
 
-def create_local_executor(num_clients):
+def create_local_executor(num_clients=None):
   """Constructs an executor to execute computations on the local machine.
 
   The initial temporary implementation requires that the number of clients be
@@ -31,23 +32,41 @@ def create_local_executor(num_clients):
   NOTE: This function is only available in Python 3.
 
   Args:
-    num_clients: The number of clients.
+    num_clients: The number of clients. If not specified (`None`), then this
+      executor is not federated (can only execute unplaced computations).
 
   Returns:
     An instance of `tff.framework.Executor` for single-machine use only.
+
+  Raises:
+    ValueError: If the number of clients is not one or larger.
   """
-  # TODO(b/134543154): We should not have to specif the number of clients; this
-  # needs to go away once we flesh out all the remaining bits ad pieces.
 
-  py_typecheck.check_type(num_clients, int)
-  bottom_ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+  def _create_single_worker_stack():
+    ex = eager_executor.EagerExecutor()
+    ex = concurrent_executor.ConcurrentExecutor(ex)
+    ex = caching_executor.CachingExecutor(ex)
+    return lambda_executor.LambdaExecutor(ex)
 
-  def _make(n):
-    return [concurrent_executor.ConcurrentExecutor(bottom_ex) for _ in range(n)]
+  if num_clients is None:
+    return _create_single_worker_stack()
+  else:
+    # TODO(b/134543154): We shouldn't have to specif the number of clients; this
+    # needs to go away once we flesh out all the remaining bits ad pieces.
+    py_typecheck.check_type(num_clients, int)
+    if num_clients < 1:
+      raise ValueError('If the number of clients is present, it must be >= 1.')
 
-  return lambda_executor.LambdaExecutor(
-      federated_executor.FederatedExecutor({
-          None: _make(1),
-          placement_literals.SERVER: _make(1),
-          placement_literals.CLIENTS: _make(num_clients)
-      }))
+    def _create_multiple_worker_stacks(num_workers):
+      return [_create_single_worker_stack() for _ in range(num_workers)]
+
+    return lambda_executor.LambdaExecutor(
+        caching_executor.CachingExecutor(
+            federated_executor.FederatedExecutor({
+                None:
+                    _create_multiple_worker_stacks(1),
+                placement_literals.SERVER:
+                    _create_multiple_worker_stacks(1),
+                placement_literals.CLIENTS:
+                    (_create_multiple_worker_stacks(num_clients))
+            })))

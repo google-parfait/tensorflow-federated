@@ -98,16 +98,15 @@ class Model(object):
 
   def create_model(self):
     """Creates a TF model and returns ops necessary to run training/eval."""
-    features = tf.placeholder(tf.float32, [None, self.input_dim])
-    labels = tf.placeholder(tf.float32, [None, self.num_classes])
+    features = tf.compat.v1.placeholder(tf.float32, [None, self.input_dim])
+    labels = tf.compat.v1.placeholder(tf.float32, [None, self.num_classes])
 
     w = tf.Variable(tf.random_normal(shape=[self.input_dim, self.num_classes]))
     b = tf.Variable(tf.random_normal(shape=[self.num_classes]))
 
     pred = tf.nn.softmax(tf.matmul(features, w) + b)
 
-    loss = tf.reduce_mean(
-        -tf.reduce_sum(labels * tf.math.log(pred), reduction_indices=1))
+    loss = tf.reduce_mean(-tf.reduce_sum(labels * tf.math.log(pred), axis=1))
     train_op = self.optimizer.minimize(
         loss=loss, global_step=tf.train.get_or_create_global_step())
 
@@ -199,8 +198,8 @@ class CyclicDataGenerator(object):
     elif row[0] == '0':
       row[0] = 0
     else:
-      raise ValueError('label neither 0 nor 1, but: type %s, value %s' %
-                       (type(row[0]), str(row[0])))
+      raise ValueError('label neither 0 nor 1, but: type {}, value {}'.format(
+          type(row[0]), row[0]))
     row[5] = su.line_to_word_ids(row[5], vocab)
 
 
@@ -283,7 +282,7 @@ class NonIidDataGenerator(CyclicDataGenerator):
           # No biasing, add unconditionally.
           self.data[group].append([row[1:], label])
     for g in range(0, self.num_groups):
-      logger.log('group %d: %d examples' % (g, len(self.data[g])))
+      logger.log('group {}: {} examples'.format(g, len(self.data[g])))
       random.shuffle(self.data[g])
 
 

@@ -70,11 +70,11 @@ def _create_tff_model_from_keras_model_tuples():
   for n_dims in [1, 3]:
     for name, model_fn in [
         ('functional',
-         model_examples.build_linear_regresion_keras_functional_model),
+         model_examples.build_linear_regression_keras_functional_model),
         ('sequential',
-         model_examples.build_linear_regresion_keras_sequential_model),
+         model_examples.build_linear_regression_keras_sequential_model),
         ('sublclass',
-         model_examples.build_linear_regresion_keras_subclass_model),
+         model_examples.build_linear_regression_keras_subclass_model),
     ]:
       tuples.append(('{}_model_{}_dims'.format(name, n_dims), n_dims, model_fn))
   return tuples
@@ -85,11 +85,11 @@ def _create_tff_model_from_compiled_keras_model_tuples():
   for n_dims in [1, 3]:
     for model_name, model_fn in [
         ('functional',
-         model_examples.build_linear_regresion_keras_functional_model),
+         model_examples.build_linear_regression_keras_functional_model),
         ('sequential',
-         model_examples.build_linear_regresion_keras_sequential_model),
+         model_examples.build_linear_regression_keras_sequential_model),
         ('sublclass',
-         model_examples.build_linear_regresion_keras_subclass_model),
+         model_examples.build_linear_regression_keras_subclass_model),
     ]:
       for loss_name, loss in [
           ('tf.keras.losses_instance', tf.keras.losses.MeanSquaredError()),
@@ -129,7 +129,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
            x=np.ones([1, 1], np.float32), y=np.zeros([1, 1], np.float32))),
   )
   def test_dummy_batch_types(self, dummy_batch):
-    keras_model = model_examples.build_linear_regresion_keras_functional_model(
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
@@ -406,7 +406,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     feature_dims = 3
 
     def _make_keras_model():
-      keras_model = model_examples.build_linear_regresion_keras_functional_model(
+      keras_model = model_examples.build_linear_regression_keras_functional_model(
           feature_dims)
       keras_model.compile(
           optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
@@ -455,7 +455,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_keras_model_and_optimizer(self):
     # Expect TFF to compile the keras model if given an optimizer.
-    keras_model = model_examples.build_linear_regresion_keras_functional_model(
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,

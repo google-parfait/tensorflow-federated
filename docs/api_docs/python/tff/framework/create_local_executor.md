@@ -14,13 +14,10 @@ source</a>
 Constructs an executor to execute computations on the local machine.
 
 ```python
-tff.framework.create_local_executor(num_clients)
+tff.framework.create_local_executor(num_clients=None)
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
-*   [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+<!-- Placeholder for "Used in" -->
 
 The initial temporary implementation requires that the number of clients be
 specified in advance. This limitation will be removed in the near future.
@@ -29,10 +26,15 @@ NOTE: This function is only available in Python 3.
 
 #### Args:
 
-*   <b>`num_clients`</b>: The number of clients.
+*   <b>`num_clients`</b>: The number of clients. If not specified (`None`), then
+    this executor is not federated (can only execute unplaced computations).
 
 #### Returns:
 
 An instance of
 <a href="../../tff/framework/Executor.md"><code>tff.framework.Executor</code></a>
 for single-machine use only.
+
+#### Raises:
+
+*   <b>`ValueError`</b>: If the number of clients is not one or larger.

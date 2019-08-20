@@ -19,16 +19,16 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import value_transformations
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 def replace_intrinsics_with_bodies(comp):
   """Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
 
   This function operates on the AST level; meaning, it takes in a
-  `computation_building_blocks.ComputationBuildingBlock` as an argument and
+  `building_blocks.ComputationBuildingBlock` as an argument and
   returns one as well. `replace_intrinsics_with_bodies` is intended to be the
   standard reduction function, which will reduce all currently implemented
   intrinsics to their bodies.
@@ -38,15 +38,14 @@ def replace_intrinsics_with_bodies(comp):
   function is ordered from more complex intrinsic to less complex intrinsics.
 
   Args:
-    comp: Instance of `computation_building_blocks.ComputationBuildingBlock` in
+    comp: Instance of `building_blocks.ComputationBuildingBlock` in
       which we wish to replace all intrinsics with their bodies.
 
   Returns:
-    An instance of `computation_building_blocks.ComputationBuildingBlock` with
+    An instance of `building_blocks.ComputationBuildingBlock` with
     all intrinsics defined in `intrinsic_bodies.py` replaced with their bodies.
   """
-  py_typecheck.check_type(comp,
-                          computation_building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   context_stack = context_stack_impl.context_stack
   comp, _ = value_transformations.replace_all_intrinsics_with_bodies(
       comp, context_stack)

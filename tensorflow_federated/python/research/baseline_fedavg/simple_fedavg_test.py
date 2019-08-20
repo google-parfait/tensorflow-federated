@@ -54,16 +54,15 @@ def mnist_forward_pass(variables, batch):
 
   flat_labels = tf.reshape(batch['y'], [-1])
   loss = -tf.reduce_mean(
-      tf.reduce_sum(
-          tf.one_hot(flat_labels, 10) * tf.math.log(y), reduction_indices=[1]))
+      tf.reduce_sum(tf.one_hot(flat_labels, 10) * tf.math.log(y), axis=[1]))
   accuracy = tf.reduce_mean(
       tf.cast(tf.equal(predictions, flat_labels), tf.float32))
 
   num_examples = tf.cast(tf.size(batch['y']), tf.float32)
 
-  tf.assign_add(variables.num_examples, num_examples)
-  tf.assign_add(variables.loss_sum, loss * num_examples)
-  tf.assign_add(variables.accuracy_sum, accuracy * num_examples)
+  variables.num_examples.assign_add(num_examples)
+  variables.loss_sum.assign_add(loss * num_examples)
+  variables.accuracy_sum.assign_add(accuracy * num_examples)
 
   return loss, predictions
 
@@ -131,7 +130,7 @@ class MnistTrainableModel(MnistModel, tff.learning.TrainableModel):
   @tf.function
   def train_on_batch(self, batch):
     output = self.forward_pass(batch)
-    optimizer = tf.train.GradientDescentOptimizer(0.02)
+    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.02)
     optimizer.minimize(output.loss, var_list=self.trainable_variables)
     return output
 

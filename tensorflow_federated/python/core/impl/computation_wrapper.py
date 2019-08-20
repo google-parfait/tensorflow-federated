@@ -22,8 +22,8 @@ import types
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.utils import function_utils
 
 
 def _wrap(fn, parameter_type, wrapper_fn):

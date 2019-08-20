@@ -27,9 +27,9 @@ from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
-from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
@@ -49,9 +49,9 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     TypeError: If arguments are of the wrong types, e.g., in `comp` is not a
       TensorFlow computation.
   """
-  # TODO(b/134543154): Decide whether this belongs in `graph_utils.py` since
-  # it deals exclusively with eager mode. Incubate here, and potentially move
-  # there, once stable.
+  # TODO(b/134543154): Decide whether this belongs in `tensorflow_utils.py`
+  # since it deals exclusively with eager mode. Incubate here, and potentially
+  # move there, once stable.
 
   py_typecheck.check_type(comp, pb.Computation)
   comp_type = type_serialization.deserialize_type(comp.type)
@@ -59,7 +59,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   if type_spec is not None:
     if not type_utils.are_equivalent_types(type_spec, comp_type):
       raise TypeError('Expected a computation of type {}, got {}.'.format(
-          str(type_spec), str(comp_type)))
+          type_spec, comp_type))
   else:
     type_spec = comp_type
   which_computation = comp.WhichOneof('computation')
@@ -75,22 +75,23 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     result_type = type_spec
 
   if param_type is not None:
-    input_tensor_names = graph_utils.extract_tensor_names_from_binding(
+    input_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
         comp.tensorflow.parameter)
   else:
     input_tensor_names = []
 
-  output_tensor_names = graph_utils.extract_tensor_names_from_binding(
+  output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
       comp.tensorflow.result)
 
   def function_to_wrap(*args):  # pylint: disable=missing-docstring
     if len(args) != len(input_tensor_names):
       raise RuntimeError('Expected {} arguments, found {}.'.format(
-          str(len(input_tensor_names)), str(len(args))))
+          len(input_tensor_names), len(args)))
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
     init_op = comp.tensorflow.initialize_op
     if init_op:
-      graph_def = graph_utils.add_control_deps_for_init_op(graph_def, init_op)
+      graph_def = tensorflow_utils.add_control_deps_for_init_op(
+          graph_def, init_op)
 
     def _import_fn():
       return tf.import_graph_def(
@@ -137,7 +138,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       arg_parts = anonymous_tuple.flatten(arg)
       if len(arg_parts) != len(param_fns):
         raise RuntimeError('Expected {} arguments, found {}.'.format(
-            str(len(param_fns)), str(len(arg_parts))))
+            len(param_fns), len(arg_parts)))
       for arg_part, param_fn in zip(arg_parts, param_fns):
         param_elements.append(param_fn(arg_part))
     result_parts = wrapped_fn(*param_elements)
@@ -217,7 +218,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
     if not type_utils.is_assignable_from(type_spec, value_type):
       raise TypeError(
           'The apparent type {} of a tensor {} does not match the expected '
-          'type {}.'.format(str(value_type), str(value), str(type_spec)))
+          'type {}.'.format(value_type, value, type_spec))
     return value
   elif isinstance(type_spec, computation_types.NamedTupleType):
     type_elem = anonymous_tuple.to_elements(type_spec)
@@ -226,7 +227,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
     result_elem = []
     if len(type_elem) != len(value_elem):
       raise TypeError('Expected a {}-element tuple, found {} elements.'.format(
-          str(len(type_elem)), str(len(value_elem))))
+          len(type_elem), len(value_elem)))
     for (t_name, el_type), (v_name, el_val) in zip(type_elem, value_elem):
       if t_name != v_name:
         raise TypeError(
@@ -237,8 +238,8 @@ def to_representation_for_type(value, type_spec=None, device=None):
     return anonymous_tuple.AnonymousTuple(result_elem)
   elif isinstance(type_spec, computation_types.SequenceType):
     if isinstance(value, list):
-      value = graph_utils.make_data_set_from_elements(None, value,
-                                                      type_spec.element)
+      value = tensorflow_utils.make_data_set_from_elements(
+          None, value, type_spec.element)
     py_typecheck.check_type(
         value,
         (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset))
@@ -249,7 +250,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
     type_utils.check_assignable_from(type_spec, value_type)
     return value
   else:
-    raise TypeError('Unexpected type {}.'.format(str(type_spec)))
+    raise TypeError('Unexpected type {}.'.format(type_spec))
 
 
 class EagerValue(executor_value_base.ExecutorValue):
@@ -388,7 +389,7 @@ class EagerExecutor(executor_base.Executor):
       py_typecheck.check_type(arg, EagerValue)
     if not isinstance(comp.type_signature, computation_types.FunctionType):
       raise TypeError('Expected a functional type, found {}'.format(
-          str(comp.type_signature)))
+          comp.type_signature))
     if comp.type_signature.parameter is not None:
       return EagerValue(
           comp.internal_representation(arg.internal_representation),
@@ -446,8 +447,8 @@ class EagerExecutor(executor_base.Executor):
       py_typecheck.check_type(index, int)
       if name is not None:
         raise ValueError(
-            'Cannot simulatenously specify name {} and index {}.'.format(
-                str(name), str(index)))
+            'Cannot simultaneously specify name {} and index {}.'.format(
+                name, index))
       else:
         return EagerValue(source.internal_representation[index],
                           source.type_signature[index])

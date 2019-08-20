@@ -89,7 +89,7 @@ def main(unused_args):
       elif row[0] == '4':
         label = 1
       else:
-        raise ValueError('Invalid label: %s' % row[0])
+        raise ValueError('Invalid label: {}'.format(row[0]))
       row[0] = label
       text = row[5]
       text = replace_usernames(text)
@@ -104,7 +104,7 @@ def main(unused_args):
           unigrams[w] = 1
       i = i + 1
       if i % 100000 == 0:
-        print('read %d rows' % i)
+        print('read {} rows'.format(i))
 
     # lines are sorted by sentiment, then by date. Shuffle.
     print('Shuffling data')
@@ -127,7 +127,7 @@ def main(unused_args):
     unigrams_sorted = sorted(
         list(unigrams.items()), key=lambda kv: kv[1], reverse=True)
     print(unigrams_sorted[0:20])
-    print('%d lines read' % len(lines))
+    print('{} lines read'.format(len(lines)))
     with open(DICT_OUTPUT, 'w') as f:
       for w in unigrams_sorted:
         f.write(w[0] + '\n')

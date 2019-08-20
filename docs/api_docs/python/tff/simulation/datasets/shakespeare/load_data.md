@@ -17,9 +17,7 @@ Loads the federated Shakespeare dataset.
 tff.simulation.datasets.shakespeare.load_data(cache_dir=None)
 ```
 
-### Used in the tutorials:
-
-*   [Federated Learning for Text Generation](https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation)
+<!-- Placeholder for "Used in" -->
 
 Downloads and caches the dataset locally. If previously downloaded, tries to
 load the dataset from cache.

@@ -21,11 +21,7 @@ tff.federated_mean(
 )
 ```
 
-### Used in the tutorials:
-
-*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_1)
-*   [Custom Federated Algorithms, Part 2: Implementing Federated Averaging](https://www.tensorflow.org/federated/tutorials/custom_federated_algorithms_2)
-*   [Federated Learning for Image Classification](https://www.tensorflow.org/federated/tutorials/federated_learning_for_image_classification)
+<!-- Placeholder for "Used in" -->
 
 #### Args:
 

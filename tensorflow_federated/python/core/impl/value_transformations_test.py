@@ -23,19 +23,19 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_test_utils
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import tree_analysis
 from tensorflow_federated.python.core.impl import value_transformations
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
 def _count_intrinsics(comp, uri):
 
   def _predicate(comp):
-    return (isinstance(comp, computation_building_blocks.Intrinsic) and
-            uri is not None and comp.uri == uri)
+    return (isinstance(comp, building_blocks.Intrinsic) and uri is not None and
+            comp.uri == uri)
 
   return tree_analysis.count(comp, _predicate)
 
@@ -115,7 +115,7 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
   def test_replaces_chained_intrinsics(self):
     fn = computation_test_utils.create_lambda_to_dummy_called_intrinsic(
         parameter_name='a')
-    arg = computation_building_blocks.Data('data', tf.int32)
+    arg = building_blocks.Data('data', tf.int32)
     call = computation_test_utils.create_chained_calls([fn, fn], arg)
     comp = call
     uri = 'intrinsic'
@@ -167,7 +167,7 @@ class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
     def foo(x):
       return intrinsics.federated_mean(x, x)
 
-    foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
         foo._computation_proto)
     count_before_reduction = _count_intrinsics(foo_building_block, uri)
     reduced, modified = value_transformations.replace_all_intrinsics_with_bodies(
@@ -186,7 +186,7 @@ class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
     def foo(x):
       return intrinsics.federated_sum(x)
 
-    foo_building_block = computation_building_blocks.ComputationBuildingBlock.from_proto(
+    foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
         foo._computation_proto)
 
     count_before_reduction = _count_intrinsics(foo_building_block, uri)
@@ -200,7 +200,7 @@ class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
   def test_generic_divide_reduces(self):
     uri = intrinsic_defs.GENERIC_DIVIDE.uri
     context_stack = context_stack_impl.context_stack
-    comp = computation_building_blocks.Intrinsic(
+    comp = building_blocks.Intrinsic(
         uri, computation_types.FunctionType([tf.float32, tf.float32],
                                             tf.float32))
 

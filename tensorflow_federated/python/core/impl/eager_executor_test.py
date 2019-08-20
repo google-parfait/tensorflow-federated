@@ -129,7 +129,7 @@ class EagerExecutorTest(parameterized.TestCase):
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
-        with tf.control_dependencies([tf.assign_add(v, 20)]):
+        with tf.control_dependencies([v.assign_add(20)]):
           return tf.add(x, v)
 
     fn = eager_executor.embed_tensorflow_computation(
@@ -412,8 +412,8 @@ class EagerExecutorTest(parameterized.TestCase):
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
-        with tf.control_dependencies([tf.assign(v, x)]):
-          with tf.control_dependencies([tf.assign_add(v, 10)]):
+        with tf.control_dependencies([v.assign(x)]):
+          with tf.control_dependencies([v.assign_add(10)]):
             return tf.identity(v)
 
     fn = loop.run_until_complete(ex.create_value(comp))
@@ -431,7 +431,7 @@ class EagerExecutorTest(parameterized.TestCase):
       *[(dev,) for dev in _get_physical_devices_for_testing()])
   def test_wrap_function_on_all_available_physical_devices(self, device):
     with tf.Graph().as_default() as graph:
-      x = tf.placeholder(tf.int32, shape=[])
+      x = tf.compat.v1.placeholder(tf.int32, shape=[])
       y = tf.add(x, tf.constant(1))
 
     arg_for_tf_device = '/{}'.format(device)
