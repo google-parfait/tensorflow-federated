@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation.client_data import ClientData
+from tensorflow_federated.python.simulation.client_data import ConcreteClientData
 from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData
 from tensorflow_federated.python.simulation.from_tensor_slices_client_data import FromTensorSlicesClientData
 from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
@@ -28,6 +29,7 @@ from tensorflow_federated.python.simulation.transforming_client_data import Tran
 # Used by doc generation script.
 _allowed_symbols = [
     "ClientData",
+    "ConcreteClientData",
     "FilePerUserClientData",
     "FromTensorSlicesClientData",
     "HDF5ClientData",

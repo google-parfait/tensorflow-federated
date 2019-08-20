@@ -218,6 +218,8 @@ toc:
       path: /federated/api_docs/python/tff/simulation
     - title: ClientData
       path: /federated/api_docs/python/tff/simulation/ClientData
+    - title: ConcreteClientData
+      path: /federated/api_docs/python/tff/simulation/ConcreteClientData
     - title: FilePerUserClientData
       path: /federated/api_docs/python/tff/simulation/FilePerUserClientData
     - title: FromTensorSlicesClientData
