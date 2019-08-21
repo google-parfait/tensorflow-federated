@@ -565,13 +565,15 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                  ('c', tf.float32),
                  ('d', (tf.int32, [20])),
              ])),
+            ('e', ()),
         ]))
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {
             'c': tf.float32,
             'd': tf.int32
-        }
+        },
+        'e': (),
     })
     test.assert_nested_struct_eq(
         shapes, {
@@ -579,7 +581,8 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             'b': {
                 'c': tf.TensorShape([]),
                 'd': tf.TensorShape([20])
-            }
+            },
+            'e': (),
         })
 
   def test_type_to_tf_tensor_specs_with_int_scalar(self):
@@ -610,6 +613,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                  ('c', tf.float32),
                  ('d', (tf.int32, [20])),
              ])),
+            ('e', ()),
         ]))
     test.assert_nested_struct_eq(
         tensor_specs, {
@@ -617,7 +621,8 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             'b': {
                 'c': tf.TensorSpec([], tf.float32),
                 'd': tf.TensorSpec([20], tf.int32)
-            }
+            },
+            'e': (),
         })
 
   def test_type_to_tf_tensor_specs_with_invalid_type(self):

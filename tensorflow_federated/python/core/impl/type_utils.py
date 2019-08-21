@@ -255,7 +255,10 @@ def type_to_tf_dtypes_and_shapes(type_spec):
     return (type_spec.dtype, type_spec.shape)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
-    if elements[0][0] is not None:
+    if not elements:
+      output_dtypes = []
+      output_shapes = []
+    elif elements[0][0] is not None:
       output_dtypes = collections.OrderedDict()
       output_shapes = collections.OrderedDict()
       for e in elements:
