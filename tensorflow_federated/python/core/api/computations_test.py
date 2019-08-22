@@ -389,18 +389,47 @@ class TensorFlowComputationsWithDatasetsTest(test.TestCase):
   def test_with_tf_datasets(self):
 
     @tff.tf_computation(tff.SequenceType(tf.int64))
-    def foo(ds):
+    def consume(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
-    self.assertEqual(str(foo.type_signature), '(int64* -> int64)')
+    self.assertEqual(str(consume.type_signature), '(int64* -> int64)')
 
     @tff.tf_computation
-    def bar():
+    def produce():
       return tf.data.Dataset.range(10)
 
-    self.assertEqual(str(bar.type_signature), '( -> int64*)')
+    self.assertEqual(str(produce.type_signature), '( -> int64*)')
 
-    self.assertEqual(foo(bar()), 45)
+    self.assertEqual(consume(produce()), 45)
+
+  def test_consume_infinite_tf_dataset(self):
+    # TODO(b/131363314): The reference executor should support generating
+    # and returning infinite datasets
+    self.skipTest('b/131363314')
+
+    @tff.tf_computation(tff.SequenceType(tf.int64))
+    def consume(ds):
+      # Consume the first 10 elements of the dataset.
+      return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+
+    self.assertEqual(consume(tf.data.Dataset.range(10).repeat()), 45)
+
+  def test_produce_and_consume_infinite_tf_dataset(self):
+    # TODO(b/131363314): The reference executor should support generating
+    # and returning infinite datasets
+    self.skipTest('b/131363314')
+
+    @tff.tf_computation(tff.SequenceType(tf.int64))
+    def consume(ds):
+      # Consume the first 10 elements of the dataset.
+      return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+
+    @tff.tf_computation
+    def produce():
+      # Produce an infinite dataset.
+      return tf.data.Dataset.range(10).repeat()
+
+    self.assertEqual(consume(produce()), 45)
 
   def test_with_sequence_of_pairs(self):
     pairs = tf.data.Dataset.from_tensor_slices(
