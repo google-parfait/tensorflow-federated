@@ -34,7 +34,8 @@ source</a>
 ```python
 __init__(
     channel,
-    rpc_mode='REQUEST_REPLY'
+    rpc_mode='REQUEST_REPLY',
+    thread_pool_executor=None
 )
 ```
 
@@ -47,6 +48,9 @@ Creates a remote executor.
 *   <b>`rpc_mode`</b>: Optional mode of calling the remote executor. Must be
     either 'REQUEST_REPLY' or 'STREAMING' (defaults to 'REQUEST_REPLY'). This
     option will be removed after the request-reply interface is deprecated.
+*   <b>`thread_pool_executor`</b>: Optional concurrent.futures.Executor used to
+    wait for the reply to a streaming RPC message. Uses the default Executor if
+    not specified.
 
 ## Methods
 

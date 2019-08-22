@@ -171,13 +171,6 @@ Dispose(
 )
 ```
 
-TODO(b/134543154): Given that there is no support for asynchronous server
-processing in Python gRPC, long-running calls may be a problem. Revisit this and
-look for alternatives.
-
-Causes one or more values in the executor to get disposed of (no longer
-available for future calls).
-
 <h3 id="Execute"><code>Execute</code></h3>
 
 <a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_service.py">View
@@ -189,5 +182,3 @@ Execute(
     context
 )
 ```
-
-Establishes a bidirectional stream with an Executor instance.
