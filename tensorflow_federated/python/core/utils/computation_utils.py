@@ -70,7 +70,7 @@ class StatefulFn(object):
       initialize_fn: A no-arg function that returns a Python container which can
         be converted to a `tff.Value`, placed on the `tff.SERVER`, and passed as
         the first argument of `__call__`. This may be called in vanilla
-        TensorFlow code, typically wrapped as a `tff.tf_compuatation`, as part
+        TensorFlow code, typically wrapped as a `tff.tf_computation`, as part
         of the initialization of a larger state object.
       next_fn: A function matching the signature of `__call__`, see below.
     """
@@ -119,8 +119,8 @@ class StatefulAggregateFn(StatefulFn):
     The aggregation is optionally parameterized by `weight@CLIENTS`.
 
     This is a function intended to (only) be invoked in the context
-    of a `tff.federated_computation`. It shold be compatible with the
-    TFF type signature
+    of a `tff.federated_computation`. It should be compatible with the
+    TFF type signature.
 
     ```
     (state@SERVER, value@CLIENTS, weight@CLIENTS) ->

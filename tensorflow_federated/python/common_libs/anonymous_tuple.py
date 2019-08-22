@@ -37,7 +37,7 @@ class AnonymousTuple(object):
   instance, which incurs unnecessary overhead. Anonymous tuples are thus
   related to `collections.namedtuples` much in the same way anonymous lambdas
   are related to named functions explicitly declared with `def`. One of the
-  intended uses of annoymous tuples is to represent structured parameters in
+  intended uses of anonymous tuples is to represent structured parameters in
   computations defined as Python functions or TF defuns.
 
   Example:

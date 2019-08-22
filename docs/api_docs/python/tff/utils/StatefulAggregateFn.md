@@ -50,8 +50,9 @@ Creates the StatefulFn.
     <a href="../../tff/Value.md"><code>tff.Value</code></a>, placed on the
     <a href="../../tff.md#SERVER"><code>tff.SERVER</code></a>, and passed as the
     first argument of `__call__`. This may be called in vanilla TensorFlow code,
-    typically wrapped as a `tff.tf_compuatation`, as part of the initialization
-    of a larger state object.
+    typically wrapped as a
+    <a href="../../tff/tf_computation.md"><code>tff.tf_computation</code></a>,
+    as part of the initialization of a larger state object.
 *   <b>`next_fn`</b>: A function matching the signature of `__call__`, see
     below.
 
@@ -76,7 +77,7 @@ The aggregation is optionally parameterized by `weight@CLIENTS`.
 
 This is a function intended to (only) be invoked in the context of a
 <a href="../../tff/federated_computation.md"><code>tff.federated_computation</code></a>.
-It shold be compatible with the TFF type signature
+It should be compatible with the TFF type signature.
 
 ```
 (state@SERVER, value@CLIENTS, weight@CLIENTS) ->
