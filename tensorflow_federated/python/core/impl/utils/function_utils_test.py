@@ -65,7 +65,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     ))
     self.assertEqual(
         function_utils.get_argspec(fn),
-        inspect.ArgSpec(
+        function_utils.SimpleArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
   def test_get_defun_argspec_with_untyped_non_eager_defun(self):
@@ -74,7 +74,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     fn = tf.function(lambda x, y, *z: None)
     self.assertEqual(
         function_utils.get_argspec(fn),
-        inspect.ArgSpec(
+        function_utils.SimpleArgSpec(
             args=['x', 'y'], varargs='z', keywords=None, defaults=None))
 
   # pyformat: disable
@@ -103,53 +103,79 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
           [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
   # pyformat: enable
   def test_get_callargs_for_argspec(self, fn, args, kwargs):
-    argspec = inspect.getargspec(fn)  # pylint: disable=deprecated-method
+    argspec = function_utils.get_argspec(fn)
     expected_error = None
     try:
-      expected_callargs = inspect.getcallargs(fn, *args, **kwargs)  # pylint: disable=deprecated-method
+      if six.PY2:
+        expected_callargs = inspect.getcallargs(fn, *args, **kwargs)  # pylint: disable=deprecated-method
+      else:
+        signature = inspect.signature(fn)
+        bound_arguments = signature.bind(*args, **kwargs)
+        bound_arguments.apply_defaults()
+        expected_callargs = bound_arguments.arguments
     except TypeError as e:
       expected_error = e
       expected_callargs = None
-    try:
-      if expected_error is None:
+
+    result_callargs = None
+    if expected_error is None:
+      try:
         result_callargs = function_utils.get_callargs_for_argspec(
             argspec, *args, **kwargs)
         self.assertEqual(result_callargs, expected_callargs)
-      else:
-        with self.assertRaises(TypeError):
-          result_callargs = function_utils.get_callargs_for_argspec(
-              argspec, *args, **kwargs)
-    except (TypeError, AssertionError) as test_err:
-      raise AssertionError(
-          'With argspec {}, args {}, kwargs {}, expected callargs {} and '
-          'error {}, tested function returned {} and the test has failed '
-          'with message: {}'.format(
-              str(argspec), str(args), str(kwargs), str(expected_callargs),
-              str(expected_error), str(result_callargs), str(test_err)))
+      except (TypeError, AssertionError) as test_err:
+        raise AssertionError(
+            'With argspec {!s}, args {!s}, kwargs {!s}, expected callargs {!s} '
+            'and error {!s}, tested function returned {!s} and the test has '
+            'failed with message: {!s}'.format(argspec, args, kwargs,
+                                               expected_callargs,
+                                               expected_error, result_callargs,
+                                               test_err))
+    else:
+      with self.assertRaises(TypeError):
+        result_callargs = function_utils.get_callargs_for_argspec(
+            argspec, *args, **kwargs)
 
   # pyformat: disable
   # pylint: disable=g-complex-comprehension
   @parameterized.parameters(
-      (inspect.getargspec(params[0]),) + params[1:]  # pylint: disable=deprecated-method
+      (function_utils.get_argspec(params[0]),) + params[1:]
       for params in [
-          (lambda a: None, [tf.int32], {}, True),
-          (lambda a=True: None, [tf.int32], {}, False),
-          (lambda a, b=True: None, [tf.int32, tf.bool], {}, True),
-          (lambda a, b=True: None, [tf.int32], {'b': tf.bool}, True),
-          (lambda a, b=True: None, [tf.bool], {'b': tf.bool}, True),
-          (lambda a=10, b=True: None, [tf.int32], {'b': tf.bool}, True),
-          (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}, False)]
+          (lambda a: None, [tf.int32], {}),
+          (lambda a, b=True: None, [tf.int32, tf.bool], {}),
+          (lambda a, b=True: None, [tf.int32], {'b': tf.bool}),
+          (lambda a, b=True: None, [tf.bool], {'b': tf.bool}),
+          (lambda a=10, b=True: None, [tf.int32], {'b': tf.bool}),
+      ]
   )
   # pylint: enable=g-complex-comprehension
   # pyformat: enable
-  def test_is_argspec_compatible_with_types(self, argspec, args, kwargs,
-                                            expected_result):
-    self.assertEqual(
+  def test_is_argspec_compatible_with_types_true(self, argspec, args, kwargs):
+    self.assertTrue(
         function_utils.is_argspec_compatible_with_types(
             argspec, *[computation_types.to_type(a) for a in args], **{
                 k: computation_types.to_type(v)
                 for k, v in six.iteritems(kwargs)
-            }), expected_result)
+            }))
+
+  # pyformat: disable
+  # pylint: disable=g-complex-comprehension
+  @parameterized.parameters(
+      (function_utils.get_argspec(params[0]),) + params[1:]
+      for params in [
+          (lambda a=True: None, [tf.int32], {}),
+          (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}),
+      ]
+  )
+  # pylint: enable=g-complex-comprehension
+  # pyformat: enable
+  def test_is_argspec_compatible_with_types_false(self, argspec, args, kwargs):
+    self.assertFalse(
+        function_utils.is_argspec_compatible_with_types(
+            argspec, *[computation_types.to_type(a) for a in args], **{
+                k: computation_types.to_type(v)
+                for k, v in six.iteritems(kwargs)
+            }))
 
   # pyformat: disable
   @parameterized.parameters(
