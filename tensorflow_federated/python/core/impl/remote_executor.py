@@ -240,9 +240,14 @@ class RemoteExecutor(executor_base.Executor):
     else:
       py_typecheck.check_type(name, str)
       result_type = getattr(source.type_signature, name)
-    response = self._stub.CreateSelection(
-        executor_pb2.CreateSelectionRequest(
-            source_ref=source.value_ref, name=name, index=index))
+    request = executor_pb2.CreateSelectionRequest(
+        source_ref=source.value_ref, name=name, index=index)
+    if not self._bidi_stream:
+      response = self._stub.CreateSelection(request)
+    else:
+      response = (await self._bidi_stream.send_request(
+          executor_pb2.ExecuteRequest(create_selection=request)
+      )).create_selection
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
 

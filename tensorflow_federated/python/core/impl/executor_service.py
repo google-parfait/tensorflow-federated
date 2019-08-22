@@ -80,6 +80,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       elif which == 'create_tuple':
         yield executor_pb2.ExecuteResponse(
             create_tuple=self.CreateTuple(v.create_tuple, context))
+      elif which == 'create_selection':
+        yield executor_pb2.ExecuteResponse(
+            create_selection=self.CreateSelection(v.create_selection, context))
       elif which == 'compute':
         yield executor_pb2.ExecuteResponse(
             compute=self.Compute(v.compute, context))

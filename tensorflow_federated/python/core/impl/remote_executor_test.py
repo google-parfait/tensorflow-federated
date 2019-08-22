@@ -92,24 +92,31 @@ class RemoteExecutorTest(absltest.TestCase):
 
   def test_with_selection(self):
     with test_context() as context:
+      self._test_with_selection(context)
 
-      @computations.tf_computation(tf.int32)
-      def foo(x):
-        return collections.OrderedDict([('A', x + 10), ('B', x + 20)])
+  def test_with_selection_streaming(self):
+    with test_context(rpc_mode='STREAMING') as context:
+      self._test_with_selection(context)
 
-      @computations.tf_computation(tf.int32, tf.int32)
-      def bar(x, y):
-        return x + y
+  def _test_with_selection(self, context):
 
-      @computations.federated_computation(tf.int32)
-      def baz(x):
-        return bar(foo(x).A, foo(x).B)
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+      return collections.OrderedDict([('A', x + 10), ('B', x + 20)])
 
-      self.assertEqual(baz(100), 230)
+    @computations.tf_computation(tf.int32, tf.int32)
+    def bar(x, y):
+      return x + y
 
-      # Make sure exactly two selections happened.
-      self.assertLen(
-          [x for x in context.tracer.trace if x[0] == 'create_selection'], 2)
+    @computations.federated_computation(tf.int32)
+    def baz(x):
+      return bar(foo(x).A, foo(x).B)
+
+    self.assertEqual(baz(100), 230)
+
+    # Make sure exactly two selections happened.
+    self.assertLen(
+        [x for x in context.tracer.trace if x[0] == 'create_selection'], 2)
 
   def test_with_mnist_training_example(self):
     with test_context() as context:
