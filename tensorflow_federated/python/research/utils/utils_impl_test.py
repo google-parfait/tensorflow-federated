@@ -14,10 +14,12 @@
 # limitations under the License.
 """Tests for utils."""
 
+import collections
 import os
 
 from absl import flags
 from absl.testing import absltest
+import mock
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -82,6 +84,27 @@ class UtilsTest(tf.test.TestCase):
       flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
 
     self.assertCountEqual(hparam_flags, ['exp_name', 'random_seed'])
+
+  @mock.patch.object(utils, 'multiprocessing')
+  def test_launch_experiment(self, mock_multiprocessing):
+    pool = mock_multiprocessing.Pool(processes=10)
+
+    grid_dict = [
+        collections.OrderedDict([('a_long', 1), ('b', 4.0)]),
+        collections.OrderedDict([('a_long', 1), ('b', 5.0)])
+    ]
+
+    utils.launch_experiment(
+        'run_exp.py', grid_dict, '/tmp_dir', short_names={'a_long': 'a'})
+    expected = [
+        'python run_exp.py --a_long=1 --b=4.0 --root_output_dir=/tmp_dir '
+        '--exp_name=0-a=1,b=4.0',
+        'python run_exp.py --a_long=1 --b=5.0 --root_output_dir=/tmp_dir '
+        '--exp_name=1-a=1,b=5.0'
+    ]
+    result = pool.apply_async.call_args_list
+    result = [args[0][1][0] for args in result]
+    self.assertCountEqual(result, expected)
 
 
 if __name__ == '__main__':

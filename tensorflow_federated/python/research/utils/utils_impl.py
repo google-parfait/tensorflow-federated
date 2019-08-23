@@ -16,9 +16,12 @@
 
 import collections
 import contextlib
+import functools
 import itertools
+import multiprocessing
 import os
 import shutil
+import subprocess
 import tempfile
 
 from typing import Any, Mapping, Text
@@ -185,3 +188,95 @@ def record_new_flags():
   new_flags = []
   yield new_flags
   new_flags.extend([f for f in flags.FLAGS if f not in old_flags])
+
+
+def hparams_to_str(wid, param_dict, short_names=None):
+  """Convenience method which flattens the hparams to a string.
+
+  Used as mapping function for the WorkUnitCustomiser.
+
+  Args:
+    wid: Work unit id, int type.
+    param_dict: A dict of parameters.
+    short_names: A dict of mappings of parameter names.
+
+  Returns:
+    The hparam string.
+  """
+  if not param_dict:
+    return str(wid)
+
+  if not short_names:
+    short_names = {}
+
+  name = [
+      '{}={}'.format(short_names.get(k, k), str(v))
+      for k, v in sorted(param_dict.items())
+  ]
+  hparams_str = '{}-{}'.format(str(wid), ','.join(name))
+
+  # Escape some special characters
+  replace_str = {
+      '\n': ',',
+      ':': '=',
+      '\'': '',
+      '"': '',
+  }
+  for c, new_c in replace_str.items():
+    hparams_str = hparams_str.replace(c, new_c)
+  for c in ('\\', '/', '[', ']', '(', ')', '{', '}', '%'):
+    hparams_str = hparams_str.replace(c, '-')
+  if len(hparams_str) > 170:
+    raise ValueError(
+        'hparams_str string is too long ({}). You can input a short_name dict '
+        'to map the long parameter name to a short name. For example, '
+        ' launch_experiment(executable, grid_iter, '
+        ' {{server_learning_rate: s_lr}}) \n'
+        'Received: {}'.format(len(hparams_str), hparams_str))
+  return hparams_str
+
+
+def launch_experiment(executable,
+                      grid_iter,
+                      root_output_dir='/tmp/exp',
+                      short_names=None,
+                      max_workers=1):
+  """Launch experiments of grid search in parallel or sequentially.
+
+  Example usage:
+  ```python
+  grid_iter = iter_grid({'a': [1, 2], 'b': [4.0, 5.0]))
+  launch_experiment('run_exp.py', grid_iter)
+  ```
+
+  Args:
+    executable: An executable python file which takes flags --root_output_dir
+      and --exp_name, e.g., `research/emnist/run_experiment.py`.
+    grid_iter: A sequence of dictionaries with keys from grid, and values
+      corresponding to all combinations of items in the corresponding iterables.
+    root_output_dir: The directory where all outputs are stored.
+    short_names: Short name mapping for the parameter name used if parameter
+      string length is too long.
+    max_workers: The max number of commands to run in parallel.
+  """
+  command_list = []
+  for idx, param_dict in enumerate(grid_iter):
+    param_list = [
+        '--{}={}'.format(key, str(value))
+        for key, value in sorted(param_dict.items())
+    ]
+
+    short_names = short_names or {}
+    param_str = hparams_to_str(idx, param_dict, short_names)
+
+    param_list.append('--root_output_dir={}'.format(root_output_dir))
+    param_list.append('--exp_name={}'.format(param_str))
+    command = 'python {} {}'.format(executable, ' '.join(param_list))
+    command_list.append(command)
+
+  pool = multiprocessing.Pool(processes=max_workers)
+  executor = functools.partial(subprocess.call, shell=True)
+  for command in command_list:
+    pool.apply_async(executor, (command,))
+  pool.close()
+  pool.join()
