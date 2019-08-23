@@ -326,28 +326,31 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(nt.b[::-1], rev_nt.b)
 
   def testMapStructureOverPlaceholders(self):
-    inp_a = (tf.placeholder(tf.float32, shape=[3, 4]),
-             tf.placeholder(tf.float32, shape=[3, 7]))
-    inp_b = (tf.placeholder(tf.float32, shape=[3, 4]),
-             tf.placeholder(tf.float32, shape=[3, 7]))
+    # We must drop into a graph context to avoid eager mode. Placeholders
+    # and feed_dicts do not work with eager mode.
+    with tf.Graph().as_default() as g:
+      inp_a = (tf.compat.v1.placeholder(tf.float32, shape=[3, 4]),
+               tf.compat.v1.placeholder(tf.float32, shape=[3, 7]))
+      inp_b = (tf.compat.v1.placeholder(tf.float32, shape=[3, 4]),
+               tf.compat.v1.placeholder(tf.float32, shape=[3, 7]))
 
-    output = nest.map_structure(lambda x1, x2: x1 + x2, inp_a, inp_b)
+      output = nest.map_structure(lambda x1, x2: x1 + x2, inp_a, inp_b)
 
-    nest.assert_same_structure(output, inp_a)
-    self.assertShapeEqual(np.zeros((3, 4)), output[0])
-    self.assertShapeEqual(np.zeros((3, 7)), output[1])
+      nest.assert_same_structure(output, inp_a)
+      self.assertShapeEqual(np.zeros((3, 4)), output[0])
+      self.assertShapeEqual(np.zeros((3, 7)), output[1])
 
-    feed_dict = {
-        inp_a: (np.random.randn(3, 4), np.random.randn(3, 7)),
-        inp_b: (np.random.randn(3, 4), np.random.randn(3, 7))
-    }
+      feed_dict = {
+          inp_a: (np.random.randn(3, 4), np.random.randn(3, 7)),
+          inp_b: (np.random.randn(3, 4), np.random.randn(3, 7))
+      }
 
-    with self.cached_session() as sess:
-      output_np = sess.run(output, feed_dict=feed_dict)
-    self.assertAllClose(output_np[0],
-                        feed_dict[inp_a][0] + feed_dict[inp_b][0])
-    self.assertAllClose(output_np[1],
-                        feed_dict[inp_a][1] + feed_dict[inp_b][1])
+      with self.session(graph=g) as sess:
+        output_np = sess.run(output, feed_dict=feed_dict)
+      self.assertAllClose(output_np[0],
+                          feed_dict[inp_a][0] + feed_dict[inp_b][0])
+      self.assertAllClose(output_np[1],
+                          feed_dict[inp_a][1] + feed_dict[inp_b][1])
 
   def testAssertShallowStructure(self):
     inp_ab = ["a", "b"]
