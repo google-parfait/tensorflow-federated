@@ -14,10 +14,6 @@
 # limitations under the License.
 """TFF training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import logging
 import time
 
@@ -66,9 +62,8 @@ def federated_averaging_training_loop(model_fn,
         server_state, federated_train_data)
 
     train_metrics = train_metrics._asdict(recursive=True)
-    logging.info(
-        'Round {:2d}, {:2f}s per round in average.'.format(
-            round_num, (time.time() - start_time) / (round_num + 1)))
+    logging.info('Round {:2d}, {:.2f}s per round in average.'.format(
+        round_num, (time.time() - start_time) / (round_num + 1)))
 
   metrics_hook(server_state, train_metrics, total_rounds)
 

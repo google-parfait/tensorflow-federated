@@ -220,9 +220,8 @@ def run_experiment():
 
   example_dataset = emnist_train.create_tf_dataset_for_client(
       emnist_train.client_ids[0])
-  sample_batch = tf.nest.map_structure(
-      lambda x: x.numpy(),
-      iter(example_dataset).next())
+  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
+                                       next(iter(example_dataset)))
 
   def model_fn():
     keras_model = create_compiled_keras_model()

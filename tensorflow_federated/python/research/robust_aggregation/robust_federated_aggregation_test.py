@@ -22,6 +22,7 @@ import collections
 
 import numpy as np
 from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
@@ -69,7 +70,7 @@ def get_model_fn():
 
   sample_dataset = setup_toy_data()[0]
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       iter(sample_dataset).next())
+                                       next(iter(sample_dataset)))
 
   def model_fn():
     keras_model = create_compiled_keras_model()
@@ -196,7 +197,7 @@ def get_mean(dataset):
 def get_means_and_weights(federated_train_data):
   """Return mean of each client's dataset and weight for each client."""
   outs = [get_mean(ds) for ds in federated_train_data]
-  means, counts = zip(*outs)
+  means, counts = list(zip(*outs))
   weights = np.asarray(counts, dtype=np.float32) / sum(counts)
   means = np.array(means, dtype=np.float32)
   return means, weights

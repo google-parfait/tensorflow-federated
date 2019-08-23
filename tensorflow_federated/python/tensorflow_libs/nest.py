@@ -36,6 +36,7 @@ from __future__ import print_function
 import collections
 
 import six as _six
+from six.moves import zip
 import tensorflow as tf
 
 
@@ -207,7 +208,7 @@ def _sequence_like(instance, args):
     # instances. This is intentional, to avoid potential bugs caused by mixing
     # ordered and plain dicts (e.g., flattening a dict but using a
     # corresponding `OrderedDict` to pack it back).
-    result = dict(zip(_sorted(instance), args))
+    result = dict(list(zip(_sorted(instance), args)))
     instance_type = type(instance)
     if instance_type == collections.defaultdict:
       d = collections.defaultdict(instance.default_factory)

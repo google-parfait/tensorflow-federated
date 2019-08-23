@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
+from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
