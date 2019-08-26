@@ -17,27 +17,6 @@ py_library(
 )
 
 py_library(
-    name = "tf_computation_utils",
-    srcs = ["tf_computation_utils.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-    ],
-)
-
-py_test(
-    name = "tf_computation_utils_test",
-    size = "small",
-    srcs = ["tf_computation_utils_test.py"],
-    deps = [
-        ":tf_computation_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:test",
-    ],
-)
-
-py_library(
     name = "computation_utils",
     srcs = ["computation_utils.py"],
     deps = [
@@ -96,5 +75,37 @@ py_test(
     deps = [
         ":federated_aggregations",
         "//tensorflow_federated/python/core/api",
+    ],
+)
+
+py_library(
+    name = "test",
+    srcs = ["test.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/impl:set_default_executor",
+    ],
+)
+
+py_library(
+    name = "tf_computation_utils",
+    srcs = ["tf_computation_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "tf_computation_utils_test",
+    size = "small",
+    srcs = ["tf_computation_utils_test.py"],
+    deps = [
+        ":tf_computation_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:test",
     ],
 )

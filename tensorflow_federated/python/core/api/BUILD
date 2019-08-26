@@ -59,10 +59,12 @@ py_test(
     name = "computations_test",
     size = "small",
     srcs = ["computations_test.py"],
+    python_version = "PY3",
     deps = [
         ":api",
-        ":computations",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/utils:test",
     ],
 )
 
