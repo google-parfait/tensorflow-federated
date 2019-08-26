@@ -51,7 +51,7 @@ def get_temperature_sensor_example():
 
   @computations.tf_computation(server_state_type)
   def prepare(state):
-    return {'max_temperature': 32.0 + tf.cast(state.num_rounds, tf. float32)}
+    return {'max_temperature': 32.0 + tf.cast(state.num_rounds, tf.float32)}
 
   # The initial state of the client is a singleton tuple containing a single
   # float `max_temperature`, which is the threshold received from the server.
@@ -63,11 +63,23 @@ def get_temperature_sensor_example():
 
   @computations.tf_computation(client_data_type, client_state_type)
   def work(data, state):
-    reduce_result = data.reduce(
-        {'num': np.int32(0), 'max': np.float32(-459.67)},
-        lambda s, x: {'num': s['num'] + 1, 'max': tf.maximum(s['max'], x)})
-    return ({'is_over': reduce_result['max'] > state.max_temperature},
-            {'num_readings': reduce_result['num']})
+    """See the `canonical_form.CanonicalForm` definition of `work`."""
+
+    def fn(s, x):
+      return {
+          'num': s['num'] + 1,
+          'max': tf.maximum(s['max'], x),
+      }
+
+    reduce_result = data.reduce({
+        'num': np.int32(0),
+        'max': np.float32(-459.67)
+    }, fn)
+    return ({
+        'is_over': reduce_result['max'] > state.max_temperature
+    }, {
+        'num_readings': reduce_result['num']
+    })
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
   client_update_type = computation_types.NamedTupleType([('is_over', tf.bool)])
@@ -80,27 +92,29 @@ def get_temperature_sensor_example():
 
   @computations.tf_computation
   def zero():
-    return collections.OrderedDict([
-        ('num_total', tf.constant(0)), ('num_over', tf.constant(0))])
+    return collections.OrderedDict([('num_total', tf.constant(0)),
+                                    ('num_over', tf.constant(0))])
 
   @computations.tf_computation(accumulator_type, client_update_type)
   def accumulate(accumulator, update):
     return collections.OrderedDict([
         ('num_total', accumulator.num_total + 1),
-        ('num_over',
-         accumulator.num_over + tf.cast(update.is_over, tf.int32))])
+        ('num_over', accumulator.num_over + tf.cast(update.is_over, tf.int32))
+    ])
 
   @computations.tf_computation(accumulator_type, accumulator_type)
   def merge(accumulator1, accumulator2):
     return collections.OrderedDict([
         ('num_total', accumulator1.num_total + accumulator2.num_total),
-        ('num_over', accumulator1.num_over + accumulator2.num_over)])
+        ('num_over', accumulator1.num_over + accumulator2.num_over)
+    ])
 
   @computations.tf_computation(merge.type_signature.result)
   def report(accumulator):
-    return {'ratio_over_threshold': (
-        tf.cast(accumulator['num_over'], tf.float32) /
-        tf.cast(accumulator['num_total'], tf.float32))}
+    return {
+        'ratio_over_threshold': (tf.cast(accumulator['num_over'], tf.float32) /
+                                 tf.cast(accumulator['num_total'], tf.float32))
+    }
 
   # The type of the combined update is a singleton tuple containing a float
   # named `ratio_over_threshold`.
@@ -123,8 +137,7 @@ def get_mnist_training_example():
     An instance of `canonical_form.CanonicalForm`.
   """
   model_nt = collections.namedtuple('Model', 'weights bias')
-  server_state_nt = (
-      collections.namedtuple('ServerState', 'model num_rounds'))
+  server_state_nt = (collections.namedtuple('ServerState', 'model num_rounds'))
 
   # Start with a model filled with zeros, and the round counter set to zero.
   @computations.tf_computation
@@ -177,8 +190,9 @@ def get_mnist_training_example():
     def reduce_fn(loop_state, batch):
       pred_y = tf.nn.softmax(
           tf.matmul(batch.x, model_vars.weights) + model_vars.bias)
-      loss = -tf.reduce_mean(tf.reduce_sum(
-          tf.one_hot(batch.y, 10) * tf.log(pred_y), reduction_indices=[1]))
+      loss = -tf.reduce_mean(
+          tf.reduce_sum(
+              tf.one_hot(batch.y, 10) * tf.log(pred_y), reduction_indices=[1]))
       with tf.control_dependencies([optimizer.minimize(loss)]):
         return loop_state_nt(
             num_examples=loop_state.num_examples + 1,
@@ -186,8 +200,7 @@ def get_mnist_training_example():
 
     with tf.control_dependencies([init_model]):
       loop_state = data.reduce(
-          loop_state_nt(num_examples=0, total_loss=np.float32(0.0)),
-          reduce_fn)
+          loop_state_nt(num_examples=0, total_loss=np.float32(0.0)), reduce_fn)
       num_examples = loop_state.num_examples
       total_loss = loop_state.total_loss
       with tf.control_dependencies([num_examples, total_loss]):
@@ -215,8 +228,8 @@ def get_mnist_training_example():
   @computations.tf_computation(accumulator_tff_type, update_tff_type)
   def accumulate(accumulator, update):
     scaling_factor = tf.cast(update.num_examples, tf.float32)
-    scaled_model = tf.nest.map_structure(
-        lambda x: x * scaling_factor, update.model)
+    scaled_model = tf.nest.map_structure(lambda x: x * scaling_factor,
+                                         update.model)
     return accumulator_nt(
         model=tf.nest.map_structure(tf.add, accumulator.model, scaled_model),
         num_examples=accumulator.num_examples + update.num_examples,
@@ -226,8 +239,8 @@ def get_mnist_training_example():
   @computations.tf_computation(accumulator_tff_type, accumulator_tff_type)
   def merge(accumulator1, accumulator2):
     return accumulator_nt(
-        model=tf.nest.map_structure(
-            tf.add, accumulator1.model, accumulator2.model),
+        model=tf.nest.map_structure(tf.add, accumulator1.model,
+                                    accumulator2.model),
         num_examples=accumulator1.num_examples + accumulator2.num_examples,
         loss=accumulator1.loss + accumulator2.loss)
 
@@ -254,12 +267,11 @@ def get_mnist_training_example():
   @computations.tf_computation(server_state_tff_type, report_tff_type)
   def update(state, report):
     num_rounds = state.num_rounds + 1
-    return (
-        server_state_nt(model=report.model, num_rounds=num_rounds),
-        metrics_nt(
-            num_rounds=num_rounds,
-            num_examples=report.num_examples,
-            loss=report.loss))
+    return (server_state_nt(model=report.model, num_rounds=num_rounds),
+            metrics_nt(
+                num_rounds=num_rounds,
+                num_examples=report.num_examples,
+                loss=report.loss))
 
   return canonical_form.CanonicalForm(initialize, prepare, work, zero,
                                       accumulate, merge, report, update)

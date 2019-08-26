@@ -35,7 +35,6 @@ from tensorflow_federated.python.research.utils import training_loops
 
 nest = tf.contrib.framework.nest
 
-
 with utils.record_new_flags() as hparam_flags:
   # Metadata
   flags.DEFINE_string(

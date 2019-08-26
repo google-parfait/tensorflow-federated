@@ -52,8 +52,8 @@ class ValueImpl(value_base.Value):
     """Constructs a value of the given type.
 
     Args:
-      comp: An instance of building_blocks.ComputationBuildingBlock
-        that contains the logic that computes this value.
+      comp: An instance of building_blocks.ComputationBuildingBlock that
+        contains the logic that computes this value.
       context_stack: The context stack to use.
     """
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)

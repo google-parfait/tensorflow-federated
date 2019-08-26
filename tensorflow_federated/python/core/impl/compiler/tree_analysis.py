@@ -84,8 +84,8 @@ def check_intrinsics_whitelisted_for_reduction(comp):
   """Checks whitelist of intrinsics reducible to aggregate or broadcast.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` to
-      check for presence of intrinsics not currently immediately reducible to
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to check for
+      presence of intrinsics not currently immediately reducible to
       `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
 
   Raises:
@@ -135,13 +135,13 @@ def extract_nodes_consuming(tree, predicate):
   predicate is in this set.
 
   Args:
-    tree: Instance of `building_blocks.ComputationBuildingBlock` to
-      view as an abstract syntax tree, and construct the set of nodes in this
-      tree having a dependency on nodes matching `predicate`; that is, the set
-      of nodes whose value depends on evaluating nodes matching `predicate`.
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to view as an
+      abstract syntax tree, and construct the set of nodes in this tree having a
+      dependency on nodes matching `predicate`; that is, the set of nodes whose
+      value depends on evaluating nodes matching `predicate`.
     predicate: One-arg callable, accepting arguments of type
-      `building_blocks.ComputationBuildingBlock` and returning a
-      `bool` indicating match or mismatch with the desired pattern.
+      `building_blocks.ComputationBuildingBlock` and returning a `bool`
+      indicating match or mismatch with the desired pattern.
 
   Returns:
     A `set` of `building_blocks.ComputationBuildingBlock` instances
@@ -203,9 +203,8 @@ def check_broadcast_not_dependent_on_aggregate(tree):
 
 
   Args:
-    tree: Instance of `building_blocks.ComputationBuildingBlock` to
-      check for the presence of a broadcast which ingests the result of an
-      aggregate.
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to check for
+      the presence of a broadcast which ingests the result of an aggregate.
 
   Raises:
     ValueError: If a broadcast in `tree` consumes the result of an aggregate.
@@ -249,8 +248,8 @@ def count_tensorflow_ops_under(comp):
   artifacts generated.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock`
-      whose TF ops we wish to count.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose TF ops we
+      wish to count.
 
   Returns:
     `integer` count of number of TF ops present in any
@@ -281,8 +280,8 @@ def count_tensorflow_variables_under(comp):
   artifacts generated.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock`
-      whose TF variables we wish to count.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose TF
+      variables we wish to count.
 
   Returns:
     `integer` count of number of TF variables present in any

@@ -47,8 +47,8 @@ def _apply_transforms(comp, transforms):
   considered extensively in order to avoid such subtle issues.
 
   Args:
-    comp: An instance of `building_blocks.ComputationBuildingBlock`
-      to transform with all elements of `transforms`.
+    comp: An instance of `building_blocks.ComputationBuildingBlock` to transform
+      with all elements of `transforms`.
     transforms: An instance of `transformation_utils.TransformSpec` or iterable
       thereof, the transformations to apply to `comp`.
 
@@ -86,8 +86,8 @@ def remove_lambdas_and_blocks(comp):
   final pass.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock`
-      from which we want to remove called lambdas and blocks.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
+      want to remove called lambdas and blocks.
 
   Returns:
     A transformed version of `comp` which has no called lambdas or blocks, and
@@ -113,10 +113,10 @@ def remove_lambdas_and_blocks(comp):
     no function exposed which hoists out the internal logic.
 
     Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock`
-        we wish to check for inlining and collapsing of selections.
-      symbol_tree: Instance of `building_blocks.SymbolTree` defining
-        the bindings available to `comp`.
+      comp: Instance of `building_blocks.ComputationBuildingBlock` we wish to
+        check for inlining and collapsing of selections.
+      symbol_tree: Instance of `building_blocks.SymbolTree` defining the
+        bindings available to `comp`.
 
     Returns:
       A transformed version of `comp`.
@@ -1299,8 +1299,8 @@ class TFParser(object):
     it is safe to return early.
 
     Args:
-      comp: The `building_blocks.ComputationBuildingBlock` to check
-        for possibility of reduction according to the parsing library.
+      comp: The `building_blocks.ComputationBuildingBlock` to check for
+        possibility of reduction according to the parsing library.
 
     Returns:
       A tuple whose first element is a possibly transformed version of `comp`,
@@ -1348,12 +1348,11 @@ def insert_called_tf_identity_at_leaves(comp):
   parameter validation on `comp`.
 
   Args:
-    comp: Instance of `building_blocks.Lambda` whose AST we will
-      traverse, replacing appropriate instances of
-      `building_blocks.Reference` with graphs representing the
-      identity function of the appropriate type called on the same reference.
-      `comp` must declare a parameter and result type which are both able to be
-      stamped in to a TensorFlow graph.
+    comp: Instance of `building_blocks.Lambda` whose AST we will traverse,
+      replacing appropriate instances of `building_blocks.Reference` with graphs
+      representing the identity function of the appropriate type called on the
+      same reference. `comp` must declare a parameter and result type which are
+      both able to be stamped in to a TensorFlow graph.
 
   Returns:
     A possibly modified  version of `comp`, where any references now have a
@@ -1500,8 +1499,8 @@ def unwrap_placement(comp):
     of this federated unbound reference.
 
     Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock`
-        with at most a single unbound reference.
+      comp: Instance of `building_blocks.ComputationBuildingBlock` with at most
+        a single unbound reference.
       unbound_variable_name: The name of the lone unbound variable present under
         `comp`.
 
@@ -1565,8 +1564,8 @@ def unwrap_placement(comp):
     signatures as arguments to their constructors.
 
     Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock`
-        from which we wish to remove placement.
+      comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
+        wish to remove placement.
 
     Returns:
       A transformed version of comp with its placements removed.

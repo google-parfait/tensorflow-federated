@@ -77,8 +77,8 @@ def replace_all_intrinsics_with_bodies(comp, context_stack):
   """Iterates over all intrinsic bodies, inlining the intrinsics in `comp`.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` in
-      which we wish to replace all intrinsics with their bodies.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
+      wish to replace all intrinsics with their bodies.
     context_stack: Instance of `context_stack_base.ContextStack`, the context
       stack to use for the bodies of the intrinsics.
 

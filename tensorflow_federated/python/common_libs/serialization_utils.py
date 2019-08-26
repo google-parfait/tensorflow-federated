@@ -23,7 +23,6 @@ import tensorflow as tf
 from google.protobuf import any_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 
-
 # The default seed below matches the seed in
 # `tensorflow/python/framework/random_seed.py`; this is an unexported symbol, so
 # replicating here. If this seed is broken, likely something major has changed

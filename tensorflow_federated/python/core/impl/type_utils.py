@@ -787,7 +787,9 @@ def is_sum_compatible(type_spec):
     return False
 
 
-def check_federated_type(type_spec, member=None, placement=None,
+def check_federated_type(type_spec,
+                         member=None,
+                         placement=None,
                          all_equal=None):
   """Checks that `type_spec` is a federated type with the given parameters.
 

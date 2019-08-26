@@ -455,15 +455,13 @@ def create_federated_setattr_call(federated_comp, name, value_comp):
   previously undefined name.
 
   Args:
-    federated_comp: Instance of
-      `building_blocks.ComputationBuildingBlock` of type
-      `computation_types.FederatedType`, with member of type
+    federated_comp: Instance of `building_blocks.ComputationBuildingBlock` of
+      type `computation_types.FederatedType`, with member of type
       `computation_types.NamedTupleType` whose attribute `name` we wish to set
       to `value_comp`.
     name: String name of the attribute we wish to overwrite in `federated_comp`.
-    value_comp: Instance of
-      `building_blocks.ComputationBuildingBlock`, the value to
-      assign to `federated_comp`'s `member`'s `name` attribute.
+    value_comp: Instance of `building_blocks.ComputationBuildingBlock`, the
+      value to assign to `federated_comp`'s `member`'s `name` attribute.
 
   Returns:
     Instance of `building_blocks.ComputationBuildingBlock`
@@ -496,14 +494,13 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
 
   Args:
     named_tuple_signature: Instance of `computation_types.NamedTupleType`, the
-      type of the argument to the constructed
-      `building_blocks.Lambda`.
+      type of the argument to the constructed `building_blocks.Lambda`.
     name: String name of the attribute in the `named_tuple_signature` to replace
       with `value_comp`. Must be present as a name in `named_tuple_signature;
       otherwise we will raise an `AttributeError`.
-    value_comp: Instance of
-      `building_blocks.ComputationBuildingBlock`, the value to place
-      as attribute `name` in the argument of the returned function.
+    value_comp: Instance of `building_blocks.ComputationBuildingBlock`, the
+      value to place as attribute `name` in the argument of the returned
+      function.
 
   Returns:
     An instance of `building_blocks.Block` of functional type
@@ -590,9 +587,9 @@ def create_federated_getitem_comp(comp, key):
   of type `computation_types.NamedTupleType`.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock`
-      with type signature `computation_types.FederatedType` whose `member`
-      attribute is of type `computation_types.NamedTupleType`.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` with type
+      signature `computation_types.FederatedType` whose `member` attribute is of
+      type `computation_types.NamedTupleType`.
     key: Instance of `int` or `slice`, key used to grab elements from the member
       of `comp`. implementation of slicing for `ValueImpl` objects with
       `type_signature` `computation_types.NamedTupleType`.
@@ -636,11 +633,11 @@ def create_computation_appending(comp1, comp2):
                                      Ref(comps)    Ref(comps)
 
   Args:
-    comp1: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_type.NamedTupleType`.
-    comp2: A `building_blocks.ComputationBuildingBlock` or a named
-      computation (a tuple pair of name, computation) representing a single
-      element of an `anonymous_tuple.AnonymousTuple`.
+    comp1: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_type.NamedTupleType`.
+    comp2: A `building_blocks.ComputationBuildingBlock` or a named computation
+      (a tuple pair of name, computation) representing a single element of an
+      `anonymous_tuple.AnonymousTuple`.
 
   Returns:
     A `building_blocks.Block`.
@@ -784,8 +781,7 @@ def create_federated_collect(value):
   Intrinsic      Comp
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as
-      the value.
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
 
   Returns:
     A `building_blocks.Call`.
@@ -814,10 +810,8 @@ def create_federated_map(fn, arg):
                  [Comp, Comp]
 
   Args:
-    fn: A `building_blocks.ComputationBuildingBlock` to use as the
-      function.
-    arg: A `building_blocks.ComputationBuildingBlock` to use as the
-      argument.
+    fn: A `building_blocks.ComputationBuildingBlock` to use as the function.
+    arg: A `building_blocks.ComputationBuildingBlock` to use as the argument.
 
   Returns:
     A `building_blocks.Call`.
@@ -885,10 +879,8 @@ def create_federated_map_or_apply(fn, arg):
                  [Comp, Comp]
 
   Args:
-    fn: A `building_blocks.ComputationBuildingBlock` to use as the
-      function.
-    arg: A `building_blocks.ComputationBuildingBlock` to use as the
-      argument.
+    fn: A `building_blocks.ComputationBuildingBlock` to use as the function.
+    arg: A `building_blocks.ComputationBuildingBlock` to use as the argument.
 
   Returns:
     A `building_blocks.Call`.
@@ -920,10 +912,9 @@ def create_federated_mean(value, weight):
                  [Comp, Comp]
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as
-      the value.
-    weight: A `building_blocks.ComputationBuildingBlock` to use as
-      the weight or `None`.
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    weight: A `building_blocks.ComputationBuildingBlock` to use as the weight or
+      `None`.
 
   Returns:
     A `building_blocks.Call`.
@@ -962,12 +953,10 @@ def create_federated_reduce(value, zero, op):
                  [Comp, Comp, Comp]
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as
-      the value.
-    zero: A `building_blocks.ComputationBuildingBlock` to use as the
-      initial value.
-    op: A `building_blocks.ComputationBuildingBlock` to use as the
-      op function.
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    zero: A `building_blocks.ComputationBuildingBlock` to use as the initial
+      value.
+    op: A `building_blocks.ComputationBuildingBlock` to use as the op function.
 
   Returns:
     A `building_blocks.Call`.
@@ -999,8 +988,7 @@ def create_federated_sum(value):
   Intrinsic      Comp
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as
-      the value.
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
 
   Returns:
     A `building_blocks.Call`.
@@ -1039,9 +1027,9 @@ def create_federated_unzip(value):
   federated tuple type signature.
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_types.NamedTupleType` containing at
-      least one element.
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` containing at least one
+      element.
 
   Returns:
     A `building_blocks.Block`.
@@ -1077,8 +1065,7 @@ def create_federated_value(value, placement):
   Intrinsic      Comp
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as
-      the value.
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
     placement: A `placement_literals.PlacementLiteral` to use as the placement.
 
   Returns:
@@ -1115,9 +1102,9 @@ def create_federated_zip(value):
   federated values type signature.
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_types.NamedTupleType` containing at
-      least one element.
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` containing at least one
+      element.
 
   Returns:
     A `building_blocks.Call`.
@@ -1251,9 +1238,9 @@ def _create_chain_zipped_values(value):
   think of named tuple types in TFF as more like `struct`s.
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_types.NamedTupleType` containing at
-      least two elements.
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` containing at least two
+      elements.
 
   Returns:
     A `building_blocks.Call`.
@@ -1298,9 +1285,9 @@ def create_zip_two_values(value):
   is sent back to the caller.
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_types.NamedTupleType` containing
-      exactly two elements.
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` containing exactly two
+      elements.
 
   Returns:
     A `building_blocks.Call`.
@@ -1363,9 +1350,9 @@ def _create_fn_to_append_chain_zipped_values(value):
   in a single call to federated map or federated apply.
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_types.NamedTupleType` containing at
-      least two elements.
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` containing at least two
+      elements.
 
   Returns:
     A `building_blocks.Call`.
@@ -1412,10 +1399,8 @@ def create_sequence_map(fn, arg):
                  [Comp, Comp]
 
   Args:
-    fn: A `building_blocks.ComputationBuildingBlock` to use as the
-      function.
-    arg: A `building_blocks.ComputationBuildingBlock` to use as the
-      argument.
+    fn: A `building_blocks.ComputationBuildingBlock` to use as the function.
+    arg: A `building_blocks.ComputationBuildingBlock` to use as the argument.
 
   Returns:
     A `building_blocks.Call`.
@@ -1477,8 +1462,7 @@ def create_sequence_sum(value):
   Intrinsic      Comp
 
   Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as
-      the value.
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
 
   Returns:
     A `building_blocks.Call`.
@@ -1542,10 +1526,10 @@ def create_named_federated_tuple(tuple_to_name, names_to_add):
   through any function which drops its names.
 
   Args:
-    tuple_to_name: Instance of
-      `building_blocks.ComputationBuildingBlock` of type
-      `computation_types.FederatedType` with `computation_types.NamedTupleType`
-      member, to populate with names from `names_to_add`.
+    tuple_to_name: Instance of `building_blocks.ComputationBuildingBlock` of
+      type `computation_types.FederatedType` with
+      `computation_types.NamedTupleType` member, to populate with names from
+      `names_to_add`.
     names_to_add: Python `tuple` or `list` containing instances of type `str` or
       `None`, the names to give to `tuple_to_name`.
 
@@ -1578,8 +1562,8 @@ def create_named_tuple(comp, names):
   """Creates a computation that applies `names` to `comp`.
 
   Args:
-    comp: A `building_blocks.ComputationBuildingBlock` with a
-      `type_signature` of type `computation_types.NamedTupleType`.
+    comp: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType`.
     names: Python `tuple` or `list` containing instances of type `str` or
       `None`, the names to apply to `comp`.
 
@@ -1765,9 +1749,9 @@ def apply_binary_operator_with_upcast(arg, operator):
   pointwise.
 
   Args:
-    arg: `building_blocks.ComputationBuildingBlock` of federated
-      type whose `member` attribute is a named tuple type of length 2, or named
-      tuple type of length 2.
+    arg: `building_blocks.ComputationBuildingBlock` of federated type whose
+      `member` attribute is a named tuple type of length 2, or named tuple type
+      of length 2.
     operator: Callable representing binary operator to apply to the 2-tuple
       represented by the federated `arg`.
 

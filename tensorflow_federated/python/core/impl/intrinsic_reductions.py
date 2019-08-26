@@ -38,8 +38,8 @@ def replace_intrinsics_with_bodies(comp):
   function is ordered from more complex intrinsic to less complex intrinsics.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` in
-      which we wish to replace all intrinsics with their bodies.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
+      wish to replace all intrinsics with their bodies.
 
   Returns:
     An instance of `building_blocks.ComputationBuildingBlock` with

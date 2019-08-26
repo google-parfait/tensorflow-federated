@@ -63,9 +63,9 @@ def select_graph_output(comp, name=None, index=None):
 
 
   Args:
-    comp: Instance of `building_blocks.CompiledComputation` which
-      must have result type `computation_types.NamedTupleType`, the function
-      from which to select `output`.
+    comp: Instance of `building_blocks.CompiledComputation` which must have
+      result type `computation_types.NamedTupleType`, the function from which to
+      select `output`.
     name: Instance of `str`, the name of the field to select from the output of
       `comp`. Optional, but one of `name` or `index` must be specified.
     index: Instance of `index`, the index of the field to select from the output
@@ -155,8 +155,8 @@ def permute_graph_inputs(comp, input_permutation):
   permute_graph_inputs(Graph, [...])      Comp
 
   Args:
-    comp: Instance of `building_blocks.CompiledComputation` whose
-      parameter bindings we wish to permute.
+    comp: Instance of `building_blocks.CompiledComputation` whose parameter
+      bindings we wish to permute.
     input_permutation: The permutation we wish to apply to the parameter
       bindings of `comp` in 0-indexed one-line permutation notation. This can be
       a Python `list` or `tuple` of `int`s.
@@ -239,8 +239,8 @@ def bind_graph_parameter_as_tuple(comp, name=None):
   binding.
 
   Args:
-    comp: Instance of `building_blocks.CompiledComputation` whose
-      parameter we wish to wrap in a tuple binding.
+    comp: Instance of `building_blocks.CompiledComputation` whose parameter we
+      wish to wrap in a tuple binding.
     name: Optional string argument, the name to assign to the element type in
       the constructed tuple. Defaults to `None`.
 
@@ -290,8 +290,8 @@ def bind_graph_result_as_tuple(comp, name=None):
   of this function.
 
   Args:
-    comp: Instance of `building_blocks.CompiledComputation` whose
-      parameter we wish to wrap in a tuple binding.
+    comp: Instance of `building_blocks.CompiledComputation` whose parameter we
+      wish to wrap in a tuple binding.
     name: Optional string argument, the name to assign to the element type in
       the constructed tuple. Defaults to `None`.
 
@@ -366,9 +366,8 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   to pad only compatible `CompiledComputation`s to a given type signature.
 
   Args:
-    comp: Instance of `building_blocks.CompiledComputation`
-      representing the graph whose inputs we want to pad to match
-      `type_signature`.
+    comp: Instance of `building_blocks.CompiledComputation` representing the
+      graph whose inputs we want to pad to match `type_signature`.
     type_signature: Instance of `computation_types.NamedTupleType` representing
       the type signature we wish to pad `comp` to accept as a parameter.
 
@@ -615,8 +614,8 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
 
   Args:
     tf_comp_list: Python `list` or `tuple` of
-      `building_blocks.CompiledComputation`s, whose inputs and
-      outputs we wish to concatenate.
+      `building_blocks.CompiledComputation`s, whose inputs and outputs we wish
+      to concatenate.
     output_name_list: A list list or tuple of names to give to the result types
       in the concatenated TF computations. The elements of this list or tuple
       must be either string types or None
@@ -698,14 +697,14 @@ def compose_tensorflow_blocks(tf_comps):
 
   Args:
     tf_comps: List or tuple of instances of
-      `building_blocks.CompiledComputation` representing the
-      functions we wish to compose. Notice that these must obey a certain
-      invariant; the result type of computation k in this list must be identical
-      to the parameter type of computation k-1. Notice also that the order of
-      this list is quite important, as composition is completely noncommutative.
-      This function represents the standard mathematical convention for
-      composition; IE, compose(f1, f2) represents the function which first calls
-      f2 on its argument, then f1 on the result of this call.
+      `building_blocks.CompiledComputation` representing the functions we wish
+      to compose. Notice that these must obey a certain invariant; the result
+      type of computation k in this list must be identical to the parameter type
+      of computation k-1. Notice also that the order of this list is quite
+      important, as composition is completely noncommutative. This function
+      represents the standard mathematical convention for composition; IE,
+      compose(f1, f2) represents the function which first calls f2 on its
+      argument, then f1 on the result of this call.
 
   Returns:
     Instance of `building_blocks.CompiledComputation` representing
@@ -1080,8 +1079,8 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
   a parameter of type `tuple_type`.
 
   Args:
-    graph: Instance of `building_blocks.CompiledComputation` whose
-      parameter type we are trying to match with `tuple_type` if possible.
+    graph: Instance of `building_blocks.CompiledComputation` whose parameter
+      type we are trying to match with `tuple_type` if possible.
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
     tuple_type: Instance of `computation_types.NamedTupleType` as described

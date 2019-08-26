@@ -320,8 +320,8 @@ def run_tensorflow(comp, arg):
   """Runs a compiled TensorFlow computation `comp` with argument `arg`.
 
   Args:
-    comp: An instance of `building_blocks.CompiledComputation` with
-      embedded TensorFlow code.
+    comp: An instance of `building_blocks.CompiledComputation` with embedded
+      TensorFlow code.
     arg: An instance of `ComputedValue` that represents the argument, or `None`
       if the compuation expects no argument.
 
@@ -735,8 +735,7 @@ class ReferenceExecutor(context_base.Context):
     """Computes `comp` and returns the resulting computed value.
 
     Args:
-      comp: An instance of
-        `building_blocks.ComputationBuildingBlock`.
+      comp: An instance of `building_blocks.ComputationBuildingBlock`.
       context: An instance of `ComputationContext`.
 
     Returns:

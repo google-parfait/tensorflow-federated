@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl import executor_value_base
 
-
 _STREAM_CLOSE_WAIT_SECONDS = 10
 
 
@@ -161,8 +160,8 @@ class RemoteExecutor(executor_base.Executor):
         'REQUEST_REPLY' or 'STREAMING' (defaults to 'REQUEST_REPLY'). This
         option will be removed after the request-reply interface is deprecated.
       thread_pool_executor: Optional concurrent.futures.Executor used to wait
-        for the reply to a streaming RPC message. Uses the default Executor
-        if not specified.
+        for the reply to a streaming RPC message. Uses the default Executor if
+        not specified.
     """
     py_typecheck.check_type(channel, grpc.Channel)
     py_typecheck.check_type(rpc_mode, str)

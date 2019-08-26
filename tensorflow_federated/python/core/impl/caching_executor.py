@@ -181,8 +181,8 @@ class CachingExecutor(executor_base.Executor):
 
     Args:
       target_executor: An instance of `executor_base.Executor`.
-      cache: The cache to use (must be an instance of `cachetools.Cache`).
-        If unspecified, by default we construct a 1000-element LRU cache.
+      cache: The cache to use (must be an instance of `cachetools.Cache`). If
+        unspecified, by default we construct a 1000-element LRU cache.
     """
     py_typecheck.check_type(target_executor, executor_base.Executor)
     if cache is not None:

@@ -167,8 +167,8 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   bindings.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` to
-      read information from or transform.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to read
+      information from or transform.
     transform: Python function accepting `comp` and `symbol_tree` arguments and
       returning `transformed_comp`.
     symbol_tree: Instance of `SymbolTree`, the data structure into which we may
@@ -449,9 +449,9 @@ class SymbolTree(object):
 
     Args:
       comp_id: Integer representing a unique key for the
-        `building_blocks.ComputationBuildingBlock` which is defines
-        this scope. Used to differentiate between scopes which both branch from
-        the same point in the tree.
+        `building_blocks.ComputationBuildingBlock` which is defines this scope.
+        Used to differentiate between scopes which both branch from the same
+        point in the tree.
     """
     py_typecheck.check_type(comp_id, int)
     if self.active_node.children.get(comp_id) is None:
@@ -496,9 +496,8 @@ class SymbolTree(object):
     Args:
       name: The string name of the `CompTracker` instance we are constructing or
         updating.
-      value: Instance of `building_blocks.ComputationBuildingBlock`
-        or `None`, as in the `value` to pass to symbol tree's node payload
-        constructor.
+      value: Instance of `building_blocks.ComputationBuildingBlock` or `None`,
+        as in the `value` to pass to symbol tree's node payload constructor.
 
     Raises:
       ValueError: If we are passed a name-mode pair such that a
@@ -915,8 +914,8 @@ class ReferenceCounter(BoundVariableTracker):
     name: The string name representing the variable whose binding is represented
       by an instance of `ReferenceCounter`.
     value: The value bound to `name`. Can be an instance of
-      `building_blocks.ComputationBuildingBlock` or None if this
-      binding is simply a placeholder, e.g. in a Lambda.
+      `building_blocks.ComputationBuildingBlock` or None if this binding is
+      simply a placeholder, e.g. in a Lambda.
     count: An integer tracking how many times the variable an instance of
       `ReferenceCounter` represents is referenced in a TFF AST.
   """
@@ -950,9 +949,9 @@ def get_count_of_references_to_variables(comp):
   """Returns `SymbolTree` counting references to each bound variable in `comp`.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock`
-      representing the root of the AST for which we want to read total reference
-      counts by context.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` representing
+      the root of the AST for which we want to read total reference counts by
+      context.
 
   Returns:
     An instance of `SymbolTree` representing root of context tree

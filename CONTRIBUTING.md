@@ -83,6 +83,6 @@ information on using pull requests.
 
 ### TFF-Learning-specific Guidelines
 
-* While not a requirement, in our examples we use the conventions that
-  metrics and counters associated with a `tff.learning.Model` are named using
-  `lower_with_under` style, as with Python identifiers.
+*   While not a requirement, in our examples we use the conventions that metrics
+    and counters associated with a `tff.learning.Model` are named using
+    `lower_with_under` style, as with Python identifiers.

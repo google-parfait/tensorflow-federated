@@ -86,9 +86,8 @@ def atomic_write_to_csv(dataframe, output_file, overwrite=True):
   # Now, copy to a temp gfile next to the final target, allowing for
   # an atomic move.
   tmp_gfile_name = os.path.join(
-      os.path.dirname(output_file),
-      '{}.tmp{}'.format(os.path.basename(output_file),
-                        np.random.randint(0, 2**63)))
+      os.path.dirname(output_file), '{}.tmp{}'.format(
+          os.path.basename(output_file), np.random.randint(0, 2**63)))
   assert not tf.io.gfile.exists(tmp_gfile_name)
   tf.io.gfile.copy(src=tmp_name, dst=tmp_gfile_name)
 
@@ -113,9 +112,9 @@ def define_optimizer_flags(prefix: str, defaults: Mapping[Text, Any] = None):
   Args:
     prefix: A string (possibly empty) indicating which optimizer is being
       configured.
-    defaults: A dictionary from flag names (without prefix) to
-      default values, e.g., `dict(learning_rate=0.0`)` regardless
-      of prefix (see the flag names above).
+    defaults: A dictionary from flag names (without prefix) to default values,
+      e.g., `dict(learning_rate=0.0`)` regardless of prefix (see the flag names
+      above).
   """
 
   # Note: An alternative design is to use a single flag for each optimizer,
@@ -144,8 +143,8 @@ def define_optimizer_flags(prefix: str, defaults: Mapping[Text, Any] = None):
       'Learning rate for {}'.format(opt_name))
 
   if defaults:  # Not empty.
-    raise ValueError('The following defaults were not consumed:\n{}'.format(
-        defaults))
+    raise ValueError(
+        'The following defaults were not consumed:\n{}'.format(defaults))
 
 
 def get_optimizer_from_flags(prefix: str) -> tf.keras.optimizers.Optimizer:
