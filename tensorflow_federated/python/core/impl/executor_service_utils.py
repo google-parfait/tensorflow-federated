@@ -24,8 +24,10 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def serialize_tensor_value(value, type_spec=None):
@@ -114,6 +116,67 @@ def deserialize_tensor_value(value_proto):
   return tensor_value, value_type
 
 
+def serialize_sequence_value(value):
+  """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
+
+  Args:
+    value: A `tf.data.Dataset`.
+
+  Returns:
+    A tuple `(value_proto, type_spec)` in which `value_proto` is an instance
+    of `executor_pb2.Value` with the serialized content of `value`, and
+    `type_spec` is the type of the serialized value.
+  """
+  py_typecheck.check_type(value, tf.data.Dataset)
+  # TFF must store the type spec here because TF will lose the ordering of the
+  # names for `tf.data.Dataset` that return elements of `collections.Mapping`
+  # type. This allows TFF to preserve and restore the key ordering upon
+  # deserialization.
+  element_type = computation_types.to_type(
+      tf.data.experimental.get_structure(value))
+  return executor_pb2.Value(
+      sequence=executor_pb2.Value.Sequence(
+          zipped_saved_model=tensorflow_serialization.serialize_dataset(value),
+          element_type=type_serialization.serialize_type(element_type)))
+
+
+def deserialize_sequence_value(sequence_value_proto):
+  """Deserializes a `tf.data.Dataset`.
+
+  Args:
+    sequence_value_proto: `Sequence` protocol buffer message.
+
+  Returns:
+    A tuple of `(tf.data.Dataset, tff.Type)`.
+  """
+  py_typecheck.check_type(sequence_value_proto, executor_pb2.Value.Sequence)
+
+  which_value = sequence_value_proto.WhichOneof('value')
+  if which_value == 'zipped_saved_model':
+    ds = tensorflow_serialization.deserialize_dataset(
+        sequence_value_proto.zipped_saved_model)
+  else:
+    raise NotImplementedError(
+        'Deserializing Sequences enocded as {!s} has not been implemented'
+        .format(which_value))
+
+  element_type = type_serialization.deserialize_type(
+      sequence_value_proto.element_type)
+
+  # If a serialized dataset had elements of nested structes of tensors (e.g.
+  # `dict`, `OrderedDict`), the deserialized dataset will return `dict`,
+  # `tuple`, or `namedtuple` (loses `collections.OrderedDict` in a conversion).
+  #
+  # Since the dataset will only be used inside TFF, we wrap the dictionary
+  # coming from TF in an `OrderedDict` when necessary (a type that both TF and
+  # TFF understand), using the field order stored in the TFF type stored during
+  # serialization.
+  ds = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+      ds, element_type)
+
+  return ds, computation_types.SequenceType(element=element_type)
+
+
 def serialize_value(value, type_spec=None):
   """Serializes a value into `executor_pb2.Value`.
 
@@ -155,6 +218,22 @@ def serialize_value(value, type_spec=None):
     result_proto = (
         executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
     return result_proto, type_spec
+  elif isinstance(type_spec, computation_types.SequenceType):
+    if not isinstance(value, tf.data.Dataset):
+      raise TypeError(
+          'Cannot serialize Python type {!s} as TFF type {!s}.'.format(
+              py_typecheck.type_string(type(value)),
+              type_spec if type_spec is not None else 'unknown'))
+
+    value_type = computation_types.SequenceType(
+        computation_types.to_type(tf.data.experimental.get_structure(value)))
+    if not type_utils.is_assignable_from(type_spec, value_type):
+      raise TypeError(
+          'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'
+          .format(value_type,
+                  type_spec if type_spec is not None else 'unknown'))
+
+    return serialize_sequence_value(value), type_spec
   else:
     raise ValueError(
         'Unable to serialize value with Python type {} and {} TFF type.'.format(
@@ -195,6 +274,8 @@ def deserialize_value(value_proto):
       type_elems.append((name, e_type) if name else e_type)
     return (anonymous_tuple.AnonymousTuple(val_elems),
             computation_types.NamedTupleType(type_elems))
+  elif which_value == 'sequence':
+    return deserialize_sequence_value(value_proto.sequence)
   else:
     raise ValueError(
         'Unable to deserialize a value of type {}.'.format(which_value))

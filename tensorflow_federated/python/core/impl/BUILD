@@ -392,12 +392,14 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
+        ":tensorflow_serialization",
         ":type_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "@com_google_protobuf//:protobuf_python",
     ],
 )

@@ -133,6 +133,23 @@ message Value {
     }
   }
 
+  // A representation of a sequence value.
+  // This message holds its type annotation because the underlying serialization
+  // provided by TensorFlow does not preserve the ordering of keys for sequences
+  // of `NamedTupleType`.
+  message Sequence {
+    // The serialized representation of this sequence.
+    oneof value {
+      // The bytes of a zip file over the files produced by a
+      // `tf.saved_model.save()` operation, intended to be used with a
+      // corresponding `tf.saved_model.load()` op.
+      bytes zipped_saved_model = 1;
+    }
+    // The TensorFlow Federated `Type` of the elements in this
+    // sequence.
+    tensorflow_federated.v0.Type element_type = 2;
+  }
+
   oneof value {
     // A serialized tensor content as an instance of `tensorflow.TensorProto`,
     // as defined in `tensorflow/core/framework/tensor.proto`.
@@ -145,6 +162,9 @@ message Value {
 
     // A tuple of values.
     Tuple tuple = 3;
+
+    // A sequence of values.
+    Sequence sequence = 4;
   }
 }
 

@@ -976,6 +976,53 @@ class GraphUtilsTest(test.TestCase):
         'foo(^abc),bar(foo,^abc),baz(foo,bar,^abc),'
         'bak(bar,^abc),abc(def:0),def(^ghi),ghi()')
 
+  def test_coerce_dataset_elements_noop(self):
+    x = tf.data.Dataset.range(5)
+    y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+        x, computation_types.TensorType(tf.int64))
+    self.assertEqual(
+        tf.data.experimental.get_structure(x),
+        tf.data.experimental.get_structure(y))
+
+  def test_coerce_dataset_elements_nested_structure(self):
+    test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
+
+    def _make_nested_tf_structure(x):
+      return {
+          'b':
+              tf.cast(x, tf.int32),
+          'a':
+              tuple([
+                  x,
+                  test_tuple_type(x * 2, x * 3),
+                  collections.OrderedDict([('x', x**2), ('y', x**3)])
+              ]),
+          'c':
+              tf.cast(x, tf.float32),
+      }
+
+    x = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
+
+    element_type = computation_types.NamedTupleType([
+        ('a',
+         computation_types.NamedTupleType([
+             (None, tf.int64),
+             (None, test_tuple_type(tf.int64, tf.int64)),
+             (None,
+              computation_types.NamedTupleType([('x', tf.int64),
+                                                ('y', tf.int64)])),
+         ])),
+        ('b', tf.int32),
+        ('c', tf.float32),
+    ])
+
+    y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+        x, element_type)
+
+    self.assertEqual(
+        computation_types.to_type(tf.data.experimental.get_structure(y)),
+        element_type)
+
 
 if __name__ == '__main__':
   test.main()
