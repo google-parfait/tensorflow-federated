@@ -19,12 +19,19 @@ import os
 
 from absl import flags
 from absl.testing import absltest
-import mock
 import numpy as np
 import pandas as pd
+import six
 import tensorflow as tf
 
 from tensorflow_federated.python.research.utils import utils_impl as utils
+
+# pylint: disable=g-import-not-at-top
+if six.PY2:
+  import mock
+else:
+  from unittest import mock
+# pylint: enable=g-import-not-at-top
 
 FLAGS = flags.FLAGS
 
