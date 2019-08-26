@@ -77,7 +77,7 @@ REQUIRED_PACKAGES = [
     'tf-nightly==1.15.0.dev20190805',
     'grpcio~=1.22.0',
     'portpicker',
-    'tensorflow-model-optimization~=0.1.2',
+    'tensorflow-model-optimization~=0.1.3',
 ]
 
 setuptools.setup(

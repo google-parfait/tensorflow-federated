@@ -69,6 +69,6 @@ RUN ${PIP} --no-cache-dir install \
     pandas~=0.24.0 \
     portpicker \
     six~=1.10 \
-    tensorflow-model-optimization~=0.1.2 \
+    tensorflow-model-optimization~=0.1.3 \
     tf-nightly==1.15.0.dev20190805
 RUN pip freeze
