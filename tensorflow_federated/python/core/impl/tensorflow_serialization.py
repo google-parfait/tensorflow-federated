@@ -372,7 +372,7 @@ def serialize_dataset(
     fd, temp_zip = tempfile.mkstemp('zip')
     os.close(fd)
     with zipfile.ZipFile(temp_zip, 'w') as z:
-      for topdir, _, filenames in tf.gfile.Walk(temp_dir):
+      for topdir, _, filenames in tf.io.gfile.walk(temp_dir):
         dest_dir = topdir[len(temp_dir):]
         for filename in filenames:
           z.write(
@@ -386,8 +386,8 @@ def serialize_dataset(
                            'Inner error: {!s}'.format(e)),
         sys.exc_info()[2])
   finally:
-    tf.gfile.DeleteRecursively(temp_dir)
-    tf.gfile.Remove(temp_zip)
+    tf.io.gfile.rmtree(temp_dir)
+    tf.io.gfile.remove(temp_zip)
 
   if len(zip_bytes) > max_serialized_size_bytes:
     raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
@@ -430,6 +430,6 @@ def deserialize_dataset(serialized_bytes):
                            'Inner error: {!s}'.format(e)),
         sys.exc_info()[2])
   finally:
-    tf.gfile.DeleteRecursively(temp_dir)
-    tf.gfile.Remove(temp_zip)
+    tf.io.gfile.rmtree(temp_dir)
+    tf.io.gfile.remove(temp_zip)
   return ds

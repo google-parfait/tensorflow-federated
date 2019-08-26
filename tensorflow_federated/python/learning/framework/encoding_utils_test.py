@@ -152,7 +152,8 @@ class PlusOneOverNEncodingStage(te.core.AdaptiveEncodingStageInterface):
   def get_params(self, state):
     """See base class."""
     params = {
-        self.ADD_PARAM_KEY: 1 / tf.to_float(state[self.ITERATION_STATE_KEY])
+        self.ADD_PARAM_KEY:
+            1 / tf.cast(state[self.ITERATION_STATE_KEY], tf.float32)
     }
     return params, params
 
