@@ -277,10 +277,17 @@ class CanonicalForm(object):
         are represented by TFF does not match what this code is expecting (this
         is an internal error that requires code update).
     """
-    for comp in [
-        initialize, prepare, work, zero, accumulate, merge, report, update
+    for label, comp in [
+        ('initialize', initialize),
+        ('prepare', prepare),
+        ('work', work),
+        ('zero', zero),
+        ('accumulate', accumulate),
+        ('merge', merge),
+        ('report', report),
+        ('update', update),
     ]:
-      py_typecheck.check_type(comp, tff.Computation)
+      py_typecheck.check_type(comp, tff.Computation, label)
 
       # TODO(b/130633916): Remove private access once an appropriate API for it
       # becomes available.
