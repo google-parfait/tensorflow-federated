@@ -30,12 +30,12 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import federated_executor
-from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 def _make_test_executor(num_clients=1, use_lambda_executor=False):
@@ -58,9 +58,9 @@ class FederatedExecutorTest(parameterized.TestCase):
         ex.create_value(
             intrinsic_defs.FEDERATED_APPLY,
             computation_types.FunctionType([
-                type_constructors.unary_op(tf.int32),
-                type_constructors.at_server(tf.int32)
-            ], type_constructors.at_server(tf.int32))))
+                type_factory.unary_op(tf.int32),
+                type_factory.at_server(tf.int32)
+            ], type_factory.at_server(tf.int32))))
     self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
     self.assertEqual(
         str(val.type_signature),
@@ -100,7 +100,7 @@ class FederatedExecutorTest(parameterized.TestCase):
     loop = asyncio.get_event_loop()
     ex = _make_test_executor()
     val = loop.run_until_complete(
-        ex.create_value(10, type_constructors.at_server(tf.int32)))
+        ex.create_value(10, type_factory.at_server(tf.int32)))
     self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@SERVER')
     self.assertIsInstance(val.internal_representation, list)
@@ -114,7 +114,7 @@ class FederatedExecutorTest(parameterized.TestCase):
     loop = asyncio.get_event_loop()
     ex = _make_test_executor(3)
     val = loop.run_until_complete(
-        ex.create_value([10, 20, 30], type_constructors.at_clients(tf.int32)))
+        ex.create_value([10, 20, 30], type_factory.at_clients(tf.int32)))
     self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
     self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
@@ -129,8 +129,7 @@ class FederatedExecutorTest(parameterized.TestCase):
     loop = asyncio.get_event_loop()
     ex = _make_test_executor(3)
     val = loop.run_until_complete(
-        ex.create_value(10,
-                        type_constructors.at_clients(tf.int32, all_equal=True)))
+        ex.create_value(10, type_factory.at_clients(tf.int32, all_equal=True)))
     self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
@@ -391,15 +390,15 @@ class FederatedExecutorTest(parameterized.TestCase):
 
     v1 = loop.run_until_complete(
         ex.create_value([1.0, 2.0, 3.0, 4.0],
-                        type_constructors.at_clients(tf.float32)))
+                        type_factory.at_clients(tf.float32)))
     self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
 
     v2 = loop.run_until_complete(
         ex.create_value(
             intrinsic_defs.FEDERATED_MEAN,
             computation_types.FunctionType(
-                type_constructors.at_clients(tf.float32),
-                type_constructors.at_server(tf.float32))))
+                type_factory.at_clients(tf.float32),
+                type_factory.at_server(tf.float32))))
     self.assertEqual(
         str(v2.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
 
@@ -415,12 +414,12 @@ class FederatedExecutorTest(parameterized.TestCase):
 
     v1 = loop.run_until_complete(
         ex.create_value([1.0, 2.0, 3.0, 4.0],
-                        type_constructors.at_clients(tf.float32)))
+                        type_factory.at_clients(tf.float32)))
     self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
 
     v2 = loop.run_until_complete(
         ex.create_value([5.0, 10.0, 3.0, 2.0],
-                        type_constructors.at_clients(tf.float32)))
+                        type_factory.at_clients(tf.float32)))
     self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
 
     v3 = loop.run_until_complete(
@@ -433,9 +432,9 @@ class FederatedExecutorTest(parameterized.TestCase):
         ex.create_value(
             intrinsic_defs.FEDERATED_WEIGHTED_MEAN,
             computation_types.FunctionType([
-                type_constructors.at_clients(tf.float32),
-                type_constructors.at_clients(tf.float32)
-            ], type_constructors.at_server(tf.float32))))
+                type_factory.at_clients(tf.float32),
+                type_factory.at_clients(tf.float32)
+            ], type_factory.at_server(tf.float32))))
     self.assertEqual(
         str(v4.type_signature),
         '(<{float32}@CLIENTS,{float32}@CLIENTS> -> float32@SERVER)')
@@ -459,7 +458,7 @@ class FederatedExecutorTest(parameterized.TestCase):
     loop = asyncio.get_event_loop()
     ex = _make_test_executor(num_clients=4)
     v = loop.run_until_complete(
-        ex.create_value(val, type_constructors.at_clients(tf.int32)))
+        ex.create_value(val, type_factory.at_clients(tf.int32)))
     self.assertEqual(str(v.type_signature), '{int32}@CLIENTS')
     result = tf.nest.map_structure(lambda x: x.numpy(),
                                    loop.run_until_complete(v.compute()))

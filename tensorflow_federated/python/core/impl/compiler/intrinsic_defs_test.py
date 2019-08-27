@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for intrinsic_defs.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,8 +20,8 @@ from __future__ import print_function
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 
 
 def _get_intrinsic_names():
@@ -34,7 +33,8 @@ def _get_intrinsic_names():
 
 class IntrinsicDefsTest(parameterized.TestCase):
 
-  @parameterized.parameters(*[(name,) for name in _get_intrinsic_names()])
+  @parameterized.named_parameters(
+      *[(name.lower(), name) for name in _get_intrinsic_names()])
   def test_names_match_those_in_module(self, name):
     self.assertEqual(getattr(intrinsic_defs, name).name, name)
 
@@ -45,17 +45,20 @@ class IntrinsicDefsTest(parameterized.TestCase):
       self.assertNotIn(uri, uris_found)
       uris_found.add(uri)
 
-  @parameterized.parameters(*[(name,) for name in _get_intrinsic_names()])
+  @parameterized.named_parameters(
+      *[(name.lower(), name) for name in _get_intrinsic_names()])
   def test_types_are_well_formed(self, name):
     type_utils.check_well_formed(getattr(intrinsic_defs, name).type_signature)
 
-  @parameterized.parameters(
-      ('FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
-      ('FEDERATED_MAP', '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
-      ('FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
-      ('FEDERATED_ZIP_AT_CLIENTS',
+  @parameterized.named_parameters(
+      ('federated_broadcast', 'FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
+      ('federated_map', 'FEDERATED_MAP',
+       '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
+      ('federated_sum', 'FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
+      ('federated_zip_at_clients', 'FEDERATED_ZIP_AT_CLIENTS',
        '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),
-      ('FEDERATED_ZIP_AT_SERVER', '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'))
+      ('federated_zip_at_server', 'FEDERATED_ZIP_AT_SERVER',
+       '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'))
   def test_type_signature_strings(self, name, type_str):
     self.assertEqual(
         str(getattr(intrinsic_defs, name).type_signature), type_str)

@@ -24,13 +24,13 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class IntrinsicFactory(object):
@@ -80,10 +80,10 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(op, value_base.Value)
       py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
 
-    accumulate_type_expected = type_constructors.reduction_op(
+    accumulate_type_expected = type_factory.reduction_op(
         zero.type_signature, value.type_signature.member)
-    merge_type_expected = type_constructors.reduction_op(
-        zero.type_signature, zero.type_signature)
+    merge_type_expected = type_factory.reduction_op(zero.type_signature,
+                                                    zero.type_signature)
     report_type_expected = computation_types.FunctionType(
         zero.type_signature, report.type_signature.result)
     for op_name, op, type_expected in [
@@ -365,8 +365,8 @@ class IntrinsicFactory(object):
     op = value_impl.to_value(op, None, self._context_stack)
     py_typecheck.check_type(op, value_base.Value)
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
-    op_type_expected = type_constructors.reduction_op(
-        zero.type_signature, value.type_signature.member)
+    op_type_expected = type_factory.reduction_op(zero.type_signature,
+                                                 value.type_signature.member)
     if not type_utils.is_assignable_from(op_type_expected, op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           op_type_expected, op.type_signature))
@@ -534,8 +534,8 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(value.type_signature.member,
                               computation_types.SequenceType)
       element_type = value.type_signature.member.element
-    op_type_expected = type_constructors.reduction_op(zero.type_signature,
-                                                      element_type)
+    op_type_expected = type_factory.reduction_op(zero.type_signature,
+                                                 element_type)
     if not type_utils.is_assignable_from(op_type_expected, op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           op_type_expected, op.type_signature))

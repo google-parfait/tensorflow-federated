@@ -34,8 +34,21 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.utils import dtype_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
+
+
+TENSOR_REPRESENTATION_TYPES = (
+    # Python native types
+    str,
+    int,
+    float,
+    bool,
+    bytes,
+
+    # Numpy data types
+    np.generic,
+    np.ndarray,
+)
 
 
 class UniqueNameFn(object):
@@ -422,7 +435,7 @@ def capture_result_from_graph(result, graph):
   # TODO(b/113112885): The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
-  if isinstance(result, dtype_utils.TENSOR_REPRESENTATION_TYPES):
+  if isinstance(result, TENSOR_REPRESENTATION_TYPES):
     with graph.as_default():
       result = tf.constant(result)
   if tf.is_tensor(result):

@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import intrinsic_defs
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl import transformations
@@ -34,6 +33,7 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 

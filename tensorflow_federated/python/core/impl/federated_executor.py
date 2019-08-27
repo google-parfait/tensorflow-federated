@@ -25,12 +25,12 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
-from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import placement_literals
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class FederatedExecutorValue(executor_value_base.ExecutorValue):
@@ -485,8 +485,7 @@ class FederatedExecutor(executor_base.Executor):
         await asyncio.gather(*[
             c.create_value(val, arg.type_signature.member)
             for c in self._target_executors[placement_literals.CLIENTS]
-        ]),
-        type_constructors.at_clients(arg.type_signature.member, all_equal=True))
+        ]), type_factory.at_clients(arg.type_signature.member, all_equal=True))
 
   async def _compute_intrinsic_federated_zip_at_server(self, arg):
     return await self._zip(arg, placement_literals.SERVER, all_equal=True)
@@ -510,7 +509,7 @@ class FederatedExecutor(executor_base.Executor):
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     type_utils.check_equivalent_types(
-        op_type, type_constructors.reduction_op(zero_type, item_type))
+        op_type, type_factory.reduction_op(zero_type, item_type))
 
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
@@ -552,10 +551,10 @@ class FederatedExecutor(executor_base.Executor):
     zero_type = arg.type_signature[1]
     accumulate_type = arg.type_signature[2]
     type_utils.check_equivalent_types(
-        accumulate_type, type_constructors.reduction_op(zero_type, item_type))
+        accumulate_type, type_factory.reduction_op(zero_type, item_type))
     merge_type = arg.type_signature[3]
     type_utils.check_equivalent_types(merge_type,
-                                      type_constructors.binary_op(zero_type))
+                                      type_factory.binary_op(zero_type))
     report_type = arg.type_signature[4]
     py_typecheck.check_type(report_type, computation_types.FunctionType)
     type_utils.check_equivalent_types(report_type.parameter, zero_type)
@@ -708,5 +707,5 @@ async def _embed_tf_binary_operator(executor, type_spec, op):
   embedded_val = await executor.create_value(fn_building_block.proto,
                                              fn_building_block.type_signature)
   type_utils.check_equivalent_types(embedded_val.type_signature,
-                                    type_constructors.binary_op(type_spec))
+                                    type_factory.binary_op(type_spec))
   return embedded_val

@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 # The collective of all the client devices, a TFF placement constant.
 CLIENTS = placement_literals.CLIENTS

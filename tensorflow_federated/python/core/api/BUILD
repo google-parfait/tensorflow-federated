@@ -31,7 +31,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -50,9 +50,7 @@ py_test(
 py_library(
     name = "computations",
     srcs = ["computations.py"],
-    deps = [
-        "//tensorflow_federated/python/core/impl:computation_wrapper_instances",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl:computation_wrapper_instances"],
 )
 
 py_test(
@@ -92,9 +90,7 @@ py_test(
 py_library(
     name = "placements",
     srcs = ["placements.py"],
-    deps = [
-        "//tensorflow_federated/python/core/impl:placement_literals",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl/compiler:placement_literals"],
 )
 
 py_library(

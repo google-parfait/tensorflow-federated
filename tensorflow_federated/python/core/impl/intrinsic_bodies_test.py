@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
-from tensorflow_federated.python.core.impl import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 
 
 class IntrinsicBodiesTest(absltest.TestCase):

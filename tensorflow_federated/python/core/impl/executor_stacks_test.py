@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import set_default_executor
-from tensorflow_federated.python.core.impl import type_constructors
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class ExecutorStacksTest(absltest.TestCase):
@@ -42,9 +42,8 @@ class ExecutorStacksTest(absltest.TestCase):
       return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
     @computations.federated_computation(
-        type_constructors.at_clients(
-            computation_types.SequenceType(tf.float32)),
-        type_constructors.at_server(tf.float32))
+        type_factory.at_clients(computation_types.SequenceType(tf.float32)),
+        type_factory.at_server(tf.float32))
     def comp(temperatures, threshold):
       return intrinsics.federated_mean(
           intrinsics.federated_map(

@@ -24,8 +24,8 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import transforming_executor
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class FakeEx(executor_base.Executor):
@@ -57,7 +57,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_removal_of_identity_mapping(self):
 
-    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_apply(_identity, x)
 
@@ -71,7 +71,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_inlining_of_blocks(self):
 
-    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_zip([x, x])
 

@@ -41,14 +41,13 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.utils import dtype_utils
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -97,34 +96,35 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
 
   The accepted forms of `value` for vaqrious TFF types as as follows:
 
-  * For TFF tensor types listed in `dtypes.TENSOR_REPRESENTATION_TYPES`.
+  *   For TFF tensor types listed in
+      `tensorflow_utils.TENSOR_REPRESENTATION_TYPES`.
 
-  * For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
+  *   For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
 
-  * For TFF sequences, Python lists.
+  *   For TFF sequences, Python lists.
 
-  * For TFF functional types, Python callables that accept a single argument
-    that is an instance of `ComputedValue` (if the function has a parameter)
-    or `None` (otherwise), and return a `ComputedValue` instance as a result.
-    This function only verifies that `value` is a callable.
+  *   For TFF functional types, Python callables that accept a single argument
+      that is an instance of `ComputedValue` (if the function has a parameter)
+      or `None` (otherwise), and return a `ComputedValue` instance as a result.
+      This function only verifies that `value` is a callable.
 
-  * For TFF abstract types, there is no valid representation. The reference
-    executor requires all types in an executable computation to be concrete.
+  *   For TFF abstract types, there is no valid representation. The reference
+      executor requires all types in an executable computation to be concrete.
 
-  * For TFF placement types, the valid representations are the placement
-    literals (currently only `tff.SERVER` and `tff.CLIENTS`).
+  *   For TFF placement types, the valid representations are the placement
+      literals (currently only `tff.SERVER` and `tff.CLIENTS`).
 
-  * For TFF federated types with `all_equal` set to `True`, the representation
-    is the same as the representation of the member constituent (thus, e.g.,
-    a valid representation of `int32@SERVER` is the same as that of `int32`).
-    For those types that have `all_equal_` set to `False`, the representation
-    is a Python list of member constituents.
+  *   For TFF federated types with `all_equal` set to `True`, the representation
+      is the same as the representation of the member constituent (thus, e.g.,
+      a valid representation of `int32@SERVER` is the same as that of `int32`).
+      For those types that have `all_equal_` set to `False`, the representation
+      is a Python list of member constituents.
 
-    NOTE: This function does not attempt at validating that the sizes of lists
-    that represent federated values match the corresponding placemenets. The
-    cardinality analysis is a separate step, handled by the reference executor
-    at a different point. As long as values can be packed into a Python list,
-    they are accepted as they are.
+      NOTE: This function does not attempt at validating that the sizes of lists
+      that represent federated values match the corresponding placemenets. The
+      cardinality analysis is a separate step, handled by the reference executor
+      at a different point. As long as values can be packed into a Python list,
+      they are accepted as they are.
 
   Args:
     value: The raw representation of a value to compare against `type_spec` and
@@ -156,7 +156,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   if isinstance(type_spec, computation_types.TensorType):
     if tf.executing_eagerly() and isinstance(value, (tf.Tensor, tf.Variable)):
       value = value.numpy()
-    py_typecheck.check_type(value, dtype_utils.TENSOR_REPRESENTATION_TYPES)
+    py_typecheck.check_type(value, tensorflow_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_utils.infer_type(value)
     if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
       raise TypeError(
@@ -1113,9 +1113,8 @@ class ReferenceExecutor(context_base.Context):
     unplaced_avg = multiply_by_scalar(
         ComputedValue(server_sum.value, server_sum.type_signature.member),
         1.0 / float(len(arg.value)))
-    return ComputedValue(
-        unplaced_avg.value,
-        type_constructors.at_server(unplaced_avg.type_signature))
+    return ComputedValue(unplaced_avg.value,
+                         type_factory.at_server(unplaced_avg.type_signature))
 
   def _federated_zip_at_server(self, arg):
     py_typecheck.check_type(arg.type_signature,
@@ -1125,7 +1124,7 @@ class ReferenceExecutor(context_base.Context):
                                       placements.SERVER, True)
     return ComputedValue(
         arg.value,
-        type_constructors.at_server(
+        type_factory.at_server(
             computation_types.NamedTupleType([
                 (k, v.member) if k else v.member
                 for k, v in anonymous_tuple.to_elements(arg.type_signature)
@@ -1147,7 +1146,7 @@ class ReferenceExecutor(context_base.Context):
     zipped_val = [anonymous_tuple.from_container(x) for x in zip(*zip_args)]
     return ComputedValue(
         zipped_val,
-        type_constructors.at_clients(
+        type_factory.at_clients(
             computation_types.NamedTupleType(zip_arg_types)))
 
   def _federated_aggregate(self, arg):
@@ -1174,7 +1173,7 @@ class ReferenceExecutor(context_base.Context):
         for v, w in zip(arg.value[0], arg.value[1])
     ]
     return self._federated_sum(
-        ComputedValue(products_val, type_constructors.at_clients(v_type)))
+        ComputedValue(products_val, type_factory.at_clients(v_type)))
 
   def _federated_broadcast(self, arg):
     type_utils.check_federated_type(arg.type_signature, None, placements.SERVER,

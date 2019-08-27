@@ -27,9 +27,9 @@ from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import placement_literals
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class LambdaExecutorTest(absltest.TestCase):
@@ -213,13 +213,13 @@ class LambdaExecutorTest(absltest.TestCase):
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_apply(add_one, x)
 
     v1 = loop.run_until_complete(ex.create_value(comp))
     v2 = loop.run_until_complete(
-        ex.create_value(10, type_constructors.at_server(tf.int32)))
+        ex.create_value(10, type_factory.at_server(tf.int32)))
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     result = loop.run_until_complete(v3.compute())
     self.assertEqual(result.numpy(), 11)
@@ -238,14 +238,14 @@ class LambdaExecutorTest(absltest.TestCase):
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(add_one,
                                       intrinsics.federated_broadcast(x))
 
     v1 = loop.run_until_complete(ex.create_value(comp))
     v2 = loop.run_until_complete(
-        ex.create_value(10, type_constructors.at_server(tf.int32)))
+        ex.create_value(10, type_factory.at_server(tf.int32)))
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     result = loop.run_until_complete(v3.compute())
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])

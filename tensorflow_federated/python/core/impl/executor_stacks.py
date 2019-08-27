@@ -20,7 +20,7 @@ from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 
 def create_local_executor(num_clients=None):
