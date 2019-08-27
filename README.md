@@ -58,7 +58,7 @@ There are a number of ways to contribute depending on what you're interested in:
 
     You may want to also develop new algorithms in your own repository. We are
     happy to feature pointers to academic publications and/or repos using TFF on
-    [tensorflow.org/federatred](http://www.tensorflow.org/federated).
+    [tensorflow.org/federated](http://www.tensorflow.org/federated).
 
 *   If you are interested in applying federated learning, consider contributing
     a tutorial, a new federated dataset, or an example model that others could
