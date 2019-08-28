@@ -49,6 +49,7 @@ py_test(
     size = "small",
     srcs = ["caching_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":caching_executor",
         ":computation_impl",
@@ -231,6 +232,7 @@ py_test(
     size = "small",
     srcs = ["concurrent_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":concurrent_executor",
         ":eager_executor",
@@ -299,6 +301,7 @@ py_test(
     size = "small",
     srcs = ["eager_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":eager_executor",
@@ -341,6 +344,7 @@ py_test(
     size = "small",
     srcs = ["execution_context_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":eager_executor",
@@ -375,6 +379,7 @@ py_test(
     size = "small",
     srcs = ["executor_service_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":eager_executor",
         ":executor_base",
@@ -410,6 +415,7 @@ py_test(
     size = "small",
     srcs = ["executor_service_utils_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":executor_service_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
@@ -438,6 +444,7 @@ py_test(
     size = "large",
     srcs = ["executor_stacks_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":executor_stacks",
         ":executor_test_utils",
@@ -470,6 +477,7 @@ py_test(
     size = "small",
     srcs = ["executor_test_utils_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":eager_executor",
         ":executor_test_utils",
@@ -561,6 +569,7 @@ py_test(
     size = "small",
     srcs = ["federated_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":eager_executor",
@@ -674,6 +683,7 @@ py_test(
     size = "small",
     srcs = ["lambda_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":eager_executor",
         ":executor_test_utils",
@@ -787,6 +797,7 @@ py_test(
     size = "small",
     srcs = ["remote_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":eager_executor",
         ":executor_service",
@@ -815,6 +826,7 @@ py_test(
     size = "small",
     srcs = ["set_default_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":eager_executor",
@@ -970,6 +982,7 @@ py_test(
     size = "small",
     srcs = ["transforming_executor_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":executor_base",
         ":transformations",

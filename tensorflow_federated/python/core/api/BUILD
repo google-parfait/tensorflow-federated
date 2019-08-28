@@ -58,6 +58,7 @@ py_test(
     size = "small",
     srcs = ["computations_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":api",
         "//tensorflow_federated/python/common_libs:test",
