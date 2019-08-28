@@ -954,12 +954,10 @@ def get_count_of_references_to_variables(comp):
       context.
 
   Returns:
-    An instance of `SymbolTree` representing root of context tree
-    populated with `transformation_utils.ReferenceCounter`s which
-    contain the number of times each variable bound by a
-    `building_blocks.Lambda`
-    or `building_blocks.Block` are referenced in their computation's
-    body.
+    An instance of `SymbolTree` representing root of context tree populated with
+    `ReferenceCounter`s which contain the number of times each variable bound by
+    a `building_blocks.Lambda` or `building_blocks.Block` are referenced in
+    their computation's body.
   """
 
   reference_counter = SymbolTree(ReferenceCounter)

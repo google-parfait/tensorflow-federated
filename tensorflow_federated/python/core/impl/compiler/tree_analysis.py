@@ -20,11 +20,11 @@ from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 
 
 def count_types(comp, types):

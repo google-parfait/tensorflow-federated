@@ -46,12 +46,12 @@ py_library(
         ":building_blocks",
         ":intrinsic_defs",
         ":placement_literals",
+        ":transformation_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl:transformation_utils",
         "//tensorflow_federated/python/core/impl:type_serialization",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
@@ -157,6 +157,32 @@ py_library(
 )
 
 py_library(
+    name = "transformation_utils",
+    srcs = ["transformation_utils.py"],
+    deps = [
+        ":building_blocks",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:type_utils",
+    ],
+)
+
+py_test(
+    name = "transformation_utils_test",
+    size = "small",
+    srcs = ["transformation_utils_test.py"],
+    deps = [
+        ":building_block_factory",
+        ":building_blocks",
+        ":placement_literals",
+        ":test_utils",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_library(
     name = "tree_analysis",
     srcs = ["tree_analysis.py"],
     deps = [
@@ -164,9 +190,9 @@ py_library(
         ":building_blocks",
         ":intrinsic_defs",
         ":placement_literals",
+        ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl:transformation_utils",
     ],
 )
 
