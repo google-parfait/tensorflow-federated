@@ -25,3 +25,11 @@ the Shakespeare federated experimental dataset.
 
 [`stackoverflow`](../../tff/simulation/datasets/stackoverflow.md) module: Module
 for the Stackoverflow federated experimental dataset.
+
+## Functions
+
+[`build_dataset_mixture(...)`](../../tff/simulation/datasets/build_dataset_mixture.md):
+Build a new dataset that probabilistically returns examples.
+
+[`build_single_label_dataset(...)`](../../tff/simulation/datasets/build_single_label_dataset.md):
+Build a new dataset that only yields examples with a particular label.

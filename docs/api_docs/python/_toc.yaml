@@ -230,6 +230,10 @@ toc:
       section:
       - title: Overview
         path: /federated/api_docs/python/tff/simulation/datasets
+      - title: build_dataset_mixture
+        path: /federated/api_docs/python/tff/simulation/datasets/build_dataset_mixture
+      - title: build_single_label_dataset
+        path: /federated/api_docs/python/tff/simulation/datasets/build_single_label_dataset
       - title: emnist
         section:
         - title: Overview
