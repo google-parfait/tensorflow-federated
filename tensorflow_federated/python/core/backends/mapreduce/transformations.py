@@ -722,9 +722,6 @@ def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
 
 def _prepare_for_rebinding(comp):
   """Replaces `comp` with semantically equivalent version for rebinding."""
-  # TODO(b/135541729): In the examples we've seen, this preprocessing (in fact
-  # less) has been enough to allow for the pattern-matching approach below to
-  # work. But we haven't formalized whether or not this is sufficient.
   all_equal_normalized = normalize_all_equal_bit(comp)
   identities_removed, _ = tff_framework.remove_mapped_or_applied_identity(
       all_equal_normalized)
@@ -765,6 +762,11 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
                                     /      \
                               Lambda        Selection from x
 
+  WARNING: Currently, this function must be called before we insert called
+  graphs over references (see
+  `tff_framework.insert_called_tf_identity_at_leaves`), due to the reliance on
+  pattern-matching of selections from references below.
+
   Args:
     comp: Instance of `tff_framework.Lambda`, whose parameters we wish to rebind
       to a different lambda. This lambda must have unique names.
@@ -774,6 +776,10 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
   Returns:
     An instance of `tff_framework.Lambda`, equivalent to `comp`, satisfying the
     pattern above.
+
+  Raises:
+    ValueError: If a called graph with reference argument is detected in
+      `comp`.
   """
   py_typecheck.check_type(comp, tff_framework.Lambda)
   py_typecheck.check_type(index, int)
@@ -786,10 +792,20 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
                                     comp.type_signature.parameter[index])
 
   def _remove_selection_from_ref(inner_comp):
+    """Pattern-matches selection from references."""
     if isinstance(inner_comp, tff_framework.Selection) and isinstance(
         inner_comp.source, tff_framework.Reference
     ) and inner_comp.index == index and inner_comp.source.name == parameter_name:
       return new_ref, True
+    elif isinstance(inner_comp, tff_framework.Call) and isinstance(
+        inner_comp.function, tff_framework.CompiledComputation) and isinstance(
+            inner_comp.argument, tff_framework.Reference) and (
+                inner_comp.argument.name == parameter_name):
+      raise ValueError('Encountered called graph on reference pattern in TFF '
+                       'AST; this means relying on pattern-matching when '
+                       'rebinding arguments may be insufficient. Ensure that '
+                       'arguments are rebound before decorating references '
+                       'with called identity graphs.')
     return inner_comp, False
 
   references_rebound_in_result, _ = tff_framework.transform_postorder(
@@ -835,6 +851,11 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   that is, the selections must be positional. Notice we do not allow for tuples
   due to automatic unwrapping.
 
+  WARNING: Currently, this function must be called before we insert called
+  graphs over references (see
+  `tff_framework.insert_called_tf_identity_at_leaves`), due to the reliance on
+  pattern-matching of selections from references below.
+
   Args:
     comp: Instance of `tff_framework.Lambda`, whose parameters we wish to rebind
       to a different lambda.
@@ -844,6 +865,10 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   Returns:
     An instance of `tff_framework.Lambda`, equivalent to `comp`, satisfying the
     pattern above.
+
+  Raises:
+    ValueError: If a called graph with reference argument is detected in
+      `comp`.
   """
   py_typecheck.check_type(comp, tff_framework.Lambda)
   py_typecheck.check_type(selected_index_lists, list)
@@ -940,6 +965,16 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
         if isinstance(selection, tff_framework.Reference
                      ) and selection.name == top_level_parameter_name:
           return selections_from_zip[idx], True
+    if isinstance(inner_comp, tff_framework.Call) and isinstance(
+        inner_comp.function, tff_framework.CompiledComputation) and isinstance(
+            inner_comp.argument, tff_framework.Reference) and (
+                inner_comp.argument.name == top_level_parameter_name):
+      raise ValueError('Encountered called graph on reference pattern in TFF '
+                       'AST; this means relying on pattern-matching when '
+                       'rebinding arguments may be insufficient. Ensure that '
+                       'arguments are rebound before decorating references '
+                       'with called identity graphs.')
+
     return inner_comp, False
 
   variables_rebound_in_result, _ = tff_framework.transform_postorder(
