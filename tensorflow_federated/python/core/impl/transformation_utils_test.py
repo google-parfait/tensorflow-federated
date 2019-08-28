@@ -26,9 +26,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import test_utils
@@ -116,10 +115,7 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   cbb_list.append(('selection', selection))
   call = building_blocks.Call(lam, ref_to_x)
   cbb_list.append(('call', call))
-  fn = lambda: tf.constant(1)
-  tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-      fn, None, context_stack_impl.context_stack)
-  compiled_comp = building_blocks.CompiledComputation(tf_comp)
+  compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
   cbb_list.append(('compiled_comp', compiled_comp))
   placement = building_blocks.Placement(placement_literals.CLIENTS)
   cbb_list.append(('placement', placement))

@@ -926,12 +926,11 @@ py_test(
     visibility = [":compiler_visibility"],
     deps = [
         ":computation_impl",
-        ":context_stack_impl",
-        ":tensorflow_serialization",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:test_utils",
