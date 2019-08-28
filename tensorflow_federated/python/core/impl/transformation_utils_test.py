@@ -24,8 +24,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -1434,22 +1432,17 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_get_count_of_references_to_variables_sequential_overwrite_in_block_locals(
       self):
-    add_one = building_blocks.ComputationBuildingBlock.from_proto(
-        computation_impl.ComputationImpl.get_proto(
-            computations.tf_computation(lambda x: x + 1, tf.int32)))
 
-    make_10 = building_blocks.ComputationBuildingBlock.from_proto(
-        computation_impl.ComputationImpl.get_proto(
-            computations.tf_computation(lambda: tf.constant(10))))
+    make_10 = building_block_factory.create_tensorflow_constant(tf.int32, 10)
 
     dummy_x_reference = building_blocks.Reference('x', tf.int32)
 
-    make_13 = building_blocks.Block(
-        [('x', building_blocks.Call(make_10)),
-         ('x', building_blocks.Call(add_one, dummy_x_reference)),
-         ('x', building_blocks.Call(add_one, dummy_x_reference)),
-         ('x', building_blocks.Call(add_one, dummy_x_reference))],
-        dummy_x_reference)
+    make_13 = building_blocks.Block([
+        ('x', make_10),
+        ('x', dummy_x_reference),
+        ('x', dummy_x_reference),
+        ('x', dummy_x_reference),
+    ], dummy_x_reference)
 
     references = transformation_utils.get_count_of_references_to_variables(
         make_13)

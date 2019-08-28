@@ -925,11 +925,9 @@ py_test(
     srcs = ["transformation_utils_test.py"],
     visibility = [":compiler_visibility"],
     deps = [
-        ":computation_impl",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
