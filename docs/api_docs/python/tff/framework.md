@@ -129,7 +129,7 @@ whether `target_type` is assignable from `source_type`.
 Checks `type_spec` against an explicit whitelist for `tf_computation`.
 
 [`merge_tuple_intrinsics(...)`](../tff/framework/merge_tuple_intrinsics.md):
-Merges all the tuples of intrinsics in `comp` into one intrinsic.
+Merges tuples of called intrinsics into one called intrinsic.
 
 [`remove_lambdas_and_blocks(...)`](../tff/framework/remove_lambdas_and_blocks.md):
 Removes any called lambdas and blocks from `comp`.
