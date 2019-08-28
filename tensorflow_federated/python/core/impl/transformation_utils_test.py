@@ -34,21 +34,6 @@ from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import test_utils
 
 
-def _to_building_block(comp):
-  """Converts a computation into a computation building block.
-
-  Args:
-    comp: An instance of `computation_impl.ComputationImpl`.
-
-  Returns:
-    A instance of `building_blocks.ComputationBuildingBlock`
-    representing the `computation_impl.ComputationImpl`.
-  """
-  py_typecheck.check_type(comp, computation_impl.ComputationImpl)
-  proto = computation_impl.ComputationImpl.get_proto(comp)
-  return building_blocks.ComputationBuildingBlock.from_proto(proto)
-
-
 def _construct_complex_symbol_tree():
   """Constructs complex context tree for mutation testing."""
   symbol_tree = transformation_utils.SymbolTree(FakeTracker)
@@ -190,13 +175,12 @@ class TransformationUtilsTest(parameterized.TestCase):
       transformation_utils.transform_postorder(comp, None)
 
   def test_transform_postorder_with_lambda_call_selection_and_reference(self):
-
-    @computations.federated_computation(
-        [computation_types.FunctionType(tf.int32, tf.int32), tf.int32])
-    def foo(f, x):
-      return f(x)
-
-    comp = _to_building_block(foo)
+    function_type = computation_types.FunctionType(tf.int32, tf.int32)
+    ref = building_blocks.Reference('FEDERATED_arg', [function_type, tf.int32])
+    fn = building_blocks.Selection(ref, index=0)
+    arg = building_blocks.Selection(ref, index=1)
+    call = building_blocks.Call(fn, arg)
+    comp = building_blocks.Lambda(ref.name, tf.int32, call)
     self.assertEqual(
         str(comp), '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1]))')
 
