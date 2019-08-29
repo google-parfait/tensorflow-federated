@@ -21,8 +21,6 @@ from __future__ import print_function
 import collections
 
 import numpy as np
-from six.moves import range
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
