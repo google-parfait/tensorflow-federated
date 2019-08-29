@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import re
 import tempfile
@@ -24,8 +20,6 @@ import tempfile
 from absl.testing import absltest
 import h5py
 import numpy as np
-import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
@@ -56,9 +50,9 @@ def create_fake_hdf5():
   os.close(fd)
   with h5py.File(filepath, 'w') as f:
     examples_group = f.create_group('examples')
-    for user_id, data in six.iteritems(TEST_DATA):
+    for user_id, data in TEST_DATA.items():
       user_group = examples_group.create_group(user_id)
-      for name, values in six.iteritems(data):
+      for name, values in data.items():
         user_group.create_dataset(name, data=values)
   return filepath
 
@@ -142,10 +136,10 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       index = int(match.group(2))
       for i, actual in enumerate(tf_dataset):
         actual = self.evaluate(actual)
-        expected = {k: v[i] for k, v in six.iteritems(TEST_DATA[client])}
+        expected = {k: v[i] for k, v in TEST_DATA[client].items()}
         expected['x'] = expected['x'] + 10 * index
         self.assertCountEqual(actual, expected)
-        for k, v in six.iteritems(actual):
+        for k, v in actual.items():
           self.assertAllEqual(v, expected[k])
 
   def test_create_tf_dataset_from_all_clients(self):
@@ -161,10 +155,10 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
     expected_examples = []
-    for expected_data in six.itervalues(TEST_DATA):
+    for expected_data in TEST_DATA.values():
       for index in range(expansion_factor):
         for i in range(len(expected_data['x'])):
-          example = {k: v[i] for k, v in six.iteritems(expected_data)}
+          example = {k: v[i] for k, v in expected_data.items()}
           example['x'] += 10 * index
           expected_examples.append(example)
 

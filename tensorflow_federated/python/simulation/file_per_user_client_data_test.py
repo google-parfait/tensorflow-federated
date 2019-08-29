@@ -14,14 +14,10 @@
 # limitations under the License.
 """Tests for tensorflow_federated.python.simulation.file_per_user_client_data.
 
-Demonstrates how to take a columnar dataset (e.g. a CSV) and split it into
+Demonstrates how to take a column dataset (e.g. a CSV) and split it into
 per-user files and build a ClientData object that can be used for Federated
 Learning simulations.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import os
@@ -30,7 +26,6 @@ import tempfile
 
 from absl.testing import absltest
 import numpy as np
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import file_per_user_client_data
@@ -105,7 +100,7 @@ class FakeUserData(object):
         writer = tf.io.TFRecordWriter(path=path)
         writers[client_id] = writer
       writer.write(_create_example(features))
-    for writer in six.itervalues(writers):
+    for writer in writers.values():
       writer.close()
     self._client_data_file_dict = client_file_dict
 
@@ -119,7 +114,7 @@ class FakeUserData(object):
 
     def parse_example(e):
       feature_dict = tf.io.parse_single_example(serialized=e, features=features)
-      return tuple(feature_dict[k] for k in sorted(six.iterkeys(feature_dict)))
+      return tuple(feature_dict[k] for k in sorted(feature_dict.keys()))
 
     return tf.data.TFRecordDataset(client_path).map(parse_example)
 
@@ -149,13 +144,13 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
         create_tf_dataset_fn=fake_user_data.create_test_dataset_fn)
 
   def test_construct_with_non_callable(self):
-    with six.assertRaisesRegex(self, TypeError, r'found non-callable'):
+    with self.assertRaisesRegex(TypeError, r'found non-callable'):
       file_per_user_client_data.FilePerUserClientData(
           client_ids=FilePerUserClientDataTest.fake_user_data.client_ids,
           create_tf_dataset_fn=None)
 
   def test_construct_with_non_list(self):
-    with six.assertRaisesRegex(self, TypeError, r'Expected list, found dict'):
+    with self.assertRaisesRegex(TypeError, r'Expected list, found dict'):
       file_per_user_client_data.FilePerUserClientData(
           client_ids={},  # Not a list.
           create_tf_dataset_fn=tf.data.TFRecordDataset)
@@ -185,7 +180,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     # correct data.
     client_id_counters = collections.Counter(
         example[0] for example in FAKE_TEST_DATA)
-    for client_id, expected_num_examples in six.iteritems(client_id_counters):
+    for client_id, expected_num_examples in client_id_counters.items():
       tf_dataset = data.create_tf_dataset_for_client(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 

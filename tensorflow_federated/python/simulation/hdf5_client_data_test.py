@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_federated.python.simulation.hdf5_client_data."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import tempfile
@@ -24,8 +19,6 @@ import tempfile
 from absl.testing import absltest
 import h5py
 import numpy as np
-import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
@@ -58,9 +51,9 @@ def create_fake_hdf5():
   os.close(fd)
   with h5py.File(filepath, 'w') as f:
     examples_group = f.create_group('examples')
-    for user_id, data in six.iteritems(TEST_DATA):
+    for user_id, data in TEST_DATA.items():
       user_group = examples_group.create_group(user_id)
-      for name, values in sorted(six.iteritems(data)):
+      for name, values in sorted(data.items()):
         user_group.create_dataset(name, data=values, dtype=values.dtype)
   return filepath
 
@@ -109,14 +102,13 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
         HDF5ClientDataTest.test_data_filepath)
     # Iterate over each client, ensuring we received a tf.data.Dataset with the
     # correct data.
-    for client_id, expected_data in six.iteritems(TEST_DATA):
+    for client_id, expected_data in TEST_DATA.items():
       tf_dataset = client_data.create_tf_dataset_for_client(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
       expected_examples = []
       for i in range(len(expected_data['x'])):
-        expected_examples.append(
-            {k: v[i] for k, v in six.iteritems(expected_data)})
+        expected_examples.append({k: v[i] for k, v in expected_data.items()})
       for actual in tf_dataset:
         expected = expected_examples.pop(0)
         actual = self.evaluate(actual)
@@ -130,10 +122,9 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
     expected_examples = []
-    for expected_data in six.itervalues(TEST_DATA):
+    for expected_data in TEST_DATA.values():
       for i in range(len(expected_data['x'])):
-        expected_examples.append(
-            {k: v[i] for k, v in six.iteritems(expected_data)})
+        expected_examples.append({k: v[i] for k, v in expected_data.items()})
 
     for actual in tf_dataset:
       expected = expected_examples.pop(0)
