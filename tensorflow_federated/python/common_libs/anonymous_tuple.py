@@ -137,6 +137,8 @@ class AnonymousTuple(object):
     return self._element_array[self._name_to_index[name]]
 
   def __eq__(self, other):
+    if self is other:
+      return True
     # pylint: disable=protected-access
     return (isinstance(other, AnonymousTuple) and
             (self._element_array == other._element_array) and
