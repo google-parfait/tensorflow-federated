@@ -793,8 +793,8 @@ def create_federated_collect(value):
   type_signature = computation_types.SequenceType(value.type_signature.member)
   result_type = computation_types.FederatedType(type_signature,
                                                 placement_literals.SERVER)
-  intrinsic_type = computation_types.FunctionType(value.type_signature,
-                                                  result_type)
+  intrinsic_type = computation_types.FunctionType(
+      type_utils.to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_COLLECT.uri,
                                         intrinsic_type)
   return building_blocks.Call(intrinsic, value)

@@ -1018,6 +1018,14 @@ class CreateFederatedCollectTest(absltest.TestCase):
     self.assertEqual(comp.compact_representation(), 'federated_collect(v)')
     self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
 
+  def test_constructs_federated_collect_with_all_equal_argument(self):
+    value_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_collect(value)
+    self.assertEqual(comp.compact_representation(), 'federated_collect(v)')
+    self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
+
 
 class CreateFederatedMapTest(absltest.TestCase):
 
