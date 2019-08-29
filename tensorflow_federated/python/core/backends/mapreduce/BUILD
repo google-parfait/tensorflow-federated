@@ -39,6 +39,8 @@ py_test(
     name = "canonical_form_utils_test",
     size = "large",
     srcs = ["canonical_form_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":canonical_form",
         ":canonical_form_utils",
@@ -80,6 +82,8 @@ py_test(
     name = "transformations_test",
     size = "medium",
     srcs = ["transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":canonical_form_utils",
         ":test_utils",
