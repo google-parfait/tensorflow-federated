@@ -45,7 +45,7 @@ class MnistTest(tf.test.TestCase):
     # Try to test the high-performance stack. If we are in Python 2, the new
     # executor API will not be available, and an exception will be raised.
     try:
-      tff.framework.set_default_executor(tff.framework.create_local_executor(1))
+      tff.framework.set_default_executor(tff.framework.create_local_executor())
       self._do_test_simple_training()
       tff.framework.set_default_executor()
     except AttributeError:
@@ -96,6 +96,19 @@ class MnistTest(tf.test.TestCase):
     try:
       tff.framework.set_default_executor(
           tff.framework.create_local_executor(num_clients))
+      self._do_test_self_contained_example(num_rounds, num_clients)
+      tff.framework.set_default_executor()
+    except AttributeError:
+      pass
+    self._do_test_self_contained_example(num_rounds, num_clients)
+
+  def test_self_contained_example_clients_unspecified(self):
+    num_rounds = 2
+    num_clients = 3
+    # Try to test the high-performance stack. If we are in Python 2, the new
+    # executor API will not be available, and an exception will be raised.
+    try:
+      tff.framework.set_default_executor(tff.framework.create_local_executor())
       self._do_test_self_contained_example(num_rounds, num_clients)
       tff.framework.set_default_executor()
     except AttributeError:

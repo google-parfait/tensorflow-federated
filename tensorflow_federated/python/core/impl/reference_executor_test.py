@@ -621,38 +621,6 @@ class ReferenceExecutorTest(test.TestCase):
                     ]), [('A', tf.float32), ('B', [('C', tf.float32)])]),
                 0.5).value), '<A=5.0,B=<C=10.0>>')
 
-  def test_get_cardinalities_success(self):
-    foo = reference_executor.get_cardinalities(
-        reference_executor.ComputedValue(
-            anonymous_tuple.AnonymousTuple([
-                ('A', [1, 2, 3]),
-                ('B',
-                 anonymous_tuple.AnonymousTuple([('C', [[1, 2], [3, 4], [5,
-                                                                         6]]),
-                                                 ('D', [True, False, True])]))
-            ]),
-            [('A', computation_types.FederatedType(tf.int32,
-                                                   placements.CLIENTS)),
-             ('B', [('C',
-                     computation_types.FederatedType(
-                         computation_types.SequenceType(tf.int32),
-                         placements.CLIENTS)),
-                    ('D',
-                     computation_types.FederatedType(tf.bool,
-                                                     placements.CLIENTS))])]))
-    self.assertDictEqual(foo, {placements.CLIENTS: 3})
-
-  def test_get_cardinalities_failure(self):
-    with self.assertRaises(ValueError):
-      reference_executor.get_cardinalities(
-          reference_executor.ComputedValue(
-              anonymous_tuple.AnonymousTuple([('A', [1, 2, 3]), ('B', [1, 2])]),
-              [('A',
-                computation_types.FederatedType(tf.int32, placements.CLIENTS)),
-               ('B',
-                computation_types.FederatedType(tf.int32, placements.CLIENTS))
-              ]))
-
   def test_fit_argument(self):
     old_arg = reference_executor.ComputedValue(
         anonymous_tuple.AnonymousTuple([('A', 10)]),

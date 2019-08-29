@@ -23,6 +23,8 @@ NOTE: This function is only available in Python 3.
 
 #### Args:
 
-*   <b>`executor`</b>: Either an instance of `executor_base.Executor`, or `None`
-    which causes the default reference executor to be installed (as is the
-    default).
+*   <b>`executor`</b>: Either an instance of `executor_base.Executor`, a factory
+    function returning such executors, or `None`. If `executor` is a factory
+    function, the constructed context will infer the number of clients from the
+    data it is passed, if possible. If `None`, causes the default reference
+    executor to be installed (as is the default).

@@ -41,6 +41,7 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
@@ -409,48 +410,6 @@ def multiply_by_scalar(value, multiplier):
             value.type_signature))
 
 
-def get_cardinalities(value):
-  """Get a dictionary mapping placements to their cardinalities from `value`.
-
-  Args:
-    value: An instance of `ComputationValue`.
-
-  Returns:
-    A dictionary from placement literals to the cardinalities of each placement.
-  """
-  py_typecheck.check_type(value, ComputedValue)
-  if isinstance(value.type_signature, computation_types.FederatedType):
-    if value.type_signature.all_equal:
-      return {}
-    else:
-      py_typecheck.check_type(value.value, list)
-      return {value.type_signature.placement: len(value.value)}
-  elif isinstance(
-      value.type_signature,
-      (computation_types.TensorType, computation_types.SequenceType,
-       computation_types.AbstractType, computation_types.FunctionType,
-       computation_types.PlacementType)):
-    return {}
-  elif isinstance(value.type_signature, computation_types.NamedTupleType):
-    py_typecheck.check_type(value.value, anonymous_tuple.AnonymousTuple)
-    result = {}
-    for idx, (_, elem_type) in enumerate(
-        anonymous_tuple.to_elements(value.type_signature)):
-      for k, v in six.iteritems(
-          get_cardinalities(ComputedValue(value.value[idx], elem_type))):
-        if k not in result:
-          result[k] = v
-        elif result[k] != v:
-          raise ValueError(
-              'Mismatching cardinalities for {}: {} vs. {}.'.format(
-                  k, result[k], v))
-    return result
-  else:
-    raise NotImplementedError(
-        'Unable to get cardinalities from a value of TFF type {}.'.format(
-            value.type_signature))
-
-
 class ComputationContext(object):
   """Encapsulates context/state in which computations or parts thereof run."""
 
@@ -700,7 +659,9 @@ class ReferenceExecutor(context_base.Context):
                                        computed_comp.type_signature.parameter,
                                        _handle_callable),
             computed_comp.type_signature.parameter)
-        cardinalities.update(get_cardinalities(computed_arg))
+        cardinalities.update(
+            runtime_utils.infer_cardinalities(computed_arg.value,
+                                              computed_arg.type_signature))
       else:
         computed_arg = None
       result = computed_comp.value(computed_arg)

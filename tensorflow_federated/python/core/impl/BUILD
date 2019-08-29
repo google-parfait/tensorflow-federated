@@ -332,10 +332,12 @@ py_library(
         ":context_base",
         ":executor_base",
         ":executor_value_base",
+        ":runtime_utils",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:typed_object",
     ],
 )
 
@@ -347,10 +349,12 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
-        ":eager_executor",
         ":execution_context",
+        ":executor_stacks",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
     ],
 )
 
@@ -441,7 +445,7 @@ py_library(
 
 py_test(
     name = "executor_stacks_test",
-    size = "large",
+    size = "small",
     srcs = ["executor_stacks_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -733,6 +737,7 @@ py_library(
         ":compiler_pipeline",
         ":computation_impl",
         ":context_base",
+        ":runtime_utils",
         ":tensorflow_deserialization",
         ":transformations",
         ":type_utils",
@@ -746,6 +751,29 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_library(
+    name = "runtime_utils",
+    srcs = ["runtime_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+    ],
+)
+
+py_test(
+    name = "runtime_utils_test",
+    srcs = ["runtime_utils_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":runtime_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
     ],
 )
 
