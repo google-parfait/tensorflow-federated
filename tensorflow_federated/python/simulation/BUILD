@@ -51,7 +51,10 @@ py_test(
     name = "file_per_user_client_data_test",
     size = "small",
     srcs = ["file_per_user_client_data_test.py"],
-    deps = [":file_per_user_client_data"],
+    deps = [
+        ":file_per_user_client_data",
+        "//third_party/py/six",
+    ],
 )
 
 py_library(
@@ -68,7 +71,10 @@ py_test(
     name = "hdf5_client_data_test",
     size = "small",
     srcs = ["hdf5_client_data_test.py"],
-    deps = [":hdf5_client_data"],
+    deps = [
+        ":hdf5_client_data",
+        "//third_party/py/six",
+    ],
 )
 
 py_library(
@@ -87,6 +93,7 @@ py_test(
     deps = [
         ":hdf5_client_data",
         ":transforming_client_data",
+        "//third_party/py/six",
     ],
 )
 
@@ -103,5 +110,8 @@ py_test(
     name = "from_tensor_slices_client_data_test",
     size = "small",
     srcs = ["from_tensor_slices_client_data_test.py"],
-    deps = [":from_tensor_slices_client_data"],
+    deps = [
+        ":from_tensor_slices_client_data",
+        "//third_party/py/six",
+    ],
 )

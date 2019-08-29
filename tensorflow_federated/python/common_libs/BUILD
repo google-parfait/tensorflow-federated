@@ -22,7 +22,10 @@ py_test(
     name = "anonymous_tuple_test",
     size = "small",
     srcs = ["anonymous_tuple_test.py"],
-    deps = [":anonymous_tuple"],
+    deps = [
+        ":anonymous_tuple",
+        "//third_party/py/six",
+    ],
 )
 
 py_library(
@@ -37,6 +40,7 @@ py_test(
     deps = [
         ":anonymous_tuple",
         ":py_typecheck",
+        "//third_party/py/six",
     ],
 )
 
@@ -55,6 +59,7 @@ py_test(
     srcs = ["serialization_utils_test.py"],
     deps = [
         ":serialization_utils",
+        "//third_party/py/six",
         "@com_google_protobuf//:protobuf_python",
     ],
 )

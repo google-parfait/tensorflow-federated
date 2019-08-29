@@ -29,5 +29,8 @@ py_test(
     name = "load_data_test",
     size = "small",
     srcs = ["load_data_test.py"],
-    deps = [":load_data"],
+    deps = [
+        ":load_data",
+        "//third_party/py/six",
+    ],
 )
