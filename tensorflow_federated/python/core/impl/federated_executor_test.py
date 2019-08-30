@@ -31,11 +31,11 @@ from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.compiler import type_serialization
 
 
 def _make_test_executor(num_clients=1, use_lambda_executor=False):
