@@ -13,16 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import inspect
 import itertools
 
 from absl.testing import parameterized
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -106,13 +101,10 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     argspec = function_utils.get_argspec(fn)
     expected_error = None
     try:
-      if six.PY2:
-        expected_callargs = inspect.getcallargs(fn, *args, **kwargs)  # pylint: disable=deprecated-method
-      else:
-        signature = inspect.signature(fn)
-        bound_arguments = signature.bind(*args, **kwargs)
-        bound_arguments.apply_defaults()
-        expected_callargs = bound_arguments.arguments
+      signature = inspect.signature(fn)
+      bound_arguments = signature.bind(*args, **kwargs)
+      bound_arguments.apply_defaults()
+      expected_callargs = bound_arguments.arguments
     except TypeError as e:
       expected_error = e
       expected_callargs = None
@@ -153,10 +145,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_is_argspec_compatible_with_types_true(self, argspec, args, kwargs):
     self.assertTrue(
         function_utils.is_argspec_compatible_with_types(
-            argspec, *[computation_types.to_type(a) for a in args], **{
-                k: computation_types.to_type(v)
-                for k, v in six.iteritems(kwargs)
-            }))
+            argspec, *[computation_types.to_type(a) for a in args],
+            **{k: computation_types.to_type(v) for k, v in kwargs.items()}))
 
   # pyformat: disable
   # pylint: disable=g-complex-comprehension
@@ -172,10 +162,8 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   def test_is_argspec_compatible_with_types_false(self, argspec, args, kwargs):
     self.assertFalse(
         function_utils.is_argspec_compatible_with_types(
-            argspec, *[computation_types.to_type(a) for a in args], **{
-                k: computation_types.to_type(v)
-                for k, v in six.iteritems(kwargs)
-            }))
+            argspec, *[computation_types.to_type(a) for a in args],
+            **{k: computation_types.to_type(v) for k, v in kwargs.items()}))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -218,7 +206,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
           type_utils.are_equivalent_types(
               arg, computation_types.to_type(expected_args[idx])))
     self.assertEqual(set(kwargs.keys()), set(expected_kwargs.keys()))
-    for k, v in six.iteritems(kwargs):
+    for k, v in kwargs.items():
       self.assertTrue(
           type_utils.are_equivalent_types(
               computation_types.to_type(v), expected_kwargs[k]))

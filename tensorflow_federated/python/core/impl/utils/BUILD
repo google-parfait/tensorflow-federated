@@ -34,6 +34,8 @@ py_test(
     name = "function_utils_test",
     size = "small",
     srcs = ["function_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":function_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -62,6 +64,8 @@ py_test(
     name = "tensorflow_utils_test",
     size = "small",
     srcs = ["tensorflow_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",

@@ -13,16 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import attr
 import numpy as np
-import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -73,7 +67,7 @@ class GraphUtilsTest(test.TestCase):
         if isinstance(val, collections.OrderedDict):
           val = list(val.values())
         else:
-          val = [v for _, v in sorted(six.iteritems(val))]
+          val = [v for _, v in sorted(val.items())]
       for idx, e in enumerate(anonymous_tuple.to_elements(type_spec)):
         self._assert_binding_matches_type_and_value(binding.tuple.element[idx],
                                                     e[1], val[idx], graph)
