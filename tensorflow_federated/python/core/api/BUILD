@@ -40,6 +40,8 @@ py_test(
     name = "computation_types_test",
     size = "small",
     srcs = ["computation_types_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -80,6 +82,8 @@ py_test(
     name = "intrinsics_test",
     size = "large",
     srcs = ["intrinsics_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":api",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -118,6 +122,8 @@ py_test(
     name = "values_test",
     size = "small",
     srcs = ["values_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":value_base",
         ":values",
