@@ -13,14 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl.testing import absltest
 from absl.testing import parameterized
-import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -195,7 +189,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     transformation_fn_sequence = _transformation_fn_generator()
     # pylint: disable=unnecessary-lambda
-    tx_fn = lambda x: six.next(transformation_fn_sequence)(x)
+    tx_fn = lambda x: next(transformation_fn_sequence)(x)
     # pylint: enable=unnecessary-lambda
     transfomed_comp, modified = transformation_utils.transform_postorder(
         comp, tx_fn)
@@ -1115,12 +1109,12 @@ class TransformationUtilsTest(parameterized.TestCase):
     second_trivial_instance_relations = [
         second_trivial_instance.parent, second_trivial_instance.older_sibling,
         second_trivial_instance.younger_sibling
-    ] + list(six.itervalues(second_trivial_instance.children))
+    ] + list(second_trivial_instance.children.values())
 
     third_trivial_instance_relations = [
         third_trivial_instance.parent, third_trivial_instance.older_sibling,
         third_trivial_instance.younger_sibling
-    ] + list(six.itervalues(third_trivial_instance.children))
+    ] + list(third_trivial_instance.children.values())
     self.assertNotIn(second_trivial_instance, third_trivial_instance_relations)
     self.assertNotIn(third_trivial_instance, second_trivial_instance_relations)
     self.assertEqual(

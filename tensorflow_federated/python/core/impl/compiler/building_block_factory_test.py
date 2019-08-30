@@ -13,16 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import six
-from six.moves import range
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -124,7 +117,7 @@ class UniqueNameGeneratorTest(absltest.TestCase):
   def test_returns_unique_names_with_none_comp_and_none_prefix(self):
     name_generator = building_block_factory.unique_name_generator(
         None, prefix=None)
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     first_name = list(names)[0]
     prefix = first_name[:3]
     self.assertLen(names, 10)
@@ -132,14 +125,14 @@ class UniqueNameGeneratorTest(absltest.TestCase):
 
   def test_returns_unique_names_with_none_comp_and_unset_prefix(self):
     name_generator = building_block_factory.unique_name_generator(None)
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_var') for n in names))
 
   def test_returns_unique_names_with_none_comp_and_prefix(self):
     name_generator = building_block_factory.unique_name_generator(
         None, prefix='_test')
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_test') for n in names))
 
@@ -148,7 +141,7 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     name_generator = building_block_factory.unique_name_generator(
         comp, prefix=None)
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     first_name = list(names)[0]
     prefix = first_name[:3]
     self.assertLen(names, 10)
@@ -158,7 +151,7 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     ref = building_blocks.Reference('a', tf.int32)
     comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     name_generator = building_block_factory.unique_name_generator(comp)
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_var') for n in names))
 
@@ -167,7 +160,7 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     name_generator = building_block_factory.unique_name_generator(
         comp, prefix='_test')
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     self.assertLen(names, 10)
     self.assertTrue(all(n.startswith('_test') for n in names))
 
@@ -176,7 +169,7 @@ class UniqueNameGeneratorTest(absltest.TestCase):
     comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     name_generator = building_block_factory.unique_name_generator(
         comp, prefix='_test')
-    names = set(six.next(name_generator) for _ in range(10))
+    names = set(next(name_generator) for _ in range(10))
     first_name = list(names)[0]
     prefix = first_name[:3]
     self.assertNotEqual(prefix, '_test')

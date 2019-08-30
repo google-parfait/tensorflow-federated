@@ -28,6 +28,8 @@ py_test(
     name = "building_block_analysis_test",
     size = "small",
     srcs = ["building_block_analysis_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_blocks",
@@ -62,6 +64,8 @@ py_test(
     name = "building_block_factory_test",
     size = "small",
     srcs = ["building_block_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -99,6 +103,8 @@ py_test(
     name = "building_blocks_test",
     size = "small",
     srcs = ["building_blocks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -126,6 +132,8 @@ py_test(
     name = "intrinsic_defs_test",
     size = "small",
     srcs = ["intrinsic_defs_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":intrinsic_defs",
         "//tensorflow_federated/python/core/impl:type_utils",
@@ -141,6 +149,8 @@ py_test(
     name = "placement_literals_test",
     size = "small",
     srcs = ["placement_literals_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [":placement_literals"],
 )
 
@@ -171,6 +181,8 @@ py_test(
     name = "transformation_utils_test",
     size = "small",
     srcs = ["transformation_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -199,6 +211,8 @@ py_library(
 py_test(
     name = "tree_analysis_test",
     srcs = ["tree_analysis_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_block_factory",
@@ -228,6 +242,8 @@ py_test(
     name = "type_factory_test",
     size = "small",
     srcs = ["type_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [":type_factory"],
 )
 
@@ -247,6 +263,8 @@ py_test(
     name = "type_serialization_test",
     size = "small",
     srcs = ["type_serialization_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":type_serialization",
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
