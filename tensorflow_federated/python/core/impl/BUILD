@@ -136,7 +136,6 @@ py_test(
 py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
-    visibility = [":compiler_visibility"],
     deps = [
         ":context_stack_base",
         ":type_utils",
