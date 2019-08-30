@@ -19,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_broadcast_from_model
+from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_mean_from_model
+from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_sum_from_model
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
@@ -35,5 +37,7 @@ _allowed_symbols = [
     "EnhancedTrainableModel",
     "ModelWeights",
     "build_encoded_broadcast_from_model",
+    "build_encoded_mean_from_model",
+    "build_encoded_sum_from_model",
     "build_model_delta_optimizer_process",
 ]

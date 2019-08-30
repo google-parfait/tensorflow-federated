@@ -58,3 +58,61 @@ def build_encoded_broadcast_from_model(model_fn, encoder_fn):
   values = model_utils.enhance(model_fn()).weights
   encoders = tf.nest.map_structure(encoder_fn, values)
   return tff.utils.build_encoded_broadcast(values, encoders)
+
+
+# TODO(b/138081552): Move to tff.learning when ready.
+def build_encoded_sum_from_model(model_fn, encoder_fn):
+  """Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
+
+  This method creates a `GatherEncoder` for every trainable weight of model
+  created by `model_fn`, as returned by `encoder_fn`.
+
+  Args:
+    model_fn: A Python callable with no arguments function that returns a
+      `tff.learning.Model`.
+    encoder_fn: A Python callable with a single argument, which is expected to
+      be a `tf.Tensor` of shape and dtype to be encoded. The function must
+      return a `tensor_encoding.core.SimpleEncoder`, which expects a `tf.Tensor`
+      with compatible type as the input to its `encode` method.
+
+  Returns:
+    A `StatefulAggregateFn` for encoding and summing the weights of model
+    created by `model_fn`.
+
+  Raises:
+    TypeError: If `model_fn` or `encoder_fn` are not callable objects.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_callable(encoder_fn)
+  values = model_utils.enhance(model_fn()).weights.trainable
+  encoders = tf.nest.map_structure(encoder_fn, values)
+  return tff.utils.build_encoded_sum(values, encoders)
+
+
+# TODO(b/138081552): Move to tff.learning when ready.
+def build_encoded_mean_from_model(model_fn, encoder_fn):
+  """Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
+
+  This method creates a `GatherEncoder` for every trainable weight of model
+  created by `model_fn`, as returned by `encoder_fn`.
+
+  Args:
+    model_fn: A Python callable with no arguments function that returns a
+      `tff.learning.Model`.
+    encoder_fn: A Python callable with a single argument, which is expected to
+      be a `tf.Tensor` of shape and dtype to be encoded. The function must
+      return a `tensor_encoding.core.SimpleEncoder`, which expects a `tf.Tensor`
+      with compatible type as the input to its `encode` method.
+
+  Returns:
+    A `StatefulAggregateFn` for encoding and averaging the weights of model
+    created by `model_fn`.
+
+  Raises:
+    TypeError: If `model_fn` or `encoder_fn` are not callable objects.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_callable(encoder_fn)
+  values = model_utils.enhance(model_fn()).weights.trainable
+  encoders = tf.nest.map_structure(encoder_fn, values)
+  return tff.utils.build_encoded_mean(values, encoders)

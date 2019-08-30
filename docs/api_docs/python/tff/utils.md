@@ -39,6 +39,12 @@ from `source`.
 [`build_encoded_broadcast(...)`](../tff/utils/build_encoded_broadcast.md):
 Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
 
+[`build_encoded_mean(...)`](../tff/utils/build_encoded_mean.md): Builds
+`StatefulAggregateFn` for `values`, to be encoded by `encoders`.
+
+[`build_encoded_sum(...)`](../tff/utils/build_encoded_sum.md): Builds
+`StatefulAggregateFn` for `values`, to be encoded by `encoders`.
+
 [`create_variables(...)`](../tff/utils/create_variables.md): Creates a set of
 variables that matches the given `type_spec`.
 
