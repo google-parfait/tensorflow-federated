@@ -12,18 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_federated.python.core.utils.computation_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
 from absl.testing import absltest
 import attr
-import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.core import api as tff
@@ -93,11 +86,11 @@ class ComputationUtilsTest(absltest.TestCase):
     self.assertEqual(state3, TestAttrsClass(8, 2, 7))
 
   def test_update_state_fails(self):
-    with six.assertRaisesRegex(self, TypeError, 'state must be a structure'):
+    with self.assertRaisesRegex(TypeError, 'state must be a structure'):
       computation_utils.update_state((1, 2, 3), a=8)
-    with six.assertRaisesRegex(self, TypeError, 'state must be a structure'):
+    with self.assertRaisesRegex(TypeError, 'state must be a structure'):
       computation_utils.update_state([1, 2, 3], a=8)
-    with six.assertRaisesRegex(self, KeyError, 'does not contain a field'):
+    with self.assertRaisesRegex(KeyError, 'does not contain a field'):
       computation_utils.update_state({'z': 1}, a=8)
 
   def test_iterative_process_state_only(self):
@@ -134,13 +127,12 @@ class ComputationUtilsTest(absltest.TestCase):
     self.assertEqual(product, sum(range(iterations - 1)) * (iterations - 1))
 
   def test_iterative_process_initialize_bad_type(self):
-    with six.assertRaisesRegex(self, TypeError,
-                               r'Expected .*\.Computation, .*'):
+    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       _ = computation_utils.IterativeProcess(
           initialize_fn=None, next_fn=add_int32)
 
-    with six.assertRaisesRegex(
-        self, TypeError, r'initialize_fn must be a no-arg tff.Computation'):
+    with self.assertRaisesRegex(
+        TypeError, r'initialize_fn must be a no-arg tff.Computation'):
 
       @tff.federated_computation(tf.int32)
       def one_arg_initialize(one_arg):
@@ -151,14 +143,13 @@ class ComputationUtilsTest(absltest.TestCase):
           initialize_fn=one_arg_initialize, next_fn=add_int32)
 
   def test_iterative_process_next_bad_type(self):
-    with six.assertRaisesRegex(self, TypeError,
-                               r'Expected .*\.Computation, .*'):
+    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       _ = computation_utils.IterativeProcess(
           initialize_fn=initialize, next_fn=None)
 
   def test_iterative_process_type_mismatch(self):
-    with six.assertRaisesRegex(
-        self, TypeError, r'The return type of initialize_fn should match.*'):
+    with self.assertRaisesRegex(
+        TypeError, r'The return type of initialize_fn should match.*'):
 
       @tff.federated_computation([tf.float32, tf.float32])
       def add_float32(current, val):
@@ -167,8 +158,8 @@ class ComputationUtilsTest(absltest.TestCase):
       _ = computation_utils.IterativeProcess(
           initialize_fn=initialize, next_fn=add_float32)
 
-    with six.assertRaisesRegex(
-        self, TypeError,
+    with self.assertRaisesRegex(
+        TypeError,
         'The return type of next_fn should match the first parameter'):
 
       @tff.federated_computation(tf.int32)
@@ -178,8 +169,8 @@ class ComputationUtilsTest(absltest.TestCase):
       _ = computation_utils.IterativeProcess(
           initialize_fn=initialize, next_fn=add_bad_result)
 
-    with six.assertRaisesRegex(
-        self, TypeError,
+    with self.assertRaisesRegex(
+        TypeError,
         'The return type of next_fn should match the first parameter'):
 
       @tff.federated_computation(tf.int32)

@@ -29,6 +29,8 @@ py_test(
     name = "computation_utils_test",
     size = "small",
     srcs = ["computation_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api",
@@ -50,6 +52,8 @@ py_test(
     name = "encoding_utils_test",
     size = "medium",
     srcs = ["encoding_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_utils",
         ":encoding_utils",
@@ -72,6 +76,8 @@ py_test(
     name = "federated_aggregations_test",
     size = "small",
     srcs = ["federated_aggregations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":federated_aggregations",
         "//tensorflow_federated/python/core/api",
@@ -103,6 +109,8 @@ py_test(
     name = "tf_computation_utils_test",
     size = "small",
     srcs = ["tf_computation_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
