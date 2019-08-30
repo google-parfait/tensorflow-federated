@@ -3420,10 +3420,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
       transformations.uniquify_compiled_computation_names(None)
 
   def test_replaces_name(self):
-    fn = lambda: tf.constant(1)
-    tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-        fn, None, context_stack_impl.context_stack)
-    compiled_comp = building_blocks.CompiledComputation(tf_comp)
+    compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
     comp = compiled_comp
 
     transformed_comp, modified = transformations.uniquify_compiled_computation_names(
@@ -3436,10 +3433,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
   def test_replaces_multiple_names(self):
     elements = []
     for _ in range(10):
-      fn = lambda: tf.constant(1)
-      tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-          fn, None, context_stack_impl.context_stack)
-      compiled_comp = building_blocks.CompiledComputation(tf_comp)
+      compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
       elements.append(compiled_comp)
     compiled_comps = building_blocks.Tuple(elements)
     comp = compiled_comps
@@ -3640,8 +3634,8 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_selection_from_called_graph_with_tf_of_same_type(
       self):
-    identity_tf_block = _create_compiled_computation(lambda x: x,
-                                                     [tf.int32, tf.float32])
+    identity_tf_block = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
     called_tf_block = building_blocks.Call(identity_tf_block, tuple_ref)
     selection_from_call = building_blocks.Selection(called_tf_block, index=1)
@@ -3660,7 +3654,8 @@ class ParseTFFToTFTest(absltest.TestCase):
     self.assertEqual(exec_lambda([0, 1.]), exec_tf([0, 1.]))
 
   def test_replaces_lambda_to_called_graph_with_tf_of_same_type(self):
-    identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.int32)
     int_ref = building_blocks.Reference('x', tf.int32)
     called_tf_block = building_blocks.Call(identity_tf_block, int_ref)
     lambda_wrapper = building_blocks.Lambda('x', tf.int32, called_tf_block)
@@ -3678,7 +3673,8 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type(
       self):
-    identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.int32)
     tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
     called_tf_block = building_blocks.Call(identity_tf_block, selected_int)
@@ -3702,7 +3698,8 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type_with_names(
       self):
-    identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
+    identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.int32)
     tuple_ref = building_blocks.Reference('x', [('a', tf.int32),
                                                 ('b', tf.float32)])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
@@ -3724,8 +3721,8 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type(
       self):
-    identity_tf_block = _create_compiled_computation(lambda x: x,
-                                                     [tf.int32, tf.bool])
+    identity_tf_block = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.bool])
     tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.bool])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
     selected_bool = building_blocks.Selection(tuple_ref, index=2)
@@ -3752,8 +3749,8 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type_with_names(
       self):
-    identity_tf_block = _create_compiled_computation(lambda x: x,
-                                                     [tf.int32, tf.bool])
+    identity_tf_block = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.bool])
     tuple_ref = building_blocks.Reference('x', [('a', tf.int32),
                                                 ('b', tf.float32),
                                                 ('c', tf.bool)])
@@ -3792,9 +3789,10 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_unnamed_tuple_of_called_graphs_with_tf_of_same_type(
       self):
-    int_identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
-    float_identity_tf_block = _create_compiled_computation(
-        lambda x: x, tf.float32)
+    int_identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.int32)
+    float_identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.float32)
     tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
     selected_float = building_blocks.Selection(tuple_ref, index=1)
@@ -3825,9 +3823,10 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_replaces_lambda_to_named_tuple_of_called_graphs_with_tf_of_same_type(
       self):
-    int_identity_tf_block = _create_compiled_computation(lambda x: x, tf.int32)
-    float_identity_tf_block = _create_compiled_computation(
-        lambda x: x, tf.float32)
+    int_identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.int32)
+    float_identity_tf_block = building_block_factory.create_compiled_identity(
+        tf.float32)
     tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
     selected_float = building_blocks.Selection(tuple_ref, index=1)
@@ -4023,7 +4022,7 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
 
   def test_noops_on_call_with_compiled_computation(self):
     ref_to_x = building_blocks.Reference('x', tf.int32)
-    compiled_comp = _create_compiled_computation(lambda x: x, tf.int32)
+    compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
     call = building_blocks.Call(compiled_comp, ref_to_x)
     lam = building_blocks.Lambda('x', tf.int32, call)
     _, modified = transformations.insert_called_tf_identity_at_leaves(lam)

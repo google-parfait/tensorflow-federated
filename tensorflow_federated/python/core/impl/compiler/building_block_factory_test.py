@@ -2687,7 +2687,7 @@ class CreateTensorFlowBinaryOpTest(absltest.TestCase):
     self.assertEqual(result_4, 2)
 
 
-class TensorFlowConstantTest(absltest.TestCase):
+class CreateTensorFlowConstantTest(absltest.TestCase):
 
   def test_raises_on_none_type_spec(self):
     with self.assertRaises(TypeError):

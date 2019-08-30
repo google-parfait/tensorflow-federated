@@ -1164,9 +1164,9 @@ def create_generic_constant(type_spec, scalar_value):
   inferred_scalar_value_type = type_utils.infer_type(scalar_value)
   if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
       or inferred_scalar_value_type.shape != tf.TensorShape(())):
-    raise TypeError('Must pass a scalar value to '
-                    '`create_tensorflow_constant`; encountered a value '
-                    '{}'.format(scalar_value))
+    raise TypeError(
+        'Must pass a scalar value to `create_generic_constant`; encountered a '
+        'value {}'.format(scalar_value))
   if not type_utils.type_tree_contains_only(type_spec, (
       computation_types.FederatedType,
       computation_types.NamedTupleType,
