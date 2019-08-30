@@ -18,6 +18,8 @@ py_test(
     name = "models_test",
     size = "large",
     srcs = ["models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":models",
         "//tensorflow_federated",

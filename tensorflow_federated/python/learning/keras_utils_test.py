@@ -12,22 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_federated.python.learning.keras_utils.
+"""Tests for keras_utils.
 
 These tests also serve as examples for users who are familiar with Keras.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
 from absl.testing import parameterized
 import numpy as np
-import six
-from six.moves import range
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
@@ -399,7 +392,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     tff_weights.assign_weights_to(keras_model)
 
     def assert_all_weights_close(keras_weights, tff_weights):
-      for keras_w, tff_w in zip(keras_weights, six.itervalues(tff_weights)):
+      for keras_w, tff_w in zip(keras_weights, tff_weights.values()):
         self.assertAllClose(
             self.evaluate(keras_w),
             self.evaluate(tff_w),
