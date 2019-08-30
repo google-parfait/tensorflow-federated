@@ -81,6 +81,8 @@ py_test(
     name = "compiler_pipeline_test",
     size = "small",
     srcs = ["compiler_pipeline_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
         ":computation_impl",
@@ -119,6 +121,8 @@ py_test(
     name = "compiled_computation_transforms_test",
     size = "small",
     srcs = ["compiled_computation_transforms_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     visibility = [":compiler_visibility"],
     deps = [
         ":compiled_computation_transforms",
@@ -151,6 +155,8 @@ py_test(
     name = "computation_impl_test",
     size = "small",
     srcs = ["computation_impl_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":context_stack_impl",
@@ -175,6 +181,8 @@ py_test(
     name = "computation_wrapper_test",
     size = "small",
     srcs = ["computation_wrapper_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_wrapper",
         ":context_base",
@@ -205,6 +213,8 @@ py_test(
     name = "computation_wrapper_instances_test",
     size = "small",
     srcs = ["computation_wrapper_instances_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":computation_wrapper_instances",
@@ -266,6 +276,8 @@ py_test(
     name = "context_stack_test",
     size = "small",
     srcs = ["context_stack_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_base",
         ":context_stack_impl",
@@ -315,6 +327,8 @@ py_test(
     name = "end_to_end_test",
     size = "small",
     srcs = ["end_to_end_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":context_stack_impl",
@@ -513,6 +527,8 @@ py_test(
     name = "federated_computation_context_test",
     size = "small",
     srcs = ["federated_computation_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":federated_computation_context",
@@ -538,6 +554,8 @@ py_test(
     name = "federated_computation_utils_test",
     size = "small",
     srcs = ["federated_computation_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":federated_computation_utils",
@@ -614,6 +632,8 @@ py_test(
     name = "intrinsic_bodies_test",
     size = "small",
     srcs = ["intrinsic_bodies_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":intrinsic_bodies",
@@ -659,6 +679,8 @@ py_library(
 py_test(
     name = "intrinsic_reductions_test",
     srcs = ["intrinsic_reductions_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [":intrinsic_reductions"],
 )
 
@@ -718,6 +740,8 @@ py_test(
     name = "proto_transformations_test",
     size = "small",
     srcs = ["proto_transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     visibility = [":utils_visibility"],
     deps = [
         ":computation_wrapper_instances",
@@ -780,6 +804,8 @@ py_test(
     name = "reference_executor_test",
     size = "small",
     srcs = ["reference_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":computation_wrapper_instances",
@@ -881,6 +907,8 @@ py_test(
     name = "tensorflow_deserialization_test",
     size = "small",
     srcs = ["tensorflow_deserialization_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":tensorflow_deserialization",
@@ -910,6 +938,8 @@ py_test(
     name = "tensorflow_serialization_test",
     size = "small",
     srcs = ["tensorflow_serialization_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":tensorflow_serialization",
@@ -937,6 +967,8 @@ py_test(
     name = "tf_computation_context_test",
     size = "small",
     srcs = ["tf_computation_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":tf_computation_context",
         "//tensorflow_federated/python/common_libs:test",
@@ -970,6 +1002,8 @@ py_test(
     name = "transformations_test",
     size = "small",
     srcs = ["transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     visibility = [":compiler_visibility"],
     deps = [
         ":computation_wrapper_instances",
@@ -1038,6 +1072,8 @@ py_test(
     name = "type_utils_test",
     size = "small",
     srcs = ["type_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     visibility = [":utils_visibility"],
     deps = [
         ":context_stack_impl",
@@ -1079,6 +1115,8 @@ py_test(
     name = "value_impl_test",
     size = "small",
     srcs = ["value_impl_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":federated_computation_context",
@@ -1112,6 +1150,8 @@ py_test(
     name = "value_transformations_test",
     size = "small",
     srcs = ["value_transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
         ":value_transformations",
@@ -1143,6 +1183,8 @@ py_test(
     name = "value_utils_test",
     size = "small",
     srcs = ["value_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":context_stack_impl",
