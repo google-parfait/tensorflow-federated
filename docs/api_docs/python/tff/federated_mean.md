@@ -23,6 +23,9 @@ tff.federated_mean(
 
 <!-- Placeholder for "Used in" -->
 
+For values `v_1, ..., v_k`, and weights `w_1, ..., w_k`, this means `sum_{i=1}^k
+(w_i * v_i) / sum_{i=1}^k w_i`.
+
 #### Args:
 
 *   <b>`value`</b>: The value of which the mean is to be computed. Must be of a
