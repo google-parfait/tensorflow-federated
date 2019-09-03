@@ -70,3 +70,29 @@ def build_single_label_dataset(dataset, label_key, desired_label):
     return example[label_key] == desired_label
 
   return dataset.filter(_select_on_label)
+
+
+def build_synthethic_iid_datasets(client_data, client_dataset_size):
+  """Constructs an iterable of IID clients from a `tf.data.Dataset`.
+
+  The returned iterator yields a stream of `tf.data.Datsets` that approximates
+  the true statistical IID setting with the entirety of `client_data`
+  representing the global distribution. That is, we do not simply randomly
+  distribute the data across some fixed number of clients, instead each dataset
+  returned by the iterator samples independently from the entirety of
+  `client_data` (so any example in `client_data` may be produced by any client).
+
+  Args:
+    client_data: a `tff.simulation.ClientData`.
+    client_dataset_size: the size of the `tf.data.Dataset` to yield from the
+      returned dataset.
+
+  Returns:
+    A `tf.data.Dataset` instance that yields iid client datasets sampled from
+  the global distribution.
+  """
+  global_dataset = client_data.create_tf_dataset_from_all_clients()
+  global_dataset = global_dataset.repeat(None)  # Repeat forever
+  global_dataset = global_dataset.shuffle(
+      buffer_size=10000, reshuffle_each_iteration=True)  # Add shuffling.
+  return global_dataset.window(client_dataset_size)

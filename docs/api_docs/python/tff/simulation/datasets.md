@@ -33,3 +33,6 @@ Build a new dataset that probabilistically returns examples.
 
 [`build_single_label_dataset(...)`](../../tff/simulation/datasets/build_single_label_dataset.md):
 Build a new dataset that only yields examples with a particular label.
+
+[`build_synthethic_iid_datasets(...)`](../../tff/simulation/datasets/build_synthethic_iid_datasets.md):
+Constructs an iterable of IID clients from a `tf.data.Dataset`.

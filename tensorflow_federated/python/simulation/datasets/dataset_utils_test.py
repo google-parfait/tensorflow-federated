@@ -17,6 +17,7 @@ import collections
 
 import tensorflow as tf
 
+from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation.datasets import dataset_utils
 
 
@@ -73,6 +74,38 @@ class DatasetUtilsTest(tf.test.TestCase):
     # Expect close to 1000 / 10  = 100 examples.
     self.assertLen(filtered_examples, 103)
     self.assertTrue(all(x['label'] == 6 for x in filtered_d))
+
+  def test_build_synthethic_iid_client_data(self):
+    # Create a fake, very non-IID ClientData.
+    client_datasets = collections.OrderedDict([
+        ('a', tf.data.Dataset.from_tensor_slices([1] * 3)),
+        ('b', tf.data.Dataset.from_tensor_slices([2] * 5)),
+        ('c', tf.data.Dataset.from_tensor_slices([3] * 7)),
+    ])
+    non_iid_client_data = client_data.ClientData.from_clients_and_fn(
+        list(client_datasets.keys()),
+        lambda client_id: client_datasets[client_id])
+
+    num_synthethic_clients = 3
+    iid_client_data_iter = iter(
+        dataset_utils.build_synthethic_iid_datasets(non_iid_client_data, 5))
+
+    run_results = []
+    for _ in range(10):
+      actual_iid_client_datasets = []
+      for _ in range(num_synthethic_clients):
+        dataset = next(iid_client_data_iter)
+        actual_iid_client_datasets.append([self.evaluate(x) for x in dataset])
+      # We expect 3 datasets: 15 examples in the global dataset, synthetic
+      # non-iid configured for 5 examples per client.
+      self.assertEqual([5, 5, 5], [len(d) for d in actual_iid_client_datasets])
+      run_results.append(actual_iid_client_datasets)
+
+    # Assert no run is the same. The chance that two runs are the same is far
+    # less than 1 in a million, flakes should be imperceptible.
+    for i, run_a in enumerate(run_results[:-1]):
+      for run_b in run_results[i + 1:]:
+        self.assertNotEqual(run_a, run_b, msg=str(run_results))
 
 
 if __name__ == '__main__':

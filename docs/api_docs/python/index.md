@@ -110,6 +110,7 @@
 *   <a href="./tff/simulation/datasets.md"><code>tff.simulation.datasets</code></a>
 *   <a href="./tff/simulation/datasets/build_dataset_mixture.md"><code>tff.simulation.datasets.build_dataset_mixture</code></a>
 *   <a href="./tff/simulation/datasets/build_single_label_dataset.md"><code>tff.simulation.datasets.build_single_label_dataset</code></a>
+*   <a href="./tff/simulation/datasets/build_synthethic_iid_datasets.md"><code>tff.simulation.datasets.build_synthethic_iid_datasets</code></a>
 *   <a href="./tff/simulation/datasets/emnist.md"><code>tff.simulation.datasets.emnist</code></a>
 *   <a href="./tff/simulation/datasets/emnist/get_infinite.md"><code>tff.simulation.datasets.emnist.get_infinite</code></a>
 *   <a href="./tff/simulation/datasets/emnist/get_synthetic.md"><code>tff.simulation.datasets.emnist.get_synthetic</code></a>

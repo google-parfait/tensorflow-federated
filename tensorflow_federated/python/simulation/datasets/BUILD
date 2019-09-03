@@ -25,5 +25,8 @@ py_test(
     srcs = ["dataset_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dataset_utils"],
+    deps = [
+        ":dataset_utils",
+        "//tensorflow_federated/python/simulation:client_data",
+    ],
 )
