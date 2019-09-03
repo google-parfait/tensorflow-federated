@@ -34,11 +34,6 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
-def _computation_impl_to_building_block(comp):
-  return building_blocks.ComputationBuildingBlock.from_proto(
-      comp._computation_proto)
-
-
 def _create_chained_dummy_federated_applys(functions, arg):
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   for fn in functions:

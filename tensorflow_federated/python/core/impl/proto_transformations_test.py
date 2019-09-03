@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -37,20 +38,12 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
       proto_transformations.prune_tensorflow_proto(None)
 
   def test_raises_on_compiled_computation(self):
-
-    def fn(x):
-      return x
-
-    comp = _create_compiled_computation(fn, tf.int32)
+    comp = building_block_factory.create_compiled_identity(tf.int32)
     with self.assertRaises(TypeError):
       proto_transformations.prune_tensorflow_proto(comp)
 
   def test_does_not_reduce_no_unnecessary_ops(self):
-
-    def fn(x):
-      return x
-
-    comp = _create_compiled_computation(fn, tf.int32)
+    comp = building_block_factory.create_compiled_identity(tf.int32)
     pruned = building_blocks.CompiledComputation(
         proto_transformations.prune_tensorflow_proto(comp.proto))
     ops_before = building_block_analysis.count_tensorflow_ops_in(comp)

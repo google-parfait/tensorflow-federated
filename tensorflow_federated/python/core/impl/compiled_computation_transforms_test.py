@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
@@ -46,7 +47,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32)])
 
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(ValueError):
       compiled_computation_transforms.select_graph_output(foo)
@@ -54,7 +55,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
   def test_select_graph_output_with_wrong_return_type_raises_type_error(self):
     computation_arg_type = computation_types.to_type(tf.int32)
 
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(TypeError):
       compiled_computation_transforms.select_graph_output(foo, index=0)
@@ -63,7 +64,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32)])
 
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(ValueError):
       compiled_computation_transforms.select_graph_output(foo, name='x')
@@ -72,7 +73,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType(
         [tf.int32, tf.float32])
 
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
@@ -106,7 +107,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32)])
 
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
@@ -150,7 +151,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
         ('x', nested_type1), ('y', nested_type2)
     ])
 
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
@@ -191,7 +192,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType([
         ('x', nested_type1), ('y', nested_type2)
     ])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
@@ -229,14 +230,14 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
 
   def test_permute_graph_inputs_with_integer_map_raises_type_error(self):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32)])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(TypeError):
       compiled_computation_transforms.permute_graph_inputs(foo, 0)
 
   def test_permute_graph_inputs_with_list_of_strings_raises_type_error(self):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32)])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(TypeError):
       compiled_computation_transforms.permute_graph_inputs(foo, ['a'])
@@ -245,7 +246,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
       self):
     computation_arg_type = computation_types.NamedTupleType(
         [tf.int32, tf.float32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(ValueError):
       compiled_computation_transforms.permute_graph_inputs(foo, [0])
@@ -253,7 +254,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
   def test_permute_graph_inputs_repeated_indices_raises_value_error(self):
     computation_arg_type = computation_types.NamedTupleType(
         [tf.int32, tf.float32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(ValueError):
       compiled_computation_transforms.permute_graph_inputs(foo, [0, 0])
@@ -261,7 +262,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
   def test_permute_graph_inputs_large_index_raises_value_error(self):
     computation_arg_type = computation_types.NamedTupleType(
         [tf.int32, tf.float32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(ValueError):
       compiled_computation_transforms.permute_graph_inputs(foo, [0, 2])
@@ -269,7 +270,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
   def test_permute_graph_inputs_negative_index_raises_value_error(self):
     computation_arg_type = computation_types.NamedTupleType(
         [tf.int32, tf.float32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     with self.assertRaises(ValueError):
       compiled_computation_transforms.permute_graph_inputs(foo, [0, -1])
@@ -277,7 +278,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
   def test_permute_graph_inputs_identity_permutation_noops(self):
     computation_arg_type = computation_types.NamedTupleType(
         [tf.int32, tf.float32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
         foo, [0, 1])
@@ -296,7 +297,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
   def test_permute_graph_inputs_identity_permutation_leaves_names_alone(self):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32)])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
 
     mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
@@ -319,7 +320,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     permuted_arg_type = computation_types.NamedTupleType([('c', tf.bool),
                                                           ('a', tf.int32),
                                                           ('b', tf.float32)])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     permuted_inputs = compiled_computation_transforms.permute_graph_inputs(
         foo, [2, 0, 1])
@@ -340,7 +341,7 @@ class CompiledComputationTransformsTest(parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32),
                                                              ('c', tf.bool)])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     flipped_inputs = compiled_computation_transforms.permute_graph_inputs(
         foo, [1, 0, 2])
@@ -369,13 +370,13 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_parameter_as_tuple_raises_on_non_string_name(self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.bind_graph_parameter_as_tuple(foo, name=1)
 
   def test_bind_graph_parameter_as_tuple_wraps_tuple(self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
@@ -391,7 +392,7 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_parameter_as_tuple_wraps_sequence(self):
     computation_arg_type = computation_types.SequenceType(tf.int32)
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
@@ -407,7 +408,7 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_parameter_as_tuple_wraps_tensor(self):
     computation_arg_type = computation_types.to_type(tf.int32)
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
@@ -423,7 +424,7 @@ class WrapParameterAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_parameter_as_tuple_adds_name(self):
     computation_arg_type = computation_types.to_type(tf.int32)
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo, name='a')
@@ -446,13 +447,13 @@ class WrapResultAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_result_as_tuple_raises_on_non_string_name(self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.bind_graph_result_as_tuple(foo, name=1)
 
   def test_bind_graph_result_as_tuple_wraps_tuple(self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
         foo)
@@ -468,7 +469,7 @@ class WrapResultAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_result_as_tuple_wraps_sequence(self):
     computation_arg_type = computation_types.SequenceType(tf.int32)
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
         foo)
@@ -484,7 +485,7 @@ class WrapResultAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_result_as_tuple_wraps_tensor(self):
     computation_arg_type = computation_types.to_type(tf.int32)
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
         foo)
@@ -500,7 +501,7 @@ class WrapResultAsTupleTest(parameterized.TestCase):
 
   def test_bind_graph_result_as_tuple_adds_name(self):
     computation_arg_type = computation_types.to_type(tf.int32)
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
         foo, name='a')
@@ -525,8 +526,8 @@ class GraphInputPaddingTest(parameterized.TestCase):
           None, computation_types.to_type([tf.int32]))
 
   def test_pad_graph_inputs_to_match_type_raises_on_wrong_requested_type(self):
-    comp = _create_compiled_computation(lambda x: x,
-                                        computation_types.to_type([tf.int32]))
+    comp = building_block_factory.create_compiled_identity(
+        computation_types.to_type([tf.int32]))
     tensor_type = computation_types.to_type(tf.int32)
     with self.assertRaisesRegex(TypeError, r'Expected.*NamedTupleType'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
@@ -534,8 +535,8 @@ class GraphInputPaddingTest(parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_raises_on_wrong_graph_parameter_type(
       self):
-    comp = _create_compiled_computation(lambda x: x,
-                                        computation_types.to_type(tf.int32))
+    comp = building_block_factory.create_compiled_identity(
+        computation_types.to_type(tf.int32))
     with self.assertRaisesRegex(
         TypeError,
         r'Can only pad inputs of a CompiledComputation with parameter type tuple'
@@ -545,23 +546,23 @@ class GraphInputPaddingTest(parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_raises_on_requested_type_too_short(
       self):
-    comp = _create_compiled_computation(
-        lambda x: x, computation_types.to_type([tf.int32] * 3))
+    comp = building_block_factory.create_compiled_identity(
+        computation_types.to_type([tf.int32] * 3))
     with self.assertRaisesRegex(ValueError, r'must have more elements'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
           comp, computation_types.to_type([tf.int32] * 2))
 
   def test_pad_graph_inputs_to_match_type_raises_on_mismatched_graph_type_and_requested_type(
       self):
-    comp = _create_compiled_computation(lambda x: x,
-                                        computation_types.to_type([tf.float32]))
+    comp = building_block_factory.create_compiled_identity(
+        computation_types.to_type([tf.float32]))
     with self.assertRaisesRegex(TypeError, r'must match the beginning'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
           comp, computation_types.to_type([tf.int32] * 2))
 
   def test_pad_graph_inputs_to_match_type_preserves_named_type_signature(self):
     computation_arg_type = computation_types.to_type([('a', tf.int32)])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo,
@@ -573,7 +574,7 @@ class GraphInputPaddingTest(parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_adds_names_to_unnamed_tuple(self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo,
@@ -586,7 +587,7 @@ class GraphInputPaddingTest(parameterized.TestCase):
   def test_pad_graph_inputs_to_match_type_preserves_unnamed_type_signature(
       self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo, computation_types.NamedTupleType([tf.int32, tf.float32]))
@@ -598,7 +599,7 @@ class GraphInputPaddingTest(parameterized.TestCase):
   def test_pad_graph_inputs_to_match_type_add_single_int_executes_correctly(
       self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo, computation_types.NamedTupleType([tf.int32, tf.float32]))
@@ -613,7 +614,7 @@ class GraphInputPaddingTest(parameterized.TestCase):
   def test_pad_graph_inputs_to_match_type_adds_names_to_unnamed_tuple_and_executes(
       self):
     computation_arg_type = computation_types.to_type([tf.int32])
-    foo = _create_compiled_computation(lambda x: x, computation_arg_type)
+    foo = building_block_factory.create_compiled_identity(computation_arg_type)
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo,
         computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]))
@@ -765,10 +766,10 @@ class ConcatenateTFBlocksTest(parameterized.TestCase):
     self.assertEqual(executable([[1., 0.], [0., 1.]])[1], expected_result[1])
 
   def test_concatenate_tensorflow_blocks_named_tuple_args(self):
-    foo = _create_compiled_computation(lambda x: x, [('a', tf.float32),
-                                                     ('b', tf.float32)])
-    bar = _create_compiled_computation(lambda x: x, [('c', tf.float32),
-                                                     ('d', tf.float32)])
+    foo = building_block_factory.create_compiled_identity([('a', tf.float32),
+                                                           ('b', tf.float32)])
+    bar = building_block_factory.create_compiled_identity([('c', tf.float32),
+                                                           ('d', tf.float32)])
     merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
         [foo, bar], [None, None])
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
@@ -902,7 +903,7 @@ class SelectionFromCalledTensorFlowBlockTest(parameterized.TestCase):
 
 
 def _create_simple_lambda_wrapping_graph():
-  integer_identity = _create_compiled_computation(lambda x: x, tf.int32)
+  integer_identity = building_block_factory.create_compiled_identity(tf.int32)
   x_ref = building_blocks.Reference('x', tf.int32)
   called_integer_identity = building_blocks.Call(integer_identity, x_ref)
   lambda_wrap = building_blocks.Lambda('x', tf.int32, called_integer_identity)
@@ -1195,30 +1196,30 @@ class RemapGraphInputsTest(parameterized.TestCase):
 
   def test_raises_on_bad_type(self):
     tensor_type = computation_types.to_type(tf.int32)
-    tuple_identity = _create_compiled_computation(lambda x: x, [tf.int32])
+    tuple_identity = building_block_factory.create_compiled_identity([tf.int32])
     with self.assertRaises(TypeError):
       compiled_computation_transforms._remap_graph_inputs(
           tuple_identity, [0], tensor_type)
 
   def test_raises_on_non_list_of_indices(self):
     tuple_type = computation_types.to_type([tf.int32])
-    tuple_identity = _create_compiled_computation(lambda x: x, [tf.int32])
+    tuple_identity = building_block_factory.create_compiled_identity([tf.int32])
     with self.assertRaises(TypeError):
       compiled_computation_transforms._remap_graph_inputs(
           tuple_identity, 0, tuple_type)
 
   def test_raises_on_repeated_indices(self):
     tuple_type = computation_types.to_type([tf.int32, tf.int32])
-    tuple_identity = _create_compiled_computation(lambda x: x,
-                                                  [tf.int32, tf.int32])
+    tuple_identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.int32])
     with self.assertRaises(ValueError):
       compiled_computation_transforms._remap_graph_inputs(
           tuple_identity, [0, 0], tuple_type)
 
   def test_raises_on_bad_index(self):
     tuple_type = computation_types.to_type([tf.int32, tf.int32])
-    tuple_identity = _create_compiled_computation(lambda x: x,
-                                                  [tf.int32, tf.int32])
+    tuple_identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.int32])
     with self.assertRaises(ValueError):
       compiled_computation_transforms._remap_graph_inputs(
           tuple_identity, [-1, 0], tuple_type)
@@ -1321,7 +1322,7 @@ class RemapGraphInputsTest(parameterized.TestCase):
 
 
 def _create_simple_lambda_call_selection_from_arg():
-  integer_identity = _create_compiled_computation(lambda x: x, tf.int32)
+  integer_identity = building_block_factory.create_compiled_identity(tf.int32)
   tuple_reference = building_blocks.Reference('x',
                                               [tf.float32, tf.int32, tf.bool])
   selection_1 = building_blocks.Selection(tuple_reference, index=1)
@@ -1359,7 +1360,7 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_constructs_appropriate_type_selection_by_index(self):
-    integer_identity = _create_compiled_computation(lambda x: x, tf.int32)
+    integer_identity = building_block_factory.create_compiled_identity(tf.int32)
     tuple_reference = building_blocks.Reference('x',
                                                 [tf.float32, tf.int32, tf.bool])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
@@ -1374,7 +1375,7 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_executes_correctly_selection_by_index(self):
-    integer_identity = _create_compiled_computation(lambda x: x, tf.int32)
+    integer_identity = building_block_factory.create_compiled_identity(tf.int32)
     tuple_reference = building_blocks.Reference('x',
                                                 [tf.float32, tf.int32, tf.bool])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
@@ -1428,7 +1429,8 @@ class LambdaCallSelectionFromArgTest(parameterized.TestCase):
 
 
 def _create_simple_lambda_call_tuple_of_selections_from_arg():
-  identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+  identity = building_block_factory.create_compiled_identity(
+      [tf.int32, tf.float32])
   tuple_reference = building_blocks.Reference('x',
                                               [tf.float32, tf.int32, tf.bool])
   selection_1 = building_blocks.Selection(tuple_reference, index=1)
@@ -1444,7 +1446,7 @@ def _create_simple_lambda_call_tuple_of_selections_from_arg():
 class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
 
   def test_transform_raises_on_wrong_lengths(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32] * 3)
+    identity = building_block_factory.create_compiled_identity([tf.int32] * 3)
     tuple_reference = building_blocks.Reference('x', [tf.int32] * 2)
     selection = building_blocks.Selection(tuple_reference, index=0)
     tuple_of_selections = building_blocks.Tuple([selection] * 3)
@@ -1495,7 +1497,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
 
   def test_constructs_correct_type_signature_unnamed_tuple_pad_and_permute(
       self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x',
                                                 [tf.float32, tf.int32, tf.bool])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
@@ -1511,7 +1514,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_executes_correctly_unnamed_tuple_pad_and_permute(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x',
                                                 [tf.float32, tf.int32, tf.bool])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
@@ -1531,8 +1535,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_unnamed_tuple_permute_only(self):
-    identity = _create_compiled_computation(lambda x: x,
-                                            [tf.bool, tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.bool, tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x',
                                                 [tf.float32, tf.int32, tf.bool])
     selection_2 = building_blocks.Selection(tuple_reference, index=2)
@@ -1550,8 +1554,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_executes_correctly_unnamed_tuple_permute_only(self):
-    identity = _create_compiled_computation(lambda x: x,
-                                            [tf.bool, tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.bool, tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x',
                                                 [tf.float32, tf.int32, tf.bool])
     selection_2 = building_blocks.Selection(tuple_reference, index=2)
@@ -1575,7 +1579,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
 
   def test_constructs_correct_type_signature_named_tuple_name_selection_pad_and_permute(
       self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x', [('a', tf.float32),
                                                       ('b', tf.int32),
                                                       ('c', tf.bool)])
@@ -1592,7 +1597,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_executes_correctly_named_tuple_name_selection_pad_and_permute(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x', [('a', tf.float32),
                                                       ('b', tf.int32),
                                                       ('c', tf.bool)])
@@ -1613,7 +1619,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_constructs_correct_type_signature_named_tuple_index_selection(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x', [('a', tf.float32),
                                                       ('b', tf.int32),
                                                       ('c', tf.bool)])
@@ -1630,7 +1637,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_executes_correctly_named_tuple_index_selection(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     tuple_reference = building_blocks.Reference('x', [('a', tf.float32),
                                                       ('b', tf.int32),
                                                       ('c', tf.bool)])
@@ -1658,19 +1666,22 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
       compiled_computation_transforms.compose_tensorflow_blocks(None)
 
   def test_raises_on_single_computation(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     with self.assertRaises(TypeError):
       compiled_computation_transforms.compose_tensorflow_blocks(identity)
 
   def test_raises_bad_arg_in_list(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     with self.assertRaises(TypeError):
       compiled_computation_transforms.compose_tensorflow_blocks([identity, 0])
 
   def test_raises_mismatched_parameter_and_result_types(self):
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
-    bad_type_identity = _create_compiled_computation(lambda x: x,
-                                                     [tf.float32, tf.int32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
+    bad_type_identity = building_block_factory.create_compiled_identity(
+        [tf.float32, tf.int32])
     with self.assertRaises(TypeError):
       compiled_computation_transforms.compose_tensorflow_blocks(
           [identity, bad_type_identity])
@@ -1715,7 +1726,7 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
       self.assertEqual(executable_mult_by_four(k), k * 4.)
 
   def test_compose_integer_identities_executes_correctly(self):
-    identity = _create_compiled_computation(lambda x: x, tf.int32)
+    identity = building_block_factory.create_compiled_identity(tf.int32)
     composed = compiled_computation_transforms.compose_tensorflow_blocks(
         [identity, identity])
     executable = computation_wrapper_instances.building_block_to_computation(
@@ -1765,8 +1776,8 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
     drop_names = _create_compiled_computation(lambda x: [x[0], x[1]],
                                               [('a', tf.int32),
                                                ('b', tf.float32)])
-    unnamed_identity = _create_compiled_computation(lambda x: x,
-                                                    [tf.int32, tf.float32])
+    unnamed_identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     composed = compiled_computation_transforms.compose_tensorflow_blocks(
         [unnamed_identity, drop_names])
     expected_type = computation_types.FunctionType([('a', tf.int32),
@@ -1779,8 +1790,8 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
     drop_names = _create_compiled_computation(lambda x: [x[0], x[1]],
                                               [('a', tf.int32),
                                                ('b', tf.float32)])
-    unnamed_identity = _create_compiled_computation(lambda x: x,
-                                                    [tf.int32, tf.float32])
+    unnamed_identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
     composed = compiled_computation_transforms.compose_tensorflow_blocks(
         [unnamed_identity, drop_names])
     executable_drop_names = computation_wrapper_instances.building_block_to_computation(
@@ -1946,8 +1957,9 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
     self.assertEqual(executable(2), 1)
 
   def test_constructs_correct_type_signature_named_tuple_argument(self):
-    identity = _create_compiled_computation(lambda x: x, [('a', tf.int32),
-                                                          ('b', tf.float32)])
+    identity = building_block_factory.create_compiled_identity([('a', tf.int32),
+                                                                ('b',
+                                                                 tf.float32)])
     sel_int = _create_compiled_computation(lambda x: x.a, [('a', tf.int32),
                                                            ('b', tf.float32)])
 
@@ -1966,8 +1978,9 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_executes_named_tuple_argument(self):
-    identity = _create_compiled_computation(lambda x: x, [('a', tf.int32),
-                                                          ('b', tf.float32)])
+    identity = building_block_factory.create_compiled_identity([('a', tf.int32),
+                                                                ('b',
+                                                                 tf.float32)])
     sel_int = _create_compiled_computation(lambda x: x.a, [('a', tf.int32),
                                                            ('b', tf.float32)])
 
@@ -1990,7 +2003,8 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
     namer = _create_compiled_computation(
         lambda x: collections.OrderedDict([('a', x[0]), ('b', x[1])]),
         [tf.int32, tf.float32])
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
 
     tuple_reference = building_blocks.Reference('x', [tf.int32, tf.float32])
 
@@ -2006,7 +2020,8 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
     namer = _create_compiled_computation(
         lambda x: collections.OrderedDict([('a', x[0]), ('b', x[1])]),
         [tf.int32, tf.float32])
-    identity = _create_compiled_computation(lambda x: x, [tf.int32, tf.float32])
+    identity = building_block_factory.create_compiled_identity(
+        [tf.int32, tf.float32])
 
     tuple_reference = building_blocks.Reference('x', [tf.int32, tf.float32])
 
@@ -2030,8 +2045,8 @@ class CalledCompositionOfTensorFlowBlocksTest(parameterized.TestCase):
 
 
 def _create_simple_called_graph_on_replicated_arg(n_replicates=2):
-  tuple_identity = _create_compiled_computation(lambda x: x,
-                                                [tf.int32] * n_replicates)
+  tuple_identity = building_block_factory.create_compiled_identity([tf.int32] *
+                                                                   n_replicates)
   ref_to_int = building_blocks.Reference('x', tf.int32)
   called_tuple_id = building_blocks.Call(
       tuple_identity, building_blocks.Tuple([ref_to_int] * n_replicates))
