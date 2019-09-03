@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import inspect
 import os
 import os.path
 import shutil
@@ -254,7 +253,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   py_typecheck.check_type(target, types.FunctionType)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   parameter_type = computation_types.to_type(parameter_type)
-  argspec = inspect.getargspec(target)  # pylint: disable=deprecated-method
+  argspec = function_utils.get_argspec(target)
 
   with tf.Graph().as_default() as graph:
     args = []
