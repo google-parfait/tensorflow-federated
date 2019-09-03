@@ -13,82 +13,90 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-import os
+import collections
+import os.path
 
 import attr
 import tensorflow as tf
 
-import tensorflow_federated as tff
-from tensorflow_federated.python.examples.mnist import models
 from tensorflow_federated.python.research.utils import checkpoint_utils
 
 
-@attr.s(cmp=False, frozen=False)
-class Obj(object):
-  """Container for all state that need to be stored in the checkpoint.
+@attr.s(frozen=True)
+class FakeExperimentState(object):
+  """An example container for state that need to be stored in the checkpoint.
 
   Attributes:
-    model: A ModelWeights structure, containing Tensors or Variables.
-    optimizer_state: A list of Tensors or Variables, in the order returned by
-      optimizer.variables().
-    round_num: Training round_num.
+    state: A nested structure of `tf.Tensor` instances.
+    metrics: A `dict` of `str` keys to `tf.Tensor` values.
+    round_num: the iteration number of the current round.
   """
-  model = attr.ib()
-  optimizer_state = attr.ib()
+  state = attr.ib()
+  metrics = attr.ib()
   round_num = attr.ib()
 
-  @classmethod
-  def from_anon_tuple(cls, anon_tuple, round_num):
-    # TODO(b/130724878): These conversions should not be needed.
-    return cls(
-        model=anon_tuple.model._asdict(recursive=True),
-        optimizer_state=list(anon_tuple.optimizer_state),
-        round_num=round_num)
+
+def build_fake_state():
+  return FakeExperimentState(
+      state=collections.OrderedDict([
+          ('model', {
+              'trainable': {
+                  'w': tf.constant(1.0),
+                  'b': tf.constant(0.0)
+              },
+              'non_trainable': {}
+          }),
+          ('optimizer', [tf.Variable(initial_value=1.0, name='learning_rate')]),
+      ]),
+      metrics={
+          'loss': 1.0,
+          'accuracy': 0.5
+      },
+      round_num=1)
 
 
 class SavedStateTest(tf.test.TestCase):
 
-  def test_save_and_load(self):
-    server_optimizer_fn = functools.partial(
-        tf.keras.optimizers.SGD, learning_rate=0.1, momentum=0.9)
-
-    iterative_process = tff.learning.build_federated_averaging_process(
-        models.model_fn, server_optimizer_fn=server_optimizer_fn)
-    server_state = iterative_process.initialize()
-    # TODO(b/130724878): These conversions should not be needed.
-    obj = Obj.from_anon_tuple(server_state, 1)
-
+  def test_save_and_load_roundtrip(self):
+    state = build_fake_state()
     export_dir = os.path.join(self.get_temp_dir(), 'ckpt_1')
-    checkpoint_utils.save(obj, export_dir)
+    checkpoint_utils.save(state, export_dir)
 
-    loaded_obj = checkpoint_utils.load(export_dir, obj)
+    loaded_state = checkpoint_utils.load(export_dir, state)
+    self.assertEqual(state, loaded_state)
 
-    self.assertAllClose(tf.nest.flatten(obj), tf.nest.flatten(loaded_obj))
+  def test_latest_checkpoint(self):
+    prefix = 'chkpnt_'
+    latest_checkpoint = checkpoint_utils.latest_checkpoint(
+        self.get_temp_dir(), prefix)
+    self.assertIsNone(latest_checkpoint)
 
-  def test_load_latest_state(self):
-    server_optimizer_fn = functools.partial(
-        tf.keras.optimizers.SGD, learning_rate=0.1, momentum=0.9)
+    # Create checkpoints and ensure that the latest checkpoint found is
+    # always the most recently created path.
+    state = build_fake_state()
+    for round_num in range(5):
+      export_dir = os.path.join(self.get_temp_dir(),
+                                prefix + '{:03d}'.format(round_num))
+      checkpoint_utils.save(state, export_dir)
+      latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
+          self.get_temp_dir(), prefix)
+      self.assertEndsWith(
+          latest_checkpoint_path,
+          '{:03d}'.format(round_num),
+          msg=latest_checkpoint_path)
 
-    iterative_process = tff.learning.build_federated_averaging_process(
-        models.model_fn, server_optimizer_fn=server_optimizer_fn)
-    server_state = iterative_process.initialize()
-    # TODO(b/130724878): These conversions should not be needed.
-    obj_1 = Obj.from_anon_tuple(server_state, 1)
-    export_dir = os.path.join(self.get_temp_dir(), 'ckpt_1')
-    checkpoint_utils.save(obj_1, export_dir)
-
-    # TODO(b/130724878): These conversions should not be needed.
-    obj_2 = Obj.from_anon_tuple(server_state, 2)
-    export_dir = os.path.join(self.get_temp_dir(), 'ckpt_2')
-    checkpoint_utils.save(obj_2, export_dir)
-
-    export_dir = checkpoint_utils.latest_checkpoint(self.get_temp_dir())
-
-    loaded_obj = checkpoint_utils.load(export_dir, obj_1)
-
-    self.assertEqual(os.path.join(self.get_temp_dir(), 'ckpt_2'), export_dir)
-    self.assertAllClose(tf.nest.flatten(obj_2), tf.nest.flatten(loaded_obj))
+    # Delete the checkpoints in reverse order and ensure the latest checkpoint
+    # decreases.
+    for round_num in reversed(range(2, 5)):
+      export_dir = os.path.join(self.get_temp_dir(),
+                                prefix + '{:03d}'.format(round_num))
+      tf.io.gfile.rmtree(export_dir)
+      latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
+          self.get_temp_dir(), prefix)
+      self.assertEndsWith(
+          latest_checkpoint_path,
+          '{:03d}'.format(round_num - 1),
+          msg=latest_checkpoint_path)
 
 
 if __name__ == '__main__':

@@ -15,36 +15,41 @@
 """Save or load a nested structure."""
 
 import logging
-import os
+import os.path
 
-import numpy as np
 import tensorflow as tf
 
 
-def latest_checkpoint(root_output_dir):
-  """Get the latest checkpoint dirname, which is in the format of `ckpt_1`.
+def latest_checkpoint(root_output_dir, checkpoint_prefix='ckpt_'):
+  """Get the latest checkpoint name.
+
+  Searches `root_output_dir` for directories matching `checkpoint_prefix` and
+  returns the directory with the latest modified time ("mtime").
 
   Args:
     root_output_dir: The directory where all checkpoints stored.
+    checkpoint_prefix: The common prefix shared by all checkpoint directories.
 
   Returns:
     Dirname of the lastest checkpoint.
   """
-  checkpoints = tf.io.gfile.glob(os.path.join(root_output_dir, 'ckpt_*'))
+  checkpoints = tf.io.gfile.glob(
+      os.path.join(root_output_dir, '{}*'.format(checkpoint_prefix)))
   if not checkpoints:
     return None
 
-  lastest_index = np.argmax([
-      int(dirname.split('_')[-1])
-      for dirname in checkpoints
-      if tf.io.gfile.isdir(dirname)
-  ])
-
-  return checkpoints[lastest_index]
+  max_checkpoint_path = None
+  max_checkpoint_mtime = -1
+  for checkpoint_path in checkpoints:
+    file_stats = tf.io.gfile.stat(checkpoint_path)
+    if file_stats.mtime_nsec > max_checkpoint_mtime:
+      max_checkpoint_path = checkpoint_path
+      max_checkpoint_mtime = file_stats.mtime_nsec
+  return max_checkpoint_path
 
 
 def save(obj, export_dir):
-  """Save a nested structure to export_dir.
+  """Save a nested structure to `export_dir`.
 
   Args:
     obj: A nested structure which `tf.convert_to_tensor` supports.
@@ -54,12 +59,11 @@ def save(obj, export_dir):
   model.obj = tf.nest.flatten(obj)
   model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
   tf.saved_model.save(model, export_dir, signatures={})
-
-  logging.info('A nested structure is saved to %s.', export_dir)
+  logging.info('Checkpoint saved to: %s', export_dir)
 
 
 def load(export_dir, obj_template):
-  """Load a nested structure from export_dir.
+  """Load a nested structure from `export_dir`.
 
   Args:
     export_dir: The directory to load from.
@@ -78,8 +82,8 @@ def load(export_dir, obj_template):
     flat_obj = loaded.build_obj_fn()
     obj = tf.nest.pack_sequence_as(obj_template, flat_obj)
 
-    tf.logging.info('Load a nested structure from %s!' % export_dir)
+    tf.logging.info('Checkpoint loaded from: %s' % export_dir)
   else:
-    raise FileNotFoundError('No such file or directory: %s.' % export_dir)
+    raise FileNotFoundError('No such file or directory: %s' % export_dir)
 
   return obj
