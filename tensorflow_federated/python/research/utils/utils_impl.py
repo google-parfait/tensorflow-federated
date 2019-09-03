@@ -80,7 +80,7 @@ def atomic_write_to_csv(dataframe, output_file, overwrite=True):
   # due to https://github.com/pandas-dev/pandas/issues/26023, not
   # because of something we are doing here.
   tmp_name = os.path.join(tmp_dir, os.path.basename(output_file))
-  assert not tf.io.gfile.exists(tmp_name)
+  assert not tf.io.gfile.exists(tmp_name), 'file [{!s}] exists'.format(tmp_name)
   dataframe.to_csv(tmp_name, header=True)
 
   # Now, copy to a temp gfile next to the final target, allowing for
@@ -88,8 +88,7 @@ def atomic_write_to_csv(dataframe, output_file, overwrite=True):
   tmp_gfile_name = os.path.join(
       os.path.dirname(output_file), '{}.tmp{}'.format(
           os.path.basename(output_file), np.random.randint(0, 2**63)))
-  assert not tf.io.gfile.exists(tmp_gfile_name)
-  tf.io.gfile.copy(src=tmp_name, dst=tmp_gfile_name)
+  tf.io.gfile.copy(src=tmp_name, dst=tmp_gfile_name, overwrite=overwrite)
 
   # Finally, do an atomic rename and clean up:
   tf.io.gfile.rename(tmp_gfile_name, output_file, overwrite=overwrite)
