@@ -21,7 +21,6 @@ import sys
 
 from absl import app
 from absl import flags
-
 import attr
 import numpy as np
 import pandas as pd

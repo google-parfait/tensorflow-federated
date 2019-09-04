@@ -19,13 +19,11 @@ import time
 
 from absl import app
 from absl import flags
-
 import grpc
-
 import tensorflow as tf
 
-import tensorflow_federated as tff
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.core import framework
 
 FLAGS = flags.FLAGS
 
@@ -41,8 +39,8 @@ def main(argv):
   del argv
   tf.compat.v1.enable_v2_behavior()
 
-  local_executor_factory = tff.framework.create_local_executor()
-  service = tff.framework.ExecutorService(local_executor_factory({}))
+  local_executor_factory = framework.create_local_executor()
+  service = framework.ExecutorService(local_executor_factory({}))
 
   server = grpc.server(
       concurrent.futures.ThreadPoolExecutor(max_workers=FLAGS.threads))

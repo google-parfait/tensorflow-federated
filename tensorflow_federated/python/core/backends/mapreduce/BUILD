@@ -60,10 +60,10 @@ py_library(
     srcs = ["test_utils.py"],
     deps = [
         ":canonical_form",
-        "//tensorflow_federated",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/learning",
     ],
 )
 

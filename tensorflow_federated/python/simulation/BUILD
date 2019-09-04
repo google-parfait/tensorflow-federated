@@ -113,5 +113,5 @@ py_binary(
     srcs = ["worker.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//tensorflow_federated/python/core/framework"],
 )

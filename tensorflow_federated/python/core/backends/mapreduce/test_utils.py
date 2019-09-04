@@ -23,7 +23,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-import tensorflow_federated as tff
+from tensorflow_federated.python import learning
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
@@ -278,7 +278,7 @@ def get_mnist_training_example():
 
 
 def construct_example_training_comp():
-  """Constructs a `tff.utils.IterativeProcess` via the FL API."""
+  """Constructs a `computation_utils.IterativeProcess` via the FL API."""
   np.random.seed(0)
 
   sample_batch = collections.OrderedDict([('x',
@@ -305,9 +305,9 @@ def construct_example_training_comp():
         loss=loss_fn,
         optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+    return learning.from_compiled_keras_model(keras_model, sample_batch)
 
-  return tff.learning.build_federated_averaging_process(model_fn)
+  return learning.build_federated_averaging_process(model_fn)
 
 
 def computation_to_building_block(comp):
