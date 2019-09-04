@@ -239,8 +239,10 @@ class CachingExecutor(executor_base.Executor):
       cached_value = CachedValue(identifier, hashable_key, type_spec,
                                  target_future)
       self._cache[identifier] = cached_value
-    target_value = await cached_value.target_future
-    type_utils.check_assignable_from(type_spec, target_value.type_signature)
+    await cached_value.target_future
+    # No type check is necessary here; we have either checked
+    # `type_utils.are_equivalent_types` or just constructed `target_value`
+    # explicitly with `type_spec`.
     return cached_value
 
   async def create_call(self, comp, arg=None):
