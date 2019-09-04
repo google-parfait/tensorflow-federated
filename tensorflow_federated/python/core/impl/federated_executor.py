@@ -352,7 +352,39 @@ class FederatedExecutor(executor_base.Executor):
         ]))
 
   async def create_selection(self, source, index=None, name=None):
-    raise NotImplementedError
+    py_typecheck.check_type(source, FederatedExecutorValue)
+    py_typecheck.check_type(source.type_signature,
+                            computation_types.NamedTupleType)
+    if name is not None:
+      name_to_index = dict((n, i) for i, (
+          n,
+          t) in enumerate(anonymous_tuple.to_elements(source.type_signature)))
+      index = name_to_index[name]
+    if isinstance(source.internal_representation,
+                  anonymous_tuple.AnonymousTuple):
+      val = source.internal_representation
+      selected = val[index]
+      return FederatedExecutorValue(selected, source.type_signature[index])
+    elif isinstance(source.internal_representation,
+                    executor_value_base.ExecutorValue):
+      if type_utils.type_tree_contains_types(source.type_signature,
+                                             computation_types.FederatedType):
+        raise ValueError('FederatedExecutorValue {} has violated its contract; '
+                         'it is embedded in another executor and yet its type '
+                         'has placement. The embedded value is {}, with type '
+                         'signature {}.'.format(source,
+                                                source.internal_representation,
+                                                source.type_signature))
+      val = source.internal_representation
+      child = self._target_executors[None][0]
+      return FederatedExecutorValue(
+          await child.create_selection(val, index=index),
+          source.type_signature[index])
+    else:
+      raise ValueError('Unexpected internal representation while creating '
+                       'selection. Expected one of `AnonymousTuple` or value '
+                       'embedded in target executor, received {}'.format(
+                           source.internal_representation))
 
   async def _delegate(self, executor, arg, arg_type):
     """Delegates a non-federated `arg` in its entirety to the target executor.

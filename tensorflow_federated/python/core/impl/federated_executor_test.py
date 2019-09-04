@@ -463,6 +463,108 @@ class FederatedExecutorTest(parameterized.TestCase):
                                    loop.run_until_complete(v.compute()))
     self.assertCountEqual(result, [1, 2, 3, 4])
 
+  def test_create_selection_by_index_anonymous_tuple_backed(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(num_clients=4)
+
+    v1 = loop.run_until_complete(
+        ex.create_value([1.0, 2.0, 3.0, 4.0],
+                        type_factory.at_clients(tf.float32)))
+    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
+
+    v2 = loop.run_until_complete(
+        ex.create_value([5.0, 10.0, 3.0, 2.0],
+                        type_factory.at_clients(tf.float32)))
+    self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
+
+    v3 = loop.run_until_complete(
+        ex.create_tuple(
+            anonymous_tuple.AnonymousTuple([(None, v1), (None, v2)])))
+    self.assertEqual(
+        str(v3.type_signature), '<{float32}@CLIENTS,{float32}@CLIENTS>')
+
+    v4 = loop.run_until_complete(ex.create_selection(v3, index=0))
+    self.assertEqual(str(v4.type_signature), '{float32}@CLIENTS')
+    result = tf.nest.map_structure(lambda x: x.numpy(),
+                                   loop.run_until_complete(v4.compute()))
+    self.assertCountEqual(result, [1, 2, 3, 4])
+
+  def test_create_selection_by_name_anonymous_tuple_backed(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(num_clients=4)
+
+    v1 = loop.run_until_complete(
+        ex.create_value([1.0, 2.0, 3.0, 4.0],
+                        type_factory.at_clients(tf.float32)))
+    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
+
+    v2 = loop.run_until_complete(
+        ex.create_value([5.0, 10.0, 3.0, 2.0],
+                        type_factory.at_clients(tf.float32)))
+    self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
+
+    v3 = loop.run_until_complete(
+        ex.create_tuple(anonymous_tuple.AnonymousTuple([('a', v1), ('b', v2)])))
+    self.assertEqual(
+        str(v3.type_signature), '<a={float32}@CLIENTS,b={float32}@CLIENTS>')
+
+    v4 = loop.run_until_complete(ex.create_selection(v3, name='b'))
+    self.assertEqual(str(v4.type_signature), '{float32}@CLIENTS')
+    result = tf.nest.map_structure(lambda x: x.numpy(),
+                                   loop.run_until_complete(v4.compute()))
+    self.assertCountEqual(result, [5, 10, 3, 2])
+
+  def test_create_selection_by_index_eager_executor_backed(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor()
+
+    @computations.tf_computation()
+    def comp():
+      return (1, 2)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    v1 = loop.run_until_complete(ex.create_call(val, None))
+    self.assertEqual(str(v1.type_signature), '<int32,int32>')
+    selected = loop.run_until_complete(ex.create_selection(v1, index=0))
+    self.assertEqual(str(selected.type_signature), 'int32')
+    result = loop.run_until_complete(selected.compute())
+    self.assertEqual(result, 1)
+
+  def test_create_selection_by_index_lambda_executor_backed(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(use_lambda_executor=True)
+
+    @computations.tf_computation()
+    def comp():
+      return (1, 2)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    v1 = loop.run_until_complete(ex.create_call(val, None))
+    self.assertEqual(str(v1.type_signature), '<int32,int32>')
+    selected = loop.run_until_complete(ex.create_selection(v1, index=0))
+    self.assertEqual(str(selected.type_signature), 'int32')
+    result = loop.run_until_complete(selected.compute())
+    self.assertEqual(result, 1)
+
+  def test_create_selection_by_name_eager_executor_backed(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor()
+
+    @computations.tf_computation()
+    def comp():
+      return anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2)])
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    v1 = loop.run_until_complete(ex.create_call(val, None))
+    self.assertEqual(str(v1.type_signature), '<a=int32,b=int32>')
+    selected = loop.run_until_complete(ex.create_selection(v1, name='b'))
+    self.assertEqual(str(selected.type_signature), 'int32')
+    result = loop.run_until_complete(selected.compute())
+    self.assertEqual(result, 2)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
