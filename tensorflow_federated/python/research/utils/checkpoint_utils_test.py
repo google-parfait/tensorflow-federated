@@ -76,7 +76,7 @@ class SavedStateTest(tf.test.TestCase):
     state = build_fake_state()
     for round_num in range(5):
       export_dir = os.path.join(self.get_temp_dir(),
-                                prefix + '{:03d}'.format(round_num))
+                                '{}{:03d}'.format(prefix, round_num))
       checkpoint_utils.save(state, export_dir)
       latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
           self.get_temp_dir(), prefix)
@@ -89,7 +89,7 @@ class SavedStateTest(tf.test.TestCase):
     # decreases.
     for round_num in reversed(range(2, 5)):
       export_dir = os.path.join(self.get_temp_dir(),
-                                prefix + '{:03d}'.format(round_num))
+                                '{}{:03d}'.format(prefix, round_num))
       tf.io.gfile.rmtree(export_dir)
       latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
           self.get_temp_dir(), prefix)

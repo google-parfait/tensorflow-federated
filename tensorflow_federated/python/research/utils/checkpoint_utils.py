@@ -16,15 +16,17 @@
 
 import logging
 import os.path
+import re
 
 import tensorflow as tf
 
 
 def latest_checkpoint(root_output_dir, checkpoint_prefix='ckpt_'):
-  """Get the latest checkpoint name.
+  r"""Get the latest checkpoint name.
 
-  Searches `root_output_dir` for directories matching `checkpoint_prefix` and
-  returns the directory with the latest modified time ("mtime").
+  Searches `root_output_dir` for directories matching the regular expression
+  `checkpoint_prefix_\d+$` and returns the directory with the largest integer
+  suffix.
 
   Args:
     root_output_dir: The directory where all checkpoints stored.
@@ -38,18 +40,28 @@ def latest_checkpoint(root_output_dir, checkpoint_prefix='ckpt_'):
   if not checkpoints:
     return None
 
+  checkpoint_regex = re.compile(
+      r'^(?P<prefix>{})(?P<num>\d+)$'.format(checkpoint_prefix))
+
   max_checkpoint_path = None
-  max_checkpoint_mtime = -1
+  max_checkpoint_num = -1
   for checkpoint_path in checkpoints:
-    file_stats = tf.io.gfile.stat(checkpoint_path)
-    if file_stats.mtime_nsec > max_checkpoint_mtime:
+    matcher = checkpoint_regex.match(os.path.basename(checkpoint_path))
+    if not matcher:
+      continue
+    checkpoint_num = int(matcher.group('num'))
+    if checkpoint_num > max_checkpoint_num:
       max_checkpoint_path = checkpoint_path
-      max_checkpoint_mtime = file_stats.mtime_nsec
+      max_checkpoint_num = checkpoint_num
   return max_checkpoint_path
 
 
 def save(obj, export_dir):
-  """Save a nested structure to `export_dir`.
+  r"""Save a nested structure to `export_dir`.
+
+  NOTE: to be compatible with `latest_checkpoint`, the basename of `export_dir`
+  must follow the regular expression pattern `<prefix>\d+`, where the final
+  digit matcher  determines the ordering of the checkpoints.
 
   Args:
     obj: A nested structure which `tf.convert_to_tensor` supports.
@@ -75,9 +87,8 @@ def load(export_dir, obj_template):
   Raises:
     FileNotFoundError: No such file or directory.
   """
-
   if tf.io.gfile.exists(export_dir):
-    loaded = tf.saved_model.load_v2(export_dir)
+    loaded = tf.compat.v2.saved_model.load(export_dir)
 
     flat_obj = loaded.build_obj_fn()
     obj = tf.nest.pack_sequence_as(obj_template, flat_obj)
