@@ -364,12 +364,11 @@ def serialize_dataset(
   module.dataset = dataset
   module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
 
+  temp_dir = tempfile.mkdtemp('dataset')
+  fd, temp_zip = tempfile.mkstemp('zip')
+  os.close(fd)
   try:
-    temp_dir = tempfile.mkdtemp('dataset')
     tf.saved_model.save(module, temp_dir, signatures={})
-
-    fd, temp_zip = tempfile.mkstemp('zip')
-    os.close(fd)
     with zipfile.ZipFile(temp_zip, 'w') as z:
       for topdir, _, filenames in tf.io.gfile.walk(temp_dir):
         dest_dir = topdir[len(temp_dir):]
@@ -410,16 +409,14 @@ def deserialize_dataset(serialized_bytes):
       serialization.
   """
   py_typecheck.check_type(serialized_bytes, bytes)
+  temp_dir = tempfile.mkdtemp('dataset')
+  fd, temp_zip = tempfile.mkstemp('zip')
+  os.close(fd)
   try:
-    fd, temp_zip = tempfile.mkstemp('zip')
-    os.close(fd)
     with open(temp_zip, 'wb') as f:
       f.write(serialized_bytes)
-
-    temp_dir = tempfile.mkdtemp('dataset')
     with zipfile.ZipFile(temp_zip, 'r') as z:
       z.extractall(path=temp_dir)
-
     loaded = tf.compat.v2.saved_model.load(temp_dir)
     ds = loaded.dataset_fn()
   except Exception as e:  # pylint: disable=broad-except
