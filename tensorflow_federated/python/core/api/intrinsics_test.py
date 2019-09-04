@@ -355,6 +355,42 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
 
+  def test_federated_aggregate_with_unknown_dimension(self):
+    self.skipTest('b/138403874')
+    Accumulator = collections.namedtuple('Accumulator', ['samples'])  # pylint: disable=invalid-name
+    accumulator_type = tff.NamedTupleType(
+        Accumulator(samples=tff.TensorType(dtype=tf.int32, shape=[None])))
+
+    @tff.tf_computation()
+    def build_empty_accumulator():
+      return Accumulator(samples=tf.zeros(shape=[0], dtype=tf.int32))
+
+    # The operator to use during the first stage simply adds an element to the
+    # tensor, increasing its size.
+    @tff.tf_computation([accumulator_type, tf.int32])
+    def accumulate(accu, elem):
+      return Accumulator(
+          samples=tf.concat(
+              [accu.samples, tf.expand_dims(elem, axis=0)], axis=0))
+
+    # The operator to use during the second stage simply adds total and count.
+    @tff.tf_computation([accumulator_type, accumulator_type])
+    def merge(x, y):
+      return Accumulator(samples=tf.concat([x.samples, y.samples], axis=0))
+
+    # The operator to use during the final stage simply computes the ratio.
+    @tff.tf_computation(accumulator_type)
+    def report(accu):
+      return accu
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    def foo(x):
+      return tff.federated_aggregate(x, build_empty_accumulator(), accumulate,
+                                     merge, report)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> int32[?]@SERVER)')
+
   def test_federated_reduce_with_tf_add_raw_constant(self):
 
     @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
