@@ -642,12 +642,12 @@ class ConcatenateTFBlocksTest(parameterized.TestCase):
           None, [None])
 
   def test_concatenenate_tensorflow_blocks_raises_no_iterable(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.concatenate_tensorflow_blocks(foo, [None])
 
   def test_concatenenate_tensorflow_blocks_raises_bad_comp_in_list(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
     bad_comp = building_blocks.Data('x', tf.int32)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.concatenate_tensorflow_blocks(
@@ -658,32 +658,32 @@ class ConcatenateTFBlocksTest(parameterized.TestCase):
       compiled_computation_transforms.concatenate_tensorflow_blocks([], [None])
 
   def test_concatenate_tensorflow_blocks_raises_bad_names_list_length(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
-    bar = _create_compiled_computation(lambda: tf.constant(1.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
+    bar = building_block_factory.create_tensorflow_constant(tf.float32, 1.0)
     with self.assertRaises(ValueError):
       compiled_computation_transforms.concatenate_tensorflow_blocks([foo, bar],
                                                                     [None])
 
   def test_concatenate_tensorflow_blocks_raises_bad_names_list_type(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
-    bar = _create_compiled_computation(lambda: tf.constant(1.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
+    bar = building_block_factory.create_tensorflow_constant(tf.float32, 1.0)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.concatenate_tensorflow_blocks([foo, bar],
                                                                     'x')
 
   def test_concatenate_tensorflow_blocks_raises_bad_names_list_element_type(
       self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
-    bar = _create_compiled_computation(lambda: tf.constant(1.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
+    bar = building_block_factory.create_tensorflow_constant(tf.float32, 1.0)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.concatenate_tensorflow_blocks([foo, bar],
                                                                     ['x', 1])
 
   def test_concatenate_tensorflow_blocks_no_arg(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
-    bar = _create_compiled_computation(lambda: tf.constant(1.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
+    bar = building_block_factory.create_tensorflow_constant(tf.float32, 1.0)
     merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
-        [foo, bar], [None, None])
+        [foo.function, bar.function], [None, None])
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
     concatenated_type = computation_types.FunctionType(None,
                                                        [tf.float32, tf.float32])
@@ -695,10 +695,10 @@ class ConcatenateTFBlocksTest(parameterized.TestCase):
     self.assertAlmostEqual(executable(), expected_result)
 
   def test_concatenate_tensorflow_blocks_named_outputs_type_preserved(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
-    bar = _create_compiled_computation(lambda: tf.constant(1.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
+    bar = building_block_factory.create_tensorflow_constant(tf.float32, 1.0)
     merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
-        [foo, bar], ['a', 'b'])
+        [foo.function, bar.function], ['a', 'b'])
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
     concatenated_type = computation_types.FunctionType(None,
                                                        [('a', tf.float32),
@@ -706,11 +706,11 @@ class ConcatenateTFBlocksTest(parameterized.TestCase):
     self.assertEqual(merged_comp.type_signature, concatenated_type)
 
   def test_concatenate_tensorflow_blocks_mix_of_arg_and_no_arg(self):
-    foo = _create_compiled_computation(lambda: tf.constant(0.0), None)
+    foo = building_block_factory.create_tensorflow_constant(tf.float32, 0.0)
     bar = _create_compiled_computation(lambda x: x + tf.constant(1.0),
                                        tf.float32)
     merged_comp = compiled_computation_transforms.concatenate_tensorflow_blocks(
-        [foo, bar], [None, None])
+        [foo.function, bar], [None, None])
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
     concatenated_type = computation_types.FunctionType(tf.float32,
                                                        [tf.float32, tf.float32])
@@ -962,8 +962,8 @@ class LambdaWrappingGraphTest(parameterized.TestCase):
 
 
 def _create_simple_tuple_of_called_graphs():
-  noarg_const = _create_compiled_computation(lambda: tf.constant(1.), None)
-  called_const = building_blocks.Call(noarg_const, None)
+  called_const = building_block_factory.create_tensorflow_constant(
+      tf.float32, 1.0)
   tuple_of_called_graphs = building_blocks.Tuple([called_const] * 2)
   return tuple_of_called_graphs
 
@@ -1005,10 +1005,10 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_named_tuple_of_graphs_preserves_type(self):
-    noarg_const_0 = _create_compiled_computation(lambda: tf.constant(0.), None)
-    noarg_const_1 = _create_compiled_computation(lambda: tf.constant(1), None)
-    called_noarg_const_0 = building_blocks.Call(noarg_const_0, None)
-    called_noarg_const_1 = building_blocks.Call(noarg_const_1, None)
+    called_noarg_const_0 = building_block_factory.create_tensorflow_constant(
+        tf.float32, 0.0)
+    called_noarg_const_1 = building_block_factory.create_tensorflow_constant(
+        tf.int32, 1)
     tuple_of_called_graphs = building_blocks.Tuple([('a', called_noarg_const_0),
                                                     ('b', called_noarg_const_1)
                                                    ])
@@ -1019,10 +1019,10 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     self.assertTrue(mutated)
 
   def test_no_arg_functions_execute(self):
-    noarg_const_0 = _create_compiled_computation(lambda: tf.constant(0.), None)
-    noarg_const_1 = _create_compiled_computation(lambda: tf.constant(1), None)
-    called_noarg_const_0 = building_blocks.Call(noarg_const_0, None)
-    called_noarg_const_1 = building_blocks.Call(noarg_const_1, None)
+    called_noarg_const_0 = building_block_factory.create_tensorflow_constant(
+        tf.float32, 0.0)
+    called_noarg_const_1 = building_block_factory.create_tensorflow_constant(
+        tf.int32, 1)
     tuple_of_called_graphs = building_blocks.Tuple(
         [called_noarg_const_0, called_noarg_const_1])
     tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
@@ -1040,9 +1040,9 @@ class TupleCalledGraphsTest(parameterized.TestCase):
     self.assertEqual(executable(0)[1], 1)
 
   def test_single_function_which_takes_a_parameter_executes(self):
-    noarg_const_0 = _create_compiled_computation(lambda: tf.constant(0.), None)
+    called_noarg_const_0 = building_block_factory.create_tensorflow_constant(
+        tf.float32, 0.0)
     integer_square = _create_compiled_computation(lambda x: x**2, tf.int32)
-    called_noarg_const_0 = building_blocks.Call(noarg_const_0, None)
     square_arg = building_blocks.Reference('x', tf.int32)
     called_square = building_blocks.Call(integer_square, square_arg)
     tuple_of_called_graphs = building_blocks.Tuple(
@@ -1687,18 +1687,18 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
           [identity, bad_type_identity])
 
   def test_composes_no_arg_fn_with_add_one_types_correctly(self):
-    noarg_fn = _create_compiled_computation(lambda: 0, None)
+    noarg_fn = building_block_factory.create_tensorflow_constant(tf.int32, 0)
     add_one_fn = _create_compiled_computation(lambda x: x + 1, tf.int32)
     composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
-        [add_one_fn, noarg_fn])
+        [add_one_fn, noarg_fn.function])
     expected_type = computation_types.FunctionType(None, tf.int32)
     self.assertEqual(composed_fn.type_signature, expected_type)
 
   def test_composes_no_arg_fn_with_add_one_executes_correctly(self):
-    noarg_fn = _create_compiled_computation(lambda: 0, None)
+    noarg_fn = building_block_factory.create_tensorflow_constant(tf.int32, 0)
     add_one_fn = _create_compiled_computation(lambda x: x + 1, tf.int32)
     composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
-        [add_one_fn, noarg_fn])
+        [add_one_fn, noarg_fn.function])
     executable_constant_one = computation_wrapper_instances.building_block_to_computation(
         composed_fn)
     self.assertEqual(executable_constant_one(), 1)
@@ -1867,8 +1867,7 @@ class ComposeTensorFlowBlocksTest(parameterized.TestCase):
 
 
 def _create_simple_called_composition_of_tf_blocks():
-  zero_fn = _create_compiled_computation(lambda: 0, None)
-  zero = building_blocks.Call(zero_fn, None)
+  zero = building_block_factory.create_tensorflow_constant(tf.int32, 0)
   add_one = _create_compiled_computation(lambda x: x + 1, tf.int32)
   one = building_blocks.Call(add_one, zero)
   return one
