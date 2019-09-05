@@ -61,7 +61,7 @@ class AnonymousTuple(object):
   Also note that the user will not be creating such tuples. They are a hidden
   part of the impementation designed to work together with function decorators.
   """
-  __slots__ = ('_hash', '_element_array', '_name_to_index')
+  __slots__ = ('_hash', '_element_array', '_name_to_index', '_name_array')
 
   # TODO(b/113112108): Define more magic methods for convenience in handling
   # anonymous tuples. Possibly move out to a more generic location or replace
@@ -87,13 +87,17 @@ class AnonymousTuple(object):
 
     self._element_array = tuple(e[1] for e in elements)
     self._name_to_index = {}
+    self._name_array = []
+    reserved_names = ('_asdict',) + AnonymousTuple.__slots__
     for idx, e in enumerate(elements):
       name = e[0]
+      self._name_array.append(name)
       if name is None:
         continue
-      if name == '_asdict':
+      if name in reserved_names:
         raise ValueError(
-            'The name "_asdict" is reserved for a method, as with namedtuples.')
+            'The names in {} are reserved. You passed the name {}.'.format(
+                reserved_names, name))
       elif name in self._name_to_index:
         raise ValueError(
             'AnonymousTuple does not support duplicated names, but found {}'
@@ -201,12 +205,8 @@ def to_elements(an_anonymous_tuple):
   """
   py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
   # pylint: disable=protected-access
-  index_to_name = {
-      idx: name
-      for name, idx in six.iteritems(an_anonymous_tuple._name_to_index)
-  }
-  return [(index_to_name.get(idx), val)
-          for idx, val in enumerate(an_anonymous_tuple._element_array)]
+  return list(
+      zip(an_anonymous_tuple._name_array, an_anonymous_tuple._element_array))
   # pylint: enable=protected-access
 
 

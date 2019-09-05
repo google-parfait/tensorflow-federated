@@ -114,6 +114,18 @@ class AnonymousTupleTest(absltest.TestCase):
     with self.assertRaisesRegex(ValueError, '_asdict.*reserved'):
       anonymous_tuple.AnonymousTuple([('_asdict', 40)])
 
+    with self.assertRaisesRegex(ValueError, '_element_array.*reserved'):
+      anonymous_tuple.AnonymousTuple([('_element_array', 40)])
+
+    with self.assertRaisesRegex(ValueError, '_name_to_index.*reserved'):
+      anonymous_tuple.AnonymousTuple([('_name_to_index', 40)])
+
+    with self.assertRaisesRegex(ValueError, '_name_array.*reserved'):
+      anonymous_tuple.AnonymousTuple([('_name_array', 40)])
+
+    with self.assertRaisesRegex(ValueError, '_hash.*reserved'):
+      anonymous_tuple.AnonymousTuple([('_hash', 40)])
+
   def test_immutable(self):
     v = [('foo', 'a string'), ('bar', 1), ('baz', [1.0, 2.0, 3.0])]
     t = anonymous_tuple.AnonymousTuple(v)
