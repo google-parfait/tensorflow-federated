@@ -355,8 +355,36 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
 
+  def test_federated_aggregate_with_federated_zero_fails(self):
+
+    @tff.federated_computation()
+    def build_federated_zero():
+      return tff.federated_value(0, tff.SERVER)
+
+    @tff.tf_computation([tf.int32, tf.int32])
+    def accumulate(accu, elem):
+      return accu + elem
+
+    # The operator to use during the second stage simply adds total and count.
+    @tff.tf_computation([tf.int32, tf.int32])
+    def merge(x, y):
+      return x + y
+
+    # The operator to use during the final stage simply computes the ratio.
+    @tff.tf_computation(tf.int32)
+    def report(accu):
+      return accu
+
+    def foo(x):
+      return tff.federated_aggregate(x, build_federated_zero(), accumulate,
+                                     merge, report)
+
+    with self.assertRaisesRegex(
+        TypeError, 'Expected `zero` to be assignable to type int32, '
+        'but was of incompatible type int32@SERVER'):
+      tff.federated_computation(foo, tff.FederatedType(tf.int32, tff.CLIENTS))
+
   def test_federated_aggregate_with_unknown_dimension(self):
-    self.skipTest('b/138403874')
     Accumulator = collections.namedtuple('Accumulator', ['samples'])  # pylint: disable=invalid-name
     accumulator_type = tff.NamedTupleType(
         Accumulator(samples=tff.TensorType(dtype=tf.int32, shape=[None])))
@@ -389,7 +417,8 @@ class IntrinsicsTest(parameterized.TestCase):
                                      merge, report)
 
     self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> int32[?]@SERVER)')
+        str(foo.type_signature),
+        '({int32}@CLIENTS -> <samples=int32[?]>@SERVER)')
 
   def test_federated_reduce_with_tf_add_raw_constant(self):
 

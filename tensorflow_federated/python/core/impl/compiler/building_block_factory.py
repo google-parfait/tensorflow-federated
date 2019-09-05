@@ -701,11 +701,17 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   py_typecheck.check_type(accumulate, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(merge, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(report, building_blocks.ComputationBuildingBlock)
+  # Its okay if the first argument of accumulate is assignable from the zero,
+  # without being the exact type. This occurs when accumulate has a type like
+  # (<int32[?], int32> -> int32[?]) but zero is int32[0].
+  zero_arg_type = accumulate.type_signature.parameter[0]
+  type_utils.check_assignable_from(zero_arg_type, zero.type_signature)
   result_type = computation_types.FederatedType(report.type_signature.result,
                                                 placement_literals.SERVER)
+
   intrinsic_type = computation_types.FunctionType((
       type_utils.to_non_all_equal(value.type_signature),
-      zero.type_signature,
+      zero_arg_type,
       accumulate.type_signature,
       merge.type_signature,
       report.type_signature,
