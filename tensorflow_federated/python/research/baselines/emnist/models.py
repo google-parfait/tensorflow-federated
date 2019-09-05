@@ -19,13 +19,19 @@ import functools
 import tensorflow as tf
 
 
-def create_keras_model():
+def create_keras_model(only_digits=True):
   """The CNN model used in https://arxiv.org/abs/1602.05629.
 
-  The number of parameters (1,663,370) matches what is reported in the paper.
+  The number of parameters when `only_digits=True` is (1,663,370), which matches
+  what is reported in the paper.
+
+  Args:
+    only_digits: if True, uses a final layer with 10 outputs, for use with the
+    digits only EMNIST dataset. If False, uses 62 outputs for the larger
+    dataset.
 
   Returns:
-    `tf.keras.Model`.
+    A `tf.keras.Model`.
   """
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
@@ -50,7 +56,8 @@ def create_keras_model():
       max_pool(),
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(512, activation=tf.nn.relu),
-      tf.keras.layers.Dense(10, activation=tf.nn.softmax),
+      tf.keras.layers.Dense(
+          10 if only_digits else 62, activation=tf.nn.softmax),
   ])
 
   return model
