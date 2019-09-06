@@ -694,6 +694,23 @@ class FederatedExecutor(executor_base.Executor):
             computation_types.NamedTupleType(
                 [divide_blk.type_signature, divide_arg.type_signature])))
 
+  async def _compute_intrinsic_federated_collect(self, arg):
+    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+    type_utils.check_federated_type(
+        arg.type_signature, placement=placement_literals.CLIENTS)
+    val = arg.internal_representation
+    py_typecheck.check_type(val, list)
+    member_type = arg.type_signature.member
+    child = self._target_executors[placement_literals.SERVER][0]
+    collected_items = await child.create_value(
+        await asyncio.gather(*[v.compute() for v in val]),
+        computation_types.SequenceType(member_type))
+    return FederatedExecutorValue(
+        [collected_items],
+        computation_types.FederatedType(
+            computation_types.SequenceType(member_type),
+            placement_literals.SERVER))
+
 
 async def _embed_tf_scalar_constant(executor, type_spec, val):
   """Embeds a constant `val` of TFF type `type_spec` in `executor`.

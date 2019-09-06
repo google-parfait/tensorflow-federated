@@ -565,6 +565,50 @@ class FederatedExecutorTest(parameterized.TestCase):
     result = loop.run_until_complete(selected.compute())
     self.assertEqual(result, 2)
 
+  def test_federated_collect(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(3)
+
+    @computations.federated_computation
+    def comp():
+      x = intrinsics.federated_value(10, placements.CLIENTS)
+      return intrinsics.federated_collect(x)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    result = loop.run_until_complete(val.compute())
+    self.assertEqual([x.numpy() for x in result], [10, 10, 10])
+
+    new_ex = _make_test_executor(5)
+    val = loop.run_until_complete(new_ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    result = loop.run_until_complete(val.compute())
+    self.assertEqual([x.numpy() for x in result], [10, 10, 10, 10, 10])
+
+  def test_federated_collect_with_map_call(self):
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor(5)
+
+    @computations.tf_computation()
+    def make_dataset():
+      return tf.data.Dataset.range(5)
+
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
+    def foo(x):
+      return x.reduce(tf.constant(0, dtype=tf.int64), lambda a, b: a + b)
+
+    @computations.federated_computation()
+    def bar():
+      x = intrinsics.federated_value(make_dataset(), placements.CLIENTS)
+      return intrinsics.federated_apply(
+          foo, intrinsics.federated_collect(intrinsics.federated_map(foo, x)))
+
+    bar_value = loop.run_until_complete(ex.create_value(bar))
+
+    self.assertIsInstance(bar_value, federated_executor.FederatedExecutorValue)
+    result = loop.run_until_complete(bar_value.compute())
+    self.assertEqual(result.numpy(), 50)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
