@@ -912,10 +912,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":tensorflow_deserialization",
-        ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
     ],
 )
 

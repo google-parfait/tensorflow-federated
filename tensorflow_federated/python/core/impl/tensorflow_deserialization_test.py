@@ -13,35 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
-from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 
 
 class TensorFlowDeserializationTest(test.TestCase):
 
   @test.graph_mode_test
   def test_deserialize_and_call_tf_computation_with_add_one(self):
-    ctx_stack = context_stack_impl.context_stack
-    add_one, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-        lambda x: tf.add(x, 1, name='the_add'), tf.int32, ctx_stack)
-    init_op, result = (
-        tensorflow_deserialization.deserialize_and_call_tf_computation(
-            add_one, tf.constant(10, name='the_ten'),
-            tf.compat.v1.get_default_graph()))
+    identity_fn = building_block_factory.create_compiled_identity(tf.int32)
+    init_op, result = tensorflow_deserialization.deserialize_and_call_tf_computation(
+        identity_fn.proto, tf.constant(10), tf.compat.v1.get_default_graph())
     self.assertTrue(tf.is_tensor(result))
     with tf.compat.v1.Session() as sess:
       if init_op:
         sess.run(init_op)
       result_val = sess.run(result)
-    self.assertEqual(result_val, 11)
+    self.assertEqual(result_val, 10)
 
 
 if __name__ == '__main__':
