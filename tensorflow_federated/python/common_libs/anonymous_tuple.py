@@ -146,7 +146,7 @@ class AnonymousTuple(object):
     # pylint: disable=protected-access
     return (isinstance(other, AnonymousTuple) and
             (self._element_array == other._element_array) and
-            (self._name_to_index == other._name_to_index))
+            (self._name_array == other._name_array))
     # pylint: enable=protected-access
 
   def __ne__(self, other):
@@ -171,7 +171,7 @@ class AnonymousTuple(object):
       self._hash = hash((
           'anonymous_tuple',  # salting to avoid type mismatch.
           self._element_array,
-          tuple(self._name_to_index.items())))
+          tuple(self._name_array)))
     return self._hash
 
   def _asdict(self, recursive=False):
