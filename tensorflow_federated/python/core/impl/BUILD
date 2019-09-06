@@ -1078,9 +1078,7 @@ py_test(
     srcs_version = "PY3",
     visibility = [":utils_visibility"],
     deps = [
-        ":context_stack_impl",
         ":type_utils",
-        ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
