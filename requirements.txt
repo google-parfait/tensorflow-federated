@@ -4,6 +4,7 @@ absl-py~=0.7
 attrs~=18.2
 cachetools~=3.1.1
 enum34~=1.1
+gast==0.2.2
 grpcio~=1.22.0
 h5py~=2.6
 matplotlib~=3.0
