@@ -18,6 +18,7 @@ import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import caching_executor
+from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import federated_executor
@@ -25,59 +26,108 @@ from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 
-def _create_single_worker_stack():
-  ex = eager_executor.EagerExecutor()
-  ex = concurrent_executor.ConcurrentExecutor(ex)
-  ex = caching_executor.CachingExecutor(ex)
-  return lambda_executor.LambdaExecutor(ex)
+def _complete_stack(ex):
+  return lambda_executor.LambdaExecutor(
+      caching_executor.CachingExecutor(
+          concurrent_executor.ConcurrentExecutor(ex)))
 
 
-def _create_multiple_worker_stacks(num_workers):
-  return [_create_single_worker_stack() for _ in range(num_workers)]
+def _create_bottom_stack():
+  return _complete_stack(eager_executor.EagerExecutor())
 
 
-def _create_explicit_cardinality_executor_fn(num_clients):
-  """Creates executor function with fixed cardinality."""
+def _create_federated_stack(num_clients):
   executor_dict = {
-      None: _create_multiple_worker_stacks(1),
-      placement_literals.SERVER: _create_multiple_worker_stacks(1),
-      placement_literals.CLIENTS: _create_multiple_worker_stacks(num_clients)
+      placement_literals.CLIENTS: [
+          _create_bottom_stack() for _ in range(num_clients)
+      ],
+      placement_literals.SERVER: _create_bottom_stack(),
+      None: _create_bottom_stack()
   }
+  return _complete_stack(federated_executor.FederatedExecutor(executor_dict))
 
-  def _return_executor(x):
-    del x  # Unused
-    return lambda_executor.LambdaExecutor(
-        caching_executor.CachingExecutor(
-            federated_executor.FederatedExecutor(executor_dict)))
+
+def _create_composite_stack(children):
+  return _complete_stack(
+      composite_executor.CompositeExecutor(_create_bottom_stack(), children))
+
+
+def _create_full_stack(num_clients, max_fanout):
+  """Creates a full executor stack.
+
+  Args:
+    num_clients: The number of clients to support. Must be 0 or larger.
+    max_fanout: The maximum fanout at any point in the hierarchy. Must be 1 or
+      larger.
+
+  Returns:
+    An executor stack, potentially multi-level, that spans all clients.
+
+  Raises:
+    ValueError: If the number of clients or fanout are not as specified.
+    RuntimeError: If the stack construction fails.
+  """
+  py_typecheck.check_type(num_clients, int)
+  py_typecheck.check_type(max_fanout, int)
+  if num_clients < 0:
+    raise ValueError('Number of clients cannot be negative.')
+  if max_fanout < 1:
+    raise ValueError('Max fanout must be positive.')
+
+  if num_clients < 1:
+    return _create_federated_stack(0)
+  else:
+    executors = []
+    while num_clients > 0:
+      n = min(num_clients, max_fanout)
+      executors.append(_create_federated_stack(n))
+      num_clients -= n
+
+    while len(executors) > 1:
+      new_executors = []
+      offset = 0
+      while offset < len(executors):
+        new_offset = offset + max_fanout
+        new_executors.append(
+            _create_composite_stack(executors[offset:new_offset]))
+        offset = new_offset
+      executors = new_executors
+    if len(executors) != 1:
+      raise RuntimeError('Expected 1 executor, got {}.'.format(len(executors)))
+    return executors[0]
+
+
+def _create_explicit_cardinality_executor_fn(num_clients, max_fanout):
+  """Creates executor function with fixed cardinality."""
+
+  def _return_executor(_):
+    return _create_full_stack(num_clients, max_fanout)
 
   return _return_executor
 
 
-def _create_inferred_cardinality_executor_fn():
+def _create_inferred_cardinality_executor_fn(max_fanout):
   """Creates executor function with variable cardinality."""
 
-  def _create_variable_clients_executors(x):
+  def _create_variable_clients_executors(cardinalities):
     """Constructs executor stacks from `dict` argument."""
-    py_typecheck.check_type(x, dict)
-    for k, v in six.iteritems(x):
+    py_typecheck.check_type(cardinalities, dict)
+    for k, v in six.iteritems(cardinalities):
       py_typecheck.check_type(k, placement_literals.PlacementLiteral)
+      if k not in [placement_literals.CLIENTS, placement_literals.SERVER]:
+        raise ValueError('Unsupported placement: {}.'.format(k))
       if v <= 0:
         raise ValueError(
             'Cardinality must be at '
             'least one; you have passed {} for placement {}.'.format(v, k))
-    executor_dict = dict([(placement, _create_multiple_worker_stacks(n))
-                          for placement, n in six.iteritems(x)])
-    executor_dict.update({None: _create_multiple_worker_stacks(1)})
-    executor_dict.update(
-        {placement_literals.SERVER: _create_multiple_worker_stacks(1)})
-    return lambda_executor.LambdaExecutor(
-        caching_executor.CachingExecutor(
-            federated_executor.FederatedExecutor(executor_dict)))
+
+    return _create_full_stack(
+        cardinalities.get(placement_literals.CLIENTS, 0), max_fanout)
 
   return _create_variable_clients_executors
 
 
-def create_local_executor(num_clients=None):
+def create_local_executor(num_clients=None, max_fanout=100):
   """Constructs an executor to execute computations on the local machine.
 
   NOTE: This function is only available in Python 3.
@@ -88,6 +138,10 @@ def create_local_executor(num_clients=None):
       exactly `num_clients` clients. If unspecified (`None`), then the function
       returned will attempt to infer cardinalities of all placements for which
       it is passed values.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy.
+      If `num_clients > max_fanout`, the constructed executor stack will consist
+      of multiple levels of aggregators. The height of the stack will be on the
+      order of `log(num_clients) / log(max_fanout)`.
 
   Returns:
     An executor factory function which returns a
@@ -104,6 +158,6 @@ def create_local_executor(num_clients=None):
     if num_clients <= 0:
       raise ValueError('If specifying `num_clients`, cardinality must be at '
                        'least one; you have passed {}.'.format(num_clients))
-    return _create_explicit_cardinality_executor_fn(num_clients)
+    return _create_explicit_cardinality_executor_fn(num_clients, max_fanout)
   else:
-    return _create_inferred_cardinality_executor_fn()
+    return _create_inferred_cardinality_executor_fn(max_fanout)

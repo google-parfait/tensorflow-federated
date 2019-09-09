@@ -90,6 +90,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/check_intrinsics_whitelisted_for_reduction
     - title: CompiledComputation
       path: /federated/api_docs/python/tff/framework/CompiledComputation
+    - title: CompositeExecutor
+      path: /federated/api_docs/python/tff/framework/CompositeExecutor
     - title: ComputationBuildingBlock
       path: /federated/api_docs/python/tff/framework/ComputationBuildingBlock
     - title: ConcurrentExecutor

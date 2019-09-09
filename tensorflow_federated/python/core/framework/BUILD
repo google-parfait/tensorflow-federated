@@ -21,6 +21,7 @@ py_library(
         "//tensorflow_federated:py2_mode": [],
         "//tensorflow_federated:py3_mode": [
             "//tensorflow_federated/python/core/impl:caching_executor",
+            "//tensorflow_federated/python/core/impl:composite_executor",
             "//tensorflow_federated/python/core/impl:concurrent_executor",
             "//tensorflow_federated/python/core/impl:eager_executor",
             "//tensorflow_federated/python/core/impl:executor_base",

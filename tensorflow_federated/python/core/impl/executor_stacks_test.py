@@ -97,6 +97,16 @@ class ExecutorStacksTest(absltest.TestCase):
 
     set_default_executor.set_default_executor()
 
+  def test_with_num_clients_larger_than_fanout(self):
+    set_default_executor.set_default_executor(
+        executor_stacks.create_local_executor(max_fanout=3))
+
+    @computations.federated_computation(type_factory.at_clients(tf.int32))
+    def foo(x):
+      return intrinsics.federated_sum(x)
+
+    self.assertEqual(foo([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 55)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

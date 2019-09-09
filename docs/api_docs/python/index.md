@@ -33,6 +33,7 @@
 *   <a href="./tff/framework/CachingExecutor.md"><code>tff.framework.CachingExecutor</code></a>
 *   <a href="./tff/framework/Call.md"><code>tff.framework.Call</code></a>
 *   <a href="./tff/framework/CompiledComputation.md"><code>tff.framework.CompiledComputation</code></a>
+*   <a href="./tff/framework/CompositeExecutor.md"><code>tff.framework.CompositeExecutor</code></a>
 *   <a href="./tff/framework/ComputationBuildingBlock.md"><code>tff.framework.ComputationBuildingBlock</code></a>
 *   <a href="./tff/framework/ConcurrentExecutor.md"><code>tff.framework.ConcurrentExecutor</code></a>
 *   <a href="./tff/framework/EagerExecutor.md"><code>tff.framework.EagerExecutor</code></a>

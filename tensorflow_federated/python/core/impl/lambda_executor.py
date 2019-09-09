@@ -258,7 +258,8 @@ class LambdaExecutor(executor_base.Executor):
       if not type_utils.is_assignable_from(param_type, arg.type_signature):
         arg_type = type_utils.get_argument_type(arg.type_signature)
         type_utils.check_assignable_from(param_type, arg_type)
-        return await self.create_call(comp, await self.create_call(arg))
+        arg = await self.create_call(arg)
+        return await self.create_call(comp, arg)
     else:
       py_typecheck.check_none(arg)
     comp_repr = comp.internal_representation

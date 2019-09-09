@@ -14,7 +14,10 @@ source</a>
 Constructs an executor to execute computations on the local machine.
 
 ```python
-tff.framework.create_local_executor(num_clients=None)
+tff.framework.create_local_executor(
+    num_clients=None,
+    max_fanout=100
+)
 ```
 
 <!-- Placeholder for "Used in" -->
@@ -28,6 +31,10 @@ NOTE: This function is only available in Python 3.
     have exactly `num_clients` clients. If unspecified (`None`), then the
     function returned will attempt to infer cardinalities of all placements for
     which it is passed values.
+*   <b>`max_fanout`</b>: The maximum fanout at any point in the aggregation
+    hierarchy. If `num_clients > max_fanout`, the constructed executor stack
+    will consist of multiple levels of aggregators. The height of the stack will
+    be on the order of `log(num_clients) / log(max_fanout)`.
 
 #### Returns:
 

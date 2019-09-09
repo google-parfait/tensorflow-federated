@@ -72,6 +72,7 @@ if six.PY3:
   # pylint: disable=g-import-not-at-top
   try:
     from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
+    from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
     from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
     from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
     from tensorflow_federated.python.core.impl.executor_base import Executor
@@ -93,6 +94,7 @@ _allowed_symbols = [
     "CachingExecutor",
     "Call",
     "CompiledComputation",
+    "CompositeExecutor",
     "ComputationBuildingBlock",
     "ConcurrentExecutor",
     "EagerExecutor",
