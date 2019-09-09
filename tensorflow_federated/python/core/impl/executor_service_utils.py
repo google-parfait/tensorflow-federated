@@ -234,6 +234,21 @@ def serialize_value(value, type_spec=None):
                   type_spec if type_spec is not None else 'unknown'))
 
     return serialize_sequence_value(value), type_spec
+  elif isinstance(type_spec, computation_types.FederatedType):
+    if type_spec.all_equal:
+      value = [value]
+    else:
+      py_typecheck.check_type(value, list)
+    items = []
+    for v in value:
+      it, it_type = serialize_value(v, type_spec.member)
+      type_utils.check_assignable_from(type_spec.member, it_type)
+      items.append(it)
+    result_proto = executor_pb2.Value(
+        federated=executor_pb2.Value.Federated(
+            type=type_serialization.serialize_type(type_spec).federated,
+            value=items))
+    return result_proto, type_spec
   else:
     raise ValueError(
         'Unable to serialize value with Python type {} and {} TFF type.'.format(
@@ -276,6 +291,22 @@ def deserialize_value(value_proto):
             computation_types.NamedTupleType(type_elems))
   elif which_value == 'sequence':
     return deserialize_sequence_value(value_proto.sequence)
+  elif which_value == 'federated':
+    type_spec = type_serialization.deserialize_type(
+        computation_pb2.Type(federated=value_proto.federated.type))
+    value = []
+    for item in value_proto.federated.value:
+      item_value, item_type = deserialize_value(item)
+      type_utils.check_assignable_from(type_spec.member, item_type)
+      value.append(item_value)
+    if type_spec.all_equal:
+      if len(value) == 1:
+        value = value[0]
+      else:
+        raise ValueError(
+            'Return an all_equal value with {} member consatituents.'.format(
+                len(value)))
+    return value, type_spec
   else:
     raise ValueError(
         'Unable to deserialize a value of type {}.'.format(which_value))

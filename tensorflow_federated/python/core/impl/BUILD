@@ -439,6 +439,7 @@ py_test(
         "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
     ],
 )
 
@@ -854,13 +855,16 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":eager_executor",
         ":executor_service",
+        ":executor_stacks",
         ":executor_test_utils",
         ":lambda_executor",
         ":remote_executor",
         ":set_default_executor",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
     ],
 )
 

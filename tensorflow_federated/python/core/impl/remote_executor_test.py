@@ -23,9 +23,12 @@ import portpicker
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import executor_service
+from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import remote_executor
@@ -38,7 +41,7 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
-  target_executor = eager_executor.EagerExecutor()
+  target_executor = executor_stacks.create_local_executor(num_clients=3)(None)
   tracer = executor_test_utils.TracingExecutor(target_executor)
   service = executor_service.ExecutorService(tracer)
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
@@ -124,6 +127,32 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_with_mnist_training_example_streaming_rpc(self):
     with test_context(rpc_mode='STREAMING') as context:
       executor_test_utils.test_mnist_training(self, context.executor)
+
+  def test_with_federated_computations(self):
+    with test_context():
+
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.int32, placements.CLIENTS))
+      def foo(x):
+        return intrinsics.federated_sum(x)
+
+      self.assertEqual(foo([10, 20, 30]), 60)
+
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.int32, placements.SERVER))
+      def bar(x):
+        return intrinsics.federated_broadcast(x)
+
+      self.assertEqual(bar(50), 50)
+
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.int32, placements.SERVER))
+      def baz(x):
+        return intrinsics.federated_map(
+            computations.tf_computation(lambda y: y + 1, tf.int32),
+            intrinsics.federated_broadcast(x))
+
+      self.assertEqual(baz(50), [51, 51, 51])
 
 
 if __name__ == '__main__':
