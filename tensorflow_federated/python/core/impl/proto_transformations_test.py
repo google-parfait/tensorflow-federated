@@ -16,13 +16,13 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import proto_transformations
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import test_utils
 
 
 def _create_compiled_computation(py_fn, arg_type):
@@ -57,9 +57,9 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
       return x
 
     comp = _create_compiled_computation(bad_fn, tf.int32)
-    ops_before = building_block_analysis.count_tensorflow_ops_in(comp)
     reduced_proto = proto_transformations.prune_tensorflow_proto(comp.proto)
     reduced_comp = building_blocks.CompiledComputation(reduced_proto)
+    ops_before = building_block_analysis.count_tensorflow_ops_in(comp)
     ops_after = building_block_analysis.count_tensorflow_ops_in(reduced_comp)
     self.assertLess(ops_after, ops_before)
 
@@ -71,14 +71,10 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
 
     comp = _create_compiled_computation(bad_fn, tf.int32)
     reduced_proto = proto_transformations.prune_tensorflow_proto(comp.proto)
-    reduced_comp = building_blocks.CompiledComputation(reduced_proto)
-
-    orig_executable = computation_wrapper_instances.building_block_to_computation(
-        comp)
-    reduced_executable = computation_wrapper_instances.building_block_to_computation(
-        reduced_comp)
     for k in range(5):
-      self.assertEqual(orig_executable(k), reduced_executable(k))
+      self.assertEqual(
+          test_utils.run_tensorflow(comp.proto, k),
+          test_utils.run_tensorflow(reduced_proto, k))
 
 
 if __name__ == '__main__':

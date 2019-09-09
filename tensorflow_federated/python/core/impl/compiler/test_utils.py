@@ -18,13 +18,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def create_chained_calls(functions, arg):
@@ -382,3 +388,76 @@ def create_nested_syntax_tree():
   called_lambda = building_blocks.Call(dummy_lambda, dummy_arg)
 
   return called_lambda
+
+
+def _stamp_value_into_graph(value, type_signature, graph):
+  """Stamps `value` in `graph` as an object of type `type_signature`.
+
+  Args:
+    value: An value to stamp.
+    type_signature: An instance of `computation_types.Type`.
+    graph: The graph to stamp in.
+
+  Returns:
+    A Python object made of tensors stamped into `graph`, `tf.data.Dataset`s,
+    and `anonymous_tuple.AnonymousTuple`s that structurally corresponds to the
+    value passed at input.
+  """
+  py_typecheck.check_type(type_signature, computation_types.Type)
+  py_typecheck.check_type(graph, tf.Graph)
+  if value is None:
+    return None
+  if isinstance(type_signature, computation_types.TensorType):
+    if isinstance(value, np.ndarray):
+      value_type = computation_types.TensorType(
+          tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
+      type_utils.check_assignable_from(type_signature, value_type)
+      with graph.as_default():
+        return tf.constant(value)
+    else:
+      with graph.as_default():
+        return tf.constant(
+            value, dtype=type_signature.dtype, shape=type_signature.shape)
+  elif isinstance(type_signature, computation_types.NamedTupleType):
+    if isinstance(value, (list, dict)):
+      value = anonymous_tuple.from_container(value)
+    stamped_elements = []
+    named_type_signatures = anonymous_tuple.to_elements(type_signature)
+    for (name, type_signature), element in zip(named_type_signatures, value):
+      stamped_element = _stamp_value_into_graph(element, type_signature, graph)
+      stamped_elements.append((name, stamped_element))
+    return anonymous_tuple.AnonymousTuple(stamped_elements)
+  elif isinstance(type_signature, computation_types.SequenceType):
+    return tensorflow_utils.make_data_set_from_elements(graph, value,
+                                                        type_signature.element)
+  else:
+    raise NotImplementedError(
+        'Unable to stamp a value of type {} in graph.'.format(type_signature))
+
+
+# TODO(b/139439722): Consolidate implementation to run a TF comp with an arg.
+def run_tensorflow(computation_proto, arg=None):
+  """Runs a TensorFlow computation with argument `arg`.
+
+  Args:
+    computation_proto: An instance of `pb.Computation`.
+    arg: The argument to invoke the computation with, or None if the computation
+      does not specify a parameter type and does not expects one.
+
+  Returns:
+    The result of the computation.
+  """
+  with tf.Graph().as_default() as graph:
+    type_signature = type_serialization.deserialize_type(computation_proto.type)
+    if type_signature.parameter is not None:
+      stamped_arg = _stamp_value_into_graph(arg, type_signature.parameter,
+                                            graph)
+    else:
+      stamped_arg = None
+    init_op, result = tensorflow_deserialization.deserialize_and_call_tf_computation(
+        computation_proto, stamped_arg, graph)
+  with tf.compat.v1.Session(graph=graph) as sess:
+    if init_op:
+      sess.run(init_op)
+    result = tensorflow_utils.fetch_value_in_session(sess, result)
+  return result

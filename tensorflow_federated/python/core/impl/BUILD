@@ -811,13 +811,13 @@ py_test(
     srcs_version = "PY3",
     visibility = [":utils_visibility"],
     deps = [
-        ":computation_wrapper_instances",
         ":context_stack_impl",
         ":proto_transformations",
         ":tensorflow_serialization",
         "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:test_utils",
     ],
 )
 

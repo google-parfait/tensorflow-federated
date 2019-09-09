@@ -71,15 +71,12 @@ py_test(
         ":building_blocks",
         ":intrinsic_defs",
         ":placement_literals",
+        ":test_utils",
         ":type_factory",
-        ":type_serialization",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/impl:tensorflow_deserialization",
         "//tensorflow_federated/python/core/impl:type_utils",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -160,9 +157,14 @@ py_library(
     deps = [
         ":building_block_factory",
         ":building_blocks",
+        ":type_serialization",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:tensorflow_deserialization",
         "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
