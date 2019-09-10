@@ -37,3 +37,8 @@ backed by an HDF5 file.
 
 [`class TransformingClientData`](../tff/simulation/TransformingClientData.md):
 Transforms client data, potentially expanding by adding pseudo-clients.
+
+## Functions
+
+[`run_server(...)`](../tff/simulation/run_server.md): Runs a gRPC server hosting
+a simulation component in this process.

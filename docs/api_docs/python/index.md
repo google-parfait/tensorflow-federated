@@ -59,6 +59,7 @@
 *   <a href="./tff/framework/create_federated_map_or_apply.md"><code>tff.framework.create_federated_map_or_apply</code></a>
 *   <a href="./tff/framework/create_federated_zip.md"><code>tff.framework.create_federated_zip</code></a>
 *   <a href="./tff/framework/create_local_executor.md"><code>tff.framework.create_local_executor</code></a>
+*   <a href="./tff/framework/create_worker_pool_executor.md"><code>tff.framework.create_worker_pool_executor</code></a>
 *   <a href="./tff/framework/get_map_of_unbound_references.md"><code>tff.framework.get_map_of_unbound_references</code></a>
 *   <a href="./tff/framework/inline_block_locals.md"><code>tff.framework.inline_block_locals</code></a>
 *   <a href="./tff/framework/insert_called_tf_identity_at_leaves.md"><code>tff.framework.insert_called_tf_identity_at_leaves</code></a>
@@ -121,6 +122,7 @@
 *   <a href="./tff/simulation/datasets/stackoverflow.md"><code>tff.simulation.datasets.stackoverflow</code></a>
 *   <a href="./tff/simulation/datasets/stackoverflow/load_data.md"><code>tff.simulation.datasets.stackoverflow.load_data</code></a>
 *   <a href="./tff/simulation/datasets/stackoverflow/load_word_counts.md"><code>tff.simulation.datasets.stackoverflow.load_word_counts</code></a>
+*   <a href="./tff/simulation/run_server.md"><code>tff.simulation.run_server</code></a>
 *   <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *   <a href="./tff/to_type.md"><code>tff.to_type</code></a>
 *   <a href="./tff/to_value.md"><code>tff.to_value</code></a>

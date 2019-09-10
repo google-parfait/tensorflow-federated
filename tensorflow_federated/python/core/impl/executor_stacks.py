@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl.compiler import placement_literals
@@ -52,6 +53,40 @@ def _create_composite_stack(children):
       composite_executor.CompositeExecutor(_create_bottom_stack(), children))
 
 
+def _aggregate_stacks(executors, max_fanout):
+  """Aggregates multiple stacks into a single composite executor.
+
+  Args:
+    executors: Executors to aggregate as a `list`.
+    max_fanout: The max fanout (see below).
+
+  Returns:
+    An executor stack, potentially multi-level, that spans all `executors`.
+
+  Raises:
+    RuntimeError: If it can't create composite executors.
+  """
+  py_typecheck.check_type(executors, list)
+  py_typecheck.check_type(max_fanout, int)
+  for ex in executors:
+    py_typecheck.check_type(ex, executor_base.Executor)
+  # Recursively construct as many levels as it takes to support all clients,
+  # reducing by the factor of `max_fanout` in each iteration, for up to
+  # `log(len(address_list)) / log(max_fanout)` iterations.
+  while len(executors) > 1:
+    new_executors = []
+    offset = 0
+    while offset < len(executors):
+      new_offset = offset + max_fanout
+      new_executors.append(
+          _create_composite_stack(executors[offset:new_offset]))
+      offset = new_offset
+    executors = new_executors
+  if len(executors) != 1:
+    raise RuntimeError('Expected 1 executor, got {}.'.format(len(executors)))
+  return executors[0]
+
+
 def _create_full_stack(num_clients, max_fanout):
   """Creates a full executor stack.
 
@@ -73,7 +108,6 @@ def _create_full_stack(num_clients, max_fanout):
     raise ValueError('Number of clients cannot be negative.')
   if max_fanout < 1:
     raise ValueError('Max fanout must be positive.')
-
   if num_clients < 1:
     return _create_federated_stack(0)
   else:
@@ -82,19 +116,7 @@ def _create_full_stack(num_clients, max_fanout):
       n = min(num_clients, max_fanout)
       executors.append(_create_federated_stack(n))
       num_clients -= n
-
-    while len(executors) > 1:
-      new_executors = []
-      offset = 0
-      while offset < len(executors):
-        new_offset = offset + max_fanout
-        new_executors.append(
-            _create_composite_stack(executors[offset:new_offset]))
-        offset = new_offset
-      executors = new_executors
-    if len(executors) != 1:
-      raise RuntimeError('Expected 1 executor, got {}.'.format(len(executors)))
-    return executors[0]
+    return _aggregate_stacks(executors, max_fanout)
 
 
 def _create_explicit_cardinality_executor_fn(num_clients, max_fanout):
@@ -161,3 +183,28 @@ def create_local_executor(num_clients=None, max_fanout=100):
     return _create_explicit_cardinality_executor_fn(num_clients, max_fanout)
   else:
     return _create_inferred_cardinality_executor_fn(max_fanout)
+
+
+def create_worker_pool_executor(executors, max_fanout=100):
+  """Create an executor backed by a worker pool.
+
+  Args:
+    executors: A list of `tff.framework.Executor` instances that forward work to
+      workers in the worker pool. These can be any type of executors, but in
+      most scenarios, they will be instances of `tff.framework.RemoteExecutor`.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(num_clients) / log(max_fanout)`.
+
+  Returns:
+    An instance of `tff.framework.Executor`.
+  """
+  py_typecheck.check_type(executors, list)
+  py_typecheck.check_type(max_fanout, int)
+  if not executors:
+    raise ValueError('The list executors cannot be empty.')
+  if max_fanout < 1:
+    raise ValueError('Max fanout must be positive.')
+  executors = [_complete_stack(e) for e in executors]
+  return _aggregate_stacks(executors, _aggregate_stacks)

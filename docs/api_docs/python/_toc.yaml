@@ -104,6 +104,8 @@ toc:
       path: /federated/api_docs/python/tff/framework/create_federated_zip
     - title: create_local_executor
       path: /federated/api_docs/python/tff/framework/create_local_executor
+    - title: create_worker_pool_executor
+      path: /federated/api_docs/python/tff/framework/create_worker_pool_executor
     - title: EagerExecutor
       path: /federated/api_docs/python/tff/framework/EagerExecutor
     - title: Executor
@@ -230,6 +232,8 @@ toc:
       path: /federated/api_docs/python/tff/simulation/FromTensorSlicesClientData
     - title: HDF5ClientData
       path: /federated/api_docs/python/tff/simulation/HDF5ClientData
+    - title: run_server
+      path: /federated/api_docs/python/tff/simulation/run_server
     - title: TransformingClientData
       path: /federated/api_docs/python/tff/simulation/TransformingClientData
     - title: datasets

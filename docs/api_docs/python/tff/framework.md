@@ -113,6 +113,9 @@ a called federated zip.
 [`create_local_executor(...)`](../tff/framework/create_local_executor.md):
 Constructs an executor to execute computations on the local machine.
 
+[`create_worker_pool_executor(...)`](../tff/framework/create_worker_pool_executor.md):
+Create an executor backed by a worker pool.
+
 [`get_map_of_unbound_references(...)`](../tff/framework/get_map_of_unbound_references.md):
 Gets a Python `dict` of the unbound references in `comp`.
 

@@ -78,6 +78,7 @@ if six.PY3:
     from tensorflow_federated.python.core.impl.executor_base import Executor
     from tensorflow_federated.python.core.impl.executor_service import ExecutorService
     from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
+    from tensorflow_federated.python.core.impl.executor_stacks import create_worker_pool_executor
     from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
     from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
     from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
@@ -125,6 +126,7 @@ _allowed_symbols = [
     "create_federated_map_or_apply",
     "create_federated_zip",
     "create_local_executor",
+    "create_worker_pool_executor",
     "get_map_of_unbound_references",
     "inline_block_locals",
     "insert_called_tf_identity_at_leaves",

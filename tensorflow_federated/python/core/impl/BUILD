@@ -496,6 +496,7 @@ py_library(
         ":composite_executor",
         ":concurrent_executor",
         ":eager_executor",
+        ":executor_base",
         ":federated_executor",
         ":lambda_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",

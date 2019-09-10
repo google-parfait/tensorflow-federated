@@ -18,12 +18,27 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
+
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation.client_data import ClientData
 from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData
 from tensorflow_federated.python.simulation.from_tensor_slices_client_data import FromTensorSlicesClientData
 from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
 from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData
+
+# High-performance simulation components currently only available in Python 3,
+# and dependent on targets are are not currently included in the open-source
+# build rule.
+# TODO(b/134543154): Modify the OSS build rule to conditionally include these
+# new targets if possible.
+if six.PY3:
+  # pylint: disable=g-import-not-at-top,undefined-variable
+  try:
+    from tensorflow_federated.python.simulation.server_utils import run_server
+  except ModuleNotFoundError:
+    pass
+  # pylint: enable=g-import-not-at-top,undefined-variable
 
 # Used by doc generation script.
 _allowed_symbols = [
@@ -33,4 +48,5 @@ _allowed_symbols = [
     "HDF5ClientData",
     "TransformingClientData",
     "datasets",
+    "run_server",
 ]
