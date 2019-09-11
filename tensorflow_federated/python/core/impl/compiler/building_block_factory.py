@@ -186,7 +186,7 @@ def create_tensorflow_constant(type_spec, scalar_value):
           scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
     else:
       elements = []
-      for _, type_element in anonymous_tuple.to_elements(type_spec):
+      for _, type_element in anonymous_tuple.iter_elements(type_spec):
         elements.append(_create_result_tensor(type_element, scalar_value))
       result = elements
     return result
@@ -567,7 +567,7 @@ def create_federated_getattr_comp(comp, name):
                           computation_types.NamedTupleType)
   py_typecheck.check_type(name, six.string_types)
   element_names = [
-      x for x, _ in anonymous_tuple.to_elements(comp.type_signature.member)
+      x for x, _ in anonymous_tuple.iter_elements(comp.type_signature.member)
   ]
   if name not in element_names:
     raise ValueError('The federated value {} has no element of name {}'.format(
@@ -1205,7 +1205,7 @@ def create_generic_constant(type_spec, scalar_value):
     elements = []
     for k in range(len(type_spec)):
       elements.append(create_generic_constant(type_spec[k], scalar_value))
-    names = [name for name, _ in anonymous_tuple.to_elements(type_spec)]
+    names = [name for name, _ in anonymous_tuple.iter_elements(type_spec)]
     packed_elements = building_blocks.Tuple(elements)
     named_tuple = create_named_tuple(packed_elements, names)
     return named_tuple

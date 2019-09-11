@@ -84,7 +84,7 @@ def serialize_type(type_spec):
     return pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
-            for e in anonymous_tuple.to_elements(target)
+            for e in anonymous_tuple.iter_elements(target)
         ]))
   elif isinstance(target, computation_types.FunctionType):
     return pb.Type(

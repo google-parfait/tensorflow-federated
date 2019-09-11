@@ -340,7 +340,7 @@ def to_value(arg, type_spec, context_stack):
     result = ValueImpl(
         building_blocks.Tuple([
             (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-            for k, v in anonymous_tuple.to_elements(arg)
+            for k, v in anonymous_tuple.iter_elements(arg)
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
     result = to_value(arg._asdict(), None, context_stack)

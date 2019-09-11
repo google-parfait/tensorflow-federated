@@ -419,7 +419,7 @@ class ToTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), list)
-    for k in anonymous_tuple.to_elements(t):
+    for k in anonymous_tuple.iter_elements(t):
       self.assertLen(k, 2)
 
   def test_namedtuples_addressable_by_name(self):

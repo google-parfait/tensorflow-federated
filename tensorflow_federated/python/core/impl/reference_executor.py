@@ -768,7 +768,7 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(comp, building_blocks.Tuple)
     result_elements = []
     result_type_elements = []
-    for k, v in anonymous_tuple.to_elements(comp):
+    for k, v in anonymous_tuple.iter_elements(comp):
       computed_v = self._compute(v, context)
       type_utils.check_assignable_from(v.type_signature,
                                        computed_v.type_signature)
@@ -952,7 +952,7 @@ class ReferenceExecutor(context_base.Context):
       return ComputedValue(
           anonymous_tuple.AnonymousTuple([
               (k, self._generic_zero(v).value)
-              for k, v in anonymous_tuple.to_elements(type_spec)
+              for k, v in anonymous_tuple.iter_elements(type_spec)
           ]), type_spec)
     elif isinstance(
         type_spec,
@@ -1088,7 +1088,7 @@ class ReferenceExecutor(context_base.Context):
         type_factory.at_server(
             computation_types.NamedTupleType([
                 (k, v.member) if k else v.member
-                for k, v in anonymous_tuple.to_elements(arg.type_signature)
+                for k, v in anonymous_tuple.iter_elements(arg.type_signature)
             ])))
 
   def _federated_zip_at_clients(self, arg):

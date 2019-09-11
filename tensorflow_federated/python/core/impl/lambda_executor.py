@@ -124,7 +124,7 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
       py_typecheck.check_none(scope)
       py_typecheck.check_none(type_spec)
       type_elements = []
-      for k, v in anonymous_tuple.to_elements(value):
+      for k, v in anonymous_tuple.iter_elements(value):
         py_typecheck.check_type(v, LambdaExecutorValue)
         type_elements.append((k, v.type_signature))
       type_spec = computation_types.NamedTupleType([

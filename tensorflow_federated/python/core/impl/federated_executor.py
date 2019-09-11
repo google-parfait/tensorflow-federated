@@ -460,7 +460,7 @@ class FederatedExecutor(executor_base.Executor):
         computation_types.FederatedType(
             computation_types.NamedTupleType([
                 (k, v.member) if k else v.member
-                for k, v in anonymous_tuple.to_elements(arg.type_signature)
+                for k, v in anonymous_tuple.iter_elements(arg.type_signature)
             ]),
             placement,
             all_equal=all_equal))

@@ -366,7 +366,7 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
   @property
   def proto(self):
     elements = []
-    for k, v in anonymous_tuple.to_elements(self):
+    for k, v in anonymous_tuple.iter_elements(self):
       if k is not None:
         element = pb.Tuple.Element(name=k, value=v.proto)
       else:
@@ -384,7 +384,7 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
       return '({}, {!r})'.format(name_repr, value)
 
     return 'Tuple([{}])'.format(', '.join(
-        _element_repr(e) for e in anonymous_tuple.to_elements(self)))
+        _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
 
 
 class Call(ComputationBuildingBlock):

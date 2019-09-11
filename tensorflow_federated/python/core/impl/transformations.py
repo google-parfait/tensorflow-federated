@@ -339,7 +339,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
     """Returns a new computation with all intrinsics extracted."""
     variables = []
     elements = []
-    for name, element in anonymous_tuple.to_elements(comp):
+    for name, element in anonymous_tuple.iter_elements(comp):
       if self._passes_test_or_block(element):
         variable_name = six.next(self._name_generator)
         variables.append((variable_name, element))
@@ -878,7 +878,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     """
     if isinstance(type_signature, computation_types.NamedTupleType):
       comps = [[] for _ in range(len(type_signature))]
-      for _, call in anonymous_tuple.to_elements(comp):
+      for _, call in anonymous_tuple.iter_elements(comp):
         for index, arg in enumerate(call.argument):
           comps[index].append(arg)
       transformed_args = []
@@ -888,7 +888,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       return building_blocks.Tuple(transformed_args)
     else:
       args = []
-      for _, call in anonymous_tuple.to_elements(comp):
+      for _, call in anonymous_tuple.iter_elements(comp):
         args.append(call.argument)
       return self._transform_args_with_type(args, type_signature)
 
@@ -1382,7 +1382,7 @@ def insert_called_tf_identity_at_leaves(comp):
     if (isinstance(comp, building_blocks.Tuple) and
         any(_should_decorate(x) for x in comp)):
       elems = []
-      for x in anonymous_tuple.to_elements(comp):
+      for x in anonymous_tuple.iter_elements(comp):
         if _should_decorate(x[1]):
           elems.append((x[0], _decorate(x[1])))
         else:

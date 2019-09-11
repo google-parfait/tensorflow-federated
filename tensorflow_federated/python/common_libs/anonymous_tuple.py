@@ -210,6 +210,31 @@ def to_elements(an_anonymous_tuple):
   # pylint: enable=protected-access
 
 
+def iter_elements(an_anonymous_tuple):
+  """Generates the list of (name, value) pairs from an anonymous tuple.
+
+  Modeled as a module function rather than a method of `AnonymousTuple` to avoid
+  naming conflicts with the tuple attributes, and so as not to expose the user
+  to this implementation-oriented functionality.
+
+  Args:
+    an_anonymous_tuple: An instance of `AnonymousTuple`.
+
+  Yields:
+    A 2-tuple of name, value pairs, representing the elements of
+      `an_anonymous_tuple`.
+
+  Raises:
+    TypeError: if the argument is not an `AnonymousTuple`.
+  """
+  py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
+  # pylint: disable=protected-access
+  for name, val in zip(an_anonymous_tuple._name_array,
+                       an_anonymous_tuple._element_array):
+    yield (name, val)
+  # pylint: enable=protected-access
+
+
 def to_odict(anon_tuple, recursive=False):
   """Returns anon_tuple as an `OrderedDict`, if possible.
 

@@ -67,7 +67,7 @@ def infer_type(arg):
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return computation_types.NamedTupleType([
         (k, infer_type(v)) if k else infer_type(v)
-        for k, v in anonymous_tuple.to_elements(arg)
+        for k, v in anonymous_tuple.iter_elements(arg)
     ])
   elif py_typecheck.is_attrs(arg):
     items = attr.asdict(
@@ -463,7 +463,7 @@ def preorder_call(given_type, fn, arg):
     preorder_call(type_signature.parameter, fn, arg)
     preorder_call(type_signature.result, fn, arg)
   elif isinstance(type_signature, computation_types.NamedTupleType):
-    for element in anonymous_tuple.to_elements(type_signature):
+    for element in anonymous_tuple.iter_elements(type_signature):
       preorder_call(element[1], fn, arg)
 
 
@@ -724,7 +724,7 @@ def check_all_abstract_types_are_bound(type_spec):
     elif isinstance(type_spec, computation_types.NamedTupleType):
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
-          for _, v in anonymous_tuple.to_elements(type_spec)
+          for _, v in anonymous_tuple.iter_elements(type_spec)
       ])
     elif isinstance(type_spec, computation_types.AbstractType):
       if type_spec.label in bound_labels:
@@ -780,7 +780,8 @@ def is_sum_compatible(type_spec):
     return is_numeric_dtype(type_spec.dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     return all(
-        is_sum_compatible(v) for _, v in anonymous_tuple.to_elements(type_spec))
+        is_sum_compatible(v)
+        for _, v in anonymous_tuple.iter_elements(type_spec))
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_sum_compatible(type_spec.member)
   else:
@@ -843,7 +844,7 @@ def is_average_compatible(type_spec):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     return all(
         is_average_compatible(v)
-        for _, v in anonymous_tuple.to_elements(type_spec))
+        for _, v in anonymous_tuple.iter_elements(type_spec))
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_average_compatible(type_spec.member)
   else:
@@ -1229,7 +1230,7 @@ def transform_type_postorder(type_signature, transform_fn):
   elif isinstance(type_signature, computation_types.NamedTupleType):
     elems = []
     elems_mutated = False
-    for element in anonymous_tuple.to_elements(type_signature):
+    for element in anonymous_tuple.iter_elements(type_signature):
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn)
       elems_mutated = elems_mutated or element_mutated
@@ -1389,7 +1390,7 @@ def check_valid_federated_weighted_mean_argument_tuple_type(type_spec):
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   if len(type_spec) != 2:
     raise TypeError('Expected a 2-tuple, found {}.'.format(type_spec))
-  for _, v in anonymous_tuple.to_elements(type_spec):
+  for _, v in anonymous_tuple.iter_elements(type_spec):
     check_federated_type(v, None, placement_literals.CLIENTS, False)
     if not is_average_compatible(v.member):
       raise TypeError(

@@ -88,7 +88,7 @@ def transform_postorder(comp, transform):
   elif isinstance(comp, building_blocks.Tuple):
     elements = []
     elements_modified = False
-    for key, value in anonymous_tuple.to_elements(comp):
+    for key, value in anonymous_tuple.iter_elements(comp):
       value, value_modified = transform_postorder(value, transform)
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
@@ -231,7 +231,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     _ = six.next(identifier_seq)
     elements = []
     elements_modified = False
-    for key, value in anonymous_tuple.to_elements(comp):
+    for key, value in anonymous_tuple.iter_elements(comp):
       value, value_modified = _transform_postorder_with_symbol_bindings_switch(
           value, transform, context_tree, identifier_seq)
       elements.append((key, value))

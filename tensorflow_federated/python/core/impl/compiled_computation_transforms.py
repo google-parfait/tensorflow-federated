@@ -100,7 +100,7 @@ def select_graph_output(comp, name=None, index=None):
     result_type = proto_type.result[index]
   else:
     type_names_list = [
-        x[0] for x in anonymous_tuple.to_elements(proto_type.result)
+        x[0] for x in anonymous_tuple.iter_elements(proto_type.result)
     ]
     index = type_names_list.index(name)
     result = [x for x in graph_result_binding.tuple.element][index]
@@ -944,7 +944,9 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
       return building_block_factory.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
-    name_list = [x[0] for x in anonymous_tuple.to_elements(comp.type_signature)]
+    name_list = [
+        x[0] for x in anonymous_tuple.iter_elements(comp.type_signature)
+    ]
     for k in range(len(comp.type_signature)):
       compiled_computation_list.append(comp[k].function)
       arg_list.append(comp[k].argument)
@@ -1236,7 +1238,7 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
                            len(comp.result.argument.type_signature),
                            len(comp.parameter_type)))
     parameter_names = [
-        x[0] for x in anonymous_tuple.to_elements(comp.parameter_type)
+        x[0] for x in anonymous_tuple.iter_elements(comp.parameter_type)
     ]
     parameter_map = []
     for sel in comp.result.argument:

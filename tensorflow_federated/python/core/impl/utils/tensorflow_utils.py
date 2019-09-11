@@ -129,7 +129,7 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
       element_bindings = []
       have_names = False
       have_nones = False
-      for e_name, e_type in anonymous_tuple.to_elements(parameter_type):
+      for e_name, e_type in anonymous_tuple.iter_elements(parameter_type):
         if e_name is None:
           have_nones = True
         else:
@@ -344,7 +344,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       dummy_tensor = tf.no_op()
     element_name_value_pairs = []
     element_bindings = []
-    for e in anonymous_tuple.to_elements(parameter_type):
+    for e in anonymous_tuple.iter_elements(parameter_type):
       e_val, e_binding = stamp_parameter_in_graph(
           '{}_{}'.format(parameter_name, e[0]), e[1], graph)
       element_name_value_pairs.append((e[0], e_val))

@@ -183,7 +183,7 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
       return repr(value)
 
     return 'NamedTupleType([{}])'.format(', '.join(
-        _element_repr(e) for e in anonymous_tuple.to_elements(self)))
+        _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
 
   def __eq__(self, other):
     return (isinstance(other, NamedTupleType) and
