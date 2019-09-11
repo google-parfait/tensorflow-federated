@@ -38,11 +38,31 @@ class InferCardinalitiesTest(absltest.TestCase):
     cardinalities = runtime_utils.infer_cardinalities(1, int_type)
     self.assertEmpty(cardinalities)
 
-  def test_raises_federated_type_non_list(self):
+  def test_raises_federated_type_integer(self):
     federated_type = computation_types.FederatedType(
         tf.int32, placement_literals.CLIENTS, all_equal=False)
     with self.assertRaises(TypeError):
       runtime_utils.infer_cardinalities(1, federated_type)
+
+  def test_raises_federated_type_generator(self):
+
+    def generator_fn():
+      yield 1
+
+    generator = generator_fn()
+    federated_type = computation_types.FederatedType(
+        tf.int32, placement_literals.CLIENTS, all_equal=False)
+    with self.assertRaises(TypeError):
+      runtime_utils.infer_cardinalities(generator, federated_type)
+
+  def test_passes_federated_type_tuple(self):
+    tup = tuple(range(5))
+    federated_type = computation_types.FederatedType(
+        tf.int32, placement_literals.CLIENTS, all_equal=False)
+    runtime_utils.infer_cardinalities(tup, federated_type)
+    five_client_cardinalities = runtime_utils.infer_cardinalities(
+        tup, federated_type)
+    self.assertEqual(five_client_cardinalities[placement_literals.CLIENTS], 5)
 
   def test_adds_list_length_as_cardinality_at_clients(self):
     federated_type = computation_types.FederatedType(

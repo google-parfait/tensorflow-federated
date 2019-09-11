@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 import six
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -53,8 +55,9 @@ def merge_cardinalities(existing, to_add):
 def infer_cardinalities(value, type_spec):
   """Infers cardinalities from Python `value`.
 
-  Codifies the TFF convention that federated types which are not declared to be
-  all-equal must be represented before ingestion at the Python level as a list.
+  Allows for any Python object to represent a federated value; enforcing
+  particular representations is not the job of this inference function, but
+  rather ingestion functions lower in the stack.
 
   Args:
     value: Python object from which to infer TFF placement cardinalities.
@@ -76,7 +79,7 @@ def infer_cardinalities(value, type_spec):
   if isinstance(type_spec, computation_types.FederatedType):
     if type_spec.all_equal:
       return {}
-    py_typecheck.check_type(value, list)
+    py_typecheck.check_type(value, collections.Sized)
     return {type_spec.placement: len(value)}
   elif isinstance(type_spec, computation_types.NamedTupleType):
     anonymous_tuple_value = anonymous_tuple.from_container(
