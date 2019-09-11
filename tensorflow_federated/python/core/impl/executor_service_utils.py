@@ -116,10 +116,6 @@ def deserialize_tensor_value(value_proto):
   return tensor_value, value_type
 
 
-_DATASET_TYPES = (tf.data.Dataset, tf.compat.v1.data.Dataset,
-                  tf.compat.v2.data.Dataset)
-
-
 def serialize_sequence_value(value):
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
@@ -131,7 +127,7 @@ def serialize_sequence_value(value):
     of `executor_pb2.Value` with the serialized content of `value`, and
     `type_spec` is the type of the serialized value.
   """
-  py_typecheck.check_type(value, _DATASET_TYPES)
+  py_typecheck.check_type(value, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
   # TFF must store the type spec here because TF will lose the ordering of the
   # names for `tf.data.Dataset` that return elements of `collections.Mapping`
   # type. This allows TFF to preserve and restore the key ordering upon
@@ -223,7 +219,7 @@ def serialize_value(value, type_spec=None):
         executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
     return result_proto, type_spec
   elif isinstance(type_spec, computation_types.SequenceType):
-    if not isinstance(value, _DATASET_TYPES):
+    if not isinstance(value, tensorflow_utils.DATASET_REPRESENTATION_TYPES):
       raise TypeError(
           'Cannot serialize Python type {!s} as TFF type {!s}.'.format(
               py_typecheck.type_string(type(value)),
