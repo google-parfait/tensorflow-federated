@@ -207,4 +207,4 @@ def create_worker_pool_executor(executors, max_fanout=100):
   if max_fanout < 1:
     raise ValueError('Max fanout must be positive.')
   executors = [_complete_stack(e) for e in executors]
-  return _aggregate_stacks(executors, _aggregate_stacks)
+  return _aggregate_stacks(executors, max_fanout)
