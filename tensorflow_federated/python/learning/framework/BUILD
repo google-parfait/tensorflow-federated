@@ -29,7 +29,6 @@ py_library(
 
 py_test(
     name = "encoding_utils_test",
-    size = "medium",
     srcs = ["encoding_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -56,7 +55,6 @@ py_library(
 
 py_test(
     name = "optimizer_utils_test",
-    size = "medium",
     srcs = ["optimizer_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

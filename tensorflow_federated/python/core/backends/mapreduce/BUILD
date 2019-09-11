@@ -80,7 +80,6 @@ py_library(
 
 py_test(
     name = "transformations_test",
-    size = "medium",
     srcs = ["transformations_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

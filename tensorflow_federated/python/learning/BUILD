@@ -35,7 +35,6 @@ py_library(
 
 py_test(
     name = "federated_averaging_benchmark",
-    size = "medium",
     srcs = ["federated_averaging_benchmark.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -74,7 +73,6 @@ py_library(
 
 py_test(
     name = "federated_evaluation_test",
-    size = "medium",
     srcs = ["federated_evaluation_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
