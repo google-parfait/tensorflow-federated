@@ -152,6 +152,37 @@ py_test(
 )
 
 py_library(
+    name = "proto_transformations",
+    srcs = ["proto_transformations.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_test(
+    name = "proto_transformations_test",
+    size = "small",
+    srcs = ["proto_transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":proto_transformations",
+        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:test_utils",
+        "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     deps = [
