@@ -359,7 +359,8 @@ def serialize_dataset(
     SerializationError: if there was an error in TensorFlow during
       serialization.
   """
-  py_typecheck.check_type(dataset, tf.data.Dataset)
+  py_typecheck.check_type(dataset,
+                          tensorflow_utils.DATASET_REPRESENTATION_TYPES)
   module = tf.Module()
   module.dataset = dataset
   module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
