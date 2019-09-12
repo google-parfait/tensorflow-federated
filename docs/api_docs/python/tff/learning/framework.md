@@ -47,3 +47,10 @@ Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
 Constructs
 <a href="../../tff/utils/IterativeProcess.md"><code>tff.utils.IterativeProcess</code></a>
 for Federated Averaging or SGD.
+
+[`build_stateless_broadcaster(...)`](../../tff/learning/framework/build_stateless_broadcaster.md):
+Just tff.federated_broadcast with empty state, to use as a default.
+
+[`enhance(...)`](../../tff/learning/framework/enhance.md): Wraps a
+<a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a> as an
+`EnhancedModel`.

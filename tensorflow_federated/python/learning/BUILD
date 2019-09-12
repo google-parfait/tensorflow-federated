@@ -1,7 +1,4 @@
-package(default_visibility = [
-    "//tensorflow_federated/python/learning:__subpackages__",
-    "//tensorflow_federated/python/research:__subpackages__",
-])
+package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 

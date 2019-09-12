@@ -22,9 +22,10 @@ from tensorflow_federated.python.learning.framework.encoding_utils import build_
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_mean_from_model
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_sum_from_model
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process
+from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_broadcaster
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
-
+from tensorflow_federated.python.learning.model_utils import enhance
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
 from tensorflow_federated.python.learning.model_utils import ModelWeights
@@ -40,4 +41,6 @@ _allowed_symbols = [
     "build_encoded_mean_from_model",
     "build_encoded_sum_from_model",
     "build_model_delta_optimizer_process",
+    "build_stateless_broadcaster",
+    "enhance",
 ]

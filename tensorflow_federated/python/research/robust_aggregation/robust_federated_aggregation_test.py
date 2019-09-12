@@ -19,10 +19,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python import learning
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.research.robust_aggregation import robust_federated_aggregation as rfa
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
@@ -67,12 +64,12 @@ def get_model_fn():
 
   def model_fn():
     keras_model = create_compiled_keras_model()
-    return learning.from_compiled_keras_model(keras_model, sample_batch)
+    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
 
   return model_fn
 
 
-class DummyClientComputation(optimizer_utils.ClientDeltaFn):
+class DummyClientComputation(tff.learning.framework.ClientDeltaFn):
   """Client TensorFlow logic for example.
 
   Designed to mimic the class `ClientFedAvg` from federated_averaging.py
@@ -86,8 +83,9 @@ class DummyClientComputation(optimizer_utils.ClientDeltaFn):
       client_weight_fn: Optional argument is ignored
     """
     del client_weight_fn
-    self._model = model_utils.enhance(model)
-    py_typecheck.check_type(self._model, model_utils.EnhancedTrainableModel)
+    self._model = tff.learning.framework.enhance(model)
+    py_typecheck.check_type(self._model,
+                            tff.learning.framework.EnhancedTrainableModel)
     self._client_weight_fn = None
 
   @property
@@ -130,7 +128,7 @@ class DummyClientComputation(optimizer_utils.ClientDeltaFn):
 
     weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
 
-    return optimizer_utils.ClientOutput(
+    return tff.learning.framework.ClientOutput(
         weights_delta, weights_delta_weight, aggregated_outputs,
         collections.OrderedDict([
             ('num_examples', num_examples_sum),
@@ -169,9 +167,10 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
     stateful_delta_aggregate_fn = rfa.build_stateless_robust_aggregation(
         model_type, num_communication_passes=num_passes, tolerance=tolerance)
 
-    stateful_model_broadcast_fn = optimizer_utils.build_stateless_broadcaster()
+    stateful_model_broadcast_fn = tff.learning.framework.build_stateless_broadcaster(
+    )
 
-    return optimizer_utils.build_model_delta_optimizer_process(
+    return tff.learning.framework.build_model_delta_optimizer_process(
         model_fn, client_fed_avg, server_optimizer_fn,
         stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
 

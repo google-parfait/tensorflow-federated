@@ -210,10 +210,14 @@ toc:
         path: /federated/api_docs/python/tff/learning/framework/build_encoded_sum_from_model
       - title: build_model_delta_optimizer_process
         path: /federated/api_docs/python/tff/learning/framework/build_model_delta_optimizer_process
+      - title: build_stateless_broadcaster
+        path: /federated/api_docs/python/tff/learning/framework/build_stateless_broadcaster
       - title: ClientDeltaFn
         path: /federated/api_docs/python/tff/learning/framework/ClientDeltaFn
       - title: ClientOutput
         path: /federated/api_docs/python/tff/learning/framework/ClientOutput
+      - title: enhance
+        path: /federated/api_docs/python/tff/learning/framework/enhance
       - title: EnhancedModel
         path: /federated/api_docs/python/tff/learning/framework/EnhancedModel
       - title: EnhancedTrainableModel

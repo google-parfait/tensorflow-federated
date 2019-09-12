@@ -97,6 +97,8 @@
 *   <a href="./tff/learning/framework/build_encoded_mean_from_model.md"><code>tff.learning.framework.build_encoded_mean_from_model</code></a>
 *   <a href="./tff/learning/framework/build_encoded_sum_from_model.md"><code>tff.learning.framework.build_encoded_sum_from_model</code></a>
 *   <a href="./tff/learning/framework/build_model_delta_optimizer_process.md"><code>tff.learning.framework.build_model_delta_optimizer_process</code></a>
+*   <a href="./tff/learning/framework/build_stateless_broadcaster.md"><code>tff.learning.framework.build_stateless_broadcaster</code></a>
+*   <a href="./tff/learning/framework/enhance.md"><code>tff.learning.framework.enhance</code></a>
 *   <a href="./tff/learning/from_compiled_keras_model.md"><code>tff.learning.from_compiled_keras_model</code></a>
 *   <a href="./tff/learning/from_keras_model.md"><code>tff.learning.from_keras_model</code></a>
 *   <a href="./tff/learning/state_with_new_model_weights.md"><code>tff.learning.state_with_new_model_weights</code></a>
