@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -6,7 +6,6 @@ py_library(
     name = "models",
     srcs = ["models.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/python/research"],
 )
 
 py_binary(
