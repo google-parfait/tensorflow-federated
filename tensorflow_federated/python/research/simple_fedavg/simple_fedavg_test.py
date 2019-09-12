@@ -21,7 +21,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.examples.mnist import models
-from tensorflow_federated.python.research.baseline_fedavg import simple_fedavg
+from tensorflow_federated.python.research.simple_fedavg import simple_fedavg
 
 MnistVariables = collections.namedtuple(
     'MnistVariables', 'weights bias num_examples loss_sum accuracy_sum')
