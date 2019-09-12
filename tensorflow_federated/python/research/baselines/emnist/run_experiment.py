@@ -28,13 +28,13 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorboard.plugins.hparams import api as hp
-from tensorflow_federated.python.research import utils
 from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.utils import training_loops
+from tensorflow_federated.python.research.utils import utils_impl
 
 nest = tf.contrib.framework.nest
 
-with utils.record_new_flags() as hparam_flags:
+with utils_impl.record_new_flags() as hparam_flags:
   # Metadata
   flags.DEFINE_string(
       'exp_name', 'emnist', 'Unique name for the experiment, suitable for use '
@@ -51,8 +51,8 @@ with utils.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('batch_size', 20, 'Batch size used on the client.')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
-  utils.define_optimizer_flags('server', defaults=dict(learning_rate=1.0))
-  utils.define_optimizer_flags('client', defaults=dict(learning_rate=0.2))
+  utils_impl.define_optimizer_flags('server', defaults=dict(learning_rate=1.0))
+  utils_impl.define_optimizer_flags('client', defaults=dict(learning_rate=0.2))
 
 # End of hyperparameter flags.
 
@@ -128,7 +128,7 @@ class MetricsHook(object):
     # Also write the hparam_dict to a CSV:
     hparam_dict['results_file'] = results_file
     hparams_file = os.path.join(output_dir, '{}.hparams.csv'.format(exp_name))
-    utils.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
+    utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
     model = create_compiled_keras_model()
 
@@ -172,7 +172,7 @@ class MetricsHook(object):
         tf.compat.v2.summary.scalar(name, value, step=round_num)
 
     self.results = self.results.append(flat_metrics, ignore_index=True)
-    utils.atomic_write_to_csv(self.results, self.results_file)
+    utils_impl.atomic_write_to_csv(self.results, self.results_file)
 
 
 def create_compiled_keras_model():
@@ -181,7 +181,7 @@ def create_compiled_keras_model():
 
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=utils.get_optimizer_from_flags('client'),
+      optimizer=utils_impl.get_optimizer_from_flags('client'),
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   return model
@@ -245,7 +245,7 @@ def run_experiment():
   metrics_hook = MetricsHook.build(FLAGS.exp_name, FLAGS.root_output_dir,
                                    emnist_test, hparam_dict)
 
-  optimizer_fn = lambda: utils.get_optimizer_from_flags('server')
+  optimizer_fn = lambda: utils_impl.get_optimizer_from_flags('server')
 
   training_loops.federated_averaging_training_loop(
       model_fn,
