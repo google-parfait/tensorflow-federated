@@ -22,8 +22,8 @@ import collections
 
 import numpy as np
 import tensorflow as tf
-
 import tensorflow_federated as tff
+
 from tensorflow_federated.python.examples.mnist import models
 from tensorflow_federated.python.research.baseline_fedavg import simple_fedavg
 from tensorflow_federated.python.research.baseline_fedavg.simple_fedavg import build_federated_averaging_process

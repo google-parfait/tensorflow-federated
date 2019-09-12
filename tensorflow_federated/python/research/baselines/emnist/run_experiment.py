@@ -25,9 +25,9 @@ import attr
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import tensorflow_federated as tff
 
 from tensorboard.plugins.hparams import api as hp
-import tensorflow_federated as tff
 from tensorflow_federated.python.research import utils
 from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.utils import training_loops

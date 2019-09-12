@@ -17,8 +17,8 @@ import collections
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_federated as tff
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python import learning
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils

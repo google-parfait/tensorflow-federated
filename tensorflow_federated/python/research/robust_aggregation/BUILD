@@ -5,7 +5,6 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "robust_aggregation",
     srcs = ["__init__.py"],
-    visibility = ["//visibility:public"],
     deps = [":robust_federated_aggregation"],
 )
 

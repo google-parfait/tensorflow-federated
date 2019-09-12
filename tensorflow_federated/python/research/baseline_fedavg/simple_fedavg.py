@@ -35,8 +35,8 @@ import collections
 
 import attr
 import tensorflow as tf
-
 import tensorflow_federated as tff
+
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
