@@ -3,15 +3,6 @@ package(default_visibility = ["//visibility:private"])
 licenses(["notice"])  # Apache 2.0
 
 py_library(
-    name = "baseline_fedavg",
-    srcs = ["__init__.py"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":simple_fedavg",
-    ],
-)
-
-py_library(
     name = "simple_fedavg",
     srcs = ["simple_fedavg.py"],
     deps = [

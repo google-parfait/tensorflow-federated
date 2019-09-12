@@ -14,10 +14,6 @@
 # limitations under the License.
 """End-to-end example testing Federated Averaging against the MNIST model."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import numpy as np
@@ -26,7 +22,6 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.examples.mnist import models
 from tensorflow_federated.python.research.baseline_fedavg import simple_fedavg
-from tensorflow_federated.python.research.baseline_fedavg.simple_fedavg import build_federated_averaging_process
 
 MnistVariables = collections.namedtuple(
     'MnistVariables', 'weights bias num_examples loss_sum accuracy_sum')
@@ -161,14 +156,16 @@ def create_client_data():
 class SimpleFedAvgTest(tf.test.TestCase):
 
   def test_something(self):
-    it_process = build_federated_averaging_process(models.model_fn)
+    it_process = simple_fedavg.build_federated_averaging_process(
+        models.model_fn)
     self.assertIsInstance(it_process, tff.utils.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type), '{<x=float32[?,784],y=int64[?,1]>*}@CLIENTS')
 
   def test_simple_training(self):
-    it_process = build_federated_averaging_process(models.model_fn)
+    it_process = simple_fedavg.build_federated_averaging_process(
+        models.model_fn)
     server_state = it_process.initialize()
     Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
@@ -208,7 +205,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
     train_data = [client_data()]
     sample_batch = self.evaluate(next(iter(train_data[0])))
 
-    trainer = build_federated_averaging_process(model_fn)
+    trainer = simple_fedavg.build_federated_averaging_process(model_fn)
     state = trainer.initialize()
     losses = []
     for _ in range(2):
@@ -222,7 +219,8 @@ class SimpleFedAvgTest(tf.test.TestCase):
     client_data = create_client_data()
     train_data = [client_data()]
 
-    trainer = build_federated_averaging_process(MnistTrainableModel)
+    trainer = simple_fedavg.build_federated_averaging_process(
+        MnistTrainableModel)
     state = trainer.initialize()
     losses = []
     for _ in range(2):
