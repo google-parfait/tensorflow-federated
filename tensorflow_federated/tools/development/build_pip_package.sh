@@ -16,11 +16,11 @@
 # Tool to build the TensorFlow Federated pip package.
 #
 # Usage:
-#   bazel build //tensorflow_federated/tools/development:build_pip_package
-#   bazel-bin/tensorflow_federated/tools/development/build_pip_package "/tmp/tensorflow_federated"
+#   bazel run //tensorflow_federated/tools/development:build_pip_package -- \
+#       "/tmp/tensorflow_federated"
 #
 # Arguments:
-#   output_dir: An output directory directory.
+#   output_dir: An output directory.
 #   project_name: A project name, defaults to `tensorflow_federated`.
 set -e
 
@@ -41,21 +41,15 @@ main() {
     project_name="tensorflow_federated"
   fi
 
-  if [[ ! -d "bazel-bin/tensorflow_federated" ]]; then
-    die "Could not find bazel-bin. Did you run from the root of the build tree?"
+  if [[ -d "bazel-bin/tensorflow_federated" ]]; then
+    pushd "bazel-bin/tensorflow_federated/tools/development/build_pip_package.runfiles/org_tensorflow_federated"
   fi
 
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
-
-  local runfiles="bazel-bin/tensorflow_federated/tools/development/build_pip_package.runfiles"
-  cp -LR \
-      "${runfiles}/org_tensorflow_federated/tensorflow_federated" \
-      "${temp_dir}"
-  cp "${runfiles}/org_tensorflow_federated/tensorflow_federated/tools/development/setup.py" \
-      "${temp_dir}"
-
-  pushd "${temp_dir}" > /dev/null
+  cp -LR "tensorflow_federated" "${temp_dir}"
+  cp "tensorflow_federated/tools/development/setup.py" "${temp_dir}"
+  pushd "${temp_dir}"
 
   # Create a virtual environment
   virtualenv --python=python3 "venv"
