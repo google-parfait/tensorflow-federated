@@ -41,6 +41,10 @@ main() {
     project_name="tensorflow_federated"
   fi
 
+  if [[ -d "bazel-bin/tensorflow_federated" ]]; then
+    pushd "bazel-bin/tensorflow_federated/tools/development/build_pip_package.runfiles/org_tensorflow_federated"
+  fi
+
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
   cp -LR "tensorflow_federated" "${temp_dir}"
