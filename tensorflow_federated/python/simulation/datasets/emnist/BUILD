@@ -11,6 +11,10 @@ py_library(
 py_library(
     name = "synthetic",
     srcs = ["synthetic.py"],
+    deps = [
+        "//third_party/py/numpy",
+        "//third_party/py/six",
+    ],
 )
 
 py_library(
@@ -22,6 +26,8 @@ py_library(
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
         "//tensorflow_federated/python/simulation:hdf5_client_data",
         "//tensorflow_federated/python/simulation:transforming_client_data",
+        "//third_party/py/numpy",
+        "//third_party/py/tensorflow",
     ],
 )
 
@@ -31,5 +37,10 @@ py_test(
     srcs = ["load_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":load_data"],
+    deps = [
+        ":load_data",
+        "//third_party/py/absl/testing:absltest",
+        "//third_party/py/numpy",
+        "//third_party/py/tensorflow",
+    ],
 )
