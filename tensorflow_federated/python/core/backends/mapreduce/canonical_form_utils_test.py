@@ -379,5 +379,5 @@ class TypeCheckTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.enable_v2_behavior()
+  tf.compat.v1.enable_v2_behavior()
   absltest.main()

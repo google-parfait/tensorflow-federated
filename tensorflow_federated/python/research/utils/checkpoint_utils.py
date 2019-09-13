@@ -93,7 +93,7 @@ def load(export_dir, obj_template):
     flat_obj = loaded.build_obj_fn()
     obj = tf.nest.pack_sequence_as(obj_template, flat_obj)
 
-    tf.logging.info('Checkpoint loaded from: %s' % export_dir)
+    logging.info('Checkpoint loaded from: %s', export_dir)
   else:
     raise FileNotFoundError('No such file or directory: %s' % export_dir)
 
