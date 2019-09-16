@@ -7,9 +7,9 @@ py_library(
     srcs = ["__init__.py"],
     deps = [
         ":dataset_utils",
-        "//tensorflow_federated/python/simulation/datasets/emnist",
-        "//tensorflow_federated/python/simulation/datasets/shakespeare",
-        "//tensorflow_federated/python/simulation/datasets/stackoverflow",
+        ":emnist",
+        ":shakespeare",
+        ":stackoverflow",
     ],
 )
 
@@ -29,4 +29,36 @@ py_test(
         ":dataset_utils",
         "//tensorflow_federated/python/simulation:client_data",
     ],
+)
+
+py_library(
+    name = "emnist",
+    srcs = ["emnist.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
+        "//tensorflow_federated/python/simulation:hdf5_client_data",
+        "//tensorflow_federated/python/simulation:transforming_client_data",
+    ],
+)
+
+py_test(
+    name = "emnist_test",
+    size = "small",
+    srcs = ["emnist_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":emnist"],
+)
+
+py_library(
+    name = "shakespeare",
+    srcs = ["shakespeare.py"],
+    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
+)
+
+py_library(
+    name = "stackoverflow",
+    srcs = ["stackoverflow.py"],
+    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
 )

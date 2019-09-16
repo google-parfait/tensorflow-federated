@@ -8,10 +8,10 @@
 <table class="tfo-notebook-buttons tfo-api" align="left">
 </table>
 
-<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/stackoverflow/__init__.py">View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/stackoverflow.py">View
 source</a>
 
-Module for the Stackoverflow federated experimental dataset.
+Libraries for the Stackoverflow dataset for federated learning simulation.
 
 <!-- Placeholder for "Used in" -->
 
