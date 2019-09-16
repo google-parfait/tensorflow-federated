@@ -70,7 +70,19 @@ def save(obj, export_dir):
   model = tf.Module()
   model.obj = tf.nest.flatten(obj)
   model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
-  tf.saved_model.save(model, export_dir, signatures={})
+
+  # First write to a temporary directory.
+  temp_export_dir = os.path.join(
+      os.path.dirname(export_dir), '.temp_' + os.path.basename(export_dir))
+  try:
+    tf.io.gfile.rmtree(temp_export_dir)
+  except tf.errors.NotFoundError:
+    pass
+  tf.io.gfile.makedirs(temp_export_dir)
+  tf.saved_model.save(model, temp_export_dir, signatures={})
+
+  # Rename the temp directory to the final location atomically.
+  tf.io.gfile.rename(temp_export_dir, export_dir)
   logging.info('Checkpoint saved to: %s', export_dir)
 
 
