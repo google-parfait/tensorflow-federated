@@ -23,6 +23,11 @@
 #   package: A path to a local pip package.
 set -e
 
+die() {
+  echo >&2 "$@"
+  exit 1
+}
+
 main() {
   local package="$1"
 
