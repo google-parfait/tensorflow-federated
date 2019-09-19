@@ -45,7 +45,6 @@ py_test(
         ":canonical_form",
         ":canonical_form_utils",
         ":test_utils",
-        "//tensorflow_federated",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl:computation_wrapper_instances",

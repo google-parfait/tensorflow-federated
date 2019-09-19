@@ -611,6 +611,16 @@ def get_canonical_form_for_iterative_process(iterative_process):
   next_comp = tff_framework.ComputationBuildingBlock.from_proto(
       iterative_process.next._computation_proto)  # pylint: disable=protected-access
 
+  if not (isinstance(next_comp.type_signature.parameter, tff.NamedTupleType) and
+          isinstance(next_comp.type_signature.result, tff.NamedTupleType)):
+    raise TypeError(
+        'Any IterativeProcess compatible with CanonicalForm must '
+        'have a `next` function which takes and returns instances '
+        'of `tff.NamedTupleType`; your next function takes '
+        'parameters of type {} and returns results of type {}'.format(
+            next_comp.type_signature.parameter,
+            next_comp.type_signature.result))
+
   if len(next_comp.type_signature.result) == 2:
     next_result = next_comp.result
     dummy_clients_metrics_appended = tff_framework.Tuple([

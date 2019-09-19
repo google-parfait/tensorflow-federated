@@ -31,6 +31,19 @@ from tensorflow_federated.python.core.utils import computation_utils
 
 class CanonicalFormUtilsTest(absltest.TestCase):
 
+  def test_tensor_computation_fails_well(self):
+    cf = test_utils.get_temperature_sensor_example()
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    init_result = it.initialize.type_signature.result
+    lam = building_blocks.Lambda('x', init_result,
+                                 building_blocks.Reference('x', init_result))
+    bad_it = computation_utils.IterativeProcess(
+        it.initialize,
+        computation_wrapper_instances.building_block_to_computation(lam))
+    with self.assertRaisesRegex(TypeError,
+                                'instances of `tff.NamedTupleType`.'):
+      canonical_form_utils.get_canonical_form_for_iterative_process(bad_it)
+
   def test_broadcast_dependent_on_aggregate_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
