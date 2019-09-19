@@ -56,6 +56,7 @@ RUN mkdir /bazel && \
     rm -f /bazel/installer.sh
 RUN bazel version
 
+# TODO(b/141279425): Remove pinned tf-estimator-nightly version.
 # Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} --no-cache-dir install \
     absl-py~=0.7 \
@@ -70,5 +71,6 @@ RUN ${PIP} --no-cache-dir install \
     portpicker \
     six~=1.10 \
     tensorflow-model-optimization~=0.1.3 \
-    tf-nightly==1.15.0.dev20190805
+    tf-estimator-nightly==1.14.0.dev2019091601 \
+    tf-nightly
 RUN pip freeze
