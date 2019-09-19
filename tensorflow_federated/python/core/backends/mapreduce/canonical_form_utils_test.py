@@ -86,8 +86,7 @@ class CanonicalFormUtilsTest(absltest.TestCase):
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
   def test_get_canonical_form_for_iterative_process(self):
-    cf = test_utils.get_temperature_sensor_example()
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    it = test_utils.get_iterative_process_for_canonical_form_example()
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
@@ -97,7 +96,7 @@ class CanonicalFormUtilsTest(absltest.TestCase):
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
-  def test_temperature_example_round_trip_(self):
+  def test_temperature_example_round_trip(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_temperature_sensor_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)

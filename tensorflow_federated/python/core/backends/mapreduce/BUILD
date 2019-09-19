@@ -61,7 +61,10 @@ py_library(
         ":canonical_form",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/utils:computation_utils",
         "//tensorflow_federated/python/learning",
     ],
 )
