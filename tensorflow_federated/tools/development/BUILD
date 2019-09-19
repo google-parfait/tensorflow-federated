@@ -26,6 +26,7 @@ sh_binary(
 filegroup(
     name = "pip_package_files",
     srcs = ["setup.py"],
+    tags = ["ignore_srcs"],
 )
 
 sh_binary(
