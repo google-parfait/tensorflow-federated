@@ -20,3 +20,25 @@ py_binary(
         "//tensorflow_federated/python/research/utils:utils_impl",
     ],
 )
+
+py_binary(
+    name = "non_federated_emnist_10",
+    srcs = ["non_federated_emnist_10.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":models",
+        "//tensorflow_federated",
+    ],
+)
+
+py_binary(
+    name = "non_federated_emnist_62",
+    srcs = ["non_federated_emnist_62.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":models",
+        "//tensorflow_federated",
+    ],
+)
