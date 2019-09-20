@@ -25,3 +25,7 @@ If you use these baselines and need to cite this work, please use:
     url          =  {https://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/research/baselines/emnist}
     }
 ```
+
+## Dependencies
+
+*   [tensorboard](https://pypi.org/project/tensorboard/)

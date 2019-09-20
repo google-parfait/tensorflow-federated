@@ -1,5 +1,6 @@
-# If you add a requirement here, also add it to the Dockerfile, and
-# (if it is needed by the PIP packages) to tools/development/setup.py.
+# Requirements for TensorFlow Federated development. If you add a requirement
+# here, also add it to the Dockerfile, and (if it is needed by the PIP package)
+# to tools/development/setup.py.
 absl-py~=0.7
 attrs~=18.2
 cachetools~=3.1.1
@@ -7,7 +8,6 @@ enum34~=1.1
 gast==0.2.2
 grpcio~=1.22.0
 h5py~=2.6
-matplotlib~=3.0
 mock~=3.0; python_version < '3.0'
 numpy~=1.14
 pandas~=0.24.0
