@@ -10,6 +10,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":computation_utils",
+        ":differential_privacy",
         ":encoding_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
@@ -34,6 +35,29 @@ py_test(
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api",
+    ],
+)
+
+py_library(
+    name = "differential_privacy",
+    srcs = ["differential_privacy.py"],
+    deps = [
+        ":computation_utils",
+        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/framework",
+    ],
+)
+
+py_test(
+    name = "differential_privacy_test",
+    srcs = ["differential_privacy_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":differential_privacy",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/framework",
     ],
 )
 

@@ -71,6 +71,7 @@ RUN ${PIP} --no-cache-dir install \
     portpicker \
     six~=1.10 \
     tensorflow-model-optimization~=0.1.3 \
+    tensorflow-privacy~=0.0.1 \
     tf-estimator-nightly==1.14.0.dev2019091601 \
     tf-nightly
 RUN pip freeze

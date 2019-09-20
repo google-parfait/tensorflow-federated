@@ -133,6 +133,7 @@
 *   <a href="./tff/utils/StatefulAggregateFn.md"><code>tff.utils.StatefulAggregateFn</code></a>
 *   <a href="./tff/utils/StatefulBroadcastFn.md"><code>tff.utils.StatefulBroadcastFn</code></a>
 *   <a href="./tff/utils/assign.md"><code>tff.utils.assign</code></a>
+*   <a href="./tff/utils/build_dp_aggregate.md"><code>tff.utils.build_dp_aggregate</code></a>
 *   <a href="./tff/utils/build_encoded_broadcast.md"><code>tff.utils.build_encoded_broadcast</code></a>
 *   <a href="./tff/utils/build_encoded_mean.md"><code>tff.utils.build_encoded_mean</code></a>
 *   <a href="./tff/utils/build_encoded_sum.md"><code>tff.utils.build_encoded_sum</code></a>

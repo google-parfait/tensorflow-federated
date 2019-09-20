@@ -36,6 +36,9 @@ container for a stateful broadcast function.
 [`assign(...)`](../tff/utils/assign.md): Creates an op that assigns `target`
 from `source`.
 
+[`build_dp_aggregate(...)`](../tff/utils/build_dp_aggregate.md): Builds a
+stateful aggregator for tensorflow_privacy DPQueries.
+
 [`build_encoded_broadcast(...)`](../tff/utils/build_encoded_broadcast.md):
 Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
 
