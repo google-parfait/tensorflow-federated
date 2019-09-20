@@ -69,8 +69,10 @@ with open('tensorflow_federated/version.py') as fp:
   VERSION = globals_dict['__version__']
 
 REQUIRED_PACKAGES = [
+    'absl-py~=0.7',
     'attrs~=18.2',
     'cachetools~=3.1.1',
+    'enum34~=1.1',
     'grpcio~=1.22.0',
     'h5py~=2.6',
     'numpy~=1.14',
