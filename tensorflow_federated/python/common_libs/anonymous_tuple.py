@@ -134,8 +134,8 @@ class AnonymousTuple(object):
   def __getattr__(self, name):
     if name not in self._name_to_index:
       raise AttributeError(
-          'The tuple of length {:d} does not have named field "{!s}".'
-          'Names (only first 10): {!s}'.format(
+          'The tuple of length {:d} does not have named field "{!s}". '
+          'Fields (up to first 10): {!s}'.format(
               len(self._element_array), name,
               list(self._name_to_index.keys())[:10]))
     return self._element_array[self._name_to_index[name]]
