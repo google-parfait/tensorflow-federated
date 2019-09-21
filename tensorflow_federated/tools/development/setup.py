@@ -73,6 +73,8 @@ REQUIRED_PACKAGES = [
     'attrs~=18.2',
     'cachetools~=3.1.1',
     'enum34~=1.1',
+    # TODO(b/140751117) Unpin gast from 0.2.0.
+    'gast==0.2.2',
     'grpcio~=1.22.0',
     'h5py~=2.6',
     'numpy~=1.14',
