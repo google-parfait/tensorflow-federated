@@ -16,7 +16,7 @@ py_library(
     name = "canonical_form",
     srcs = ["canonical_form.py"],
     deps = [
-        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api",
     ],
@@ -89,7 +89,7 @@ py_test(
         ":canonical_form_utils",
         ":test_utils",
         ":transformations",
-        "//tensorflow_federated/proto/v0:tensorflow_federated_v0_py_pb2",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
