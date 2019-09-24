@@ -3,6 +3,7 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="CLIENTS"/>
 <meta itemprop="property" content="SERVER"/>
+<meta itemprop="property" content="__version__"/>
 </div>
 
 # Module: tff
@@ -132,3 +133,4 @@ the abstract class <a href="./tff/Value.md"><code>tff.Value</code></a>.
 
 *   `CLIENTS` <a id="CLIENTS"></a>
 *   `SERVER` <a id="SERVER"></a>
+*   `__version__ = '0.8.0'` <a id="__version__"></a>
