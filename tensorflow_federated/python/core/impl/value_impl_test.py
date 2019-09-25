@@ -478,7 +478,7 @@ class ValueImplTest(parameterized.TestCase):
         context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_clients.type_signature), '<a=int32,b=bool>@CLIENTS')
-    with self.assertRaisesRegex(ValueError, r'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, r'has no element of name `c`'):
       _ = federated_value_clients.c
     federated_value_server = value_impl.to_value(
         building_blocks.Reference(
@@ -488,7 +488,7 @@ class ValueImplTest(parameterized.TestCase):
         context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
-    with self.assertRaisesRegex(ValueError, r'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, r'has no element of name `c`'):
       _ = federated_value_server.c
 
   def test_setattr_named_tuple_type_int(self):

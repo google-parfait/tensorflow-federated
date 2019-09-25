@@ -377,7 +377,7 @@ class CreateFederatedGetattrCompTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       _ = building_block_factory.create_federated_getattr_comp(
           non_federated_arg, 'a')
-    with self.assertRaisesRegex(ValueError, 'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, 'has no element of name `c`'):
       _ = building_block_factory.create_federated_getattr_comp(
           federated_value, 'c')
 
@@ -422,7 +422,7 @@ class CreateFederatedGetattrCallTest(parameterized.TestCase):
     except TypeError:
       self.fail(
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
-    with self.assertRaisesRegex(ValueError, 'has no element of name c'):
+    with self.assertRaisesRegex(ValueError, 'has no element of name `c`'):
       _ = building_block_factory.create_federated_getattr_call(
           federated_comp_named, 'c')
 

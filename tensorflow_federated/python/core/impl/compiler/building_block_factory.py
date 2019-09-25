@@ -570,8 +570,9 @@ def create_federated_getattr_comp(comp, name):
       x for x, _ in anonymous_tuple.iter_elements(comp.type_signature.member)
   ]
   if name not in element_names:
-    raise ValueError('The federated value {} has no element of name {}'.format(
-        comp, name))
+    raise ValueError(
+        'The federated value has no element of name `{}`. Value: {}'.format(
+            name, comp.formatted_representation()))
   apply_input = building_blocks.Reference('x', comp.type_signature.member)
   selected = building_blocks.Selection(apply_input, name=name)
   apply_lambda = building_blocks.Lambda('x', apply_input.type_signature,
