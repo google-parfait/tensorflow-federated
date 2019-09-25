@@ -25,9 +25,9 @@ import six
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core import framework as tff_framework
-from tensorflow_federated.python.core import utils as tff_utils
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import transformations
+from tensorflow_federated.python.core.utils import computation_utils
 
 
 def get_iterative_process_for_canonical_form(cf):
@@ -70,7 +70,7 @@ def get_iterative_process_for_canonical_form(cf):
     s7 = s5[1]
     return s6, s7, c6
 
-  return tff_utils.IterativeProcess(init_computation, next_computation)
+  return computation_utils.IterativeProcess(init_computation, next_computation)
 
 
 def pack_initialize_comp_type_signature(type_spec):
@@ -603,7 +603,7 @@ def get_canonical_form_for_iterative_process(iterative_process):
     transformations.CanonicalFormCompilationError: If the compilation
       process fails.
   """
-  py_typecheck.check_type(iterative_process, tff_utils.IterativeProcess)
+  py_typecheck.check_type(iterative_process, computation_utils.IterativeProcess)
 
   initialize_comp = tff_framework.ComputationBuildingBlock.from_proto(
       iterative_process.initialize._computation_proto)  # pylint: disable=protected-access
