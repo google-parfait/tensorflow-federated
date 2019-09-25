@@ -33,7 +33,6 @@ py_test(
     deps = [
         ":training_loops",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/examples/mnist:models",
     ],
 )
 

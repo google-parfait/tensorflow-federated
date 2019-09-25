@@ -20,6 +20,5 @@ py_test(
     deps = [
         ":simple_fedavg",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/examples/mnist:models",
     ],
 )

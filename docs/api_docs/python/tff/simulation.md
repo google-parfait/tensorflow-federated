@@ -20,6 +20,9 @@ The public API for experimenters running federated learning simulations.
 [`datasets`](../tff/simulation/datasets.md) module: Datasets for running
 Federated Learning experiments in simulation.
 
+[`models`](../tff/simulation/models.md) module: Models for running Federated
+Learning experiments in simulation.
+
 ## Classes
 
 [`class ClientData`](../tff/simulation/ClientData.md): Object to hold a dataset

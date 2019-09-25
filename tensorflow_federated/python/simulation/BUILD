@@ -13,6 +13,7 @@ py_library(
         ":hdf5_client_data",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
+        "//tensorflow_federated/python/simulation/models",
     ] + select({
         "//tensorflow_federated:py2_mode": [],
         "//tensorflow_federated:py3_mode": [

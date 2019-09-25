@@ -4,6 +4,7 @@
 <meta itemprop="property" content="loss"/>
 <meta itemprop="property" content="predictions"/>
 <meta itemprop="property" content="num_examples"/>
+<meta itemprop="property" content="__new__"/>
 </div>
 
 # tff.learning.BatchOutput
@@ -28,6 +29,19 @@ NOTE: All fields are optional (may be None).
 -   `predictions`: Tensor of predictions on the examples. The first dimension
     must be the same size (the size of the batch).
 -   `num_examples`: Number of examples seen in the batch.
+
+<h2 id="__new__"><code>__new__</code></h2>
+
+```python
+__new__(
+    _cls,
+    loss,
+    predictions,
+    num_examples
+)
+```
+
+Create new instance of BatchOutput(loss, predictions, num_examples)
 
 ## Properties
 

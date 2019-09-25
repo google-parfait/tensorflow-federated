@@ -124,6 +124,11 @@
 *   <a href="./tff/simulation/datasets/stackoverflow.md"><code>tff.simulation.datasets.stackoverflow</code></a>
 *   <a href="./tff/simulation/datasets/stackoverflow/load_data.md"><code>tff.simulation.datasets.stackoverflow.load_data</code></a>
 *   <a href="./tff/simulation/datasets/stackoverflow/load_word_counts.md"><code>tff.simulation.datasets.stackoverflow.load_word_counts</code></a>
+*   <a href="./tff/simulation/models.md"><code>tff.simulation.models</code></a>
+*   <a href="./tff/simulation/models/mnist.md"><code>tff.simulation.models.mnist</code></a>
+*   <a href="./tff/simulation/models/mnist/create_keras_model.md"><code>tff.simulation.models.mnist.create_keras_model</code></a>
+*   <a href="./tff/simulation/models/mnist/create_simple_keras_model.md"><code>tff.simulation.models.mnist.create_simple_keras_model</code></a>
+*   <a href="./tff/simulation/models/mnist/keras_dataset_from_emnist.md"><code>tff.simulation.models.mnist.keras_dataset_from_emnist</code></a>
 *   <a href="./tff/simulation/run_server.md"><code>tff.simulation.run_server</code></a>
 *   <a href="./tff/tf_computation.md"><code>tff.tf_computation</code></a>
 *   <a href="./tff/to_type.md"><code>tff.to_type</code></a>

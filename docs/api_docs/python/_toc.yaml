@@ -273,6 +273,20 @@ toc:
         path: /federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_data
       - title: load_word_counts
         path: /federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_word_counts
+  - title: models
+    section:
+    - title: Overview
+      path: /federated/api_docs/python/tff/simulation/models
+    - title: mnist
+      section:
+      - title: Overview
+        path: /federated/api_docs/python/tff/simulation/models/mnist
+      - title: create_keras_model
+        path: /federated/api_docs/python/tff/simulation/models/mnist/create_keras_model
+      - title: create_simple_keras_model
+        path: /federated/api_docs/python/tff/simulation/models/mnist/create_simple_keras_model
+      - title: keras_dataset_from_emnist
+        path: /federated/api_docs/python/tff/simulation/models/mnist/keras_dataset_from_emnist
 - title: tff.utils
   section:
   - title: Overview

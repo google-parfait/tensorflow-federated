@@ -20,8 +20,23 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.examples.mnist import models
 from tensorflow_federated.python.research.simple_fedavg import simple_fedavg
+
+_Batch = collections.namedtuple('Batch', ['x', 'y'])
+
+
+def _create_random_batch():
+  return _Batch(
+      x=tf.random.uniform(tf.TensorShape([1, 784]), dtype=tf.float32),
+      y=tf.constant(1, dtype=tf.int64, shape=[1, 1]))
+
+
+def _model_fn():
+  keras_model = tff.simulation.models.mnist.create_keras_model(
+      compile_model=True)
+  batch = _create_random_batch()
+  return tff.learning.from_compiled_keras_model(keras_model, batch)
+
 
 MnistVariables = collections.namedtuple(
     'MnistVariables', 'weights bias num_examples loss_sum accuracy_sum')
@@ -148,7 +163,8 @@ def create_client_data():
                                            output_types, output_shapes)
 
   def client_data():
-    return models.keras_dataset_from_emnist(dataset).repeat(2).batch(2)
+    return tff.simulation.models.mnist.keras_dataset_from_emnist(
+        dataset).repeat(2).batch(2)
 
   return client_data
 
@@ -156,21 +172,20 @@ def create_client_data():
 class SimpleFedAvgTest(tf.test.TestCase):
 
   def test_something(self):
-    it_process = simple_fedavg.build_federated_averaging_process(
-        models.model_fn)
+    it_process = simple_fedavg.build_federated_averaging_process(_model_fn)
     self.assertIsInstance(it_process, tff.utils.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type), '{<x=float32[?,784],y=int64[?,1]>*}@CLIENTS')
 
   def test_simple_training(self):
-    it_process = simple_fedavg.build_federated_averaging_process(
-        models.model_fn)
+    it_process = simple_fedavg.build_federated_averaging_process(_model_fn)
     server_state = it_process.initialize()
     Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
     # Test out manually setting weights:
-    keras_model = models.create_keras_model(compile_model=True)
+    keras_model = tff.simulation.models.mnist.create_keras_model(
+        compile_model=True)
 
     def deterministic_batch():
       return Batch(
@@ -199,7 +214,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
 
     def model_fn():
       return tff.learning.from_compiled_keras_model(
-          models.create_simple_keras_model(), sample_batch)
+          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
 
     client_data = create_client_data()
     train_data = [client_data()]
@@ -275,7 +290,7 @@ class ServerTest(tf.test.TestCase):
 
     def model_fn():
       return tff.learning.from_compiled_keras_model(
-          models.create_simple_keras_model(), sample_batch)
+          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
 
     client_data = create_client_data()
     sample_batch = self.evaluate(next(iter(client_data())))

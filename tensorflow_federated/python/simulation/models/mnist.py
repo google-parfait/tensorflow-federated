@@ -21,17 +21,16 @@ from __future__ import print_function
 import collections
 
 import tensorflow as tf
-import tensorflow_federated as tff
 
 
-class NumExamplesCounter(tf.keras.metrics.Sum):
+class _NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
   def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super(NumExamplesCounter, self).__init__(name, dtype)
+    super(_NumExamplesCounter, self).__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super(NumExamplesCounter,
+    return super(_NumExamplesCounter,
                  self).update_state(tf.shape(y_pred)[0], sample_weight)
 
 
@@ -46,7 +45,7 @@ def create_simple_keras_model(learning_rate=0.1):
   """
   model = tf.keras.models.Sequential([
       tf.keras.layers.Flatten(input_shape=(784,)),
-      tf.keras.layers.Dense(10, tf.nn.softmax, kernel_initializer='zeros')
+      tf.keras.layers.Dense(10, tf.nn.softmax, kernel_initializer='zeros'),
   ])
 
   model.compile(
@@ -54,7 +53,7 @@ def create_simple_keras_model(learning_rate=0.1):
       optimizer=tf.keras.optimizers.SGD(learning_rate),
       metrics=[
           tf.keras.metrics.SparseCategoricalAccuracy(),
-          NumExamplesCounter()
+          _NumExamplesCounter(),
       ])
   return model
 
@@ -70,8 +69,10 @@ def keras_dataset_from_emnist(dataset):
   """
 
   def map_fn(example):
-    return collections.OrderedDict([('x', tf.reshape(example['pixels'], [-1])),
-                                    ('y', example['label'])])
+    return collections.OrderedDict([
+        ('x', tf.reshape(example['pixels'], [-1])),
+        ('y', example['label']),
+    ])
 
   return dataset.map(map_fn)
 
@@ -93,59 +94,36 @@ def create_keras_model(compile_model=False):
   # TODO(b/120157713): Find a way to import this code.
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
-  l = tf.keras.layers
   initializer = tf.keras.initializers.RandomNormal(seed=0)
-  max_pool = l.MaxPooling2D((2, 2), (2, 2),
-                            padding='same',
-                            data_format=data_format)
+  max_pool = tf.keras.layers.MaxPooling2D((2, 2), (2, 2),
+                                          padding='same',
+                                          data_format=data_format)
   model = tf.keras.Sequential([
-      l.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
-      l.Conv2D(
+      tf.keras.layers.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
+      tf.keras.layers.Conv2D(
           32,
           5,
           padding='same',
           data_format=data_format,
           activation=tf.nn.relu,
-          kernel_initializer=initializer), max_pool,
-      l.Conv2D(
+          kernel_initializer=initializer),
+      max_pool,
+      tf.keras.layers.Conv2D(
           64,
           5,
           padding='same',
           data_format=data_format,
           activation=tf.nn.relu,
-          kernel_initializer=initializer), max_pool,
-      l.Flatten(),
-      l.Dense(1024, activation=tf.nn.relu, kernel_initializer=initializer),
-      l.Dropout(0.4, seed=1),
-      l.Dense(10, kernel_initializer=initializer)
+          kernel_initializer=initializer),
+      max_pool,
+      tf.keras.layers.Flatten(),
+      tf.keras.layers.Dense(
+          1024, activation=tf.nn.relu, kernel_initializer=initializer),
+      tf.keras.layers.Dropout(0.4, seed=1),
+      tf.keras.layers.Dense(10, kernel_initializer=initializer),
   ])
   if compile_model:
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         optimizer=tf.keras.optimizers.SGD(learning_rate=0.1))
   return model
-
-
-Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
-
-
-def create_random_batch():
-  """Returns an instance of `Batch` populated with random tensors."""
-  return Batch(
-      x=tf.random.uniform(tf.TensorShape([1, 784]), dtype=tf.float32),
-      y=tf.constant(1, dtype=tf.int64, shape=[1, 1]))
-
-
-def model_fn():
-  """Constructs the MNIST model wrapped for use with TensorFlow Federated.
-
-  The model constructed by this function can be passed as an argument to
-  `tff.learning.build_federated_averaging_process` to create a federated
-  training process.
-
-  Returns:
-    An instance of `tff.learning.Model` that represents a trainable model.
-  """
-  keras_model = create_keras_model(compile_model=True)
-  dummy_batch = create_random_batch()
-  return tff.learning.from_compiled_keras_model(keras_model, dummy_batch)
