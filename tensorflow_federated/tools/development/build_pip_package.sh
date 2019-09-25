@@ -44,7 +44,6 @@ main() {
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
   cp -LR "tensorflow_federated" "${temp_dir}"
-  cp "tensorflow_federated/tools/development/setup.py" "${temp_dir}"
   pushd "${temp_dir}"
 
   # Create a virtual environment
@@ -54,10 +53,12 @@ main() {
 
   # Build pip package
   pip install --upgrade setuptools wheel
-  python setup.py bdist_wheel \
+  python "tensorflow_federated/tools/development/setup.py" bdist_wheel \
       --universal \
       --project_name "${project_name}"
-  cp "dist/"* "${output_dir}"
+  popd
+
+  cp "${temp_dir}/dist/"* "${output_dir}"
 }
 
 main "$@"
