@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # MIT
+licenses(["notice"])
 
 filegroup(
     name = "LICENSE",

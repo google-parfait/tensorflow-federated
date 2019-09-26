@@ -6,7 +6,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/utils:__subpackages__",
 ])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 # This package group is temporary and can be removed when all the appropriate
 # modules have been moved to the `compiler` package.

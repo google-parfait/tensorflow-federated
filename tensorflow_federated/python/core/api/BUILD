@@ -1,6 +1,6 @@
 package(default_visibility = ["//tensorflow_federated:__subpackages__"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 # This is the import for other components of TFF that are layered upon the Core API.
 py_library(

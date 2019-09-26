@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 py_binary(
     name = "cyclic_bag_log_reg",

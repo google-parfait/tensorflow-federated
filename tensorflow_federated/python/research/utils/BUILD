@@ -1,6 +1,6 @@
 package(default_visibility = ["//tensorflow_federated/python/research"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 py_library(
     name = "checkpoint_utils",

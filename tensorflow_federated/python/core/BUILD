@@ -1,6 +1,6 @@
 package(default_visibility = ["//tensorflow_federated:__subpackages__"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 # Modules outside the core/ directory should import this.
 py_library(

@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
-licenses(["notice"])  # Apache 2.0 License
+licenses(["notice"])
 
 # The data labels are needed otherwise Bazel will not know about the
 # `__init__.py` files; this is because the modules are imported directory,

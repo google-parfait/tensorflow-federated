@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 # NOTE: TFF code outside this directory can depend on libraries defined in this
 # directory, but not the other way round. In particular, utility classes and
