@@ -10,6 +10,7 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "common_libs",
     srcs = ["__init__.py"],
+    visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(
