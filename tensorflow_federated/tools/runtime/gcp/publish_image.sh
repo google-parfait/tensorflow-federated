@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,21 +12,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM gcr.io/google_appengine/python
+#
+# Tool to publish the TensorFlow Federated runtime image to GCP.
+#
+# Usage:
+#   bazel run //tensorflow_federated/tools/runtime/gcp:publish_image
+# Arguments:
+#   registry: A name of a container registry.
+set -e
 
-RUN python3 --version
+die() {
+  echo >&2 "$@"
+  exit 1
+}
 
-COPY "tensorflow_federated-"*".whl" /
-COPY "tensorflow_federated/python/simulation/worker.py" /
+main() {
+  local registry="$1"
 
-RUN pip3 install --no-cache-dir --upgrade \
-    pip \
-    setuptools
+  if [[ -z "${registry}" ]]; then
+    die "A registry was not specified."
+  fi
 
-RUN pip3 install --no-cache-dir --upgrade \
-    "/tensorflow_federated-"*".whl"
-RUN pip3 freeze
+  docker tag tff-runtime "${registry}"
+  docker push "${registry}"
+}
 
-EXPOSE 8000
-
-ENTRYPOINT ["python3", "/worker.py"]
+main "$@"

@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//tensorflow_federated/tools:__subpackages__"])
 
 licenses(["notice"])
 
@@ -10,7 +10,7 @@ sh_binary(
     name = "build_pip_package",
     srcs = ["build_pip_package.sh"],
     data = [
-        ":pip_package_files",
+        ":setup",
         "//tensorflow_federated",
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
@@ -24,7 +24,7 @@ sh_binary(
 )
 
 filegroup(
-    name = "pip_package_files",
+    name = "setup",
     srcs = ["setup.py"],
     tags = ["ignore_srcs"],
 )

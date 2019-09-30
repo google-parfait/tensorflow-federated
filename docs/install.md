@@ -170,16 +170,18 @@ macOS.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">docker build . \
-    --tag tensorflow_federated:latest</code>
+    --tag tensorflow_federated</code>
 </pre>
 
 ### 4. Start a Docker container.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">docker run -it \
-    --workdir /federated \
+<code class="devsite-terminal">docker run \
+    --interactive \
+    --tty \
     --volume $(pwd):/federated \
-    tensorflow_federated:latest \
+    --workdir /federated \
+    tensorflow_federated \
     bash</code>
 </pre>
 

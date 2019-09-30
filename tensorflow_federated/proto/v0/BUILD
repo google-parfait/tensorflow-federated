@@ -30,3 +30,11 @@ py_proto_library(
         ":computation_py_pb2",
     ],
 )
+
+filegroup(
+    name = "proto_files",
+    srcs = [
+        "computation.proto",
+        "executor.proto",
+    ],
+)

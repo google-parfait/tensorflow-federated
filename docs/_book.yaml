@@ -30,6 +30,8 @@ upper_tabs:
         path: /federated/get_started
       - title: Installation
         path: /federated/install
+      - title: GCP Setup
+        path: /federated/gcp_setup
       - title: Federated Learning
         path: /federated/federated_learning
       - title: Federated Core

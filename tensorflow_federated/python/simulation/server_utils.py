@@ -48,7 +48,8 @@ def run_server(executor, num_threads, port, credentials=None, options=None):
   py_typecheck.check_type(executor, framework.Executor)
   py_typecheck.check_type(num_threads, int)
   py_typecheck.check_type(port, int)
-  py_typecheck.check_type(credentials, grpc.ServerCredentials)
+  if credentials is not None:
+    py_typecheck.check_type(credentials, grpc.ServerCredentials)
   if num_threads < 1:
     raise ValueError('The number of threads must be a positive integer.')
   if port < 1:

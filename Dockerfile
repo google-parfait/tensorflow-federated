@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y \
     ${PYTHON}-pip \
     git
 
-RUN ${PIP} --no-cache-dir install --upgrade \
+RUN ${PIP} install --no-cache-dir --upgrade \
     pip \
     setuptools
 
@@ -59,7 +59,7 @@ RUN bazel version
 # TODO(b/140751117) Unpin gast from 0.2.0.
 # TODO(b/141279425): Remove pinned tf-estimator-nightly version.
 # Install the TensorFlow Federated development environment dependencies
-RUN ${PIP} --no-cache-dir install \
+RUN ${PIP} install --no-cache-dir \
     absl-py~=0.7 \
     attrs~=18.2 \
     cachetools~=3.1.1 \

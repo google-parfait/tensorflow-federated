@@ -28,12 +28,17 @@ flags.DEFINE_integer('port', '8000', 'port to listen on')
 flags.DEFINE_integer('threads', '10', 'number of worker threads in thread pool')
 flags.DEFINE_string('private_key', '', 'the private key for SSL/TLS setup')
 flags.DEFINE_string('certificate_chain', '', 'the cert for SSL/TLS setup')
+flags.DEFINE_integer('clients', '1', 'number of clients to host on this worker')
+flags.DEFINE_integer('fanout', '100',
+                     'max fanout in the hierarchy of local executors')
 
 
 def main(argv):
   del argv
   tf.compat.v1.enable_v2_behavior()
-  executor = framework.create_local_executor()(None)
+  executor_factory = framework.create_local_executor(
+      num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
+  executor = executor_factory(None)
   if FLAGS.private_key:
     if FLAGS.certificate_chain:
       with open(FLAGS.private_key, 'rb') as f:

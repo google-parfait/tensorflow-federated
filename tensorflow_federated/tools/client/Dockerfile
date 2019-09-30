@@ -16,7 +16,6 @@ FROM gcr.io/google_appengine/python
 RUN python3 --version
 
 COPY "tensorflow_federated-"*".whl" /
-COPY "tensorflow_federated/python/simulation/worker.py" /
 
 RUN pip3 install --no-cache-dir --upgrade \
     pip \
@@ -25,7 +24,3 @@ RUN pip3 install --no-cache-dir --upgrade \
 RUN pip3 install --no-cache-dir --upgrade \
     "/tensorflow_federated-"*".whl"
 RUN pip3 freeze
-
-EXPOSE 8000
-
-ENTRYPOINT ["python3", "/worker.py"]
