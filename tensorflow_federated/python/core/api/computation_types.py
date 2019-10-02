@@ -442,16 +442,16 @@ def to_type(spec):
 def _string_representation(type_spec, formatted):
   """Returns the string representation of a TFF `Type`.
 
-  This functions creates a `list` of strings representing the given `type_spec`;
+  This function creates a `list` of strings representing the given `type_spec`;
   combines the strings in either a formatted or un-formatted representation; and
-  returns the resulting string represetnation.
+  returns the resulting string representation.
 
   Args:
     type_spec: An instance of a TFF `Type`.
     formatted: A boolean indicating if the returned string should be formatted.
 
   Raises:
-    TypeError: If `type_spec` has an unepxected type.
+    TypeError: If `type_spec` has an unexpected type.
   """
   py_typecheck.check_type(type_spec, Type)
 
