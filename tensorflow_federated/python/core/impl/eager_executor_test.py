@@ -479,6 +479,21 @@ class EagerExecutorTest(parameterized.TestCase):
     result = fn(tf.constant(20))
     self.assertTrue(result.device.endswith(device))
 
+  @parameterized.named_parameters(
+      *[(str(dev), dev) for dev in _get_physical_devices_for_testing()])
+  def test_to_representation_for_type_succeeds_on_all_devices(self, device):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      return tf.add(x, 1)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+
+    fn = eager_executor.to_representation_for_type(
+        comp_proto, comp.type_signature, device='/{}'.format(device))
+    result = fn(tf.constant(20))
+    self.assertTrue(result.device.endswith(device))
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
