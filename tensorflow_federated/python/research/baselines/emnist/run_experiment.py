@@ -176,8 +176,8 @@ class MetricsHook(object):
 
 
 def create_compiled_keras_model():
-  """Create compiled keras model."""
-  model = models.create_keras_model()
+  """Create compiled keras model based on the original FedAvg CNN."""
+  model = models.create_original_fedavg_cnn_model()
 
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,

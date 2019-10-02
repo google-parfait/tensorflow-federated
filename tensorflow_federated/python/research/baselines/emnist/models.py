@@ -143,6 +143,7 @@ def create_original_fedavg_cnn_model(only_digits=True):
       activation=tf.nn.relu)
 
   model = tf.keras.models.Sequential([
+      tf.keras.layers.Reshape(input_shape=(28 * 28,), target_shape=input_shape),
       conv2d(filters=32, input_shape=input_shape),
       max_pool(),
       conv2d(filters=64),

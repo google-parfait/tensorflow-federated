@@ -8,6 +8,14 @@ py_library(
     srcs_version = "PY3",
 )
 
+py_test(
+    name = "models_test",
+    srcs = ["models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":models"],
+)
+
 py_binary(
     name = "run_experiment",
     srcs = ["run_experiment.py"],
