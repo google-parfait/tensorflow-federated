@@ -43,17 +43,11 @@ def latest_checkpoint(root_output_dir, checkpoint_prefix='ckpt_'):
   checkpoint_regex = re.compile(
       r'^(?P<prefix>{})(?P<num>\d+)$'.format(checkpoint_prefix))
 
-  max_checkpoint_path = None
-  max_checkpoint_num = -1
-  for checkpoint_path in checkpoints:
-    matcher = checkpoint_regex.match(os.path.basename(checkpoint_path))
-    if not matcher:
-      continue
-    checkpoint_num = int(matcher.group('num'))
-    if checkpoint_num > max_checkpoint_num:
-      max_checkpoint_path = checkpoint_path
-      max_checkpoint_num = checkpoint_num
-  return max_checkpoint_path
+  def by_checkpoint_number(ckpt):
+    matcher = checkpoint_regex.match(os.path.basename(ckpt))
+    return int(matcher.group('num')) if matcher else -1
+
+  return max(checkpoints, key=by_checkpoint_number)
 
 
 def save(obj, export_dir):
