@@ -182,7 +182,7 @@ def get_mnist_training_example():
         weights=tf.Variable(initial_value=state.model.weights, name='weights'),
         bias=tf.Variable(initial_value=state.model.bias, name='bias'))
 
-    with tf.control_dependencies([tf.global_variables_initializer()]):
+    with tf.control_dependencies([tf.compat.v1.global_variables_initializer()]):
       init_model = tf.group(
           tf.assign(model_vars.weights, state.model.weights),
           tf.assign(model_vars.bias, state.model.bias))
