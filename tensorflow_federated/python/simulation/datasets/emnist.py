@@ -26,13 +26,12 @@ import struct
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons.image as tfa_image
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation import hdf5_client_data
 from tensorflow_federated.python.simulation import transforming_client_data
-
-img = tf.contrib.image
 
 
 def load_data(only_digits=True, cache_dir=None):
@@ -174,19 +173,22 @@ def _compile_transform(angle=0,
   size = 28
 
   # angles_to_projective_transforms performs rotations around center of image.
-  rotation = img.angles_to_projective_transforms(angle, size, size)
+  rotation = tfa_image.transform_ops.angles_to_projective_transforms(
+      angle, size, size)
 
   # shearing and scaling require centering and decentering.
   half = (size - 1) / 2.0
-  center = img.translations_to_projective_transforms([-half, -half])
+  center = tfa_image.translate_ops.translations_to_projective_transforms(
+      [-half, -half])
   shear = [1., 0., 0., -shear, 1., 0., 0., 0.]
   scaling = [1. / scale_x, 0., 0., 0., 1. / scale_y, 0., 0., 0.]
-  decenter = img.translations_to_projective_transforms([half, half])
+  decenter = tfa_image.translate_ops.translations_to_projective_transforms(
+      [half, half])
 
-  translation = img.translations_to_projective_transforms(
+  translation = tfa_image.translate_ops.translations_to_projective_transforms(
       [translation_x, translation_y])
-  return img.compose_transforms(rotation, center, shear, scaling, decenter,
-                                translation)
+  return tfa_image.transform_ops.compose_transforms(
+      transforms=[rotation, center, shear, scaling, decenter, translation])
 
 
 def _make_transform_fn(raw_client_id, index):
@@ -227,10 +229,10 @@ def _make_transform_fn(raw_client_id, index):
 
   def _transform_fn(data):
     """Applies a random transform to the pixels."""
-    # EMNIST background is 1.0 but img.transform assumes 0.0, so invert.
+    # EMNIST background is 1.0 but tfa_image.transform assumes 0.0, so invert.
     pixels = 1.0 - data['pixels']
 
-    pixels = img.transform(pixels, transform, 'BILINEAR')
+    pixels = tfa_image.transform(pixels, transform, 'BILINEAR')
 
     # num_bits=9 actually yields 256 unique values.
     pixels = tf.quantization.quantize_and_dequantize(
