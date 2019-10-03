@@ -262,6 +262,8 @@ def main(argv):
                          'got: {}'.format(argv))
 
   tf.compat.v1.enable_v2_behavior()
+  tff.framework.set_default_executor(
+      tff.framework.create_local_executor(max_fanout=25))
 
   run_experiment()
 
