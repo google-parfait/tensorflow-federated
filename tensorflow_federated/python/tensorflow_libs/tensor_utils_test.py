@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensor_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
@@ -203,30 +198,6 @@ class TensorUtilsTest(test.TestCase):
     self.assertFalse(
         tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar')))
 
-  @test.graph_mode_test
-  def test_metrics_sum(self):
-    with self.session() as sess:
-      v = tf.compat.v1.placeholder(tf.float32)
-      sum_tensor, update_op = tensor_utils.metrics_sum(v)
-      sess.run(tf.compat.v1.local_variables_initializer())
-      sess.run(update_op, feed_dict={v: [1.0, 2.0]})
-      self.assertEqual(sess.run(sum_tensor), 3.0)
-      sess.run(update_op, feed_dict={v: [3.0]})
-      self.assertEqual(sess.run(sum_tensor), 6.0)
-
-  def test_same_dimension(self):
-    self.assertTrue(
-        tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(None)))
-    self.assertTrue(
-        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(1)))
-
-    self.assertFalse(
-        tensor_utils.same_dimension(tf.Dimension(None), tf.Dimension(1)))
-    self.assertFalse(
-        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(None)))
-    self.assertFalse(
-        tensor_utils.same_dimension(tf.Dimension(1), tf.Dimension(2)))
-
   def test_same_shape(self):
     self.assertTrue(
         tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape(None)))
@@ -254,4 +225,5 @@ class TensorUtilsTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   test.main()

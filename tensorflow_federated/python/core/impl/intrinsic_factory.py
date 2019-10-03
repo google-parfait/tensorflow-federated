@@ -23,14 +23,14 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class IntrinsicFactory(object):
@@ -64,15 +64,11 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be aggregated')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be aggregated')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
     py_typecheck.check_type(zero, value_base.Value)
-
-    # TODO(b/113112108): We need a check here that zero does not have federated
-    # constituents.
-
     accumulate = value_impl.to_value(accumulate, None, self._context_stack)
     merge = value_impl.to_value(merge, None, self._context_stack)
     report = value_impl.to_value(report, None, self._context_stack)
@@ -80,12 +76,19 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(op, value_base.Value)
       py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
 
-    accumulate_type_expected = type_constructors.reduction_op(
-        zero.type_signature, value.type_signature.member)
-    merge_type_expected = type_constructors.reduction_op(
-        zero.type_signature, zero.type_signature)
+    if not type_utils.is_assignable_from(accumulate.type_signature.parameter[0],
+                                         zero.type_signature):
+      raise TypeError('Expected `zero` to be assignable to type {}, '
+                      'but was of incompatible type {}.'.format(
+                          accumulate.type_signature.parameter[0],
+                          zero.type_signature))
+
+    accumulate_type_expected = type_factory.reduction_op(
+        accumulate.type_signature.result, value.type_signature.member)
+    merge_type_expected = type_factory.reduction_op(
+        accumulate.type_signature.result, accumulate.type_signature.result)
     report_type_expected = computation_types.FunctionType(
-        zero.type_signature, report.type_signature.result)
+        merge.type_signature.result, report.type_signature.result)
     for op_name, op, type_expected in [
         ('accumulate', accumulate, accumulate_type_expected),
         ('merge', merge, merge_type_expected),
@@ -101,7 +104,8 @@ class IntrinsicFactory(object):
     accumulate = value_impl.ValueImpl.get_comp(accumulate)
     merge = value_impl.ValueImpl.get_comp(merge)
     report = value_impl.ValueImpl.get_comp(report)
-    comp = computation_constructing_utils.create_federated_aggregate(
+
+    comp = building_block_factory.create_federated_aggregate(
         value, zero, accumulate, merge, report)
     return value_impl.ValueImpl(comp, self._context_stack)
 
@@ -127,8 +131,8 @@ class IntrinsicFactory(object):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         arg = self.federated_zip(arg)
-    type_utils.check_federated_value_placement(arg, placements.SERVER,
-                                               'the argument')
+    value_utils.check_federated_value_placement(arg, placements.SERVER,
+                                                'the argument')
     if not arg.type_signature.all_equal:
       raise TypeError('The argument should be equal at all locations.')
 
@@ -141,7 +145,7 @@ class IntrinsicFactory(object):
 
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
-    comp = computation_constructing_utils.create_federated_apply(fn, arg)
+    comp = building_block_factory.create_federated_apply(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_broadcast(self, value):
@@ -157,14 +161,14 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.SERVER,
-                                               'value to be broadcasted')
+    value_utils.check_federated_value_placement(value, placements.SERVER,
+                                                'value to be broadcasted')
 
     if not value.type_signature.all_equal:
       raise TypeError('The broadcasted value should be equal at all locations.')
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_broadcast(value)
+    comp = building_block_factory.create_federated_broadcast(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_collect(self, value):
@@ -180,11 +184,11 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be collected')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be collected')
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_collect(value)
+    comp = building_block_factory.create_federated_collect(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map(self, fn, arg):
@@ -211,8 +215,8 @@ class IntrinsicFactory(object):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         arg = self.federated_zip(arg)
-    type_utils.check_federated_value_placement(arg, placements.CLIENTS,
-                                               'value to be mapped')
+    value_utils.check_federated_value_placement(arg, placements.CLIENTS,
+                                                'value to be mapped')
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
@@ -229,7 +233,7 @@ class IntrinsicFactory(object):
 
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
-    comp = computation_constructing_utils.create_federated_map(fn, arg)
+    comp = building_block_factory.create_federated_map(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map_all_equal(self, fn, arg):
@@ -259,8 +263,8 @@ class IntrinsicFactory(object):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
         arg = self.federated_zip(arg)
-    type_utils.check_federated_value_placement(arg, placements.CLIENTS,
-                                               'value to be mapped')
+    value_utils.check_federated_value_placement(arg, placements.CLIENTS,
+                                                'value to be mapped')
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
@@ -277,8 +281,7 @@ class IntrinsicFactory(object):
 
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
-    comp = computation_constructing_utils.create_federated_map_all_equal(
-        fn, arg)
+    comp = building_block_factory.create_federated_map_all_equal(fn, arg)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_mean(self, value, weight):
@@ -307,8 +310,8 @@ class IntrinsicFactory(object):
     # variable.
 
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be averaged')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be averaged')
     if not type_utils.is_average_compatible(value.type_signature):
       raise TypeError(
           'The value type {} is not compatible with the average operator.'
@@ -316,8 +319,8 @@ class IntrinsicFactory(object):
 
     if weight is not None:
       weight = value_impl.to_value(weight, None, self._context_stack)
-      type_utils.check_federated_value_placement(weight, placements.CLIENTS,
-                                                 'weight to use in averaging')
+      value_utils.check_federated_value_placement(weight, placements.CLIENTS,
+                                                  'weight to use in averaging')
       py_typecheck.check_type(weight.type_signature.member,
                               computation_types.TensorType)
       if weight.type_signature.member.shape.ndims != 0:
@@ -332,7 +335,7 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     if weight is not None:
       weight = value_impl.ValueImpl.get_comp(weight)
-    comp = computation_constructing_utils.create_federated_mean(value, weight)
+    comp = building_block_factory.create_federated_mean(value, weight)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_reduce(self, value, zero, op):
@@ -354,8 +357,8 @@ class IntrinsicFactory(object):
     # at this level of the API should probably be optional. TBD.
 
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be reduced')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be reduced')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
     py_typecheck.check_type(zero, value_base.Value)
@@ -366,8 +369,8 @@ class IntrinsicFactory(object):
     op = value_impl.to_value(op, None, self._context_stack)
     py_typecheck.check_type(op, value_base.Value)
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
-    op_type_expected = type_constructors.reduction_op(
-        zero.type_signature, value.type_signature.member)
+    op_type_expected = type_factory.reduction_op(zero.type_signature,
+                                                 value.type_signature.member)
     if not type_utils.is_assignable_from(op_type_expected, op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           op_type_expected, op.type_signature))
@@ -375,8 +378,7 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
-    comp = computation_constructing_utils.create_federated_reduce(
-        value, zero, op)
+    comp = building_block_factory.create_federated_reduce(value, zero, op)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_sum(self, value):
@@ -392,8 +394,8 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     value = value_impl.to_value(value, None, self._context_stack)
-    type_utils.check_federated_value_placement(value, placements.CLIENTS,
-                                               'value to be summed')
+    value_utils.check_federated_value_placement(value, placements.CLIENTS,
+                                                'value to be summed')
 
     if not type_utils.is_sum_compatible(value.type_signature):
       raise TypeError(
@@ -401,7 +403,7 @@ class IntrinsicFactory(object):
               value.type_signature))
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_sum(value)
+    comp = building_block_factory.create_federated_sum(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_value(self, value, placement):
@@ -423,8 +425,7 @@ class IntrinsicFactory(object):
     value = value_impl.to_value(value, None, self._context_stack)
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_value(
-        value, placement)
+    comp = building_block_factory.create_federated_value(value, placement)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_zip(self, value):
@@ -466,7 +467,7 @@ class IntrinsicFactory(object):
                 ','.join(str(type.placement) for type in value.type_signature)))
 
     value = value_impl.ValueImpl.get_comp(value)
-    comp = computation_constructing_utils.create_federated_zip(value)
+    comp = building_block_factory.create_federated_zip(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def sequence_map(self, fn, arg):
@@ -489,15 +490,15 @@ class IntrinsicFactory(object):
     if isinstance(arg.type_signature, computation_types.SequenceType):
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
-      return computation_constructing_utils.create_sequence_map(fn, arg)
+      return building_block_factory.create_sequence_map(fn, arg)
     elif isinstance(arg.type_signature, computation_types.FederatedType):
       parameter_type = computation_types.SequenceType(
           fn.type_signature.parameter)
       result_type = computation_types.SequenceType(fn.type_signature.result)
       intrinsic_type = computation_types.FunctionType(
           (fn.type_signature, parameter_type), result_type)
-      intrinsic = computation_building_blocks.Intrinsic(
-          intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type)
+      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_MAP.uri,
+                                            intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       local_fn = value_utils.get_curried(intrinsic_impl)(fn)
       if arg.type_signature.placement is placements.SERVER:
@@ -537,8 +538,8 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(value.type_signature.member,
                               computation_types.SequenceType)
       element_type = value.type_signature.member.element
-    op_type_expected = type_constructors.reduction_op(zero.type_signature,
-                                                      element_type)
+    op_type_expected = type_factory.reduction_op(zero.type_signature,
+                                                 element_type)
     if not type_utils.is_assignable_from(op_type_expected, op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           op_type_expected, op.type_signature))
@@ -547,8 +548,7 @@ class IntrinsicFactory(object):
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
     if isinstance(value.type_signature, computation_types.SequenceType):
-      return computation_constructing_utils.create_sequence_reduce(
-          value, zero, op)
+      return building_block_factory.create_sequence_reduce(value, zero, op)
     else:
       value_type = computation_types.SequenceType(element_type)
       intrinsic_type = computation_types.FunctionType((
@@ -556,13 +556,12 @@ class IntrinsicFactory(object):
           zero.type_signature,
           op.type_signature,
       ), op.type_signature.result)
-      intrinsic = computation_building_blocks.Intrinsic(
-          intrinsic_defs.SEQUENCE_REDUCE.uri, intrinsic_type)
-      ref = computation_building_blocks.Reference('arg', value_type)
-      tup = computation_building_blocks.Tuple((ref, zero, op))
-      call = computation_building_blocks.Call(intrinsic, tup)
-      fn = computation_building_blocks.Lambda(ref.name, ref.type_signature,
-                                              call)
+      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_REDUCE.uri,
+                                            intrinsic_type)
+      ref = building_blocks.Reference('arg', value_type)
+      tup = building_blocks.Tuple((ref, zero, op))
+      call = building_blocks.Call(intrinsic, tup)
+      fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)
       if value.type_signature.placement is placements.SERVER:
         return self.federated_apply(fn_impl, value)
@@ -600,12 +599,12 @@ class IntrinsicFactory(object):
 
     if isinstance(value.type_signature, computation_types.SequenceType):
       value = value_impl.ValueImpl.get_comp(value)
-      return computation_constructing_utils.create_sequence_sum(value)
+      return building_block_factory.create_sequence_sum(value)
     elif isinstance(value.type_signature, computation_types.FederatedType):
       intrinsic_type = computation_types.FunctionType(
           value.type_signature.member, value.type_signature.member.element)
-      intrinsic = computation_building_blocks.Intrinsic(
-          intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type)
+      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_SUM.uri,
+                                            intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       if value.type_signature.placement is placements.SERVER:
         return self.federated_apply(intrinsic_impl, value)

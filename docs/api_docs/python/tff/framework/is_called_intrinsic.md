@@ -5,6 +5,12 @@
 
 # tff.framework.is_called_intrinsic
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_block_analysis.py">View
+source</a>
+
 Tests if `comp` is a called intrinsic with the given `uri`.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.is_called_intrinsic(
     uri=None
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_block_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -51,7 +51,7 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
   state = fed_avg.initialize()
   state = fed_avg.next(state, ...)
   ...
-  tff.learning.assign_weights_to_keras_model(state.model, keras_model)
+  tff.learning.assign_weights_to_keras_model(keras_model, state.model)
   ```
 
   Args:
@@ -194,15 +194,15 @@ def from_compiled_keras_model(keras_model, dummy_batch):
     ValueError: If `keras_model` was *not* compiled.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
+  # Optimizer attribute is only set after calling tf.keras.Model.compile().
+  if not keras_model.optimizer:
+    raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
+                     'instead.')
   dummy_tensors = _preprocess_dummy_batch(dummy_batch)
   # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
   # until the model has been called on input. The work-around is to call
   # Model.test_on_batch() once before asking for metrics.
   keras_model.test_on_batch(**dummy_tensors)
-  # Optimizer attribute is only set after calling tf.keras.Model.compile().
-  if not hasattr(keras_model, 'optimizer'):
-    raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
-                     'instead.')
   return model_utils.enhance(_TrainableKerasModel(keras_model, dummy_tensors))
 
 
@@ -249,7 +249,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
 
   @tff.tf_computation(member_type)
   def report(accumulators):
-    """Insert `accumulators` back into the kera metric to obtain result."""
+    """Insert `accumulators` back into the keras metric to obtain result."""
     # NOTE: the following call requires that `metric_type` have a no argument
     # __init__ method, which will restrict the types of metrics that can be
     # used. This is somewhat limiting, but the pattern to use default arguments
@@ -434,7 +434,10 @@ class _KerasModel(model_lib.Model):
     for metric in self.get_metrics():
       metric.update_state(y_true=y_true, y_pred=predictions)
 
-    return model_lib.BatchOutput(loss=batch_loss, predictions=predictions)
+    return model_lib.BatchOutput(
+        loss=batch_loss,
+        predictions=predictions,
+        num_examples=tf.shape(inputs)[0])
 
   @tf.function
   def forward_pass(self, batch_input, training=True):

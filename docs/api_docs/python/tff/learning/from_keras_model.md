@@ -5,6 +5,12 @@
 
 # tff.learning.from_keras_model
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py">View
+source</a>
+
 Builds a
 <a href="../../tff/learning/Model.md"><code>tff.learning.Model</code></a> for an
 example mini batch.
@@ -19,9 +25,6 @@ tff.learning.from_keras_model(
     optimizer=None
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

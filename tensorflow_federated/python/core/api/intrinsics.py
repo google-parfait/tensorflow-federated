@@ -103,6 +103,9 @@ def federated_apply(fn, arg):
 def federated_mean(value, weight=None):
   """Computes a `tff.SERVER` mean of `value` placed on `tff.CLIENTS`.
 
+  For values `v_1, ..., v_k`, and weights `w_1, ..., w_k`, this means
+  `sum_{i=1}^k (w_i * v_i) / sum_{i=1}^k w_i`.
+
   Args:
     value: The value of which the mean is to be computed. Must be of a TFF
       federated type placed at `tff.CLIENTS`. The value may be structured, e.g.,

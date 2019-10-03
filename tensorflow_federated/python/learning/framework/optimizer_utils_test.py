@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for learning.framework.optimizer_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
@@ -136,7 +131,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
       ('_sgd', lambda: tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.1),
        0.1, 0),
       # It looks like Adam introduces 2 + 2*num_model_variables additional vars.
-      ('_adam', lambda: tf.train.AdamOptimizer(  # pylint: disable=g-long-lambda
+      ('_adam', lambda: tf.compat.v1.train.AdamOptimizer(  # pylint: disable=g-long-lambda
           learning_rate=0.1, beta1=0.0, beta2=0.0, epsilon=1.0), 0.05, 6))
   # pyformat: enable
   def test_server_eager_mode(self, optimizer_fn, updated_val,

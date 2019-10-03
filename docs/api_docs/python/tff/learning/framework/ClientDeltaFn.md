@@ -7,12 +7,15 @@
 
 # tff.learning.framework.ClientDeltaFn
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
+source</a>
+
 ## Class `ClientDeltaFn`
 
 Represents a client computation that produces an update to a model.
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -33,7 +36,7 @@ An iterable of `tf.Variable` objects.
 
 <h3 id="__call__"><code>__call__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/framework/optimizer_utils.py">View
 source</a>
 
 ```python

@@ -5,14 +5,17 @@
 
 # tff.framework.remove_mapped_or_applied_identity
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Removes all the mapped or applied identity functions in `comp`.
 
 ```python
 tff.framework.remove_mapped_or_applied_identity(comp)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

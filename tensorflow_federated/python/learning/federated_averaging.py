@@ -78,7 +78,10 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     def reduce_fn(num_examples_sum, batch):
       """Runs `tff.learning.Model.train_on_batch` on local client batch."""
       output = model.train_on_batch(batch)
-      return num_examples_sum + tf.shape(output.predictions)[0]
+      if output.num_examples is None:
+        return num_examples_sum + tf.shape(output.predictions)[0]
+      else:
+        return num_examples_sum + output.num_examples
 
     num_examples_sum = dataset.reduce(
         initial_state=tf.constant(0), reduce_func=reduce_fn)

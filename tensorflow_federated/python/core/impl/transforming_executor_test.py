@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for transforming_executor.py."""
 
 import asyncio
 
@@ -21,18 +20,17 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import transforming_executor
-from tensorflow_federated.python.core.impl import type_constructors
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class FakeEx(executor_base.Executor):
 
   async def create_value(self, val, unused):
-    return str(
-        computation_building_blocks.ComputationBuildingBlock.from_proto(val))
+    return str(building_blocks.ComputationBuildingBlock.from_proto(val))
 
   async def create_call(self, comp, arg=None):
     raise NotImplementedError
@@ -58,7 +56,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_removal_of_identity_mapping(self):
 
-    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_apply(_identity, x)
 
@@ -72,7 +70,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_inlining_of_blocks(self):
 
-    @computations.federated_computation(type_constructors.at_server(tf.int32))
+    @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_zip([x, x])
 

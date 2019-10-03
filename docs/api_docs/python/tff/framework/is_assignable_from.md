@@ -5,6 +5,12 @@
 
 # tff.framework.is_assignable_from
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py">View
+source</a>
+
 Determines whether `target_type` is assignable from `source_type`.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.is_assignable_from(
     source_type
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

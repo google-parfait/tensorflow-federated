@@ -5,14 +5,17 @@
 
 # tff.framework.unwrap_placement
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Strips `comp`'s placement, returning a single call to map, apply or value.
 
 ```python
 tff.framework.unwrap_placement(comp)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -26,9 +29,9 @@ The other assumptions on inputs of `unwrap_placement` are enumerated as follows:
 2.  The only intrinsics present here are apply or map, zip, and
     federated_value_at_*.
 3.  The type signature of `comp` is federated.
-4.  There are no instances of `computation_building_blocks.Data` of federated
-    type under `comp`; how these would be handled by a function such as this is
-    not entirely clear.
+4.  There are no instances of `building_blocks.Data` of federated type under
+    `comp`; how these would be handled by a function such as this is not
+    entirely clear.
 
 Under these conditions, `unwrap_placement` will produce a single call to
 federated_map, federated_apply or federated_value, depending on the placement
@@ -37,9 +40,8 @@ will remain under `comp`.
 
 #### Args:
 
-*   <b>`comp`</b>: Instance of
-    `computation_building_blocks.ComputationBuildingBlock` satisfying the
-    assumptions above.
+*   <b>`comp`</b>: Instance of `building_blocks.ComputationBuildingBlock`
+    satisfying the assumptions above.
 
 #### Returns:
 

@@ -5,14 +5,17 @@
 
 # tff.framework.type_to_tf_tensor_specs
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py">View
+source</a>
+
 Returns nested structure of `tf.TensorSpec`s for a given TFF type.
 
 ```python
 tff.framework.type_to_tf_tensor_specs(type_spec)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

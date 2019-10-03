@@ -56,16 +56,25 @@ RUN mkdir /bazel && \
     rm -f /bazel/installer.sh
 RUN bazel version
 
+# TODO(b/140751117) Unpin gast from 0.2.0.
+# TODO(b/141279425): Remove pinned tf-estimator-nightly version.
 # Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} --no-cache-dir install \
     absl-py~=0.7 \
     attrs~=18.2 \
+    cachetools~=3.1.1 \
+    gast==0.2.2 \
     enum34~=1.1 \
+    grpcio~=1.22.0 \
     h5py~=2.6 \
     matplotlib~=3.0 \
     numpy~=1.14 \
+    pandas~=0.24.0 \
+    portpicker \
     six~=1.10 \
+    tensorflow-model-optimization~=0.1.3 \
+    tensorflow-privacy~=0.0.1 \
+    tf-estimator-nightly==1.14.0.dev2019091601 \
     tf-nightly \
-    grpcio~=1.8.0 \
-    portpicker
+    typing~=3.7.0
 RUN pip freeze

@@ -27,13 +27,21 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 @six.add_metaclass(abc.ABCMeta)
 class Type(object):
   """An abstract interface for all classes that represent TFF types."""
+
+  def compact_representation(self):
+    """Returns the compact string representation of this type."""
+    return _string_representation(self, formatted=False)
+
+  def formatted_representation(self):
+    """Returns the formatted string representation of this type."""
+    return _string_representation(self, formatted=True)
 
   @abc.abstractmethod
   def __repr__(self):
@@ -42,7 +50,7 @@ class Type(object):
 
   def __str__(self):
     """Returns a concise representation of this type."""
-    return compact_representation(self)
+    return self.compact_representation()
 
   @abc.abstractmethod
   def __eq__(self, other):
@@ -78,7 +86,8 @@ class TensorType(Type):
       dtype: An instance of `tf.DType`.
       shape: An optional instance of `tf.TensorShape` or an argument that can be
         passed to its constructor (such as a `list` or a `tuple`), or `None` for
-        the default scalar shape. Unspecified shapes are not supported.
+        the default scalar shape. TensorShapes with unknown rank are not
+        supported.
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -110,12 +119,12 @@ class TensorType(Type):
 
   def __repr__(self):
     if self._shape.ndims is None:
-      return 'TensorType({}, {})'.format(repr(self._dtype), None)
+      return 'TensorType({!r}, {})'.format(self._dtype, None)
     elif self._shape.ndims > 0:
-      values = repr([dim.value for dim in self._shape.dims])
-      return 'TensorType({}, {})'.format(repr(self._dtype), values)
+      values = [dim.value for dim in self._shape.dims]
+      return 'TensorType({!r}, {!r})'.format(self._dtype, values)
     else:
-      return 'TensorType({})'.format(repr(self._dtype))
+      return 'TensorType({!r})'.format(self._dtype)
 
   def __eq__(self, other):
     return (isinstance(other, TensorType) and self._dtype == other.dtype and
@@ -123,7 +132,11 @@ class TensorType(Type):
 
 
 class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
-  """An implementation of `tff.Type` representing named tuple types in TFF."""
+  """An implementation of `tff.Type` representing named tuple types in TFF.
+
+  Elements initialized by name can be accessed as `foo.name`, and otherwise by
+  index, `foo[index]`.
+  """
 
   def __init__(self, elements):
     """Constructs a new instance from the given element types.
@@ -163,14 +176,14 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
 
   def __repr__(self):
 
-    def _element_repr(e):
-      if e[0] is not None:
-        return '(\'{}\', {})'.format(e[0], repr(e[1]))
-      else:
-        return repr(e[1])
+    def _element_repr(element):
+      name, value = element
+      if name is not None:
+        return '(\'{}\', {!r})'.format(name, value)
+      return repr(value)
 
     return 'NamedTupleType([{}])'.format(', '.join(
-        [_element_repr(e) for e in anonymous_tuple.to_elements(self)]))
+        _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
 
   def __eq__(self, other):
     return (isinstance(other, NamedTupleType) and
@@ -209,7 +222,7 @@ class SequenceType(Type):
     return self._element
 
   def __repr__(self):
-    return 'SequenceType({})'.format(repr(self._element))
+    return 'SequenceType({!r})'.format(self._element)
 
   def __eq__(self, other):
     return isinstance(other, SequenceType) and self._element == other.element
@@ -223,7 +236,8 @@ class FunctionType(Type):
 
     Args:
       parameter: A specification of the parameter type, either an instance of
-        `tff.Type` or something convertible to it by `tff.to_type`.
+        `tff.Type` or something convertible to it by `tff.to_type`. Multiple
+        input arguments can be specified as a single `tff.NamedTupleType`.
       result: A specification of the result type, either an instance of
         `tff.Type` or something convertible to it by `tff.to_type`.
     """
@@ -239,8 +253,7 @@ class FunctionType(Type):
     return self._result
 
   def __repr__(self):
-    return 'FunctionType({}, {})'.format(
-        repr(self._parameter), repr(self._result))
+    return 'FunctionType({!r}, {!r})'.format(self._parameter, self._result)
 
   def __eq__(self, other):
     return (isinstance(other, FunctionType) and
@@ -335,8 +348,9 @@ class FederatedType(Type):
     return self._all_equal
 
   def __repr__(self):
-    return 'FederatedType({}, {}, {})'.format(
-        repr(self._member), repr(self._placement), repr(self._all_equal))
+    return 'FederatedType({!r}, {!r}, {!r})'.format(self._member,
+                                                    self._placement,
+                                                    self._all_equal)
 
   def __eq__(self, other):
     return (isinstance(other, FederatedType) and
@@ -417,30 +431,12 @@ def to_type(spec):
     # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an
     # ordering, which the original container did not have.
     raise TypeError(
-        'Unsupported mapping type {}. Use collections.OrderedDict for'
+        'Unsupported mapping type {}. Use collections.OrderedDict for '
         'mappings.'.format(py_typecheck.type_string(type(spec))))
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
             py_typecheck.type_string(type(spec))))
-
-
-def compact_representation(type_spec):
-  """Returns the compact string representation of a TFF `Type`.
-
-  Args:
-    type_spec: An instance of a TFF `Type`.
-  """
-  return _string_representation(type_spec, formatted=False)
-
-
-def formatted_representation(type_spec):
-  """Returns the formatted string representation of a TFF `Type`.
-
-  Args:
-    type_spec: An instance of a TFF `Type`.
-  """
-  return _string_representation(type_spec, formatted=True)
 
 
 def _string_representation(type_spec, formatted):
@@ -560,7 +556,7 @@ def _string_representation(type_spec, formatted):
       return _combine([element_lines, ['*']])
     elif isinstance(type_spec, TensorType):
       if type_spec.shape.ndims is None:
-        return ['{}[{}]'.format(repr(type_spec.dtype), None)]
+        return ['{!r}[{}]'.format(type_spec.dtype, None)]
       elif type_spec.shape.ndims > 0:
 
         def _value_string(value):

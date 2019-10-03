@@ -10,10 +10,13 @@
 
 # Module: tff.framework
 
-Interfaces for extensions, selectively lifted out of `impl`.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/framework/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/framework/__init__.py">View
 source</a>
+
+Interfaces for extensions, selectively lifted out of `impl`.
 
 <!-- Placeholder for "Used in" -->
 
@@ -22,11 +25,17 @@ source</a>
 [`class Block`](../tff/framework/Block.md): A representation of a block of code
 in TFF's internal language.
 
+[`class CachingExecutor`](../tff/framework/CachingExecutor.md): The caching
+executor only performs caching.
+
 [`class Call`](../tff/framework/Call.md): A representation of a function
 invocation in TFF's internal language.
 
 [`class CompiledComputation`](../tff/framework/CompiledComputation.md): A
 representation of a fully constructed and serialized computation.
+
+[`class CompositeExecutor`](../tff/framework/CompositeExecutor.md): An executor
+composed of subordinate executors that manage disjoint scopes.
 
 [`class ComputationBuildingBlock`](../tff/framework/ComputationBuildingBlock.md):
 The abstract base class for abstractions in the TFF's internal language.
@@ -104,6 +113,9 @@ a called federated zip.
 [`create_local_executor(...)`](../tff/framework/create_local_executor.md):
 Constructs an executor to execute computations on the local machine.
 
+[`create_worker_pool_executor(...)`](../tff/framework/create_worker_pool_executor.md):
+Create an executor backed by a worker pool.
+
 [`get_map_of_unbound_references(...)`](../tff/framework/get_map_of_unbound_references.md):
 Gets a Python `dict` of the unbound references in `comp`.
 
@@ -123,7 +135,10 @@ whether `target_type` is assignable from `source_type`.
 Checks `type_spec` against an explicit whitelist for `tf_computation`.
 
 [`merge_tuple_intrinsics(...)`](../tff/framework/merge_tuple_intrinsics.md):
-Merges all the tuples of intrinsics in `comp` into one intrinsic.
+Merges tuples of called intrinsics into one called intrinsic.
+
+[`remove_lambdas_and_blocks(...)`](../tff/framework/remove_lambdas_and_blocks.md):
+Removes any called lambdas and blocks from `comp`.
 
 [`remove_mapped_or_applied_identity(...)`](../tff/framework/remove_mapped_or_applied_identity.md):
 Removes all the mapped or applied identity functions in `comp`.
@@ -133,9 +148,6 @@ Replaces all the called lambdas in `comp` with a block.
 
 [`replace_intrinsics_with_bodies(...)`](../tff/framework/replace_intrinsics_with_bodies.md):
 Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
-
-[`replace_selection_from_tuple_with_element(...)`](../tff/framework/replace_selection_from_tuple_with_element.md):
-Replaces any selection from a tuple with the underlying tuple element.
 
 [`set_default_executor(...)`](../tff/framework/set_default_executor.md): Places
 an `executor`-backed execution context at the top of the stack.

@@ -10,14 +10,17 @@
 
 # tff.Value
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
+source</a>
+
 ## Class `Value`
 
 An abstract base class for all values in the bodies of TFF computations.
 
 Inherits From: [`TypedObject`](../tff/TypedObject.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -43,7 +46,7 @@ Returns the TFF type of this object (an instance of
 
 <h3 id="__call__"><code>__call__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
 source</a>
 
 ```python
@@ -57,7 +60,7 @@ For values of functional types, invokes this value on given arguments.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
 source</a>
 
 ```python
@@ -68,7 +71,7 @@ For values of a named tuple type, returns the element at `index`.
 
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
 source</a>
 
 ```python
@@ -79,7 +82,7 @@ For values of a named tuple type, iterates over the tuple elements.
 
 <h3 id="__len__"><code>__len__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/value_base.py">View
 source</a>
 
 ```python

@@ -10,14 +10,17 @@
 
 # tff.framework.FederatedExecutor
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py">View
+source</a>
+
 ## Class `FederatedExecutor`
 
 The federated executor orchestrates federated computations.
 
 Inherits From: [`Executor`](../../tff/framework/Executor.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -47,7 +50,7 @@ machine (where marshaling/unmarshaling could be avoided), or when they have the
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py">View
 source</a>
 
 ```python
@@ -76,7 +79,7 @@ Creates a federated executor backed by a collection of target executors.
 
 <h3 id="create_call"><code>create_call</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py">View
 source</a>
 
 ```python
@@ -103,7 +106,7 @@ constructed vall.
 
 <h3 id="create_selection"><code>create_selection</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py">View
 source</a>
 
 ```python
@@ -132,7 +135,7 @@ constructed selection.
 
 <h3 id="create_tuple"><code>create_tuple</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py">View
 source</a>
 
 ```python
@@ -154,7 +157,7 @@ constructed tuple.
 
 <h3 id="create_value"><code>create_value</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/federated_executor.py">View
 source</a>
 
 ```python

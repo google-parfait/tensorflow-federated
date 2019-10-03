@@ -9,10 +9,19 @@
 <meta itemprop="property" content="__iter__"/>
 <meta itemprop="property" content="__len__"/>
 <meta itemprop="property" content="__ne__"/>
+<meta itemprop="property" content="compact_representation"/>
+<meta itemprop="property" content="formatted_representation"/>
 <meta itemprop="property" content="from_proto"/>
+<meta itemprop="property" content="structural_representation"/>
 </div>
 
 # tff.framework.Tuple
+
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
 
 ## Class `Tuple`
 
@@ -20,9 +29,6 @@ A tuple with named or unnamed elements in TFF's internal language.
 
 Inherits From:
 [`ComputationBuildingBlock`](../../tff/framework/ComputationBuildingBlock.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -36,7 +42,7 @@ pointwise could be represented as `(arg -> <fn(arg[0]),fn(arg[1])>)`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
 source</a>
 
 ```python
@@ -70,7 +76,7 @@ Returns the TFF type of this object (an instance of
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -81,7 +87,7 @@ Return self==value.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -90,7 +96,7 @@ __getitem__(key)
 
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -99,7 +105,7 @@ __iter__()
 
 <h3 id="__len__"><code>__len__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -108,7 +114,7 @@ __len__()
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -117,9 +123,31 @@ __ne__(other)
 
 Return self!=value.
 
+<h3 id="compact_representation"><code>compact_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
+
+```python
+compact_representation()
+```
+
+Returns the compact string representation of this building block.
+
+<h3 id="formatted_representation"><code>formatted_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
+
+```python
+formatted_representation()
+```
+
+Returns the formatted string representation of this building block.
+
 <h3 id="from_proto"><code>from_proto</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
 source</a>
 
 ```python
@@ -147,3 +175,14 @@ contains the deserialized logic from in 'computation_proto'.
     computation for which deserialization has not been implemented yet.
 *   <b>`ValueError`</b>: if deserialization failed due to the argument being
     invalid.
+
+<h3 id="structural_representation"><code>structural_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
+
+```python
+structural_representation()
+```
+
+Returns the structural string representation of this building block.

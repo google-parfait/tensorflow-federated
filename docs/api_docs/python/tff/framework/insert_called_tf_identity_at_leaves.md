@@ -5,14 +5,17 @@
 
 # tff.framework.insert_called_tf_identity_at_leaves
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Inserts an identity TF graph called on References under `comp`.
 
 ```python
 tff.framework.insert_called_tf_identity_at_leaves(comp)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -41,21 +44,19 @@ at the leaves of any portion of the TFF AST which is destined to be reduced to
 TF.
 
 We detect such a destiny by checking for the existence of a
-`computation_building_blocks.Lambda` whose parameter and result type can both be
-bound into TensorFlow. This pattern is enforced here as parameter validation on
-`comp`.
+`building_blocks.Lambda` whose parameter and result type can both be bound into
+TensorFlow. This pattern is enforced here as parameter validation on `comp`.
 
 #### Args:
 
-*   <b>`comp`</b>: Instance of `computation_building_blocks.Lambda` whose AST we
-    will traverse, replacing appropriate instances of
-    `computation_building_blocks.Reference` with graphs representing thei
-    identity function of the appropriate type called on the same reference.
-    `comp` must declare a parameter and result type which are both able to be
-    stamped in to a TensorFlow graph.
+*   <b>`comp`</b>: Instance of `building_blocks.Lambda` whose AST we will
+    traverse, replacing appropriate instances of `building_blocks.Reference`
+    with graphs representing the identity function of the appropriate type
+    called on the same reference. `comp` must declare a parameter and result
+    type which are both able to be stamped in to a TensorFlow graph.
 
 #### Returns:
 
 A possibly modified version of `comp`, where any references now have a parent of
-type `computation_building_blocks.Call` with function an instance of
-`computation_building_blocks.CompiledComputation`.
+type `building_blocks.Call` with function an instance of
+`building_blocks.CompiledComputation`.

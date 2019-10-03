@@ -51,14 +51,14 @@ There are a number of ways to contribute depending on what you're interested in:
 *   If you are interested in developing new federated learning algorithms, the
     best way to start would be to study the implementations of federated
     averaging and evaluation in `tff.learning`, and to think of extensions to
-    the existing imlementation (or alternative approaches). If you have a
-    proposal for a new algorithm, we recommend to start by staging your project
+    the existing implementation (or alternative approaches). If you have a
+    proposal for a new algorithm, we recommend starting by staging your project
     in the `research` directory and including a colab notebook to showcase the
     new features.
 
     You may want to also develop new algorithms in your own repository. We are
     happy to feature pointers to academic publications and/or repos using TFF on
-    [tensorflow.org/federatred](http://www.tensorflow.org/federated).
+    [tensorflow.org/federated](http://www.tensorflow.org/federated).
 
 *   If you are interested in applying federated learning, consider contributing
     a tutorial, a new federated dataset, or an example model that others could
@@ -87,7 +87,8 @@ versions.
 
 TensorFlow Federated                                         | TensorFlow
 ------------------------------------------------------------ | ----------
-[master](https://github.com/tensorflow/federated)            | [tf-nightly 1.x](https://pypi.org/project/tf-nightly/)
+[master](https://github.com/tensorflow/federated)            | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
+[0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0) | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
 [0.7.0](https://github.com/tensorflow/federated/tree/v0.7.0) | [tf-nightly 1.15.0.dev20190711](https://pypi.org/project/tf-nightly/1.15.0.dev20190711/)
 [0.6.0](https://github.com/tensorflow/federated/tree/v0.6.0) | [tf-nightly 1.15.0.dev20190626](https://pypi.org/project/tf-nightly/1.15.0.dev20190626/)
 [0.5.0](https://github.com/tensorflow/federated/tree/v0.5.0) | [tf-nightly 1.14.1.dev20190528](https://pypi.org/project/tf-nightly/1.14.1.dev20190528/)

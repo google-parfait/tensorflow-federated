@@ -5,6 +5,12 @@
 
 # tff.framework.transform_type_postorder
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py">View
+source</a>
+
 Walks type tree of `type_signature` postorder, calling `transform_fn`.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.transform_type_postorder(
     transform_fn
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/type_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

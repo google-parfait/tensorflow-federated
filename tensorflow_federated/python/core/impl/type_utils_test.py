@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for type_utils.py."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
@@ -30,11 +25,9 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import type_constructors
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
 class TypeUtilsTest(test.TestCase, parameterized.TestCase):
@@ -42,13 +35,10 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
   def test_infer_type_with_none(self):
     self.assertEqual(type_utils.infer_type(None), None)
 
-  def test_infer_type_with_tff_value(self):
+  def test_infer_type_with_typed_object(self):
     self.assertEqual(
-        str(
-            type_utils.infer_type(
-                value_impl.ValueImpl(
-                    computation_building_blocks.Reference('foo', tf.bool),
-                    context_stack_impl.context_stack))), 'bool')
+        type_utils.infer_type(building_blocks.Reference(
+            'foo', tf.bool)).compact_representation(), 'bool')
 
   def test_infer_type_with_scalar_int_tensor(self):
     self.assertEqual(str(type_utils.infer_type(tf.constant(1))), 'int32')
@@ -565,13 +555,15 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                  ('c', tf.float32),
                  ('d', (tf.int32, [20])),
              ])),
+            ('e', ()),
         ]))
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {
             'c': tf.float32,
             'd': tf.int32
-        }
+        },
+        'e': (),
     })
     test.assert_nested_struct_eq(
         shapes, {
@@ -579,7 +571,8 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             'b': {
                 'c': tf.TensorShape([]),
                 'd': tf.TensorShape([20])
-            }
+            },
+            'e': (),
         })
 
   def test_type_to_tf_tensor_specs_with_int_scalar(self):
@@ -610,6 +603,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                  ('c', tf.float32),
                  ('d', (tf.int32, [20])),
              ])),
+            ('e', ()),
         ]))
     test.assert_nested_struct_eq(
         tensor_specs, {
@@ -617,7 +611,8 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             'b': {
                 'c': tf.TensorSpec([], tf.float32),
                 'd': tf.TensorSpec([20], tf.int32)
-            }
+            },
+            'e': (),
         })
 
   def test_type_to_tf_tensor_specs_with_invalid_type(self):
@@ -679,35 +674,37 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
       type_utils.type_to_tf_structure(computation_types.NamedTupleType([]))
 
   def test_type_from_tensors_single(self):
-    v = tf.get_variable('a', dtype=tf.float32, shape=[])
+    v = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
     result = type_utils.type_from_tensors(v)
     self.assertEqual(str(result), 'float32')
 
   def test_type_from_tensors_non_convert_tensors(self):
-    v1 = tf.get_variable('foo', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
     v2 = {'bar'}
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
-    with self.assertRaises(TypeError):
+    # TODO(b/122081673): Change Exception back to ValueError once TFF moves to
+    # be TF 2.0 only
+    with self.assertRaisesRegex(Exception, 'supported type'):
       type_utils.type_from_tensors(d)
 
   def test_type_from_tensors_nested_tensors(self):
-    v1 = tf.get_variable('foo', dtype=tf.int32, shape=[])
-    v2 = tf.get_variable('bar', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
+    v2 = tf.Variable(0, name='bar', dtype=tf.int32, shape=[])
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
     result = type_utils.type_from_tensors(d)
     self.assertEqual(str(result), '<v1=int32,v2=int32>')
 
   def test_type_from_tensors_list_tensors(self):
-    v1 = tf.get_variable('a', dtype=tf.float32, shape=[])
-    v2 = tf.get_variable('b', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
+    v2 = tf.Variable(0, name='b', dtype=tf.int32, shape=[])
     l = [v1, v2]
     result = type_utils.type_from_tensors(l)
     self.assertEqual(str(result), '<float32,int32>')
 
   def test_type_from_tensors_named_tuple(self):
     test_type = collections.namedtuple('NestedTensors', ['x', 'y'])
-    v1 = tf.get_variable('a', dtype=tf.float32, shape=[])
-    v2 = tf.get_variable('b', dtype=tf.int32, shape=[])
+    v1 = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
+    v2 = tf.Variable(0, name='b', dtype=tf.int32, shape=[])
     result = type_utils.type_from_tensors(test_type(v1, v2))
     self.assertEqual(str(result), '<x=float32,y=int32>')
 
@@ -789,16 +786,6 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                             computation_types.AbstractType('T'))
   def test_is_sum_compatible_negative_examples(self, type_spec):
     self.assertFalse(type_utils.is_sum_compatible(type_spec))
-
-  def test_check_federated_value_placement(self):
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    def _(x):
-      type_utils.check_federated_value_placement(x, placements.CLIENTS)
-      with self.assertRaises(TypeError):
-        type_utils.check_federated_value_placement(x, placements.SERVER)
-      return x
 
   @parameterized.parameters(tf.float32, tf.float64, ([('x', tf.float32),
                                                       ('y', tf.float64)],),
@@ -1113,23 +1100,28 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertRaises(TypeError, type_utils.check_federated_type, type_spec,
                       None, None, True)
 
-  def test_is_anon_tuple_with_py_container(self):
+
+class IsAnonTupleWithPyContainerTest(test.TestCase):
+
+  def test_returns_true(self):
+    value = anonymous_tuple.AnonymousTuple([('a', 0.0)])
+    type_spec = computation_types.NamedTupleTypeWithPyContainerType(
+        [('a', tf.float32)], dict)
     self.assertTrue(
-        type_utils.is_anon_tuple_with_py_container(
-            anonymous_tuple.AnonymousTuple([('a', 0.0)]),
-            computation_types.NamedTupleTypeWithPyContainerType(
-                [('a', tf.float32)], dict)))
+        type_utils.is_anon_tuple_with_py_container(value, type_spec))
+
+  def test_returns_false_with_none_value(self):
+    value = None
+    type_spec = computation_types.NamedTupleTypeWithPyContainerType(
+        [('a', tf.float32)], dict)
     self.assertFalse(
-        type_utils.is_anon_tuple_with_py_container(
-            value_impl.ValueImpl(
-                computation_building_blocks.Data('nothing', tf.int32),
-                context_stack_impl.context_stack),
-            computation_types.NamedTupleTypeWithPyContainerType(
-                [('a', tf.float32)], dict)))
+        type_utils.is_anon_tuple_with_py_container(value, type_spec))
+
+  def test_returns_false_with_named_tuple_type_spec(self):
+    value = anonymous_tuple.AnonymousTuple([('a', 0.0)])
+    type_spec = computation_types.NamedTupleType([('a', tf.float32)])
     self.assertFalse(
-        type_utils.is_anon_tuple_with_py_container(
-            anonymous_tuple.AnonymousTuple([('a', 0.0)]),
-            computation_types.NamedTupleType([('a', tf.float32)])))
+        type_utils.is_anon_tuple_with_py_container(value, type_spec))
 
 
 class ConvertToPyContainerTest(test.TestCase):
@@ -1772,12 +1764,10 @@ class IsBinaryOpWithUpcastCompatibleTest(test.TestCase):
 
   def check_valid_federated_weighted_mean_argument_tuple_type(self):
     type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
-        computation_types.to_type([type_constructors.at_clients(tf.float32)] *
-                                  2))
+        computation_types.to_type([type_factory.at_clients(tf.float32)] * 2))
     with self.assertRaises(TypeError):
       type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
-          computation_types.to_type([type_constructors.at_clients(tf.int32)] *
-                                    2))
+          computation_types.to_type([type_factory.at_clients(tf.int32)] * 2))
 
 
 if __name__ == '__main__':

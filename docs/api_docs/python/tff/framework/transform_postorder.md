@@ -5,6 +5,12 @@
 
 # tff.framework.transform_postorder
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/transformation_utils.py">View
+source</a>
+
 Traverses `comp` recursively postorder and replaces its constituents.
 
 ```python
@@ -13,9 +19,6 @@ tff.framework.transform_postorder(
     transform
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformation_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

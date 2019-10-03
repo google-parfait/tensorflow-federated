@@ -5,6 +5,12 @@
 
 # tff.simulation.datasets.emnist.get_infinite
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist.py">View
+source</a>
+
 Converts a Federated EMNIST dataset into an Infinite Federated EMNIST set.
 
 ```python
@@ -13,9 +19,6 @@ tff.simulation.datasets.emnist.get_infinite(
     num_pseudo_clients
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

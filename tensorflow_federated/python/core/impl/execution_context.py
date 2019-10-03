@@ -21,9 +21,11 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
+from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import type_utils
 
 
@@ -34,6 +36,23 @@ def _unwrap(value):
     return anonymous_tuple.map_structure(_unwrap, value)
   else:
     return value
+
+
+class ExecutionContextValue(typed_object.TypedObject):
+  """Wrapper class for values produced by `ExecutionContext`."""
+
+  def __init__(self, value, type_spec):
+    py_typecheck.check_type(type_spec, computation_types.Type)
+    self._value = value
+    self._type_spec = type_spec
+
+  @property
+  def type_signature(self):
+    return self._type_spec
+
+  @property
+  def value(self):
+    return self._value
 
 
 async def _ingest(executor, val, type_spec):
@@ -59,7 +78,7 @@ async def _ingest(executor, val, type_spec):
     t_elem = anonymous_tuple.to_elements(type_spec)
     if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
       raise ValueError('Value {} does not match type {}.'.format(
-          str(val), str(type_spec)))
+          val, type_spec))
     ingested = []
     for (_, v), (_, t) in zip(v_elem, t_elem):
       ingested.append(_ingest(executor, v, t))
@@ -97,24 +116,44 @@ async def _invoke(executor, comp, arg):
     return result_val
 
 
+def _unwrap_execution_context_value(val):
+  """Recursively removes wrapping from `val` under anonymous tuples."""
+  if isinstance(val, anonymous_tuple.AnonymousTuple):
+    return anonymous_tuple.map_structure(_unwrap_execution_context_value, val)
+  elif isinstance(val, ExecutionContextValue):
+    return _unwrap_execution_context_value(val.value)
+  else:
+    return val
+
+
 class ExecutionContext(context_base.Context):
   """Represents an execution context backed by an `executor_base.Executor`."""
 
-  def __init__(self, executor):
-    """Constructs a new execution context backed by `executor`.
+  def __init__(self, executor_fn):
+    """Initializes execution context.
 
     Args:
-      executor: An instance of `executor_base.Executor`.
+      executor_fn: Callable taking a dict of `placement_literals.Placement` keys
+        and integer values to an instance of `executor_base.Executor`.
     """
-    py_typecheck.check_type(executor, executor_base.Executor)
-    self._executor = executor
+    # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
+    py_typecheck.check_callable(executor_fn)
+    self._executor_factory = executor_fn
 
   def ingest(self, val, type_spec):
-    result = asyncio.get_event_loop().run_until_complete(
-        _ingest(self._executor, val, type_spec))
-    py_typecheck.check_type(result, executor_value_base.ExecutorValue)
-    return result
+    return ExecutionContextValue(val, type_spec)
 
   def invoke(self, comp, arg):
+    executor = self._executor_factory({})
+    py_typecheck.check_type(executor, executor_base.Executor)
+    if arg:
+      py_typecheck.check_type(arg, ExecutionContextValue)
+      unwrapped_arg = _unwrap_execution_context_value(arg)
+      cardinalities = runtime_utils.infer_cardinalities(unwrapped_arg,
+                                                        arg.type_signature)
+      executor = self._executor_factory(cardinalities)
+      py_typecheck.check_type(executor, executor_base.Executor)
+      arg = asyncio.get_event_loop().run_until_complete(
+          _ingest(executor, unwrapped_arg, arg.type_signature))
     return asyncio.get_event_loop().run_until_complete(
-        _invoke(self._executor, comp, arg))
+        _invoke(executor, comp, arg))

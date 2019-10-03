@@ -1,3 +1,32 @@
+# Release 0.8.0
+
+## Major Features and Improvements
+
+*   Improvements in the executor stack: caching, deduplication, bi-directional
+    streaming mode, ability to specify physical devices.
+*   Components for integration with custom mapreduce backends
+    (`tff.backends.mapreduce`).
+*   Improvements in simulation dataset APIs: ConcreteClientData, random seeds,
+    stack overflow dataset, updated documentation.
+*   Utilities for encoding and various flavors of aggregation.
+
+## Breaking Changes
+
+*   Removed support for the deprecated `tf.data.Dataset` string iterator handle.
+*   Bumps the required versions of grpcio and tf-nightly.
+
+## Bug Fixes
+
+*   Fixes in notebooks, typos, etc.
+*   Assorted fixes to align with TF 2.0.
+*   Fixes thread cleanup on process exit in the high-performance executor.
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google, as well as:
+
+Gui-U@, Krishna Pillutla, Sergii Khomenko.
+
 # Release 0.7.0
 
 ## Major Features and Improvements

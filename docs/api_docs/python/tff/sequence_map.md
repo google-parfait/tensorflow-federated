@@ -5,6 +5,12 @@
 
 # tff.sequence_map
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Maps a TFF sequence `value` pointwise using a given function `mapping_fn`.
 
 ```python
@@ -13,9 +19,6 @@ tff.sequence_map(
     value
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

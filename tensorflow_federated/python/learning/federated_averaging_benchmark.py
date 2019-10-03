@@ -12,17 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Benchmark for learning.federated_averaging."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Benchmark for federated_averaging."""
 
 import collections
 import time
 
 import numpy as np
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
@@ -49,19 +44,31 @@ def generate_fake_mnist_data():
   return [wrap_data(fake_x_data, fake_y_data) for k in range(10)]
 
 
+def executors_benchmark(fn):
+
+  def wrapped_fn(self):
+    tff.framework.set_default_executor()
+    fn(self, "reference executor")
+    tff.framework.set_default_executor(tff.framework.create_local_executor())
+    fn(self, "local executor")
+
+  return wrapped_fn
+
+
 class FederatedAveragingBenchmark(tf.test.Benchmark):
   """Inheriting TensorFlow's Benchmark capability."""
 
-  def benchmark_simple_execution(self):
+  @executors_benchmark
+  def benchmark_simple_execution(self, executor_id):
     num_clients = 10
     num_client_samples = 20
     batch_size = 4
     num_rounds = 10
 
-    ds = tf.data.Dataset.from_tensor_slices({
-        "x": [[1., 2.]] * num_client_samples,
-        "y": [[5.]] * num_client_samples
-    }).batch(batch_size)
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([("x", [[1., 2.]] * num_client_samples),
+                                 ("y", [[5.]] * num_client_samples)
+                                ])).batch(batch_size)
 
     federated_ds = [ds] * num_clients
 
@@ -73,41 +80,45 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     building_time_array.append(build_time_stop - build_time_start)
     self.report_benchmark(
         name="computation_building_time, simple execution "
-        "TrainableLinearRegression",
+        "TrainableLinearRegression, executor {}".format(executor_id),
         wall_time=np.mean(building_time_array),
         iters=1)
 
     initialization_array = []
     initialization_start = time.time()
-    server_state = iterative_process.initialize()
+    initial_state = iterative_process.initialize()
     initialization_stop = time.time()
     initialization_array.append(initialization_stop - initialization_start)
     self.report_benchmark(
         name="computation_initialization_time, simple execution "
-        "TrainableLinearRegression",
+        "TrainableLinearRegression, executor {}".format(executor_id),
         wall_time=np.mean(initialization_array),
         iters=1)
 
-    next_state = server_state
+    next_state = initial_state
 
     execution_array = []
-    next_state, _ = iterative_process.next(server_state, federated_ds)
     for _ in range(num_rounds - 1):
       round_start = time.time()
       next_state, _ = iterative_process.next(next_state, federated_ds)
       round_stop = time.time()
       execution_array.append(round_stop - round_start)
     self.report_benchmark(
-        name="Time to execute {} rounds, {} clients, "
+        name="Average per round time, {} clients, "
         "{} examples per client, batch size {}, "
-        "TrainableLinearRegression".format(num_rounds, num_clients,
-                                           num_client_samples, batch_size),
+        "TrainableLinearRegression, executor {}".format(num_clients,
+                                                        num_client_samples,
+                                                        batch_size,
+                                                        executor_id),
         wall_time=np.mean(execution_array),
         iters=num_rounds,
         extras={"std_dev": np.std(execution_array)})
 
   def benchmark_fc_api_mnist(self):
     """Code adapted from FC API tutorial ipynb."""
+    # TODO(b/139129100): Follow up when sequence_reduce is implemented in the
+    # local executor.
+    executor_id = "reference executor"
     n_rounds = 10
 
     batch_type = tff.NamedTupleType([("x",
@@ -134,17 +145,16 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
           tf.matmul(batch.x, model.weights) + model.bias)
       return -tf.reduce_mean(
           tf.reduce_sum(
-              tf.one_hot(batch.y, 10) * tf.log(predicted_y),
-              reduction_indices=[1]))
+              tf.one_hot(batch.y, 10) * tf.math.log(predicted_y), axis=[1]))
 
-    initial_model = {
-        "weights": np.zeros([784, 10], dtype=np.float32),
-        "bias": np.zeros([10], dtype=np.float32)
-    }
+    initial_model = collections.OrderedDict([
+        ("weights", np.zeros([784, 10], dtype=np.float32)),
+        ("bias", np.zeros([10], dtype=np.float32))
+    ])
 
     @tff.tf_computation(model_type, batch_type, tf.float32)
     def batch_train(initial_model, batch, learning_rate):
-      model_vars = tff.utils.get_variables("v", model_type)
+      model_vars = tff.utils.create_variables("v", model_type)
       init_model = tff.utils.assign(model_vars, initial_model)
 
       optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate)
@@ -161,6 +171,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
       def batch_fn(model, batch):
         return batch_train(model, batch, learning_rate)
 
+      # Blocked on implementing sequence_reduce in local executor.
       return tff.sequence_reduce(all_batches, initial_model, batch_fn)
 
     @tff.federated_computation(server_model_type, server_float_type,
@@ -175,7 +186,8 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     computation_building_stop = time.time()
     building_time = computation_building_stop - computation_building_start
     self.report_benchmark(
-        name="computation_building_time, FC API",
+        name="computation_building_time, FC API, executor {}".format(
+            executor_id),
         wall_time=building_time,
         iters=1)
 
@@ -192,12 +204,14 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
       execution_array.append(execution_stop - execution_start)
 
     self.report_benchmark(
-        name="Average per round execution time, FC API",
+        name="Average per round execution time, FC API, executor {}".format(
+            executor_id),
         wall_time=np.mean(execution_array),
         iters=n_rounds,
         extras={"std_dev": np.std(execution_array)})
 
-  def benchmark_learning_keras_model_mnist(self):
+  @executors_benchmark
+  def benchmark_learning_keras_model_mnist(self, executor_id):
     """Code adapted from MNIST learning tutorial ipynb."""
     federated_train_data = generate_fake_mnist_data()
     n_rounds = 10
@@ -227,7 +241,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     building_time = computation_building_stop - computation_building_start
     self.report_benchmark(
         name="computation_building_time, "
-        "tff.learning Keras model",
+        "tff.learning Keras model, executor {}".format(executor_id),
         wall_time=building_time,
         iters=1)
 
@@ -242,7 +256,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
 
     self.report_benchmark(
         name="Average per round execution time, "
-        "tff.learning Keras model",
+        "tff.learning Keras model, executor {}".format(executor_id),
         wall_time=np.mean(execution_array),
         iters=n_rounds,
         extras={"std_dev": np.std(execution_array)})

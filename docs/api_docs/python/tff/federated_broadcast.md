@@ -5,6 +5,12 @@
 
 # tff.federated_broadcast
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Broadcasts a federated value from the
 <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> to the
 <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
@@ -12,9 +18,6 @@ Broadcasts a federated value from the
 ```python
 tff.federated_broadcast(value)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

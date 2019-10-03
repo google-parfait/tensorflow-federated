@@ -20,9 +20,17 @@ from __future__ import print_function
 
 from tensorflow_federated.python.simulation.datasets import emnist
 from tensorflow_federated.python.simulation.datasets import shakespeare
+from tensorflow_federated.python.simulation.datasets import stackoverflow
+from tensorflow_federated.python.simulation.datasets.dataset_utils import build_dataset_mixture
+from tensorflow_federated.python.simulation.datasets.dataset_utils import build_single_label_dataset
+from tensorflow_federated.python.simulation.datasets.dataset_utils import build_synthethic_iid_datasets
 
 # Used by doc generation script.
 _allowed_symbols = [
+    "build_dataset_mixture",
+    "build_single_label_dataset",
+    "build_synthethic_iid_datasets",
     "emnist",
     "shakespeare",
+    "stackoverflow",
 ]

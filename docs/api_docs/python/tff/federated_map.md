@@ -5,6 +5,12 @@
 
 # tff.federated_map
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Maps a federated value on
 <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> pointwise using a
 mapping function.
@@ -15,9 +21,6 @@ tff.federated_map(
     value
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

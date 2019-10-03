@@ -7,18 +7,26 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "v0",
     srcs = ["__init__.py"],
-    visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_proto_library(
-    name = "tensorflow_federated_v0_py_pb2",
-    srcs = [
-      "computation.proto",
-      "executor.proto",
-    ],
+    name = "computation_py_pb2",
+    srcs = ["computation.proto"],
+    default_runtime = "@com_google_protobuf//:protobuf_python",
+    protoc = "@com_google_protobuf//:protoc",
+    srcs_version = "PY2AND3",
+    deps = ["@com_google_protobuf//:protobuf_python"],
+)
+
+py_proto_library(
+    name = "executor_py_pb2",
+    srcs = ["executor.proto"],
     default_runtime = "@com_google_protobuf//:protobuf_python",
     protoc = "@com_google_protobuf//:protoc",
     srcs_version = "PY2AND3",
     use_grpc_plugin = True,
-    deps = ["@com_google_protobuf//:protobuf_python"],
+    deps = [
+        "@com_google_protobuf//:protobuf_python",
+        ":computation_py_pb2",
+    ],
 )

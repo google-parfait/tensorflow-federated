@@ -5,6 +5,12 @@
 
 # tff.utils.assign
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py">View
+source</a>
+
 Creates an op that assigns `target` from `source`.
 
 ```python
@@ -13,9 +19,6 @@ tff.utils.assign(
     source
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/utils/tf_computation_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

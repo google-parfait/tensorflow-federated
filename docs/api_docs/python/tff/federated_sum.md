@@ -5,15 +5,18 @@
 
 # tff.federated_sum
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Computes a sum at <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> of a
 `value` placed on the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
 ```python
 tff.federated_sum(value)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

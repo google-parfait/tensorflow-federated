@@ -137,30 +137,7 @@ def is_scalar(tensor):
           all(dim == 1 for dim in tensor.get_shape()))
 
 
-def metrics_sum(values, name=None):
-  """A function like tf.metrics.mean, but for a simple sum.
-
-  Args:
-    values: A rank-1 tensor to be summed.
-    name: Optional name for the op.
-
-  Returns:
-    A tuple of:
-      sum: A variable holding the current sum of all 'values' seen so far.
-      update_op: An opt to run on each minibatch.
-  """
-  with tf.variable_scope(name, 'metrics_sum', (values,)):
-    sum_var = tf.get_variable(
-        'sum', [],
-        values.dtype,
-        initializer=tf.zeros_initializer,
-        collections=[tf.GraphKeys.LOCAL_VARIABLES],
-        trainable=False)
-    update_op = sum_var.assign_add(tf.reduce_sum(values))
-    return sum_var, update_op
-
-
-def same_dimension(x, y):
+def _same_dimension(x, y):
   """Determines if two `tf.Dimension`s are the same.
 
   Args:
@@ -185,7 +162,7 @@ def same_shape(x, y):
     y: a `tf.TensorShape` object.
 
   Returns:
-    True iff `x` and `y` are either both _unknonw_ shapes (e.g.
+    True iff `x` and `y` are either both _unknown_ shapes (e.g.
     `tf.TensorShape(None)`) or have each dimension the same.
   """
   if x.ndims != y.ndims:
@@ -194,4 +171,4 @@ def same_shape(x, y):
     return y.dims is None
   else:
     return y.dims is not None and all(
-        same_dimension(a, b) for a, b in zip(x.dims, y.dims))
+        _same_dimension(a, b) for a, b in zip(x.dims, y.dims))

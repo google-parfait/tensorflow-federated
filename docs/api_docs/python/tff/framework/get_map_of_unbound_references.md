@@ -5,14 +5,17 @@
 
 # tff.framework.get_map_of_unbound_references
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py">View
+source</a>
+
 Gets a Python `dict` of the unbound references in `comp`.
 
 ```python
 tff.framework.get_map_of_unbound_references(comp)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/transformations.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

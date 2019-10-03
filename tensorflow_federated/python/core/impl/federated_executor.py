@@ -22,16 +22,15 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
+from tensorflow_federated.python.core.impl import executor_utils
 from tensorflow_federated.python.core.impl import executor_value_base
-from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import intrinsic_utils
-from tensorflow_federated.python.core.impl import placement_literals
-from tensorflow_federated.python.core.impl import type_constructors
-from tensorflow_federated.python.core.impl import type_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.compiler import type_serialization
 
 
 class FederatedExecutorValue(executor_value_base.ExecutorValue):
@@ -101,11 +100,21 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
         return results[0]
       else:
         return results
+    elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
+      value_elements = anonymous_tuple.to_elements(self._value)
+      type_elements = anonymous_tuple.to_elements(self._type_signature)
+      gathered_values = await asyncio.gather(*[
+          FederatedExecutorValue(v, t).compute()
+          for (_, v), (_, t) in zip(value_elements, type_elements)
+      ])
+      return anonymous_tuple.AnonymousTuple([
+          (k, v) for (k, _), v in zip(type_elements, gathered_values)
+      ])
     else:
-      raise RuntimeError('Computing values of type {} represented as {} is not '
-                         'supported in this executor.'.format(
-                             str(self._type_signature),
-                             py_typecheck.type_string(type(self._value))))
+      raise RuntimeError(
+          'Computing values of type {} represented as {} is not supported in '
+          'this executor.'.format(self._type_signature,
+                                  py_typecheck.type_string(type(self._value))))
 
 
 class FederatedExecutor(executor_base.Executor):
@@ -184,7 +193,7 @@ class FederatedExecutor(executor_base.Executor):
         if pl_cardinality != 1:
           raise ValueError(
               'Unsupported cardinality for placement "{}": {}.'.format(
-                  str(pl), str(pl_cardinality)))
+                  pl, pl_cardinality))
 
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
@@ -192,7 +201,7 @@ class FederatedExecutor(executor_base.Executor):
       if not type_utils.is_concrete_instance_of(type_spec,
                                                 value.type_signature):
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
-            str(type_spec), value.uri))
+            type_spec, value.uri))
       else:
         return FederatedExecutorValue(value, type_spec)
     if isinstance(value, placement_literals.PlacementLiteral):
@@ -262,18 +271,20 @@ class FederatedExecutor(executor_base.Executor):
       py_typecheck.check_type(type_spec, computation_types.Type)
       if isinstance(type_spec, computation_types.FunctionType):
         raise ValueError(
-            'Uncountered a value of a functional TFF type {} and Python type '
+            'Encountered a value of a functional TFF type {} and Python type '
             '{} that is not of one of the recognized representations.'.format(
-                str(type_spec), py_typecheck.type_string(type(value))))
+                type_spec, py_typecheck.type_string(type(value))))
       elif isinstance(type_spec, computation_types.FederatedType):
         children = self._target_executors.get(type_spec.placement)
         if not children:
           raise ValueError(
               'Placement "{}" is not configured in this executor.'.format(
-                  str(type_spec.placement)))
+                  type_spec.placement))
         py_typecheck.check_type(children, list)
         if not type_spec.all_equal:
-          py_typecheck.check_type(value, list)
+          py_typecheck.check_type(value, (list, tuple, set, frozenset))
+          if not isinstance(value, list):
+            value = list(value)
         elif isinstance(value, list):
           raise ValueError(
               'An all_equal value should be passed directly, not as a list.')
@@ -283,7 +294,7 @@ class FederatedExecutor(executor_base.Executor):
           raise ValueError(
               'Federated value contains {} items, but the placement {} in this '
               'executor is configured with {} participants.'.format(
-                  len(value), str(type_spec.placement), len(children)))
+                  len(value), type_spec.placement, len(children)))
         child_vals = await asyncio.gather(*[
             c.create_value(v, type_spec.member)
             for v, c in zip(value, children)
@@ -313,9 +324,8 @@ class FederatedExecutor(executor_base.Executor):
         embedded_comp = await child.create_value(comp.internal_representation,
                                                  comp.type_signature)
         if arg is not None:
-          embedded_arg = await self._delegate(child,
-                                              arg.internal_representation,
-                                              arg.type_signature)
+          embedded_arg = await executor_utils.delegate_entirely_to_executor(
+              arg.internal_representation, arg.type_signature, child)
         else:
           embedded_arg = None
         result = await child.create_call(embedded_comp, embedded_arg)
@@ -324,7 +334,7 @@ class FederatedExecutor(executor_base.Executor):
         raise ValueError(
             'Directly calling computations of type {} is unsupported.'.format(
                 which_computation))
-    if isinstance(comp.internal_representation, intrinsic_defs.IntrinsicDef):
+    elif isinstance(comp.internal_representation, intrinsic_defs.IntrinsicDef):
       coro = getattr(
           self,
           '_compute_intrinsic_{}'.format(comp.internal_representation.uri))
@@ -351,43 +361,39 @@ class FederatedExecutor(executor_base.Executor):
         ]))
 
   async def create_selection(self, source, index=None, name=None):
-    raise NotImplementedError
-
-  async def _delegate(self, executor, arg, arg_type):
-    """Delegates a non-federated `arg` in its entirety to the target executor.
-
-    Args:
-      executor: The target executor to use.
-      arg: The object to delegate to the target executor.
-      arg_type: The type of this object.
-
-    Returns:
-      An instance of `executor_value_base.ExecutorValue` that represents the
-      result of delegation.
-
-    Raises:
-      TypeError: If the arguments are of the wrong types.
-    """
-    py_typecheck.check_type(arg_type, computation_types.Type)
-    if isinstance(arg_type, computation_types.FederatedType):
-      raise TypeError(
-          'Cannot delegate an argument of a federated type {}.'.format(
-              str(arg_type)))
-    if isinstance(arg, executor_value_base.ExecutorValue):
-      return arg
-    elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-      v_elem = anonymous_tuple.to_elements(arg)
-      t_elem = anonymous_tuple.to_elements(arg_type)
-      vals = await asyncio.gather(*[
-          self._delegate(executor, v, t)
-          for (_, v), (_, t) in zip(v_elem, t_elem)
-      ])
-      return await executor.create_tuple(
-          anonymous_tuple.AnonymousTuple(
-              list(zip([k for k, _ in t_elem], vals))))
+    py_typecheck.check_type(source, FederatedExecutorValue)
+    py_typecheck.check_type(source.type_signature,
+                            computation_types.NamedTupleType)
+    if name is not None:
+      name_to_index = dict((n, i) for i, (
+          n,
+          t) in enumerate(anonymous_tuple.to_elements(source.type_signature)))
+      index = name_to_index[name]
+    if isinstance(source.internal_representation,
+                  anonymous_tuple.AnonymousTuple):
+      val = source.internal_representation
+      selected = val[index]
+      return FederatedExecutorValue(selected, source.type_signature[index])
+    elif isinstance(source.internal_representation,
+                    executor_value_base.ExecutorValue):
+      if type_utils.type_tree_contains_types(source.type_signature,
+                                             computation_types.FederatedType):
+        raise ValueError('FederatedExecutorValue {} has violated its contract; '
+                         'it is embedded in another executor and yet its type '
+                         'has placement. The embedded value is {}, with type '
+                         'signature {}.'.format(source,
+                                                source.internal_representation,
+                                                source.type_signature))
+      val = source.internal_representation
+      child = self._target_executors[None][0]
+      return FederatedExecutorValue(
+          await child.create_selection(val, index=index),
+          source.type_signature[index])
     else:
-      py_typecheck.check_type(arg, pb.Computation)
-      return await executor.create_value(arg, arg_type)
+      raise ValueError('Unexpected internal representation while creating '
+                       'selection. Expected one of `AnonymousTuple` or value '
+                       'embedded in target executor, received {}'.format(
+                           source.internal_representation))
 
   async def _place(self, arg, placement):
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
@@ -454,7 +460,7 @@ class FederatedExecutor(executor_base.Executor):
         computation_types.FederatedType(
             computation_types.NamedTupleType([
                 (k, v.member) if k else v.member
-                for k, v in anonymous_tuple.to_elements(arg.type_signature)
+                for k, v in anonymous_tuple.iter_elements(arg.type_signature)
             ]),
             placement,
             all_equal=all_equal))
@@ -484,8 +490,7 @@ class FederatedExecutor(executor_base.Executor):
         await asyncio.gather(*[
             c.create_value(val, arg.type_signature.member)
             for c in self._target_executors[placement_literals.CLIENTS]
-        ]),
-        type_constructors.at_clients(arg.type_signature.member, all_equal=True))
+        ]), type_factory.at_clients(arg.type_signature.member, all_equal=True))
 
   async def _compute_intrinsic_federated_zip_at_server(self, arg):
     return await self._zip(arg, placement_literals.SERVER, all_equal=True)
@@ -509,7 +514,7 @@ class FederatedExecutor(executor_base.Executor):
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     type_utils.check_equivalent_types(
-        op_type, type_constructors.reduction_op(zero_type, item_type))
+        op_type, type_factory.reduction_op(zero_type, item_type))
 
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
@@ -521,7 +526,7 @@ class FederatedExecutor(executor_base.Executor):
     items = await asyncio.gather(*[_move(v) for v in val])
 
     zero = await child.create_value(
-        await arg.internal_representation[1].compute(), zero_type)
+        await (await self.create_selection(arg, index=1)).compute(), zero_type)
     op = await child.create_value(arg.internal_representation[2], op_type)
 
     result = zero
@@ -536,28 +541,12 @@ class FederatedExecutor(executor_base.Executor):
                                       all_equal=True))
 
   async def _compute_intrinsic_federated_aggregate(self, arg):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    val_type, zero_type, accumulate_type, _, report_type = (
+        executor_utils.parse_federated_aggregate_argument_types(
+            arg.type_signature))
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
-    if len(arg.internal_representation) != 5:
-      raise ValueError(
-          'Expected 5 elements in the `federated_aggregate()` argument tuple, '
-          'found {}.'.format(len(arg.internal_representation)))
-
-    val_type = arg.type_signature[0]
-    py_typecheck.check_type(val_type, computation_types.FederatedType)
-    item_type = val_type.member
-    zero_type = arg.type_signature[1]
-    accumulate_type = arg.type_signature[2]
-    type_utils.check_equivalent_types(
-        accumulate_type, type_constructors.reduction_op(zero_type, item_type))
-    merge_type = arg.type_signature[3]
-    type_utils.check_equivalent_types(merge_type,
-                                      type_constructors.binary_op(zero_type))
-    report_type = arg.type_signature[4]
-    py_typecheck.check_type(report_type, computation_types.FunctionType)
-    type_utils.check_equivalent_types(report_type.parameter, zero_type)
+    py_typecheck.check_len(arg.internal_representation, 5)
 
     # NOTE: This is a simple initial implementation that simply forwards this
     # to `federated_reduce()`. The more complete implementation would be able
@@ -593,10 +582,13 @@ class FederatedExecutor(executor_base.Executor):
 
   async def _compute_intrinsic_federated_sum(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-    zero, plus = tuple(await asyncio.gather(*[
-        _embed_tf_scalar_constant(self, arg.type_signature.member, 0),
-        _embed_tf_binary_operator(self, arg.type_signature.member, tf.add)
-    ]))
+    zero, plus = tuple(await
+                       asyncio.gather(*[
+                           executor_utils.embed_tf_scalar_constant(
+                               self, arg.type_signature.member, 0),
+                           executor_utils.embed_tf_binary_operator(
+                               self, arg.type_signature.member, tf.add)
+                       ]))
     return await self._compute_intrinsic_federated_reduce(
         FederatedExecutorValue(
             anonymous_tuple.AnonymousTuple([
@@ -616,8 +608,9 @@ class FederatedExecutor(executor_base.Executor):
       raise RuntimeError('Cannot compute a federated mean over an empty group.')
     child = self._target_executors[placement_literals.SERVER][0]
     factor, multiply = tuple(await asyncio.gather(*[
-        _embed_tf_scalar_constant(child, member_type, float(1.0 / count)),
-        _embed_tf_binary_operator(child, member_type, tf.multiply)
+        executor_utils.embed_tf_scalar_constant(child, member_type,
+                                                float(1.0 / count)),
+        executor_utils.embed_tf_binary_operator(child, member_type, tf.multiply)
     ]))
     multiply_arg = await child.create_tuple(
         anonymous_tuple.AnonymousTuple([(None,
@@ -627,86 +620,21 @@ class FederatedExecutor(executor_base.Executor):
     return FederatedExecutorValue([result], arg_sum.type_signature)
 
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
-    type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
-        arg.type_signature)
-    zipped_arg = await self._compute_intrinsic_federated_zip_at_clients(arg)
-    # TODO(b/134543154): Replace with something that produces a section of
-    # plain TensorFlow code instead of constructing a lambda (so that this
-    # can be executed directly on top of a plain TensorFlow-based executor).
-    multiply_blk = intrinsic_utils.create_binary_operator_with_upcast(
-        zipped_arg.type_signature.member, tf.multiply)
-    sum_of_products = await self._compute_intrinsic_federated_sum(
-        await self._compute_intrinsic_federated_map(
-            FederatedExecutorValue(
-                anonymous_tuple.AnonymousTuple([
-                    (None, multiply_blk.proto),
-                    (None, zipped_arg.internal_representation)
-                ]),
-                computation_types.NamedTupleType(
-                    [multiply_blk.type_signature, zipped_arg.type_signature]))))
-    total_weight = await self._compute_intrinsic_federated_sum(
-        FederatedExecutorValue(arg.internal_representation[1],
-                               arg.type_signature[1]))
-    divide_arg = await self._compute_intrinsic_federated_zip_at_server(
-        await self.create_tuple(
-            anonymous_tuple.AnonymousTuple([(None, sum_of_products),
-                                            (None, total_weight)])))
-    divide_blk = intrinsic_utils.create_binary_operator_with_upcast(
-        divide_arg.type_signature.member, tf.divide)
-    return await self._compute_intrinsic_federated_apply(
-        FederatedExecutorValue(
-            anonymous_tuple.AnonymousTuple([
-                (None, divide_blk.proto),
-                (None, divide_arg.internal_representation)
-            ]),
-            computation_types.NamedTupleType(
-                [divide_blk.type_signature, divide_arg.type_signature])))
+    return await executor_utils.compute_federated_weighted_mean(self, arg)
 
-
-async def _embed_tf_scalar_constant(executor, type_spec, val):
-  """Embeds a constant `val` of TFF type `type_spec` in `executor`.
-
-  Args:
-    executor: An instance of `tff.framework.Executor`.
-    type_spec: An instance of `tff.Type`.
-    val: A scalar value.
-
-  Returns:
-    An instance of `tff.framework.ExecutorValue` containing an embedded value.
-  """
-  # TODO(b/134543154): Perhaps graduate this and the function below it into a
-  # separate library, so that it can be used in other places.
-  py_typecheck.check_type(executor, executor_base.Executor)
-  fn_building_block = (
-      computation_constructing_utils.create_tensorflow_constant(type_spec, val))
-  embedded_val = await executor.create_call(await executor.create_value(
-      fn_building_block.function.proto,
-      fn_building_block.function.type_signature))
-  type_utils.check_equivalent_types(embedded_val.type_signature, type_spec)
-  return embedded_val
-
-
-async def _embed_tf_binary_operator(executor, type_spec, op):
-  """Embeds a binary operator `op` on `type_spec`-typed values in `executor`.
-
-  Args:
-    executor: An instance of `tff.framework.Executor`.
-    type_spec: An instance of `tff.Type` of the type of values that the binary
-      operator accepts as input and returns as output.
-    op: An operator function (such as `tf.add` or `tf.multiply`) to apply to the
-      tensor-level constituents of the values, pointwise.
-
-  Returns:
-    An instance of `tff.framework.ExecutorValue` representing the operator in
-    a form embedded into the executor.
-  """
-  # TODO(b/134543154): There is an opportunity here to import something more
-  # in line with the usage (no building block wrapping, etc.)
-  fn_building_block = (
-      computation_constructing_utils.create_tensorflow_binary_operator(
-          type_spec, op))
-  embedded_val = await executor.create_value(fn_building_block.proto,
-                                             fn_building_block.type_signature)
-  type_utils.check_equivalent_types(embedded_val.type_signature,
-                                    type_constructors.binary_op(type_spec))
-  return embedded_val
+  async def _compute_intrinsic_federated_collect(self, arg):
+    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+    type_utils.check_federated_type(
+        arg.type_signature, placement=placement_literals.CLIENTS)
+    val = arg.internal_representation
+    py_typecheck.check_type(val, list)
+    member_type = arg.type_signature.member
+    child = self._target_executors[placement_literals.SERVER][0]
+    collected_items = await child.create_value(
+        await asyncio.gather(*[v.compute() for v in val]),
+        computation_types.SequenceType(member_type))
+    return FederatedExecutorValue(
+        [collected_items],
+        computation_types.FederatedType(
+            computation_types.SequenceType(member_type),
+            placement_literals.SERVER))

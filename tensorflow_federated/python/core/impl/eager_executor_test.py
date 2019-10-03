@@ -12,12 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for eager_executor.py."""
 
 import asyncio
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -29,7 +29,17 @@ from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_test_utils
 
 
-class EagerExecutorTest(absltest.TestCase):
+def _get_physical_devices_for_testing():
+  result = []
+  for dev in tf.config.experimental.list_physical_devices():
+    parts = dev.name.split(':')
+    if ((len(parts) == 3) and (parts[0] == '/physical_device') and
+        (parts[1] in ['CPU', 'GPU'])):
+      result.append(':'.join(parts[1:]))
+  return result
+
+
+class EagerExecutorTest(parameterized.TestCase):
 
   # TODO(b/134764569): Potentially take advantage of something similar to the
   # `tf.test.TestCase.evaluate()` to avoid having to call `.numpy()` everywhere.
@@ -118,7 +128,7 @@ class EagerExecutorTest(absltest.TestCase):
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
-        with tf.control_dependencies([tf.assign_add(v, 20)]):
+        with tf.control_dependencies([v.assign_add(20)]):
           return tf.add(x, v)
 
     fn = eager_executor.embed_tensorflow_computation(
@@ -401,8 +411,8 @@ class EagerExecutorTest(absltest.TestCase):
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
-        with tf.control_dependencies([tf.assign(v, x)]):
-          with tf.control_dependencies([tf.assign_add(v, 10)]):
+        with tf.control_dependencies([v.assign(x)]):
+          with tf.control_dependencies([v.assign_add(10)]):
             return tf.identity(v)
 
     fn = loop.run_until_complete(ex.create_value(comp))
@@ -415,6 +425,59 @@ class EagerExecutorTest(absltest.TestCase):
   def test_with_mnist_training_example(self):
     executor_test_utils.test_mnist_training(self,
                                             eager_executor.EagerExecutor())
+
+  @parameterized.parameters(
+      *[(dev,) for dev in _get_physical_devices_for_testing()])
+  def test_wrap_function_on_all_available_physical_devices(self, device):
+    with tf.Graph().as_default() as graph:
+      x = tf.compat.v1.placeholder(tf.int32, shape=[])
+      y = tf.add(x, tf.constant(1))
+
+    arg_for_tf_device = '/{}'.format(device)
+
+    def _function_to_wrap(arg):
+      with tf.device(arg_for_tf_device):
+        return tf.import_graph_def(
+            graph.as_graph_def(),
+            input_map={x.name: arg},
+            return_elements=[y.name])[0]
+
+    signature = [tf.TensorSpec([], tf.int32)]
+    wrapped_fn = tf.compat.v1.wrap_function(_function_to_wrap, signature)
+
+    def fn(arg):
+      with tf.device(arg_for_tf_device):
+        return wrapped_fn(arg)
+
+    result = fn(tf.constant(10))
+    self.assertTrue(result.device.endswith(device))
+
+  def test_embed_tensorflow_computation_fails_with_bogus_device(self):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      return tf.add(x, 1)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+
+    with self.assertRaises(ValueError):
+      eager_executor.embed_tensorflow_computation(
+          comp_proto, comp.type_signature, device='/there_is_no_such_device')
+
+  @parameterized.parameters(
+      *[(dev,) for dev in _get_physical_devices_for_testing()])
+  def test_embed_tensorflow_computation_succeeds_with_cpu_or_gpu(self, device):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      return tf.add(x, 1)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+
+    fn = eager_executor.embed_tensorflow_computation(
+        comp_proto, comp.type_signature, device='/{}'.format(device))
+    result = fn(tf.constant(20))
+    self.assertTrue(result.device.endswith(device))
 
 
 if __name__ == '__main__':

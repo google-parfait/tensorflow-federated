@@ -5,14 +5,17 @@
 
 # tff.federated_zip
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Converts an N-tuple of federated values into a federated N-tuple value.
 
 ```python
 tff.federated_zip(value)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

@@ -70,8 +70,8 @@ class StatefulFn(object):
       initialize_fn: A no-arg function that returns a Python container which can
         be converted to a `tff.Value`, placed on the `tff.SERVER`, and passed as
         the first argument of `__call__`. This may be called in vanilla
-        TensorFlow code, typically wrapped as a `tff.tf_compuatation`, as part
-        of the initialization of a larger state object.
+        TensorFlow code, typically wrapped as a `tff.tf_computation`, as part of
+        the initialization of a larger state object.
       next_fn: A function matching the signature of `__call__`, see below.
     """
     py_typecheck.check_callable(initialize_fn)
@@ -119,8 +119,8 @@ class StatefulAggregateFn(StatefulFn):
     The aggregation is optionally parameterized by `weight@CLIENTS`.
 
     This is a function intended to (only) be invoked in the context
-    of a `tff.federated_computation`. It shold be compatible with the
-    TFF type signature
+    of a `tff.federated_computation`. It should be compatible with the
+    TFF type signature.
 
     ```
     (state@SERVER, value@CLIENTS, weight@CLIENTS) ->
@@ -262,9 +262,9 @@ class IterativeProcess(object):
     """
     py_typecheck.check_type(initialize_fn, tff.Computation)
     if initialize_fn.type_signature.parameter is not None:
-      raise TypeError('initialize_fn must be a no-arg tff.Computation, '
-                      'but found parameter ' +
-                      str(initialize_fn.type_signature))
+      raise TypeError(
+          'initialize_fn must be a no-arg tff.Computation, but found parameter '
+          '{}'.format(initialize_fn.type_signature))
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, tff.Computation)
@@ -275,23 +275,22 @@ class IterativeProcess(object):
     if initialize_result_type != next_first_param_type:
       raise TypeError('The return type of initialize_fn should match the '
                       'first parameter of next_fn, but found\n'
-                      'initialize_fn.type_signature.result={}\n'
-                      'next_fn.type_signature.parameter[0]={}'.format(
+                      'initialize_fn.type_signature.result=\n{}\n'
+                      'next_fn.type_signature.parameter[0]=\n{}'.format(
                           initialize_result_type, next_first_param_type))
 
     next_result_type = next_fn.type_signature.result
     if next_first_param_type != next_result_type:
       # This might be multiple output next_fn, check if the first argument might
-      # be the state. If still not the right type, raise and error.
+      # be the state. If still not the right type, raise an error.
       if isinstance(next_result_type, tff.NamedTupleType):
         next_result_type = next_result_type[0]
       if next_first_param_type != next_result_type:
         raise TypeError('The return type of next_fn should match the '
                         'first parameter, but found\n'
-                        'next_fn.type_signature.parameter[0]={}\n'
-                        'next_fn.type_signature.result={}'.format(
-                            next_first_param_type,
-                            next_fn.type_signature.result))
+                        'next_fn.type_signature.parameter[0]=\n{}\n'
+                        'actual next_result_type=\n{}'.format(
+                            next_first_param_type, next_result_type))
     self._initialize_fn = initialize_fn
     self._next_fn = next_fn
 

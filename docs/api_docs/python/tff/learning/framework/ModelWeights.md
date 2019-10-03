@@ -10,12 +10,15 @@
 
 # tff.learning.framework.ModelWeights
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
+source</a>
+
 ## Class `ModelWeights`
 
 A container for the trainable and non-trainable variables of a `Model`.
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -34,7 +37,7 @@ e.g., tensors corresponding to variable values, or updates to model variables.
 
 <h3 id="assign_weights_to"><code>assign_weights_to</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
 
 ```python
@@ -49,7 +52,7 @@ Assign these TFF model weights to the weights of a `tf.keras.Model`.
 
 <h3 id="from_model"><code>from_model</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
 
 ```python
@@ -62,7 +65,7 @@ from_model(
 
 <h3 id="from_tff_value"><code>from_tff_value</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
 
 ```python

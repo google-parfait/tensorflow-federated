@@ -12,22 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for computations.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper_instances
-from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 
 class ComputationWrapperInstancesTest(test.TestCase):
@@ -97,8 +91,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
     # TODO(b/113112885): Remove this protected member access as noted above.
     comp = foo._computation_proto
 
-    building_block = (
-        computation_building_blocks.ComputationBuildingBlock.from_proto(comp))
+    building_block = (building_blocks.ComputationBuildingBlock.from_proto(comp))
     self.assertEqual(
         str(building_block),
         '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[0](FEDERATED_arg[1])))'
@@ -160,16 +153,16 @@ class ToComputationImplTest(test.TestCase):
       computation_wrapper_instances.building_block_to_computation(None)
 
   def test_converts_building_block_to_computation(self):
-    lam = computation_building_blocks.Lambda(
-        'x', tf.int32, computation_building_blocks.Reference('x', tf.int32))
+    lam = building_blocks.Lambda('x', tf.int32,
+                                 building_blocks.Reference('x', tf.int32))
     computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
         lam)
     self.assertIsInstance(computation_impl_lambda,
                           computation_impl.ComputationImpl)
 
   def test_identity_lambda_executes_as_identity(self):
-    lam = computation_building_blocks.Lambda(
-        'x', tf.int32, computation_building_blocks.Reference('x', tf.int32))
+    lam = building_blocks.Lambda('x', tf.int32,
+                                 building_blocks.Reference('x', tf.int32))
     computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
         lam)
     for k in range(10):

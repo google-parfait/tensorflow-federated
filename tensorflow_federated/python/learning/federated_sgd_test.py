@@ -12,17 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for learning.federated_sgd."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
 from absl.testing import parameterized
 import numpy as np
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
@@ -143,11 +137,11 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('functional_model',
-       model_examples.build_linear_regresion_keras_functional_model),
+       model_examples.build_linear_regression_keras_functional_model),
       ('sequential_model',
-       model_examples.build_linear_regresion_keras_sequential_model),
+       model_examples.build_linear_regression_keras_sequential_model),
       ('subclass_model',
-       model_examples.build_linear_regresion_keras_subclass_model),
+       model_examples.build_linear_regression_keras_subclass_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
     dummy_batch = collections.OrderedDict([
@@ -202,7 +196,7 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
         self.evaluate(tf.reduce_sum(first_state.model.trainable.a)) +
         self.evaluate(tf.reduce_sum(first_state.model.trainable.b)), 0)
     self.assertEqual(metric_outputs.num_examples, 0)
-    self.assertTrue(tf.is_nan(metric_outputs.loss))
+    self.assertTrue(tf.math.is_nan(metric_outputs.loss))
 
 
 if __name__ == '__main__':

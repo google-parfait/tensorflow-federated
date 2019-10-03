@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_serialization.py."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
@@ -28,7 +23,7 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import type_serialization
 
 
 class TensorFlowSerializationTest(test.TestCase):
@@ -111,6 +106,125 @@ class TensorFlowSerializationTest(test.TestCase):
                     tf.data.experimental.to_variant(parameter)
             }, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [10])
+
+
+class DatasetSerializationTest(test.TestCase):
+
+  def test_serialize_sequence_not_a_dataset(self):
+    with self.assertRaisesRegex(TypeError, r'Expected .*Dataset.* found int'):
+      _ = tensorflow_serialization.serialize_dataset(5)
+
+  def test_serialize_sequence_bytes_too_large(self):
+    with self.assertRaisesRegex(ValueError,
+                                r'Serialized size .* exceeds maximum allowed'):
+      _ = tensorflow_serialization.serialize_dataset(
+          tf.data.Dataset.range(5), max_serialized_size_bytes=0)
+
+  def test_roundtrip_sequence_of_scalars(self):
+    x = tf.data.Dataset.range(5).map(lambda x: x * 2)
+    serialized_bytes = tensorflow_serialization.serialize_dataset(x)
+    y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(
+        tf.data.experimental.get_structure(x),
+        tf.data.experimental.get_structure(y))
+    self.assertAllEqual([y_val for y_val in y], [x * 2 for x in range(5)])
+
+  def test_roundtrip_sequence_of_tuples(self):
+    x = tf.data.Dataset.range(5).map(
+        lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
+    serialized_bytes = tensorflow_serialization.serialize_dataset(x)
+    y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(
+        tf.data.experimental.get_structure(x),
+        tf.data.experimental.get_structure(y))
+    self.assertAllEqual(
+        self.evaluate([y_val for y_val in y]),
+        [(x * 2, x, x - 1.) for x in range(5)])
+
+  def test_roundtrip_sequence_of_singleton_tuples(self):
+    x = tf.data.Dataset.range(5).map(lambda x: (x,))
+    serialized_bytes = tensorflow_serialization.serialize_dataset(x)
+    y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(
+        tf.data.experimental.get_structure(x),
+        tf.data.experimental.get_structure(y))
+    expected_values = [(x,) for x in range(5)]
+    actual_values = self.evaluate([y_val for y_val in y])
+    self.assertAllEqual(expected_values, actual_values)
+
+  def test_roundtrip_sequence_of_namedtuples(self):
+    test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
+
+    def make_test_tuple(x):
+      return test_tuple_type(
+          a=x * 2, b=tf.cast(x, tf.int32), c=tf.cast(x - 1, tf.float32))
+
+    x = tf.data.Dataset.range(5).map(make_test_tuple)
+    serialized_bytes = tensorflow_serialization.serialize_dataset(x)
+    y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(
+        tf.data.experimental.get_structure(x),
+        tf.data.experimental.get_structure(y))
+    self.assertAllEqual(
+        self.evaluate([y_val for y_val in y]),
+        [test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)])
+
+  def test_roundtrip_sequence_of_nested_structures(self):
+    test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
+
+    def _make_nested_tf_structure(x):
+      return collections.OrderedDict([
+          ('b', tf.cast(x, tf.int32)),
+          ('a',
+           tuple([
+               x,
+               test_tuple_type(x * 2, x * 3),
+               collections.OrderedDict([('x', x**2), ('y', x**3)])
+           ])),
+      ])
+
+    x = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
+    serialzied_bytes = tensorflow_serialization.serialize_dataset(x)
+    y = tensorflow_serialization.deserialize_dataset(serialzied_bytes)
+
+    # NOTE: TF loses the `OrderedDict` during serialization, so the expectation
+    # here is for a `dict` in the result.
+    self.assertEqual(
+        tf.data.experimental.get_structure(y), {
+            'b':
+                tf.TensorSpec([], tf.int32),
+            'a':
+                tuple([
+                    tf.TensorSpec([], tf.int64),
+                    test_tuple_type(
+                        tf.TensorSpec([], tf.int64),
+                        tf.TensorSpec([], tf.int64),
+                    ),
+                    {
+                        'x': tf.TensorSpec([], tf.int64),
+                        'y': tf.TensorSpec([], tf.int64),
+                    },
+                ]),
+        })
+
+    def _build_expected_structure(x):
+      return {
+          'b': x,
+          'a': tuple([x,
+                      test_tuple_type(x * 2, x * 3), {
+                          'x': x**2,
+                          'y': x**3
+                      }])
+      }
+
+    actual_values = self.evaluate([y_val for y_val in y])
+    expected_values = [_build_expected_structure(x) for x in range(5)]
+    for actual, expected in zip(actual_values, expected_values):
+      self.assertAllClose(actual, expected)
 
 
 if __name__ == '__main__':

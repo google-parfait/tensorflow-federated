@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for executor_service.py."""
 
 import threading
 
@@ -49,15 +48,7 @@ class TestEnv(object):
     self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
 
   def __del__(self):
-    # TODO(b/134543154): Find some way of cleanly disposing of channels that is
-    # consistent between Google-internal and OSS stacks.
-    try:
-      self._channel.close()
-    except AttributeError:
-      # The `.close()` method does not appear to be present in grpcio 1.8.6, so
-      # we have to fall back on explicitly calling the destructor.
-      del self._stub
-      del self._channel
+    self._channel.close()
     self._server.stop(None)
 
   @property

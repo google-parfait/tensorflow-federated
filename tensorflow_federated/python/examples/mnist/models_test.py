@@ -12,19 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""End-to-end example testing TensorFlow Federated against the MNIST model."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
 import numpy as np
-from six.moves import range
 import tensorflow as tf
-
 import tensorflow_federated as tff
+
 from tensorflow_federated.python.examples.mnist import models
 
 
@@ -45,7 +39,7 @@ class MnistTest(tf.test.TestCase):
     # Try to test the high-performance stack. If we are in Python 2, the new
     # executor API will not be available, and an exception will be raised.
     try:
-      tff.framework.set_default_executor(tff.framework.create_local_executor(1))
+      tff.framework.set_default_executor(tff.framework.create_local_executor())
       self._do_test_simple_training()
       tff.framework.set_default_executor()
     except AttributeError:
@@ -88,17 +82,34 @@ class MnistTest(tf.test.TestCase):
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
   def test_self_contained_example(self):
+    num_rounds = 2
+    num_clients = 3
+
     # Try to test the high-performance stack. If we are in Python 2, the new
     # executor API will not be available, and an exception will be raised.
     try:
-      tff.framework.set_default_executor(tff.framework.create_local_executor(1))
-      self._do_test_self_contained_example()
+      tff.framework.set_default_executor(
+          tff.framework.create_local_executor(num_clients))
+      self._do_test_self_contained_example(num_rounds, num_clients)
       tff.framework.set_default_executor()
     except AttributeError:
       pass
-    self._do_test_self_contained_example()
+    self._do_test_self_contained_example(num_rounds, num_clients)
 
-  def _do_test_self_contained_example(self):
+  def test_self_contained_example_clients_unspecified(self):
+    num_rounds = 2
+    num_clients = 3
+    # Try to test the high-performance stack. If we are in Python 2, the new
+    # executor API will not be available, and an exception will be raised.
+    try:
+      tff.framework.set_default_executor(tff.framework.create_local_executor())
+      self._do_test_self_contained_example(num_rounds, num_clients)
+      tff.framework.set_default_executor()
+    except AttributeError:
+      pass
+    self._do_test_self_contained_example(num_rounds, num_clients)
+
+  def _do_test_self_contained_example(self, num_rounds, num_clients):
     emnist_batch = collections.OrderedDict([('label', [5]),
                                             ('pixels', np.random.rand(28, 28))])
 
@@ -117,9 +128,11 @@ class MnistTest(tf.test.TestCase):
                                              output_types, output_shapes)
 
     def client_data():
+      # 1. Repeat the single element dataset once (-> two elements of size 2)
+      # 2. Batch the dataset by size 2 (1 element of size 2)
       return models.keras_dataset_from_emnist(dataset).repeat(2).batch(2)
 
-    train_data = [client_data()]
+    train_data = [client_data()] * num_clients
     sample_batch = self.evaluate(next(iter(train_data[0])))
 
     def model_fn():
@@ -128,12 +141,14 @@ class MnistTest(tf.test.TestCase):
 
     trainer = tff.learning.build_federated_averaging_process(model_fn)
     state = trainer.initialize()
-    losses = []
-    for _ in range(2):
-      state, outputs = trainer.next(state, train_data)
+    results = []
+    for _ in range(num_rounds):
+      state, result = trainer.next(state, train_data)
       # Track the loss.
-      losses.append(outputs.loss)
-    self.assertLess(losses[1], losses[0])
+      results.append(result)
+    self.assertEqual([r.num_examples for r in results],
+                     [2 * num_clients] * num_rounds)
+    self.assertLess(results[-1].loss, results[-2].loss)
 
 
 if __name__ == '__main__':

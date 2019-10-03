@@ -229,3 +229,19 @@ def is_name_value_pair(element, name_required=True, value_type=None):
   if value_type is not None and not isinstance(element[1], value_type):
     return False
   return True
+
+
+def check_len(target, length):
+  """Checks that the length of `target` is equal to `length`.
+
+  Args:
+    target: The object to check.
+    length: The expected length.
+
+  Raises:
+    ValueError: If the lengths do not match.
+  """
+  if len(target) != length:
+    raise ValueError(
+        'Expected an argument of length {}, got one of length {} ({}).'.format(
+            length, len(target), target))

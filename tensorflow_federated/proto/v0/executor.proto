@@ -33,6 +33,30 @@ service Executor {
   // Causes one or more values in the executor to get disposed of (no longer
   // available for future calls).
   rpc Dispose(DisposeRequest) returns (DisposeResponse) {}
+
+  // Establishes a bidirectional stream with an Executor instance.
+  rpc Execute(stream ExecuteRequest) returns (stream ExecuteResponse) {}
+}
+
+// TODO(b/139061315): Decouple response order from request order
+message ExecuteRequest {
+  oneof request {
+    CreateValueRequest create_value = 1;
+    CreateCallRequest create_call = 2;
+    CreateTupleRequest create_tuple = 3;
+    CreateSelectionRequest create_selection = 4;
+    ComputeRequest compute = 5;
+  }
+}
+
+message ExecuteResponse {
+  oneof response {
+    CreateValueResponse create_value = 1;
+    CreateCallResponse create_call = 2;
+    CreateTupleResponse create_tuple = 3;
+    CreateSelectionResponse create_selection = 4;
+    ComputeResponse compute = 5;
+  }
 }
 
 message CreateValueRequest {
@@ -109,6 +133,33 @@ message Value {
     }
   }
 
+  // A representation of a sequence value.
+  // This message holds its type annotation because the underlying serialization
+  // provided by TensorFlow does not preserve the ordering of keys for sequences
+  // of `NamedTupleType`.
+  message Sequence {
+    // The serialized representation of this sequence.
+    oneof value {
+      // The bytes of a zip file over the files produced by a
+      // `tf.saved_model.save()` operation, intended to be used with a
+      // corresponding `tf.saved_model.load()` op.
+      bytes zipped_saved_model = 1;
+    }
+    // The TensorFlow Federated `Type` of the elements in this
+    // sequence.
+    tensorflow_federated.v0.Type element_type = 2;
+  }
+
+  // A representation of a federated value.
+  message Federated {
+    // The type of the federated value.
+    tensorflow_federated.v0.FederatedType type = 1;
+
+    // The member constituents, one per participant in the collective defined
+    // by this value's placement within the executor.
+    repeated Value value = 2;
+  }
+
   oneof value {
     // A serialized tensor content as an instance of `tensorflow.TensorProto`,
     // as defined in `tensorflow/core/framework/tensor.proto`.
@@ -121,6 +172,12 @@ message Value {
 
     // A tuple of values.
     Tuple tuple = 3;
+
+    // A sequence of values.
+    Sequence sequence = 4;
+
+    // A value of a federated type.
+    Federated federated = 5;
   }
 }
 

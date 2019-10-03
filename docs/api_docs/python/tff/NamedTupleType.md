@@ -7,9 +7,17 @@
 <meta itemprop="property" content="__iter__"/>
 <meta itemprop="property" content="__len__"/>
 <meta itemprop="property" content="__ne__"/>
+<meta itemprop="property" content="compact_representation"/>
+<meta itemprop="property" content="formatted_representation"/>
 </div>
 
 # tff.NamedTupleType
+
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
 
 ## Class `NamedTupleType`
 
@@ -18,14 +26,14 @@ representing named tuple types in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
-source</a>
-
 <!-- Placeholder for "Used in" -->
+
+Elements initialized by name can be accessed as `foo.name`, and otherwise by
+index, `foo[index]`.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -50,7 +58,7 @@ Constructs a new instance from the given element types.
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -78,7 +86,7 @@ with differently named type variables in their definitions.
 
 <h3 id="__getitem__"><code>__getitem__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -87,7 +95,7 @@ __getitem__(key)
 
 <h3 id="__iter__"><code>__iter__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -96,7 +104,7 @@ __iter__()
 
 <h3 id="__len__"><code>__len__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -105,7 +113,7 @@ __len__()
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/common_libs/anonymous_tuple.py">View
 source</a>
 
 ```python
@@ -113,3 +121,25 @@ __ne__(other)
 ```
 
 Return self!=value.
+
+<h3 id="compact_representation"><code>compact_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
+```python
+compact_representation()
+```
+
+Returns the compact string representation of this type.
+
+<h3 id="formatted_representation"><code>formatted_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
+```python
+formatted_representation()
+```
+
+Returns the formatted string representation of this type.

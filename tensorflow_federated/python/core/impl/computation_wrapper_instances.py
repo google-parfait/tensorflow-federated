@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import computation_building_blocks
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_utils
-from tensorflow_federated.python.core.impl import function_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.utils import function_utils
 
 
 def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
@@ -86,6 +86,6 @@ federated_computation_wrapper = computation_wrapper.ComputationWrapper(
 def building_block_to_computation(building_block):
   """Converts a computation building block to a computation impl."""
   py_typecheck.check_type(building_block,
-                          computation_building_blocks.ComputationBuildingBlock)
+                          building_blocks.ComputationBuildingBlock)
   return computation_impl.ComputationImpl(building_block.proto,
                                           context_stack_impl.context_stack)

@@ -7,14 +7,17 @@
 
 # tff.Computation
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py">View
+source</a>
+
 ## Class `Computation`
 
 An abstract interface for all classes that represent computations.
 
 Inherits From: [`TypedObject`](../tff/TypedObject.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -29,7 +32,7 @@ Returns the TFF type of this object (an instance of
 
 <h3 id="__call__"><code>__call__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_base.py">View
 source</a>
 
 ```python

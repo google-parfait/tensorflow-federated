@@ -3,18 +3,25 @@
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="CLIENTS"/>
 <meta itemprop="property" content="SERVER"/>
+<meta itemprop="property" content="__version__"/>
 </div>
 
 # Module: tff
 
-TensorFlow Federated Library.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/__init__.py">View
 source</a>
+
+TensorFlow Federated Library.
 
 <!-- Placeholder for "Used in" -->
 
 ## Modules
+
+[`backends`](./tff/backends.md) module: This directory contains code for
+interfacing custom types of backends.
 
 [`framework`](./tff/framework.md) module: Interfaces for extensions, selectively
 lifted out of `impl`.
@@ -126,3 +133,4 @@ the abstract class <a href="./tff/Value.md"><code>tff.Value</code></a>.
 
 *   `CLIENTS` <a id="CLIENTS"></a>
 *   `SERVER` <a id="SERVER"></a>
+*   `__version__ = '0.8.0'` <a id="__version__"></a>

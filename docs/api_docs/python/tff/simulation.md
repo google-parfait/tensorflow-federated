@@ -5,10 +5,13 @@
 
 # Module: tff.simulation
 
-The public API for experimenters running federated learning simulations.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/__init__.py">View
 source</a>
+
+The public API for experimenters running federated learning simulations.
 
 <!-- Placeholder for "Used in" -->
 
@@ -34,3 +37,8 @@ backed by an HDF5 file.
 
 [`class TransformingClientData`](../tff/simulation/TransformingClientData.md):
 Transforms client data, potentially expanding by adding pseudo-clients.
+
+## Functions
+
+[`run_server(...)`](../tff/simulation/run_server.md): Runs a gRPC server hosting
+a simulation component in this process.

@@ -5,14 +5,17 @@
 
 # tff.simulation.datasets.shakespeare.load_data
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare.py">View
+source</a>
+
 Loads the federated Shakespeare dataset.
 
 ```python
 tff.simulation.datasets.shakespeare.load_data(cache_dir=None)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/shakespeare/load_data.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

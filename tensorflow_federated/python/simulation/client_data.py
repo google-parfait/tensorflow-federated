@@ -30,6 +30,7 @@ import numpy as np
 
 import six
 import tensorflow as tf
+from tensorflow_federated.python.common_libs import py_typecheck
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -50,6 +51,34 @@ class ClientData(object):
 
     Returns:
       A `tf.data.Dataset` object.
+    """
+    pass
+
+  @abc.abstractproperty
+  def output_types(self):
+    """Returns the type of each component of an element of the client datasets.
+
+    Any `tf.data.Dataset` constructed by this class is expected have matching
+    `output_types` properties when accessed via
+    `tf.compat.v1.data.get_output_types(dataset)`.
+
+    Returns:
+      A nested structure of `tf.DType` objects corresponding to each component
+      of an element of the client datasets.
+    """
+    pass
+
+  @abc.abstractproperty
+  def output_shapes(self):
+    """Returns the shape of each component of an element of the client datasets.
+
+    Any `tf.data.Dataset` constructed by this class is expected to have matching
+    `output_shapes` properties when accessed via
+    `tf.compat.v1.data.get_output_shapes(dataset)`.
+
+    Returns:
+      A nested structure of `tf.TensorShape` objects corresponding to each
+      component of an element of the client datasets.
     """
     pass
 
@@ -84,28 +113,72 @@ class ClientData(object):
     return tf.data.Dataset.from_generator(_generator, self.output_types,
                                           self.output_shapes)
 
-  @abc.abstractproperty
+  def preprocess(self, preprocess_fn):
+    """Applies `preprocess_fn` to each client's data."""
+    py_typecheck.check_callable(preprocess_fn)
+
+    def get_dataset(client_id):
+      return preprocess_fn(self.create_tf_dataset_for_client(client_id))
+
+    return ConcreteClientData(self.client_ids, get_dataset)
+
+  @classmethod
+  def from_clients_and_fn(cls, client_ids, create_tf_dataset_for_client_fn):
+    """Constructs a `ClientData` based on the given function.
+
+    Args:
+      client_ids: A non-empty list of client_ids which are valid inputs to the
+        create_tf_dataset_for_client_fn.
+      create_tf_dataset_for_client_fn: A function that takes a client_id from
+        the above list, and returns a `tf.data.Dataset`.
+
+    Returns:
+      A `ClientData`.
+    """
+    return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
+
+
+class ConcreteClientData(ClientData):
+  """A generic `ClientData` object.
+
+  This is a simple implementation of client_data, where Datasets are specified
+  as a function from client_id to Dataset.
+
+  The `ConcreteClientData.preprocess` classmethod is provided as a utility
+  used to wrap another `ClientData` with an additional preprocessing function.
+  """
+
+  def __init__(self, client_ids, create_tf_dataset_for_client_fn):
+    """Arguments correspond to the corresponding members of `ClientData`.
+
+    Args:
+      client_ids: A non-empty list of client_ids.
+      create_tf_dataset_for_client_fn: A function that takes a client_id from
+        the above list, and returns a `tf.data.Dataset`.
+    """
+    py_typecheck.check_type(client_ids, list)
+    py_typecheck.check_callable(create_tf_dataset_for_client_fn)
+    if not client_ids:
+      raise ValueError('At least one client_id is required.')
+
+    self._client_ids = client_ids
+    self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
+
+    example_dataset = create_tf_dataset_for_client_fn(client_ids[0])
+    self._output_types = tf.compat.v1.data.get_output_types(example_dataset)
+    self._output_shapes = tf.compat.v1.data.get_output_shapes(example_dataset)
+
+  @property
+  def client_ids(self):
+    return self._client_ids
+
+  def create_tf_dataset_for_client(self, client_id):
+    return self._create_tf_dataset_for_client_fn(client_id)
+
+  @property
   def output_types(self):
-    """Returns the type of each component of an element of the client datasets.
+    return self._output_types
 
-    Any `tf.data.Dataset` constructed by this class is expected have matching
-    `tf.data.Dataset.output_types` properties.
-
-    Returns:
-      A nested structure of `tf.DType` objects corresponding to each component
-      of an element of the client datasets.
-    """
-    pass
-
-  @abc.abstractproperty
+  @property
   def output_shapes(self):
-    """Returns the shape of each component of an element of the client datasets.
-
-    Any `tf.data.Dataset` constructed by this class is expected to have matching
-    `tf.data.Dataset.output_shapes` properties.
-
-    Returns:
-      A nested structure of `tf.TensorShape` objects corresponding to each
-      component of an element of the client datasets.
-    """
-    pass
+    return self._output_shapes

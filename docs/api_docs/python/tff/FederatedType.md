@@ -7,9 +7,17 @@
 <meta itemprop="property" content="__eq__"/>
 <meta itemprop="property" content="__init__"/>
 <meta itemprop="property" content="__ne__"/>
+<meta itemprop="property" content="compact_representation"/>
+<meta itemprop="property" content="formatted_representation"/>
 </div>
 
 # tff.FederatedType
+
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
 
 ## Class `FederatedType`
 
@@ -18,14 +26,11 @@ representing federated types in TFF.
 
 Inherits From: [`Type`](../tff/Type.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
-source</a>
-
 <!-- Placeholder for "Used in" -->
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -70,7 +75,7 @@ Constructs a new federated type instance.
 
 <h3 id="__eq__"><code>__eq__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -98,7 +103,7 @@ with differently named type variables in their definitions.
 
 <h3 id="__ne__"><code>__ne__</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
 source</a>
 
 ```python
@@ -106,3 +111,25 @@ __ne__(other)
 ```
 
 Return self!=value.
+
+<h3 id="compact_representation"><code>compact_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
+```python
+compact_representation()
+```
+
+Returns the compact string representation of this type.
+
+<h3 id="formatted_representation"><code>formatted_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/computation_types.py">View
+source</a>
+
+```python
+formatted_representation()
+```
+
+Returns the formatted string representation of this type.

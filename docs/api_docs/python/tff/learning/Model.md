@@ -12,12 +12,15 @@
 
 # tff.learning.Model
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
+source</a>
+
 ## Class `Model`
 
 Represents a model for use in TensorFlow Federated.
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -114,7 +117,7 @@ An iterable of `tf.Variable` objects, see class comment for details.
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
 source</a>
 
 ```python
@@ -163,7 +166,7 @@ will be trained via a gradient-based algorithm.
 
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model.py">View
 source</a>
 
 ```python

@@ -14,20 +14,23 @@
 
 # tff.learning.framework.EnhancedModel
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
+source</a>
+
 ## Class `EnhancedModel`
 
 A wrapper around a Model that adds sanity checking and metadata helpers.
 
 Inherits From: [`Model`](../../../tff/learning/Model.md)
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
-source</a>
-
 <!-- Placeholder for "Used in" -->
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
 
 ```python
@@ -103,7 +106,7 @@ Returns a `tff.learning.ModelWeights`.
 
 <h3 id="forward_pass"><code>forward_pass</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
 
 ```python
@@ -152,7 +155,7 @@ will be trained via a gradient-based algorithm.
 
 <h3 id="report_local_outputs"><code>report_local_outputs</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/model_utils.py">View
 source</a>
 
 ```python

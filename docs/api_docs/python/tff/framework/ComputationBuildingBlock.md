@@ -4,19 +4,25 @@
 <meta itemprop="property" content="proto"/>
 <meta itemprop="property" content="type_signature"/>
 <meta itemprop="property" content="__init__"/>
+<meta itemprop="property" content="compact_representation"/>
+<meta itemprop="property" content="formatted_representation"/>
 <meta itemprop="property" content="from_proto"/>
+<meta itemprop="property" content="structural_representation"/>
 </div>
 
 # tff.framework.ComputationBuildingBlock
+
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
 
 ## Class `ComputationBuildingBlock`
 
 The abstract base class for abstractions in the TFF's internal language.
 
 Inherits From: [`TypedObject`](../../tff/TypedObject.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -31,7 +37,7 @@ does not have a dedicated Python equivalent is a section of TensorFlow code
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
 source</a>
 
 ```python
@@ -58,9 +64,31 @@ Returns the TFF type of this object (an instance of
 
 ## Methods
 
+<h3 id="compact_representation"><code>compact_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
+
+```python
+compact_representation()
+```
+
+Returns the compact string representation of this building block.
+
+<h3 id="formatted_representation"><code>formatted_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
+
+```python
+formatted_representation()
+```
+
+Returns the formatted string representation of this building block.
+
 <h3 id="from_proto"><code>from_proto</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_building_blocks.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
 source</a>
 
 ```python
@@ -88,3 +116,14 @@ contains the deserialized logic from in 'computation_proto'.
     computation for which deserialization has not been implemented yet.
 *   <b>`ValueError`</b>: if deserialization failed due to the argument being
     invalid.
+
+<h3 id="structural_representation"><code>structural_representation</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py">View
+source</a>
+
+```python
+structural_representation()
+```
+
+Returns the structural string representation of this building block.

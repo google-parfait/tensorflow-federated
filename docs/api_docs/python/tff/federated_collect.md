@@ -5,6 +5,12 @@
 
 # tff.federated_collect
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py">View
+source</a>
+
 Returns a federated value from
 <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a> as a
 <a href="../tff.md#SERVER"><code>tff.SERVER</code></a> sequence.
@@ -12,9 +18,6 @@ Returns a federated value from
 ```python
 tff.federated_collect(value)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/api/intrinsics.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 

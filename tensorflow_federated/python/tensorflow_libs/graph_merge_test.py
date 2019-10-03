@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for graph_merge."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
@@ -111,9 +106,9 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
     graph1, input_name_1, output_name_1 = _make_add_one_graph()
     graph2, input_name_2, output_name_2 = _make_add_one_graph()
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -139,11 +134,11 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
     graph2, input_name_2, output_name_2 = _make_add_one_graph()
     graph3, input_name_3, output_name_3 = _make_add_one_graph()
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     with graph3.as_default():
-      init_op_name_3 = tf.initializers.global_variables().name
+      init_op_name_3 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -174,11 +169,11 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
     graph1 = tf.Graph()
     with graph1.as_default():
       out1 = tf.constant(1.0)
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     graph2 = tf.Graph()
     with graph2.as_default():
       out2 = tf.constant(2.0)
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
 
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [], [out1.name])
@@ -223,9 +218,9 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
     graph1, input_name_1, output_name_1 = _make_add_variable_number_graph()
     graph2, input_name_2, output_name_2 = _make_add_variable_number_graph()
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -266,9 +261,9 @@ class ConcatenateInputsAndOutputsTest(test.TestCase):
     graph_2, _, out_name_2 = _make_manual_reduce_graph(dataset_graph,
                                                        dataset_out_name)
     with graph_1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph_2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph_1.as_graph_def(), init_op_name_1,
                                          [], [out_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph_2.as_graph_def(), init_op_name_2,
@@ -306,11 +301,11 @@ class ComposeGraphSpecTest(test.TestCase):
     graph1 = tf.Graph()
     with graph1.as_default():
       out1 = tf.constant(1.0)
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     graph2 = tf.Graph()
     with graph2.as_default():
       out2 = tf.constant(2.0)
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
 
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [], [out1.name])
@@ -324,9 +319,9 @@ class ComposeGraphSpecTest(test.TestCase):
     graph1, input_name_1, output_name_1 = _make_add_one_graph()
     graph2, input_name_2, output_name_2 = _make_add_one_graph()
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -358,9 +353,9 @@ class ComposeGraphSpecTest(test.TestCase):
     graph2, input_name_2, output_name_2 = _make_cast_to_int_graph()
 
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -388,11 +383,11 @@ class ComposeGraphSpecTest(test.TestCase):
     graph2, input_name_2, output_name_2 = _make_add_one_graph()
     graph3, input_name_3, output_name_3 = _make_add_one_graph()
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     with graph3.as_default():
-      init_op_name_3 = tf.initializers.global_variables().name
+      init_op_name_3 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -418,9 +413,9 @@ class ComposeGraphSpecTest(test.TestCase):
     graph1, input_name_1, output_name_1 = _make_add_variable_number_graph()
     graph2, input_name_2, output_name_2 = _make_add_variable_number_graph()
     with graph1.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with graph2.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     graph_spec_1 = graph_merge.GraphSpec(graph1.as_graph_def(), init_op_name_1,
                                          [input_name_1], [output_name_1])
     graph_spec_2 = graph_merge.GraphSpec(graph2.as_graph_def(), init_op_name_2,
@@ -470,9 +465,9 @@ class ComposeGraphSpecTest(test.TestCase):
     reduce_out_name = out.name
 
     with dataset_graph.as_default():
-      init_op_name_1 = tf.initializers.global_variables().name
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
     with reduce_graph.as_default():
-      init_op_name_2 = tf.initializers.global_variables().name
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
     dataset_graph_spec = graph_merge.GraphSpec(dataset_graph.as_graph_def(),
                                                init_op_name_1, [],
                                                [ds_out_name])

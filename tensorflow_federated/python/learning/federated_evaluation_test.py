@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for federated_evaluation.py."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
@@ -67,7 +62,10 @@ class TestModel(model.Model):
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = tf.zeros_like(batch['temp'])
-    return model.BatchOutput(loss=loss, predictions=predictions)
+    return model.BatchOutput(
+        loss=loss,
+        predictions=predictions,
+        num_examples=tf.shape(predictions)[0])
 
   @tf.function
   def report_local_outputs(self):

@@ -12,17 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for py_typecheck.py."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 
 from absl.testing import absltest
 import attr
-import six
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -33,7 +27,7 @@ class PyTypeCheckTest(absltest.TestCase):
   def test_check_type(self):
     try:
       self.assertEqual('foo', py_typecheck.check_type('foo', str))
-      py_typecheck.check_type('foo', six.string_types)
+      py_typecheck.check_type('foo', str)
       py_typecheck.check_type(10, int)
       py_typecheck.check_type(10, (str, int))
       py_typecheck.check_type(10, (str, int, bool, float))

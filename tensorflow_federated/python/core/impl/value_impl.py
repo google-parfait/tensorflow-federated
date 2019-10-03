@@ -31,17 +31,16 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_building_blocks
-from tensorflow_federated.python.core.impl import computation_constructing_utils
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import dtype_utils
-from tensorflow_federated.python.core.impl import function_utils
-from tensorflow_federated.python.core.impl import graph_utils
-from tensorflow_federated.python.core.impl import intrinsic_defs
-from tensorflow_federated.python.core.impl import placement_literals
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.utils import function_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -52,12 +51,11 @@ class ValueImpl(value_base.Value):
     """Constructs a value of the given type.
 
     Args:
-      comp: An instance of computation_building_blocks.ComputationBuildingBlock
-        that contains the logic that computes this value.
+      comp: An instance of building_blocks.ComputationBuildingBlock that
+        contains the logic that computes this value.
       context_stack: The context stack to use.
     """
-    py_typecheck.check_type(
-        comp, computation_building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     super(ValueImpl, self).__setattr__('_comp', comp)
     super(ValueImpl, self).__setattr__('_context_stack', context_stack)
@@ -86,9 +84,9 @@ class ValueImpl(value_base.Value):
     if not isinstance(self._comp.type_signature,
                       computation_types.NamedTupleType):
       raise TypeError(
-          'Operator dir() is only suppored for named tuples, but the object '
-          'on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+          'Operator dir() is only suppored for named tuples, but the object on '
+          'which it has been invoked is of type {}.'.format(
+              self._comp.type_signature))
     return dir(self._comp.type_signature)
 
   def __getattr__(self, name):
@@ -97,22 +95,21 @@ class ValueImpl(value_base.Value):
         and isinstance(self._comp.type_signature.member,
                        computation_types.NamedTupleType)):
       return ValueImpl(
-          computation_constructing_utils.create_federated_getattr_call(
+          building_block_factory.create_federated_getattr_call(
               self._comp, name), self._context_stack)
     elif not isinstance(self._comp.type_signature,
                         computation_types.NamedTupleType):
       raise TypeError(
           'Operator getattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+              self._comp.type_signature))
     if name not in dir(self._comp.type_signature):
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
-    if isinstance(self._comp, computation_building_blocks.Tuple):
+    if isinstance(self._comp, building_blocks.Tuple):
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
-        computation_building_blocks.Selection(self._comp, name=name),
-        self._context_stack)
+        building_blocks.Selection(self._comp, name=name), self._context_stack)
 
   def __setattr__(self, name, value):
     py_typecheck.check_type(name, six.string_types)
@@ -121,7 +118,7 @@ class ValueImpl(value_base.Value):
                   computation_types.FederatedType) and isinstance(
                       self._comp.type_signature.member,
                       computation_types.NamedTupleType):
-      new_comp = computation_constructing_utils.create_federated_setattr_call(
+      new_comp = building_block_factory.create_federated_setattr_call(
           self._comp, name, value_comp)
       super(ValueImpl, self).__setattr__('_comp', new_comp)
       return
@@ -130,11 +127,10 @@ class ValueImpl(value_base.Value):
       raise TypeError(
           'Operator setattr() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
-    named_tuple_setattr_lambda = computation_constructing_utils.create_named_tuple_setattr_lambda(
+              self._comp.type_signature))
+    named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
-    new_comp = computation_building_blocks.Call(named_tuple_setattr_lambda,
-                                                self._comp)
+    new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
     super(ValueImpl, self).__setattr__('_comp', new_comp)
 
   def __len__(self):
@@ -144,8 +140,8 @@ class ValueImpl(value_base.Value):
     if not isinstance(type_signature, computation_types.NamedTupleType):
       raise TypeError(
           'Operator len() is only supported for (possibly federated) named '
-          'tuples, but the object on which it has been invoked is of type '
-          '{}.'.format(str(self._comp.type_signature)))
+          'tuples, but the object on which it has been invoked is of type {}.'
+          .format(self._comp.type_signature))
     return len(type_signature)
 
   def __getitem__(self, key):
@@ -154,24 +150,24 @@ class ValueImpl(value_base.Value):
         and isinstance(self._comp.type_signature.member,
                        computation_types.NamedTupleType)):
       return ValueImpl(
-          computation_constructing_utils.create_federated_getitem_call(
-              self._comp, key), self._context_stack)
+          building_block_factory.create_federated_getitem_call(self._comp, key),
+          self._context_stack)
     if not isinstance(self._comp.type_signature,
                       computation_types.NamedTupleType):
       raise TypeError(
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
-              str(self._comp.type_signature)))
+              self._comp.type_signature))
     elem_length = len(self._comp.type_signature)
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key))
-      if isinstance(self._comp, computation_building_blocks.Tuple):
+      if isinstance(self._comp, building_blocks.Tuple):
         return ValueImpl(self._comp[key], self._context_stack)
       else:
         return ValueImpl(
-            computation_building_blocks.Selection(self._comp, index=key),
+            building_blocks.Selection(self._comp, index=key),
             self._context_stack)
     elif isinstance(key, slice):
       index_range = range(*key.indices(elem_length))
@@ -187,8 +183,8 @@ class ValueImpl(value_base.Value):
     if not isinstance(type_signature, computation_types.NamedTupleType):
       raise TypeError(
           'Operator iter() is only supported for (possibly federated) named '
-          'tuples, but the object on which it has been invoked is of type '
-          '{}.'.format(str(self._comp.type_signature)))
+          'tuples, but the object on which it has been invoked is of type {}.'
+          .format(self._comp.type_signature))
     for index in range(len(type_signature)):
       yield self[index]
 
@@ -196,10 +192,9 @@ class ValueImpl(value_base.Value):
     if not isinstance(self._comp.type_signature,
                       computation_types.FunctionType):
       raise SyntaxError(
-          'Function-like invocation is only supported for values of '
-          'functional types, but the value being invoked is of type '
-          '{} that does not support invocation.'.format(
-              str(self._comp.type_signature)))
+          'Function-like invocation is only supported for values of functional '
+          'types, but the value being invoked is of type {} that does not '
+          'support invocation.'.format(self._comp.type_signature))
     if args or kwargs:
       args = [to_value(x, None, self._context_stack) for x in args]
       kwargs = {
@@ -211,18 +206,17 @@ class ValueImpl(value_base.Value):
       arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
     else:
       arg = None
-    return ValueImpl(
-        computation_building_blocks.Call(self._comp, arg), self._context_stack)
+    return ValueImpl(building_blocks.Call(self._comp, arg), self._context_stack)
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
     if not type_utils.are_equivalent_types(self.type_signature,
                                            other.type_signature):
-      raise TypeError('Cannot add {} and {}.'.format(
-          str(self.type_signature), str(other.type_signature)))
+      raise TypeError('Cannot add {} and {}.'.format(self.type_signature,
+                                                     other.type_signature))
     return ValueImpl(
-        computation_building_blocks.Call(
-            computation_building_blocks.Intrinsic(
+        building_blocks.Call(
+            building_blocks.Intrinsic(
                 intrinsic_defs.GENERIC_PLUS.uri,
                 computation_types.FunctionType(
                     [self.type_signature, self.type_signature],
@@ -246,8 +240,8 @@ def _wrap_constant_as_value(const, context_stack):
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       lambda: tf.constant(const), None, context_stack)
-  compiled_comp = computation_building_blocks.CompiledComputation(tf_comp)
-  called_comp = computation_building_blocks.Call(compiled_comp)
+  compiled_comp = building_blocks.CompiledComputation(tf_comp)
+  called_comp = building_blocks.Call(compiled_comp)
   return ValueImpl(called_comp, context_stack)
 
 
@@ -277,19 +271,18 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
     if not type_utils.is_assignable_from(element_type, elem_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(
-              str(element_type), str(elem_type)))
+              element_type, elem_type))
 
   # Defines a no-arg function that builds a `tf.data.Dataset` from the elements.
   def _create_dataset_from_elements():
-    return graph_utils.make_data_set_from_elements(
+    return tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(), elements, element_type)
 
   # Wraps the dataset as a value backed by a no-argument TensorFlow computation.
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       _create_dataset_from_elements, None, context_stack)
   return ValueImpl(
-      computation_building_blocks.Call(
-          computation_building_blocks.CompiledComputation(tf_comp)),
+      building_blocks.Call(building_blocks.CompiledComputation(tf_comp)),
       context_stack)
 
 
@@ -332,23 +325,22 @@ def to_value(arg, type_spec, context_stack):
     type_utils.check_well_formed(type_spec)
   if isinstance(arg, ValueImpl):
     result = arg
-  elif isinstance(arg, computation_building_blocks.ComputationBuildingBlock):
+  elif isinstance(arg, building_blocks.ComputationBuildingBlock):
     result = ValueImpl(arg, context_stack)
   elif isinstance(arg, placement_literals.PlacementLiteral):
-    result = ValueImpl(
-        computation_building_blocks.Placement(arg), context_stack)
+    result = ValueImpl(building_blocks.Placement(arg), context_stack)
   elif isinstance(arg, computation_base.Computation):
     result = ValueImpl(
-        computation_building_blocks.CompiledComputation(
+        building_blocks.CompiledComputation(
             computation_impl.ComputationImpl.get_proto(arg)), context_stack)
   elif type_spec is not None and isinstance(type_spec,
                                             computation_types.SequenceType):
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(
-        computation_building_blocks.Tuple([
+        building_blocks.Tuple([
             (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-            for k, v in anonymous_tuple.to_elements(arg)
+            for k, v in anonymous_tuple.iter_elements(arg)
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
     result = to_value(arg._asdict(), None, context_stack)
@@ -361,17 +353,17 @@ def to_value(arg, type_spec, context_stack):
       items = six.iteritems(arg)
     else:
       items = sorted(six.iteritems(arg))
-    value = computation_building_blocks.Tuple([
+    value = building_blocks.Tuple([
         (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
         for k, v in items
     ])
     result = ValueImpl(value, context_stack)
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(
-        computation_building_blocks.Tuple([
+        building_blocks.Tuple([
             ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg
         ]), context_stack)
-  elif isinstance(arg, dtype_utils.TENSOR_REPRESENTATION_TYPES):
+  elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):
     result = _wrap_constant_as_value(arg, context_stack)
   elif isinstance(arg, (tf.Tensor, tf.Variable)):
     raise TypeError(
@@ -387,7 +379,6 @@ def to_value(arg, type_spec, context_stack):
   if (type_spec is not None and
       not type_utils.is_assignable_from(type_spec, result.type_signature)):
     raise TypeError(
-        'The supplied argument maps to TFF type {}, which is incompatible '
-        'with the requested type {}.'.format(
-            str(result.type_signature), str(type_spec)))
+        'The supplied argument maps to TFF type {}, which is incompatible with '
+        'the requested type {}.'.format(result.type_signature, type_spec))
   return result

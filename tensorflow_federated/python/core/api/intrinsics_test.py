@@ -12,11 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tff."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import itertools
@@ -24,7 +19,6 @@ import itertools
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -275,6 +269,28 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
 
+  def test_federated_mean_with_all_equal_client_float32_without_weight(self):
+    federated_all_equal_float = tff.FederatedType(
+        tf.float32, tff.CLIENTS, all_equal=True)
+
+    @tff.federated_computation(federated_all_equal_float)
+    def foo(x):
+      return tff.federated_mean(x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(float32@CLIENTS -> float32@SERVER)')
+
+  def test_federated_mean_with_all_equal_client_float32_with_weight(self):
+    federated_all_equal_float = tff.FederatedType(
+        tf.float32, tff.CLIENTS, all_equal=True)
+
+    @tff.federated_computation(federated_all_equal_float)
+    def foo(x):
+      return tff.federated_mean(x, x)
+
+    self.assertEqual(
+        str(foo.type_signature), '(float32@CLIENTS -> float32@SERVER)')
+
   def test_federated_mean_with_client_tuple_with_int32_weight(self):
 
     @tff.federated_computation([
@@ -338,6 +354,71 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
+
+  def test_federated_aggregate_with_federated_zero_fails(self):
+
+    @tff.federated_computation()
+    def build_federated_zero():
+      return tff.federated_value(0, tff.SERVER)
+
+    @tff.tf_computation([tf.int32, tf.int32])
+    def accumulate(accu, elem):
+      return accu + elem
+
+    # The operator to use during the second stage simply adds total and count.
+    @tff.tf_computation([tf.int32, tf.int32])
+    def merge(x, y):
+      return x + y
+
+    # The operator to use during the final stage simply computes the ratio.
+    @tff.tf_computation(tf.int32)
+    def report(accu):
+      return accu
+
+    def foo(x):
+      return tff.federated_aggregate(x, build_federated_zero(), accumulate,
+                                     merge, report)
+
+    with self.assertRaisesRegex(
+        TypeError, 'Expected `zero` to be assignable to type int32, '
+        'but was of incompatible type int32@SERVER'):
+      tff.federated_computation(foo, tff.FederatedType(tf.int32, tff.CLIENTS))
+
+  def test_federated_aggregate_with_unknown_dimension(self):
+    Accumulator = collections.namedtuple('Accumulator', ['samples'])  # pylint: disable=invalid-name
+    accumulator_type = tff.NamedTupleType(
+        Accumulator(samples=tff.TensorType(dtype=tf.int32, shape=[None])))
+
+    @tff.tf_computation()
+    def build_empty_accumulator():
+      return Accumulator(samples=tf.zeros(shape=[0], dtype=tf.int32))
+
+    # The operator to use during the first stage simply adds an element to the
+    # tensor, increasing its size.
+    @tff.tf_computation([accumulator_type, tf.int32])
+    def accumulate(accu, elem):
+      return Accumulator(
+          samples=tf.concat(
+              [accu.samples, tf.expand_dims(elem, axis=0)], axis=0))
+
+    # The operator to use during the second stage simply adds total and count.
+    @tff.tf_computation([accumulator_type, accumulator_type])
+    def merge(x, y):
+      return Accumulator(samples=tf.concat([x.samples, y.samples], axis=0))
+
+    # The operator to use during the final stage simply computes the ratio.
+    @tff.tf_computation(accumulator_type)
+    def report(accu):
+      return accu
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    def foo(x):
+      return tff.federated_aggregate(x, build_empty_accumulator(), accumulate,
+                                     merge, report)
+
+    self.assertEqual(
+        str(foo.type_signature),
+        '({int32}@CLIENTS -> <samples=int32[?]>@SERVER)')
 
   def test_federated_reduce_with_tf_add_raw_constant(self):
 

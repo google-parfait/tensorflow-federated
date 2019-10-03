@@ -7,14 +7,17 @@
 
 # tff.framework.ExecutorValue
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_value_base.py">View
+source</a>
+
 ## Class `ExecutorValue`
 
 Represents the abstract interface for values embedded within executors.
 
 Inherits From: [`TypedObject`](../../tff/TypedObject.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_value_base.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -34,7 +37,7 @@ Returns the TFF type of this object (an instance of
 
 <h3 id="compute"><code>compute</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_value_base.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/executor_value_base.py">View
 source</a>
 
 ```python

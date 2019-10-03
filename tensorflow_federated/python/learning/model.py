@@ -25,7 +25,8 @@ import six
 
 
 class BatchOutput(
-    collections.namedtuple('BatchOutput', ['loss', 'predictions'])):
+    collections.namedtuple('BatchOutput',
+                           ['loss', 'predictions', 'num_examples'])):
   """A structure that holds the output of a `tff.learning.Model`.
 
   NOTE: All fields are optional (may be None).
@@ -34,6 +35,7 @@ class BatchOutput(
       has multiple losses, it is the sum of all the individual losses.
   -   `predictions`: Tensor of predictions on the examples. The first dimension
       must be the same size (the size of the batch).
+  -   `num_examples`: Number of examples seen in the batch.
   """
   __slots__ = ()
 

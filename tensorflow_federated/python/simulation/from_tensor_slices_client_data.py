@@ -42,8 +42,8 @@ class FromTensorSlicesClientData(client_data.ClientData):
     py_typecheck.check_type(tensor_slices_dict, dict)
     self._tensor_slices_dict = tensor_slices_dict
     example_dataset = self.create_tf_dataset_for_client(self.client_ids[0])
-    self._output_types = example_dataset.output_types
-    self._output_shapes = example_dataset.output_shapes
+    self._output_types = tf.compat.v1.data.get_output_types(example_dataset)
+    self._output_shapes = tf.compat.v1.data.get_output_shapes(example_dataset)
 
   @property
   def client_ids(self):

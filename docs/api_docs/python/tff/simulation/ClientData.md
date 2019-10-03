@@ -6,16 +6,21 @@
 <meta itemprop="property" content="output_types"/>
 <meta itemprop="property" content="create_tf_dataset_for_client"/>
 <meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
+<meta itemprop="property" content="from_clients_and_fn"/>
+<meta itemprop="property" content="preprocess"/>
 </div>
 
 # tff.simulation.ClientData
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
 ## Class `ClientData`
 
 Object to hold a dataset and a mapping of clients to examples.
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -30,7 +35,8 @@ The list of string identifiers for clients in this dataset.
 Returns the shape of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected to have matching
-`tf.data.Dataset.output_shapes` properties.
+`output_shapes` properties when accessed via
+`tf.compat.v1.data.get_output_shapes(dataset)`.
 
 #### Returns:
 
@@ -42,7 +48,8 @@ of an element of the client datasets.
 Returns the type of each component of an element of the client datasets.
 
 Any `tf.data.Dataset` constructed by this class is expected have matching
-`tf.data.Dataset.output_types` properties.
+`output_types` properties when accessed via
+`tf.compat.v1.data.get_output_types(dataset)`.
 
 #### Returns:
 
@@ -53,7 +60,7 @@ element of the client datasets.
 
 <h3 id="create_tf_dataset_for_client"><code>create_tf_dataset_for_client</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 ```python
@@ -72,7 +79,7 @@ A `tf.data.Dataset` object.
 
 <h3 id="create_tf_dataset_from_all_clients"><code>create_tf_dataset_from_all_clients</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
 source</a>
 
 ```python
@@ -96,3 +103,41 @@ performed.
 #### Returns:
 
 A `tf.data.Dataset` object.
+
+<h3 id="from_clients_and_fn"><code>from_clients_and_fn</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
+```python
+@classmethod
+from_clients_and_fn(
+    cls,
+    client_ids,
+    create_tf_dataset_for_client_fn
+)
+```
+
+Constructs a `ClientData` based on the given function.
+
+#### Args:
+
+*   <b>`client_ids`</b>: A non-empty list of client_ids which are valid inputs
+    to the create_tf_dataset_for_client_fn.
+*   <b>`create_tf_dataset_for_client_fn`</b>: A function that takes a client_id
+    from the above list, and returns a `tf.data.Dataset`.
+
+#### Returns:
+
+A `ClientData`.
+
+<h3 id="preprocess"><code>preprocess</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
+```python
+preprocess(preprocess_fn)
+```
+
+Applies `preprocess_fn` to each client's data.

@@ -29,8 +29,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import placement_literals
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 
 def infer_type(arg):
@@ -68,7 +67,7 @@ def infer_type(arg):
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return computation_types.NamedTupleType([
         (k, infer_type(v)) if k else infer_type(v)
-        for k, v in anonymous_tuple.to_elements(arg)
+        for k, v in anonymous_tuple.iter_elements(arg)
     ])
   elif py_typecheck.is_attrs(arg):
     items = attr.asdict(
@@ -120,7 +119,7 @@ def infer_type(arg):
             tf.TensorShape(tensor_proto.tensor_shape))
       except TypeError as err:
         raise TypeError('Could not infer the TFF type of {}: {}'.format(
-            py_typecheck.type_string(type(arg)), str(err)))
+            py_typecheck.type_string(type(arg)), err))
 
 
 def to_canonical_value(value):
@@ -164,7 +163,7 @@ def check_type(val, type_spec):
   if not is_assignable_from(type_spec, val_type):
     raise TypeError(
         'Expected TFF type {}, which is not assignable from {}.'.format(
-            str(type_spec), str(val_type)))
+            type_spec, val_type))
 
 
 def tf_dtypes_and_shapes_to_type(dtypes, shapes):
@@ -225,7 +224,7 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
     ], type(dtypes))
   else:
     raise TypeError('Unrecognized: dtypes {}, shapes {}.'.format(
-        str(dtypes), str(shapes)))
+        dtypes, shapes))
 
 
 def type_to_tf_dtypes_and_shapes(type_spec):
@@ -256,7 +255,10 @@ def type_to_tf_dtypes_and_shapes(type_spec):
     return (type_spec.dtype, type_spec.shape)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
-    if elements[0][0] is not None:
+    if not elements:
+      output_dtypes = []
+      output_shapes = []
+    elif elements[0][0] is not None:
       output_dtypes = collections.OrderedDict()
       output_shapes = collections.OrderedDict()
       for e in elements:
@@ -268,7 +270,7 @@ def type_to_tf_dtypes_and_shapes(type_spec):
               'of TensorFlow code, in the type signature of elements of that '
               'sequence all named tuples must have their elements explicitly '
               'named, and this does not appear to be the case in {}.'.format(
-                  str(type_spec)))
+                  type_spec))
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes[element_name] = element_output[0]
         output_shapes[element_name] = element_output[1]
@@ -284,7 +286,7 @@ def type_to_tf_dtypes_and_shapes(type_spec):
               'of TensorFlow code, in the type signature of elements of that '
               'sequence all named tuples must have their elements explicitly '
               'named, and this does not appear to be the case in {}.'.format(
-                  str(type_spec)))
+                  type_spec))
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes.append(element_output[0])
         output_shapes.append(element_output[1])
@@ -431,9 +433,9 @@ def get_named_tuple_element_type(type_spec, name):
   for elem_name, elem_type in elements:
     if name == elem_name:
       return elem_type
-  raise ValueError('The name \'{}\' of the element does not correspond to '
-                   'any of the names {} in the named tuple type.'.format(
-                       name, str([e[0] for e in elements if e[0]])))
+  raise ValueError('The name \'{}\' of the element does not correspond to any '
+                   'of the names {} in the named tuple type.'.format(
+                       name, [e[0] for e in elements if e[0]]))
 
 
 def preorder_call(given_type, fn, arg):
@@ -461,7 +463,7 @@ def preorder_call(given_type, fn, arg):
     preorder_call(type_signature.parameter, fn, arg)
     preorder_call(type_signature.result, fn, arg)
   elif isinstance(type_signature, computation_types.NamedTupleType):
-    for element in anonymous_tuple.to_elements(type_signature):
+    for element in anonymous_tuple.iter_elements(type_signature):
       preorder_call(element[1], fn, arg)
 
 
@@ -722,7 +724,7 @@ def check_all_abstract_types_are_bound(type_spec):
     elif isinstance(type_spec, computation_types.NamedTupleType):
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
-          for _, v in anonymous_tuple.to_elements(type_spec)
+          for _, v in anonymous_tuple.iter_elements(type_spec)
       ])
     elif isinstance(type_spec, computation_types.AbstractType):
       if type_spec.label in bound_labels:
@@ -778,14 +780,17 @@ def is_sum_compatible(type_spec):
     return is_numeric_dtype(type_spec.dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     return all(
-        is_sum_compatible(v) for _, v in anonymous_tuple.to_elements(type_spec))
+        is_sum_compatible(v)
+        for _, v in anonymous_tuple.iter_elements(type_spec))
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_sum_compatible(type_spec.member)
   else:
     return False
 
 
-def check_federated_type(type_spec, member=None, placement=None,
+def check_federated_type(type_spec,
+                         member=None,
+                         placement=None,
                          all_equal=None):
   """Checks that `type_spec` is a federated type with the given parameters.
 
@@ -808,39 +813,16 @@ def check_federated_type(type_spec, member=None, placement=None,
     check_assignable_from(member, type_spec.member)
   if placement is not None:
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
-    if type_spec.placement != placement:
+    if type_spec.placement is not placement:
       raise TypeError(
           'Expected federated type placed at {}, got one placed at {}.'.format(
-              str(placement), str(type_spec.placement)))
+              placement, type_spec.placement))
   if all_equal is not None:
     py_typecheck.check_type(all_equal, bool)
     if type_spec.all_equal != all_equal:
       raise TypeError(
           'Expected federated type with all_equal {}, got one with {}.'.format(
-              str(all_equal), str(type_spec.all_equal)))
-
-
-def check_federated_value_placement(value, placement, label=None):
-  """Checks that `value` is a federated value placed at `placement`.
-
-  Args:
-    value: The value to check, an instance of value_base.Value.
-    placement: The expected placement.
-    label: An optional string label that describes `value`.
-
-  Raises:
-    TypeError: if `value` is not a value_base.Value of a federated type with
-      the expected placement `placement`.
-  """
-  py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, computation_types.FederatedType)
-  if label is not None:
-    py_typecheck.check_type(label, six.string_types)
-  if value.type_signature.placement is not placement:
-    raise TypeError('The {} should be placed at {}, but it '
-                    'is placed at {}.'.format(
-                        label if label else 'value', str(placement),
-                        str(value.type_signature.placement)))
+              all_equal, type_spec.all_equal))
 
 
 def is_average_compatible(type_spec):
@@ -862,7 +844,7 @@ def is_average_compatible(type_spec):
   elif isinstance(type_spec, computation_types.NamedTupleType):
     return all(
         is_average_compatible(v)
-        for _, v in anonymous_tuple.to_elements(type_spec))
+        for _, v in anonymous_tuple.iter_elements(type_spec))
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_average_compatible(type_spec.member)
   else:
@@ -939,7 +921,7 @@ def is_assignable_from(target_type, source_type):
                               placement_literals.PlacementLiteral)
     return target_type.placement is source_type.placement
   else:
-    raise TypeError('Unexpected target type {}.'.format(str(target_type)))
+    raise TypeError('Unexpected target type {}.'.format(target_type))
 
 
 def check_assignable_from(target, source):
@@ -948,7 +930,7 @@ def check_assignable_from(target, source):
   if not is_assignable_from(target, source):
     raise TypeError(
         'The target type {} is not assignable from source type {}.'.format(
-            str(target), str(source)))
+            target, source))
 
 
 def are_equivalent_types(type1, type2):
@@ -1123,8 +1105,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
   if type_tree_contains_types(type_with_concrete_elements,
                               computation_types.AbstractType):
     raise TypeError(
-        '`type_with_concrete_elements` must contain no abstract types. You have passed {}'
-        .format(type_with_concrete_elements))
+        '`type_with_concrete_elements` must contain no abstract types. You '
+        'have passed {}'.format(type_with_concrete_elements))
 
   bound_abstract_types = {}
   type_error_string = ('Structural mismatch encountered while concretizing '
@@ -1187,8 +1169,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
                                              abstract_type_spec.placement,
                                              abstract_type_spec.all_equal)
     else:
-      raise TypeError('Unexpected abstract typespec {}.'.format(
-          str(abstract_type_spec)))
+      raise TypeError(
+          'Unexpected abstract typespec {}.'.format(abstract_type_spec))
 
   concretized_abstract_type = _concretize_abstract_types(
       type_with_abstract_elements, type_with_concrete_elements)
@@ -1248,7 +1230,7 @@ def transform_type_postorder(type_signature, transform_fn):
   elif isinstance(type_signature, computation_types.NamedTupleType):
     elems = []
     elems_mutated = False
-    for element in anonymous_tuple.to_elements(type_signature):
+    for element in anonymous_tuple.iter_elements(type_signature):
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn)
       elems_mutated = elems_mutated or element_mutated
@@ -1332,7 +1314,7 @@ def reconcile_value_type_with_type_spec(value_type, type_spec):
       return type_spec
     else:
       raise TypeError('Expected a value of type {}, found {}.'.format(
-          str(type_spec), str(value_type)))
+          type_spec, value_type))
 
 
 def get_function_type(type_spec):
@@ -1407,14 +1389,14 @@ def check_valid_federated_weighted_mean_argument_tuple_type(type_spec):
   py_typecheck.check_not_none(type_spec)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   if len(type_spec) != 2:
-    raise TypeError('Expected a 2-tuple, found {}.'.format(str(type_spec)))
-  for _, v in anonymous_tuple.to_elements(type_spec):
+    raise TypeError('Expected a 2-tuple, found {}.'.format(type_spec))
+  for _, v in anonymous_tuple.iter_elements(type_spec):
     check_federated_type(v, None, placement_literals.CLIENTS, False)
     if not is_average_compatible(v.member):
       raise TypeError(
-          'Expected average-compatible args, got {} from argument of '
-          'type {}.'.format(str(v.member), str(type_spec)))
+          'Expected average-compatible args, got {} from argument of type {}.'
+          .format(v.member, type_spec))
   w_type = type_spec[1].member
   py_typecheck.check_type(w_type, computation_types.TensorType)
   if w_type.shape.ndims != 0:
-    raise TypeError('Expected scalar weight, got {}.'.format(str(w_type)))
+    raise TypeError('Expected scalar weight, got {}.'.format(w_type))

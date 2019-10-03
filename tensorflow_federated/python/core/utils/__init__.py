@@ -28,10 +28,14 @@ from tensorflow_federated.python.core.utils.computation_utils import IterativePr
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_federated.python.core.utils.computation_utils import update_state
+from tensorflow_federated.python.core.utils.differential_privacy import build_dp_aggregate
+from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_broadcast
+from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_mean
+from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_sum
 from tensorflow_federated.python.core.utils.federated_aggregations import federated_max
 from tensorflow_federated.python.core.utils.federated_aggregations import federated_min
 from tensorflow_federated.python.core.utils.tf_computation_utils import assign
-from tensorflow_federated.python.core.utils.tf_computation_utils import get_variables
+from tensorflow_federated.python.core.utils.tf_computation_utils import create_variables
 from tensorflow_federated.python.core.utils.tf_computation_utils import identity
 
 # Used by doc generation script.
@@ -40,9 +44,13 @@ _allowed_symbols = [
     "StatefulBroadcastFn",
     "IterativeProcess",
     "assign",
+    "build_dp_aggregate",
+    "build_encoded_broadcast",
+    "build_encoded_mean",
+    "build_encoded_sum",
     "federated_max",
     "federated_min",
-    "get_variables",
+    "create_variables",
     "identity",
     "update_state",
 ]

@@ -12,24 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Implementations of the abstract interface Value in api/value_base."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import computation_building_blocks
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 _context_stack = context_stack_impl.context_stack
 
@@ -38,7 +35,7 @@ class ValueUtilsTest(parameterized.TestCase):
 
   def test_get_curried(self):
     add_numbers = value_impl.ValueImpl(
-        computation_building_blocks.ComputationBuildingBlock.from_proto(
+        building_blocks.ComputationBuildingBlock.from_proto(
             computation_impl.ComputationImpl.get_proto(
                 computations.tf_computation(tf.add, [tf.int32, tf.int32]))),
         _context_stack)
@@ -48,9 +45,18 @@ class ValueUtilsTest(parameterized.TestCase):
 
     comp, _ = transformations.uniquify_compiled_computation_names(
         value_impl.ValueImpl.get_comp(curried))
-    self.assertEqual(
-        computation_building_blocks.compact_representation(comp),
-        '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
+    self.assertEqual(comp.compact_representation(),
+                     '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
+
+  def test_check_federated_value_placement(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def _(x):
+      value_utils.check_federated_value_placement(x, placements.CLIENTS)
+      with self.assertRaises(TypeError):
+        value_utils.check_federated_value_placement(x, placements.SERVER)
+      return x
 
 
 if __name__ == '__main__':

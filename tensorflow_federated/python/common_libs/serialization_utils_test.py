@@ -12,14 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for serialization utilities."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl.testing import absltest
-import six
 import tensorflow as tf
 
 from google.protobuf import any_pb2
@@ -41,17 +35,25 @@ class SerializationUtilsTest(absltest.TestCase):
     output_value = serialization_utils.unpack_graph_def(any_pb)
     self.assertEqual(input_value, output_value)
 
+  def test_pack_graph_seed_set_raises(self):
+    with tf.Graph().as_default() as g:
+      tf.compat.v2.random.set_seed(1234)
+      tf.random.normal([1])
+    input_value = g.as_graph_def()
+    with self.assertRaisesRegex(ValueError, 'graph-level random seed'):
+      serialization_utils.pack_graph_def(input_value)
+
   def test_pack_graph_def_fails_non_graph_def_arg(self):
     with self.assertRaisesRegex(TypeError, 'found str'):
       serialization_utils.pack_graph_def('not a graphdef')
 
   def test_unpack_graph_def_not_any_arg(self):
-    with six.assertRaisesRegex(self, TypeError, 'Any'):
+    with self.assertRaisesRegex(TypeError, 'Any'):
       serialization_utils.unpack_graph_def('not_any')
 
   def test_unpack_graph_def_not_packed_graph_def(self):
     any_pb = any_pb2.Any()
-    with six.assertRaisesRegex(self, ValueError, 'Unable to unpack'):
+    with self.assertRaisesRegex(ValueError, 'Unable to unpack'):
       serialization_utils.unpack_graph_def(any_pb)
 
 

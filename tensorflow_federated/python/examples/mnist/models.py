@@ -21,8 +21,18 @@ from __future__ import print_function
 import collections
 
 import tensorflow as tf
-
 import tensorflow_federated as tff
+
+
+class NumExamplesCounter(tf.keras.metrics.Sum):
+  """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
+
+  def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
+    super(NumExamplesCounter, self).__init__(name, dtype)
+
+  def update_state(self, y_true, y_pred, sample_weight=None):
+    return super(NumExamplesCounter,
+                 self).update_state(tf.shape(y_pred)[0], sample_weight)
 
 
 def create_simple_keras_model(learning_rate=0.1):
@@ -42,7 +52,10 @@ def create_simple_keras_model(learning_rate=0.1):
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(),
       optimizer=tf.keras.optimizers.SGD(learning_rate),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+      metrics=[
+          tf.keras.metrics.SparseCategoricalAccuracy(),
+          NumExamplesCounter()
+      ])
   return model
 
 

@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for execution_context.py."""
 
 import collections
 
@@ -22,13 +21,16 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import execution_context
+from tensorflow_federated.python.core.impl import executor_stacks
+from tensorflow_federated.python.core.impl.compiler import type_factory
 
 
-def _test_ctx():
-  return execution_context.ExecutionContext(eager_executor.EagerExecutor())
+def _test_ctx(num_clients=None):
+  return execution_context.ExecutionContext(
+      executor_stacks.create_local_executor(num_clients))
 
 
 class ExecutionContextTest(absltest.TestCase):
@@ -90,6 +92,84 @@ class ExecutionContextTest(absltest.TestCase):
 
     self.assertIsInstance(result, collections.OrderedDict)
     self.assertDictEqual(result, {'a': 10, 'b': 20})
+
+  def test_with_temperature_sensor_example(self):
+
+    @computations.tf_computation(
+        computation_types.SequenceType(tf.float32), tf.float32)
+    def count_over(ds, t):
+      return ds.reduce(
+          np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
+
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    def count_total(ds):
+      return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
+
+    @computations.federated_computation(
+        type_factory.at_clients(computation_types.SequenceType(tf.float32)),
+        type_factory.at_server(tf.float32))
+    def comp(temperatures, threshold):
+      return intrinsics.federated_mean(
+          intrinsics.federated_map(
+              count_over,
+              intrinsics.federated_zip(
+                  [temperatures,
+                   intrinsics.federated_broadcast(threshold)])),
+          intrinsics.federated_map(count_total, temperatures))
+
+    with context_stack_impl.context_stack.install(_test_ctx()):
+      to_float = lambda x: tf.cast(x, tf.float32)
+      temperatures = [
+          tf.data.Dataset.range(10).map(to_float),
+          tf.data.Dataset.range(20).map(to_float),
+          tf.data.Dataset.range(30).map(to_float)
+      ]
+      threshold = 15.0
+      result = comp(temperatures, threshold)
+      self.assertAlmostEqual(result, 8.333, places=3)
+
+    num_clients = 3
+    with context_stack_impl.context_stack.install(_test_ctx(num_clients)):
+      to_float = lambda x: tf.cast(x, tf.float32)
+      temperatures = [
+          tf.data.Dataset.range(10).map(to_float),
+          tf.data.Dataset.range(20).map(to_float),
+          tf.data.Dataset.range(30).map(to_float)
+      ]
+      threshold = 15.0
+      result = comp(temperatures, threshold)
+      self.assertAlmostEqual(result, 8.333, places=3)
+
+  def test_changing_cardinalities_across_calls(self):
+
+    @computations.federated_computation(type_factory.at_clients(tf.int32))
+    def comp(x):
+      return x
+
+    five_ints = list(range(5))
+    ten_ints = list(range(10))
+
+    with context_stack_impl.context_stack.install(_test_ctx()):
+      five = comp(five_ints)
+      ten = comp(ten_ints)
+
+    self.assertEqual(five, five_ints)
+    self.assertEqual(ten, ten_ints)
+
+  def test_conflicting_cardinalities_within_call(self):
+
+    @computations.federated_computation(
+        [type_factory.at_clients(tf.int32),
+         type_factory.at_clients(tf.int32)])
+    def comp(x):
+      return x
+
+    five_ints = list(range(5))
+    ten_ints = list(range(10))
+
+    with context_stack_impl.context_stack.install(_test_ctx()):
+      with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
+        comp([five_ints, ten_ints])
 
 
 if __name__ == '__main__':

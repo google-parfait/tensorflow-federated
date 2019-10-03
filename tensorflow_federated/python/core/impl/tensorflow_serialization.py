@@ -18,11 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import inspect
+import os
+import os.path
 import shutil
+import sys
 import tempfile
 import types
+import zipfile
 
+import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -30,11 +34,16 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import function_utils
-from tensorflow_federated.python.core.impl import graph_utils
 from tensorflow_federated.python.core.impl import tf_computation_context
-from tensorflow_federated.python.core.impl import type_serialization
+from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.utils import function_utils
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_keys
+
+
+class SerializationError(Exception):
+  """Error raised during value serialization or deserialization."""
+  pass
 
 
 def finalize_binding(binding, tensor_info_map):
@@ -47,8 +56,8 @@ def finalize_binding(binding, tensor_info_map):
   """
   if not binding:
     if tensor_info_map:
-      raise ValueError('Empty binding, but non-empty tensor_info_map {}:\n' +
-                       str(tensor_info_map))
+      raise ValueError('Empty binding, but non-empty tensor_info_map {}'.format(
+          tensor_info_map))
     return
   if isinstance(binding, pb.TensorFlow.Binding):
     sub_binding = getattr(binding, binding.WhichOneof('binding'))
@@ -97,8 +106,8 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   argspec = function_utils.get_argspec(target)
   if argspec.args and parameter_type is None:
     raise ValueError(
-        'Expected the target to declare no parameters, found {}.'.format(
-            repr(argspec.args)))
+        'Expected the target to declare no parameters, found {!r}.'.format(
+            argspec.args))
 
   # In the codepath for TF V1 based serialization (tff.tf_computation),
   # we get the "wrapped" function to serialize. Here, target is the
@@ -108,7 +117,7 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   # to get_concrete_fn below.
   unpack = function_utils.infer_unpack_needed(target, parameter_type, unpack)
   arg_typespecs, kwarg_typespecs, parameter_binding = (
-      graph_utils.get_tf_typespec_and_binding(
+      tensorflow_utils.get_tf_typespec_and_binding(
           parameter_type, arg_names=argspec.args, unpack=unpack))
 
   # Pseudo-global to be appended to once when target_poly below is traced.
@@ -128,11 +137,11 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   # tf.saved_model.load can take/return nests; this might offer a better
   # approach to the one taken here.
 
-  @tf.function(autograph=False)
+  @tf.function
   def target_poly(*args, **kwargs):
     result = target(*args, **kwargs)
     result_dict, result_type, result_binding = (
-        graph_utils.get_tf2_result_dict_and_binding(result))
+        tensorflow_utils.get_tf2_result_dict_and_binding(result))
     assert not type_and_binding_slot
     # A "side channel" python output.
     type_and_binding_slot.append((result_type, result_binding))
@@ -171,8 +180,8 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
 
     graph = tf.Graph()
     with tf.compat.v1.Session(graph=graph) as sess:
-      mgd = tf.saved_model.loader.load(
-          sess, tags=[tf.saved_model.tag_constants.SERVING], export_dir=outdir)
+      mgd = tf.compat.v1.saved_model.load(
+          sess, tags=[tf.saved_model.SERVING], export_dir=outdir)
   finally:
     shutil.rmtree(outdir)
   sigs = mgd.signature_def
@@ -244,24 +253,24 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   py_typecheck.check_type(target, types.FunctionType)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   parameter_type = computation_types.to_type(parameter_type)
-  argspec = inspect.getargspec(target)  # pylint: disable=deprecated-method
+  argspec = function_utils.get_argspec(target)
 
   with tf.Graph().as_default() as graph:
     args = []
     if parameter_type is not None:
       if len(argspec.args) != 1:
         raise ValueError(
-            'Expected the target to declare exactly one parameter, '
-            'found {}.'.format(repr(argspec.args)))
+            'Expected the target to declare exactly one parameter, found {!r}.'
+            .format(argspec.args))
       parameter_name = argspec.args[0]
-      parameter_value, parameter_binding = graph_utils.stamp_parameter_in_graph(
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           parameter_name, parameter_type, graph)
       args.append(parameter_value)
     else:
       if argspec.args:
         raise ValueError(
-            'Expected the target to declare no parameters, found {}.'.format(
-                repr(argspec.args)))
+            'Expected the target to declare no parameters, found {!r}.'.format(
+                argspec.args))
       parameter_binding = None
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
@@ -278,7 +287,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       # to ensure all variables are initialized, but not all variables are
       # always in the collections we expect. tff.learning._KerasModel tries to
       # pull Keras variables (that may or may not be in GLOBAL_VARIABLES) into
-      # TFF_MODEL_VARIABLES for now.
+      # VARS_FOR_TFF_TO_INITIALIZE for now.
       all_variables = set(tf.compat.v1.global_variables() +
                           tf.compat.v1.local_variables() +
                           tf.compat.v1.get_collection(
@@ -302,7 +311,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       else:
         init_op_name = None
 
-    result_type, result_binding = graph_utils.capture_result_from_graph(
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
   annotated_type = computation_types.FunctionType(parameter_type, result_type)
@@ -317,3 +326,107 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
           parameter=parameter_binding,
           result=result_binding,
           initialize_op=init_op_name)), annotated_type
+
+
+# The maximum size allowed for serialized sequence values. Sequence that
+# serialize to values larger than this will result in errors being raised.  This
+# likely occurs when the sequence is dependent on, and thus pulling in, many of
+# variables from the graph.
+DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 20 * (1024**2)  # 20 MB
+
+
+# TODO(b/137880330): there is likely opportunity here to share implementation
+# with the serialization happening in
+# `tensorflow_serialization.serialize_tf2_as_tf_computation()`. It would be good
+# to sync with TF team about options for ensuring graph-only (variable-less)
+# serializations.
+def serialize_dataset(
+    dataset,
+    max_serialized_size_bytes=DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES):
+  """Serializes a `tf.data.Dataset` value into a `bytes` object.
+
+  Args:
+    dataset: A `tf.data.Dataset`.
+    max_serialized_size_bytes: An `int` size in bytes designating the threshold
+      on when to raise an error if the resulting serialization is too big.
+
+  Returns:
+    A `bytes` object that can be sent to
+  `tensorflow_serialization.deserialize_dataset` to recover the original
+  `tf.data.Dataset`.
+
+  Raises:
+    SerializationError: if there was an error in TensorFlow during
+      serialization.
+  """
+  py_typecheck.check_type(dataset,
+                          tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+  module = tf.Module()
+  module.dataset = dataset
+  module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
+
+  temp_dir = tempfile.mkdtemp('dataset')
+  fd, temp_zip = tempfile.mkstemp('zip')
+  os.close(fd)
+  try:
+    tf.saved_model.save(module, temp_dir, signatures={})
+    with zipfile.ZipFile(temp_zip, 'w') as z:
+      for topdir, _, filenames in tf.io.gfile.walk(temp_dir):
+        dest_dir = topdir[len(temp_dir):]
+        for filename in filenames:
+          z.write(
+              os.path.join(topdir, filename), os.path.join(dest_dir, filename))
+    with open(temp_zip, 'rb') as z:
+      zip_bytes = z.read()
+  except Exception as e:  # pylint: disable=broad-except
+    six.reraise(
+        SerializationError,
+        SerializationError('Error serializing tff.Sequence value. '
+                           'Inner error: {!s}'.format(e)),
+        sys.exc_info()[2])
+  finally:
+    tf.io.gfile.rmtree(temp_dir)
+    tf.io.gfile.remove(temp_zip)
+
+  if len(zip_bytes) > max_serialized_size_bytes:
+    raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
+                     'allowed ({:d} bytes)'.format(
+                         len(zip_bytes), max_serialized_size_bytes))
+  return zip_bytes
+
+
+def deserialize_dataset(serialized_bytes):
+  """Deserializes a `bytes` object to a `tf.data.Dataset`.
+
+  Args:
+    serialized_bytes: `bytes` object produced by
+      `tensorflow_serialization.serialize_dataset`
+
+  Returns:
+    A `tf.data.Dataset` instance.
+
+  Raises:
+    SerializationError: if there was an error in TensorFlow during
+      serialization.
+  """
+  py_typecheck.check_type(serialized_bytes, bytes)
+  temp_dir = tempfile.mkdtemp('dataset')
+  fd, temp_zip = tempfile.mkstemp('zip')
+  os.close(fd)
+  try:
+    with open(temp_zip, 'wb') as f:
+      f.write(serialized_bytes)
+    with zipfile.ZipFile(temp_zip, 'r') as z:
+      z.extractall(path=temp_dir)
+    loaded = tf.compat.v2.saved_model.load(temp_dir)
+    ds = loaded.dataset_fn()
+  except Exception as e:  # pylint: disable=broad-except
+    six.reraise(
+        SerializationError,
+        SerializationError('Error deserializing tff.Sequence value. '
+                           'Inner error: {!s}'.format(e)),
+        sys.exc_info()[2])
+  finally:
+    tf.io.gfile.rmtree(temp_dir)
+    tf.io.gfile.remove(temp_zip)
+  return ds

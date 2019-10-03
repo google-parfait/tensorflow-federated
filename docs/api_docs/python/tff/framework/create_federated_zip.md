@@ -5,14 +5,17 @@
 
 # tff.framework.create_federated_zip
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/compiler/building_block_factory.py">View
+source</a>
+
 Creates a called federated zip.
 
 ```python
 tff.framework.create_federated_zip(value)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/computation_constructing_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -26,13 +29,13 @@ federated values type signature.
 
 #### Args:
 
-*   <b>`value`</b>: A `computation_building_blocks.ComputationBuildingBlock`
-    with a `type_signature` of type `computation_types.NamedTupleType`
-    containing at least one element.
+*   <b>`value`</b>: A `building_blocks.ComputationBuildingBlock` with a
+    `type_signature` of type `computation_types.NamedTupleType` containing at
+    least one element.
 
 #### Returns:
 
-A `computation_building_blocks.Call`.
+A `building_blocks.Call`.
 
 #### Raises:
 

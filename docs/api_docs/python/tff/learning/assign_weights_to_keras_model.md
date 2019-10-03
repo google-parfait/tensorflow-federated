@@ -5,6 +5,12 @@
 
 # tff.learning.assign_weights_to_keras_model
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py">View
+source</a>
+
 Assigns a nested structure of TFF weights to a Keras model.
 
 ```python
@@ -13,9 +19,6 @@ tff.learning.assign_weights_to_keras_model(
     tff_weights
 )
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/learning/keras_utils.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -33,7 +36,7 @@ fed_avg = tff.learning.build_federated_averaging_process(model_fn, ...)
 state = fed_avg.initialize()
 state = fed_avg.next(state, ...)
 ...
-tff.learning.assign_weights_to_keras_model(state.model, keras_model)
+tff.learning.assign_weights_to_keras_model(keras_model, state.model)
 ```
 
 #### Args:

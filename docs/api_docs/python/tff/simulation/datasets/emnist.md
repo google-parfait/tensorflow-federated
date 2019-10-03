@@ -5,10 +5,13 @@
 
 # Module: tff.simulation.datasets.emnist
 
-Module for the federated EMNIST experimental dataset.
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/__init__.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist.py">View
 source</a>
+
+Libraries for the federated EMNIST dataset for simulation.
 
 <!-- Placeholder for "Used in" -->
 

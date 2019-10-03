@@ -5,14 +5,17 @@
 
 # tff.simulation.datasets.emnist.get_synthetic
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist.py">View
+source</a>
+
 Quickly returns a small synthetic dataset, useful for unit tests, etc.
 
 ```python
 tff.simulation.datasets.emnist.get_synthetic(num_clients=2)
 ```
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/datasets/emnist/load_data.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -23,11 +26,11 @@ of clients.
 
 #### Args:
 
-*   <b>`num_clients`</b>: The number of syntehtic clients to generate.
+*   <b>`num_clients`</b>: The number of synthetic clients to generate.
 
 #### Returns:
 
-Tuple of (train, test) where the tuple elements are
+A
 <a href="../../../../tff/simulation/ClientData.md"><code>tff.simulation.ClientData</code></a>
-objects matching the characteristics (other than size) of those provided by
+object that matches the characteristics (other than size) of those provided by
 <a href="../../../../tff/simulation/datasets/emnist/load_data.md"><code>tff.simulation.datasets.emnist.load_data</code></a>.

@@ -10,14 +10,17 @@
 
 # tff.framework.ConcurrentExecutor
 
+<table class="tfo-notebook-buttons tfo-api" align="left">
+</table>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py">View
+source</a>
+
 ## Class `ConcurrentExecutor`
 
 The concurrent executor delegates work to a separate thread.
 
 Inherits From: [`Executor`](../../tff/framework/Executor.md)
-
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py>View
-source</a>
 
 <!-- Placeholder for "Used in" -->
 
@@ -28,7 +31,7 @@ NOTE: This component is only available in Python 3.
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py">View
 source</a>
 
 ```python
@@ -45,7 +48,7 @@ Creates a concurrent executor backed by a target executor.
 
 <h3 id="create_call"><code>create_call</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py">View
 source</a>
 
 ```python
@@ -72,7 +75,7 @@ constructed vall.
 
 <h3 id="create_selection"><code>create_selection</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py">View
 source</a>
 
 ```python
@@ -101,7 +104,7 @@ constructed selection.
 
 <h3 id="create_tuple"><code>create_tuple</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py">View
 source</a>
 
 ```python
@@ -123,7 +126,7 @@ constructed tuple.
 
 <h3 id="create_value"><code>create_value</code></h3>
 
-<a target="_blank" href=http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py>View
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/impl/concurrent_executor.py">View
 source</a>
 
 ```python
