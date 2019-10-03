@@ -75,6 +75,6 @@ RUN ${PIP} install --no-cache-dir \
     tensorflow-model-optimization~=0.1.3 \
     tensorflow-privacy~=0.0.1 \
     tf-estimator-nightly==1.14.0.dev2019091601 \
-    tf-nightly \
+    tf-nightly==1.15.0.dev20190821 \
     typing~=3.7.0
 RUN pip freeze

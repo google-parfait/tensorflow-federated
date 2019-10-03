@@ -193,9 +193,7 @@ def get_mnist_training_example():
             tf.matmul(batch.x, model_vars.weights) + model_vars.bias)
         loss = -tf.reduce_mean(
             tf.reduce_sum(
-                tf.one_hot(batch.y, 10) * tf.log(pred_y),
-                reduction_indices=[1],
-            ))
+                tf.one_hot(batch.y, 10) * tf.math.log(pred_y), axis=[1]))
       grads = tape.gradient(loss, model_vars)
       optimizer.apply_gradients(
           zip(tf.nest.flatten(grads), tf.nest.flatten(model_vars)))
