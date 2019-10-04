@@ -77,7 +77,7 @@ class SavedStateTest(tf.test.TestCase):
     for round_num in range(5):
       export_dir = os.path.join(self.get_temp_dir(),
                                 '{}{:03d}'.format(prefix, round_num))
-      checkpoint_utils.save(state, export_dir)
+      checkpoint_utils.save(state, export_dir, prefix)
       latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
           self.get_temp_dir(), prefix)
       self.assertEndsWith(
@@ -95,7 +95,7 @@ class SavedStateTest(tf.test.TestCase):
           self.get_temp_dir(), prefix)
       self.assertEndsWith(
           latest_checkpoint_path,
-          '{:03d}'.format(round_num - 1),
+          '{}{:03d}'.format(prefix, round_num - 1),
           msg=latest_checkpoint_path)
 
 
