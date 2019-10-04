@@ -81,7 +81,7 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.3.1',
     'six~=1.10',
     'tensorflow-model-optimization~=0.1.3',
-    'tensorflow-privacy~=0.0.1',
+    'tensorflow-privacy~=0.1.0',
     # TODO(b/141279425): Remove pinned tf-estimator-nightly version.
     'tf-estimator-nightly==1.14.0.dev2019091601',
     'tf-nightly',
