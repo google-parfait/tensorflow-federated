@@ -67,7 +67,6 @@ RUN ${PIP} install --no-cache-dir \
     enum34~=1.1 \
     grpcio~=1.22.0 \
     h5py~=2.6 \
-    matplotlib~=3.0 \
     numpy~=1.14 \
     pandas~=0.24.0 \
     portpicker~=1.3.1 \
