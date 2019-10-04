@@ -78,7 +78,7 @@ REQUIRED_PACKAGES = [
     'grpcio~=1.22.0',
     'h5py~=2.6',
     'numpy~=1.14',
-    'portpicker',
+    'portpicker~=1.3.1',
     'six~=1.10',
     'tensorflow-model-optimization~=0.1.3',
     'tensorflow-privacy~=0.0.1',

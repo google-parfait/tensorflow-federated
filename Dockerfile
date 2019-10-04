@@ -70,7 +70,7 @@ RUN ${PIP} install --no-cache-dir \
     matplotlib~=3.0 \
     numpy~=1.14 \
     pandas~=0.24.0 \
-    portpicker \
+    portpicker~=1.3.1 \
     six~=1.10 \
     tensorflow-model-optimization~=0.1.3 \
     tensorflow-privacy~=0.0.1 \
