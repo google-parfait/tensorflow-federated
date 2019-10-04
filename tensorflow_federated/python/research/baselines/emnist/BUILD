@@ -26,6 +26,7 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/utils:training_loops",
         "//tensorflow_federated/python/research/utils:utils_impl",
+        "//tensorflow_federated/python/tensorflow_libs:nest",
     ],
 )
 

@@ -31,8 +31,8 @@ from tensorboard.plugins.hparams import api as hp
 from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.utils import training_loops
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.tensorflow_libs import nest as nest_fork
 
-nest = tf.contrib.framework.nest
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Metadata
@@ -160,7 +160,7 @@ class MetricsHook(object):
         zip(['loss', 'sparse_categorical_accuracy'], eval_metrics))
 
     flat_metrics = collections.OrderedDict(
-        nest.flatten_with_joined_string_paths(metrics))
+        nest_fork.flatten_with_joined_string_paths(metrics))
 
     # Use a DataFrame just to get nice formatting.
     df = pd.DataFrame.from_dict(flat_metrics, orient='index', columns=['value'])
