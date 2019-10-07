@@ -87,7 +87,7 @@ class GraphUtilsTest(test.TestCase):
     for i, s in enumerate(shape):
       self.assertEqual(x.shape.dims[i].value, s)
     self.assertEqual(x.op.type, 'Placeholder')
-    self.assertTrue(x.graph is graph)
+    self.assertIs(x.graph, graph)
 
   def _checked_capture_result(self, result):
     """Returns the captured result type after first verifying the binding."""
