@@ -26,6 +26,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import logging
 import numpy as np
 
 import six
@@ -136,6 +137,76 @@ class ClientData(object):
       A `ClientData`.
     """
     return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
+
+  @classmethod
+  def train_test_client_split(cls, client_data, num_test_clients):
+    """Returns a pair of (train, test) `ClientData`.
+
+    This method partitions the clients of `client_data` into two `ClientData`
+    objects with disjoint sets of `ClientData.client_ids`. All clients in the
+    test `ClientData` are guaranteed to have non-empty datasets, but the
+    training `ClientData` may have clients with no data.
+
+    Note: This method may be expensive, and so it may be useful to avoid calling
+    multiple times and holding on to the results.
+
+    Args:
+      client_data: The base `ClientData` to split.
+      num_test_clients: How many clients to hold out for testing. This can be at
+        most len(client_data.client_ids) - 1, since we don't want to produce
+        empty `ClientData`.
+
+    Returns:
+      A pair (train_client_data, test_client_data), where test_client_data
+      has `num_test_clients` selected at random, subject to the constraint they
+      each have at least 1 batch in their dataset.
+
+    Raises:
+      ValueError: If `num_test_clients` cannot be satistifed by `client_data`,
+        or too many clients have empty datasets.
+    """
+    if num_test_clients <= 0:
+      raise ValueError('Please specify num_test_clients > 0.')
+
+    if len(client_data.client_ids) <= num_test_clients:
+      raise ValueError('The client_data supplied has only {} clients, but '
+                       '{} test clients were requested.'.format(
+                           len(client_data.client_ids), num_test_clients))
+
+    train_client_ids = list(client_data.client_ids)
+    np.random.shuffle(train_client_ids)
+    # These clients will be added back into the training set at the end.
+    clients_with_insufficient_batches = []
+    test_client_ids = []
+    while len(test_client_ids) < num_test_clients:
+      if not train_client_ids or (
+          # Arbitrarily threshold where "many" (relative to num_test_clients)
+          # clients have no data. Note: If needed, we could make this limit
+          # configurable.
+          len(clients_with_insufficient_batches) > 5 * num_test_clients + 10):
+
+        raise ValueError('Encountered too many clients with no data.')
+
+      client_id = train_client_ids.pop()
+      dataset = client_data.create_tf_dataset_for_client(client_id)
+      try:
+        _ = next(iter(dataset))
+      except StopIteration:
+        logging.warning('Client %s had no data, skipping.', client_id)
+        clients_with_insufficient_batches.append(client_id)
+        continue
+
+      test_client_ids.append(client_id)
+
+    # Invariant for successful exit of the above loop:
+    assert len(test_client_ids) == num_test_clients
+
+    def from_ids(client_ids):
+      return cls.from_clients_and_fn(client_ids,
+                                     client_data.create_tf_dataset_for_client)
+
+    return (from_ids(train_client_ids + clients_with_insufficient_batches),
+            from_ids(test_client_ids))
 
 
 class ConcreteClientData(ClientData):

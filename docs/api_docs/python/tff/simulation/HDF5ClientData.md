@@ -9,6 +9,7 @@
 <meta itemprop="property" content="create_tf_dataset_from_all_clients"/>
 <meta itemprop="property" content="from_clients_and_fn"/>
 <meta itemprop="property" content="preprocess"/>
+<meta itemprop="property" content="train_test_client_split"/>
 </div>
 
 # tff.simulation.HDF5ClientData
@@ -170,3 +171,45 @@ preprocess(preprocess_fn)
 ```
 
 Applies `preprocess_fn` to each client's data.
+
+<h3 id="train_test_client_split"><code>train_test_client_split</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/simulation/client_data.py">View
+source</a>
+
+```python
+train_test_client_split(
+    cls,
+    client_data,
+    num_test_clients
+)
+```
+
+Returns a pair of (train, test) `ClientData`.
+
+This method partitions the clients of `client_data` into two `ClientData`
+objects with disjoint sets of
+<a href="../../tff/simulation/ClientData.md#client_ids"><code>ClientData.client_ids</code></a>.
+All clients in the test `ClientData` are guaranteed to have non-empty datasets,
+but the training `ClientData` may have clients with no data.
+
+Note: This method may be expensive, and so it may be useful to avoid calling
+multiple times and holding on to the results.
+
+#### Args:
+
+*   <b>`client_data`</b>: The base `ClientData` to split.
+*   <b>`num_test_clients`</b>: How many clients to hold out for testing. This
+    can be at most len(client_data.client_ids) - 1, since we don't want to
+    produce empty `ClientData`.
+
+#### Returns:
+
+A pair (train_client_data, test_client_data), where test_client_data has
+`num_test_clients` selected at random, subject to the constraint they each have
+at least 1 batch in their dataset.
+
+#### Raises:
+
+*   <b>`ValueError`</b>: If `num_test_clients` cannot be satistifed by
+    `client_data`, or too many clients have empty datasets.
