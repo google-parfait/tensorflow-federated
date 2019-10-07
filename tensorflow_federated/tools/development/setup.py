@@ -73,8 +73,6 @@ REQUIRED_PACKAGES = [
     'attrs~=18.2',
     'cachetools~=3.1.1',
     'enum34~=1.1',
-    # TODO(b/140751117) Unpin gast from 0.2.0.
-    'gast==0.2.2',
     'grpcio~=1.22.0',
     'h5py~=2.6',
     'numpy~=1.14',
@@ -82,8 +80,6 @@ REQUIRED_PACKAGES = [
     'six~=1.10',
     'tensorflow-model-optimization~=0.1.3',
     'tensorflow-privacy~=0.1.0',
-    # TODO(b/141279425): Remove pinned tf-estimator-nightly version.
-    'tf-estimator-nightly==1.14.0.dev2019091601',
     'tf-nightly',
     'tfa-nightly',
 ]
