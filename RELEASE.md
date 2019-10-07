@@ -1,3 +1,27 @@
+# Release 0.9.0
+
+## Major Features and Improvements
+
+*   TFF is now fully compatible and dependent on TensorFlow 2.0
+*   Add stateful aggregation with differential privacy using TensorFlow Privacy
+    (https://pypi.org/project/tensorflow-privacy/).
+*   Additional stateful aggregation lwith compression using TensorFlow Model
+    Optimization (https://pypi.org/project/tensorflow-model-optimization/).
+*   Improved executor stack for simulations, documentation and scripts for
+    starting simulations on GCP.
+*   New libraries for creating synthetic IID and non-IID datsets in simulation.
+
+## Breaking Changes
+
+*   `examples` package split to `simulation` and `research`.
+
+## Bug Fixes
+
+*   Various error message string improvements.
+*   Dataset serialization fixed for V1/V2 datasets.
+*   `tff.federated_aggregate` supports `accumulate`, `merge` and `report`
+    methods with signatures containing tensors with undefined dimensions.
+
 # Release 0.8.0
 
 ## Major Features and Improvements
