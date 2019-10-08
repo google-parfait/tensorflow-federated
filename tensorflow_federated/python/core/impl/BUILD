@@ -427,7 +427,6 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_service_utils",
-        ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",

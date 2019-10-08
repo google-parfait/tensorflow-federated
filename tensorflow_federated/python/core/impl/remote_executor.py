@@ -15,6 +15,7 @@
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 import asyncio
+import itertools
 import logging
 import queue
 import threading
@@ -69,21 +70,24 @@ class _BidiStream:
 
   def __init__(self, stub, thread_pool_executor):
     self._request_queue = queue.Queue()
-    self._response_event_queue = queue.Queue()
+    self._response_event_dict = {}
     self._stream_closed_event = threading.Event()
     self._thread_pool_executor = thread_pool_executor
 
     def request_iter():
       """Iterator that blocks on the request Queue."""
-      while True:
+
+      for seq in itertools.count():
         logging.debug('request_iter: waiting for request')
         val = self._request_queue.get()
         if val:
           py_typecheck.check_type(val[0], executor_pb2.ExecuteRequest)
           py_typecheck.check_type(val[1], threading.Event)
+          req = val[0]
+          req.sequence_number = seq
           logging.debug('request_iter: got request of type %s',
                         val[0].WhichOneof('request'))
-          self._response_event_queue.put_nowait(val[1])
+          self._response_event_dict[seq] = val[1]
           yield val[0]
         else:
           logging.debug('request_iter: got None request')
@@ -99,15 +103,15 @@ class _BidiStream:
         for response in response_iter:
           logging.debug('response_thread_fn: got response of type %s',
                         response.WhichOneof('response'))
-          # Get the corresponding response Event from the queue
-          response_event = self._response_event_queue.get_nowait()
+          # Get the corresponding response Event
+          response_event = self._response_event_dict[response.sequence_number]
           # Attach the response as an attribute on the Event
           response_event.response = response
           response_event.set()
         # Set the event indicating the stream has been closed
         self._stream_closed_event.set()
       except grpc.RpcError as error:
-        self._response_event_queue.put(error)
+        logging.exception('Error calling remote executor: %s', error)
 
     response_thread = threading.Thread(target=response_thread_fn)
     response_thread.daemon = True

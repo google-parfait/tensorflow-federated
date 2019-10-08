@@ -47,6 +47,7 @@ message ExecuteRequest {
     CreateSelectionRequest create_selection = 4;
     ComputeRequest compute = 5;
   }
+  int32 sequence_number = 6;
 }
 
 message ExecuteResponse {
@@ -57,6 +58,7 @@ message ExecuteResponse {
     CreateSelectionResponse create_selection = 4;
     ComputeResponse compute = 5;
   }
+  int32 sequence_number = 6;
 }
 
 message CreateValueRequest {
