@@ -1194,8 +1194,9 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
       is_all_named = all([name is not None for name, _ in field_types])
       if is_all_named:
         if py_typecheck.is_named_tuple(elements):
-          values = [(name, _to_representative_value(field_type, e))
-                    for (name, field_type), e in zip(field_types, elements)]
+          values = collections.OrderedDict(
+              (name, _to_representative_value(field_type, e))
+              for (name, field_type), e in zip(field_types, elements))
           return type(elements)(**values)
         else:
           values = [(name, _to_representative_value(field_type, elements[name]))
