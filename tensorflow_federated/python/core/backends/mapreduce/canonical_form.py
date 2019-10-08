@@ -415,3 +415,25 @@ class CanonicalForm(object):
   @property
   def update(self):
     return self._update
+
+  def summary(self, print_fn=print):
+    """Prints a string summary of the `CanonicalForm`.
+
+    Arguments:
+      print_fn: Print function to use. It will be called on each line of the
+        summary in order to capture the string summary.
+    """
+    computations = [
+        ('initialize', self.initialize),
+        ('prepare', self.prepare),
+        ('work', self.work),
+        ('zero', self.zero),
+        ('accumulate', self.accumulate),
+        ('merge', self.merge),
+        ('report', self.report),
+        ('update', self.initialize),
+    ]
+    for name, comp in computations:
+      # Add sufficient padding to align first column; len('initialize') == 10
+      print_fn('{:<10}: {}'.format(
+          name, comp.type_signature.compact_representation()))

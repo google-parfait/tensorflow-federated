@@ -10,6 +10,7 @@
 <meta itemprop="property" content="work"/>
 <meta itemprop="property" content="zero"/>
 <meta itemprop="property" content="__init__"/>
+<meta itemprop="property" content="summary"/>
 </div>
 
 # tff.backends.mapreduce.CanonicalForm
@@ -320,3 +321,21 @@ decorator/wrapper.
 <h3 id="work"><code>work</code></h3>
 
 <h3 id="zero"><code>zero</code></h3>
+
+## Methods
+
+<h3 id="summary"><code>summary</code></h3>
+
+<a target="_blank" href="http://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/core/backends/mapreduce/canonical_form.py">View
+source</a>
+
+```python
+summary(print_fn=print)
+```
+
+Prints a string summary of the `CanonicalForm`.
+
+#### Arguments:
+
+*   <b>`print_fn`</b>: Print function to use. It will be called on each line of
+    the summary in order to capture the string summary.

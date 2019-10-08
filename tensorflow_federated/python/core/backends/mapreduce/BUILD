@@ -22,6 +22,14 @@ py_library(
     ],
 )
 
+py_test(
+    name = "canonical_form_test",
+    srcs = ["canonical_form_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":test_utils"],
+)
+
 py_library(
     name = "canonical_form_utils",
     srcs = ["canonical_form_utils.py"],
