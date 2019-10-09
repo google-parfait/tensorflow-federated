@@ -41,6 +41,82 @@ def wrap_aggregate_fn(dp_aggregate_fn, sample_value):
 
 class DpUtilsTest(test.TestCase):
 
+  def test_build_dp_query_basic(self):
+    query = differential_privacy.build_dp_query(1.0, 2.0, 3.0)
+    self.assertIsInstance(query, privacy.GaussianAverageQuery)
+
+    self.assertEqual(query._numerator._l2_norm_clip, 1.0)
+    self.assertEqual(query._numerator._stddev, 2.0)
+    self.assertEqual(query._denominator, 3.0)
+
+  def test_build_dp_query_adaptive(self):
+    ccba = 0.1
+
+    query = differential_privacy.build_dp_query(
+        1.0,
+        2.0,
+        3.0,
+        adaptive_clip_learning_rate=0.05,
+        target_unclipped_quantile=0.5,
+        clipped_count_budget_allocation=ccba,
+        expected_num_clients=10)
+    self.assertIsInstance(query, privacy.QuantileAdaptiveClipAverageQuery)
+
+    self.assertEqual(query._numerator._initial_l2_norm_clip, 1.0)
+
+    expected_sum_query_noise_multiplier = 2.0 * (1.0 - ccba)**(-0.5)
+    self.assertAlmostEqual(query._numerator._noise_multiplier,
+                           expected_sum_query_noise_multiplier)
+    self.assertEqual(query._numerator._target_unclipped_quantile, 0.5)
+    self.assertEqual(query._numerator._learning_rate, 0.05)
+    self.assertEqual(
+        query._numerator._clipped_fraction_query._numerator._l2_norm_clip, 0.5)
+    expected_clipped_count_stddev = 0.5 * 2.0 * ccba**(-0.5)
+    self.assertAlmostEqual(
+        query._numerator._clipped_fraction_query._numerator._stddev,
+        expected_clipped_count_stddev)
+    self.assertEqual(query._numerator._clipped_fraction_query._denominator, 10)
+    self.assertEqual(query._denominator, 3.0)
+
+  def test_build_dp_query_per_vector(self):
+
+    class MockTensor():
+
+      def __init__(self, shape):
+        self.shape = shape
+
+    mock_shape = collections.namedtuple('MockShape', ['dims'])
+    mock_dim = collections.namedtuple('MockDim', ['value'])
+    mock_model = collections.namedtuple('MockModel', ['weights'])
+    mock_weights = collections.namedtuple('MockWeights', ['trainable'])
+
+    def make_mock_tensor(*dims):
+      return MockTensor(mock_shape([mock_dim(dim) for dim in dims]))
+
+    vectors = collections.OrderedDict([('a', make_mock_tensor(2)),
+                                       ('b', make_mock_tensor(2, 3)),
+                                       ('c', make_mock_tensor(1, 3, 4))])
+    model = mock_model(mock_weights(vectors))
+
+    query = differential_privacy.build_dp_query(
+        1.0, 2.0, 3.0, use_per_vector=True, model=model)
+
+    self.assertIsInstance(query, privacy.NestedQuery)
+
+    def check(subquery):
+      self.assertIsInstance(subquery, privacy.GaussianAverageQuery)
+      self.assertEqual(subquery._denominator, 3.0)
+
+    tf.nest.map_structure(check, query._queries)
+
+    noise_multipliers = tf.nest.flatten(
+        tf.nest.map_structure(
+            lambda query: query._numerator._stddev / query._numerator.
+            _l2_norm_clip, query._queries))
+
+    effective_noise_multiplier = sum([x**-2.0 for x in noise_multipliers])**-0.5
+    self.assertAlmostEqual(effective_noise_multiplier, 2.0)
+
   def test_dp_sum(self):
     query = privacy.GaussianSumQuery(4.0, 0.0)
 

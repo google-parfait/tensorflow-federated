@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.utils.computation_utils import StatefulAgg
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_federated.python.core.utils.computation_utils import update_state
 from tensorflow_federated.python.core.utils.differential_privacy import build_dp_aggregate
+from tensorflow_federated.python.core.utils.differential_privacy import build_dp_query
 from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_broadcast
 from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_mean
 from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_sum
@@ -45,6 +46,7 @@ _allowed_symbols = [
     "IterativeProcess",
     "assign",
     "build_dp_aggregate",
+    "build_dp_query",
     "build_encoded_broadcast",
     "build_encoded_mean",
     "build_encoded_sum",

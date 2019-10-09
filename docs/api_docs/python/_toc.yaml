@@ -295,6 +295,8 @@ toc:
     path: /federated/api_docs/python/tff/utils/assign
   - title: build_dp_aggregate
     path: /federated/api_docs/python/tff/utils/build_dp_aggregate
+  - title: build_dp_query
+    path: /federated/api_docs/python/tff/utils/build_dp_query
   - title: build_encoded_broadcast
     path: /federated/api_docs/python/tff/utils/build_encoded_broadcast
   - title: build_encoded_mean

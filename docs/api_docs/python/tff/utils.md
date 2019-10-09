@@ -39,6 +39,9 @@ from `source`.
 [`build_dp_aggregate(...)`](../tff/utils/build_dp_aggregate.md): Builds a
 stateful aggregator for tensorflow_privacy DPQueries.
 
+[`build_dp_query(...)`](../tff/utils/build_dp_query.md): Makes a `DPQuery` to
+estimate vector averages with differential privacy.
+
 [`build_encoded_broadcast(...)`](../tff/utils/build_encoded_broadcast.md):
 Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
 

@@ -18,12 +18,120 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
+import numbers
+
+import numpy as np
+import tensorflow as tf
+import privacy
+
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core import framework as tff_framework
 from tensorflow_federated.python.core.utils import computation_utils
 
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
 # in this library.
+
+
+def build_dp_query(clip,
+                   noise_multiplier,
+                   expected_total_weight,
+                   adaptive_clip_learning_rate=0,
+                   target_unclipped_quantile=None,
+                   clipped_count_budget_allocation=None,
+                   expected_num_clients=None,
+                   use_per_vector=False,
+                   model=None):
+  """Makes a `DPQuery` to estimate vector averages with differential privacy.
+
+  Supports many of the types of query available in tensorflow_privacy, including
+  nested ("per-vector") queries as described in
+  https://arxiv.org/pdf/1812.06210.pdf, and quantile-based adaptive clipping as
+  described in https://arxiv.org/abs/1905.03871.
+
+  Args:
+    clip: The query's L2 norm bound.
+    noise_multiplier: The ratio of the (effective) noise stddev to the clip.
+    expected_total_weight: The expected total weight of all clients, used as the
+      denominator for the average computation.
+    adaptive_clip_learning_rate: Learning rate for quantile-based adaptive
+      clipping. If 0, fixed clipping is used. If per-vector clipping is enabled,
+      the learning rate of each vector is proportional to that vector's initial
+      clip, such that the sum of all per-vector learning rates equals this.
+    target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
+    clipped_count_budget_allocation: The fraction of privacy budget to use for
+      estimating clipped counts.
+    expected_num_clients: The expected number of clients for estimating clipped
+      fractions.
+    use_per_vector: If True, clip each weight tensor independently. Otherwise,
+      global clipping is used. The clipping norm for each vector (or the initial
+      clipping norm, in the case of adaptive clipping) is proportional to the
+      sqrt of the vector dimensionality while the total bound still equals
+      `clip`.
+    model: A `tff.learning.Model` to determine the structure of model weights.
+      Required only if use_per_vector is True.
+
+  Returns:
+    A `DPQuery` suitable for use in a call to `build_dp_aggregate` to perform
+      Federated Averaging with differential privacy.
+  """
+  py_typecheck.check_type(clip, numbers.Number, 'clip')
+  py_typecheck.check_type(noise_multiplier, numbers.Number, 'noise_multiplier')
+  py_typecheck.check_type(expected_total_weight, numbers.Number,
+                          'expected_total_weight')
+
+  if use_per_vector:
+    # Note we need to keep the structure of vectors (not just the num_vectors)
+    # to create the subqueries below, when use_per_vector is True.
+    vectors = model.weights.trainable
+    num_vectors = len(tf.nest.flatten(vectors))
+  else:
+    num_vectors = 1
+
+  if adaptive_clip_learning_rate:
+    py_typecheck.check_type(adaptive_clip_learning_rate, numbers.Number,
+                            'adaptive_clip_learning_rate')
+    py_typecheck.check_type(target_unclipped_quantile, numbers.Number,
+                            'target_unclipped_quantile')
+    py_typecheck.check_type(clipped_count_budget_allocation, numbers.Number,
+                            'clipped_count_budget_allocation')
+    py_typecheck.check_type(expected_num_clients, numbers.Number,
+                            'expected_num_clients')
+    p = clipped_count_budget_allocation
+    clipped_count_stddev = 0.5 * noise_multiplier * (p / num_vectors)**(-0.5)
+    noise_multiplier = noise_multiplier * ((1 - p) / num_vectors)**(-0.5)
+
+  def make_single_vector_query(vector_clip):
+    """Makes a `DPQuery` for a single vector."""
+    if not adaptive_clip_learning_rate:
+      return privacy.GaussianAverageQuery(
+          l2_norm_clip=vector_clip,
+          sum_stddev=vector_clip * noise_multiplier * num_vectors**0.5,
+          denominator=expected_total_weight)
+    else:
+      return privacy.QuantileAdaptiveClipAverageQuery(
+          initial_l2_norm_clip=vector_clip,
+          noise_multiplier=noise_multiplier,
+          target_unclipped_quantile=target_unclipped_quantile,
+          learning_rate=adaptive_clip_learning_rate * vector_clip / clip,
+          clipped_count_stddev=clipped_count_stddev,
+          expected_num_records=expected_num_clients,
+          denominator=expected_total_weight)
+
+  if use_per_vector:
+
+    def dim(v):
+      return math.exp(sum([math.log(d.value) for d in v.shape.dims]))
+
+    dims = tf.nest.map_structure(dim, vectors)
+    total_dim = sum(tf.nest.flatten(dims))
+    clips = tf.nest.map_structure(lambda dim: clip * np.sqrt(dim / total_dim),
+                                  dims)
+    subqueries = tf.nest.map_structure(make_single_vector_query, clips)
+    return privacy.NestedQuery(subqueries)
+  else:
+    return make_single_vector_query(clip)
 
 
 # TODO(b/123092620): When fixed, should no longer need this method.

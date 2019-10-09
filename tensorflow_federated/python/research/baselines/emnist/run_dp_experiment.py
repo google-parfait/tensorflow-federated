@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Trains and evaluates EMNIST classification model using TFF."""
+"""Trains InfEMNIST model with TFF using differential privacy."""
 
 import collections
 
@@ -27,7 +27,6 @@ from tensorflow_federated.python.research.baselines.emnist import metrics_hook
 from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.utils import training_loops
 from tensorflow_federated.python.research.utils import utils_impl
-
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Metadata
@@ -44,10 +43,24 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('client_epochs_per_round', 1,
                        'Number of epochs in the client to take per round.')
   flags.DEFINE_integer('batch_size', 20, 'Batch size used on the client.')
+  flags.DEFINE_integer('num_pseudo_clients', 1, 'Number of pseudo-clients.')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
   utils_impl.define_optimizer_flags('server', defaults=dict(learning_rate=1.0))
   utils_impl.define_optimizer_flags('client', defaults=dict(learning_rate=0.2))
+
+  # Differential privacy hyperparameters
+  flags.DEFINE_float('clip', 0.05, 'Initial clip.')
+  flags.DEFINE_float('noise_multiplier', 1.0, 'Noise multiplier.')
+  flags.DEFINE_float('adaptive_clip_learning_rate', 0,
+                     'Adaptive clip learning rate.')
+  flags.DEFINE_float('target_unclipped_quantile', 0.5,
+                     'Target unclipped quantile.')
+  flags.DEFINE_float(
+      'clipped_count_budget_allocation', 0.1,
+      'Fraction of privacy budget to allocate for clipped counts.')
+  flags.DEFINE_boolean('use_per_vector', False, 'Use per-vector clipping.')
+
 
 # End of hyperparameter flags.
 
@@ -76,6 +89,11 @@ def run_experiment():
   tf.random.set_random_seed(FLAGS.random_seed)
 
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
+  if FLAGS.num_pseudo_clients > 1:
+    emnist_train = tff.simulation.datasets.emnist.get_infinite(
+        emnist_train, FLAGS.num_pseudo_clients)
+    emnist_test = tff.simulation.datasets.emnist.get_infinite(
+        emnist_test, FLAGS.num_pseudo_clients)
 
   example_tuple = collections.namedtuple('Example', ['x', 'y'])
 
@@ -104,10 +122,6 @@ def run_experiment():
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
                                        next(iter(example_dataset)))
 
-  def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
-
   def client_datasets_fn(round_num):
     """Returns a list of client datasets."""
     del round_num  # Unused.
@@ -125,11 +139,30 @@ def run_experiment():
       (name, FLAGS[name].value) for name in hparam_flags
   ])
 
+  keras_model = create_compiled_keras_model()
   the_metrics_hook = metrics_hook.MetricsHook.build(
       FLAGS.exp_name, FLAGS.root_output_dir, emnist_test, hparam_dict,
-      create_compiled_keras_model())
+      keras_model)
 
   optimizer_fn = lambda: utils_impl.get_optimizer_from_flags('server')
+
+  model = tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+  dp_query = tff.utils.build_dp_query(
+      FLAGS.clip, FLAGS.noise_multiplier, FLAGS.train_clients_per_round,
+      FLAGS.adaptive_clip_learning_rate, FLAGS.target_unclipped_quantile,
+      FLAGS.clipped_count_budget_allocation, FLAGS.train_clients_per_round,
+      FLAGS.use_per_vector, model)
+
+  # Uniform weighting.
+  def client_weight_fn(outputs):
+    del outputs  # unused.
+    return 1.0
+
+  dp_aggregate_fn, _ = tff.utils.build_dp_aggregate(dp_query)
+
+  def model_fn():
+    keras_model = create_compiled_keras_model()
+    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
 
   training_loops.federated_averaging_training_loop(
       model_fn,
@@ -137,7 +170,9 @@ def run_experiment():
       client_datasets_fn,
       total_rounds=FLAGS.total_rounds,
       rounds_per_eval=FLAGS.rounds_per_eval,
-      metrics_hook=the_metrics_hook)
+      metrics_hook=the_metrics_hook,
+      client_weight_fn=client_weight_fn,
+      stateful_delta_aggregate_fn=dp_aggregate_fn)
 
 
 def main(argv):

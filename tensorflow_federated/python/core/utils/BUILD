@@ -43,6 +43,7 @@ py_library(
     srcs = ["differential_privacy.py"],
     deps = [
         ":computation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api",
         "//tensorflow_federated/python/core/framework",
     ],
