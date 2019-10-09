@@ -494,11 +494,42 @@ class GraphUtilsTest(test.TestCase):
         str(tf.compat.v1.data.get_output_shapes(result)),
         'TestNamedTuple(X=TensorShape([]), Y=TensorShape([]))')
 
+  def test_make_dummy_element_for_type_spec_raises_SequenceType(self):
+    type_spec = computation_types.SequenceType(tf.float32)
+    with self.assertRaisesRegexp(ValueError,
+                                 'Cannot construct array for TFF type'):
+      tensorflow_utils.make_dummy_element_for_type_spec(type_spec)
+
+  def test_make_dummy_element_for_type_spec_raises_negative_none_dim_replacement(
+      self):
+    with self.assertRaisesRegexp(ValueError, 'nonnegative'):
+      tensorflow_utils.make_dummy_element_for_type_spec(tf.float32, -1)
+
   def test_make_dummy_element_TensorType(self):
     type_spec = computation_types.TensorType(tf.float32,
                                              [None, 10, None, 10, 10])
-    elem = tensorflow_utils._make_dummy_element_for_type_spec(type_spec)
+    elem = tensorflow_utils.make_dummy_element_for_type_spec(type_spec)
     correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
+    self.assertAllClose(elem, correct_elem)
+
+  def test_make_dummy_element_tensor_type_backed_by_tf_dimension(self):
+    type_spec = computation_types.TensorType(tf.float32, [
+        tf.compat.v1.Dimension(None),
+        tf.compat.v1.Dimension(10),
+        tf.compat.v1.Dimension(None),
+        tf.compat.v1.Dimension(10),
+        tf.compat.v1.Dimension(10)
+    ])
+    elem = tensorflow_utils.make_dummy_element_for_type_spec(type_spec)
+    correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
+    self.assertAllClose(elem, correct_elem)
+
+  def test_make_dummy_element_tensor_type_none_replaced_by_1(self):
+    type_spec = computation_types.TensorType(tf.float32,
+                                             [None, 10, None, 10, 10])
+    elem = tensorflow_utils.make_dummy_element_for_type_spec(
+        type_spec, none_dim_replacement=1)
+    correct_elem = np.zeros([1, 10, 1, 10, 10], np.float32)
     self.assertAllClose(elem, correct_elem)
 
   def test_make_dummy_element_NamedTupleType(self):
@@ -508,7 +539,7 @@ class GraphUtilsTest(test.TestCase):
                                                    ('y', tensor2)])
     unnamedtuple = computation_types.NamedTupleType([('x', tensor1),
                                                      ('y', tensor2)])
-    elem = tensorflow_utils._make_dummy_element_for_type_spec(namedtuple)
+    elem = tensorflow_utils.make_dummy_element_for_type_spec(namedtuple)
     correct_list = [
         np.zeros([0, 10, 0, 10, 10], np.float32),
         np.zeros([10, 0, 10], np.int32)
@@ -516,7 +547,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(len(elem), len(correct_list))
     for k in range(len(elem)):
       self.assertAllClose(elem[k], correct_list[k])
-    unnamed_elem = tensorflow_utils._make_dummy_element_for_type_spec(
+    unnamed_elem = tensorflow_utils.make_dummy_element_for_type_spec(
         unnamedtuple)
     self.assertEqual(len(unnamed_elem), len(correct_list))
     for k in range(len(unnamed_elem)):
