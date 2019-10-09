@@ -181,9 +181,13 @@ def create_tensorflow_constant(type_spec, scalar_value):
   def _create_result_tensor(type_spec, scalar_value):
     """Packs `scalar_value` into `type_spec` recursively."""
     if isinstance(type_spec, computation_types.TensorType):
-      type_spec.shape.assert_is_fully_defined()
-      result = tf.constant(
-          scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
+      scalar = tf.constant(scalar_value, dtype=type_spec.dtype)
+      placeholder_variable = tf.Variable(
+          initial_value=tensorflow_utils.make_dummy_element_for_type_spec(
+              type_spec),
+          shape=type_spec.shape,
+          validate_shape=False)
+      result = tf.fill(dims=tf.shape(placeholder_variable), value=scalar)
     else:
       elements = []
       for _, type_element in anonymous_tuple.iter_elements(type_spec):
