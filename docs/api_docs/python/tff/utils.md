@@ -60,6 +60,9 @@ maximum value from the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 [`federated_min(...)`](../tff/utils/federated_min.md): Aggregation to find the
 minimum value from the <a href="../tff.md#CLIENTS"><code>tff.CLIENTS</code></a>.
 
+[`federated_sample(...)`](../tff/utils/federated_sample.md): Aggregation to
+produce uniform sample of at most `max_num_samples` values.
+
 [`identity(...)`](../tff/utils/identity.md): Applies `tf.identity` pointwise to
 `source`.
 

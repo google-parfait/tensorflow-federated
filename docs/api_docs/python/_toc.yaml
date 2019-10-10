@@ -309,6 +309,8 @@ toc:
     path: /federated/api_docs/python/tff/utils/federated_max
   - title: federated_min
     path: /federated/api_docs/python/tff/utils/federated_min
+  - title: federated_sample
+    path: /federated/api_docs/python/tff/utils/federated_sample
   - title: identity
     path: /federated/api_docs/python/tff/utils/identity
   - title: IterativeProcess

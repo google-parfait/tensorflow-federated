@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -135,3 +137,153 @@ def federated_max(value):
   member_type = value.type_signature.member
   zeros = _initial_values(lambda v: v.dtype.min, member_type)
   return _federated_reduce_with_func(value, tf.maximum, zeros)
+
+
+@attr.s
+class _Samples(object):
+  """Class representing internal sample data structure.
+
+  The class contains two parts, `accumulators` and `rands`, that are parallel
+  lists (e.g. the i-th index in one corresponds to the i-th index in the other).
+  These two lists are used to sample from the accumulators with equal
+  probability.
+  """
+  accumulators = attr.ib()
+  rands = attr.ib()
+
+
+def _zeros_for_sample(member_type):
+  """Create an empty nested structure for the sample aggregation.
+
+  Args:
+    member_type: A `tff.Type` representing the member components of the
+      federated type.
+
+  Returns:
+    A function of the result of zeros to first concatenate.
+  """
+
+  @tff.tf_computation
+  def accumlator_type_fn():
+    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
+    if isinstance(member_type, tff.NamedTupleType):
+      a = anonymous_tuple.map_structure(
+          lambda v: tf.zeros([0] + v.shape.dims, v.dtype), member_type)
+      return _Samples(anonymous_tuple.to_odict(a), tf.zeros([0], tf.float32))
+    if member_type.shape:
+      s = [0] + member_type.shape.dims
+    return _Samples(tf.zeros(s, member_type.dtype), tf.zeros([0], tf.float32))
+
+  return accumlator_type_fn()
+
+
+def _get_accumulator_type(member_type):
+  """Constructs a `tff.Type` for the accumulator in sample aggregation.
+
+  Args:
+    member_type: A `tff.Type` representing the member components of the
+      federated type.
+
+  Returns:
+    The `tff.NamedTupleType` associated with the accumulator. The tuple contains
+    two parts, `accumulators` and `rands`, that are parallel lists (e.g. the
+    i-th index in one corresponds to the i-th index in the other). These two
+    lists are used to sample from the accumulators with equal probability.
+  """
+  # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
+  if isinstance(member_type, tff.NamedTupleType):
+    a = anonymous_tuple.map_structure(
+        lambda v: tff.TensorType(v.dtype, [None] + v.shape.dims), member_type)
+    return tff.NamedTupleType(
+        collections.OrderedDict({
+            'accumulators': tff.NamedTupleType(anonymous_tuple.to_odict(a)),
+            'rands': tff.TensorType(tf.float32, shape=[None])
+        }))
+  return tff.NamedTupleType(
+      collections.OrderedDict({
+          'accumulators':
+              tff.TensorType(
+                  member_type.dtype, shape=[None] + member_type.shape.dims),
+          'rands':
+              tff.TensorType(tf.float32, shape=[None])
+      }))
+
+
+def federated_sample(value, max_num_samples=100):
+  """Aggregation to produce uniform sample of at most `max_num_samples` values.
+
+  Each client value is assigned a random number when it is examined during each
+  accumulation. Each accumulate and merge only keeps the top N values based
+  on the random number. Report drops the random numbers and only returns the
+  at most N values sampled from the accumulated client values using standard
+  reservoir sampling (https://en.wikipedia.org/wiki/Reservoir_sampling), where
+  N is user provided `max_num_samples`.
+
+  Args:
+    value: A `tff.Value` placed on the `tff.CLIENTS`.
+    max_num_samples: The maximum number of samples to collect from client
+      values. If fewer clients than the defined max sample size participated in
+      the round of computation, the actual number of samples will equal the
+      number of clients in the round.
+
+  Returns:
+    At most `max_num_samples` samples of the value from the `tff.CLIENTS`.
+  """
+  _validate_value_on_clients(value)
+  member_type = value.type_signature.member
+  accumulator_type = _get_accumulator_type(member_type)
+  zeros = _zeros_for_sample(member_type)
+
+  @tf.function
+  def fed_concat_expand_dims(a, b):
+    b = tf.expand_dims(b, axis=0)
+    return tf.concat([a, b], axis=0)
+
+  @tf.function
+  def fed_concat(a, b):
+    return tf.concat([a, b], axis=0)
+
+  @tf.function
+  def fed_gather(value, indices):
+    return tf.gather(value, indices)
+
+  def apply_sampling(accumulators, rands):
+    size = tf.shape(rands)[0]
+    k = tf.minimum(size, max_num_samples)
+    indices = tf.math.top_k(rands, k=k).indices
+    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
+    if isinstance(member_type, tff.NamedTupleType):
+      return anonymous_tuple.map_structure(lambda v: fed_gather(v, indices),
+                                           accumulators), fed_gather(
+                                               rands, indices)
+    return fed_gather(accumulators, indices), fed_gather(rands, indices)
+
+  @tff.tf_computation(accumulator_type, value.type_signature.member)
+  def accumulate(current, value):
+    """Accumulates samples through concatenation."""
+    rands = fed_concat_expand_dims(current.rands, tf.random.uniform(shape=()))
+    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
+    if isinstance(member_type, tff.NamedTupleType):
+      accumulators = anonymous_tuple.map_structure(fed_concat_expand_dims,
+                                                   current.accumulators, value)
+    else:
+      accumulators = fed_concat_expand_dims(current.accumulators, value)
+
+    accumulators, rands = apply_sampling(accumulators, rands)
+    return _Samples(accumulators, rands)
+
+  @tff.tf_computation(accumulator_type, accumulator_type)
+  def merge(a, b):
+    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
+    if isinstance(accumulator_type, tff.NamedTupleType):
+      samples = anonymous_tuple.map_structure(fed_concat, a, b)
+    else:
+      samples = fed_concat(a, b)
+    accumulators, rands = apply_sampling(samples.accumulators, samples.rands)
+    return _Samples(accumulators, rands)
+
+  @tff.tf_computation(accumulator_type)
+  def report(value):
+    return value.accumulators
+
+  return tff.federated_aggregate(value, zeros, accumulate, merge, report)

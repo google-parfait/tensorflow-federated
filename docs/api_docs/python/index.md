@@ -146,5 +146,6 @@
 *   <a href="./tff/utils/create_variables.md"><code>tff.utils.create_variables</code></a>
 *   <a href="./tff/utils/federated_max.md"><code>tff.utils.federated_max</code></a>
 *   <a href="./tff/utils/federated_min.md"><code>tff.utils.federated_min</code></a>
+*   <a href="./tff/utils/federated_sample.md"><code>tff.utils.federated_sample</code></a>
 *   <a href="./tff/utils/identity.md"><code>tff.utils.identity</code></a>
 *   <a href="./tff/utils/update_state.md"><code>tff.utils.update_state</code></a>
