@@ -55,7 +55,7 @@ class LinearRegression(model.Model):
     self._c = tf.Variable(0.0, name='c', trainable=False)
     self._input_spec = LinearRegression.make_batch(
         x=tf.TensorSpec([None, self._feature_dim], tf.float32),
-        y=tf.TensorSpec([None, 1.0], tf.float32))
+        y=tf.TensorSpec([None, 1], tf.float32))
 
   @property
   def trainable_variables(self):
