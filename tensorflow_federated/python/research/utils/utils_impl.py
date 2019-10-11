@@ -24,13 +24,16 @@ import shutil
 import subprocess
 import tempfile
 
-from typing import Any, Mapping, Text
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Union
 from absl import flags
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 
-def iter_grid(grid_dict):
+def iter_grid(
+    grid_dict: Mapping[Text, Sequence[Union[int, float, Text]]]
+) -> Iterator[Dict[Text, Union[int, float, Text]]]:
   """Iterates over all combinations of values in the provied dict-of-lists.
 
   >>> list(iter_grid({'a': [1, 2], 'b': [4.0, 5.0, 6.0]))
@@ -54,11 +57,13 @@ def iter_grid(grid_dict):
     yield collections.OrderedDict(zip(names, values))
 
 
-def atomic_write_to_csv(dataframe, output_file, overwrite=True):
+def atomic_write_to_csv(dataframe: pd.DataFrame,
+                        output_file: Text,
+                        overwrite: bool = True) -> None:
   """Writes `source` to `output_file` as a (possibly zipped) CSV file.
 
   Args:
-    dataframe: A `pandas.Dataframe` or other object with a `to_csv()` method.
+    dataframe: A `pandas.Dataframe`.
     output_file: The final output file to write. The output will be compressed
       depending on the filename, see documentation for
       pandas.DateFrame.to_csv(compression='infer').
@@ -95,7 +100,9 @@ def atomic_write_to_csv(dataframe, output_file, overwrite=True):
   shutil.rmtree(tmp_dir)
 
 
-def define_optimizer_flags(prefix: str, defaults: Mapping[Text, Any] = None):
+def define_optimizer_flags(
+    prefix: Text,
+    defaults: Optional[Dict[Text, Union[int, float, Text]]] = None) -> None:
   """Defines flags with `prefix` to configure an optimizer.
 
   For flags to be correctly parsed, this should be called next to other
@@ -146,7 +153,7 @@ def define_optimizer_flags(prefix: str, defaults: Mapping[Text, Any] = None):
         'The following defaults were not consumed:\n{}'.format(defaults))
 
 
-def get_optimizer_from_flags(prefix: str) -> tf.keras.optimizers.Optimizer:
+def get_optimizer_from_flags(prefix: Text) -> tf.keras.optimizers.Optimizer:
   """Returns an optimizer based on flags defined by `define_optimzier_flags`.
 
   Args:
@@ -164,7 +171,7 @@ def get_optimizer_from_flags(prefix: str) -> tf.keras.optimizers.Optimizer:
 
 
 @contextlib.contextmanager
-def record_new_flags():
+def record_new_flags() -> Iterator[List[Text]]:
   """A context manager that returns all flags created in it's scope.
 
   This is useful to define all of the flags which should be considered
@@ -188,7 +195,9 @@ def record_new_flags():
   new_flags.extend([f for f in flags.FLAGS if f not in old_flags])
 
 
-def hparams_to_str(wid, param_dict, short_names=None):
+def hparams_to_str(wid: int,
+                   param_dict: Mapping[Text, Text],
+                   short_names: Optional[Mapping[Text, Text]] = None) -> Text:
   """Convenience method which flattens the hparams to a string.
 
   Used as mapping function for the WorkUnitCustomiser.
@@ -234,11 +243,12 @@ def hparams_to_str(wid, param_dict, short_names=None):
   return hparams_str
 
 
-def launch_experiment(executable,
-                      grid_iter,
-                      root_output_dir='/tmp/exp',
-                      short_names=None,
-                      max_workers=1):
+def launch_experiment(executable: Text,
+                      grid_iter: Iterable[Mapping[Text, Union[int, float,
+                                                              Text]]],
+                      root_output_dir: Text = '/tmp/exp',
+                      short_names: Optional[Mapping[Text, Text]] = None,
+                      max_workers: int = 1):
   """Launch experiments of grid search in parallel or sequentially.
 
   Example usage:
