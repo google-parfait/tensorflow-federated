@@ -45,7 +45,7 @@ class GraphUtilsTest(test.TestCase):
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
       self.assertEqual(repr(type_spec.shape), repr(val.shape))
     elif binding_oneof == 'sequence':
-      self.assertIsInstance(val, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+      self.assertIsInstance(val, type_utils.TF_DATASET_REPRESENTATION_TYPES)
       sequence_oneof = binding.sequence.WhichOneof('binding')
       self.assertEqual(sequence_oneof, 'variant_tensor_name')
       variant_tensor = graph.get_tensor_by_name(
@@ -148,7 +148,7 @@ class GraphUtilsTest(test.TestCase):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter('foo',
                                         computation_types.SequenceType(tf.bool))
-      self.assertIsInstance(x, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+      self.assertIsInstance(x, type_utils.TF_DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(
           tf.compat.v1.data.get_output_types(x), tf.bool)
       test.assert_nested_struct_eq(
@@ -158,7 +158,7 @@ class GraphUtilsTest(test.TestCase):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
           'foo', computation_types.SequenceType((tf.int32, [50])))
-      self.assertIsInstance(x, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+      self.assertIsInstance(x, type_utils.TF_DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(
           tf.compat.v1.data.get_output_types(x), tf.int32)
       test.assert_nested_struct_eq(
@@ -171,7 +171,7 @@ class GraphUtilsTest(test.TestCase):
           computation_types.SequenceType(
               collections.OrderedDict([('A', (tf.float32, [3, 4, 5])),
                                        ('B', (tf.int32, [1]))])))
-      self.assertIsInstance(x, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+      self.assertIsInstance(x, type_utils.TF_DATASET_REPRESENTATION_TYPES)
       test.assert_nested_struct_eq(
           tf.compat.v1.data.get_output_types(x), {
               'A': tf.float32,
@@ -464,7 +464,7 @@ class GraphUtilsTest(test.TestCase):
     output_map = {'foo': tf.data.experimental.to_variant(data_set)}
     result = tensorflow_utils.assemble_result_from_graph(
         type_spec, binding, output_map)
-    self.assertIsInstance(result, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(result, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         str(tf.compat.v1.data.get_output_types(result)),
         'OrderedDict([(\'X\', tf.int32), (\'Y\', tf.int32)])')
@@ -486,7 +486,7 @@ class GraphUtilsTest(test.TestCase):
     output_map = {'foo': tf.data.experimental.to_variant(data_set)}
     result = tensorflow_utils.assemble_result_from_graph(
         type_spec, binding, output_map)
-    self.assertIsInstance(result, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(result, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         str(tf.compat.v1.data.get_output_types(result)),
         'TestNamedTuple(X=tf.int32, Y=tf.int32)')
@@ -566,7 +566,7 @@ class GraphUtilsTest(test.TestCase):
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(), [], tf.float32)
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(ds.reduce(1.0, lambda x, y: x + y)), 1.0)
 
@@ -575,7 +575,7 @@ class GraphUtilsTest(test.TestCase):
     ds = tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(), [],
         computation_types.TensorType(tf.float32, [None, 10]))
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.data.get_output_shapes(ds).as_list(),
         tf.TensorShape([0, 10]).as_list())
@@ -589,14 +589,14 @@ class GraphUtilsTest(test.TestCase):
             computation_types.TensorType(tf.float32, [None, 10]),
             computation_types.TensorType(tf.float32, [None, 5])
         ])
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(tf.compat.v1.data.get_output_shapes(ds), ([0, 10], [0, 5]))
 
   @test.graph_mode_test
   def test_make_data_set_from_elements_with_list_of_ints(self):
     ds = tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(), [1, 2, 3, 4], tf.int32)
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(ds.reduce(0, lambda x, y: x + y)), 10)
 
@@ -610,7 +610,7 @@ class GraphUtilsTest(test.TestCase):
             'a': 3,
             'b': 4,
         }], [('a', tf.int32), ('b', tf.int32)])
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
             ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
@@ -628,7 +628,7 @@ class GraphUtilsTest(test.TestCase):
                 ('b', 4),
             ]),
         ], [('a', tf.int32), ('b', tf.int32)])
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
             ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
@@ -640,7 +640,7 @@ class GraphUtilsTest(test.TestCase):
             [[1], [2]],
             [[3], [4]],
         ], [[tf.int32], [tf.int32]])
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
             ds.reduce(0, lambda x, y: x + tf.reduce_sum(y))), 10)
@@ -658,7 +658,7 @@ class GraphUtilsTest(test.TestCase):
                 ('b', 4),
             ]),
         ], [('a', tf.int32), ('b', tf.int32)])
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     self.assertEqual(
         tf.compat.v1.Session().run(
             ds.reduce(0, lambda x, y: x + y['a'] + y['b'])), 10)
@@ -674,7 +674,7 @@ class GraphUtilsTest(test.TestCase):
             'b': [4],
         }], [('a', [tf.int32]), ('b', [tf.int32])])
 
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
 
     def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
@@ -692,7 +692,7 @@ class GraphUtilsTest(test.TestCase):
             'b': 4,
         }], [('a', tf.int32), ('b', tf.int32)])
 
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
 
     def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])
@@ -709,7 +709,7 @@ class GraphUtilsTest(test.TestCase):
             'a': np.array([3], dtype=np.int32),
             'b': np.array([4], dtype=np.int32),
         }], [('a', (tf.int32, [1])), ('b', (tf.int32, [1]))])
-    self.assertIsInstance(ds, tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+    self.assertIsInstance(ds, type_utils.TF_DATASET_REPRESENTATION_TYPES)
 
     def reduce_fn(x, y):
       return x + tf.reduce_sum(y['a']) + tf.reduce_sum(y['b'])

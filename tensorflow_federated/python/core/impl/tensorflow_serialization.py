@@ -35,6 +35,7 @@ from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import tf_computation_context
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -359,8 +360,7 @@ def serialize_dataset(
     SerializationError: if there was an error in TensorFlow during
       serialization.
   """
-  py_typecheck.check_type(dataset,
-                          tensorflow_utils.DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(dataset, type_utils.TF_DATASET_REPRESENTATION_TYPES)
   module = tf.Module()
   module.dataset = dataset
   module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())

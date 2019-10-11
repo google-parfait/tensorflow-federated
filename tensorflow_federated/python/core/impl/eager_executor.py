@@ -240,9 +240,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
     if isinstance(value, list):
       value = tensorflow_utils.make_data_set_from_elements(
           None, value, type_spec.element)
-    py_typecheck.check_type(
-        value,
-        (tf.data.Dataset, tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset))
+    py_typecheck.check_type(value, type_utils.TF_DATASET_REPRESENTATION_TYPES)
     element_type = type_utils.tf_dtypes_and_shapes_to_type(
         tf.compat.v1.data.get_output_types(value),
         tf.compat.v1.data.get_output_shapes(value))

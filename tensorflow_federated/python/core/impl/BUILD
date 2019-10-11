@@ -962,6 +962,7 @@ py_library(
     deps = [
         ":context_stack_base",
         ":tf_computation_context",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",

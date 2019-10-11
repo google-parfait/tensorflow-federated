@@ -368,10 +368,6 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
         'graph.'.format(parameter_type))
 
 
-DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, tf.compat.v1.data.Dataset,
-                                tf.compat.v2.data.Dataset)
-
-
 def make_dataset_from_variant_tensor(variant_tensor, type_spec):
   """Constructs a `tf.data.Dataset` from a variant tensor and type spec.
 
@@ -1041,7 +1037,7 @@ def fetch_value_in_session(sess, value):
   py_typecheck.check_type(sess, tf.compat.v1.Session)
   # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
   # `tf.data.Dataset`s and what the API would look like to support this.
-  if isinstance(value, DATASET_REPRESENTATION_TYPES):
+  if isinstance(value, type_utils.TF_DATASET_REPRESENTATION_TYPES):
     with sess.graph.as_default():
       iterator = tf.compat.v1.data.make_one_shot_iterator(value)
       next_element = iterator.get_next()
@@ -1057,7 +1053,7 @@ def fetch_value_in_session(sess, value):
     dataset_results = {}
     flat_tensors = []
     for idx, v in enumerate(flattened_value):
-      if isinstance(v, DATASET_REPRESENTATION_TYPES):
+      if isinstance(v, type_utils.TF_DATASET_REPRESENTATION_TYPES):
         dataset_tensors = fetch_value_in_session(sess, v)
         if not dataset_tensors:
           # An empty list has been returned; we must pack the shape information
@@ -1193,7 +1189,7 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
     ValueError: if the elements of `dataset` cannot be coerced into
       `element_type`.
   """
-  py_typecheck.check_type(dataset, DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(dataset, type_utils.TF_DATASET_REPRESENTATION_TYPES)
   py_typecheck.check_type(element_type, computation_types.Type)
 
   if isinstance(element_type, computation_types.TensorType):
