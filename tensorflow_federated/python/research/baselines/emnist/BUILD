@@ -42,8 +42,8 @@ py_binary(
 )
 
 py_binary(
-    name = "run_experiment",
-    srcs = ["run_experiment.py"],
+    name = "run_federated",
+    srcs = ["run_federated.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
@@ -52,28 +52,17 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/utils:training_loops",
         "//tensorflow_federated/python/research/utils:utils_impl",
-        "//tensorflow_federated/python/tensorflow_libs:nest",
     ],
 )
 
 py_binary(
-    name = "non_federated_emnist_10",
-    srcs = ["non_federated_emnist_10.py"],
+    name = "run_non_federated",
+    srcs = ["run_non_federated.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":models",
         "//tensorflow_federated",
-    ],
-)
-
-py_binary(
-    name = "non_federated_emnist_62",
-    srcs = ["non_federated_emnist_62.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":models",
-        "//tensorflow_federated",
+        "//tensorflow_federated/python/research/baselines/emnist:models",
+        "//tensorflow_federated/python/research/utils:utils_impl",
     ],
 )
