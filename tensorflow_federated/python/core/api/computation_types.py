@@ -424,9 +424,7 @@ def to_type(spec):
   elif isinstance(spec, collections.OrderedDict):
     return NamedTupleTypeWithPyContainerType(spec, type(spec))
   elif py_typecheck.is_attrs(spec):
-    return NamedTupleTypeWithPyContainerType(
-        attr.asdict(spec, dict_factory=collections.OrderedDict, recurse=False),
-        type(spec))
+    return _to_type_from_attrs(spec)
   elif isinstance(spec, collections.Mapping):
     # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an
     # ordering, which the original container did not have.
@@ -437,6 +435,27 @@ def to_type(spec):
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
             py_typecheck.type_string(type(spec))))
+
+
+def _to_type_from_attrs(spec):
+  """Converts an `attr.s` class or instance to a `tff.Type`."""
+  if isinstance(spec, type):
+    # attrs class type
+    elements = [(a.name, a.type) for a in attr.fields(spec)]
+    missing_types = [n for (n, t) in elements if not t]
+    if missing_types:
+      raise TypeError((
+          "Cannot infer tff.Type for attr.s class '{}' because some attributes "
+          'were missing type specifications: {}').format(
+              spec.__name__, missing_types))
+    the_type = spec
+  else:
+    # attrs class instance
+    elements = attr.asdict(
+        spec, dict_factory=collections.OrderedDict, recurse=False)
+    the_type = type(spec)
+
+  return NamedTupleTypeWithPyContainerType(elements, the_type)
 
 
 def _string_representation(type_spec, formatted):

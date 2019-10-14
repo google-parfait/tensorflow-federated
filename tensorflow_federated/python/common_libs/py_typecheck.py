@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 import inspect
 
+import attr
 import six
 from six.moves import builtins
 
@@ -180,8 +181,8 @@ def _check_is_class(cls):
 
 
 def is_attrs(value):
-  """Determines whether `value` is an instance of an attrs decorated class."""
-  return hasattr(value, '__attrs_attrs__')
+  """Determines whether `value` is an attrs decorated class or instance of."""
+  return attr.has(value)
 
 
 def is_named_tuple(value):

@@ -439,7 +439,36 @@ class ToTypeTest(absltest.TestCase):
     self.assertIsInstance(a, computation_types.TensorType)
     self.assertIsInstance(b, computation_types.TensorType)
 
-  def test_attrs_class(self):
+  def test_attrs_type(self):
+
+    @attr.s
+    class TestFoo(object):
+      A = attr.ib(type=tf.int32)
+      B = attr.ib(type=(tf.float32, [2]))
+
+    t = computation_types.to_type(TestFoo)
+    self.assertIsInstance(t,
+                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIs(
+        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            t), TestFoo)
+    self.assertEqual(str(t), '<A=int32,B=float32[2]>')
+
+  def test_attrs_class_missing_type_fails(self):
+
+    @attr.s
+    class TestFoo(object):
+      A = attr.ib(type=tf.int32)
+      B = attr.ib()  # no type parameter
+      C = attr.ib()  # no type parameter
+
+    expected_msg = (
+        "Cannot infer tff.Type for attr.s class 'TestFoo' because some "
+        "attributes were missing type specifications: ['B', 'C']")
+    with self.assertRaisesWithLiteralMatch(TypeError, expected_msg):
+      computation_types.to_type(TestFoo)
+
+  def test_attrs_instance(self):
 
     @attr.s
     class TestFoo(object):
@@ -463,10 +492,9 @@ class ToTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo2(object):
-      C = attr.ib()
+      C = attr.ib(type=(tf.float32, [2]))
 
-    t = computation_types.to_type(
-        TestFoo(A=[tf.int32, tf.bool], B=TestFoo2(C=(tf.float32, [2]))))
+    t = computation_types.to_type(TestFoo(A=[tf.int32, tf.bool], B=TestFoo2))
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
