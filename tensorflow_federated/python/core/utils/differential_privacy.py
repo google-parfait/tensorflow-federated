@@ -23,7 +23,7 @@ import numbers
 
 import numpy as np
 import tensorflow as tf
-import privacy
+import privacy as tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
@@ -105,12 +105,12 @@ def build_dp_query(clip,
   def make_single_vector_query(vector_clip):
     """Makes a `DPQuery` for a single vector."""
     if not adaptive_clip_learning_rate:
-      return privacy.GaussianAverageQuery(
+      return tensorflow_privacy.GaussianAverageQuery(
           l2_norm_clip=vector_clip,
           sum_stddev=vector_clip * noise_multiplier * num_vectors**0.5,
           denominator=expected_total_weight)
     else:
-      return privacy.QuantileAdaptiveClipAverageQuery(
+      return tensorflow_privacy.QuantileAdaptiveClipAverageQuery(
           initial_l2_norm_clip=vector_clip,
           noise_multiplier=noise_multiplier,
           target_unclipped_quantile=target_unclipped_quantile,
@@ -129,7 +129,7 @@ def build_dp_query(clip,
     clips = tf.nest.map_structure(lambda dim: clip * np.sqrt(dim / total_dim),
                                   dims)
     subqueries = tf.nest.map_structure(make_single_vector_query, clips)
-    return privacy.NestedQuery(subqueries)
+    return tensorflow_privacy.NestedQuery(subqueries)
   else:
     return make_single_vector_query(clip)
 

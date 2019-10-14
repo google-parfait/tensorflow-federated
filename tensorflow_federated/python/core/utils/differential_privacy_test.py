@@ -16,7 +16,7 @@
 import collections
 
 import tensorflow as tf
-import privacy
+import privacy as tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core import api as tff
@@ -43,7 +43,7 @@ class DpUtilsTest(test.TestCase):
 
   def test_build_dp_query_basic(self):
     query = differential_privacy.build_dp_query(1.0, 2.0, 3.0)
-    self.assertIsInstance(query, privacy.GaussianAverageQuery)
+    self.assertIsInstance(query, tensorflow_privacy.GaussianAverageQuery)
 
     self.assertEqual(query._numerator._l2_norm_clip, 1.0)
     self.assertEqual(query._numerator._stddev, 2.0)
@@ -60,7 +60,8 @@ class DpUtilsTest(test.TestCase):
         target_unclipped_quantile=0.5,
         clipped_count_budget_allocation=ccba,
         expected_num_clients=10)
-    self.assertIsInstance(query, privacy.QuantileAdaptiveClipAverageQuery)
+    self.assertIsInstance(query,
+                          tensorflow_privacy.QuantileAdaptiveClipAverageQuery)
 
     self.assertEqual(query._numerator._initial_l2_norm_clip, 1.0)
 
@@ -101,10 +102,10 @@ class DpUtilsTest(test.TestCase):
     query = differential_privacy.build_dp_query(
         1.0, 2.0, 3.0, use_per_vector=True, model=model)
 
-    self.assertIsInstance(query, privacy.NestedQuery)
+    self.assertIsInstance(query, tensorflow_privacy.NestedQuery)
 
     def check(subquery):
-      self.assertIsInstance(subquery, privacy.GaussianAverageQuery)
+      self.assertIsInstance(subquery, tensorflow_privacy.GaussianAverageQuery)
       self.assertEqual(subquery._denominator, 3.0)
 
     tf.nest.map_structure(check, query._queries)
@@ -118,7 +119,7 @@ class DpUtilsTest(test.TestCase):
     self.assertAlmostEqual(effective_noise_multiplier, 2.0)
 
   def test_dp_sum(self):
-    query = privacy.GaussianSumQuery(4.0, 0.0)
+    query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
 
     dp_aggregate_fn, _ = differential_privacy.build_dp_aggregate(query)
 
@@ -132,7 +133,7 @@ class DpUtilsTest(test.TestCase):
     self.assertEqual(result, 8.0)
 
   def test_dp_sum_structure_odict(self):
-    query = privacy.GaussianSumQuery(5.0, 0.0)
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     dp_aggregate_fn, _ = differential_privacy.build_dp_aggregate(query)
 
@@ -157,7 +158,7 @@ class DpUtilsTest(test.TestCase):
     self.assertEqual(getattr(result, 'b')[0], 9.0)
 
   def test_dp_sum_structure_list(self):
-    query = privacy.GaussianSumQuery(5.0, 0.0)
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     def _value_type_fn(value):
       del value
@@ -194,7 +195,7 @@ class DpUtilsTest(test.TestCase):
 
   def test_dp_stateful_mean(self):
 
-    class ShrinkingSumQuery(privacy.GaussianSumQuery):
+    class ShrinkingSumQuery(tensorflow_privacy.GaussianSumQuery):
 
       def get_noised_result(self, sample_state, global_state):
         global_state = self._GlobalState(
@@ -226,7 +227,7 @@ class DpUtilsTest(test.TestCase):
     global_state = run_and_check(global_state, 0.0, 0.0)
 
   def test_dp_global_state_type(self):
-    query = privacy.GaussianSumQuery(5.0, 0.0)
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     _, dp_global_state_type = differential_privacy.build_dp_aggregate(query)
 
