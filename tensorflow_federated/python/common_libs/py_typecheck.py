@@ -190,7 +190,7 @@ def is_named_tuple(value):
 
   As `collections.namedtuple` creates a new class with no common a base for each
   named tuple, there is no simple way to check the type with `isintance(T)`.
-  Instead, this method looks to see if `value` has an `_asdict` attribute (which
+  Instead, this method looks to see if `value` has an `_fields` attribute (which
   all namedtuple subclasses support).
 
   Args:

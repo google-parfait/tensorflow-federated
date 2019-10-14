@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import collections
 
+from typing import Any
 import attr
 import six
 import tensorflow as tf
@@ -152,6 +153,7 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     """
     py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
     if py_typecheck.is_named_tuple(elements):
+      elements = elements  # type: Any
       elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
       elements = list(elements.items())
