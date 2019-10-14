@@ -68,7 +68,7 @@ py_test(
 
 py_library(
     name = "test",
-    testonly = 1,
+    testonly = True,
     srcs = ["test.py"],
 )
 
