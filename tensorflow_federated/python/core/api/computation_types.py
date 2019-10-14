@@ -440,7 +440,7 @@ def to_type(spec):
 def _to_type_from_attrs(spec):
   """Converts an `attr.s` class or instance to a `tff.Type`."""
   if isinstance(spec, type):
-    # attrs class type
+    # attrs class type, introspect the attributes for their type annotations.
     elements = [(a.name, a.type) for a in attr.fields(spec)]
     missing_types = [n for (n, t) in elements if not t]
     if missing_types:
@@ -450,7 +450,8 @@ def _to_type_from_attrs(spec):
               spec.__name__, missing_types))
     the_type = spec
   else:
-    # attrs class instance
+    # attrs class instance, inspect the field values for instances convertible
+    # to types.
     elements = attr.asdict(
         spec, dict_factory=collections.OrderedDict, recurse=False)
     the_type = type(spec)
