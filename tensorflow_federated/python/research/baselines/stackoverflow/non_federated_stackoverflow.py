@@ -42,8 +42,10 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'Dimension of latent size to use in recurrent cell')
   flags.DEFINE_integer('num_layers', 1,
                        'Number of stacked recurrent layers to use.')
+  flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adagrad'],
+                    'Optimizer to use; defaults to SGD.')
   flags.DEFINE_float('learning_rate', 0.01,
-                     'Learning rate to use for centralized SGD optimizer.')
+                     'Learning rate to use for centralized optimizer.')
   flags.DEFINE_float(
       'momentum', 0.0, 'Momentum value to use fo SGD optimizer. A value of 0.0 '
       'corresponds to no momentum.')
@@ -57,6 +59,9 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'Number of training examples to process per epoch.')
   flags.DEFINE_integer('num_val_examples', 1000,
                        'Number of examples to take for validation set.')
+  flags.DEFINE_integer(
+      'num_test_examples', 100 * 1000,
+      'Number of examples to use for testing at end of training.')
   flags.DEFINE_integer('tensorboard_update_frequency', 1000,
                        'Number of steps between tensorboard logging calls.')
   flags.DEFINE_string('root_output_dir', '/tmp/non_federated_stackoverflow/',
@@ -117,8 +122,9 @@ def construct_word_level_datasets(vocab):
                                         ]).map(split_input_target).repeat(None))
 
   stackoverflow_train = preprocess(raw_train_dataset)
-  stackoverflow_val = preprocess(raw_test_dataset).take(1000)
-  stackoverflow_test = preprocess(raw_test_dataset)
+  stackoverflow_val = preprocess(raw_test_dataset).take(FLAGS.num_val_examples)
+  stackoverflow_test = preprocess(raw_test_dataset).take(
+      FLAGS.num_test_examples)
   return stackoverflow_train, stackoverflow_val, stackoverflow_test
 
 
@@ -146,10 +152,14 @@ def run_experiment():
   model = models.create_recurrent_model(FLAGS.vocab_size, FLAGS.embedding_size,
                                         FLAGS.num_layers, _lstm_fn,
                                         'stackoverflow-lstm')
+  if FLAGS.optimizer == 'sgd':
+    optimizer = tf.keras.optimizers.SGD(
+        learning_rate=FLAGS.learning_rate, momentum=FLAGS.momentum)
+  if FLAGS.optimizer == 'adagrad':
+    optimizer = tf.keras.optimizers.Adagrad(learning_rate=FLAGS.learning_rate)
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=tf.keras.optimizers.SGD(
-          learning_rate=FLAGS.learning_rate, momentum=FLAGS.momentum),
+      optimizer=optimizer,
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
