@@ -262,7 +262,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
       # Re-raise the error with a more helpful message, but the previous stack
       # trace.
       raise TypeError(
-          'Caught expection trying to call `{t}.from_config()` with '
+          'Caught exception trying to call `{t}.from_config()` with '
           'config {c}. Confirm that {t}.__init__() has an argument for '
           'each member of the config.\nException: {e}'.format(
               t=metric_type, c=metric_config, e=e))
