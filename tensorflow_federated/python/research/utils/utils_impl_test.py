@@ -93,12 +93,15 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     utils_impl.launch_experiment(
-        'run_exp.py', grid_dict, '/tmp_dir', short_names={'a_long': 'a'})
+        'bazel run //research/emnist:run_experiment --',
+        grid_dict,
+        '/tmp_dir',
+        short_names={'a_long': 'a'})
     expected = [
-        'python run_exp.py --a_long=1 --b=4.0 --root_output_dir=/tmp_dir '
-        '--exp_name=0-a=1,b=4.0',
-        'python run_exp.py --a_long=1 --b=5.0 --root_output_dir=/tmp_dir '
-        '--exp_name=1-a=1,b=5.0'
+        'bazel run //research/emnist:run_experiment -- --a_long=1 --b=4.0 '
+        '--root_output_dir=/tmp_dir --exp_name=0-a=1,b=4.0',
+        'bazel run //research/emnist:run_experiment -- --a_long=1 --b=5.0 '
+        '--root_output_dir=/tmp_dir --exp_name=1-a=1,b=5.0'
     ]
     result = pool.apply_async.call_args_list
     result = [args[0][1][0] for args in result]

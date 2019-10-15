@@ -257,8 +257,8 @@ def launch_experiment(executable: Text,
   ```
 
   Args:
-    executable: An executable python file which takes flags --root_output_dir
-      and --exp_name, e.g., `research/emnist/run_experiment.py`.
+    executable: An executable which takes flags --root_output_dir
+      and --exp_name, e.g., `bazel run //research/emnist:run_experiment --`.
     grid_iter: A sequence of dictionaries with keys from grid, and values
       corresponding to all combinations of items in the corresponding iterables.
     root_output_dir: The directory where all outputs are stored.
@@ -278,7 +278,7 @@ def launch_experiment(executable: Text,
 
     param_list.append('--root_output_dir={}'.format(root_output_dir))
     param_list.append('--exp_name={}'.format(param_str))
-    command = 'python {} {}'.format(executable, ' '.join(param_list))
+    command = '{} {}'.format(executable, ' '.join(param_list))
     command_list.append(command)
 
   pool = multiprocessing.Pool(processes=max_workers)
