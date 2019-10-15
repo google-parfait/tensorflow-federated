@@ -20,43 +20,50 @@ import os
 from absl import app
 from absl import flags
 
+import numpy as np
+import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.baselines.stackoverflow import models
+from tensorflow_federated.python.research.utils import utils_impl
 
-flags.DEFINE_string(
-    'exp_name', 'centralized_keras_stackoverflow',
-    'Unique name for the experiment, suitable for '
-    'use in filenames.')
-flags.DEFINE_integer('batch_size', 128, 'Batch size used.')
-flags.DEFINE_integer(
-    'vocab_size', 30000,
-    'Size of the vocab to use; results in most `vocab_size` number of most '
-    'common words used as vocabulary.')
-flags.DEFINE_integer('embedding_size', 256,
-                     'Dimension of word embedding to use.')
-flags.DEFINE_integer('latent_size', 512,
-                     'Dimension of latent size to use in recurrent cell')
-flags.DEFINE_integer('num_layers', 1,
-                     'Number of stacked recurrent layers to use.')
-flags.DEFINE_float('learning_rate', 0.01,
-                   'Learning rate to use for centralized SGD optimizer.')
-flags.DEFINE_float(
-    'momentum', 0.0, 'Momentum value to use fo SGD optimizer. A value of 0.0 '
-    'corresponds to no momentum.')
-# TODO(b/141867576): TFF currently needs a concrete maximum sequence length.
-# Follow up when this restriction is lifted.
-flags.DEFINE_integer('sequence_length', 100, 'Max sequence length to use')
-# There are over 100 million sentences in this dataset; this flag caps the
-# epoch size for speed. For comparison: EMNIST contains roughly 300,000
-# examples, so we set that as default here.
-flags.DEFINE_integer('num_training_examples', 300 * 1000,
-                     'Number of training examples to process per epoch.')
-flags.DEFINE_integer('num_val_examples', 1000,
-                     'Number of examples to take for validation set.')
-flags.DEFINE_string('root_output_dir', '/tmp/non_federated_stackoverflow/',
-                    'Root directory for writing experiment output.')
+with utils_impl.record_new_flags() as hparam_flags:
+  flags.DEFINE_string(
+      'exp_name', 'centralized_keras_stackoverflow',
+      'Unique name for the experiment, suitable for '
+      'use in filenames.')
+  flags.DEFINE_integer('batch_size', 256, 'Batch size used.')
+  flags.DEFINE_integer(
+      'vocab_size', 30000,
+      'Size of the vocab to use; results in most `vocab_size` number of most '
+      'common words used as vocabulary.')
+  flags.DEFINE_integer('embedding_size', 256,
+                       'Dimension of word embedding to use.')
+  flags.DEFINE_integer('latent_size', 512,
+                       'Dimension of latent size to use in recurrent cell')
+  flags.DEFINE_integer('num_layers', 1,
+                       'Number of stacked recurrent layers to use.')
+  flags.DEFINE_float('learning_rate', 0.01,
+                     'Learning rate to use for centralized SGD optimizer.')
+  flags.DEFINE_float(
+      'momentum', 0.0, 'Momentum value to use fo SGD optimizer. A value of 0.0 '
+      'corresponds to no momentum.')
+  # TODO(b/141867576): TFF currently needs a concrete maximum sequence length.
+  # Follow up when this restriction is lifted.
+  flags.DEFINE_integer('sequence_length', 100, 'Max sequence length to use')
+  # There are over 100 million sentences in this dataset; this flag caps the
+  # epoch size for speed. For comparison: EMNIST contains roughly 300,000
+  # examples, so we set that as default here.
+  flags.DEFINE_integer('num_training_examples', 300 * 1000,
+                       'Number of training examples to process per epoch.')
+  flags.DEFINE_integer('num_val_examples', 1000,
+                       'Number of examples to take for validation set.')
+  flags.DEFINE_integer('tensorboard_update_frequency', 1000,
+                       'Number of steps between tensorboard logging calls.')
+  flags.DEFINE_integer('random_seed', None, 'Random seed to use. Optional.')
+  flags.DEFINE_string('root_output_dir', '/tmp/non_federated_stackoverflow/',
+                      'Root directory for writing experiment output.')
 
 FLAGS = flags.FLAGS
 
@@ -106,16 +113,26 @@ def construct_word_level_datasets(vocab):
     target_text = tf.map_fn(lambda x: x[1:], chunk)
     return BatchType(input_text, target_text)
 
-  def preprocess(dataset, epochs=1):
+  def preprocess(dataset):
+    """Notice that this preprocess function repeats forever."""
     return (dataset.map(to_ids).padded_batch(
-        FLAGS.batch_size,
-        padded_shapes=[FLAGS.sequence_length
-                      ]).map(split_input_target).repeat(epochs))
+        FLAGS.batch_size, padded_shapes=[FLAGS.sequence_length
+                                        ]).map(split_input_target).repeat(None))
 
   stackoverflow_train = preprocess(raw_train_dataset)
   stackoverflow_val = preprocess(raw_test_dataset).take(1000)
   stackoverflow_test = preprocess(raw_test_dataset)
   return stackoverflow_train, stackoverflow_val, stackoverflow_test
+
+
+class AtomicCSVLogger(tf.keras.callbacks.Callback):
+
+  def __init__(self, path):
+    self._path = path
+
+  def on_epoch_end(self, epoch, logs=None):
+    epoch_path = os.path.join(self._path, 'epoch{}'.format(epoch))
+    utils_impl.atomic_write_to_csv(pd.Series(logs), epoch_path)
 
 
 def run_experiment():
@@ -135,15 +152,41 @@ def run_experiment():
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
       optimizer=tf.keras.optimizers.SGD(
-          learning_rate=FLAGS.learning_rate, use_momentum=FLAGS.use_momentum),
+          learning_rate=FLAGS.learning_rate, momentum=FLAGS.momentum),
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
-                                    'train_results.csv')
+                                    'train_results')
   test_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
-                                   'test_results.csv')
-  train_csv_logger = tf.keras.callbacks.CSVLogger(train_results_path)
-  test_csv_logger = tf.keras.callbacks.CSVLogger(test_results_path)
+                                   'test_results')
+
+  train_csv_logger = AtomicCSVLogger(train_results_path)
+  test_csv_logger = AtomicCSVLogger(test_results_path)
+
+  log_dir = os.path.join(FLAGS.root_output_dir, 'logdir', FLAGS.exp_name)
+  try:
+    tf.io.gfile.makedirs(log_dir)
+    tf.io.gfile.makedirs(train_results_path)
+    tf.io.gfile.makedirs(test_results_path)
+  except tf.errors.OpError:
+    pass  # log_dir already exists.
+
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      log_dir=log_dir,
+      write_graph=True,
+      update_freq=FLAGS.tensorboard_update_frequency)
+
+  results_file = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
+                              'results.csv.bz2')
+
+  # Write the hyperparameters to a CSV:
+  hparam_dict = collections.OrderedDict([
+      (name, FLAGS[name].value) for name in hparam_flags
+  ])
+  hparam_dict['results_file'] = results_file
+  hparams_file = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
+                              'hparams.csv')
+  utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
   model.fit(
       stackoverflow_train,
@@ -151,9 +194,11 @@ def run_experiment():
       epochs=25,
       verbose=1,
       validation_data=stackoverflow_val,
-      callbacks=[train_csv_logger])
+      callbacks=[train_csv_logger, tensorboard_callback])
   score = model.evaluate_generator(
-      stackoverflow_test, verbose=1, callbacks=[test_csv_logger])
+      stackoverflow_test,
+      verbose=1,
+      callbacks=[test_csv_logger, tensorboard_callback])
   print('Final test loss: %.4f' % score[0])
   print('Final test accuracy: %.4f' % score[1])
 
@@ -163,6 +208,9 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   tf.compat.v1.enable_v2_behavior()
+  if FLAGS.random_seed is not None:
+    np.random.seed(FLAGS.random_seed)
+    tf.random.set_random_seed(FLAGS.random_seed)
   try:
     tf.io.gfile.makedirs(os.path.join(FLAGS.root_output_dir, FLAGS.exp_name))
   except tf.errors.OpError:

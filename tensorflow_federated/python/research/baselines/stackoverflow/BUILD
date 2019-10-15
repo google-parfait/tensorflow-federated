@@ -23,5 +23,6 @@ py_binary(
     deps = [
         ":models",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/research/utils:utils_impl",
     ],
 )
