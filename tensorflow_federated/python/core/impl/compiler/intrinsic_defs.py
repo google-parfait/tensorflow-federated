@@ -468,12 +468,6 @@ SEQUENCE_SUM = IntrinsicDef(
             computation_types.AbstractType('T')),
         result=computation_types.AbstractType('T')))
 
-_frozen_registry = tuple(sorted(six.iteritems(_intrinsic_registry)))
-del _intrinsic_registry
-
 
 def uri_to_intrinsic_def(uri):
-  for name, value in _frozen_registry:
-    if uri == name:
-      return value
-  return None
+  return _intrinsic_registry.get(uri)
