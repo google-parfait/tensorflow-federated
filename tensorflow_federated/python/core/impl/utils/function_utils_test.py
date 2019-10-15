@@ -32,24 +32,19 @@ from tensorflow_federated.python.core.impl.utils import function_utils
 class SimpleArgSpecTest(test.TestCase):
 
   def test_str(self):
-    self.assertEqual(
-        '()',
-        str(
-            function_utils.SimpleArgSpec(
-                args=[], varargs=[], keywords=[], defaults=[])))
-    self.assertEqual(
-        '(args=[1, 2, 3])',
-        str(
-            function_utils.SimpleArgSpec(
-                args=[1, 2, 3], varargs=[], keywords=[], defaults=[])))
+    arg_spec = function_utils.SimpleArgSpec(
+        args=[], varargs=[], keywords=[], defaults=[])
+    self.assertEqual('()', str(arg_spec))
+
+    arg_spec = function_utils.SimpleArgSpec(
+        args=[1, 2, 3], varargs=[], keywords=[], defaults=[])
+    self.assertEqual('(args=[1, 2, 3])', str(arg_spec))
+
+    arg_spec = function_utils.SimpleArgSpec(
+        args=[1], varargs=[2., True], keywords={'a': 'b'}, defaults={'x': 3})
     self.assertEqual(
         "(args=[1], varargs=[2.0, True], kwargs={'a': 'b'}, defaults={'x': 3})",
-        str(
-            function_utils.SimpleArgSpec(
-                args=[1],
-                varargs=[2., True],
-                keywords={'a': 'b'},
-                defaults={'x': 3})))
+        str(arg_spec))
 
 
 class NoopIngestContextForTest(context_base.Context):
