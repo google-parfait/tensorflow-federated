@@ -75,6 +75,18 @@ class SimpleArgSpec(object):
   keywords = attr.ib()
   defaults = attr.ib()
 
+  def __str__(self):
+    parts = []
+    if self.args:
+      parts.append('args={}'.format(self.args))
+    if self.varargs:
+      parts.append('varargs={}'.format(self.varargs))
+    if self.keywords:
+      parts.append('kwargs={}'.format(self.keywords))
+    if self.defaults:
+      parts.append('defaults={}'.format(self.defaults))
+    return '({})'.format(', '.join(parts))
+
 
 def get_argspec(fn):
   """Returns the `SimpleArgSpec` structure for the given function.
@@ -460,8 +472,8 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function with argspec {} cannot accept a value of type '
-        '{} as a single argument.'.format(argspec, parameter_type))
+        'The supplied function "{}" with argspec {} cannot accept a value of type '
+        '{} as a single argument.'.format(fn.__name__, argspec, parameter_type))
   if is_argument_tuple(parameter_type):
     arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
     unpack_possible = is_argspec_compatible_with_types(argspec, *arg_types,
@@ -477,9 +489,9 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
             argspec, parameter_type))
   if unpack_required and not unpack_possible:
     raise TypeError(
-        'The supplied function with argspec {} cannot accept a value of type '
+        'The supplied function "{}" with argspec {} cannot accept a value of type '
         '{} as either a single argument or multiple positional and/or keyword '
-        'arguments.'.format(argspec, parameter_type))
+        'arguments.'.format(fn.__name__, argspec, parameter_type))
   if not unpack_required and unpack_possible and should_unpack is None:
     # The supplied function could accept a value as either a single argument,
     # or as multiple positional and/or keyword arguments, and the caller did

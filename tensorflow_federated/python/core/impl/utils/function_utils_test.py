@@ -29,6 +29,29 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
 
 
+class SimpleArgSpecTest(test.TestCase):
+
+  def test_str(self):
+    self.assertEqual(
+        '()',
+        str(
+            function_utils.SimpleArgSpec(
+                args=[], varargs=[], keywords=[], defaults=[])))
+    self.assertEqual(
+        '(args=[1, 2, 3])',
+        str(
+            function_utils.SimpleArgSpec(
+                args=[1, 2, 3], varargs=[], keywords=[], defaults=[])))
+    self.assertEqual(
+        "(args=[1], varargs=[2.0, True], kwargs={'a': 'b'}, defaults={'x': 3})",
+        str(
+            function_utils.SimpleArgSpec(
+                args=[1],
+                varargs=[2., True],
+                keywords={'a': 'b'},
+                defaults={'x': 3})))
+
+
 class NoopIngestContextForTest(context_base.Context):
 
   def ingest(self, val, type_spec):
