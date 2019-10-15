@@ -223,8 +223,9 @@ class CachingExecutor(executor_base.Executor):
       # which may be a legitimate use case if (as it happens) the payload alone
       # does not uniquely determine the type, so we simply opt not to reuse the
       # cache value and fallback on the regular behavior.
-      if type_spec is not None and not type_utils.are_equivalent_types(
-          cached_value.type_signature, type_spec):
+      if (cached_value is not None and
+          type_spec is not None and not type_utils.are_equivalent_types(
+              cached_value.type_signature, type_spec)):
         identifier = None
     else:
       identifier = None
