@@ -369,7 +369,7 @@ class ComputationWrapper(object):
     self._wrapper_fn = wrapper_fn
 
   def __call__(self, *args):
-    """Handles the differents modes of usage of the decorator/wrapper.
+    """Handles the different modes of usage of the decorator/wrapper.
 
     This method only acts as a frontend that allows this class to be used as a
     decorator or wrapper in a variety of ways. The actual wrapping is performed
