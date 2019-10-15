@@ -496,7 +496,7 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
     if modified:
       comp, _ = tff_framework.uniquify_reference_names(comp)
     else:
-      raise ValueError('')
+      raise ValueError('b/14161721')
   return comp
 
 
