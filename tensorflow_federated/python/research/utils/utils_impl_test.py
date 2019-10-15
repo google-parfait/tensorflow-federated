@@ -19,7 +19,6 @@ from unittest import mock
 
 from absl import flags
 from absl.testing import absltest
-import numpy as np
 import pandas as pd
 import tensorflow as tf
 
@@ -44,9 +43,6 @@ class UtilsTest(tf.test.TestCase):
       utils_impl.define_optimizer_flags('client', defaults=dict(lr=1.25))
 
   def test_atomic_write(self):
-    # Ensure randomness for temp filenames.
-    np.random.seed()
-
     for name in ['foo.csv', 'baz.csv.bz2']:
       dataframe = pd.DataFrame(dict(a=[1, 2], b=[4.0, 5.0]))
       output_file = os.path.join(absltest.get_default_test_tmpdir(), name)
@@ -83,9 +79,9 @@ class UtilsTest(tf.test.TestCase):
   def test_record_new_flags(self):
     with utils_impl.record_new_flags() as hparam_flags:
       flags.DEFINE_string('exp_name', 'name', 'Unique name for the experiment.')
-      flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
+      flags.DEFINE_float('learning_rate', 0.1, 'Optimizer learning rate.')
 
-    self.assertCountEqual(hparam_flags, ['exp_name', 'random_seed'])
+    self.assertCountEqual(hparam_flags, ['exp_name', 'learning_rate'])
 
   @mock.patch.object(utils_impl, 'multiprocessing')
   def test_launch_experiment(self, mock_multiprocessing):

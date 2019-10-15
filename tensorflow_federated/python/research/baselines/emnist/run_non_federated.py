@@ -19,7 +19,6 @@ import os
 
 from absl import app
 from absl import flags
-import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -32,7 +31,6 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_string(
       'exp_name', 'nonfed', 'Unique name for the experiment, suitable for use '
       'in filenames.')
-  flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
 
   # Model configuration
   flags.DEFINE_enum(
@@ -106,9 +104,6 @@ def create_nonfed_emnist(total_examples):
 
 def run_experiment():
   """Runs the training experiment."""
-  np.random.seed(FLAGS.random_seed)
-  tf.random.set_random_seed(FLAGS.random_seed)
-
   total_examples = 341873 if FLAGS.only_digits else 671585
   emnist_train, emnist_test = create_nonfed_emnist(total_examples)
   steps_per_epoch = int(total_examples / FLAGS.batch_size)

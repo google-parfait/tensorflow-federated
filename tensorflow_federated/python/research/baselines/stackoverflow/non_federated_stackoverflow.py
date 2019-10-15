@@ -19,8 +19,6 @@ import os
 
 from absl import app
 from absl import flags
-
-import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -61,7 +59,6 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'Number of examples to take for validation set.')
   flags.DEFINE_integer('tensorboard_update_frequency', 1000,
                        'Number of steps between tensorboard logging calls.')
-  flags.DEFINE_integer('random_seed', None, 'Random seed to use. Optional.')
   flags.DEFINE_string('root_output_dir', '/tmp/non_federated_stackoverflow/',
                       'Root directory for writing experiment output.')
 
@@ -208,9 +205,6 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   tf.compat.v1.enable_v2_behavior()
-  if FLAGS.random_seed is not None:
-    np.random.seed(FLAGS.random_seed)
-    tf.random.set_random_seed(FLAGS.random_seed)
   try:
     tf.io.gfile.makedirs(os.path.join(FLAGS.root_output_dir, FLAGS.exp_name))
   except tf.errors.OpError:

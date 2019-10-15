@@ -33,7 +33,6 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_string(
       'exp_name', 'emnist', 'Unique name for the experiment, suitable for use '
       'in filenames.')
-  flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
 
   # Training hyperparameters
   flags.DEFINE_integer('total_rounds', 200, 'Number of total training rounds.')
@@ -85,9 +84,6 @@ def create_compiled_keras_model():
 
 def run_experiment():
   """Data preprocessing and experiment execution."""
-  np.random.seed(FLAGS.random_seed)
-  tf.random.set_random_seed(FLAGS.random_seed)
-
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
   if FLAGS.num_pseudo_clients > 1:
     emnist_train = tff.simulation.datasets.emnist.get_infinite(

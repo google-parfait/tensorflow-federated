@@ -181,7 +181,6 @@ def record_new_flags() -> Iterator[List[Text]]:
   ```python
   with record_new_flags() as hparam_flags:
       flags.DEFINE_string('exp_name', 'name', 'Unique name for the experiment.')
-      flags.DEFINE_integer('random_seed', 0, 'Random seed for the experiment.')
   ```
 
   Check `research/emnist/run_experiment.py` for more details about the usage.
