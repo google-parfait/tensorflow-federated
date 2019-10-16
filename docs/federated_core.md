@@ -299,7 +299,7 @@ public API:
     For example:
 
     *   `add_up_integeres(x)` represents an invocation of the TensorFlow
-        computation defined earlier on an argument `x`. The type od this
+        computation defined earlier on an argument `x`. The type of this
         expression is `int32`.
 
     *   `tff.federated_mean(sensor_readings)` represents an invocation of the
