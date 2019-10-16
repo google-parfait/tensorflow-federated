@@ -252,7 +252,7 @@ public API:
 
     ```python
     @tff.tf_computation(tff.SequenceType(tf.int32))
-    def add_up_integeres(x):
+    def add_up_integers(x):
       return x.reduce(np.int32(0), lambda x, y: x + y)
     ```
 
@@ -298,7 +298,7 @@ public API:
 
     For example:
 
-    *   `add_up_integeres(x)` represents an invocation of the TensorFlow
+    *   `add_up_integers(x)` represents an invocation of the TensorFlow
         computation defined earlier on an argument `x`. The type of this
         expression is `int32`.
 
