@@ -166,7 +166,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
 
 def to_representation_for_type(value, type_spec=None, device=None):
-  """Verifies or converts the `value` to an eager objct matching `type_spec`.
+  """Verifies or converts the `value` to an eager object matching `type_spec`.
 
   WARNING: This function is only partially implemented. It does not support
   data sets at this point.
