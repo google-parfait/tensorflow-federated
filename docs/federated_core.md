@@ -226,11 +226,11 @@ additional commentary and examples.
         value that consists of multiple sequences of `XY` coordinates, one
         sequence per client device.
 
-    *   `<weights=float32[10,5],bias[5]>@SERVER` represents a named tuple of
-        weight and bias tensors at the server. Since we've dropped the curly
-        braces, this indicates the `all_equal` bit is set, i.e., there's only a
-        single tuple (regardless of how many server replicas there might be in a
-        cluster hosting this value).
+    *   `<weights=float32[10,5],bias=float32[5]>@SERVER` represents a named
+        tuple of weight and bias tensors at the server. Since we've dropped the
+        curly braces, this indicates the `all_equal` bit is set, i.e., there's
+        only a single tuple (regardless of how many server replicas there might
+        be in a cluster hosting this value).
 
 ### Building Blocks
 
