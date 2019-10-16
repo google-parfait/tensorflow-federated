@@ -126,7 +126,7 @@ class _BidiStream:
     self._request_queue.put((request, response_event))
     await asyncio.get_event_loop().run_in_executor(self._thread_pool_executor,
                                                    response_event.wait)
-    response = response_event.response
+    response = response_event.response  # pytype: disable=attribute-error
     if isinstance(response, Exception):
       raise response
     py_typecheck.check_type(response, executor_pb2.ExecuteResponse)

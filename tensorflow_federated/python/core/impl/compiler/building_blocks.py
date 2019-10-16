@@ -522,14 +522,14 @@ class Lambda(ComputationBuildingBlock):
 
   @property
   def proto(self):
-    return pb.Computation(
-        type=type_serialization.serialize_type(self.type_signature),
-        **{
-            'lambda':
-                pb.Lambda(
-                    parameter_name=self._parameter_name,
-                    result=self._result.proto)
-        })
+    type_signature = type_serialization.serialize_type(self.type_signature)
+    fn = pb.Lambda(
+        parameter_name=self._parameter_name, result=self._result.proto)
+    # We are unpacking the lambda argument here because `lambda` is a reserved
+    # keyword in Python, but it is also the name of the parameter for a
+    # `pb.Computation`.
+    # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
+    return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
   @property
   def parameter_name(self):

@@ -102,19 +102,19 @@ class CompositeValue(executor_value_base.ExecutorValue):
 
 
 def _create_lambda_identity_comp(type_spec):
+  """Returns a `pb.Computation` representing an identity function."""
   py_typecheck.check_type(type_spec, computation_types.Type)
-  return pb.Computation(
-      **{
-          'type':
-              type_serialization.serialize_type(
-                  type_factory.unary_op(type_spec)),
-          'lambda':
-              pb.Lambda(
-                  parameter_name='x',
-                  result=pb.Computation(
-                      type=type_serialization.serialize_type(type_spec),
-                      reference=pb.Reference(name='x')))
-      })
+  type_signature = type_serialization.serialize_type(
+      type_factory.unary_op(type_spec))
+  result = pb.Computation(
+      type=type_serialization.serialize_type(type_spec),
+      reference=pb.Reference(name='x'))
+  fn = pb.Lambda(parameter_name='x', result=result)
+  # We are unpacking the lambda argument here because `lambda` is a reserved
+  # keyword in Python, but it is also the name of the parameter for a
+  # `pb.Computation`.
+  # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
+  return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
 
 class CompositeExecutor(executor_base.Executor):
@@ -185,9 +185,9 @@ class CompositeExecutor(executor_base.Executor):
     py_typecheck.check_type(type_spec, computation_types.Type)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       if not type_utils.is_concrete_instance_of(type_spec,
-                                                value.type_signature):
+                                                value.type_signature):  # pytype: disable=attribute-error
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
-            type_spec, value.uri))
+            type_spec, value.uri))  # pytype: disable=attribute-error
       else:
         return CompositeValue(value, type_spec)
     elif isinstance(value, pb.Computation):
@@ -241,7 +241,11 @@ class CompositeExecutor(executor_base.Executor):
           offset = 0
           for c, n in zip(self._child_executors, cardinalities):
             new_offset = offset + n
+            # The slice opporator is not supported on all the types `value`
+            # supports.
+            # pytype: disable=unsupported-operands
             result.append(c.create_value(value[offset:new_offset], type_spec))
+            # pytype: enable=unsupported-operands
             offset = new_offset
           return CompositeValue(await asyncio.gather(*result), type_spec)
       else:
@@ -352,11 +356,11 @@ class CompositeExecutor(executor_base.Executor):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
       aggr_func, aggr_args = tuple(await asyncio.gather(
           ex.create_value(aggr_comp, aggr_type),
-          ex.create_tuple([v] + await asyncio.gather(
+          ex.create_tuple([v] + list(await asyncio.gather(
               ex.create_value(zero, zero_type),
               ex.create_value(accumulate, accumulate_type),
               ex.create_value(merge, merge_type),
-              ex.create_value(identity_report, identity_report_type)))))
+              ex.create_value(identity_report, identity_report_type))))))
       return await (await ex.create_call(aggr_func, aggr_args)).compute()
 
     vals = await asyncio.gather(

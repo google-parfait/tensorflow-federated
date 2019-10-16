@@ -835,12 +835,12 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
           'all unnamed, got {}.'.format(value))
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(structure, list)
-    structure.append(value)
+    structure.append(value)  # pytype: disable=attribute-error
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
     if isinstance(structure, collections.OrderedDict):
       if py_typecheck.is_named_tuple(value):
-        value = value._asdict()
+        value = value._asdict()  # pytype: disable=attribute-error
       if isinstance(value, dict):
         if set(value.keys()) != set(k for k, _ in elements):
           raise TypeError('Value {} does not match type {}.'.format(

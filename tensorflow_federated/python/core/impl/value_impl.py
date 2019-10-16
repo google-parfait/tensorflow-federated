@@ -343,7 +343,7 @@ def to_value(arg, type_spec, context_stack):
             for k, v in anonymous_tuple.iter_elements(arg)
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
-    result = to_value(arg._asdict(), None, context_stack)
+    result = to_value(arg._asdict(), None, context_stack)  # pytype: disable=attribute-error
   elif py_typecheck.is_attrs(arg):
     result = to_value(
         attr.asdict(arg, dict_factory=collections.OrderedDict, recurse=False),

@@ -339,7 +339,8 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
   else:
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     py_typecheck.check_type(context, context_base.Context)
-    if not is_argument_tuple(type_spec):
+    context = context  # type: context_base.Context
+    if not is_argument_tuple(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
           'Parameter type {} does not have a structure of an argument tuple, '
           'and cannot be populated from multiple positional and keyword '

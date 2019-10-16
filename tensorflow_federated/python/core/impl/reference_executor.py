@@ -944,7 +944,7 @@ class ReferenceExecutor(context_base.Context):
       # TODO(b/113116813): Replace this with something more efficient, probably
       # calling some helper method from Numpy.
       with tf.Graph().as_default() as graph:
-        zeros = tf.constant(0, type_spec.dtype, type_spec.shape)
+        zeros = tf.constant(0, type_spec.dtype, type_spec.shape)  # pytype: disable=attribute-error
         with tf.compat.v1.Session(graph=graph) as sess:
           zeros_val = sess.run(zeros)
       return ComputedValue(zeros_val, type_spec)
@@ -962,9 +962,9 @@ class ReferenceExecutor(context_base.Context):
           'The generic_zero is not well-defined for TFF type {}.'.format(
               type_spec))
     elif isinstance(type_spec, computation_types.FederatedType):
-      if type_spec.all_equal:
+      if type_spec.all_equal:  # pytype: disable=attribute-error
         return ComputedValue(
-            self._generic_zero(type_spec.member).value, type_spec)
+            self._generic_zero(type_spec.member).value, type_spec)  # pytype: disable=attribute-error
       else:
         # TODO(b/113116813): Implement this in terms of the generic placement
         # operator once it's been added to the mix.
