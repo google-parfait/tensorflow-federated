@@ -1632,36 +1632,27 @@ def unwrap_placement(comp):
     return transformation_utils.transform_postorder(comp, _transform)
 
   if unbound_reference_name is None:
-    unbound_variable_renamed = comp
-    unbound_reference_name = None
-    unbound_reference_type = None
+    placement_removed, _ = _remove_placement(comp)
+    return building_block_factory.create_federated_value(
+        placement_removed, single_placement), True
   else:
     (unbound_variable_renamed,
      unbound_reference_info) = _rename_unbound_variable(comp,
                                                         unbound_reference_name)
     (new_reference_name, unbound_reference_type) = unbound_reference_info
-
     if not isinstance(unbound_reference_type, computation_types.FederatedType):
-      raise TypeError('The lone unbound reference is not of federated type; '
-                      'this is disallowed. '
-                      'The unbound type is {}'.format(unbound_reference_type))
+      raise TypeError(
+          'The lone unbound reference is not of federated type; this is '
+          'disallowed. The unbound type is {}'.format(unbound_reference_type))
 
-  placement_removed, _ = _remove_placement(unbound_variable_renamed)
-
-  if unbound_reference_name is None:
-    return building_block_factory.create_federated_value(
-        placement_removed, single_placement), True
-
-  ref_to_fed_arg = building_blocks.Reference(unbound_reference_name,
-                                             unbound_reference_type)
-
-  lambda_wrapping_placement_removal = building_blocks.Lambda(
-      new_reference_name, unbound_reference_type.member, placement_removed)
-
-  called_intrinsic = building_block_factory.create_federated_map_or_apply(
-      lambda_wrapping_placement_removal, ref_to_fed_arg)
-
-  return called_intrinsic, True
+    placement_removed, _ = _remove_placement(unbound_variable_renamed)
+    ref_to_fed_arg = building_blocks.Reference(unbound_reference_name,
+                                               unbound_reference_type)
+    lambda_wrapping_placement_removal = building_blocks.Lambda(
+        new_reference_name, unbound_reference_type.member, placement_removed)
+    called_intrinsic = building_block_factory.create_federated_map_or_apply(
+        lambda_wrapping_placement_removal, ref_to_fed_arg)
+    return called_intrinsic, True
 
 
 def get_map_of_unbound_references(comp):
