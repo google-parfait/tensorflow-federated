@@ -69,7 +69,7 @@ RUN ${PIP} install --no-cache-dir \
     portpicker~=1.3.1 \
     six~=1.10 \
     tensorflow-model-optimization~=0.1.3 \
-    tensorflow-privacy~=0.1.0 \
+    tensorflow-privacy~=0.2.0 \
     tf-nightly \
     tfa-nightly \
     typing~=3.7.0

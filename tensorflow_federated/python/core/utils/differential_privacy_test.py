@@ -16,7 +16,7 @@
 import collections
 
 import tensorflow as tf
-import privacy as tensorflow_privacy
+import tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core import api as tff
