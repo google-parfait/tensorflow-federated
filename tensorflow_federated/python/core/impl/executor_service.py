@@ -76,14 +76,13 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           create_value=self.CreateValue(req.create_value, context))
     elif which == 'create_call':
       response = executor_pb2.ExecuteResponse(
-          create_call=await self._CreateCall(req.create_call, context))
+          create_call=self.CreateCall(req.create_call, context))
     elif which == 'create_tuple':
       response = executor_pb2.ExecuteResponse(
-          create_tuple=await self._CreateTuple(req.create_tuple, context))
+          create_tuple=self.CreateTuple(req.create_tuple, context))
     elif which == 'create_selection':
       response = executor_pb2.ExecuteResponse(
-          create_selection=await self._CreateSelection(req.create_selection,
-                                                       context))
+          create_selection=self.CreateSelection(req.create_selection, context))
     elif which == 'compute':
       response = executor_pb2.ExecuteResponse(
           compute=await self._Compute(req.compute, context))
@@ -165,19 +164,6 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     Returns:
       An instance of `executor_pb2.CreateCallResponse`.
     """
-    return asyncio.run_coroutine_threadsafe(
-        self._CreateCall(request, context), self._event_loop).result()
-
-  async def _CreateCall(self, request, context):
-    """Creates a call embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateCallRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateCallResponse`.
-    """
     py_typecheck.check_type(request, executor_pb2.CreateCallRequest)
     try:
       function_id = str(request.function_ref.id)
@@ -185,14 +171,17 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       with self._lock:
         function_val = self._values[function_id]
         argument_val = self._values[argument_id] if argument_id else None
-      function = await asyncio.wrap_future(function_val)
-      argument = await asyncio.wrap_future(
-          argument_val) if argument_val is not None else None
-      result_val = asyncio.run_coroutine_threadsafe(
-          self._executor.create_call(function, argument), self._event_loop)
+
+      async def _processing():
+        function = await asyncio.wrap_future(function_val)
+        argument = await asyncio.wrap_future(
+            argument_val) if argument_val is not None else None
+        return await self._executor.create_call(function, argument)
+
+      result_fut = self._event_loop.create_task(_processing())
       result_id = str(uuid.uuid4())
       with self._lock:
-        self._values[result_id] = result_val
+        self._values[result_id] = result_fut
       return executor_pb2.CreateCallResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
@@ -211,19 +200,6 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     Returns:
       An instance of `executor_pb2.CreateTupleResponse`.
     """
-    return asyncio.run_coroutine_threadsafe(
-        self._CreateTuple(request, context), self._event_loop).result()
-
-  async def _CreateTuple(self, request, context):
-    """Creates a tuple embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateTupleRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateTupleResponse`.
-    """
     py_typecheck.check_type(request, executor_pb2.CreateTupleRequest)
     try:
       with self._lock:
@@ -231,15 +207,18 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       elem_names = [
           str(elem.name) if elem.name else None for elem in request.element
       ]
-      elem_values = await asyncio.gather(
-          *[asyncio.wrap_future(v) for v in elem_futures])
-      elements = list(zip(elem_names, elem_values))
-      anon_tuple = anonymous_tuple.AnonymousTuple(elements)
-      result_val = asyncio.run_coroutine_threadsafe(
-          self._executor.create_tuple(anon_tuple), self._event_loop)
+
+      async def _processing():
+        elem_values = await asyncio.gather(
+            *[asyncio.wrap_future(v) for v in elem_futures])
+        elements = list(zip(elem_names, elem_values))
+        anon_tuple = anonymous_tuple.AnonymousTuple(elements)
+        return await self._executor.create_tuple(anon_tuple)
+
+      result_fut = self._event_loop.create_task(_processing())
       result_id = str(uuid.uuid4())
       with self._lock:
-        self._values[result_id] = result_val
+        self._values[result_id] = result_fut
       return executor_pb2.CreateTupleResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
@@ -258,33 +237,24 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     Returns:
       An instance of `executor_pb2.CreateSelectionResponse`.
     """
-    return asyncio.run_coroutine_threadsafe(
-        self._CreateSelection(request, context), self._event_loop).result()
-
-  async def _CreateSelection(self, request, context):
-    """Creates a selection embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateSelectionRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateSelectionResponse`.
-    """
     py_typecheck.check_type(request, executor_pb2.CreateSelectionRequest)
     try:
       with self._lock:
-        source_val = asyncio.wrap_future(self._values[request.source_ref.id])
-      source = await source_val
-      which_selection = request.WhichOneof('selection')
-      if which_selection == 'name':
-        coro = self._executor.create_selection(source, name=request.name)
-      else:
-        coro = self._executor.create_selection(source, index=request.index)
-      result_val = asyncio.run_coroutine_threadsafe(coro, self._event_loop)
+        source_fut = self._values[request.source_ref.id]
+
+      async def _processing():
+        source = await asyncio.wrap_future(source_fut)
+        which_selection = request.WhichOneof('selection')
+        if which_selection == 'name':
+          coro = self._executor.create_selection(source, name=request.name)
+        else:
+          coro = self._executor.create_selection(source, index=request.index)
+        return await coro
+
+      result_fut = self._event_loop.create_task(_processing())
       result_id = str(uuid.uuid4())
       with self._lock:
-        self._values[result_id] = result_val
+        self._values[result_id] = result_fut
       return executor_pb2.CreateSelectionResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
