@@ -91,6 +91,7 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertRaises(IndexError, lambda _: x[3], None)
     self.assertEqual(list(iter(x)), [10, 20, 30])
     self.assertEqual(dir(x), ['bar', 'foo'])
+    self.assertEqual(anonymous_tuple.name_list(x), ['foo', 'bar'])
     self.assertEqual(x.foo, 20)
     self.assertEqual(x.bar, 30)
     self.assertRaises(AttributeError, lambda _: x.baz, None)

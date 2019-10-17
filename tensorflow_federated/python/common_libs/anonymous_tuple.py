@@ -50,7 +50,7 @@ class AnonymousTuple(object):
   x[1] == 20
   x[2] == 30
   list(iter(x)) == [10, 20, 30]
-  sorted(dir(x)) == ['bar', 'foo']
+  dir(x) == ['bar', 'foo']
   x.foo == 10
   x.bar == 30
   ```
@@ -116,6 +116,9 @@ class AnonymousTuple(object):
 
     IMPORTANT: `len(self)` may be greater than `len(dir(self))`, since field
     names are not required by AnonymousTuple.
+
+    IMPORTANT: the Python `dir()` built-in sorts the list returned by this
+    method.
 
     Returns:
       A `list` of `str`.
@@ -184,6 +187,21 @@ class AnonymousTuple(object):
       An `OrderedDict`.
     """
     return to_odict(self, recursive=recursive)
+
+
+def name_list(an_anonymous_tuple):
+  """Builds a `list` of the names from the named fields.
+
+  Args:
+    an_anonymous_tuple: An instance of `AnonymousTuple`.
+
+  Returns:
+    The list of string names for the fields that are named. Names appear in
+  order, skipping names that are `None`.
+  """
+  return [
+      name for name, _ in iter_elements(an_anonymous_tuple) if name is not None
+  ]
 
 
 def to_elements(an_anonymous_tuple):
