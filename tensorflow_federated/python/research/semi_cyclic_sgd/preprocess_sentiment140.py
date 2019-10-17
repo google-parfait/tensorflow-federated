@@ -47,7 +47,7 @@ def replace_uris(text):
   # replace the scheme with "URI", and leave the rest; in all likelihood the
   # rest won't end up in the dictionary and is ignored, and if not, maybe it
   # contains useful info.
-  return text.replace('http://', 'URI ').replace('https://', 'URI ')
+  return text.replace('http://', 'URI ').replace('https://', 'URI ')  # pytype: disable=attribute-error
 
 
 def replace_repeated_characters(text):
