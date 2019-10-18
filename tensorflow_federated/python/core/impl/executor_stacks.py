@@ -14,8 +14,6 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import composite_executor
@@ -134,7 +132,7 @@ def _create_inferred_cardinality_executor_fn(max_fanout):
   def _create_variable_clients_executors(cardinalities):
     """Constructs executor stacks from `dict` argument."""
     py_typecheck.check_type(cardinalities, dict)
-    for k, v in six.iteritems(cardinalities):
+    for k, v in cardinalities.items():
       py_typecheck.check_type(k, placement_literals.PlacementLiteral)
       if k not in [placement_literals.CLIENTS, placement_literals.SERVER]:
         raise ValueError('Unsupported placement: {}.'.format(k))
