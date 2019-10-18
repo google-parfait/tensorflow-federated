@@ -522,6 +522,7 @@ py_test(
 
 py_library(
     name = "executor_test_utils",
+    testonly = True,
     srcs = ["executor_test_utils.py"],
     srcs_version = "PY3",
     deps = [

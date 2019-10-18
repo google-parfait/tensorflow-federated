@@ -184,6 +184,7 @@ py_test(
 
 py_library(
     name = "test_utils",
+    testonly = True,
     srcs = ["test_utils.py"],
     deps = [
         ":building_block_factory",

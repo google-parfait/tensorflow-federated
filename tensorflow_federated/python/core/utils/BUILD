@@ -110,6 +110,7 @@ py_test(
 
 py_library(
     name = "test",
+    testonly = True,
     srcs = ["test.py"],
     srcs_version = "PY3",
     deps = [
