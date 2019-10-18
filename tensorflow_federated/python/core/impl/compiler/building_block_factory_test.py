@@ -2645,12 +2645,6 @@ class CreateTensorFlowConstantTest(absltest.TestCase):
             test_utils.run_tensorflow(tensor_zero.function.proto),
             np.zeros([2, 2], dtype=np.int32)))
 
-  def test_constructs_tensor_zero_with_unknown_shape(self):
-    tensor_zero = building_block_factory.create_tensorflow_constant(
-        computation_types.TensorType(tf.int32, [None, 2]), 0)
-    self.assertIsInstance(tensor_zero, building_blocks.Call)
-    self.assertEqual(str(tensor_zero.type_signature), 'int32[?,2]')
-
   def test_constructs_float_tensor_one(self):
     tensor_one = building_block_factory.create_tensorflow_constant(
         computation_types.TensorType(tf.float32, [2, 2]), 1.)
