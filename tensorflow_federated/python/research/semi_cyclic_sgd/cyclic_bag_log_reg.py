@@ -14,10 +14,6 @@
 # limitations under the License.
 """Script for training + evaluating models for Semi-Cyclic SGD paper."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import csv
 import datetime
 import os
@@ -28,7 +24,6 @@ import time
 from absl import app
 from absl import flags
 import numpy as np
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.research.semi_cyclic_sgd import sentiment_util as su
