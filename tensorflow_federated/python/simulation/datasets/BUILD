@@ -5,6 +5,7 @@ licenses(["notice"])
 py_library(
     name = "datasets",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":dataset_utils",
         ":emnist",
@@ -34,6 +35,7 @@ py_test(
 py_library(
     name = "emnist",
     srcs = ["emnist.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
@@ -54,11 +56,13 @@ py_test(
 py_library(
     name = "shakespeare",
     srcs = ["shakespeare.py"],
+    srcs_version = "PY2AND3",
     deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
 )
 
 py_library(
     name = "stackoverflow",
     srcs = ["stackoverflow.py"],
+    srcs_version = "PY2AND3",
     deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
 )

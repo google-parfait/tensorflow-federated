@@ -6,6 +6,7 @@ licenses(["notice"])
 py_library(
     name = "learning",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [
         ":federated_averaging",
@@ -21,6 +22,7 @@ py_library(
 py_library(
     name = "federated_averaging",
     srcs = ["federated_averaging.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -62,6 +64,7 @@ py_test(
 py_library(
     name = "federated_evaluation",
     srcs = ["federated_evaluation.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":model_utils",
         "//tensorflow_federated/python/core",
@@ -86,6 +89,7 @@ py_test(
 py_library(
     name = "federated_sgd",
     srcs = ["federated_sgd.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":model",
         ":model_utils",
@@ -114,6 +118,7 @@ py_test(
 py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":model",
         ":model_utils",
@@ -143,11 +148,13 @@ py_test(
 py_library(
     name = "model",
     srcs = ["model.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_library(
     name = "model_examples",
     srcs = ["model_examples.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":model",
         "//tensorflow_federated/python/core",
@@ -170,6 +177,7 @@ py_test(
 py_library(
     name = "model_utils",
     srcs = ["model_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":model",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

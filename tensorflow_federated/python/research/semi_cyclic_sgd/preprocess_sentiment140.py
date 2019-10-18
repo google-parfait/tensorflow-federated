@@ -17,9 +17,6 @@
 Does stuff like some string replacements, converting dates, shuffling, splitting
 into train+test data.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import csv
 import random

@@ -6,6 +6,7 @@ licenses(["notice"])
 py_library(
     name = "framework",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [
         ":encoding_utils",
@@ -17,6 +18,7 @@ py_library(
 py_library(
     name = "encoding_utils",
     srcs = ["encoding_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core",
@@ -41,6 +43,7 @@ py_test(
 py_library(
     name = "optimizer_utils",
     srcs = ["optimizer_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",

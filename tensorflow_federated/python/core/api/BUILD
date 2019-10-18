@@ -6,6 +6,7 @@ licenses(["notice"])
 py_library(
     name = "api",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [
         ":computation_base",
@@ -22,12 +23,14 @@ py_library(
 py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
+    srcs_version = "PY2AND3",
     deps = [":typed_object"],
 )
 
 py_library(
     name = "computation_types",
     srcs = ["computation_types.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -52,6 +55,7 @@ py_test(
 py_library(
     name = "computations",
     srcs = ["computations.py"],
+    srcs_version = "PY2AND3",
     deps = ["//tensorflow_federated/python/core/impl:computation_wrapper_instances"],
 )
 
@@ -72,6 +76,7 @@ py_test(
 py_library(
     name = "intrinsics",
     srcs = ["intrinsics.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:intrinsic_factory",
@@ -93,23 +98,27 @@ py_test(
 py_library(
     name = "placements",
     srcs = ["placements.py"],
+    srcs_version = "PY2AND3",
     deps = ["//tensorflow_federated/python/core/impl/compiler:placement_literals"],
 )
 
 py_library(
     name = "typed_object",
     srcs = ["typed_object.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_library(
     name = "value_base",
     srcs = ["value_base.py"],
+    srcs_version = "PY2AND3",
     deps = [":typed_object"],
 )
 
 py_library(
     name = "values",
     srcs = ["values.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:value_impl",

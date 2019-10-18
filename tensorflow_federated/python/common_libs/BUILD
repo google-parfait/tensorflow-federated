@@ -10,12 +10,14 @@ licenses(["notice"])
 py_library(
     name = "common_libs",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(
     name = "anonymous_tuple",
     srcs = ["anonymous_tuple.py"],
+    srcs_version = "PY2AND3",
     deps = [":py_typecheck"],
 )
 
@@ -31,6 +33,7 @@ py_test(
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_test(
@@ -48,6 +51,7 @@ py_test(
 py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
@@ -70,6 +74,7 @@ py_library(
     name = "test",
     testonly = True,
     srcs = ["test.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_test(

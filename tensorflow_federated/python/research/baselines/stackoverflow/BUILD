@@ -5,6 +5,7 @@ licenses(["notice"])
 py_library(
     name = "models",
     srcs = ["models.py"],
+    srcs_version = "PY3",
 )
 
 py_test(

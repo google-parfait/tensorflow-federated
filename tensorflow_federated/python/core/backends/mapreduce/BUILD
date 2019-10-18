@@ -5,6 +5,7 @@ licenses(["notice"])
 py_library(
     name = "mapreduce",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":canonical_form",
@@ -15,6 +16,7 @@ py_library(
 py_library(
     name = "canonical_form",
     srcs = ["canonical_form.py"],
+    srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -33,6 +35,7 @@ py_test(
 py_library(
     name = "canonical_form_utils",
     srcs = ["canonical_form_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":canonical_form",
         ":transformations",
@@ -65,6 +68,7 @@ py_library(
     name = "test_utils",
     testonly = True,
     srcs = ["test_utils.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":canonical_form",
         "//tensorflow_federated/python/core/api:computation_types",

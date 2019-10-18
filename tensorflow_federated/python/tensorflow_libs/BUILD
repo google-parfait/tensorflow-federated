@@ -5,17 +5,20 @@ licenses(["notice"])
 py_library(
     name = "tensorflow_libs",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(
     name = "graph_keys",
     srcs = ["graph_keys.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_library(
     name = "graph_merge",
     srcs = ["graph_merge.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_test(
@@ -32,6 +35,7 @@ py_test(
 py_library(
     name = "nest",
     srcs = ["nest.py"],
+    srcs_version = "PY2AND3",
 )
 
 py_test(
@@ -45,6 +49,7 @@ py_test(
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
+    srcs_version = "PY2AND3",
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 

@@ -7,6 +7,7 @@ exports_files(["LICENSE"])
 py_library(
     name = "tensorflow_federated",
     srcs = ["__init__.py"],
+    srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [
         ":version",
@@ -41,4 +42,5 @@ config_setting(
 py_library(
     name = "version",
     srcs = ["version.py"],
+    srcs_version = "PY2AND3",
 )

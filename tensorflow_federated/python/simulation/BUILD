@@ -25,6 +25,7 @@ py_library(
 py_library(
     name = "client_data",
     srcs = ["client_data.py"],
+    srcs_version = "PY2AND3",
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
@@ -40,6 +41,7 @@ py_test(
 py_library(
     name = "file_per_user_client_data",
     srcs = ["file_per_user_client_data.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -59,6 +61,7 @@ py_test(
 py_library(
     name = "from_tensor_slices_client_data",
     srcs = ["from_tensor_slices_client_data.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -77,6 +80,7 @@ py_test(
 py_library(
     name = "hdf5_client_data",
     srcs = ["hdf5_client_data.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -106,6 +110,7 @@ py_library(
 py_library(
     name = "transforming_client_data",
     srcs = ["transforming_client_data.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
