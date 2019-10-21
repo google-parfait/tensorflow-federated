@@ -33,12 +33,12 @@ with utils_impl.record_new_flags() as hparam_flags:
       'use in filenames.')
   flags.DEFINE_integer('batch_size', 256, 'Batch size used.')
   flags.DEFINE_integer(
-      'vocab_size', 30000,
+      'vocab_size', 10000,
       'Size of the vocab to use; results in most `vocab_size` number of most '
       'common words used as vocabulary.')
-  flags.DEFINE_integer('embedding_size', 256,
+  flags.DEFINE_integer('embedding_size', 96,
                        'Dimension of word embedding to use.')
-  flags.DEFINE_integer('latent_size', 512,
+  flags.DEFINE_integer('latent_size', 670,
                        'Dimension of latent size to use in recurrent cell')
   flags.DEFINE_integer('num_layers', 1,
                        'Number of stacked recurrent layers to use.')
@@ -51,7 +51,7 @@ with utils_impl.record_new_flags() as hparam_flags:
       'corresponds to no momentum.')
   # TODO(b/141867576): TFF currently needs a concrete maximum sequence length.
   # Follow up when this restriction is lifted.
-  flags.DEFINE_integer('sequence_length', 100, 'Max sequence length to use')
+  flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use')
   # There are over 100 million sentences in this dataset; this flag caps the
   # epoch size for speed. For comparison: EMNIST contains roughly 300,000
   # examples, so we set that as default here.
