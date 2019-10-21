@@ -34,8 +34,8 @@ class TensorFlowComputationContextTest(test.TestCase):
 
     context = tf_computation_context.TensorFlowComputationContext(
         tf.compat.v1.get_default_graph())
-    with self.assertRaisesRegexp(ValueError,
-                                 'Expected a TensorFlow computation.'):
+    with self.assertRaisesRegex(ValueError,
+                                'Expected a TensorFlow computation.'):
       context.invoke(foo, None)
 
   def test_invoke_tf_computation(self):

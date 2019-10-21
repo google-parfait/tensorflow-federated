@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +87,7 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(restructured_from_flat, sample_attr)
 
     # Check that flatten fails if attributes are not iterable
-    with self.assertRaisesRegexp(TypeError, "object is not iterable"):
+    with self.assertRaisesRegex(TypeError, "object is not iterable"):
       flat = nest.flatten(NestTest.BadAttr())
 
   @parameterized.parameters(
@@ -130,10 +131,10 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         np.array([5]), nest.pack_sequence_as("scalar", [np.array([5])]))
 
-    with self.assertRaisesRegexp(ValueError, "Structure is a scalar"):
+    with self.assertRaisesRegex(ValueError, "Structure is a scalar"):
       nest.pack_sequence_as("scalar", [4, 5])
 
-    with self.assertRaisesRegexp(TypeError, "flat_sequence"):
+    with self.assertRaisesRegex(TypeError, "flat_sequence"):
       nest.pack_sequence_as([4, 5], "bad_sequence")
 
     with self.assertRaises(ValueError):
@@ -230,11 +231,11 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(structure, unflattened)
 
   def testPackSequenceAs_notIterableError(self):
-    with self.assertRaisesRegexp(TypeError, "flat_sequence must be a sequence"):
+    with self.assertRaisesRegex(TypeError, "flat_sequence must be a sequence"):
       nest.pack_sequence_as("hi", "bye")
 
   def testPackSequenceAs_wrongLengthsError(self):
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         "Structure had 2 elements, but flat_sequence had 3 elements."):
       nest.pack_sequence_as(["hello", "world"], ["and", "goodbye", "again"])
@@ -262,13 +263,13 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
       nest.flatten_dict_items(4)
 
     bad_dictionary = mapping_type({(4, 5, (4, 8)): ("a", "b", ("c", "d"))})
-    with self.assertRaisesRegexp(ValueError, "not unique"):
+    with self.assertRaisesRegex(ValueError, "not unique"):
       nest.flatten_dict_items(bad_dictionary)
 
     another_bad_dictionary = mapping_type({
         (4, 5, (6, 8)): ("a", "b", ("c", ("d", "e")))
     })
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, "Key had [0-9]* elements, but value had [0-9]* elements"):
       nest.flatten_dict_items(another_bad_dictionary)
 
@@ -500,14 +501,14 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     shallow_tree = ["shallow_tree"]
     expected_message = ("If shallow structure is a sequence, input must also "
                         "be a sequence. Input has type: <(type|class) 'str'>.")
-    with self.assertRaisesRegexp(TypeError, expected_message):
+    with self.assertRaisesRegex(TypeError, expected_message):
       flattened_input_tree = nest.flatten_up_to(shallow_tree, input_tree)
     flattened_shallow_tree = nest.flatten_up_to(shallow_tree, shallow_tree)
     self.assertEqual(flattened_shallow_tree, shallow_tree)
 
     input_tree = "input_tree"
     shallow_tree = ["shallow_tree_9", "shallow_tree_8"]
-    with self.assertRaisesRegexp(TypeError, expected_message):
+    with self.assertRaisesRegex(TypeError, expected_message):
       flattened_input_tree = nest.flatten_up_to(shallow_tree, input_tree)
     flattened_shallow_tree = nest.flatten_up_to(shallow_tree, shallow_tree)
     self.assertEqual(flattened_shallow_tree, shallow_tree)
@@ -517,14 +518,14 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     shallow_tree = [9]
     expected_message = ("If shallow structure is a sequence, input must also "
                         "be a sequence. Input has type: <(type|class) 'int'>.")
-    with self.assertRaisesRegexp(TypeError, expected_message):
+    with self.assertRaisesRegex(TypeError, expected_message):
       flattened_input_tree = nest.flatten_up_to(shallow_tree, input_tree)
     flattened_shallow_tree = nest.flatten_up_to(shallow_tree, shallow_tree)
     self.assertEqual(flattened_shallow_tree, shallow_tree)
 
     input_tree = 0
     shallow_tree = [9, 8]
-    with self.assertRaisesRegexp(TypeError, expected_message):
+    with self.assertRaisesRegex(TypeError, expected_message):
       flattened_input_tree = nest.flatten_up_to(shallow_tree, input_tree)
     flattened_shallow_tree = nest.flatten_up_to(shallow_tree, shallow_tree)
     self.assertEqual(flattened_shallow_tree, shallow_tree)
@@ -533,7 +534,7 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     shallow_tree = [(1,), (2,)]
     expected_message = nest._STRUCTURES_HAVE_MISMATCHING_LENGTHS.format(
         input_length=len(input_tree), shallow_length=len(shallow_tree))
-    with self.assertRaisesRegexp(ValueError, expected_message):  # pylint: disable=g-error-prone-assert-raises
+    with self.assertRaisesRegex(ValueError, expected_message):  # pylint: disable=g-error-prone-assert-raises
       nest.assert_shallow_structure(shallow_tree, input_tree)
 
   def testFlattenWithTuplePathsUpTo(self):
@@ -866,14 +867,14 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     nest.assert_shallow_structure(structure_traverse_r,
                                   structure_traverse_input)
 
-    with self.assertRaisesRegexp(TypeError, "returned structure"):
+    with self.assertRaisesRegex(TypeError, "returned structure"):
       nest.get_traverse_shallow_structure(lambda _: [True], 0)
 
-    with self.assertRaisesRegexp(TypeError, "returned a non-bool scalar"):
+    with self.assertRaisesRegex(TypeError, "returned a non-bool scalar"):
       nest.get_traverse_shallow_structure(lambda _: 1, [1])
 
-    with self.assertRaisesRegexp(TypeError,
-                                 "didn't return a depth=1 structure of bools"):
+    with self.assertRaisesRegex(TypeError,
+                                "didn't return a depth=1 structure of bools"):
       nest.get_traverse_shallow_structure(lambda _: [1], [1])
 
   def testYieldFlatStringPaths(self):

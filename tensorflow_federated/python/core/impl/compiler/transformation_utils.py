@@ -645,7 +645,8 @@ class SymbolTree(object):
       symbol_tree_string = symbol_tree_string[:-2]
       symbol_tree_string += '}'
     if node.younger_sibling:
-      symbol_tree_string += '-' + self._string_under_node(node.younger_sibling)
+      symbol_tree_string += '-' + six.ensure_str(
+          self._string_under_node(node.younger_sibling))
     return symbol_tree_string
 
   def __str__(self):

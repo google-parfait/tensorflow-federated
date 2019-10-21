@@ -126,7 +126,7 @@ class TensorUtilsTest(test.TestCase):
     v1 = tf.Variable(0, name='foo')
     v2 = tf.Variable(0, name='foo')
     assert v1.name == v2.name
-    with self.assertRaisesRegexp(ValueError, 'multiple.*foo'):
+    with self.assertRaisesRegex(ValueError, 'multiple.*foo'):
       tensor_utils.to_var_dict([v1, v2])
 
   def test_to_odict(self):

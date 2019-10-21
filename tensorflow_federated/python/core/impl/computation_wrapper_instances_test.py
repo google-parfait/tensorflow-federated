@@ -104,7 +104,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
                                                 placement_literals.CLIENTS)
     tuple_on_function = computation_types.NamedTupleType([federated, function])
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type {int32}@CLIENTS'):
 
@@ -113,7 +113,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
         del x
 
     # pylint: disable=anomalous-backslash-in-string
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type \( -> int32\)'):
 
@@ -121,7 +121,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
       def _(x):
         del x
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, r'you have attempted to create one with the type placement'):
 
       @computation_wrapper_instances.tensorflow_wrapper(
@@ -129,7 +129,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
       def _(x):
         del x
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, r'you have attempted to create one with the type T'):
 
       @computation_wrapper_instances.tensorflow_wrapper(
@@ -137,9 +137,10 @@ class ComputationWrapperInstancesTest(test.TestCase):
       def _(x):
         del x
 
-    with self.assertRaisesRegexp(
-        TypeError, r'you have attempted to create one with the type '
-        '<{int32}@CLIENTS,\( -> int32\)>'):
+    with self.assertRaisesRegex(
+        TypeError,
+        r'you have attempted to create one with the type <{int32}@CLIENTS,\( '
+        '-> int32\)>'):
 
       @computation_wrapper_instances.tensorflow_wrapper(tuple_on_function)
       def _(x):

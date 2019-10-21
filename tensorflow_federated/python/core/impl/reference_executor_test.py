@@ -392,9 +392,9 @@ class ReferenceExecutorTest(test.TestCase):
     ds1 = tf.data.Dataset.from_tensor_slices([10, 20]).batch(batch_size)
     ds2 = tf.data.Dataset.from_tensor_slices([30, 40]).batch(batch_size)
 
-    with self.assertRaisesRegexp(ValueError, 'Please pass a list'):
+    with self.assertRaisesRegex(ValueError, 'Please pass a list'):
       bar(ds1)
-    with self.assertRaisesRegexp(ValueError, 'Please pass a list'):
+    with self.assertRaisesRegex(ValueError, 'Please pass a list'):
       bar(ds2)
 
   def test_batching_namedtuple_dataset(self):
@@ -456,14 +456,14 @@ class ReferenceExecutorTest(test.TestCase):
     ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
     ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'only with a single positional argument'):
+    with self.assertRaisesRegex(TypeError,
+                                'only with a single positional argument'):
       # pylint: disable=too-many-function-args
       _ = bar(ds1, ds2)
       # pylint: enable=too-many-function-args
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'argument should be placed at SERVER'):
+    with self.assertRaisesRegex(TypeError,
+                                'argument should be placed at SERVER'):
 
       @computations.federated_computation(federated_type)
       def _(x):
@@ -487,7 +487,7 @@ class ReferenceExecutorTest(test.TestCase):
 
       ds1 = tf.data.Dataset.from_tensor_slices([10, 20])
       ds2 = tf.data.Dataset.from_tensor_slices([30, 40])
-      with self.assertRaisesRegexp(
+      with self.assertRaisesRegex(
           ValueError, 'outside of eager mode is not currently supported.'):
         bar([ds1, ds2])
 

@@ -496,13 +496,13 @@ class GraphUtilsTest(test.TestCase):
 
   def test_make_dummy_element_for_type_spec_raises_SequenceType(self):
     type_spec = computation_types.SequenceType(tf.float32)
-    with self.assertRaisesRegexp(ValueError,
-                                 'Cannot construct array for TFF type'):
+    with self.assertRaisesRegex(ValueError,
+                                'Cannot construct array for TFF type'):
       tensorflow_utils.make_dummy_element_for_type_spec(type_spec)
 
   def test_make_dummy_element_for_type_spec_raises_negative_none_dim_replacement(
       self):
-    with self.assertRaisesRegexp(ValueError, 'nonnegative'):
+    with self.assertRaisesRegex(ValueError, 'nonnegative'):
       tensorflow_utils.make_dummy_element_for_type_spec(tf.float32, -1)
 
   def test_make_dummy_element_TensorType(self):

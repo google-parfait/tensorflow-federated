@@ -103,21 +103,21 @@ class UtilsTest(test.TestCase):
     self.assertAllClose(new_state.model.trainable['a'], [[3.0]])
     self.assertAllClose(new_state.model.non_trainable['c'], 3)
 
-    with self.assertRaisesRegexp(ValueError, 'dtype'):
+    with self.assertRaisesRegex(ValueError, 'dtype'):
       optimizer_utils.state_with_new_model_weights(
           state,
           trainable_weights=[np.array([3.0, 3.0]),
                              np.array([[3]])],
           non_trainable_weights=[np.array(3.0)])
 
-    with self.assertRaisesRegexp(ValueError, 'shape'):
+    with self.assertRaisesRegex(ValueError, 'shape'):
       optimizer_utils.state_with_new_model_weights(
           state,
           trainable_weights=[np.array([3.0, 3.0]),
                              np.array([3.0])],
           non_trainable_weights=[np.array(3)])
 
-    with self.assertRaisesRegexp(ValueError, 'Lengths differ'):
+    with self.assertRaisesRegex(ValueError, 'Lengths differ'):
       optimizer_utils.state_with_new_model_weights(
           state,
           trainable_weights=[np.array([3.0, 3.0])],
