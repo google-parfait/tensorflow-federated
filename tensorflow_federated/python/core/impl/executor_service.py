@@ -42,7 +42,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
   def __init__(self, executor, *args, **kwargs):
     py_typecheck.check_type(executor, executor_base.Executor)
-    super(ExecutorService, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self._executor = executor
     self._lock = threading.Lock()
 
