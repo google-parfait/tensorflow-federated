@@ -80,7 +80,7 @@ REQUIRED_PACKAGES = [
     'six~=1.10',
     'tensorflow-model-optimization~=0.1.3',
     'tensorflow-privacy~=0.2.0',
-    'tf-nightly',
+    'tf-nightly==2.1.0.dev20191015',
     'tfa-nightly',
 ]
 
