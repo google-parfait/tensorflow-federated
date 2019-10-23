@@ -66,27 +66,22 @@ from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_s
 # High-performance simulation components currently only available in Python 3,
 # and dependent on targets are are not currently included in the open-source
 # build rule.
-# TODO(b/134543154): Modify the OSS build rule to conditionally include these
-# new targets if possible.
 if six.PY3:
   # pylint: disable=g-import-not-at-top
-  try:
-    from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
-    from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
-    from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
-    from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
-    from tensorflow_federated.python.core.impl.executor_base import Executor
-    from tensorflow_federated.python.core.impl.executor_service import ExecutorService
-    from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
-    from tensorflow_federated.python.core.impl.executor_stacks import create_worker_pool_executor
-    from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
-    from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
-    from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
-    from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
-    from tensorflow_federated.python.core.impl.set_default_executor import set_default_executor
-    from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
-  except ModuleNotFoundError:
-    pass
+  from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
+  from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
+  from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
+  from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
+  from tensorflow_federated.python.core.impl.executor_base import Executor
+  from tensorflow_federated.python.core.impl.executor_service import ExecutorService
+  from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
+  from tensorflow_federated.python.core.impl.executor_stacks import create_worker_pool_executor
+  from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
+  from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
+  from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
+  from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
+  from tensorflow_federated.python.core.impl.set_default_executor import set_default_executor
+  from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
   # pylint: enable=g-import-not-at-top
 
 # Used by doc generation script.

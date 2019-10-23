@@ -31,15 +31,10 @@ from tensorflow_federated.python.simulation.transforming_client_data import Tran
 # High-performance simulation components currently only available in Python 3,
 # and dependent on targets are are not currently included in the open-source
 # build rule.
-# TODO(b/134543154): Modify the OSS build rule to conditionally include these
-# new targets if possible.
 if six.PY3:
-  # pylint: disable=g-import-not-at-top,undefined-variable
-  try:
-    from tensorflow_federated.python.simulation.server_utils import run_server
-  except ModuleNotFoundError:
-    pass
-  # pylint: enable=g-import-not-at-top,undefined-variable
+  # pylint: disable=g-import-not-at-top
+  from tensorflow_federated.python.simulation.server_utils import run_server
+  # pylint: enable=g-import-not-at-top
 
 # Used by doc generation script.
 _allowed_symbols = [
