@@ -15,11 +15,13 @@ classes of users:
     `learning` library.
 
     The symbols included in this public API surface are documented in the
-    automatically generated Python documentation in `api_docs`. Typically, a
-    user will wrap their ML model as a subclass of `tff.learning.Model`, and
-    then invoke one of the constructors listed in the API to create one or more
-    `tff.Computation`s that implement pre-defined federated tasks (such as
-    training or evaluation), and that can be invoked to run on their data sets.
+    automatically generated Python
+    [API documentation](https://www.tensorflow.org/federated/api_docs/python/tff).
+    Typically, a user will wrap their ML model as a subclass of
+    `tff.learning.Model`, and then invoke one of the constructors listed in the
+    API to create one or more `tff.Computation`s that implement pre-defined
+    federated tasks (such as training or evaluation), and that can be invoked to
+    run on their data sets.
 
 *   **Federated Learning Researchers**. Users who will develop new federated
     learning algorithms, and may selectively reuse or extend a subset of the

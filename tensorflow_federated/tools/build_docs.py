@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tool to generate external api_docs for tensorflow_federated."""
+"""Tool to generate external API documentation for tensorflow_federated."""
 
 import inspect
 import os
