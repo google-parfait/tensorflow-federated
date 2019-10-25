@@ -131,10 +131,19 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         np.array([5]), nest.pack_sequence_as("scalar", [np.array([5])]))
 
-    with self.assertRaisesRegex(ValueError, "Structure is a scalar"):
+    # NOTE(taylorrobie): The second pattern is for version compatibility.
+    with self.assertRaisesRegex(
+        ValueError,
+        "(nest cannot guarantee that it is safe to map one to the other.)|"
+        "(Structure is a scalar)"):
       nest.pack_sequence_as("scalar", [4, 5])
 
-    with self.assertRaisesRegex(TypeError, "flat_sequence"):
+    # NOTE(taylorrobie): The second pattern is for version compatibility.
+    with self.assertRaisesRegex(
+        TypeError,
+        "(Attempted to pack value:\n  bad_sequence\ninto a sequence, but found "
+        "incompatible type `<(type|class) 'str'>` instead.)|"
+        "(flat_sequence must be a sequence)"):
       nest.pack_sequence_as([4, 5], "bad_sequence")
 
     with self.assertRaises(ValueError):
@@ -231,7 +240,12 @@ class NestTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(structure, unflattened)
 
   def testPackSequenceAs_notIterableError(self):
-    with self.assertRaisesRegex(TypeError, "flat_sequence must be a sequence"):
+    # NOTE(taylorrobie): The second pattern is for version compatibility.
+    with self.assertRaisesRegex(
+        TypeError,
+        "(Attempted to pack value:\n  bye\ninto a sequence, but found "
+        "incompatible type `<(type|class) 'str'>` instead.)|"
+        "(flat_sequence must be a sequence)"):
       nest.pack_sequence_as("hi", "bye")
 
   def testPackSequenceAs_wrongLengthsError(self):
