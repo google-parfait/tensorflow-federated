@@ -178,10 +178,12 @@ def run_experiment():
   except tf.errors.OpError:
     pass  # log_dir already exists.
 
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  train_tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=log_dir,
       write_graph=True,
       update_freq=FLAGS.tensorboard_update_frequency)
+
+  test_tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir)
 
   results_file = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
                               'results.csv.bz2')
@@ -201,11 +203,11 @@ def run_experiment():
       epochs=25,
       verbose=1,
       validation_data=stackoverflow_val,
-      callbacks=[train_csv_logger, tensorboard_callback])
-  score = model.evaluate_generator(
+      callbacks=[train_csv_logger, train_tensorboard_callback])
+  score = model.evaluate(
       stackoverflow_test,
       verbose=1,
-      callbacks=[test_csv_logger, tensorboard_callback])
+      callbacks=[test_csv_logger, test_tensorboard_callback])
   print('Final test loss: %.4f' % score[0])
   print('Final test accuracy: %.4f' % score[1])
 
