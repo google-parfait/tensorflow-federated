@@ -449,8 +449,10 @@ def build_model_delta_optimizer_process(
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
 
-    # Promote the FederatedType outside the NamedTupleType
-    aggregated_outputs = tff.federated_zip(aggregated_outputs)
+    # TODO(b/131429028): Ideally this federated_zip shouldn't ever be needed.
+    if isinstance(aggregated_outputs.type_signature, tff.NamedTupleType):
+      # Promote the FederatedType outside the NamedTupleType.
+      aggregated_outputs = tff.federated_zip(aggregated_outputs)
 
     return server_state, aggregated_outputs
 
