@@ -25,7 +25,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.utils import utils_impl
 
-
 FLAGS = flags.FLAGS
 TEST_CLIENT_FLAG_PREFIX = 'test_client'
 TEST_SERVER_FLAG_PREFIX = 'test_server'

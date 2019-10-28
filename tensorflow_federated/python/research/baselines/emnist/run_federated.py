@@ -27,7 +27,6 @@ from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.utils import training_loops
 from tensorflow_federated.python.research.utils import utils_impl
 
-
 with utils_impl.record_new_flags() as hparam_flags:
   # Metadata
   flags.DEFINE_string(

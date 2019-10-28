@@ -26,11 +26,11 @@ def set_default_executor(executor=None):
   NOTE: This function is only available in Python 3.
 
   Args:
-    executor: Either an instance of `executor_base.Executor`, a factory
-      function returning such executors, or `None`. If `executor` is a factory
-      function, the constructed context will infer the number of clients from
-      the data it is passed, if possible. If `None`, causes the default
-      reference executor to be installed (as is the default).
+    executor: Either an instance of `executor_base.Executor`, a factory function
+      returning such executors, or `None`. If `executor` is a factory function,
+      the constructed context will infer the number of clients from the data it
+      is passed, if possible. If `None`, causes the default reference executor
+      to be installed (as is the default).
   """
   # TODO(b/140112504): Follow up here when we implement the ExecutorFactory
   # interface.

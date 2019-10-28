@@ -46,6 +46,7 @@ def federated_averaging_training_loop(model_fn,
       the total number of examples processed on device.
     stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn`. (See
       documentation for `tff.learning.build_federated_averaging_process`.)
+
   Returns:
     Final `ServerState`.
   """

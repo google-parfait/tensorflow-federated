@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 
-
 TF_DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, tf.compat.v1.data.Dataset,
                                    tf.compat.v2.data.Dataset)
 

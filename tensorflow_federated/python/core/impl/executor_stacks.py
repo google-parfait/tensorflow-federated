@@ -158,9 +158,9 @@ def create_local_executor(num_clients=None, max_fanout=100):
       exactly `num_clients` clients. If unspecified (`None`), then the function
       returned will attempt to infer cardinalities of all placements for which
       it is passed values.
-    max_fanout: The maximum fanout at any point in the aggregation hierarchy.
-      If `num_clients > max_fanout`, the constructed executor stack will consist
-      of multiple levels of aggregators. The height of the stack will be on the
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
 
   Returns:

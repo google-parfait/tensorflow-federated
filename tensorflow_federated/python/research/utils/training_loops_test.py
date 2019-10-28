@@ -21,7 +21,6 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import training_loops
 
-
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
 
 

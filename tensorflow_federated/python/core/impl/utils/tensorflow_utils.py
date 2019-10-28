@@ -36,7 +36,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
 
-
 TENSOR_REPRESENTATION_TYPES = (
     # Python native types
     str,

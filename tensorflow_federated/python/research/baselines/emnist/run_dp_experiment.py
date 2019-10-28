@@ -59,7 +59,6 @@ with utils_impl.record_new_flags() as hparam_flags:
       'Fraction of privacy budget to allocate for clipped counts.')
   flags.DEFINE_boolean('use_per_vector', False, 'Use per-vector clipping.')
 
-
 # End of hyperparameter flags.
 
 # Root output directories.
@@ -135,9 +134,10 @@ def run_experiment():
   ])
 
   keras_model = create_compiled_keras_model()
-  the_metrics_hook = metrics_hook.MetricsHook.build(
-      FLAGS.exp_name, FLAGS.root_output_dir, emnist_test, hparam_dict,
-      keras_model)
+  the_metrics_hook = metrics_hook.MetricsHook.build(FLAGS.exp_name,
+                                                    FLAGS.root_output_dir,
+                                                    emnist_test, hparam_dict,
+                                                    keras_model)
 
   optimizer_fn = lambda: utils_impl.get_optimizer_from_flags('server')
 
