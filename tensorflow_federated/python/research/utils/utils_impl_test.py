@@ -19,6 +19,7 @@ from unittest import mock
 
 from absl import flags
 from absl.testing import absltest
+from absl.testing import parameterized
 import pandas as pd
 import tensorflow as tf
 
@@ -26,21 +27,82 @@ from tensorflow_federated.python.research.utils import utils_impl
 
 
 FLAGS = flags.FLAGS
+TEST_CLIENT_FLAG_PREFIX = 'test_client'
+TEST_SERVER_FLAG_PREFIX = 'test_server'
 
 
-class UtilsTest(tf.test.TestCase):
+def setUpModule():
+  # Create flags here to ensure duplicate flags are not created.
+  utils_impl.define_optimizer_flags(TEST_SERVER_FLAG_PREFIX)
+  utils_impl.define_optimizer_flags(TEST_CLIENT_FLAG_PREFIX)
 
-  def test_get_optimizer_from_flags(self):
-    utils_impl.define_optimizer_flags(
-        'server', defaults=dict(learning_rate=1.25))
-    self.assertEqual(FLAGS.server_learning_rate, 1.25)
-    optimizer = utils_impl.get_optimizer_from_flags('server')
-    self.assertEqual(optimizer.get_config()['learning_rate'], 1.25)
 
-  def test_define_optimizer_unused_default(self):
-    with self.assertRaisesRegex(ValueError, 'not consumed'):
-      # Use a different prefix to avoid declaring duplicate flags:
-      utils_impl.define_optimizer_flags('client', defaults=dict(lr=1.25))
+# Create a list of `(test name, optimizer name flag value, optimizer class)`
+# for parameterized tests.
+_OPTIMIZERS_TO_TEST = [
+    (name, name, cls) for name, cls in utils_impl._SUPPORTED_OPTIMIZERS.items()
+]
+
+
+class UtilsTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_get_optimizer_from_flags_invalid_optimizer(self):
+    FLAGS['{}_optimizer'.format(TEST_CLIENT_FLAG_PREFIX)].value = 'foo'
+    with self.assertRaisesRegex(ValueError, 'not a valid optimizer'):
+      _ = utils_impl.get_optimizer_from_flags(TEST_CLIENT_FLAG_PREFIX)
+
+  def test_get_optimizer_from_flags_flags_set_not_for_optimizer(self):
+    FLAGS['{}_optimizer'.format(TEST_CLIENT_FLAG_PREFIX)].value = 'sgd'
+    # Set an Adam flag that isn't used in SGD.
+    # We need to use `_parse_args` because that is the only way FLAGS is
+    # notified that a non-default value is being used.
+    FLAGS._parse_args(
+        args=['--{}_adam_beta_1=0.5'.format(TEST_CLIENT_FLAG_PREFIX)],
+        known_only=True)
+    with self.assertRaisesRegex(
+        ValueError,
+        r'Commandline flags for .*\[sgd\].*\'test_client_adam_beta_1\'.*'):
+      _ = utils_impl.get_optimizer_from_flags(TEST_CLIENT_FLAG_PREFIX)
+
+  @parameterized.named_parameters(_OPTIMIZERS_TO_TEST)
+  def test_get_client_optimizer_from_flags(self, optimizer_name, optimizer_cls):
+    FLAGS['{}_optimizer'.format(TEST_CLIENT_FLAG_PREFIX)].value = optimizer_name
+    # Construct a default optimizer.
+    default_optimizer = utils_impl.get_optimizer_from_flags(
+        TEST_CLIENT_FLAG_PREFIX)
+    self.assertIsInstance(default_optimizer, optimizer_cls)
+    # Override learning rate flag.
+    FLAGS['{}_{}'.format(TEST_CLIENT_FLAG_PREFIX,
+                         'learning_rate')].value = 100.0
+    custom_optimizer = utils_impl.get_optimizer_from_flags(
+        TEST_CLIENT_FLAG_PREFIX)
+    self.assertIsInstance(custom_optimizer, optimizer_cls)
+    self.assertEqual(custom_optimizer.get_config()['learning_rate'], 100.0)
+    # Override the flag value.
+    custom_optimizer = utils_impl.get_optimizer_from_flags(
+        TEST_CLIENT_FLAG_PREFIX, {'learning_rate': 5.0})
+    self.assertIsInstance(custom_optimizer, optimizer_cls)
+    self.assertEqual(custom_optimizer.get_config()['learning_rate'], 5.0)
+
+  @parameterized.named_parameters(_OPTIMIZERS_TO_TEST)
+  def test_get_server_optimizer_from_flags(self, optimizer_name, optimizer_cls):
+    FLAGS['{}_optimizer'.format(TEST_SERVER_FLAG_PREFIX)].value = optimizer_name
+    # Construct a default optimizer.
+    default_optimizer = utils_impl.get_optimizer_from_flags(
+        TEST_SERVER_FLAG_PREFIX)
+    self.assertIsInstance(default_optimizer, optimizer_cls)
+    # Set a flag to a non-default.
+    FLAGS['{}_{}'.format(TEST_SERVER_FLAG_PREFIX,
+                         'learning_rate')].value = 100.0
+    custom_optimizer = utils_impl.get_optimizer_from_flags(
+        TEST_SERVER_FLAG_PREFIX)
+    self.assertIsInstance(custom_optimizer, optimizer_cls)
+    self.assertEqual(custom_optimizer.get_config()['learning_rate'], 100.0)
+    # Override the flag value.
+    custom_optimizer = utils_impl.get_optimizer_from_flags(
+        TEST_SERVER_FLAG_PREFIX, {'learning_rate': 5.0})
+    self.assertIsInstance(custom_optimizer, optimizer_cls)
+    self.assertEqual(custom_optimizer.get_config()['learning_rate'], 5.0)
 
   def test_atomic_write(self):
     for name in ['foo.csv', 'baz.csv.bz2']:

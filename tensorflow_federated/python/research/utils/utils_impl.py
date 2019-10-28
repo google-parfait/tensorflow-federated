@@ -17,15 +17,17 @@
 import collections
 import contextlib
 import functools
+import inspect
 import itertools
 import multiprocessing
 import os
 import shutil
 import subprocess
 import tempfile
-
 from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Union
+
 from absl import flags
+from absl import logging
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -100,74 +102,203 @@ def atomic_write_to_csv(dataframe: pd.DataFrame,
   shutil.rmtree(tmp_dir)
 
 
-def define_optimizer_flags(
-    prefix: Text,
-    defaults: Optional[Dict[Text, Union[int, float, Text]]] = None) -> None:
+def _optimizer_canonical_name(optimizer_cls):
+  """Return a short, canonical name for an optimizer for us in flags."""
+  return optimizer_cls.__name__.lower()
+
+
+# List of optimizers currently supported.
+_SUPPORTED_OPTIMIZERS = {
+    _optimizer_canonical_name(cls): cls for cls in [
+        tf.keras.optimizers.SGD, tf.keras.optimizers.Adagrad,
+        tf.keras.optimizers.Adam
+    ]
+}
+
+
+def define_optimizer_flags(prefix: Text) -> None:
   """Defines flags with `prefix` to configure an optimizer.
 
-  For flags to be correctly parsed, this should be called next to other
-  flag definitions at the top of a py_binary, before `absl.app.run(main)`.
+  This method is inteded to be paired with `get_optimizer_from_flags` using the
+  same `prefix`, to allow Python binaries to constructed TensorFlow optimizers
+  parameterized by commandline flags.
 
-  For example, given the prefix "client" this will create flags:
+  This creates two new flags:
+    * `--<prefix>_optimizer=<optimizer name>`
+    * `--<prefix>_learning_rate`
 
+  In addition to a suite of flags for each optimizer:
+    * `--<prefix>_<optimizer name>_<constructor_argument>`
+
+  For example, given the prefix "client" this will create flags (non-exhaustive
+  list):
+
+    *  `--client_optimizer`
     *  `--client_learning_rate`
+    *  `--client_sgd_momentum`
+    *  `--client_sgd_nesterov`
+    *  `--client_adam_beta_1`
+    *  `--client_adam_beta_2`
+    *  `--client_adam_epsilon`
 
-  It is expected that more flags to support other optimizers will be added
-  in the future. Currently, the optimizer is always SGD.
+  Then calls to `get_optimizer_from_flags('client')` will construct an optimizer
+  of the type named in `--client_optimizer`, parameterized by the flags prefixed
+  with the matching optimizer name. For example,  if `--client_optimizer=sgd`,
+  `--client_sgd_*` flags will be used.
+
+  IMPORTANT: For flags to be correctly parsed from the commandline, this method
+  must be called before `absl.app.run(main)`, and is recommened to be called
+  next to other flag definitions at the top of a py_binary.
+
+  NOTE: This method does not create a flag for `kwargs` of the Optimizer
+  constructor. However, `kwargs` can be set using the `overrides` parameter of
+  `get_optimizer_from_flags` below.
 
   Args:
     prefix: A string (possibly empty) indicating which optimizer is being
       configured.
-    defaults: A dictionary from flag names (without prefix) to default values,
-      e.g., `dict(learning_rate=0.0`)` regardless of prefix (see the flag names
-      above).
   """
-
-  # Note: An alternative design is to use a single flag for each optimizer,
-  # something like:
-  # --server_optimizer="name=SGD,learning_rate=1.0" or
-  # --client_optimizer="name=ADAM,learning_rate_=0.001,beta1=0.9"
-  #
-  # These options could potentially follow the structure of the
-  # optimizer.get_config() method. This has the advantage over the current
-  # approach that there won't be flags that could be silently ignored (e.g.,
-  # beta1 when the optimizer is SGD). However, it may not work as well for
-  # systems that want one flag equals one hyperparameter. It would also require
-  # writing custom parsing and validation code.
-
-  defaults = defaults or {}
-
-  def prefixed(basename):
-    return '{}_{}'.format(prefix, basename) if prefix else basename
-
-  opt_name = 'the {} optimizer'.format(prefix) if prefix else 'the optimizer'
-
-  # More flags can be added here, e.g. for momentum, Adam, etc.
-  # For now we just assume SGD.
+  # Create top-level, non-optimizer specific flags for picking the optimizer
+  # type and the learning rate.
+  flags.DEFINE_enum(
+      name='{!s}_optimizer'.format(prefix),
+      default=None,
+      enum_values=list(_SUPPORTED_OPTIMIZERS.keys()),
+      help='The type of optimizer to construct for `{!s}`'.format(prefix))
+  logging.info('Defined new flag: [%s]', '{!s}_optimizer'.format(prefix))
   flags.DEFINE_float(
-      prefixed('learning_rate'), defaults.pop('learning_rate', 0.1),
-      'Learning rate for {}'.format(opt_name))
+      name='{!s}_learning_rate'.format(prefix),
+      default=None,
+      help='Learning rate for optimizer `{!s}`'.format(prefix))
+  logging.info('Defined new flag: [%s]', '{!s}_learning_rate'.format(prefix))
 
-  if defaults:  # Not empty.
-    raise ValueError(
-        'The following defaults were not consumed:\n{}'.format(defaults))
+  for optimizer_name, optimizer_cls in _SUPPORTED_OPTIMIZERS.items():
+    # Pull out the constructor parameters except for `self`.
+    constructor_signature = inspect.signature(optimizer_cls.__init__)
+    constructor_params = list(constructor_signature.parameters.values())[1:]
+
+    def prefixed(basename, optimizer_name=optimizer_name):
+      if prefix:
+        return '{!s}_{!s}_{!s}'.format(prefix, optimizer_name, basename)
+      else:
+        return '{!s}_{!s}'.format(optimizer_name, basename)
+
+    for param in constructor_params:
+      if param.name in ['kwargs', 'args', 'learning_rate']:
+        continue
+
+      if isinstance(param.default, bool):
+        define_flag_fn = flags.DEFINE_bool
+      elif isinstance(param.default, float):
+        define_flag_fn = flags.DEFINE_float
+      elif isinstance(param.default, int):
+        define_flag_fn = flags.DEFINE_integer
+      elif isinstance(param.default, str):
+        define_flag_fn = flags.DEFINE_string
+      else:
+        raise NotImplementedError('Cannot handle flag [{!s}] of type [{!s}] on '
+                                  'optimizers [{!s}]'.format(
+                                      param.name, type(param.default),
+                                      optimizer_name))
+      define_flag_fn(
+          name=prefixed(param.name),
+          default=param.default,
+          help='{!s} argument for the {!s} optimizer.'.format(
+              param.name, optimizer_name))
+      logging.info('Defined new flag: [%s]', prefixed(param.name))
 
 
-def get_optimizer_from_flags(prefix: Text) -> tf.keras.optimizers.Optimizer:
-  """Returns an optimizer based on flags defined by `define_optimzier_flags`.
+def get_optimizer_from_flags(
+    prefix: Text,
+    overrides: Optional[Mapping[Text, Union[Text, float, int, bool]]] = None
+) -> tf.keras.optimizers.Optimizer:
+  """Returns an optimizer based on prefixed flags.
+
+  This method is inteded to be paired with `get_optimizer_from_flags` using the
+  same `prefix`, to allow Python binaries to constructed TensorFlow optimizers
+  parameterized by commandline flags.
+
+  This method expects two flags:
+    * `--<prefix>_optimizer=<optimizer name>`
+    * `--<prefix>_learning_rate`
+
+  In addition to suites of flags for each optimizer:
+    * `--<prefix>_<optimizer name>_<constructor_argument>`
+
+  For example, if `prefix='client'` the method first reads the flags:
+    * `--client_optimizer`
+    * `--client_learning_rate`
+
+  If the optimizer flag is `'sgd'`, then a `tf.keras.optimizer.SGD` optimizer is
+  constructed using the values in the flags prefixed with  `--client_sgd_`.
+
+  NOTE: `kwargs` can be set using the `overrides` parameter.
 
   Args:
     prefix: The same string prefix passed to `define_optimizer_flags`.
+    overrides: A mapping of `(string, value)` pairs that should override flag
+      values.
 
   Returns:
     A `tf.keras.optimizers.Optimizer`.
   """
 
-  def flag_value(basename):
-    full_name = '{}_{}'.format(prefix, basename) if prefix else basename
-    return flags.FLAGS[full_name].value
+  def prefixed(basename):
+    return '{}_{}'.format(prefix, basename) if prefix else basename
 
-  return tf.keras.optimizers.SGD(learning_rate=flag_value('learning_rate'))
+  optimizer_name = flags.FLAGS[prefixed('optimizer')].value
+  optimizer_cls = _SUPPORTED_OPTIMIZERS.get(optimizer_name)
+  if optimizer_cls is None:
+    # To support additional optimizers, implement it as a
+    # `tf.keras.optimizers.Optimizer` and add to the `_SUPPORTED_OPTIMIZERS`
+    # dict.
+    logging.error(
+        'Unknown optimizer [%s], known optimziers are [%s]. To add '
+        'support for an optimizer, add the optimzier class to the '
+        'utils_impl._SUPPORTED_OPTIMIZERS list.', optimizer_name,
+        list(_SUPPORTED_OPTIMIZERS.keys()))
+    raise ValueError('{!s} not a valid optimizer, must be one of {!s}. '
+                     'See error log for details.'.format(
+                         optimizer_name, list(_SUPPORTED_OPTIMIZERS.keys())))
+
+  # Validate that the optimizers that weren't picked don't have flag values set.
+  # Settings that won't be used likely means there is an expectation gap between
+  # the user and the system and we should notify them.
+  unused_flag_prefixes = [prefixed(k) for k in _SUPPORTED_OPTIMIZERS.keys()]
+  mistakenly_set_flags = []
+  for flag_name in flags.FLAGS:
+    logging.info('Examining flag [%s] for values...', flag_name)
+    if flags.FLAGS[flag_name].using_default_value:
+      logging.info('[%s] was using the default...', flag_name)
+      # Flag was not set by the user, skip it.
+      continue
+    # Otherwise the flag has a value set by the user.
+    logging.info('[%s] was set by the user...', flag_name)
+    for unused_prefix in unused_flag_prefixes:
+      if flag_name.startswith(unused_prefix):
+        mistakenly_set_flags.append(flag_name)
+        break
+  if mistakenly_set_flags:
+    raise ValueError('Commandline flags for optimizers other than [{!s}] '
+                     '(value of --{!s}) are set. These would be ignored, '
+                     'were the flags set by mistake? Flags: {!s}'.format(
+                         optimizer_name, prefixed('optimizer'),
+                         mistakenly_set_flags))
+
+  flag_prefix = prefixed(optimizer_name)
+  prefix_len = len(flag_prefix) + 1
+  kwargs = {}
+  if flags.FLAGS[prefixed('learning_rate')].value is not None:
+    kwargs['learning_rate'] = flags.FLAGS[prefixed('learning_rate')].value
+  for flag_name in flags.FLAGS:
+    if not flag_name.startswith(flag_prefix):
+      continue
+    arg_name = flag_name[prefix_len:]
+    kwargs[arg_name] = flags.FLAGS[flag_name].value
+
+  if overrides:
+    kwargs.update(overrides)
+  return optimizer_cls(**kwargs)
 
 
 @contextlib.contextmanager
