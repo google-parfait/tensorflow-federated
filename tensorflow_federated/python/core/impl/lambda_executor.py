@@ -255,9 +255,16 @@ class LambdaExecutor(executor_base.Executor):
     param_type = comp.type_signature.parameter
     if param_type is not None:
       py_typecheck.check_type(arg, LambdaExecutorValue)
-      if not type_utils.is_assignable_from(param_type, arg.type_signature):  # pytype: disable=attribute-error
-        arg_type = type_utils.get_argument_type(arg.type_signature)  # pytype: disable=attribute-error
-        type_utils.check_assignable_from(param_type, arg_type)
+      arg_type = arg.type_signature  # pytype: disable=attribute-error
+      if not type_utils.is_assignable_from(param_type, arg_type):
+        if isinstance(arg_type, computation_types.FunctionType):
+          # We may have a non-functional type embedded as a no-arg function.
+          arg_type = type_utils.get_argument_type(arg_type)
+        if not type_utils.is_assignable_from(param_type, arg_type):
+          raise TypeError('LambdaExecutor asked to create call with '
+                          'incompatible type specifications. Function '
+                          'takes an argument of type {}, but was supplied '
+                          'an argument of type {}'.format(param_type, arg_type))
         arg = await self.create_call(arg)
         return await self.create_call(comp, arg)
     else:

@@ -63,6 +63,19 @@ class LambdaExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(v2.compute())
     self.assertEqual(result.numpy(), 11)
 
+  def test_clear_failure_with_mismatched_types_in_create_call(self):
+    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    loop = asyncio.get_event_loop()
+
+    @computations.federated_computation(tf.float32)
+    def comp(x):
+      return x
+
+    v1 = loop.run_until_complete(ex.create_value(comp))
+    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    with self.assertRaisesRegex(TypeError, 'incompatible'):
+      loop.run_until_complete(ex.create_call(v1, v2))
+
   def test_with_one_arg_tf_comp_in_one_arg_fed_comp(self):
     ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
     loop = asyncio.get_event_loop()
