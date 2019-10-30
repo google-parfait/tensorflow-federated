@@ -78,10 +78,10 @@ REQUIRED_PACKAGES = [
     'numpy~=1.14',
     'portpicker~=1.3.1',
     'six~=1.10',
+    'tensorflow-addons~=0.6.0',
     'tensorflow-model-optimization~=0.1.3',
     'tensorflow-privacy~=0.2.0',
-    'tf-nightly==2.1.0.dev20191015',
-    'tfa-nightly',
+    'tensorflow~=2.0.0',
 ]
 
 setuptools.setup(
