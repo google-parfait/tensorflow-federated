@@ -1,3 +1,18 @@
+# Release 0.10.0
+
+## Major Features and Improvements
+
+*   Add a `federated_sample` aggregation that is used to collect a sample of
+    client values on the server using reservoir sampling.
+*   Updated to use `tensorflow` `2.0.0` and `tensorflow-addons` `0.6.0` instead
+    of the coorisponding nightly package in the `setup.py` for releasing TFF
+    Python packages.
+*   Updated to use `tensorflow-privacy` `0.2.0`.
+*   Added support for `attr.s` classes type annotations.
+*   Updated streaming `Execute` method on `tff.framework.ExecutorService` to be
+    asynchronous.
+*   PY2 and PY3 compatability.
+
 # Release 0.9.0
 
 ## Major Features and Improvements
