@@ -1,3 +1,9 @@
+# Release 0.10.1
+
+## Bug Fixes
+
+*   Updated to use `grpcio` `1.24.3`.
+
 # Release 0.10.0
 
 ## Major Features and Improvements
