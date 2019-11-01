@@ -168,6 +168,14 @@ class EagerExecutorTest(parameterized.TestCase):
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
 
+  def test_to_representation_for_tf_variable(self):
+    v = eager_executor.to_representation_for_type(
+        tf.Variable(10, dtype=tf.int32),
+        type_spec=computation_types.TensorType(tf.int32))
+    self.assertIsInstance(v, tf.Tensor)
+    self.assertEqual(v.numpy(), 10)
+    self.assertEqual(v.dtype, tf.int32)
+
   def test_to_representation_for_type_with_int_on_specific_device(self):
     v = eager_executor.to_representation_for_type(10, tf.int32, '/CPU:0')
     self.assertIsInstance(v, tf.Tensor)

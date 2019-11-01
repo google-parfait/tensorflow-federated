@@ -14,7 +14,6 @@
 # limitations under the License.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -224,11 +223,11 @@ def to_representation_for_type(value, type_spec=None, device=None):
     raise TypeError(
         'Cannot accept a value embedded within a non-eager executor.')
   elif isinstance(type_spec, computation_types.TensorType):
-    if not isinstance(value, tf.Tensor):
-      if isinstance(value, np.ndarray):
-        value = tf.constant(value, dtype=type_spec.dtype)
-      else:
-        value = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
+    if not tf.is_tensor(value):
+      value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
+    elif hasattr(value, 'read_value'):
+      # a tf.Variable-like result, get a proper tensor.
+      value = value.read_value()
     value_type = (
         computation_types.TensorType(value.dtype.base_dtype, value.shape))
     if not type_utils.is_assignable_from(type_spec, value_type):
