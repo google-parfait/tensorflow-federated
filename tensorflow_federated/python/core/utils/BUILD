@@ -109,6 +109,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":federated_aggregations",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api",
     ],
 )

@@ -15,15 +15,15 @@
 
 import collections
 
-from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core.utils import federated_aggregations
 
 
-class FederatedMinTest(absltest.TestCase):
+class FederatedMinTest(test.TestCase):
 
   def test_federated_min_single_value(self):
 
@@ -72,7 +72,7 @@ class FederatedMinTest(absltest.TestCase):
       call_federated_min([1, 2, 3])
 
 
-class FederatedMaxTest(absltest.TestCase):
+class FederatedMaxTest(test.TestCase):
 
   def test_federated_max_tensor_value(self):
 
@@ -228,4 +228,4 @@ class FederatedSampleTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  test.main()
