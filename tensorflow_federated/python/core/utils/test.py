@@ -14,6 +14,7 @@
 # limitations under the License.
 """General purpose test utilities for TFF."""
 
+from absl import logging
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -37,9 +38,10 @@ def tf1_and_tf2(fn):
   """
 
   def wrapped_fn(self):
+    logging.info('Testing under tff.tf2_computation')
     fn(self, computations.tf2_computation)
-    with tf.Graph().as_default():
-      fn(self, computations.tf_computation)
+    logging.info('Testing under tff.tf_computation')
+    fn(self, computations.tf_computation)
 
   return wrapped_fn
 
@@ -48,8 +50,7 @@ def tf1(fn):
   """A decorator for testing the `tff.tf_computation` decorator."""
 
   def wrapped_fn(self):
-    with tf.Graph().as_default():
-      fn(self, computations.tf_computation)
+    fn(self, computations.tf_computation)
 
   return wrapped_fn
 
