@@ -20,7 +20,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import transformations
@@ -32,6 +31,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 def _create_chained_dummy_federated_applys(functions, arg):

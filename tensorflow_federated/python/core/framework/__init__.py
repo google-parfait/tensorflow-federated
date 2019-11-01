@@ -44,7 +44,6 @@ from tensorflow_federated.python.core.impl.compiler.transformation_utils import 
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
-from tensorflow_federated.python.core.impl.computation_wrapper_instances import building_block_to_computation
 from tensorflow_federated.python.core.impl.intrinsic_reductions import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
@@ -62,6 +61,7 @@ from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compa
 from tensorflow_federated.python.core.impl.type_utils import transform_type_postorder
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
+from tensorflow_federated.python.core.impl.wrappers.computation_wrapper_instances import building_block_to_computation
 
 # High-performance simulation components currently only available in Python 3,
 # and dependent on targets are are not currently included in the open-source

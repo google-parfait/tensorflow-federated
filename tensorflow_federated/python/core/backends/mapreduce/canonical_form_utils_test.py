@@ -24,8 +24,8 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
-from tensorflow_federated.python.core.impl import computation_wrapper_instances
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.utils import computation_utils
 
 

@@ -56,7 +56,7 @@ py_library(
     name = "computations",
     srcs = ["computations.py"],
     srcs_version = "PY2AND3",
-    deps = ["//tensorflow_federated/python/core/impl:computation_wrapper_instances"],
+    deps = ["//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances"],
 )
 
 py_test(
