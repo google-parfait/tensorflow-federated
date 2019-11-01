@@ -168,6 +168,48 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     result = [args[0][1][0] for args in result]
     self.assertCountEqual(result, expected)
 
+  def test_remove_unused_flags_without_optimizer_flag(self):
+    hparam_dict = collections.OrderedDict([('client_opt_fn', 'sgd'),
+                                           ('client_sgd_momentum', 0.3)])
+    with self.assertRaisesRegex(ValueError,
+                                'The flag client_optimizer was not defined.'):
+      _ = utils_impl.remove_unused_flags('client', hparam_dict)
+
+  def test_remove_unused_flags_with_empty_optimizer(self):
+    hparam_dict = collections.OrderedDict([('optimizer', '')])
+
+    with self.assertRaisesRegex(
+        ValueError, 'The flag optimizer was not set. '
+        'Unable to determine the relevant optimizer.'):
+      _ = utils_impl.remove_unused_flags(prefix=None, hparam_dict=hparam_dict)
+
+  def test_remove_unused_flags_with_prefix(self):
+    hparam_dict = collections.OrderedDict([('client_optimizer', 'sgd'),
+                                           ('non_client_value', 0.1),
+                                           ('client_sgd_momentum', 0.3),
+                                           ('client_adam_momentum', 0.5)])
+
+    relevant_hparam_dict = utils_impl.remove_unused_flags('client', hparam_dict)
+    expected_flag_names = [
+        'client_optimizer', 'non_client_value', 'client_sgd_momentum'
+    ]
+    self.assertCountEqual(relevant_hparam_dict.keys(), expected_flag_names)
+    self.assertEqual(relevant_hparam_dict['client_optimizer'], 'sgd')
+    self.assertEqual(relevant_hparam_dict['non_client_value'], 0.1)
+    self.assertEqual(relevant_hparam_dict['client_sgd_momentum'], 0.3)
+
+  def test_remove_unused_flags_without_prefix(self):
+    hparam_dict = collections.OrderedDict([('optimizer', 'sgd'), ('value', 0.1),
+                                           ('sgd_momentum', 0.3),
+                                           ('adam_momentum', 0.5)])
+    relevant_hparam_dict = utils_impl.remove_unused_flags(
+        prefix=None, hparam_dict=hparam_dict)
+    expected_flag_names = ['optimizer', 'value', 'sgd_momentum']
+    self.assertCountEqual(relevant_hparam_dict.keys(), expected_flag_names)
+    self.assertEqual(relevant_hparam_dict['optimizer'], 'sgd')
+    self.assertEqual(relevant_hparam_dict['value'], 0.1)
+    self.assertEqual(relevant_hparam_dict['sgd_momentum'], 0.3)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

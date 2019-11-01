@@ -301,6 +301,76 @@ def get_optimizer_from_flags(
   return optimizer_cls(**kwargs)
 
 
+def remove_unused_flags(prefix, hparam_dict):
+  """Removes unused optimizer flags with a given prefix.
+
+  This method is intended to be used with `define_optimizer_flags`, and is used
+  to remove elements of hparam_dict associated with unused optimizer flags.
+
+  For example, given the prefix "client", define_optimizer_flags will create
+  flags including:
+    *  `--client_optimizer`
+    *  `--client_learning_rate`
+    *  `--client_sgd_momentum`
+    *  `--client_sgd_nesterov`
+    *  `--client_adam_beta_1`
+    *  `--client_adam_beta_2`
+    *  `--client_adam_epsilon`
+
+  However, for purposes of recording hyperparameters, we would like to only keep
+  those that correspond to the optimizer selected in the flag
+  --client_optimizer. This method is intended to remove the unused flags.
+
+  For example, if `--client_optimizer=sgd` was set, then calling this method
+  with the prefix `client` will remove all pairs in hparam_dict except those
+  associated with the flags:
+    *  `--client_optimizer`
+    *  `--client_learning_rate`
+    *  `--client_sgd_momentum`
+    *  `--client_sgd_nesterov`
+
+  Args:
+    prefix: A prefix used to define optimizer flags.
+    hparam_dict: An ordered dictionary of (string, value) pairs corresponding to
+      experiment hyperparameters.
+
+  Returns:
+    An ordered dictionary of (string, value) pairs from hparam_dict that omits
+    any pairs where string = "<prefix>_<optimizer>*" but <optimizer> is not the
+    one set via the flag --<prefix>_optimizer=...
+  """
+
+  def prefixed(basename):
+    return '{}_{}'.format(prefix, basename) if prefix else basename
+
+  if prefixed('optimizer') not in hparam_dict.keys():
+    raise ValueError('The flag {!s} was not defined.'.format(
+        prefixed('optimizer')))
+
+  optimizer_name = hparam_dict[prefixed('optimizer')]
+  if not optimizer_name:
+    raise ValueError('The flag {!s} was not set. Unable to determine the '
+                     'relevant optimizer.'.format(prefixed('optimizer')))
+
+  unused_optimizer_flag_prefixes = [
+      prefixed(k) for k in _SUPPORTED_OPTIMIZERS.keys() if k != optimizer_name
+  ]
+
+  def _is_used_flag(flag_name):
+    # We filter by whether the flag contains an unused optimizer prefix.
+    # This automatically retains any flag not of the form <prefix>_<optimizer>*.
+    for unused_flag_prefix in unused_optimizer_flag_prefixes:
+      if flag_name.startswith(unused_flag_prefix):
+        return False
+    return True
+
+  return collections.OrderedDict([
+      (flag_name, flag_value)
+      for flag_name, flag_value in hparam_dict.items()
+      if _is_used_flag(flag_name)
+  ])
+
+
 @contextlib.contextmanager
 def record_new_flags() -> Iterator[List[Text]]:
   """A context manager that returns all flags created in it's scope.
