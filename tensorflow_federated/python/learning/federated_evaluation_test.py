@@ -89,14 +89,16 @@ class FederatedEvaluationTest(test.TestCase):
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
-    result = evaluate({
-        'trainable': {
-            'max_temp': 5.0
-        },
-        'non_trainable': {}
-    }, [[_temp_dict([1.0, 10.0, 2.0, 7.0]),
-         _temp_dict([6.0, 11.0])], [_temp_dict([9.0, 12.0, 13.0])],
-        [_temp_dict([1.0]), _temp_dict([22.0, 23.0])]])
+    result = evaluate(
+        collections.OrderedDict([
+            ('trainable', collections.OrderedDict([('max_temp', 5.0)])),
+            ('non_trainable', {}),
+        ]), [
+            [_temp_dict([1.0, 10.0, 2.0, 7.0]),
+             _temp_dict([6.0, 11.0])],
+            [_temp_dict([9.0, 12.0, 13.0])],
+            [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
+        ])
     self.assertEqual(str(result), '<num_over=9.0>')
 
   def test_federated_evaluation_with_keras(self):

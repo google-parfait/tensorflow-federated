@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
@@ -25,83 +24,62 @@ from tensorflow_federated.python.learning import model_examples
 class ModelExamplesTest(test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
-  @test.graph_mode_test
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
-    init_op = tf.compat.v1.initializers.variables(
-        model.trainable_variables + model.non_trainable_variables +
-        model.local_variables)
     batch = model.make_batch(
-        x=tf.compat.v1.placeholder(tf.float32, shape=(None, feature_dim)),
-        y=tf.compat.v1.placeholder(tf.float32, shape=(None, 1)))
-    output_op = model.forward_pass(batch)
+        x=tf.constant([[0.0] * feature_dim, [1.0] * feature_dim]),
+        y=tf.constant([[0.0], [1.0]]))
+
+    output = model.forward_pass(batch)
     metrics = model.report_local_outputs()
 
-    tf.compat.v1.get_default_graph().finalize()
-    with self.session() as sess:
-      sess.run(init_op)
-      output = sess.run(
-          output_op,
-          feed_dict={
-              batch.x: [np.zeros(feature_dim),
-                        np.ones(feature_dim)],
-              batch.y: [[0.0], [1.0]]
-          })
-      self.assertAllEqual(output.predictions, [[0.0], [0.0]])
-      # The residuals are (0., 1.), so average loss is 0.5 * 0.5 * 1.
-      self.assertEqual(output.loss, 0.25)
-      m = sess.run(metrics)
-      self.assertEqual(m['num_examples'], 2)
-      self.assertEqual(m['num_batches'], 1)
-      self.assertEqual(m['loss'], 0.25)
+    self.assertAllEqual(output.predictions, [[0.0], [0.0]])
+    # The residuals are (0., 1.), so average loss is 0.5 * 0.5 * 1.
+    self.assertEqual(output.loss, 0.25)
+    self.assertDictEqual(
+        metrics, {
+            'num_examples': 2,
+            'num_examples_float': 2.0,
+            'num_batches': 1,
+            'loss': 0.25
+        })
 
-  @test.graph_mode_test
   def test_trainable_linear_regression(self):
     dim = 1
     model = model_examples.TrainableLinearRegression(feature_dim=dim)
-    init_op = tf.compat.v1.initializers.variables(
-        model.trainable_variables + model.non_trainable_variables +
-        model.local_variables)
     batch = model.make_batch(
-        x=tf.compat.v1.placeholder(tf.float32, shape=(None, dim)),
-        y=tf.compat.v1.placeholder(tf.float32, shape=(None, 1)))
+        x=tf.constant([[0.0], [5.0]]), y=tf.constant([[0.0], [5.0]]))
 
-    train_op = model.train_on_batch(batch)
-    metrics = model.report_local_outputs()
-    train_feed_dict = {batch.x: [[0.0], [5.0]], batch.y: [[0.0], [5.0]]}
     prior_loss = float('inf')
-    with self.session() as sess:
-      sess.run(init_op)
-      num_iters = 10
-      for _ in range(num_iters):
-        r = sess.run(train_op, feed_dict=train_feed_dict)
-        # Loss should be decreasing.
-        self.assertLess(r.loss, prior_loss)
-        prior_loss = r.loss
+    num_iters = 10
+    for _ in range(num_iters):
+      result = model.train_on_batch(batch)
+      # Loss should be decreasing.
+      self.assertLess(result.loss, prior_loss)
+      prior_loss = result.loss
 
-      m = sess.run(metrics)
-      self.assertEqual(m['num_batches'], num_iters)
-      self.assertEqual(m['num_examples'], 2 * num_iters)
-      self.assertLess(m['loss'], 1.0)
+    metrics = model.report_local_outputs()
+    self.assertEqual(metrics['num_batches'], num_iters)
+    self.assertEqual(metrics['num_examples'], 2 * num_iters)
+    self.assertLess(metrics['loss'], 1.0)
 
-  @test.graph_mode_test
   def test_tff(self):
+    feature_dim = 2
 
     @tff.tf_computation
     def forward_pass_and_output():
-      feature_dim = 2
       model = model_examples.LinearRegression(feature_dim)
-      init_op = tf.compat.v1.initializers.variables(
-          model.trainable_variables + model.non_trainable_variables +
-          model.local_variables)
-      batch = model.make_batch(
-          x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
-          y=tf.constant([[0.0], [1.0]]))
-      with tf.control_dependencies([init_op]):
+
+      @tf.function
+      def _train(batch):
         batch_output = model.forward_pass(batch)
-        with tf.control_dependencies(tf.nest.flatten(batch_output)):
-          local_output = model.report_local_outputs()
-      return batch_output, local_output
+        local_output = model.report_local_outputs()
+        return batch_output, local_output
+
+      return _train(
+          batch=model.make_batch(
+              x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
+              y=tf.constant([[0.0], [1.0]])))
 
     batch_output, local_output = forward_pass_and_output()
     self.assertAllEqual(batch_output.predictions, [[0.0], [0.0]])
