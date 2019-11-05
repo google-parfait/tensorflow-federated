@@ -61,8 +61,8 @@ class HDF5ClientData(client_data.ClientData):
     g = tf.Graph()
     with g.as_default():
       tf_dataset = self._create_dataset(self._client_ids[0])
-      self._element_type_structure = tf.data.experimental.get_structure(
-          tf_dataset)
+      self._output_types = tf.compat.v1.data.get_output_types(tf_dataset)
+      self._output_shapes = tf.compat.v1.data.get_output_shapes(tf_dataset)
 
   def _create_dataset(self, client_id):
     return tf.data.Dataset.from_tensor_slices(
@@ -77,10 +77,15 @@ class HDF5ClientData(client_data.ClientData):
   def create_tf_dataset_for_client(self, client_id):
     tf_dataset = self._create_dataset(client_id)
     tensor_utils.check_nested_equal(
-        tf.data.experimental.get_structure(tf_dataset),
-        self._element_type_structure)
+        tf.compat.v1.data.get_output_types(tf_dataset), self._output_types)
+    tensor_utils.check_nested_equal(
+        tf.compat.v1.data.get_output_shapes(tf_dataset), self._output_shapes)
     return tf_dataset
 
   @property
-  def element_type_structure(self):
-    return self._element_type_structure
+  def output_types(self):
+    return self._output_types
+
+  @property
+  def output_shapes(self):
+    return self._output_shapes

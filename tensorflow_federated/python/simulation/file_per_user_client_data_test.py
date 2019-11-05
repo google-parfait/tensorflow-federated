@@ -160,12 +160,19 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     expected_client_ids = sorted(set(example[0] for example in FAKE_TEST_DATA))
     self.assertEqual(data.client_ids, expected_client_ids)
 
-  def test_element_type_structure(self):
-    expected_structure = (tf.TensorSpec(shape=[], dtype=tf.int64),
-                          tf.TensorSpec(shape=[], dtype=tf.float32),
-                          tf.TensorSpec(shape=[2], dtype=tf.float32))
-    actual_structure = self._create_fake_client_data().element_type_structure
-    self.assertEqual(expected_structure, actual_structure)
+  def test_output_shapes_property(self):
+    expected_shapes = (
+        tf.TensorShape([]),
+        tf.TensorShape([]),
+        tf.TensorShape([2]),
+    )
+    actual_shapes = self._create_fake_client_data().output_shapes
+    self.assertEqual(expected_shapes, actual_shapes)
+
+  def test_output_types_property(self):
+    expected_types = (tf.int64, tf.float32, tf.float32)
+    actual_types = self._create_fake_client_data().output_types
+    self.assertEqual(expected_types, actual_types)
 
   def test_create_tf_dataset_for_client(self):
     data = self._create_fake_client_data()

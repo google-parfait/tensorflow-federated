@@ -135,5 +135,9 @@ class TransformingClientData(client_data.ClientData):
       return raw_dataset.map(transform_fn, tf.data.experimental.AUTOTUNE)
 
   @property
-  def element_type_structure(self):
-    return self._raw_client_data.element_type_structure
+  def output_types(self):
+    return self._raw_client_data.output_types
+
+  @property
+  def output_shapes(self):
+    return self._raw_client_data.output_shapes
