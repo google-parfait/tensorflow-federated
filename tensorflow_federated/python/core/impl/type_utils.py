@@ -102,7 +102,8 @@ def infer_type(arg):
   elif isinstance(arg, six.string_types):
     return computation_types.TensorType(tf.string)
   elif isinstance(arg, (np.generic, np.ndarray)):
-    return computation_types.TensorType(tf.as_dtype(arg.dtype), arg.shape)
+    return computation_types.TensorType(
+        tf.dtypes.as_dtype(arg.dtype), arg.shape)
   else:
     dtype = {bool: tf.bool, int: tf.int32, float: tf.float32}.get(type(arg))
     if dtype:
@@ -116,7 +117,7 @@ def infer_type(arg):
         # TODO(b/113112885): Find something more lightweight we could use here.
         tensor_proto = tf.make_tensor_proto(arg)
         return computation_types.TensorType(
-            tf.DType(tensor_proto.dtype),
+            tf.dtypes.as_dtype(tensor_proto.dtype),
             tf.TensorShape(tensor_proto.tensor_shape))
       except TypeError as err:
         raise TypeError('Could not infer the TFF type of {}: {}'.format(

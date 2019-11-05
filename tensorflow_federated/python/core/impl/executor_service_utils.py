@@ -52,7 +52,8 @@ def serialize_tensor_value(value, type_spec=None):
   if isinstance(value, tf.Tensor):
     if type_spec is None:
       type_spec = computation_types.TensorType(
-          dtype=tf.DType(value.dtype), shape=tf.TensorShape(value.shape))
+          dtype=tf.dtypes.as_dtype(value.dtype),
+          shape=tf.TensorShape(value.shape))
     value = value.numpy()
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
@@ -63,7 +64,7 @@ def serialize_tensor_value(value, type_spec=None):
       type_utils.check_assignable_from(
           type_spec,
           computation_types.TensorType(
-              dtype=tf.DType(tensor_proto.dtype),
+              dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
               shape=tf.TensorShape(tensor_proto.tensor_shape)))
     else:
       tensor_proto = tf.make_tensor_proto(
@@ -74,7 +75,7 @@ def serialize_tensor_value(value, type_spec=None):
   else:
     tensor_proto = tf.make_tensor_proto(value)
     type_spec = computation_types.TensorType(
-        dtype=tf.DType(tensor_proto.dtype),
+        dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
         shape=tf.TensorShape(tensor_proto.tensor_shape))
   any_pb = any_pb2.Any()
   any_pb.Pack(tensor_proto)
@@ -110,7 +111,7 @@ def deserialize_tensor_value(value_proto):
 
   tensor_value = tf.make_ndarray(tensor_proto)
   value_type = computation_types.TensorType(
-      dtype=tf.DType(tensor_proto.dtype),
+      dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
       shape=tf.TensorShape(tensor_proto.tensor_shape))
 
   return tensor_value, value_type

@@ -138,7 +138,7 @@ def deserialize_type(type_proto):
   elif type_variant == 'tensor':
     tensor_proto = type_proto.tensor
     return computation_types.TensorType(
-        dtype=tf.DType(tensor_proto.dtype),
+        dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
         shape=_to_tensor_shape(tensor_proto))
   elif type_variant == 'sequence':
     return computation_types.SequenceType(

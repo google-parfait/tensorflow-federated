@@ -43,7 +43,7 @@ class EncodedBroadcastTest(test.TestCase, parameterized.TestCase):
   def test_build_encoded_broadcast(self, value_constructor,
                                    encoder_constructor):
     value = value_constructor(np.random.rand(20))
-    value_spec = tf.TensorSpec(value.shape, tf.as_dtype(value.dtype))
+    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = tff.to_type(value_spec)
     encoder = te.encoders.as_simple_encoder(encoder_constructor(), value_spec)
     broadcast_fn = encoding_utils.build_encoded_broadcast(value, encoder)
@@ -94,7 +94,7 @@ class EncodedSumTest(test.TestCase, parameterized.TestCase):
   )
   def test_build_encoded_sum(self, value_constructor, encoder_constructor):
     value = value_constructor(np.random.rand(20))
-    value_spec = tf.TensorSpec(value.shape, tf.as_dtype(value.dtype))
+    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = tff.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
     gather_fn = encoding_utils.build_encoded_sum(value, encoder)
@@ -112,7 +112,7 @@ class EncodedSumTest(test.TestCase, parameterized.TestCase):
 
   def test_run_encoded_sum(self):
     value = np.array([0.0, 1.0, 2.0, -1.0])
-    value_spec = tf.TensorSpec(value.shape, tf.as_dtype(value.dtype))
+    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = tff.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
     gather_fn = encoding_utils.build_encoded_sum(value, encoder)
@@ -168,7 +168,7 @@ class EncodedMeanTest(test.TestCase, parameterized.TestCase):
   )
   def test_build_encoded_mean(self, value_constructor, encoder_constructor):
     value = value_constructor(np.random.rand(20))
-    value_spec = tf.TensorSpec(value.shape, tf.as_dtype(value.dtype))
+    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = tff.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
     gather_fn = encoding_utils.build_encoded_mean(value, encoder)
@@ -186,7 +186,7 @@ class EncodedMeanTest(test.TestCase, parameterized.TestCase):
 
   def test_run_encoded_mean(self):
     value = np.array([0.0, 1.0, 2.0, -1.0])
-    value_spec = tf.TensorSpec(value.shape, tf.as_dtype(value.dtype))
+    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = tff.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
     gather_fn = encoding_utils.build_encoded_mean(value, encoder)
