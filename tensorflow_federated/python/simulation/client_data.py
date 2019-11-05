@@ -56,30 +56,12 @@ class ClientData(object):
     pass
 
   @abc.abstractproperty
-  def output_types(self):
-    """Returns the type of each component of an element of the client datasets.
-
-    Any `tf.data.Dataset` constructed by this class is expected have matching
-    `output_types` properties when accessed via
-    `tf.compat.v1.data.get_output_types(dataset)`.
+  def element_type_structure(self):
+    """The element type information of the client datasets.
 
     Returns:
-      A nested structure of `tf.DType` objects corresponding to each component
-      of an element of the client datasets.
-    """
-    pass
-
-  @abc.abstractproperty
-  def output_shapes(self):
-    """Returns the shape of each component of an element of the client datasets.
-
-    Any `tf.data.Dataset` constructed by this class is expected to have matching
-    `output_shapes` properties when accessed via
-    `tf.compat.v1.data.get_output_shapes(dataset)`.
-
-    Returns:
-      A nested structure of `tf.TensorShape` objects corresponding to each
-      component of an element of the client datasets.
+      A nested structure of `tf.TensorSpec` objects defining the type of the
+    elements returned by datasets in this `ClientData` object.
     """
     pass
 
@@ -111,8 +93,12 @@ class ClientData(object):
         for example in self.create_tf_dataset_for_client(client_id):
           yield example
 
-    return tf.data.Dataset.from_generator(_generator, self.output_types,
-                                          self.output_shapes)
+    types = tf.nest.map_structure(lambda t: t.dtype,
+                                  self.element_type_structure)
+    shapes = tf.nest.map_structure(lambda t: t.shape,
+                                   self.element_type_structure)
+
+    return tf.data.Dataset.from_generator(_generator, types, shapes)
 
   def preprocess(self, preprocess_fn):
     """Applies `preprocess_fn` to each client's data."""
@@ -236,8 +222,8 @@ class ConcreteClientData(ClientData):
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
 
     example_dataset = create_tf_dataset_for_client_fn(client_ids[0])
-    self._output_types = tf.compat.v1.data.get_output_types(example_dataset)
-    self._output_shapes = tf.compat.v1.data.get_output_shapes(example_dataset)
+    self._element_type_structure = tf.data.experimental.get_structure(
+        example_dataset)
 
   @property
   def client_ids(self):
@@ -247,9 +233,5 @@ class ConcreteClientData(ClientData):
     return self._create_tf_dataset_for_client_fn(client_id)
 
   @property
-  def output_types(self):
-    return self._output_types
-
-  @property
-  def output_shapes(self):
-    return self._output_shapes
+  def element_type_structure(self):
+    return self._element_type_structure

@@ -75,27 +75,16 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
         HDF5ClientDataTest.test_data_filepath)
     self.assertEqual(client_data.client_ids, sorted(TEST_DATA.keys()))
 
-  def test_output_shapes_property(self):
-    expected_shapes = {
-        'w': tf.TensorShape([]),
-        'x': tf.TensorShape([2]),
-        'y': tf.TensorShape([]),
-        'z': tf.TensorShape([]),
+  def test_element_type_structure(self):
+    expected_structure = {
+        'w': tf.TensorSpec(shape=[], dtype=tf.int64),
+        'x': tf.TensorSpec(shape=[2], dtype=tf.int32),
+        'y': tf.TensorSpec(shape=[], dtype=tf.float32),
+        'z': tf.TensorSpec(shape=[], dtype=tf.string),
     }
     client_data = hdf5_client_data.HDF5ClientData(
         HDF5ClientDataTest.test_data_filepath)
-    self.assertDictEqual(client_data.output_shapes, expected_shapes)
-
-  def test_output_types_property(self):
-    expected_types = {
-        'w': tf.int64,
-        'x': tf.int32,
-        'y': tf.float32,
-        'z': tf.string,
-    }
-    client_data = hdf5_client_data.HDF5ClientData(
-        HDF5ClientDataTest.test_data_filepath)
-    self.assertDictEqual(client_data.output_types, expected_types)
+    self.assertDictEqual(client_data.element_type_structure, expected_structure)
 
   def test_create_tf_dataset_for_client(self):
     client_data = hdf5_client_data.HDF5ClientData(

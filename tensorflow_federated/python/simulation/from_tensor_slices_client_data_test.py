@@ -25,8 +25,8 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
     client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
         tensor_slices_dict)
     self.assertCountEqual(client_data.client_ids, ['a', 'b'])
-    self.assertEqual(client_data.output_types, tf.int32)
-    self.assertEqual(client_data.output_shapes, ())
+    self.assertEqual(client_data.element_type_structure,
+                     tf.TensorSpec(shape=(), dtype=tf.int32))
 
     def as_list(dataset):
       return [self.evaluate(x) for x in dataset]
