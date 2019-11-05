@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 import functools
 import itertools
+import sys
 
 import attr
 import numpy as np
@@ -488,12 +489,15 @@ def capture_result_from_graph(result, graph):
   elif isinstance(result,
                   (tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
     variant_tensor = tf.data.experimental.to_variant(result)
-    # TODO(b/130032140): Switch to TF2.0 way of doing it while cleaning up the
-    # legacy structures all over the code base and replacing them with the new
-    # tf.data.experimenta.Structure variants.
-    element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(result),
-        tf.compat.v1.data.get_output_shapes(result))
+    element_structure = tf.data.experimental.get_structure(result)
+    try:
+      element_type = computation_types.to_type(element_structure)
+    except TypeError as e:
+      six.reraise(
+          TypeError,
+          TypeError('TFF does not support Datasets that yield elements of '
+                    'structure {!s}'.format(element_structure)),
+          sys.exc_info()[2])
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
@@ -998,9 +1002,8 @@ def make_data_set_from_elements(graph, elements, element_type):
         for i in range(len(elements)):
           singleton_ds = _make(elements[i:i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
-    ds_element_type = type_utils.tf_dtypes_and_shapes_to_type(
-        tf.compat.v1.data.get_output_types(ds),
-        tf.compat.v1.data.get_output_shapes(ds))
+    ds_element_type = computation_types.to_type(
+        tf.data.experimental.get_structure(ds))
     if not type_utils.is_assignable_from(element_type, ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
@@ -1057,11 +1060,8 @@ def fetch_value_in_session(sess, value):
         if not dataset_tensors:
           # An empty list has been returned; we must pack the shape information
           # back in or the result won't typecheck.
-          output_shapes = tf.compat.v1.data.get_output_shapes(v)
-          output_types = tf.compat.v1.data.get_output_types(v)
-          zipped_elems = tf.nest.map_structure(lambda x, y: (x, y),
-                                               output_types, output_shapes)
-          dummy_elem = make_dummy_element_for_type_spec(zipped_elems)
+          element_structure = tf.data.experimental.get_structure(v)
+          dummy_elem = make_dummy_element_for_type_spec(element_structure)
           dataset_tensors = [dummy_elem]
         dataset_results[idx] = dataset_tensors
       elif tf.is_tensor(v):

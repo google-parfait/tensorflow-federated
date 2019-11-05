@@ -66,22 +66,6 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         str(type_utils.infer_type(tf.data.Dataset.from_tensors(10))), 'int32*')
 
-  def test_infer_type_with_dict_dataset(self):
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                tf.data.Dataset.from_tensors({
-                    'a': 10,
-                    'b': 20,
-                }))), '<a=int32,b=int32>*')
-    self.assertEqual(
-        str(
-            type_utils.infer_type(
-                tf.data.Dataset.from_tensors({
-                    'b': 20,
-                    'a': 10,
-                }))), '<a=int32,b=int32>*')
-
   def test_infer_type_with_ordered_dict_dataset(self):
     self.assertEqual(
         str(
@@ -625,36 +609,36 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     test.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
   def test_type_to_tf_structure_with_names(self):
-    type_spec = computation_types.to_type(
-        collections.OrderedDict([
-            ('a', tf.bool),
-            ('b',
-             collections.OrderedDict([
-                 ('c', tf.float32),
-                 ('d', (tf.int32, [20])),
-             ])),
-        ]))
-    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
-    structure = type_utils.type_to_tf_structure(type_spec)
+    expected_structure = collections.OrderedDict([
+        ('a', tf.TensorSpec(shape=(), dtype=tf.bool)),
+        ('b',
+         collections.OrderedDict([
+             ('c', tf.TensorSpec(shape=(), dtype=tf.float32)),
+             ('d', tf.TensorSpec(shape=(20,), dtype=tf.int32)),
+         ])),
+    ])
+    type_spec = computation_types.to_type(expected_structure)
+    tf_structure = type_utils.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
-          tf.compat.v1.placeholder(tf.variant, shape=[]), structure=structure)
-      ds_dtypes = tf.compat.v1.data.get_output_types(ds)
-      ds_shapes = tf.compat.v1.data.get_output_shapes(ds)
-      test.assert_nested_struct_eq(ds_dtypes, dtypes)
-      test.assert_nested_struct_eq(ds_shapes, shapes)
+          tf.compat.v1.placeholder(tf.variant, shape=[]),
+          structure=tf_structure)
+      actual_structure = tf.data.experimental.get_structure(ds)
+      self.assertEqual(expected_structure, actual_structure)
 
   def test_type_to_tf_structure_without_names(self):
-    type_spec = computation_types.to_type((tf.bool, tf.int32))
-    dtypes, shapes = type_utils.type_to_tf_dtypes_and_shapes(type_spec)
-    structure = type_utils.type_to_tf_structure(type_spec)
+    expected_structure = (
+        tf.TensorSpec(shape=(), dtype=tf.bool),
+        tf.TensorSpec(shape=(), dtype=tf.int32),
+    )
+    type_spec = computation_types.to_type(expected_structure)
+    tf_structure = type_utils.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
-          tf.compat.v1.placeholder(tf.variant, shape=[]), structure=structure)
-      ds_dtypes = tf.compat.v1.data.get_output_types(ds)
-      ds_shapes = tf.compat.v1.data.get_output_shapes(ds)
-      test.assert_nested_struct_eq(ds_dtypes, dtypes)
-      test.assert_nested_struct_eq(ds_shapes, shapes)
+          tf.compat.v1.placeholder(tf.variant, shape=[]),
+          structure=tf_structure)
+      actual_structure = tf.data.experimental.get_structure(ds)
+      self.assertEqual(expected_structure, actual_structure)
 
   def test_type_to_tf_structure_with_none(self):
     with self.assertRaises(ValueError):

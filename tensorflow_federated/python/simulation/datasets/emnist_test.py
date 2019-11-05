@@ -29,11 +29,11 @@ class LoadDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertLen(client_data.client_ids, 4)
 
     self.assertEqual(
-        client_data.output_types,
-        collections.OrderedDict([('pixels', tf.float32), ('label', tf.int32)]))
-    self.assertEqual(
-        client_data.output_shapes,
-        collections.OrderedDict([('pixels', (28, 28)), ('label', ())]))
+        client_data.element_type_structure,
+        collections.OrderedDict([
+            ('pixels', tf.TensorSpec(shape=(28, 28), dtype=tf.float32)),
+            ('label', tf.TensorSpec(shape=(), dtype=tf.int32)),
+        ]))
 
     for client_id in client_data.client_ids:
       data = self.evaluate(
