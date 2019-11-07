@@ -45,49 +45,46 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
 
   def initial_weights(self):
     return model_utils.ModelWeights(
-        trainable={
-            'a': tf.constant([[0.0], [0.0]]),
-            'b': tf.constant(0.0)
-        },
-        non_trainable={'c': 0.0})
+        trainable=collections.OrderedDict([
+            ('a', tf.constant([[0.0], [0.0]])),
+            ('b', tf.constant(0.0)),
+        ]),
+        non_trainable=collections.OrderedDict([('c', 0.0)]))
 
-  @test.graph_mode_test
   def test_client_tf(self):
     model = self.model()
     dataset = self.dataset()
     client_tf = federated_sgd.ClientSgd(model)
-    init_op = tf.group(
-        model_utils.model_initializer(model),
-        tf.compat.v1.initializers.variables(client_tf.variables),
-        name='fedsgd_initializer')
-    client_outputs = client_tf(dataset, self.initial_weights())
+    client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
-    tf.compat.v1.get_default_graph().finalize()
-    with self.session() as sess:
-      sess.run(init_op)
-      out = sess.run(client_outputs)
-      # Both trainable parameters should have gradients,
-      # and we don't return the non-trainable 'c'.
-      self.assertCountEqual(['a', 'b'], list(out.weights_delta.keys()))
-      # Model deltas for squared error.
-      self.assertAllClose(out.weights_delta['a'], [[1.0], [0.0]])
-      self.assertAllClose(out.weights_delta['b'], 1.0)
-      self.assertAllClose(out.weights_delta_weight, 8.0)
+    # Both trainable parameters should have gradients,
+    # and we don't return the non-trainable 'c'.
+    self.assertCountEqual(['a', 'b'], client_outputs.weights_delta.keys())
+    # Model deltas for squared error.
+    self.assertAllClose(client_outputs.weights_delta['a'], [[1.0], [0.0]])
+    self.assertAllClose(client_outputs.weights_delta['b'], 1.0)
+    self.assertAllClose(client_outputs.weights_delta_weight, 8.0)
 
-      self.assertEqual(out.model_output['num_examples'], 8)
-      self.assertEqual(out.model_output['num_batches'], 3)
-      self.assertAlmostEqual(out.model_output['loss'], 0.5)
-
-      self.assertEqual(out.optimizer_output['client_weight'], 8.0)
-      self.assertEqual(out.optimizer_output['has_non_finite_delta'], 0)
+    self.assertEqual(
+        client_outputs.model_output, {
+            'num_examples': 8,
+            'num_examples_float': 8.0,
+            'num_batches': 3,
+            'loss': 0.5,
+        })
+    self.assertEqual(client_outputs.optimizer_output, {
+        'client_weight': 8.0,
+        'has_non_finite_delta': 0,
+    })
 
   def test_client_tf_custom_batch_weight(self):
     model = self.model()
     dataset = self.dataset()
     client_tf = federated_sgd.ClientSgd(
         model, batch_weight_fn=lambda batch: 2.0 * tf.reduce_sum(batch.x))
-    out = client_tf(dataset, self.initial_weights())
-    self.assertEqual(self.evaluate(out.weights_delta_weight), 16.0)  # 2 * 8
+    client_outputs = client_tf(dataset, self.initial_weights())
+    self.assertEqual(self.evaluate(client_outputs.weights_delta_weight),
+                     16.0)  # 2 * 8
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -96,13 +93,15 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
     client_tf = federated_sgd.ClientSgd(model)
     init_weights = self.initial_weights()
     init_weights.trainable['b'] = bad_value
-    out = client_tf(dataset, init_weights)
-    self.assertEqual(self.evaluate(out.weights_delta_weight), 0.0)
+    client_outputs = client_tf(dataset, init_weights)
+    self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 0.0)
     self.assertAllClose(
-        self.evaluate(out.weights_delta['a']), np.array([[0.0], [0.0]]))
-    self.assertAllClose(self.evaluate(out.weights_delta['b']), 0.0)
+        self.evaluate(client_outputs.weights_delta['a']),
+        np.array([[0.0], [0.0]]))
+    self.assertAllClose(self.evaluate(client_outputs.weights_delta['b']), 0.0)
     self.assertEqual(
-        self.evaluate(out.optimizer_output['has_non_finite_delta']), 1)
+        self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
+        1)
 
 
 class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
@@ -113,14 +112,16 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].
-    ds1 = tf.data.Dataset.from_tensor_slices({
-        'x': [[0., 0.], [0., 1.]],
-        'y': [[3.], [5.]]
-    }).batch(2)
-    ds2 = tf.data.Dataset.from_tensor_slices({
-        'x': [[1., 2.], [3., 4.], [1., 0.], [-1., -1.]],
-        'y': [[8.], [14.], [4.0], [0.]]
-    }).batch(2)
+    ds1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[0.0, 0.0], [0.0, 1.0]]),
+            ('y', [[3.0], [5.0]]),
+        ])).batch(2)
+    ds2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]]),
+            ('y', [[8.0], [14.0], [4.00], [0.0]]),
+        ])).batch(2)
     federated_ds = [ds1, ds2]
 
     server_state = iterative_process.initialize()
@@ -160,14 +161,16 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].
-    ds1 = tf.data.Dataset.from_tensor_slices({
-        'x': [[0., 0.], [0., 1.]],
-        'y': [[3.], [5.]]
-    }).batch(2)
-    ds2 = tf.data.Dataset.from_tensor_slices({
-        'x': [[1., 2.], [3., 4.], [1., 0.], [-1., -1.]],
-        'y': [[8.], [14.], [4.0], [0.]]
-    }).batch(2)
+    ds1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[0.0, 0.0], [0.0, 1.0]]),
+            ('y', [[3.0], [5.0]]),
+        ])).batch(2)
+    ds2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]]),
+            ('y', [[8.0], [14.0], [4.00], [0.0]]),
+        ])).batch(2)
     federated_ds = [ds1, ds2]
 
     server_state = iterative_process.initialize()
@@ -182,11 +185,12 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
         model_fn=model_examples.LinearRegression)
 
     # Results in empty dataset with correct types and shapes.
-    ds = tf.data.Dataset.from_tensor_slices({
-        'x': [[1., 2.]],
-        'y': [[5.]]
-    }).batch(
-        5, drop_remainder=True)  # No batches of size 5 can be created.
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0]]),
+            ('y', [[5.0]]),
+        ])).batch(
+            5, drop_remainder=True)  # No batches of size 5 can be created.
     federated_ds = [ds] * 2
 
     server_state = iterative_process.initialize()
