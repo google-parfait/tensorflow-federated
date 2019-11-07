@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -63,10 +65,11 @@ class IterativeProcessTest(test.TestCase, parameterized.TestCase):
         stateful_delta_aggregate_fn=gather_fn,
         stateful_model_broadcast_fn=broadcast_fn)
 
-    ds = tf.data.Dataset.from_tensor_slices({
-        'x': [[1., 2.], [3., 4.]],
-        'y': [[5.], [6.]]
-    }).batch(2)
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0]]),
+            ('y', [[5.0], [6.0]]),
+        ])).batch(2)
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()
