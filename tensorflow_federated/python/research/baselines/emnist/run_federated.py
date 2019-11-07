@@ -15,6 +15,7 @@
 """Trains and evaluates EMNIST classification model using TFF."""
 
 import collections
+import functools
 
 from absl import app
 from absl import flags
@@ -43,8 +44,8 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('batch_size', 20, 'Batch size used on the client.')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
-  utils_impl.define_optimizer_flags('server', defaults=dict(learning_rate=1.0))
-  utils_impl.define_optimizer_flags('client', defaults=dict(learning_rate=0.2))
+  utils_impl.define_optimizer_flags('server')
+  utils_impl.define_optimizer_flags('client')
 
 # End of hyperparameter flags.
 
@@ -61,7 +62,7 @@ def create_compiled_keras_model():
 
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=utils_impl.get_optimizer_from_flags('client'),
+      optimizer=utils_impl.create_optimizer_from_flags('client'),
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   return model
@@ -123,7 +124,8 @@ def run_experiment():
       FLAGS.exp_name, FLAGS.root_output_dir, emnist_test, hparam_dict,
       create_compiled_keras_model())
 
-  optimizer_fn = lambda: utils_impl.get_optimizer_from_flags('server')
+  optimizer_fn = functools.partial(utils_impl.create_optimizer_from_flags,
+                                   'server')
 
   training_loops.federated_averaging_training_loop(
       model_fn,

@@ -119,9 +119,9 @@ _SUPPORTED_OPTIMIZERS = {
 def define_optimizer_flags(prefix: Text) -> None:
   """Defines flags with `prefix` to configure an optimizer.
 
-  This method is inteded to be paired with `get_optimizer_from_flags` using the
-  same `prefix`, to allow Python binaries to constructed TensorFlow optimizers
-  parameterized by commandline flags.
+  This method is inteded to be paired with `create_optimizer_from_flags` using
+  the same `prefix`, to allow Python binaries to constructed TensorFlow
+  optimizers parameterized by commandline flags.
 
   This creates two new flags:
     * `--<prefix>_optimizer=<optimizer name>`
@@ -141,10 +141,10 @@ def define_optimizer_flags(prefix: Text) -> None:
     *  `--client_adam_beta_2`
     *  `--client_adam_epsilon`
 
-  Then calls to `get_optimizer_from_flags('client')` will construct an optimizer
-  of the type named in `--client_optimizer`, parameterized by the flags prefixed
-  with the matching optimizer name. For example,  if `--client_optimizer=sgd`,
-  `--client_sgd_*` flags will be used.
+  Then calls to `create_optimizer_from_flags('client')` will construct an
+  optimizer of the type named in `--client_optimizer`, parameterized by the
+  flags prefixed with the matching optimizer name. For example,  if
+  `--client_optimizer=sgd`, `--client_sgd_*` flags will be used.
 
   IMPORTANT: For flags to be correctly parsed from the commandline, this method
   must be called before `absl.app.run(main)`, and is recommened to be called
@@ -152,7 +152,7 @@ def define_optimizer_flags(prefix: Text) -> None:
 
   NOTE: This method does not create a flag for `kwargs` of the Optimizer
   constructor. However, `kwargs` can be set using the `overrides` parameter of
-  `get_optimizer_from_flags` below.
+  `create_optimizer_from_flags` below.
 
   Args:
     prefix: A string (possibly empty) indicating which optimizer is being
@@ -208,24 +208,24 @@ def define_optimizer_flags(prefix: Text) -> None:
       logging.info('Defined new flag: [%s]', prefixed(param.name))
 
 
-def get_optimizer_from_flags(
+def create_optimizer_from_flags(
     prefix: Text,
     overrides: Optional[Mapping[Text, Union[Text, float, int, bool]]] = None
 ) -> tf.keras.optimizers.Optimizer:
   """Returns an optimizer based on prefixed flags.
 
-  This method is inteded to be paired with `get_optimizer_from_flags` using the
+  This method is inteded to be paired with `define_optimizer_flags` using the
   same `prefix`, to allow Python binaries to constructed TensorFlow optimizers
   parameterized by commandline flags.
 
-  This method expects two flags:
+  This method expects at least two flags to have been defined:
     * `--<prefix>_optimizer=<optimizer name>`
     * `--<prefix>_learning_rate`
 
   In addition to suites of flags for each optimizer:
     * `--<prefix>_<optimizer name>_<constructor_argument>`
 
-  For example, if `prefix='client'` the method first reads the flags:
+  For example, if `prefix='client'` this method first reads the flags:
     * `--client_optimizer`
     * `--client_learning_rate`
 
@@ -236,17 +236,27 @@ def get_optimizer_from_flags(
 
   Args:
     prefix: The same string prefix passed to `define_optimizer_flags`.
-    overrides: A mapping of `(string, value)` pairs that should override flag
-      values.
+    overrides: A mapping of `(string, value)` pairs that should override default
+      flag values (but not user specified values from the commandline).
 
   Returns:
     A `tf.keras.optimizers.Optimizer`.
   """
+  if overrides is not None:
+    if not isinstance(overrides, collections.Mapping):
+      raise TypeError(
+          '`overrides` must be a value of type `collections.Mapping`, '
+          'found type: {!s}'.format(type(overrides)))
+  else:
+    overrides = {}
 
   def prefixed(basename):
     return '{}_{}'.format(prefix, basename) if prefix else basename
 
-  optimizer_name = flags.FLAGS[prefixed('optimizer')].value
+  optimizer_flag_name = prefixed('optimizer')
+  if flags.FLAGS[optimizer_flag_name] is None:
+    raise ValueError('Must specify flag --{!s}'.format(optimizer_flag_name))
+  optimizer_name = flags.FLAGS[optimizer_flag_name].value
   optimizer_cls = _SUPPORTED_OPTIMIZERS.get(optimizer_name)
   if optimizer_cls is None:
     # To support additional optimizers, implement it as a
@@ -257,23 +267,27 @@ def get_optimizer_from_flags(
         'support for an optimizer, add the optimzier class to the '
         'utils_impl._SUPPORTED_OPTIMIZERS list.', optimizer_name,
         list(_SUPPORTED_OPTIMIZERS.keys()))
-    raise ValueError('{!s} not a valid optimizer, must be one of {!s}. '
-                     'See error log for details.'.format(
-                         optimizer_name, list(_SUPPORTED_OPTIMIZERS.keys())))
+    raise ValueError('`{!s}` is not a valid optimizer for flag --{!s}, must be '
+                     'one of {!s}. See error log for details.'.format(
+                         optimizer_name, optimizer_flag_name,
+                         list(_SUPPORTED_OPTIMIZERS.keys())))
+
+  def _has_user_value(flag):
+    """Check if a commandline flag has a user set value."""
+    return flag.present or flag.value != flag.default
 
   # Validate that the optimizers that weren't picked don't have flag values set.
   # Settings that won't be used likely means there is an expectation gap between
   # the user and the system and we should notify them.
-  unused_flag_prefixes = [prefixed(k) for k in _SUPPORTED_OPTIMIZERS.keys()]
+  unused_flag_prefixes = [
+      prefixed(k) for k in _SUPPORTED_OPTIMIZERS.keys() if k != optimizer_name
+  ]
   mistakenly_set_flags = []
   for flag_name in flags.FLAGS:
-    logging.info('Examining flag [%s] for values...', flag_name)
-    if flags.FLAGS[flag_name].using_default_value:
-      logging.info('[%s] was using the default...', flag_name)
+    if not _has_user_value(flags.FLAGS[flag_name]):
       # Flag was not set by the user, skip it.
       continue
     # Otherwise the flag has a value set by the user.
-    logging.info('[%s] was set by the user...', flag_name)
     for unused_prefix in unused_flag_prefixes:
       if flag_name.startswith(unused_prefix):
         mistakenly_set_flags.append(flag_name)
@@ -282,22 +296,20 @@ def get_optimizer_from_flags(
     raise ValueError('Commandline flags for optimizers other than [{!s}] '
                      '(value of --{!s}) are set. These would be ignored, '
                      'were the flags set by mistake? Flags: {!s}'.format(
-                         optimizer_name, prefixed('optimizer'),
+                         optimizer_name, optimizer_flag_name,
                          mistakenly_set_flags))
 
   flag_prefix = prefixed(optimizer_name)
   prefix_len = len(flag_prefix) + 1
-  kwargs = {}
-  if flags.FLAGS[prefixed('learning_rate')].value is not None:
-    kwargs['learning_rate'] = flags.FLAGS[prefixed('learning_rate')].value
+  kwargs = dict(overrides) if overrides is not None else {}
+  learning_rate_flag = flags.FLAGS[prefixed('learning_rate')]
+  if _has_user_value(learning_rate_flag):
+    kwargs['learning_rate'] = learning_rate_flag.value
   for flag_name in flags.FLAGS:
     if not flag_name.startswith(flag_prefix):
       continue
     arg_name = flag_name[prefix_len:]
     kwargs[arg_name] = flags.FLAGS[flag_name].value
-
-  if overrides:
-    kwargs.update(overrides)
   return optimizer_cls(**kwargs)
 
 

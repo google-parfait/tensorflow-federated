@@ -15,6 +15,7 @@
 """Trains InfEMNIST model with TFF using differential privacy."""
 
 import collections
+import functools
 
 from absl import app
 from absl import flags
@@ -44,8 +45,8 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('num_pseudo_clients', 1, 'Number of pseudo-clients.')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
-  utils_impl.define_optimizer_flags('server', defaults=dict(learning_rate=1.0))
-  utils_impl.define_optimizer_flags('client', defaults=dict(learning_rate=0.2))
+  utils_impl.define_optimizer_flags('server')
+  utils_impl.define_optimizer_flags('client')
 
   # Differential privacy hyperparameters
   flags.DEFINE_float('clip', 0.05, 'Initial clip.')
@@ -74,7 +75,7 @@ def create_compiled_keras_model():
 
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=utils_impl.get_optimizer_from_flags('client'),
+      optimizer=utils_impl.create_optimizer_from_flags('client'),
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   return model
@@ -139,7 +140,8 @@ def run_experiment():
                                                     emnist_test, hparam_dict,
                                                     keras_model)
 
-  optimizer_fn = lambda: utils_impl.get_optimizer_from_flags('server')
+  optimizer_fn = functools.partial(utils_impl.create_optimizer_from_flags,
+                                   'server')
 
   model = tff.learning.from_compiled_keras_model(keras_model, sample_batch)
   dp_query = tff.utils.build_dp_query(
