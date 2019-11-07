@@ -281,10 +281,8 @@ class ServerTest(tf.test.TestCase):
     self.assertLen(train_vars, 2)
     # weights are initialized with all-zeros, weights_delta is all ones,
     # SGD learning rate is 0.1. Updating server for 2 steps.
-    values = list(train_vars.values())
     self.assertAllClose(
-        values, [np.ones_like(values[0]) * 0.2,
-                 np.ones_like(values[1]) * 0.2])
+        train_vars, {k: np.ones_like(v) * 0.2 for k, v in train_vars.items()})
 
   def test_self_contained_example_keras_model(self):
 

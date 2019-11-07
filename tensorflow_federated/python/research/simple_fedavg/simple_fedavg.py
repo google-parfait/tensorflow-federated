@@ -37,8 +37,6 @@ import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
-
 
 @attr.s(cmp=False, frozen=True)
 class ClientOutput(object):
@@ -85,9 +83,15 @@ def _create_optimizer_vars(model, optimizer):
 def _get_weights(model):
   model_weights = collections.namedtuple('ModelWeights',
                                          'trainable non_trainable')
+
+  def to_odict(variables):
+    return collections.OrderedDict([
+        (var.name[:var.name.rfind(':')], var) for var in variables
+    ])
+
   return model_weights(
-      trainable=tensor_utils.to_var_dict(model.trainable_variables),
-      non_trainable=tensor_utils.to_var_dict(model.non_trainable_variables))
+      trainable=to_odict(model.trainable_variables),
+      non_trainable=to_odict(model.non_trainable_variables))
 
 
 @tf.function
@@ -156,9 +160,7 @@ def client_update(model, dataset, initial_weights):
 
   return ClientOutput(
       weights_delta, weights_delta_weight, aggregated_outputs,
-      tensor_utils.to_odict({
-          'num_examples': num_examples_sum,
-      }))
+      collections.OrderedDict([('num_examples', num_examples_sum)]))
 
 
 def build_server_init_fn(model_fn, server_optimizer_fn):
