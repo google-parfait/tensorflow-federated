@@ -95,7 +95,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   valid representation is returned. If no conversion to a valid representation
   is possible, TypeError is raised.
 
-  The accepted forms of `value` for vaqrious TFF types as as follows:
+  The accepted forms of `value` for various TFF types are as follows:
 
   *   For TFF tensor types listed in
       `tensorflow_utils.TENSOR_REPRESENTATION_TYPES`.
