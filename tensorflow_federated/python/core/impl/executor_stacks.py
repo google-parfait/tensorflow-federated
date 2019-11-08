@@ -66,6 +66,8 @@ def _aggregate_stacks(executors, max_fanout):
   """
   py_typecheck.check_type(executors, list)
   py_typecheck.check_type(max_fanout, int)
+  if max_fanout < 2:
+    raise ValueError('Max fanout must be greater than 1.')
   for ex in executors:
     py_typecheck.check_type(ex, executor_base.Executor)
   # Recursively construct as many levels as it takes to support all clients,
@@ -90,7 +92,7 @@ def _create_full_stack(num_clients, max_fanout):
 
   Args:
     num_clients: The number of clients to support. Must be 0 or larger.
-    max_fanout: The maximum fanout at any point in the hierarchy. Must be 1 or
+    max_fanout: The maximum fanout at any point in the hierarchy. Must be 2 or
       larger.
 
   Returns:
@@ -104,8 +106,8 @@ def _create_full_stack(num_clients, max_fanout):
   py_typecheck.check_type(max_fanout, int)
   if num_clients < 0:
     raise ValueError('Number of clients cannot be negative.')
-  if max_fanout < 1:
-    raise ValueError('Max fanout must be positive.')
+  if max_fanout < 2:
+    raise ValueError('Max fanout must be greater than 1.')
   if num_clients < 1:
     return _create_federated_stack(0)
   else:
@@ -173,6 +175,8 @@ def create_local_executor(num_clients=None, max_fanout=100):
   """
   # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
 
+  if max_fanout < 2:
+    raise ValueError('Max fanout must be greater than 1.')
   if num_clients is not None:
     py_typecheck.check_type(num_clients, int)
     if num_clients <= 0:
@@ -202,7 +206,7 @@ def create_worker_pool_executor(executors, max_fanout=100):
   py_typecheck.check_type(max_fanout, int)
   if not executors:
     raise ValueError('The list executors cannot be empty.')
-  if max_fanout < 1:
-    raise ValueError('Max fanout must be positive.')
+  if max_fanout < 2:
+    raise ValueError('Max fanout must be greater than 1.')
   executors = [_complete_stack(e) for e in executors]
   return _aggregate_stacks(executors, max_fanout)

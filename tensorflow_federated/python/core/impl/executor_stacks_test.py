@@ -28,6 +28,10 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 
 class ExecutorStacksTest(absltest.TestCase):
 
+  def test_raises_with_max_fanout_1(self):
+    with self.assertRaises(ValueError):
+      executor_stacks.create_local_executor(2, 1)
+
   def test_with_temperature_sensor_example(self):
 
     @computations.tf_computation(
