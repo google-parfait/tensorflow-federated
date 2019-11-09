@@ -65,6 +65,5 @@ py_test(
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )

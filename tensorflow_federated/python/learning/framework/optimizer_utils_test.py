@@ -25,7 +25,6 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
@@ -54,7 +53,8 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
         trainable_weights_delta,
         weights_delta_weight=client_weight,
         model_output=self._model.report_local_outputs(),
-        optimizer_output={'client_weight': client_weight})
+        optimizer_output=collections.OrderedDict([('client_weight',
+                                                   client_weight)]))
 
 
 def _state_incrementing_mean_next(server_state, client_value, weight=None):
@@ -144,12 +144,12 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertLen(train_vars, 2)
     self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
     self.assertEqual(train_vars['b'], 0.0)
-    self.assertDictEqual(model_vars.non_trainable, {'c': 0.0})
+    self.assertEqual(model_vars.non_trainable, {'c': 0.0})
     self.assertLen(server_state.optimizer_state, num_optimizer_vars)
-    weights_delta = tensor_utils.to_odict({
-        'a': tf.constant([[1.0], [0.0]]),
-        'b': tf.constant(1.0)
-    })
+    weights_delta = collections.OrderedDict([
+        ('a', tf.constant([[1.0], [0.0]])),
+        ('b', tf.constant(1.0)),
+    ])
     server_state = optimizer_utils.server_update_model(server_state,
                                                        weights_delta, model_fn,
                                                        optimizer_fn)
@@ -161,49 +161,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     self.assertLen(train_vars, 2)
     self.assertAllClose(train_vars['a'], [[updated_val], [0.0]])
     self.assertAllClose(train_vars['b'], updated_val)
-    self.assertDictEqual(model_vars.non_trainable, {'c': 0.0})
-
-  @test.graph_mode_test
-  def test_server_graph_mode(self):
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
-    model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
-
-    # Explicitly entering a graph as a default enables graph-mode.
-    with tf.Graph().as_default() as g:
-      server_state_op = optimizer_utils.server_init(model_fn, optimizer_fn, (),
-                                                    ())
-      init_op = tf.group(tf.compat.v1.global_variables_initializer(),
-                         tf.compat.v1.local_variables_initializer())
-      g.finalize()
-      with self.session() as sess:
-        sess.run(init_op)
-        server_state = sess.run(server_state_op)
-    train_vars = server_state.model.trainable
-    self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
-    self.assertEqual(train_vars['b'], 0.0)
-    self.assertEqual(server_state.model.non_trainable['c'], 0.0)
-    self.assertEqual(server_state.optimizer_state, [0.0])
-
-    with tf.Graph().as_default() as g:
-      # N.B. Must use a fresh graph so variable names are the same.
-      weights_delta = tensor_utils.to_odict({
-          'a': tf.constant([[1.0], [0.0]]),
-          'b': tf.constant(2.0)
-      })
-      update_op = optimizer_utils.server_update_model(server_state,
-                                                      weights_delta, model_fn,
-                                                      optimizer_fn)
-      init_op = tf.group(tf.compat.v1.global_variables_initializer(),
-                         tf.compat.v1.local_variables_initializer())
-      g.finalize()
-      with self.session() as sess:
-        sess.run(init_op)
-        server_state = sess.run(update_op)
-    train_vars = server_state.model.trainable
-    # learning_Rate=0.1, update is [1.0, 0.0], initial model is [0.0, 0.0].
-    self.assertAllClose(train_vars['a'], [[0.1], [0.0]])
-    self.assertAllClose(train_vars['b'], 0.2)
-    self.assertEqual(server_state.model.non_trainable['c'], 0.0)
+    self.assertEqual(model_vars.non_trainable, {'c': 0.0})
 
   def test_orchestration_execute(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
@@ -218,10 +176,11 @@ class ServerTest(test.TestCase, parameterized.TestCase):
         # Similarly, a broadcast with state that increments:
         stateful_model_broadcast_fn=state_incrementing_broadcaster)
 
-    ds = tf.data.Dataset.from_tensor_slices({
-        'x': [[1., 2.], [3., 4.]],
-        'y': [[5.], [6.]]
-    }).batch(2)
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0]]),
+            ('y', [[5.0], [6.0]]),
+        ])).batch(2)
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()
