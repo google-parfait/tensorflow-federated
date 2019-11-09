@@ -52,11 +52,6 @@ with utils_impl.record_new_flags() as hparam_flags:
   # TODO(b/141867576): TFF currently needs a concrete maximum sequence length.
   # Follow up when this restriction is lifted.
   flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use')
-  # There are over 100 million sentences in this dataset; this flag caps the
-  # epoch size for speed. For comparison: EMNIST contains roughly 300,000
-  # examples, so we set that as default here.
-  flags.DEFINE_integer('num_training_examples', 300 * 1000,
-                       'Number of training examples to process per epoch.')
   flags.DEFINE_integer('num_val_examples', 1000,
                        'Number of examples to take for validation set.')
   flags.DEFINE_integer(
@@ -79,10 +74,11 @@ def _create_vocab():
 
 def construct_word_level_datasets(vocab):
   """Preprocesses train and test datasets for stackoverflow."""
-  (stackoverflow_train, _,
+  (stackoverflow_train, stackoverflow_val,
    stackoverflow_test) = tff.simulation.datasets.stackoverflow.load_data()
   # Mix all clients for training and testing in the centralized setting.
   raw_test_dataset = stackoverflow_test.create_tf_dataset_from_all_clients()
+  raw_val_dataset = stackoverflow_val.create_tf_dataset_from_all_clients()
   raw_train_dataset = stackoverflow_train.create_tf_dataset_from_all_clients()
 
   BatchType = collections.namedtuple('BatchType', ['x', 'y'])  # pylint: disable=invalid-name
@@ -118,11 +114,11 @@ def construct_word_level_datasets(vocab):
   def preprocess(dataset):
     """Notice that this preprocess function repeats forever."""
     return (dataset.map(to_ids).padded_batch(
-        FLAGS.batch_size, padded_shapes=[FLAGS.sequence_length
-                                        ]).map(split_input_target).repeat(None))
+        FLAGS.batch_size,
+        padded_shapes=[FLAGS.sequence_length]).map(split_input_target))
 
   stackoverflow_train = preprocess(raw_train_dataset)
-  stackoverflow_val = preprocess(raw_test_dataset).take(FLAGS.num_val_examples)
+  stackoverflow_val = preprocess(raw_val_dataset).take(FLAGS.num_val_examples)
   stackoverflow_test = preprocess(raw_test_dataset).take(
       FLAGS.num_test_examples)
   return stackoverflow_train, stackoverflow_val, stackoverflow_test
@@ -143,8 +139,6 @@ def run_experiment():
   vocab = _create_vocab()
   (stackoverflow_train, stackoverflow_val,
    stackoverflow_test) = construct_word_level_datasets(vocab)
-
-  num_training_steps = FLAGS.num_training_examples / FLAGS.batch_size
 
   def _lstm_fn():
     return tf.keras.layers.LSTM(FLAGS.latent_size, return_sequences=True)
@@ -199,8 +193,7 @@ def run_experiment():
 
   model.fit(
       stackoverflow_train,
-      steps_per_epoch=num_training_steps,
-      epochs=25,
+      epochs=1,
       verbose=1,
       validation_data=stackoverflow_val,
       callbacks=[train_csv_logger, train_tensorboard_callback])
