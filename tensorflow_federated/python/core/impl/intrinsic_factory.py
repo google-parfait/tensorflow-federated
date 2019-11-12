@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import context_stack_base
+from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
@@ -468,6 +469,11 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_zip(value)
+    # TODO(b/144194535):This is a temporary workaround to mitigate the
+    # inefficiency of the local executor stack in interpreting what
+    # `create_federated_zip` currently returns. This is a dependency we don't
+    # want in general, and should be removed as we fix the tagged bug.
+    comp, _ = transformations.remove_lambdas_and_blocks(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def sequence_map(self, fn, arg):
