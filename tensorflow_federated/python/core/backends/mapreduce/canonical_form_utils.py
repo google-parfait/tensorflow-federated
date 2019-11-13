@@ -624,8 +624,8 @@ def get_canonical_form_for_iterative_process(iterative_process):
   if len(next_comp.type_signature.result) == 2:
     next_result = next_comp.result
     dummy_clients_metrics_appended = tff_framework.Tuple([
-        next_result[0],
-        next_result[1],
+        tff_framework.Selection(next_result, index=0),
+        tff_framework.Selection(next_result, index=1),
         tff.federated_value([], tff.CLIENTS)._comp  # pylint: disable=protected-access
     ])
     next_comp = tff_framework.Lambda(next_comp.parameter_name,

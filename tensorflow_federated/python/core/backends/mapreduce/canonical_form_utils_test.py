@@ -19,6 +19,7 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
@@ -189,6 +190,43 @@ class CanonicalFormUtilsTest(absltest.TestCase):
     self.assertEqual(metrics.sparse_categorical_accuracy,
                      alt_metrics.sparse_categorical_accuracy)
     self.assertEqual(metrics.loss, alt_metrics.loss)
+
+  def test_call_returned_directly_creates_canonical_form(self):
+
+    @tff.federated_computation
+    def init_fn():
+      return tff.federated_value(42, tff.SERVER)
+
+    @tff.federated_computation(
+        tff.FederatedType(tf.int32, tff.SERVER),
+        tff.FederatedType(tff.SequenceType(tf.float32), tff.CLIENTS))
+    def next_fn(server_state, client_data):
+      broadcast_state = tff.federated_broadcast(server_state)
+
+      @tff.tf_computation(tf.int32, tff.SequenceType(tf.float32))
+      @tf.function
+      def some_transform(x, y):
+        del y  # Unused
+        return x + 1
+
+      client_update = tff.federated_map(some_transform,
+                                        (broadcast_state, client_data))
+      aggregate_update = tff.federated_sum(client_update)
+      server_output = tff.federated_value(1234, tff.SERVER)
+      return aggregate_update, server_output
+
+    @tff.federated_computation(
+        tff.FederatedType(tf.int32, tff.SERVER),
+        tff.FederatedType(
+            computation_types.SequenceType(tf.float32), tff.CLIENTS))
+    def nested_next_fn(server_state, client_data):
+      return next_fn(server_state, client_data)
+
+    iterative_process = computation_utils.IterativeProcess(
+        init_fn, nested_next_fn)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(
+        iterative_process)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
 
 INIT_TYPE = computation_types.FederatedType(tf.float32, placements.SERVER)
@@ -388,7 +426,6 @@ class TypeCheckTest(absltest.TestCase):
     with self.assertRaisesRegex(TypeError, 'after_aggregate'):
       canonical_form_utils.check_and_pack_after_aggregate_type_signature(
           bad_after_aggregate_type, cf_types)
-
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
