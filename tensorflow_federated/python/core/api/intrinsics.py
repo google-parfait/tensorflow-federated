@@ -167,19 +167,25 @@ def federated_collect(value):
 
 
 def federated_map(mapping_fn, value):
-  """Maps a federated value on `tff.CLIENTS` pointwise using a mapping function.
+  """Maps a federated value pointwise using a mapping function.
+
+  The function `mapping_fn` is applied separately across the group of devices
+  represented by the placement type of `value`. For example, if `value` has
+  placement type `tff.CLIENTS`, then `mapping_fn` is applied to each client
+  individually. In particular, this operation does not alter the placement of
+  the federated value.
 
   Args:
     mapping_fn: A mapping function to apply pointwise to member constituents of
-      `value` on each of the participants in `tff.CLIENTS`. The parameter of
-      this function must be of the same type as the member constituents of
-      `value`.
-    value: A value of a TFF federated type placed at the `tff.CLIENTS`, or a
-      value that can be implicitly converted into a TFF federated type, e.g., by
-      zipping.
+      `value`. The parameter of this function must be of the same type as the
+      member constituents of `value`.
+    value: A value of a TFF federated type (or a value that can be implicitly
+      converted into a TFF federated type, e.g., by zipping) placed at
+      `tff.CLIENTS` or `tff.SERVER`.
 
   Returns:
-    A federated value on `tff.CLIENTS` that represents the result of mapping.
+    A federated value with the same placement as `value` that represents the
+    result of `mapping_fn` on the member constituent of `arg`.
 
   Raises:
     TypeError: If the arguments are not of the appropriate types.

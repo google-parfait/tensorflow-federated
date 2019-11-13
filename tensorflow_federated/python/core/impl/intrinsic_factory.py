@@ -205,18 +205,28 @@ class IntrinsicFactory(object):
       TypeError: As in `api/intrinsics.py`.
     """
     # TODO(b/113112108): Possibly lift the restriction that the mapped value
-    # must be placed at the clients after adding support for placement labels
-    # in the federated types, and expanding the type specification of the
-    # intrinsic this is based on to work with federated values of arbitrary
-    # placement.
+    # must be placed at the server or clients. Would occur after adding support
+    # for placement labels in the federated types, and expanding the type
+    # specification of the intrinsic this is based on to work with federated
+    # values of arbitrary placement.
 
     arg = value_impl.to_value(arg, None, self._context_stack)
     if isinstance(arg.type_signature, computation_types.NamedTupleType):
       if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
         # We've been passed a value which the user expects to be zipped.
+        named_type_signatures = anonymous_tuple.to_elements(arg.type_signature)
+        _, first_type_signature = named_type_signatures[0]
+        for _, type_signature in named_type_signatures:
+          py_typecheck.check_type(type_signature,
+                                  computation_types.FederatedType)
+          if type_signature.placement is not first_type_signature.placement:
+            raise TypeError(
+                'You cannot apply federated_map on nested values with mixed '
+                'placements (was given a nested value of type {}).'.format(
+                    arg.type_signature))
         arg = self.federated_zip(arg)
-    value_utils.check_federated_value_placement(arg, placements.CLIENTS,
-                                                'value to be mapped')
+
+    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
@@ -231,9 +241,27 @@ class IntrinsicFactory(object):
           'constituents of the mapped value are of incompatible type {}.'
           .format(fn.type_signature.parameter, arg.type_signature.member))
 
-    fn = value_impl.ValueImpl.get_comp(fn)
-    arg = value_impl.ValueImpl.get_comp(arg)
-    comp = building_block_factory.create_federated_map(fn, arg)
+    # TODO(b/144384398): Change structure to one that maps the placement type
+    # to the building_block function that fits it, in a way that allows the
+    # appropriate type checks.
+    if arg.type_signature.placement is placements.SERVER:
+      if not arg.type_signature.all_equal:
+        raise TypeError(
+            'Arguments placed at {} should be equal at all locations.'.format(
+                placements.SERVER))
+      fn = value_impl.ValueImpl.get_comp(fn)
+      arg = value_impl.ValueImpl.get_comp(arg)
+      comp = building_block_factory.create_federated_apply(fn, arg)
+    elif arg.type_signature.placement is placements.CLIENTS:
+      fn = value_impl.ValueImpl.get_comp(fn)
+      arg = value_impl.ValueImpl.get_comp(arg)
+      comp = building_block_factory.create_federated_map(fn, arg)
+    else:
+      raise TypeError(
+          'The argument should have placement {} or {}, found {} instead.'
+          .format(placements.SERVER, placements.CLIENTS,
+                  arg.type_signature.placement))
+
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map_all_equal(self, fn, arg):

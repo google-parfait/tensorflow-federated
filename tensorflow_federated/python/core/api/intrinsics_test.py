@@ -77,6 +77,43 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> {bool}@CLIENTS)')
 
+  def test_federated_map_with_server_int(self):
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.SERVER))
+    def foo(x):
+      return tff.federated_map(
+          tff.tf_computation(lambda x: x > 10, tf.int32), x)
+
+    self.assertEqual(str(foo.type_signature), '(int32@SERVER -> bool@SERVER)')
+
+  def test_federated_map_injected_zip_with_server_int(self):
+
+    @tff.federated_computation([
+        tff.FederatedType(tf.int32, tff.SERVER),
+        tff.FederatedType(tf.int32, tff.SERVER)
+    ])
+    def foo(x, y):
+      return tff.federated_map(
+          tff.tf_computation(lambda x, y: x > 10, [tf.int32, tf.int32]), [x, y])
+
+    self.assertEqual(
+        str(foo.type_signature), '(<int32@SERVER,int32@SERVER> -> bool@SERVER)')
+
+  def test_federated_map_injected_zip_fails_different_placements(self):
+
+    def foo(x, y):
+      return tff.federated_map(
+          tff.tf_computation(lambda x, y: x > 10, [tf.int32, tf.int32]), [x, y])
+
+    with self.assertRaisesRegex(
+        TypeError, 'You cannot apply federated_map on nested values with mixed '
+        'placements.'):
+
+      tff.federated_computation(foo, [
+          tff.FederatedType(tf.int32, tff.SERVER),
+          tff.FederatedType(tf.int32, tff.CLIENTS)
+      ])
+
   def test_federated_map_with_non_federated_val(self):
     with self.assertRaises(TypeError):
 
