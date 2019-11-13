@@ -257,8 +257,8 @@ def build_conv_batch_norm_keras_model():
 def build_multiple_inputs_keras_model():
   """Builds a test model with two inputs."""
   l = tf.keras.layers
-  a = l.Input((1,))
-  b = l.Input((1,))
+  a = l.Input((1,), name='a')
+  b = l.Input((1,), name='b')
   # Each input has a single, independent dense layer, which are combined into
   # a final dense layer.
   output = l.Dense(1)(
@@ -266,7 +266,7 @@ def build_multiple_inputs_keras_model():
           l.Dense(1)(a),
           l.Dense(1)(b),
       ]))
-  return tf.keras.Model(inputs=[a, b], outputs=[output])
+  return tf.keras.Model(inputs={'a': a, 'b': b}, outputs=[output])
 
 
 def build_multiple_outputs_keras_model():

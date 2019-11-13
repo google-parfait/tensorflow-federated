@@ -302,10 +302,10 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
     dummy_batch = collections.OrderedDict([
-        ('x', [
-            np.zeros([1, 1], dtype=np.float32),
-            np.zeros([1, 1], dtype=np.float32)
-        ]),
+        ('x', {
+            'a': np.zeros([1, 1], dtype=np.float32),
+            'b': np.zeros([1, 1], dtype=np.float32),
+        }),
         ('y', np.zeros([1, 1], dtype=np.float32)),
     ])
     tff_model = keras_utils.from_compiled_keras_model(
@@ -313,10 +313,10 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
     batch_size = 2
     batch = {
-        'x': [
-            np.ones(shape=[batch_size, 1], dtype=np.float32),
-            np.ones(shape=[batch_size, 1], dtype=np.float32)
-        ],
+        'x': {
+            'a': np.ones(shape=[batch_size, 1], dtype=np.float32),
+            'b': np.ones(shape=[batch_size, 1], dtype=np.float32),
+        },
         'y': np.asarray([[2.0], [2.0]]).astype(np.float32),
     }
 

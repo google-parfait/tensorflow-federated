@@ -437,7 +437,7 @@ class _KerasModel(model_lib.Model):
     return model_lib.BatchOutput(
         loss=batch_loss,
         predictions=predictions,
-        num_examples=tf.shape(inputs)[0])
+        num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0])
 
   @tf.function
   def forward_pass(self, batch_input, training=True):
