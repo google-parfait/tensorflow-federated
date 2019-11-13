@@ -340,9 +340,11 @@ def build_model_delta_optimizer_process(
   py_typecheck.check_type(stateful_model_broadcast_fn,
                           tff.utils.StatefulBroadcastFn)
 
-  # TODO(b/122081673): would be nice not to have the construct a throwaway model
+  # TODO(b/124477628): would be nice not to have the construct a throwaway model
   # here just to get the types. After fully moving to TF2.0 and eager-mode, we
   # should re-evaluate what happens here.
+  # TODO(b/144382142): Keras name uniquification is probably the main reason we
+  # still need this.
   with tf.Graph().as_default():
     dummy_model_for_metadata = model_utils.enhance(model_fn())
 
