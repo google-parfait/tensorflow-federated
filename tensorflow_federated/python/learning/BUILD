@@ -48,7 +48,7 @@ py_test(
 
 py_test(
     name = "federated_averaging_test",
-    size = "large",
+    size = "medium",
     srcs = ["federated_averaging_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -58,6 +58,7 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
     ],
 )
 
@@ -131,7 +132,7 @@ py_library(
 
 py_test(
     name = "keras_utils_test",
-    size = "large",
+    size = "medium",
     srcs = ["keras_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

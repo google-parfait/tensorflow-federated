@@ -101,6 +101,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     tf.keras.backend.clear_session()
+    tff.framework.set_default_executor(tff.framework.create_local_executor())
     super(KerasUtilsTest, self).setUp()
 
   def test_convert_fails_on_non_keras_model(self):
@@ -602,6 +603,54 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
                 'dense_6': 0.2,
                 'dummy': 0.4
             })
+
+  def test_keras_model_lookup_table(self):
+    model = model_examples.build_lookup_table_keras_model()
+
+    model.compile(
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
+        loss=tf.keras.losses.MSE,
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+
+    dummy_batch = collections.OrderedDict([
+        ('x', tf.constant([['G']], dtype=tf.string)),
+        ('y', tf.zeros([1, 1], dtype=tf.float32)),
+    ])
+    tff_model = keras_utils.from_compiled_keras_model(
+        keras_model=model, dummy_batch=dummy_batch)
+
+    batch_size = 3
+    batch = {
+        'x': tf.constant([['G'], ['B'], ['R']], dtype=tf.string),
+        'y': tf.constant([[1.0], [2.0], [3.0]], dtype=tf.float32),
+    }
+
+    num_iterations = 2
+    for _ in range(num_iterations):
+      self.evaluate(tff_model.train_on_batch(batch))
+
+    metrics = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(metrics['num_batches'], [num_iterations])
+    self.assertEqual(metrics['num_examples'], [batch_size * num_iterations])
+    self.assertGreater(metrics['loss'][0], 0.0)
+    self.assertEqual(metrics['loss'][1], batch_size * num_iterations)
+
+    # Ensure we can assign the FL trained model weights to a new model.
+    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    keras_model = model_examples.build_lookup_table_keras_model()
+    tff_weights.assign_weights_to(keras_model)
+    keras_model.compile(
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
+        loss=tf.keras.losses.MSE,
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+    loaded_model = keras_utils.from_compiled_keras_model(
+        keras_model=keras_model, dummy_batch=dummy_batch)
+
+    orig_model_output = tff_model.forward_pass(batch)
+    loaded_model_output = loaded_model.forward_pass(batch)
+    self.assertAlmostEqual(
+        self.evaluate(orig_model_output.loss),
+        self.evaluate(loaded_model_output.loss))
 
 
 if __name__ == '__main__':

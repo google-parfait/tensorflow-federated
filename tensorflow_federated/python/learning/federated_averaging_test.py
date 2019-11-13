@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
@@ -105,6 +106,10 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
 
 class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
 
+  def setUp(self):
+    tff.framework.set_default_executor(tff.framework.create_local_executor())
+    super(FederatedAveragingTffTest, self).setUp()
+
   def test_orchestration_execute(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.TrainableLinearRegression)
@@ -155,6 +160,39 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
         collections.OrderedDict([
             ('x', [[1.0, 2.0], [3.0, 4.0]]),
             ('y', [[5.0], [6.0]]),
+        ])).batch(2)
+    federated_ds = [ds] * 3
+
+    server_state = iterative_process.initialize()
+
+    prev_loss = np.inf
+    for _ in range(3):
+      server_state, metrics = iterative_process.next(server_state, federated_ds)
+      self.assertLess(metrics.loss, prev_loss)
+      prev_loss = metrics.loss
+
+  def test_orchestration_execute_from_keras_with_lookup(self):
+    self.skipTest('https://github.com/tensorflow/federated/issues/783')
+
+    def model_fn():
+      dummy_batch = collections.OrderedDict([
+          ('x', tf.constant([['R']], tf.string)),
+          ('y', tf.zeros([1, 1], tf.float32)),
+      ])
+      keras_model = model_examples.build_lookup_table_keras_model()
+      keras_model.compile(
+          optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[])
+      return keras_utils.from_compiled_keras_model(keras_model, dummy_batch)
+
+    iterative_process = federated_averaging.build_federated_averaging_process(
+        model_fn=model_fn)
+
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [['R'], ['G'], ['B']]),
+            ('y', [[1.0], [2.0], [3.0]]),
         ])).batch(2)
     federated_ds = [ds] * 3
 

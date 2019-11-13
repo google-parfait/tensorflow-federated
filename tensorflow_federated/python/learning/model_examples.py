@@ -280,3 +280,16 @@ def build_multiple_outputs_keras_model():
   output_c = l.Dense(1)(l.concatenate([l.Dense(1)(a), l.Dense(1)(b)]))
 
   return tf.keras.Model(inputs=[a, b], outputs=[output_a, output_b, output_c])
+
+
+def build_lookup_table_keras_model():
+  """Builds a test model with three outputs."""
+  l = tf.keras.layers
+  a = l.Input(shape=(1,), dtype=tf.string)
+  embedded_lookup_feature = tf.feature_column.embedding_column(
+      tf.feature_column.categorical_column_with_vocabulary_list(
+          key='colors', vocabulary_list=('R', 'G', 'B')),
+      dimension=16)
+  dense_features = l.DenseFeatures([embedded_lookup_feature])({'colors': a})
+  output = l.Dense(1)(dense_features)
+  return tf.keras.Model(inputs=[a], outputs=[output])
