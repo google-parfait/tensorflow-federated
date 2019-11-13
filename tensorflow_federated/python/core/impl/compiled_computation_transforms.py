@@ -776,6 +776,71 @@ def compose_tensorflow_blocks(tf_comps):
   return building_blocks.CompiledComputation(proto_pruned)
 
 
+class LambdaWrappingNoArgGraph(transformation_utils.TransformSpec):
+  r"""`TransformSpec` handling throwaway TFF arguments.
+
+  Transforms the pattern:
+
+                    Lambda(x):
+                       |
+                      Call
+                     /    \
+  CompiledComputation      `None`
+
+  To simply:
+
+                CompiledComputation
+
+  While preserving semantics.
+  """
+
+  def should_transform(self, comp):
+    return (isinstance(comp, building_blocks.Lambda) and
+            isinstance(comp.result, building_blocks.Call) and isinstance(
+                comp.result.function, building_blocks.CompiledComputation) and
+            comp.result.argument is None)
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+
+    tf_block = comp.result.function
+    arg_type = comp.parameter_type
+    return_type = tf_block.type_signature.result
+    function_type = computation_types.FunctionType(arg_type, return_type)
+    serialized_function_type = type_serialization.serialize_type(function_type)
+    tf_spec = _unpack_proto_into_graph_spec(tf_block.proto)
+    rebind_name = 'reimported'
+
+    with tf.Graph().as_default() as g:
+      tf.import_graph_def(
+          tf_spec.graph_def,
+          return_elements=tf_spec.out_names,
+          name=rebind_name)
+
+    _, param_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'unused_param', arg_type, g)
+    out_name_map = dict((x, rebind_name + '/' + x) for x in tf_spec.out_names)
+    rebound_result = _repack_binding_with_new_name(
+        tf_block.proto.tensorflow.result, out_name_map)
+    graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
+
+    if tf_spec.init_op is not None:
+      init_op = rebind_name + '/' + tf_spec.init_op
+    else:
+      init_op = None
+    tf_result_proto = pb.TensorFlow(
+        graph_def=graph_def,
+        initialize_op=init_op,
+        parameter=param_binding,
+        result=rebound_result)
+
+    constructed_proto = pb.Computation(
+        type=serialized_function_type, tensorflow=tf_result_proto)
+
+    return building_blocks.CompiledComputation(constructed_proto), True
+
+
 class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
   """`TransformSpec` representing a composition of TF blocks."""
 
@@ -831,6 +896,7 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
+
     preprocess_arg_comp = building_block_factory.create_compiled_input_replication(
         comp.argument[0].type_signature, len(comp.argument))
     logic_of_tf_comp = comp.function

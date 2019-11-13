@@ -18,6 +18,7 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
@@ -2178,6 +2179,72 @@ class CalledGraphOnReplicatedArgTest(common_test.TestCase):
     self.assertEqual(executable([0, 1.])[1], 1.)
     self.assertEqual(executable([1, 0.])[0], 1)
     self.assertEqual(executable([1, 0.])[1], 0.)
+
+
+def _create_simple_lambda_wrapping_noarg_graph():
+  embedded_constant = building_block_factory.create_tensorflow_constant(
+      tf.int32, 0)
+  lam = building_blocks.Lambda('x', tf.float32, embedded_constant)
+  return lam
+
+
+class LambdaWrappingNoArgGraphTest(common_test.TestCase,
+                                   parameterized.TestCase):
+
+  def test_should_transform_identifies_correct_pattern(self):
+    pattern = _create_simple_lambda_wrapping_noarg_graph()
+    logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
+    self.assertTrue(logic.should_transform(pattern))
+
+  def test_should_transform_does_not_identify_lambda_to_graph_with_arg(self):
+    pattern = _create_simple_lambda_wrapping_graph()
+    logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
+    self.assertFalse(logic.should_transform(pattern))
+
+  def test_transform_leaves_type_signature_untouched(self):
+    pattern = _create_simple_lambda_wrapping_noarg_graph()
+    logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
+    parsed, _ = logic.transform(pattern)
+    self.assertEqual(parsed.type_signature, pattern.type_signature)
+
+  def test_transform_constructs_correct_root_node(self):
+    pattern = _create_simple_lambda_wrapping_noarg_graph()
+    logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
+    parsed, _ = logic.transform(pattern)
+    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
+
+  def test_updates_init_op(self):
+    embedded_constant = building_block_factory.create_tensorflow_constant(
+        tf.int32, 0)
+    noarg_graph = embedded_constant.function
+    tf_proto = noarg_graph.proto.tensorflow
+    proto_with_init_op = pb.TensorFlow(
+        graph_def=tf_proto.graph_def,
+        initialize_op='bad_init_op',
+        parameter=tf_proto.parameter,
+        result=tf_proto.result)
+    constant_with_init_op = building_blocks.Call(
+        building_blocks.CompiledComputation(
+            pb.Computation(
+                type=noarg_graph.proto.type, tensorflow=proto_with_init_op)),
+        None)
+    lambda_wrapping_constant = building_blocks.Lambda('x', tf.float32,
+                                                      constant_with_init_op)
+    logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
+    parsed, transformed = logic.transform(lambda_wrapping_constant)
+    self.assertTrue(transformed)
+    split_init_op_name = parsed.proto.tensorflow.initialize_op.split('/')
+    self.assertNotEmpty(split_init_op_name[0])
+    self.assertEqual(split_init_op_name[1], 'bad_init_op')
+
+  @parameterized.named_parameters([(str(n), n * 1.0) for n in range(10)])
+  def test_function_returned_independent_of_argument(self, arg):
+    pattern = _create_simple_lambda_wrapping_noarg_graph()
+    logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
+    parsed, _ = logic.transform(pattern)
+    executable = computation_wrapper_instances.building_block_to_computation(
+        parsed)
+    self.assertEqual(executable(arg), 0)
 
 
 if __name__ == '__main__':
