@@ -23,10 +23,10 @@ import attr
 import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
+import tree
 
 from tensorboard.plugins.hparams import api as hp
 from tensorflow_federated.python.research.utils import utils_impl
-from tensorflow_federated.python.tensorflow_libs import nest as nest_fork
 
 
 def _check_not_exists(f):
@@ -124,8 +124,11 @@ class MetricsHook(object):
     metrics['eval'] = collections.OrderedDict(
         zip(['loss', 'sparse_categorical_accuracy'], eval_metrics))
 
-    flat_metrics = collections.OrderedDict(
-        nest_fork.flatten_with_joined_string_paths(metrics))
+    flat_metrics = tree.flatten_with_path(metrics)
+    flat_metrics = [
+        ('/'.join(map(str, path)), item) for path, item in flat_metrics
+    ]
+    flat_metrics = collections.OrderedDict(flat_metrics)
 
     # Use a DataFrame just to get nice formatting.
     df = pd.DataFrame.from_dict(flat_metrics, orient='index', columns=['value'])

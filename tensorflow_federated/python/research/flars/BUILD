@@ -53,6 +53,5 @@ py_binary(
         "//tensorflow_federated/python/research/simple_fedavg",
         "//tensorflow_federated/python/research/utils:checkpoint_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
-        "//tensorflow_federated/python/tensorflow_libs:nest",
     ],
 )

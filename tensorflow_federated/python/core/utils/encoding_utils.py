@@ -28,12 +28,12 @@ import collections
 
 import attr
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core import framework as tff_framework
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
-from tensorflow_federated.python.tensorflow_libs import nest as nest_contrib
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
@@ -249,8 +249,7 @@ def _slice(encoders, nested_value, idx):
   Returns:
     A collection of values of the same structure as `encoders`.
   """
-  return nest_contrib.map_structure_up_to(encoders, lambda t: t[idx],
-                                          nested_value)
+  return tree.map_structure_up_to(encoders, lambda t: t[idx], nested_value)
 
 
 # TODO(b/136219266): Remove dependency on tf.contrib.framework.nest.
@@ -261,7 +260,7 @@ def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
   @tff.tf_computation(state_type, value_type)
   def encode(state, value):
     """Encode tf_computation."""
-    encoded_structure = nest_contrib.map_structure_up_to(
+    encoded_structure = tree.map_structure_up_to(
         encoders, lambda state, value, e: e.encode(value, state), state, value,
         encoders)
     encoded_value = _slice(encoders, encoded_structure, 0)
@@ -271,9 +270,8 @@ def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
   @tff.tf_computation(encode.type_signature.result[1])
   def decode(encoded_value):
     """Decode tf_computation."""
-    return nest_contrib.map_structure_up_to(encoders,
-                                            lambda e, val: e.decode(val),
-                                            encoders, encoded_value)
+    return tree.map_structure_up_to(encoders, lambda e, val: e.decode(val),
+                                    encoders, encoded_value)
 
   return encode, decode
 
@@ -299,9 +297,8 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
 
   @tff.tf_computation(state_type)
   def get_params_fn(state):
-    params = nest_contrib.map_structure_up_to(encoders,
-                                              lambda e, s: e.get_params(s),
-                                              encoders, state)
+    params = tree.map_structure_up_to(encoders, lambda e, s: e.get_params(s),
+                                      encoders, state)
     encode_params = _slice(encoders, params, 0)
     decode_before_sum_params = _slice(encoders, params, 1)
     decode_after_sum_params = _slice(encoders, params, 2)
@@ -320,7 +317,7 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
   @tff.tf_computation(value_type, encode_params_type,
                       decode_before_sum_params_type)
   def encode_fn(x, encode_params, decode_before_sum_params):
-    encoded_structure = nest_contrib.map_structure_up_to(
+    encoded_structure = tree.map_structure_up_to(
         encoders, lambda e, *args: e.encode(*args), encoders, x, encode_params)
     encoded_x = _slice(encoders, encoded_structure, 0)
     state_update_tensors = _slice(encoders, encoded_structure, 1)
@@ -330,9 +327,9 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
 
   # This is not a @tff.tf_computation because it will be used below when bulding
   # the tff.tf_computations that will compose a tff.federated_aggregate...
-  @tf.function
+  # @tf.function
   def decode_before_sum_tf_function(encoded_x, decode_before_sum_params):
-    part_decoded_x = nest_contrib.map_structure_up_to(
+    part_decoded_x = tree.map_structure_up_to(
         encoders, lambda e, *args: e.decode_before_sum(*args), encoders,
         encoded_x, decode_before_sum_params)
     one = tf.constant((1,), tf.int32)
@@ -349,16 +346,16 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
   @tff.tf_computation(part_decoded_x_type, decode_after_sum_params_type)
   def decode_after_sum_fn(summed_values, decode_after_sum_params):
     part_decoded_aggregated_x, num_summands = summed_values
-    return nest_contrib.map_structure_up_to(
+    return tree.map_structure_up_to(
         encoders,
         lambda e, x, params: e.decode_after_sum(x, params, num_summands),
         encoders, part_decoded_aggregated_x, decode_after_sum_params)
 
   @tff.tf_computation(state_type, state_update_tensors_type)
   def update_state_fn(state, state_update_tensors):
-    return nest_contrib.map_structure_up_to(
-        encoders, lambda e, *args: e.update_state(*args), encoders, state,
-        state_update_tensors)
+    return tree.map_structure_up_to(encoders,
+                                    lambda e, *args: e.update_state(*args),
+                                    encoders, state, state_update_tensors)
 
   # Computations for tff.federated_aggregate.
   @tff.tf_computation

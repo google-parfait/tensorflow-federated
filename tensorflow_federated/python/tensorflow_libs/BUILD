@@ -33,20 +33,6 @@ py_test(
 )
 
 py_library(
-    name = "nest",
-    srcs = ["nest.py"],
-    srcs_version = "PY2AND3",
-)
-
-py_test(
-    name = "nest_test",
-    srcs = ["nest_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":nest"],
-)
-
-py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
     srcs_version = "PY2AND3",

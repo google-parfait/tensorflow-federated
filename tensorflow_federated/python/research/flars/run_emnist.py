@@ -30,6 +30,7 @@ import attr
 import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
+import tree
 
 from tensorboard.plugins.hparams import api as hp
 from tensorflow_federated.python.research.baselines.emnist import models
@@ -38,7 +39,6 @@ from tensorflow_federated.python.research.flars import flars_optimizer
 from tensorflow_federated.python.research.simple_fedavg import simple_fedavg
 from tensorflow_federated.python.research.utils import checkpoint_utils
 from tensorflow_federated.python.research.utils import utils_impl
-from tensorflow_federated.python.tensorflow_libs import nest
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Metadata
@@ -308,8 +308,11 @@ class MetricsHook(object):
             collections.OrderedDict(
                 zip(['loss', 'sparse_categorical_accuracy'], eval_metrics))
     }
-    flat_metrics = collections.OrderedDict(
-        nest.flatten_with_joined_string_paths(metrics))
+    flat_metrics = tree.flatten_with_path(metrics)
+    flat_metrics = [
+        ('/'.join(map(str, path)), item) for path, item in flat_metrics
+    ]
+    flat_metrics = collections.OrderedDict(flat_metrics)
     flat_metrics['round'] = round_num
 
     logging.info('Evaluation at round {:d}:\n{!s}'.format(

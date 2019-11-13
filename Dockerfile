@@ -61,6 +61,7 @@ RUN ${PIP} install --no-cache-dir \
     absl-py~=0.7 \
     attrs~=18.2 \
     cachetools~=3.1.1 \
+    dm-tree~=0.1.1 \
     enum34~=1.1 \
     grpcio~=1.24.3 \
     h5py~=2.6 \
