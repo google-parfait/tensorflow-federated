@@ -17,10 +17,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_wrapper
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl.utils import function_utils
+from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
 
 class WrappedForTest(function_utils.ConcreteFunction):

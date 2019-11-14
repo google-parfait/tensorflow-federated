@@ -216,34 +216,6 @@ py_test(
 )
 
 py_library(
-    name = "computation_wrapper",
-    srcs = ["computation_wrapper.py"],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":type_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/utils:function_utils",
-    ],
-)
-
-py_test(
-    name = "computation_wrapper_test",
-    size = "small",
-    srcs = ["computation_wrapper_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":computation_wrapper",
-        ":context_base",
-        ":context_stack_impl",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/utils:function_utils",
-    ],
-)
-
-py_library(
     name = "concurrent_executor",
     srcs = ["concurrent_executor.py"],
     srcs_version = "PY3",
