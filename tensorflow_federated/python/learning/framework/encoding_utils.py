@@ -55,7 +55,10 @@ def build_encoded_broadcast_from_model(model_fn, encoder_fn):
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
-  values = model_utils.enhance(model_fn()).weights
+  # TODO(b/144382142): Keras name uniquification is probably the main reason we
+  # still need this.
+  with tf.Graph().as_default():
+    values = model_utils.enhance(model_fn()).weights
   encoders = tf.nest.map_structure(encoder_fn, values)
   return tff.utils.build_encoded_broadcast(values, encoders)
 
@@ -84,7 +87,10 @@ def build_encoded_sum_from_model(model_fn, encoder_fn):
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
-  values = model_utils.enhance(model_fn()).weights.trainable
+  # TODO(b/144382142): Keras name uniquification is probably the main reason we
+  # still need this.
+  with tf.Graph().as_default():
+    values = model_utils.enhance(model_fn()).weights.trainable
   encoders = tf.nest.map_structure(encoder_fn, values)
   return tff.utils.build_encoded_sum(values, encoders)
 
@@ -113,6 +119,9 @@ def build_encoded_mean_from_model(model_fn, encoder_fn):
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
-  values = model_utils.enhance(model_fn()).weights.trainable
+  # TODO(b/144382142): Keras name uniquification is probably the main reason we
+  # still need this.
+  with tf.Graph().as_default():
+    values = model_utils.enhance(model_fn()).weights.trainable
   encoders = tf.nest.map_structure(encoder_fn, values)
   return tff.utils.build_encoded_mean(values, encoders)

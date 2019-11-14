@@ -27,6 +27,7 @@ def federated_averaging_training_loop(model_fn,
                                       rounds_per_eval=1,
                                       metrics_hook=lambda *args: None,
                                       client_weight_fn=None,
+                                      stateful_model_broadcast_fn=None,
                                       stateful_delta_aggregate_fn=None):
   """A simple example of training loop for the Federated Averaging algorithm.
 
@@ -44,6 +45,8 @@ def federated_averaging_training_loop(model_fn,
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If not provided, the default is
       the total number of examples processed on device.
+    stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn`. (See
+      documentation for `tff.learning.build_federated_averaging_process`.)
     stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn`. (See
       documentation for `tff.learning.build_federated_averaging_process`.)
 
@@ -57,6 +60,7 @@ def federated_averaging_training_loop(model_fn,
       model_fn,
       server_optimizer_fn=server_optimizer_fn,
       client_weight_fn=client_weight_fn,
+      stateful_model_broadcast_fn=stateful_model_broadcast_fn,
       stateful_delta_aggregate_fn=stateful_delta_aggregate_fn)
 
   server_state = iterative_process.initialize()
