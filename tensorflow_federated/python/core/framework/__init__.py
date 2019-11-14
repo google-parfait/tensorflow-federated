@@ -48,9 +48,7 @@ from tensorflow_federated.python.core.impl.intrinsic_reductions import replace_i
 from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves
-from tensorflow_federated.python.core.impl.transformations import merge_chained_federated_maps_or_applys
 from tensorflow_federated.python.core.impl.transformations import merge_tuple_intrinsics
-from tensorflow_federated.python.core.impl.transformations import remove_duplicate_computations
 from tensorflow_federated.python.core.impl.transformations import remove_lambdas_and_blocks
 from tensorflow_federated.python.core.impl.transformations import remove_mapped_or_applied_identity
 from tensorflow_federated.python.core.impl.transformations import replace_called_lambda_with_block

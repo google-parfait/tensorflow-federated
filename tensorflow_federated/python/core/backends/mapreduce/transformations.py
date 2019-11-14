@@ -362,14 +362,6 @@ def force_align_and_split_by_intrinsic(comp, uri):
   """
   py_typecheck.check_type(comp, tff_framework.Lambda)
   py_typecheck.check_type(uri, six.string_types)
-  # TODO(b/144194535): These preprocessing steps are here to unblock mitigation
-  # of federated_zip bug; when real fix is in, remove these, up to
-  # `_force_align_intrinsic`.
-  comp, _ = tff_framework.remove_lambdas_and_blocks(comp)
-  comp, _ = tff_framework.uniquify_reference_names(comp)
-  comp, _ = tff_framework.remove_mapped_or_applied_identity(comp)
-  comp, _ = tff_framework.merge_chained_federated_maps_or_applys(comp)
-  comp, _ = tff_framework.remove_duplicate_computations(comp)
   comp = _force_align_intrinsic(comp, uri)
   return _split_by_intrinsic(comp, uri)
 

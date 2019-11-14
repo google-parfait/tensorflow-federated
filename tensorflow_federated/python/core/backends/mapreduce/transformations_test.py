@@ -234,7 +234,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
       return building_block_analysis.is_called_intrinsic(comp, uri)
 
     self.assertIsInstance(comp, building_blocks.Lambda)
-    self.assertGreater(tree_analysis.count(comp, _predicate), 0)
+    self.assertEqual(tree_analysis.count(comp, _predicate), 3)
     self.assertIsInstance(before, building_blocks.Lambda)
     self.assertEqual(tree_analysis.count(before, _predicate), 0)
     self.assertEqual(before.parameter_type, comp.parameter_type)
@@ -253,7 +253,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
       return building_block_analysis.is_called_intrinsic(comp, uri)
 
     self.assertIsInstance(comp, building_blocks.Lambda)
-    self.assertGreater(tree_analysis.count(comp, _predicate), 0)
+    self.assertEqual(tree_analysis.count(comp, _predicate), 2)
     self.assertIsInstance(before, building_blocks.Lambda)
     self.assertEqual(tree_analysis.count(before, _predicate), 0)
     self.assertEqual(before.parameter_type, comp.parameter_type)

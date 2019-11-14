@@ -698,7 +698,6 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":context_stack_base",
-        ":transformations",
         ":type_utils",
         ":value_impl",
         ":value_utils",
