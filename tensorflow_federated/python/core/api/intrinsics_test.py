@@ -23,6 +23,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.impl import executor_stacks
+from tensorflow_federated.python.core.utils import test as core_test
 
 
 class IntrinsicsTest(parameterized.TestCase):
@@ -698,6 +700,23 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(
         str(foo3.type_signature), '({int32*}@CLIENTS -> {int32}@CLIENTS)')
+
+  @core_test.executors(
+      ('local', executor_stacks.create_local_executor()),)
+  def test_federated_zip_with_twenty_elements_local_executor(self):
+
+    n = 20
+    n_clients = 2
+
+    @tff.federated_computation([tff.FederatedType(tf.int32, tff.CLIENTS)] * n)
+    def foo(x):
+      return tff.federated_zip(x)
+
+    data = [list(range(n_clients)) for _ in range(n)]
+
+    # This would not have ever returned when local executor was scaling
+    # factorially with number of elements zipped
+    foo(data)
 
 
 if __name__ == '__main__':

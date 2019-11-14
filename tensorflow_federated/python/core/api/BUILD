@@ -92,6 +92,8 @@ py_test(
     deps = [
         ":api",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/utils:test",
     ],
 )
 

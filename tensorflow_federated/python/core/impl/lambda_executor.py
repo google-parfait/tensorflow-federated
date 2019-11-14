@@ -410,7 +410,14 @@ class LambdaExecutor(executor_base.Executor):
           anonymous_tuple.AnonymousTuple(list(zip(names, values))))
     elif which_computation == 'block':
       for loc in comp.block.local:
-        value = LambdaExecutorValue(loc.value, scope)
+        value_which = loc.value.WhichOneof('computation')
+        if value_which == 'tuple':
+          # Leaving tuples unevaluated can result in combinatorial explosion,
+          # because otherwise we will iterate over it again every time it is
+          # referenced.
+          value = await self._evaluate(loc.value, scope)
+        else:
+          value = LambdaExecutorValue(loc.value, scope)
         scope = LambdaExecutorScope({loc.name: value}, scope)
       return await self._evaluate(comp.block.result, scope)
     else:
