@@ -16,6 +16,7 @@
 
 import asyncio
 
+import retrying
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -27,6 +28,14 @@ from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import type_utils
+
+
+class RetryableError(Exception):
+  """Raised when execution fails and can be retried."""
+
+
+def _is_retryable_error(exception):
+  return isinstance(exception, RetryableError)
 
 
 def _unwrap(value):
@@ -143,6 +152,11 @@ class ExecutionContext(context_base.Context):
   def ingest(self, val, type_spec):
     return ExecutionContextValue(val, type_spec)
 
+  @retrying.retry(
+      retry_on_exception=_is_retryable_error,
+      wait_exponential_multiplier=1000,  # in milliseconds
+      wait_jitter_max=1000  # in milliseconds
+  )
   def invoke(self, comp, arg):
     executor = self._executor_factory({})
     py_typecheck.check_type(executor, executor_base.Executor)

@@ -68,6 +68,7 @@ RUN ${PIP} install --no-cache-dir \
     numpy~=1.14 \
     pandas~=0.24.0 \
     portpicker~=1.3.1 \
+    retrying~=1.3.3 \
     six~=1.10 \
     tensorflow-model-optimization~=0.1.3 \
     tensorflow-privacy~=0.2.0 \

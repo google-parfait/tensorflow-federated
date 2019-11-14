@@ -33,7 +33,18 @@ def _test_ctx(num_clients=None):
       executor_stacks.create_local_executor(num_clients))
 
 
-class ExecutionContextTest(absltest.TestCase):
+class RetryableErrorTest(absltest.TestCase):
+
+  def test_is_retryable_error(self):
+    retryable_error = execution_context.RetryableError()
+    self.assertTrue(execution_context._is_retryable_error(retryable_error))
+    self.assertFalse(execution_context._is_retryable_error(TypeError()))
+    self.assertFalse(execution_context._is_retryable_error(1))
+    self.assertFalse(execution_context._is_retryable_error('a'))
+    self.assertFalse(execution_context._is_retryable_error(None))
+
+
+class ExecutionContextIntegrationTest(absltest.TestCase):
 
   def test_simple_no_arg_tf_computation_with_int_result(self):
 

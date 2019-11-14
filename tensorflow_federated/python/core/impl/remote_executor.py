@@ -27,6 +27,7 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl import executor_value_base
@@ -187,7 +188,10 @@ class RemoteExecutor(executor_base.Executor):
         executor_service_utils.serialize_value(value, type_spec))
     create_value_request = executor_pb2.CreateValueRequest(value=value_proto)
     if not self._bidi_stream:
-      response = self._stub.CreateValue(create_value_request)
+      try:
+        response = self._stub.CreateValue(create_value_request)
+      except grpc.RpcError as e:
+        self._handle_grpc_error(e)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_value=create_value_request)
@@ -204,7 +208,10 @@ class RemoteExecutor(executor_base.Executor):
         function_ref=comp.value_ref,
         argument_ref=(arg.value_ref if arg is not None else None))
     if not self._bidi_stream:
-      response = self._stub.CreateCall(create_call_request)
+      try:
+        response = self._stub.CreateCall(create_call_request)
+      except grpc.RpcError as e:
+        self._handle_grpc_error(e)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_call=create_call_request)
@@ -225,7 +232,10 @@ class RemoteExecutor(executor_base.Executor):
     result_type = computation_types.NamedTupleType(type_elem)
     request = executor_pb2.CreateTupleRequest(element=proto_elem)
     if not self._bidi_stream:
-      response = self._stub.CreateTuple(request)
+      try:
+        response = self._stub.CreateTuple(request)
+      except grpc.RpcError as e:
+        self._handle_grpc_error(e)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_tuple=request))).create_tuple
@@ -246,7 +256,10 @@ class RemoteExecutor(executor_base.Executor):
     request = executor_pb2.CreateSelectionRequest(
         source_ref=source.value_ref, name=name, index=index)
     if not self._bidi_stream:
-      response = self._stub.CreateSelection(request)
+      try:
+        response = self._stub.CreateSelection(request)
+      except grpc.RpcError as e:
+        self._handle_grpc_error(e)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_selection=request)
@@ -258,10 +271,26 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(value_ref=value_ref)
     if not self._bidi_stream:
-      response = self._stub.Compute(request)
+      try:
+        response = self._stub.Compute(request)
+      except grpc.RpcError as e:
+        self._handle_grpc_error(e)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(compute=request))).compute
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = executor_service_utils.deserialize_value(response.value)
     return value
+
+  def _is_retryable_grpc_error(self, error):
+    retryable_errors = [grpc.StatusCode.UNAVAILABLE]
+    return isinstance(error, grpc.RpcError) and error.code() in retryable_errors
+
+  def _handle_grpc_error(self, error):
+    py_typecheck.check_type(error, grpc.RpcError)
+    if self._is_retryable_grpc_error(error):
+      logging.info('Recieved retryable gRPC error: %s', error)
+      raise execution_context.RetryableError(error)
+    else:
+      logging.exception('Recieved gRPC error: %s', error)
+      raise error
