@@ -24,9 +24,16 @@ import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import framework as tff_framework
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import transformations
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl import value_transformations
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.utils import computation_utils
 
 
@@ -247,18 +254,17 @@ def check_and_pack_before_aggregate_type_signature(type_spec,
           type_spec.parameter[1].placement == tff.CLIENTS and type_spec
           .parameter[1].member == previously_packed_types['s2_type'].member):
     should_raise = True
-  if not (
-      isinstance(type_spec.result, tff.NamedTupleType) and
-      len(type_spec.result) == 5 and
-      isinstance(type_spec.result[0], tff.FederatedType) and
-      type_spec.result[0].placement == tff.CLIENTS and
-      tff_framework.is_tensorflow_compatible_type(type_spec.result[1]) and
-      type_spec.result[2] == tff.FunctionType([
-          type_spec.result[1], type_spec.result[0].member
-      ], type_spec.result[1]) and type_spec.result[3] == tff.FunctionType(
-          [type_spec.result[1], type_spec.result[1]], type_spec.result[1]) and
-      type_spec.result[4].parameter == type_spec.result[1] and
-      tff_framework.is_tensorflow_compatible_type(type_spec.result[4].result)):
+  if not (isinstance(type_spec.result, tff.NamedTupleType) and
+          len(type_spec.result) == 5 and
+          isinstance(type_spec.result[0], tff.FederatedType) and
+          type_spec.result[0].placement == tff.CLIENTS and
+          type_utils.is_tensorflow_compatible_type(type_spec.result[1]) and
+          type_spec.result[2] == tff.FunctionType([
+              type_spec.result[1], type_spec.result[0].member
+          ], type_spec.result[1]) and type_spec.result[3] == tff.FunctionType(
+              [type_spec.result[1], type_spec.result[1]], type_spec.result[1])
+          and type_spec.result[4].parameter == type_spec.result[1] and
+          type_utils.is_tensorflow_compatible_type(type_spec.result[4].result)):
     should_raise = True
   if should_raise:
     # TODO(b/121290421): These error messages, and indeed the 'track boolean and
@@ -393,17 +399,17 @@ def extract_prepare(before_broadcast, canonical_form_types):
 
   Args:
     before_broadcast: The first result of splitting `next_comp` on
-      `tff_framework.FEDERATED_BROADCAST`.
+      `intrinsic_defs.FEDERATED_BROADCAST`.
     canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
       signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `prepare` as specified by `canonical_form.CanonicalForm`, an instance of
-    `tff_framework.CompiledComputation`.
+    `building_blocks.CompiledComputation`.
 
   Raises:
     transformations.CanonicalFormCompilationError: If we fail to extract a
-    `tff_framework.CompiledComputation`, or we extract one of the wrong type.
+    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -413,9 +419,9 @@ def extract_prepare(before_broadcast, canonical_form_types):
           before_broadcast, s1_index_in_before_broadcast)).result.function
   prepare = transformations.consolidate_and_extract_local_processing(
       s1_to_s2_computation)
-  if not isinstance(prepare, tff_framework.CompiledComputation):
+  if not isinstance(prepare, building_blocks.CompiledComputation):
     raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `tff_framework.CompiledComputation` from '
+        'Failed to extract a `building_blocks.CompiledComputation` from '
         'prepare, instead received a {} (of type {}).'.format(
             type(prepare), prepare.type_signature))
   if prepare.type_signature != canonical_form_types['prepare_type']:
@@ -431,19 +437,19 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
-      `tff_framework.FEDERATED_AGGREGATE`.
+      `intrinsic_defs.FEDERATED_AGGREGATE`.
     after_aggregate: The second result of splitting `after_broadcast` on
-      `tff_framework.FEDERATED_AGGREGATE`.
+      `intrinsic_defs.FEDERATED_AGGREGATE`.
     canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
       signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `work` as specified by `canonical_form.CanonicalForm`, an instance of
-    `tff_framework.CompiledComputation`.
+    `building_blocks.CompiledComputation`.
 
   Raises:
     transformations.CanonicalFormCompilationError: If we fail to extract a
-    `tff_framework.CompiledComputation`, or we extract one of the wrong type.
+    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -465,16 +471,17 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
           c3_elements_in_after_aggregate_parameter).result.function)
   c3_to_unzipped_c4_computation = transformations.concatenate_function_outputs(
       c3_to_c5_computation, c3_to_c6_computation)
-  c3_to_c4_computation = tff_framework.Lambda(
+  c3_to_c4_computation = building_blocks.Lambda(
       c3_to_unzipped_c4_computation.parameter_name,
       c3_to_unzipped_c4_computation.parameter_type,
-      tff_framework.create_federated_zip(c3_to_unzipped_c4_computation.result))
+      building_block_factory.create_federated_zip(
+          c3_to_unzipped_c4_computation.result))
 
   work = transformations.consolidate_and_extract_local_processing(
       c3_to_c4_computation)
-  if not isinstance(work, tff_framework.CompiledComputation):
+  if not isinstance(work, building_blocks.CompiledComputation):
     raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `tff_framework.CompiledComputation` from '
+        'Failed to extract a `building_blocks.CompiledComputation` from '
         'work, instead received a {} (of type {}).'.format(
             type(work), work.type_signature))
   if work.type_signature != canonical_form_types['work_type']:
@@ -490,18 +497,18 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
-      `tff_framework.FEDERATED_AGGREGATE`.
+      `intrinsic_defs.FEDERATED_AGGREGATE`.
     canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
       signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
     `canonical_form.CanonicalForm`. All are instances of
-    `tff_framework.CompiledComputation`.
+    `building_blocks.CompiledComputation`.
 
   Raises:
     transformations.CanonicalFormCompilationError: if we fail to extract
-    `tff_framework.CompiledComputation`s, or we extract one of the wrong type.
+    `building_blocks.CompiledComputation`s, or we extract one of the wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -525,9 +532,9 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
   report = transformations.consolidate_and_extract_local_processing(report_tff)
   for name, tf_block in (('zero', zero), ('accumulate', accumulate),
                          ('merge', merge), ('report', report)):
-    if not isinstance(tf_block, tff_framework.CompiledComputation):
+    if not isinstance(tf_block, building_blocks.CompiledComputation):
       raise transformations.CanonicalFormCompilationError(
-          'Failed to extract a `tff_framework.CompiledComputation` from '
+          'Failed to extract a `building_blocks.CompiledComputation` from '
           '{}, instead received a {} (of type {}).'.format(
               name, type(tf_block), tf_block.type_signature))
     if tf_block.type_signature != canonical_form_types['{}_type'.format(name)]:
@@ -544,26 +551,26 @@ def extract_update(after_aggregate, canonical_form_types):
 
   Args:
     after_aggregate: The second result of splitting `after_broadcast` on
-      `tff_framework.FEDERATED_AGGREGATE`.
+      `intrinsic_defs.FEDERATED_AGGREGATE`.
     canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
       signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `update` as specified by `canonical_form.CanonicalForm`, an instance of
-    `tff_framework.CompiledComputation`.
+    `building_blocks.CompiledComputation`.
 
   Raises:
     transformations.CanonicalFormCompilationError: If we fail to extract a
-    `tff_framework.CompiledComputation`, or we extract one of the wrong type.
+    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
   s5_elements_in_after_aggregate_result = [0, 1]
   s5_output_extracted = transformations.select_output_from_lambda(
       after_aggregate, s5_elements_in_after_aggregate_result)
-  s5_output_zipped = tff_framework.Lambda(
+  s5_output_zipped = building_blocks.Lambda(
       s5_output_extracted.parameter_name, s5_output_extracted.parameter_type,
-      tff_framework.create_federated_zip(s5_output_extracted.result))
+      building_block_factory.create_federated_zip(s5_output_extracted.result))
   s4_elements_in_after_aggregate_parameter = [[0, 0, 0], [1]]
   s4_to_s5_computation = (
       transformations.zip_selection_as_argument_to_lower_level_lambda(
@@ -572,9 +579,9 @@ def extract_update(after_aggregate, canonical_form_types):
 
   update = transformations.consolidate_and_extract_local_processing(
       s4_to_s5_computation)
-  if not isinstance(update, tff_framework.CompiledComputation):
+  if not isinstance(update, building_blocks.CompiledComputation):
     raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `tff_framework.CompiledComputation` from '
+        'Failed to extract a `building_blocks.CompiledComputation` from '
         'update, instead received a {} (of type {}).'.format(
             type(update), update.type_signature))
   if update.type_signature != canonical_form_types['update_type']:
@@ -583,6 +590,24 @@ def extract_update(after_aggregate, canonical_form_types):
         '{}, but the type signature of the TF block was {}'.format(
             canonical_form_types['update_type'], update.type_signature))
   return update
+
+
+def replace_intrinsics_with_bodies(comp):
+  """Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
+      wish to replace all intrinsics with their bodies.
+
+  Returns:
+    An instance of `building_blocks.ComputationBuildingBlock` with
+    all intrinsics defined in `intrinsic_bodies.py` replaced with their bodies.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  context_stack = context_stack_impl.context_stack
+  comp, _ = value_transformations.replace_intrinsics_with_bodies(
+      comp, context_stack)
+  return comp
 
 
 def get_canonical_form_for_iterative_process(iterative_process):
@@ -605,10 +630,10 @@ def get_canonical_form_for_iterative_process(iterative_process):
   """
   py_typecheck.check_type(iterative_process, computation_utils.IterativeProcess)
 
-  initialize_comp = tff_framework.ComputationBuildingBlock.from_proto(
+  initialize_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.initialize._computation_proto)  # pylint: disable=protected-access
 
-  next_comp = tff_framework.ComputationBuildingBlock.from_proto(
+  next_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.next._computation_proto)  # pylint: disable=protected-access
 
   if not (isinstance(next_comp.type_signature.parameter, tff.NamedTupleType) and
@@ -623,37 +648,36 @@ def get_canonical_form_for_iterative_process(iterative_process):
 
   if len(next_comp.type_signature.result) == 2:
     next_result = next_comp.result
-    if isinstance(next_result, tff_framework.Tuple):
-      dummy_clients_metrics_appended = tff_framework.Tuple([
+    if isinstance(next_result, building_blocks.Tuple):
+      dummy_clients_metrics_appended = building_blocks.Tuple([
           next_result[0],
           next_result[1],
           tff.federated_value([], tff.CLIENTS)._comp  # pylint: disable=protected-access
       ])
     else:
-      dummy_clients_metrics_appended = tff_framework.Tuple([
-          tff_framework.Selection(next_result, index=0),
-          tff_framework.Selection(next_result, index=1),
+      dummy_clients_metrics_appended = building_blocks.Tuple([
+          building_blocks.Selection(next_result, index=0),
+          building_blocks.Selection(next_result, index=1),
           tff.federated_value([], tff.CLIENTS)._comp  # pylint: disable=protected-access
       ])
-    next_comp = tff_framework.Lambda(next_comp.parameter_name,
-                                     next_comp.parameter_type,
-                                     dummy_clients_metrics_appended)
+    next_comp = building_blocks.Lambda(next_comp.parameter_name,
+                                       next_comp.parameter_type,
+                                       dummy_clients_metrics_appended)
 
-  initialize_comp = tff_framework.replace_intrinsics_with_bodies(
-      initialize_comp)
-  next_comp = tff_framework.replace_intrinsics_with_bodies(next_comp)
+  initialize_comp = replace_intrinsics_with_bodies(initialize_comp)
+  next_comp = replace_intrinsics_with_bodies(next_comp)
 
-  tff_framework.check_intrinsics_whitelisted_for_reduction(initialize_comp)
-  tff_framework.check_intrinsics_whitelisted_for_reduction(next_comp)
-  tff_framework.check_broadcast_not_dependent_on_aggregate(next_comp)
+  tree_analysis.check_intrinsics_whitelisted_for_reduction(initialize_comp)
+  tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
+  tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
 
   before_broadcast, after_broadcast = (
       transformations.force_align_and_split_by_intrinsic(
-          next_comp, tff_framework.FEDERATED_BROADCAST.uri))
+          next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri))
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsic(
-          after_broadcast, tff_framework.FEDERATED_AGGREGATE.uri))
+          after_broadcast, intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   init_info_packed = pack_initialize_comp_type_signature(
       initialize_comp.type_signature)
@@ -675,12 +699,12 @@ def get_canonical_form_for_iterative_process(iterative_process):
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)
 
-  if not (isinstance(initialize, tff_framework.CompiledComputation) and
+  if not (isinstance(initialize, building_blocks.CompiledComputation) and
           initialize.type_signature.result ==
           canonical_form_types['initialize_type'].member):
     raise transformations.CanonicalFormCompilationError(
         'Compilation of initialize has failed. Expected to extract a '
-        '`tff_framework.CompiledComputation` of type {}, instead we extracted '
+        '`building_blocks.CompiledComputation` of type {}, instead we extracted '
         'a {} of type {}.'.format(next_comp.type_signature.parameter[0],
                                   type(initialize),
                                   initialize.type_signature.result))
@@ -695,12 +719,13 @@ def get_canonical_form_for_iterative_process(iterative_process):
   update = extract_update(after_aggregate, canonical_form_types)
 
   cf = canonical_form.CanonicalForm(
-      tff_framework.building_block_to_computation(initialize),
-      tff_framework.building_block_to_computation(prepare),
-      tff_framework.building_block_to_computation(work),
-      tff_framework.building_block_to_computation(zero_noarg_function),
-      tff_framework.building_block_to_computation(accumulate),
-      tff_framework.building_block_to_computation(merge),
-      tff_framework.building_block_to_computation(report),
-      tff_framework.building_block_to_computation(update))
+      computation_wrapper_instances.building_block_to_computation(initialize),
+      computation_wrapper_instances.building_block_to_computation(prepare),
+      computation_wrapper_instances.building_block_to_computation(work),
+      computation_wrapper_instances.building_block_to_computation(
+          zero_noarg_function),
+      computation_wrapper_instances.building_block_to_computation(accumulate),
+      computation_wrapper_instances.building_block_to_computation(merge),
+      computation_wrapper_instances.building_block_to_computation(report),
+      computation_wrapper_instances.building_block_to_computation(update))
   return cf

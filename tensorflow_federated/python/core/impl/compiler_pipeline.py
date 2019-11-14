@@ -74,7 +74,7 @@ class CompilerPipeline(object):
     # Replace intrinsics with their bodies, for now manually in a fixed order.
     # TODO(b/113123410): Replace this with a more automated implementation that
     # does not rely on manual maintenance.
-    comp, _ = value_transformations.replace_all_intrinsics_with_bodies(
+    comp, _ = value_transformations.replace_intrinsics_with_bodies(
         comp, self._context_stack)
 
     # Replaces called lambdas with LET constructs with a single local symbol.

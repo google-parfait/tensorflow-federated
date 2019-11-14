@@ -145,13 +145,12 @@ class ReplaceIntrinsicsWithCallableTest(absltest.TestCase):
     self.assertFalse(modified)
 
 
-class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
+class ReplaceIntrinsicsWithBodiesTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     context_stack = context_stack_impl.context_stack
     with self.assertRaises(TypeError):
-      value_transformations.replace_all_intrinsics_with_bodies(
-          None, context_stack)
+      value_transformations.replace_intrinsics_with_bodies(None, context_stack)
 
   def test_federated_weighted_mean_reduces(self):
     uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
@@ -165,7 +164,7 @@ class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
     foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
         foo._computation_proto)
     count_before_reduction = _count_intrinsics(foo_building_block, uri)
-    reduced, modified = value_transformations.replace_all_intrinsics_with_bodies(
+    reduced, modified = value_transformations.replace_intrinsics_with_bodies(
         foo_building_block, context_stack)
     count_after_reduction = _count_intrinsics(reduced, uri)
     self.assertGreater(count_before_reduction, 0)
@@ -185,7 +184,7 @@ class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
         foo._computation_proto)
 
     count_before_reduction = _count_intrinsics(foo_building_block, uri)
-    reduced, modified = value_transformations.replace_all_intrinsics_with_bodies(
+    reduced, modified = value_transformations.replace_intrinsics_with_bodies(
         foo_building_block, context_stack)
     count_after_reduction = _count_intrinsics(reduced, uri)
     self.assertGreater(count_before_reduction, 0)
@@ -200,7 +199,7 @@ class ReplaceAllIntrinsicsWithBodiesTest(absltest.TestCase):
                                             tf.float32))
 
     count_before_reduction = _count_intrinsics(comp, uri)
-    reduced, modified = value_transformations.replace_all_intrinsics_with_bodies(
+    reduced, modified = value_transformations.replace_intrinsics_with_bodies(
         comp, context_stack)
     count_after_reduction = _count_intrinsics(reduced, uri)
 

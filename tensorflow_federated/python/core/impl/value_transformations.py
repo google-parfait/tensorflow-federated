@@ -73,8 +73,18 @@ def replace_intrinsics_with_callable(comp, uri, body, context_stack):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def replace_all_intrinsics_with_bodies(comp, context_stack):
+def replace_intrinsics_with_bodies(comp, context_stack):
   """Iterates over all intrinsic bodies, inlining the intrinsics in `comp`.
+
+  This function operates on the AST level; meaning, it takes in a
+  `building_blocks.ComputationBuildingBlock` as an argument and
+  returns one as well. `replace_intrinsics_with_bodies` is intended to be the
+  standard reduction function, which will reduce all currently implemented
+  intrinsics to their bodies.
+
+  Notice that the success of this function depends on the contract of
+  `intrinsic_bodies.get_intrinsic_bodies`, that the dict returned by that
+  function is ordered from more complex intrinsic to less complex intrinsics.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` in which we

@@ -14,7 +14,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
-        "//tensorflow_federated/python/core/impl:intrinsic_reductions",
         "//tensorflow_federated/python/core/impl:transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
     ] + select({

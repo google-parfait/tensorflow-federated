@@ -44,7 +44,6 @@ from tensorflow_federated.python.core.impl.compiler.transformation_utils import 
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
-from tensorflow_federated.python.core.impl.intrinsic_reductions import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.transformations import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves
@@ -132,7 +131,6 @@ _allowed_symbols = [
     "remove_lambdas_and_blocks",
     "remove_mapped_or_applied_identity",
     "replace_called_lambda_with_block",
-    "replace_intrinsics_with_bodies",
     "set_default_executor",
     "transform_postorder",
     "transform_type_postorder",

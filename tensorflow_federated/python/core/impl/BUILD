@@ -687,26 +687,6 @@ py_library(
 )
 
 py_library(
-    name = "intrinsic_reductions",
-    srcs = ["intrinsic_reductions.py"],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":context_stack_impl",
-        ":value_transformations",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-    ],
-)
-
-py_test(
-    name = "intrinsic_reductions_test",
-    srcs = ["intrinsic_reductions_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":intrinsic_reductions"],
-)
-
-py_library(
     name = "lambda_executor",
     srcs = ["lambda_executor.py"],
     srcs_version = "PY3",
