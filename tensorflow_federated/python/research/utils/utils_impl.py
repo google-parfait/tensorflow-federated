@@ -383,6 +383,43 @@ def remove_unused_flags(prefix, hparam_dict):
   ])
 
 
+_all_hparam_flags = []
+
+
+@contextlib.contextmanager
+def record_hparam_flags():
+  """A context manager that adds all flags created in its scope to a global list of flags, and yields all flags created in its scope.
+
+  This is useful for defining hyperparameter flags of an experiment, especially
+  when the flags are partitioned across a number of modules. The total list of
+  flags defined across modules can then be accessed via get_hparam_flags().
+
+  Example usage:
+  ```python
+  with record_hparam_flags() as optimizer_hparam_flags:
+      flags.DEFINE_string('optimizer', 'sgd', 'Optimizer for training.')
+  with record_hparam_flags() as evaluation_hparam_flags:
+      flags.DEFINE_string('eval_metric', 'accuracy', 'Metric for evaluation.')
+  experiment_hparam_flags = get_hparam_flags().
+  ```
+
+  Check `research/optimization/emnist/run_emnist.py` for more usage details.
+
+  Yields:
+    A list of all newly created flags.
+  """
+  old_flags = set(iter(flags.FLAGS))
+  new_flags = []
+  yield new_flags
+  new_flags.extend([f for f in flags.FLAGS if f not in old_flags])
+  _all_hparam_flags.extend(new_flags)
+
+
+def get_hparam_flags():
+  """Returns a list of flags defined within the scope of record_hparam_flags."""
+  return _all_hparam_flags
+
+
 @contextlib.contextmanager
 def record_new_flags() -> Iterator[List[Text]]:
   """A context manager that returns all flags created in it's scope.
