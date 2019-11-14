@@ -320,7 +320,16 @@ def pack_sequence_as(structure, flat_sequence):
   py_typecheck.check_type(flat_sequence, list)
 
   def _pack(structure, flat_sequence, position):
+    """Pack a leaf element or recurvisely iterate over an AnonymousTuple."""
     if not isinstance(structure, AnonymousTuple):
+      if (isinstance(structure,
+                     (list, dict)) or py_typecheck.is_named_tuple(structure) or
+          py_typecheck.is_attrs(structure)):
+        raise TypeError('Cannot pack sequence into type {!s}, only '
+                        'structures of AnonymousTuple are supported (received '
+                        'a structure with types {!s}).'.format(
+                            type(structure), structure))
+
       return flat_sequence[position], position + 1
     else:
       elements = []

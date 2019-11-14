@@ -255,6 +255,18 @@ class AnonymousTupleTest(absltest.TestCase):
     with self.assertRaises(IndexError):
       _ = x[10]
 
+  def test_pack_sequence_as_fails_non_anonymous_tuple(self):
+    x = anonymous_tuple.AnonymousTuple([
+        ('a', 10),
+        ('b', {
+            'd': 20
+        }),
+        ('c', 30),
+    ])
+    y = [10, 20, 30]
+    with self.assertRaisesRegex(TypeError, 'Cannot pack sequence'):
+      _ = anonymous_tuple.pack_sequence_as(x, y)
+
   def test_flatten_and_pack_sequence_as(self):
     x = anonymous_tuple.AnonymousTuple([
         ('a', 10),
