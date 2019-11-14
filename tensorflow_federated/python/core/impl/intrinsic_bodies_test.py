@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 
 
-class IntrinsicBodiesTest(absltest.TestCase):
+class IntrinsicBodiesTest(test.TestCase):
 
   def test_federated_sum(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -140,7 +140,7 @@ class IntrinsicBodiesTest(absltest.TestCase):
         anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 2.)]))
 
 
-class GenericDivideTest(absltest.TestCase):
+class GenericDivideTest(test.TestCase):
 
   def test_generic_divide_unplaced_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -293,7 +293,7 @@ class GenericDivideTest(absltest.TestCase):
         [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])] * 3)
 
 
-class GenericMultiplyTest(absltest.TestCase):
+class GenericMultiplyTest(test.TestCase):
 
   def test_generic_multiply_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -453,7 +453,7 @@ class GenericMultiplyTest(absltest.TestCase):
         foo([1., 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
 
-class GenericAddTest(absltest.TestCase):
+class GenericAddTest(test.TestCase):
 
   def test_federated_generic_add_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -598,4 +598,4 @@ class GenericAddTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  test.main()
