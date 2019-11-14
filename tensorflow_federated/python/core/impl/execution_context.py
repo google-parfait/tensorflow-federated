@@ -128,7 +128,10 @@ async def _invoke(executor, comp, arg):
 def _unwrap_execution_context_value(val):
   """Recursively removes wrapping from `val` under anonymous tuples."""
   if isinstance(val, anonymous_tuple.AnonymousTuple):
-    return anonymous_tuple.map_structure(_unwrap_execution_context_value, val)
+    return anonymous_tuple.AnonymousTuple([
+        (name, _unwrap_execution_context_value(elem))
+        for name, elem in anonymous_tuple.iter_elements(val)
+    ])
   elif isinstance(val, ExecutionContextValue):
     return _unwrap_execution_context_value(val.value)
   else:

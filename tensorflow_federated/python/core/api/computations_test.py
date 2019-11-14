@@ -348,6 +348,39 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo)
     self.assertEqual(tf_comp(*args), 6)
 
+  @core_test.executors
+  def test_complex_param_tf_computation(self):
+    # The eager executor (inside the local executor stack) has issue with
+    # tf2_computation and the v1 version of SavedModel, hence the test above is
+    # replicated here.
+
+    MyType = collections.namedtuple('MyType', ['x', 'd'])  # pylint: disable=invalid-name
+
+    @tf.function
+    def foo(t, odict, unnamed_tuple):
+      self.assertIsInstance(t, MyType)
+      self.assertIsInstance(t.d, dict)
+      self.assertIsInstance(odict, collections.OrderedDict)
+      self.assertIsInstance(unnamed_tuple, tuple)
+      return t.x + t.d['y'] + t.d['z'] + odict['o'] + unnamed_tuple[0]
+
+    args = [
+        MyType(1, dict(y=2, z=3)),
+        collections.OrderedDict([('o', 0)]), (0,)
+    ]
+    arg_type = [
+        MyType(tf.int32, collections.OrderedDict(y=tf.int32, z=tf.int32)),
+        collections.OrderedDict([('o', tf.int32)]), (tf.int32,)
+    ]
+
+    # Explicit type
+    tf_comp = tff.tf_computation(foo, arg_type)
+    self.assertEqual(tf_comp(*args), 6)
+
+    # Polymorphic
+    tf_comp = tff.tf_computation(foo)
+    self.assertEqual(tf_comp(*args), 6)
+
 
 class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
   # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
