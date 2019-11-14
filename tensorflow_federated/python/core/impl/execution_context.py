@@ -76,7 +76,7 @@ async def _ingest(executor, val, type_spec):
     The result of the ingestion.
 
   Raises:
-    ValueError: If the value does not match the type.
+    TypeError: If the `val` is not a value of type `type_spec`.
   """
   if isinstance(val, executor_value_base.ExecutorValue):
     return val
@@ -86,8 +86,7 @@ async def _ingest(executor, val, type_spec):
     v_elem = anonymous_tuple.to_elements(val)
     t_elem = anonymous_tuple.to_elements(type_spec)
     if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
-      raise ValueError('Value {} does not match type {}.'.format(
-          val, type_spec))
+      raise TypeError('Value {} does not match type {}.'.format(val, type_spec))
     ingested = []
     for (_, v), (_, t) in zip(v_elem, t_elem):
       ingested.append(_ingest(executor, v, t))

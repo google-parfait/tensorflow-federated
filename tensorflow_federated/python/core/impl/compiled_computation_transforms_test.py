@@ -392,6 +392,19 @@ class WrapParameterAsTupleTest(common_test.TestCase, parameterized.TestCase):
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     self.assertEqual(executable_wrapped_inputs([[1]]), executable_foo([1]))
 
+  def assertSequenceEqual(self, a, b):
+    """Assert two tff.SequenceType values are the same."""
+    if (isinstance(a, collections.Sequence) and
+        isinstance(b, collections.Sequence)):
+      sequence = zip(a, b)
+    elif isinstance(a, tf.data.Dataset) and isinstance(b, tf.data.Dataset):
+      sequence = tf.data.Dataset.zip(a, b)
+    else:
+      self.fail('Value is not a sequence, got types a={!s}, b={!s}'.format(
+          type(a), type(b)))
+    for element in sequence:
+      self.assertEqual(element[0], element[1])
+
   def test_bind_graph_parameter_as_tuple_wraps_sequence(self):
     computation_arg_type = computation_types.SequenceType(tf.int32)
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
@@ -406,7 +419,8 @@ class WrapParameterAsTupleTest(common_test.TestCase, parameterized.TestCase):
         foo)
 
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
-    self.assertEqual(executable_wrapped_inputs([[1]]), executable_foo([1]))
+    self.assertSequenceEqual(
+        executable_wrapped_inputs([[1]]), executable_foo([1]))
 
   def test_bind_graph_parameter_as_tuple_wraps_tensor(self):
     computation_arg_type = computation_types.to_type(tf.int32)
@@ -483,7 +497,8 @@ class WrapResultAsTupleTest(common_test.TestCase, parameterized.TestCase):
         foo)
 
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
-    self.assertEqual(executable_wrapped_output([1])[0], executable_foo([1]))
+    self.assertSequenceEqual(
+        executable_wrapped_output([1])[0], executable_foo([1]))
 
   def test_bind_graph_result_as_tuple_wraps_tensor(self):
     computation_arg_type = computation_types.to_type(tf.int32)
