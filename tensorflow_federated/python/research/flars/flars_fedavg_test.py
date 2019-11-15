@@ -23,13 +23,12 @@ import tensorflow_federated as tff
 from tensorflow_federated.python.research.flars import flars_fedavg
 from tensorflow_federated.python.research.flars import flars_optimizer
 
-_Batch = collections.namedtuple('Batch', ['x', 'y'])
-
 
 def _create_random_batch():
-  return _Batch(
-      x=tf.random.uniform(tf.TensorShape([1, 784]), dtype=tf.float32),
-      y=tf.constant(1, dtype=tf.int64, shape=[1, 1]))
+  return collections.OrderedDict([
+      ('x', tf.random.uniform(tf.TensorShape([1, 784]), dtype=tf.float32)),
+      ('y', tf.constant(1, dtype=tf.int64, shape=[1, 1]))
+  ])
 
 
 def _keras_model_fn():
@@ -40,10 +39,11 @@ def _keras_model_fn():
 
 
 def mnist_forward_pass(variables, batch):
-  y = tf.nn.softmax(tf.matmul(batch['x'], variables.weights) + variables.bias)
+  inputs, label = batch
+  y = tf.nn.softmax(tf.matmul(inputs, variables.weights) + variables.bias)
   predictions = tf.cast(tf.argmax(y, 1), tf.int32)
 
-  flat_labels = tf.reshape(batch['y'], [-1])
+  flat_labels = tf.reshape(label, [-1])
   loss = -tf.reduce_mean(
       tf.reduce_sum(tf.one_hot(flat_labels, 10) * tf.math.log(y), axis=[1]))
   accuracy = tf.reduce_mean(
@@ -109,25 +109,26 @@ class FlarsFedAvgTest(tf.test.TestCase):
   def test_simple_training(self):
     it_process = flars_fedavg.build_federated_averaging_process(_keras_model_fn)
     server_state = it_process.initialize()
-    Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
     # Test out manually setting weights:
     keras_model = tff.simulation.models.mnist.create_keras_model(
         compile_model=True)
 
+    @tf.function
     def deterministic_batch():
-      return Batch(
-          x=np.ones([1, 784], dtype=np.float32),
-          y=np.ones([1, 1], dtype=np.int64))
+      return collections.OrderedDict([
+          ('x', np.ones([1, 784], dtype=np.float32)),
+          ('y', np.ones([1, 1], dtype=np.int64)),
+      ])
 
-    batch = tff.tf_computation(deterministic_batch)()
+    batch = deterministic_batch()
     federated_data = [[batch]]
 
     def keras_evaluate(state):
       tff.learning.assign_weights_to_keras_model(keras_model, state.model)
-      # N.B. The loss computed here won't match the
-      # loss computed by TFF because of the Dropout layer.
-      keras_model.test_on_batch(batch.x, batch.y)
+      # N.B. The loss computed here won't match the loss computed by TFF because
+      # of the Dropout layer.
+      keras_model.test_on_batch(**batch)
 
     loss_list = []
     for _ in range(3):
