@@ -115,7 +115,7 @@ def create_compiled_keras_model(only_digits=True):
   return model
 
 
-def _broadcast_enocder_fn(value):
+def _broadcast_encoder_fn(value):
   """Function for building encoded broadcast.
 
   This method decides, based on the tensor size, whether to use lossy
@@ -141,7 +141,7 @@ def _broadcast_enocder_fn(value):
     return te.encoders.as_simple_encoder(te.encoders.identity(), spec)
 
 
-def _mean_enocder_fn(value):
+def _mean_encoder_fn(value):
   """Function for building encoded mean.
 
   This method decides, based on the tensor size, whether to use lossy
@@ -232,14 +232,14 @@ def run_experiment():
 
   if FLAGS.use_compression:
     # We create a `StatefulBroadcastFn` and `StatefulAggregateFn` by providing
-    # the `_broadcast_enocder_fn` and `_mean_enocder_fn` to corresponding
+    # the `_broadcast_encoder_fn` and `_mean_encoder_fn` to corresponding
     # utilities. The fns are called once for each of the model weights created
     # by model_fn, and return instances of appropriate encoders.
     encoded_broadcast_fn = (
         tff.learning.framework.build_encoded_broadcast_from_model(
-            model_fn, _broadcast_enocder_fn))
+            model_fn, _broadcast_encoder_fn))
     encoded_mean_fn = tff.learning.framework.build_encoded_mean_from_model(
-        model_fn, _mean_enocder_fn)
+        model_fn, _mean_encoder_fn)
   else:
     encoded_broadcast_fn = None
     encoded_mean_fn = None
