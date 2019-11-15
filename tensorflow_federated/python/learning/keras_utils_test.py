@@ -35,21 +35,20 @@ class NumBatchesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
 
   def __init__(self, name='num_batches', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super(NumBatchesCounter, self).__init__(name, dtype)
+    super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super(NumBatchesCounter, self).update_state(1, sample_weight)
+    return super().update_state(1, sample_weight)
 
 
 class NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
   def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super(NumExamplesCounter, self).__init__(name, dtype)
+    super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super(NumExamplesCounter,
-                 self).update_state(tf.shape(y_pred)[0], sample_weight)
+    return super().update_state(tf.shape(y_pred)[0], sample_weight)
 
 
 def _create_dummy_batch(feature_dims):
@@ -102,7 +101,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
   def setUp(self):
     tf.keras.backend.clear_session()
     tff.framework.set_default_executor(tff.framework.create_local_executor())
-    super(KerasUtilsTest, self).setUp()
+    super().setUp()
 
   def test_convert_fails_on_non_keras_model(self):
     with self.assertRaisesRegex(TypeError, r'keras\..*\.Model'):

@@ -62,13 +62,13 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(HDF5ClientDataTest, cls).setUpClass()
+    super().setUpClass()
     cls.test_data_filepath = create_fake_hdf5()
 
   @classmethod
   def tearDownClass(cls):
     os.remove(cls.test_data_filepath)
-    super(HDF5ClientDataTest, cls).tearDownClass()
+    super().tearDownClass()
 
   def test_client_ids_property(self):
     client_data = hdf5_client_data.HDF5ClientData(

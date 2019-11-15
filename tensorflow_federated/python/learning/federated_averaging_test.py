@@ -108,7 +108,7 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     tff.framework.set_default_executor(tff.framework.create_local_executor())
-    super(FederatedAveragingTffTest, self).setUp()
+    super().setUp()
 
   def test_orchestration_execute(self):
     iterative_process = federated_averaging.build_federated_averaging_process(

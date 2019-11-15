@@ -351,7 +351,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
 
       def __init__(self, name, parameter_type):
         self._name = name
-        super(TestFunction, self).__init__(
+        super().__init__(
             computation_types.FunctionType(parameter_type, tf.string),
             context_stack_impl.context_stack)
 
@@ -396,8 +396,7 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     class TestFunction(function_utils.ConcreteFunction):
 
       def __init__(self, type_signature, invoke_fn):
-        super(TestFunction, self).__init__(type_signature,
-                                           context_stack_impl.context_stack)
+        super().__init__(type_signature, context_stack_impl.context_stack)
         self._invoke_fn = invoke_fn
 
       def invoke_fn(self, arg):

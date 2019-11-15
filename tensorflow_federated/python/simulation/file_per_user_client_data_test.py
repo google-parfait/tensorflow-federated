@@ -127,7 +127,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(FilePerUserClientDataTest, cls).setUpClass()
+    super().setUpClass()
     cls.temp_dir = tempfile.mkdtemp()
     cls.fake_user_data = FakeUserData(FAKE_TEST_DATA, cls.temp_dir)
 
@@ -135,7 +135,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
   def tearDownClass(cls):
     for test_data_path in os.listdir(cls.temp_dir):
       os.remove(os.path.join(cls.temp_dir, test_data_path))
-    super(FilePerUserClientDataTest, cls).tearDownClass()
+    super().tearDownClass()
 
   def _create_fake_client_data(self):
     fake_user_data = FilePerUserClientDataTest.fake_user_data
