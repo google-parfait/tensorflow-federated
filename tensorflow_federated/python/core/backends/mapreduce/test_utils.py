@@ -396,3 +396,50 @@ def get_unused_lambda_arg_iterative_process():
     return server_update, server_output
 
   return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_unused_tf_computation_arg_iterative_process():
+  """Returns an iterative process with a @tf.function with an unused arg."""
+  server_state_type = computation_types.NamedTupleType([('num_clients',
+                                                         tf.int32)])
+
+  def _bind_tf_function(unused_input, tf_func):
+    tf_wrapper = tf.function(lambda _: tf_func())
+    input_federated_type = unused_input.type_signature
+    wrapper = computations.tf_computation(tf_wrapper,
+                                          input_federated_type.member)
+    return intrinsics.federated_map(wrapper, unused_input)
+
+  def count_clients_federated(client_data):
+
+    @tf.function
+    def client_ones_fn():
+      return tf.ones(shape=[], dtype=tf.int32)
+
+    client_ones = _bind_tf_function(client_data, client_ones_fn)
+    return intrinsics.federated_sum(client_ones)
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_value(
+        collections.OrderedDict([('num_clients', 0)]), placements.SERVER)
+
+  @computations.federated_computation([
+      computation_types.FederatedType(server_state_type, placements.SERVER),
+      computation_types.FederatedType(
+          computation_types.SequenceType(tf.string), placements.CLIENTS)
+  ])
+  def next_fn(server_state, client_val):
+    """`next` function for `computation_utils.IterativeProcess`."""
+    server_update = intrinsics.federated_zip(
+        collections.OrderedDict([('num_clients',
+                                  count_clients_federated(client_val))]))
+
+    server_output = intrinsics.federated_value((), placements.SERVER)
+    server_output = intrinsics.federated_sum(
+        _bind_tf_function(
+            intrinsics.federated_broadcast(server_state), tf.timestamp))
+
+    return server_update, server_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)

@@ -233,6 +233,13 @@ class GetCanonicalFormForIteraticeProcessTest(absltest.TestCase):
         example_iterative_process)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
+  def test_returns_canonical_form_with_unused_tf_func_arg(self):
+    example_iterative_process = test_utils.get_unused_tf_computation_arg_iterative_process(
+    )
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(
+        example_iterative_process)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
 
 INIT_TYPE = computation_types.FederatedType(tf.float32, placements.SERVER)
 S1_TYPE = INIT_TYPE
