@@ -96,8 +96,8 @@ class Model(object):
     features = tf.compat.v1.placeholder(tf.float32, [None, self.input_dim])
     labels = tf.compat.v1.placeholder(tf.float32, [None, self.num_classes])
 
-    w = tf.Variable(tf.random_normal(shape=[self.input_dim, self.num_classes]))
-    b = tf.Variable(tf.random_normal(shape=[self.num_classes]))
+    w = tf.Variable(tf.random.normal(shape=[self.input_dim, self.num_classes]))
+    b = tf.Variable(tf.random.normal(shape=[self.num_classes]))
 
     pred = tf.nn.softmax(tf.matmul(features, w) + b)
 
