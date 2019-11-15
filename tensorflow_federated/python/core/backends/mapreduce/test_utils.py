@@ -351,3 +351,48 @@ def get_iterative_process_for_canonical_form_example():
     return aggregated_result, side_output
 
   return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_unused_lambda_arg_iterative_process():
+  """Returns an iterative process having a Lambda not referencing its arg."""
+  server_state_type = computation_types.NamedTupleType([('num_clients',
+                                                         tf.int32)])
+
+  def _bind_federated_value(unused_input, input_type, federated_output_value):
+    federated_input_type = computation_types.FederatedType(
+        input_type, placements.CLIENTS)
+    wrapper = computations.federated_computation(
+        lambda _: federated_output_value, federated_input_type)
+    return wrapper(unused_input)
+
+  def count_clients_federated(client_data):
+    client_ones = intrinsics.federated_value(1, placements.CLIENTS)
+
+    client_ones = _bind_federated_value(
+        client_data, computation_types.SequenceType(tf.string), client_ones)
+    return intrinsics.federated_sum(client_ones)
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_value(
+        collections.OrderedDict([('num_clients', 0)]), placements.SERVER)
+
+  @computations.federated_computation([
+      computation_types.FederatedType(server_state_type, placements.SERVER),
+      computation_types.FederatedType(
+          computation_types.SequenceType(tf.string), placements.CLIENTS)
+  ])
+  def next_fn(server_state, client_val):
+    """`next` function for `computation_utils.IterativeProcess`."""
+    server_update = intrinsics.federated_zip(
+        collections.OrderedDict([('num_clients',
+                                  count_clients_federated(client_val))]))
+
+    server_output = intrinsics.federated_value((), placements.SERVER)
+    server_output = _bind_federated_value(
+        intrinsics.federated_broadcast(server_state), server_state_type,
+        server_output)
+
+    return server_update, server_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)

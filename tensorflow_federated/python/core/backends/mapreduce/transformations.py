@@ -228,14 +228,31 @@ def consolidate_and_extract_local_processing(comp):
                        '{}.'.format(type(comp), comp.type_signature))
     if isinstance(comp.result.type_signature, tff.FederatedType):
       unwrapped, _ = tff_framework.unwrap_placement(comp.result)
-      func = unwrapped.argument[0]
+      # Unwrapped can be a call to `federated_value_at_P`, or
+      # `federated_apply/map`.
+      if unwrapped.function.uri in (tff_framework.FEDERATED_APPLY.uri,
+                                    tff_framework.FEDERATED_MAP.uri):
+        extracted = parse_tff_to_tf(unwrapped.argument[0])
+        check_extraction_result(unwrapped.argument[0], extracted)
+        return extracted
+      else:
+        decorated_func, _ = tff_framework.insert_called_tf_identity_at_leaves(
+            unwrapped.argument.function)
+        decorated = tff_framework.Call(decorated_func,
+                                       unwrapped.argument.argument)
+        rebound = tff_framework.Lambda(comp.parameter_name,
+                                       comp.parameter_type.member, decorated)
+        extracted = parse_tff_to_tf(rebound)
+        check_extraction_result(rebound, extracted)
+        return extracted
     else:
-      func = comp
-    extracted = parse_tff_to_tf(func)
-    check_extraction_result(func, extracted)
-    return extracted
+      extracted = parse_tff_to_tf(comp)
+      check_extraction_result(comp, extracted)
+      return extracted
   elif isinstance(comp.type_signature, tff.FederatedType):
     unwrapped, _ = tff_framework.unwrap_placement(comp)
+    # Unwrapped can be a call to `federated_value_at_P`, or
+    # `federated_apply/map`.
     if unwrapped.function.uri in (tff_framework.FEDERATED_APPLY.uri,
                                   tff_framework.FEDERATED_MAP.uri):
       extracted = parse_tff_to_tf(unwrapped.argument[0])

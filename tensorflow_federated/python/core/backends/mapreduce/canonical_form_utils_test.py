@@ -30,9 +30,29 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 from tensorflow_federated.python.core.utils import computation_utils
 
 
-class CanonicalFormUtilsTest(absltest.TestCase):
+class GetIterativeProcessForCanonicalFormTest(absltest.TestCase):
 
-  def test_tensor_computation_fails_well(self):
+  def test_with_temperature_sensor_example(self):
+    cf = test_utils.get_temperature_sensor_example()
+    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+
+    state = it.initialize()
+    self.assertEqual(str(state), '<num_rounds=0>')
+
+    state, metrics, stats = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
+    self.assertEqual(str(state), '<num_rounds=1>')
+    self.assertEqual(str(metrics), '<ratio_over_threshold=0.5>')
+    self.assertCountEqual([x.num_readings for x in stats], [1, 3])
+
+    state, metrics, stats = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
+    self.assertEqual(str(state), '<num_rounds=2>')
+    self.assertEqual(str(metrics), '<ratio_over_threshold=0.75>')
+    self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
+
+
+class GetCanonicalFormForIteraticeProcessTest(absltest.TestCase):
+
+  def test_next_computation_returning_tensor_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     init_result = it.initialize.type_signature.result
@@ -69,29 +89,7 @@ class CanonicalFormUtilsTest(absltest.TestCase):
       canonical_form_utils.get_canonical_form_for_iterative_process(
           not_reducible_it)
 
-  def test_get_iterative_process_for_canonical_form(self):
-    cf = test_utils.get_temperature_sensor_example()
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
-
-    state = it.initialize()
-    self.assertEqual(str(state), '<num_rounds=0>')
-
-    state, metrics, stats = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertEqual(str(state), '<num_rounds=1>')
-    self.assertEqual(str(metrics), '<ratio_over_threshold=0.5>')
-    self.assertCountEqual([x.num_readings for x in stats], [1, 3])
-
-    state, metrics, stats = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertEqual(str(state), '<num_rounds=2>')
-    self.assertEqual(str(metrics), '<ratio_over_threshold=0.75>')
-    self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
-
-  def test_get_canonical_form_for_iterative_process(self):
-    it = test_utils.get_iterative_process_for_canonical_form_example()
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
-
-  def test_get_canonical_form_mnist_training(self):
+  def test_constructs_canonical_form_from_mnist_training_example(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_mnist_training_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
@@ -141,7 +139,7 @@ class CanonicalFormUtilsTest(absltest.TestCase):
         np.array_equal(metrics.num_examples, alt_metrics.num_examples))
     self.assertTrue(np.array_equal(metrics.loss, alt_metrics.loss))
 
-  def test_get_canonical_form_from_fl_api(self):
+  def test_returns_caonnical_form_from_tff_learning_structure(self):
     it = test_utils.construct_example_training_comp()
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
@@ -191,7 +189,7 @@ class CanonicalFormUtilsTest(absltest.TestCase):
                      alt_metrics.sparse_categorical_accuracy)
     self.assertEqual(metrics.loss, alt_metrics.loss)
 
-  def test_call_returned_directly_creates_canonical_form(self):
+  def test_returns_canonical_form_with_next_fn_returning_call_directly(self):
 
     @tff.federated_computation
     def init_fn():
@@ -226,6 +224,13 @@ class CanonicalFormUtilsTest(absltest.TestCase):
         init_fn, nested_next_fn)
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(
         iterative_process)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
+  def test_returns_canonical_form_with_unused_federated_arg(self):
+    example_iterative_process = test_utils.get_unused_lambda_arg_iterative_process(
+    )
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(
+        example_iterative_process)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
 

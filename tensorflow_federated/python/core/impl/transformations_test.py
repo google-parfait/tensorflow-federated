@@ -3620,8 +3620,9 @@ class ParseTFFToTFTest(absltest.TestCase):
 
   def test_does_not_transform_standalone_intrinsic(self):
     standalone_intrinsic = building_blocks.Intrinsic('dummy', tf.int32)
-    with self.assertRaises(ValueError):
-      parse_tff_to_tf(standalone_intrinsic)
+    non_transformed, _ = parse_tff_to_tf(standalone_intrinsic)
+    self.assertEqual(standalone_intrinsic.compact_representation(),
+                     non_transformed.compact_representation())
 
   def test_replaces_lambda_to_selection_from_called_graph_with_tf_of_same_type(
       self):
@@ -3921,22 +3922,28 @@ class InsertTensorFlowIdentityAtLeavesTest(absltest.TestCase):
     self.assertEqual(
         tree_analysis.count(new_lambda, _is_called_graph_pattern), 1)
 
-  def test_raises_tuple(self):
+  def test_transforms_reference_under_tuple(self):
     one_element_tuple = building_blocks.Tuple(
         [building_blocks.Reference('x', tf.int32)])
-    with self.assertRaises(ValueError):
-      _ = transformations.insert_called_tf_identity_at_leaves(one_element_tuple)
+    transformed_tuple, _ = transformations.insert_called_tf_identity_at_leaves(
+        one_element_tuple)
+    self.assertIsInstance(transformed_tuple[0], building_blocks.Call)
+    self.assertIsInstance(transformed_tuple[0].function,
+                          building_blocks.CompiledComputation)
+    self.assertIsInstance(transformed_tuple[0].argument,
+                          building_blocks.Reference)
+    self.assertEqual(transformed_tuple[0].argument.name, 'x')
+    self.assertEqual(transformed_tuple[0].argument.type_signature,
+                     computation_types.to_type(tf.int32))
 
-  def test_raises_on_lambda_with_federated_types(self):
+  def test_does_not_transform_references_to_federated_types(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     identity_lam = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', fed_type))
-    with self.assertRaises(ValueError):
-      _ = transformations.insert_called_tf_identity_at_leaves(identity_lam)
-    other_lam = building_blocks.Lambda('x', fed_type,
-                                       building_blocks.Reference('x', tf.int32))
-    with self.assertRaises(ValueError):
-      _ = transformations.insert_called_tf_identity_at_leaves(other_lam)
+    untransformed_lam, _ = transformations.insert_called_tf_identity_at_leaves(
+        identity_lam)
+    self.assertEqual(identity_lam.compact_representation(),
+                     untransformed_lam.compact_representation())
 
   def test_transforms_under_selection(self):
     ref_to_x = building_blocks.Reference('x', [tf.int32])

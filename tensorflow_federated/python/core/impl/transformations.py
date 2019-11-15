@@ -1334,19 +1334,16 @@ def insert_called_tf_identity_at_leaves(comp):
 
   `insert_called_tf_identity_at_leaves` ensures that the pattern above is
   present at the leaves of any portion of the TFF AST which is destined to be
-  reduced to TF.
-
-  We detect such a destiny by checking for the existence of a
-  `building_blocks.Lambda` whose parameter and result type
-  can both be bound into TensorFlow. This pattern is enforced here as
-  parameter validation on `comp`.
+  compiled into TensorFlow; that is, any `building_blocks.Reference` whose type
+  is compatible with stamping into a TensorFlow graph.
 
   Args:
-    comp: Instance of `building_blocks.Lambda` whose AST we will traverse,
-      replacing appropriate instances of `building_blocks.Reference` with graphs
-      representing the identity function of the appropriate type called on the
-      same reference. `comp` must declare a parameter and result type which are
-      both able to be stamped in to a TensorFlow graph.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose AST we
+      will traverse, replacing appropriate instances of
+      `building_blocks.Reference` with graphs representing the identity
+      function of the appropriate type called on the same reference. `comp`
+      must declare a parameter and result type which are both able to be
+      stamped in to a TensorFlow graph.
 
   Returns:
     A possibly modified  version of `comp`, where any references now have a
@@ -1357,17 +1354,6 @@ def insert_called_tf_identity_at_leaves(comp):
 
   if isinstance(comp, building_blocks.CompiledComputation):
     return comp, False
-
-  if not (isinstance(comp, building_blocks.Lambda) and
-          type_utils.is_tensorflow_compatible_type(comp.result.type_signature)
-          and type_utils.is_tensorflow_compatible_type(comp.parameter_type)):
-    raise ValueError(
-        '`insert_called_tf_identity_at_leaves` should only be '
-        'called on instances of '
-        '`building_blocks.Lambda` whose parameter '
-        'and result types can both be stamped into TensorFlow '
-        'graphs. You have called in on a {} of type signature {}.'.format(
-            comp.compact_representation(), comp.type_signature))
 
   def _should_decorate(comp):
     return (isinstance(comp, building_blocks.Reference) and
