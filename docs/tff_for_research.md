@@ -82,6 +82,37 @@ This should become the default soon.
 
 ### Federated optimization algorithms
 
+<!-- TODO(b/144510813): Change references to the appropriate parts of the new simple fedavg once it is done. -->
+
+Research on federated optimization algorithms can be done in different ways in
+TFF, depending on the desired level of customization.
+
+For simple variations of the
+[Federated Averaging](https://arxiv.org/abs/1602.05629) algorithm:
+
+*   Custom client optimizers can easily be experimented with by compiling client
+    models with the appropriate `tf.keras.optimizers` class, as in this
+    [federated EMNIST experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/baselines/emnist/run_federated.py#L65).
+
+*   Experiments that want to use custom `tf.keras.optimizers` for the
+    application of updates on the server can do this by passing the desired
+    server optimizer to the federated training loop, as in this
+    [federated EMNIST experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/baselines/emnist/run_federated.py#L127-L136).
+
+To implement more complicated federated optimization algorithms, you may need
+customize your federated training loop in order to gain more control over the
+orchestration and optimization logic of the experiment. Again,
+[`simple_fedavg`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py)
+may be a good place to start. For example, you could change the
+[client update](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L129-L163)
+function to implement a custom local training procedure, modify the
+`tff.federated_computation` that controls the
+[orchestration](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L274-L303)
+to change what is broadcast from the server to client and what is aggregated
+back, and alter
+[the outer loop](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/utils/training_loops.py#L71-L83)
+of the experiment to use different behaviors across rounds.
+
 ### Model and update compression
 
 ### Meta-learning and multi-task learning
