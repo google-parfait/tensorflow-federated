@@ -20,7 +20,7 @@ import functools
 from absl import app
 from absl import flags
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.baselines.emnist import metrics_hook

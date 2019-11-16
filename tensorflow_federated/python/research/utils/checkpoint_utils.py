@@ -18,7 +18,7 @@ import logging
 import os.path
 import re
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 def get_serial_number(export_dir, prefix='ckpt_'):

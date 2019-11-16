@@ -23,7 +23,7 @@ import string
 
 import six
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple

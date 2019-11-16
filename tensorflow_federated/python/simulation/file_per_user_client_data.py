@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import os.path
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data

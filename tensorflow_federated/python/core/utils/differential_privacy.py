@@ -22,7 +22,7 @@ import math
 import numbers
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import py_typecheck

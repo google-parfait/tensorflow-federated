@@ -26,7 +26,7 @@ import tempfile
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.simulation import file_per_user_client_data
 

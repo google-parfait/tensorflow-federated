@@ -17,7 +17,7 @@ import collections
 
 from absl.testing import absltest
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core.utils import computation_utils

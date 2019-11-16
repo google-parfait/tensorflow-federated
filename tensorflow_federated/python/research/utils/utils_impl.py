@@ -30,7 +30,7 @@ from absl import flags
 from absl import logging
 import numpy as np
 import pandas as pd
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 def iter_grid(

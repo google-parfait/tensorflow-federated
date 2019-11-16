@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.research.compression import sparsity
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te

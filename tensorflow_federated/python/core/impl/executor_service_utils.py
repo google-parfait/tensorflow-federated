@@ -15,7 +15,7 @@
 """A set of utility methods for `executor_service.py` and its clients."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import computation_pb2

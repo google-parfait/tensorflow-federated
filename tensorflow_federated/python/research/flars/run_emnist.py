@@ -28,7 +28,7 @@ from absl import app
 from absl import flags
 import attr
 import pandas as pd
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_federated as tff
 import tree
 

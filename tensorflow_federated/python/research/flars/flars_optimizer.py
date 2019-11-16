@@ -15,7 +15,7 @@
 # ==============================================================================
 """Layer-wise Adaptive Rate Scaling optimizer for federated optimization."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 class FLARSOptimizer(tf.keras.optimizers.Optimizer):

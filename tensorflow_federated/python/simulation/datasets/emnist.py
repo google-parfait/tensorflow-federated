@@ -25,7 +25,7 @@ import os.path
 import struct
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_addons.image as tfa_image
 
 from tensorflow_federated.python.common_libs import py_typecheck

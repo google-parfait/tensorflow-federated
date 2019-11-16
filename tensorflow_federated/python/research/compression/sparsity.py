@@ -14,7 +14,7 @@
 # limitations under the License.
 """An example custom `te.core.Encoder` for `tff`."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 

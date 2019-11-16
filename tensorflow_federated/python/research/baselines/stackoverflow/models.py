@@ -14,7 +14,7 @@
 # limitations under the License.
 """Sequence model functions for research baselines."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 def create_recurrent_model(vocab_size,

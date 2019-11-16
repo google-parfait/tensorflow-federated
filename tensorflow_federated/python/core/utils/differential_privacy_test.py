@@ -15,7 +15,7 @@
 
 import collections
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import test

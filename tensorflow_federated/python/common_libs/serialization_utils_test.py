@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.python.common_libs import serialization_utils

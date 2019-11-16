@@ -27,7 +27,7 @@ from __future__ import print_function
 import collections
 
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tree
 
 from tensorflow_federated.python.core import api as tff

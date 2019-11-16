@@ -20,7 +20,7 @@ import os
 from absl import app
 from absl import flags
 import pandas as pd
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.baselines.emnist import models

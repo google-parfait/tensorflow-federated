@@ -17,7 +17,7 @@ import collections
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.simulation.datasets import emnist
 

@@ -18,7 +18,7 @@ import collections
 import time
 
 from absl.testing import absltest
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import concurrent_executor

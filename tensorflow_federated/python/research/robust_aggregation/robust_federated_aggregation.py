@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import six
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.common_libs import py_typecheck

@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from absl.testing import absltest
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 class TestCase(tf.test.TestCase, absltest.TestCase):

@@ -16,7 +16,7 @@
 import collections
 import os.path
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.research.utils import checkpoint_manager
 

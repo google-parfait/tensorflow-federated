@@ -24,7 +24,7 @@ import time
 from absl import app
 from absl import flags
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.research.semi_cyclic_sgd import sentiment_util as su
 

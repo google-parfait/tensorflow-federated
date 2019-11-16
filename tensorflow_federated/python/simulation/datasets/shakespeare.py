@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os.path
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
 

@@ -16,7 +16,7 @@
 import collections
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import training_loops
