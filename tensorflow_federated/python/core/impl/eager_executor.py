@@ -141,6 +141,21 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       for arg_part, param_fn in zip(arg_parts, param_fns):
         param_elements.append(param_fn(arg_part))
     result_parts = wrapped_fn(*param_elements)
+
+    # There is a tf.wrap_function(...) issue b/144127474 that variables created
+    # from tf.import_graph_def(...) inside tf.wrap_function(...) is not
+    # destroyed.  So get all the variables from `wrapped_fn` and destroy
+    # manually.
+    # TODO(b/144127474): Remove this manual cleanup once tf.wrap_function(...)
+    # is fixed.
+    resources = []
+    for op in wrapped_fn.graph.get_operations():
+      if op.type == 'VarHandleOp':
+        resources += op.outputs
+    if resources:
+      for resource in wrapped_fn.prune(feeds={}, fetches=resources)():
+        tf.raw_ops.DestroyResourceOp(resource=resource)
+
     result_elements = []
     for result_part, result_fn in zip(result_parts, result_fns):
       result_elements.append(result_fn(result_part))
