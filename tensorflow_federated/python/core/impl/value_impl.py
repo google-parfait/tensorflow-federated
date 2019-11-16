@@ -81,13 +81,10 @@ class ValueImpl(value_base.Value):
     return str(self._comp)
 
   def __dir__(self):
-    if not isinstance(self._comp.type_signature,
-                      computation_types.NamedTupleType):
-      raise TypeError(
-          'Operator dir() is only suppored for named tuples, but the object on '
-          'which it has been invoked is of type {}.'.format(
-              self._comp.type_signature))
-    return dir(self._comp.type_signature)
+    attributes = ['type_signature']
+    if isinstance(self._comp.type_signature, computation_types.NamedTupleType):
+      attributes.extend(dir(self._comp.type_signature))
+    return attributes
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, six.string_types)

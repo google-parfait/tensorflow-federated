@@ -49,7 +49,7 @@ class ValueImplTest(parameterized.TestCase):
     x = value_impl.ValueImpl(
         building_blocks.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)]),
         context_stack_impl.context_stack)
-    self.assertEqual(dir(x), ['bar', 'baz'])
+    self.assertContainsSubset(['bar', 'baz'], dir(x))
     self.assertLen(x, 2)
     y = x.bar
     self.assertIsInstance(y, value_base.Value)
@@ -86,7 +86,7 @@ class ValueImplTest(parameterized.TestCase):
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')
     self.assertEqual(str(z), '<foo,y=bar>')
-    self.assertEqual(dir(z), ['y'])
+    self.assertContainsSubset(['y'], dir(z))
     self.assertEqual(str(z.y), 'bar')
     self.assertIs(value_impl.ValueImpl.get_comp(z.y), y_comp)
     self.assertLen(z, 2)
@@ -659,6 +659,15 @@ class ValueImplTest(parameterized.TestCase):
       def _(x):
         x.b = 10
         return x
+
+  def test_value_impl_dir(self):
+    x_comp = building_blocks.Reference('foo', tf.int32)
+    x = value_impl.ValueImpl(x_comp, context_stack_impl.context_stack)
+
+    result = dir(x)
+    self.assertIsInstance(result, list)
+    self.assertNotEmpty(result)
+    self.assertIn('type_signature', result)
 
 
 if __name__ == '__main__':
