@@ -15,7 +15,7 @@
 
 import textwrap
 from absl.testing import absltest
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 

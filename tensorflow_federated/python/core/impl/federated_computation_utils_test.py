@@ -15,7 +15,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_impl

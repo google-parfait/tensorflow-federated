@@ -19,7 +19,7 @@ import tempfile
 from absl.testing import absltest
 import h5py
 import numpy as np
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
 

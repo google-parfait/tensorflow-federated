@@ -16,7 +16,7 @@
 
 import functools
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def create_conv_dropout_model(only_digits=True):

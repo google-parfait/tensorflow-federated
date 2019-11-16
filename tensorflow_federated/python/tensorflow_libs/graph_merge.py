@@ -24,7 +24,7 @@ import uuid
 import six
 from six.moves import range
 from six.moves import zip
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 class GraphSpec(object):

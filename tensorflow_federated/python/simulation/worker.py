@@ -17,7 +17,7 @@
 from absl import app
 from absl import flags
 import grpc
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.simulation import server_utils

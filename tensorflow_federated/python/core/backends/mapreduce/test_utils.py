@@ -22,7 +22,7 @@ import collections
 
 import numpy as np
 from six.moves import zip
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python import learning
 from tensorflow_federated.python.core.api import computation_types

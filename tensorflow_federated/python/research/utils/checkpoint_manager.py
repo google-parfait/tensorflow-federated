@@ -20,7 +20,7 @@ import os.path
 import re
 
 from typing import Any, List, Text, Tuple
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 class CheckpointManager(metaclass=abc.ABCMeta):

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base

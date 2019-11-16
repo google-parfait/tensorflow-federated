@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import collections
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.learning import model_utils

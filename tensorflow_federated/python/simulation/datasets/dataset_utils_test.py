@@ -15,7 +15,7 @@
 
 import collections
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation.datasets import dataset_utils

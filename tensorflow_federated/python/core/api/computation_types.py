@@ -24,7 +24,7 @@ import collections
 from typing import Any
 import attr
 import six
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck

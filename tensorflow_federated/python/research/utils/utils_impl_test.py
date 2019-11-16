@@ -22,7 +22,7 @@ from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
 import pandas as pd
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.research.utils import utils_impl
 
