@@ -4,12 +4,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "69d4d1fa02eab7c6838c8f11571cfd5509afa661b3944b3f7d24fef79a18d49d",
-    strip_prefix = "protobuf-6a59a2ad1f61d9696092f79b6d74368b4d7970a3",
-    urls = [
-        "http://mirror.tensorflow.org/github.com/protocolbuffers/protobuf/archive/6a59a2ad1f61d9696092f79b6d74368b4d7970a3.tar.gz",
-        "https://github.com/protocolbuffers/protobuf/archive/6a59a2ad1f61d9696092f79b6d74368b4d7970a3.tar.gz",
-    ],
+    sha256 = "39c7a5e7e557b24fc324bec3a73054d277ed9b9b320b273564e04f862131e679",
+    strip_prefix = "protobuf-3.10.1",
+    urls = ["https://github.com/protocolbuffers/protobuf/releases/download/v3.10.1/protobuf-python-3.10.1.tar.gz"],
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
@@ -17,56 +14,43 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 protobuf_deps()
 
 # Required by com_google_protobuf
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "6b6ef4f707252c55b6109f02f4322f5219c7467b56bff8587876681ad067e57b",
-    strip_prefix = "bazel-skylib-3721d32c14d3639ff94320c780a60a6e658fb033",
-    urls = [
-        "http://mirror.tensorflow.org/github.com/bazelbuild/bazel-skylib/archive/3721d32c14d3639ff94320c780a60a6e658fb033.tar.gz",
-        "https://github.com/bazelbuild/bazel-skylib/archive/3721d32c14d3639ff94320c780a60a6e658fb033.tar.gz",
-    ],
-)
-
-# Required by com_google_protobuf
-http_archive(
-    name = "grpc",
-    sha256 = "0200a58dc9fb7372d0c181e502080d4985857f6c7bf8d37c45bd2d1374767449",
-    strip_prefix = "grpc-51d641669195b0e044a3cda1a17e5740197b8658",
-    urls = [
-        "http://mirror.tensorflow.org/github.com/grpc/grpc/archive/51d641669195b0e044a3cda1a17e5740197b8658.tar.gz",
-        "https://github.com/grpc/grpc/archive/51d641669195b0e044a3cda1a17e5740197b8658.tar.gz",
-    ],
-)
-
-http_archive(
-    name = "benjaminp_six",
-    build_file = "//third_party:six.BUILD",
-    sha256 = "0c8a18a365fbe4fca9f6bdfc1e64f34d527c8690d717e0b0488456b7f871d05e",
-    urls = [
-        "http://mirror.tensorflow.org/github.com/benjaminp/six/archive/d927b9e27617abca8dbf4d66cc9265ebbde261d6.tar.gz",
-        "https://github.com/benjaminp/six/archive/d927b9e27617abca8dbf4d66cc9265ebbde261d6.tar.gz",
-    ],
-)
-
-# Required by com_google_protobuf
-bind(
-    name = "six",
-    actual = "@benjaminp_six//:six",
-)
-
 bind(
     name = "grpc_python_plugin",
-    actual = "@grpc//:grpc_python_plugin",
+    actual = "@com_github_grpc_grpc//src/compiler:grpc_python_plugin",
 )
 
-# Needed by gRPC
-bind(
-    name = "protobuf_clib",
-    actual = "@com_google_protobuf//:protoc_lib",
+http_archive(
+    name = "com_github_grpc_grpc",
+    sha256 = "ffbe61269160ea745e487f79b0fd06b6edd3d50c6d9123f053b5634737cf2f69",
+    strip_prefix = "grpc-1.25.0",
+    urls = ["https://github.com/grpc/grpc/archive/v1.25.0.tar.gz"],
 )
 
-# Needed by gRPC
-bind(
-    name = "protobuf_headers",
-    actual = "@com_google_protobuf//:protobuf_headers",
+# Required by com_github_grpc_grpc
+http_archive(
+    name = "build_bazel_rules_swift",
+    sha256 = "18cd4df4e410b0439a4935f9ca035bd979993d42372ba79e7f2d4fafe9596ef0",
+    urls = ["https://github.com/bazelbuild/rules_swift/releases/download/0.12.1/rules_swift.0.12.1.tar.gz"],
 )
+
+# Required by com_github_grpc_grpc
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "e72747100a8b6002992cc0bf678f6279e71a3fd4a88cab3371ace6c73432be30",
+    urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/1.0.0/bazel-skylib-1.0.0.tar.gz"],
+)
+
+# Required by com_github_grpc_grpc
+http_archive(
+    name = "build_bazel_apple_support",
+    sha256 = "122ebf7fe7d1c8e938af6aeaee0efe788a3a2449ece5a8d6a428cb18d6f88033",
+    urls = ["https://github.com/bazelbuild/apple_support/releases/download/0.7.1/apple_support.0.7.1.tar.gz"],
+)
+
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+
+grpc_deps()
+
+load("@upb//bazel:workspace_deps.bzl", "upb_deps")
+
+upb_deps()
