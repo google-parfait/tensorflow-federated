@@ -48,8 +48,11 @@ def latest_checkpoint(root_output_dir, prefix='ckpt_'):
     prefix: The common prefix shared by all checkpoint directories.
 
   Returns:
-    Dirname of the lastest checkpoint.
+    Dirname of the latest checkpoint. If there are no checkpoints (or
+    root_output_dir does not exist), returns None.
   """
+  if not tf.io.gfile.exists(root_output_dir):
+    return None
   checkpoints = tf.io.gfile.glob(
       os.path.join(root_output_dir, '{}*'.format(prefix)))
   if not checkpoints:

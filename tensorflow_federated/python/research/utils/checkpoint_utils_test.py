@@ -65,21 +65,25 @@ class SavedStateTest(tf.test.TestCase):
     loaded_state = checkpoint_utils.load(export_dir, state)
     self.assertEqual(state, loaded_state)
 
-  def test_latest_checkpoint(self):
+  def test_latest_checkpoint_if_path_exists(self):
+    self._test_latest_checkpoint(self.get_temp_dir())
+
+  def test_latest_checkpoint_if_path_doesnt_exist(self):
+    self._test_latest_checkpoint(os.path.join(self.get_temp_dir(), 'foo'))
+
+  def _test_latest_checkpoint(self, dir_path):
     prefix = 'chkpnt_'
-    latest_checkpoint = checkpoint_utils.latest_checkpoint(
-        self.get_temp_dir(), prefix)
+    latest_checkpoint = checkpoint_utils.latest_checkpoint(dir_path, prefix)
     self.assertIsNone(latest_checkpoint)
 
     # Create checkpoints and ensure that the latest checkpoint found is
     # always the most recently created path.
     state = build_fake_state()
     for round_num in range(5):
-      export_dir = os.path.join(self.get_temp_dir(),
-                                '{}{:03d}'.format(prefix, round_num))
+      export_dir = os.path.join(dir_path, '{}{:03d}'.format(prefix, round_num))
       checkpoint_utils.save(state, export_dir, prefix)
       latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
-          self.get_temp_dir(), prefix)
+          dir_path, prefix)
       self.assertEndsWith(
           latest_checkpoint_path,
           '{:03d}'.format(round_num),
@@ -88,11 +92,10 @@ class SavedStateTest(tf.test.TestCase):
     # Delete the checkpoints in reverse order and ensure the latest checkpoint
     # decreases.
     for round_num in reversed(range(2, 5)):
-      export_dir = os.path.join(self.get_temp_dir(),
-                                '{}{:03d}'.format(prefix, round_num))
+      export_dir = os.path.join(dir_path, '{}{:03d}'.format(prefix, round_num))
       tf.io.gfile.rmtree(export_dir)
       latest_checkpoint_path = checkpoint_utils.latest_checkpoint(
-          self.get_temp_dir(), prefix)
+          dir_path, prefix)
       self.assertEndsWith(
           latest_checkpoint_path,
           '{}{:03d}'.format(prefix, round_num - 1),
