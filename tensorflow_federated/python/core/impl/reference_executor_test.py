@@ -462,13 +462,6 @@ class ReferenceExecutorTest(test.TestCase):
       _ = bar(ds1, ds2)
       # pylint: enable=too-many-function-args
 
-    with self.assertRaisesRegex(TypeError,
-                                'argument should be placed at SERVER'):
-
-      @computations.federated_computation(federated_type)
-      def _(x):
-        return intrinsics.federated_apply(foo, x)
-
   def test_graph_mode_dataset_fails_well(self):
     sequence_type = computation_types.SequenceType(tf.int32)
     federated_type = computation_types.FederatedType(sequence_type,

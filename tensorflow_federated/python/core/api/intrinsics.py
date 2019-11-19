@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import warnings
+
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_factory
 
@@ -79,8 +81,9 @@ def federated_aggregate(value, zero, accumulate, merge, report):
   return factory.federated_aggregate(value, zero, accumulate, merge, report)
 
 
+# Deprecated, use tff.federated_map instead.
 def federated_apply(fn, arg):
-  """Applies a given function to a federated value on the `tff.SERVER`.
+  """Applies a given function to a federated value on `tff.SERVER` (deprecated).
 
   Args:
     fn: A function to apply to the member content of `arg` on the `tff.SERVER`.
@@ -96,8 +99,10 @@ def federated_apply(fn, arg):
   Raises:
     TypeError: If the arguments are not of the appropriate types.
   """
-  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
-  return factory.federated_apply(fn, arg)
+  warnings.warn(
+      'Deprecation warning: tff.federated_apply() is deprecated, use '
+      'tff.federated_map() instead.', DeprecationWarning)
+  return federated_map(fn, arg)
 
 
 def federated_mean(value, weight=None):
@@ -300,11 +305,11 @@ def sequence_map(mapping_fn, value):
 
   * When applied to a federated sequence, `sequence_map` behaves as if it were
     individually applied to each member constituent. In this mode of usage, one
-    can think of `sequence_map` as a specialized variant of `federated_map` or
-    `federated_apply` that is designed to work with sequences and allows one to
+    can think of `sequence_map` as a specialized variant of `federated_map` that
+    is designed to work with sequences and allows one to
     specify a `mapping_fn` that operates at the level of individual elements.
     Indeed, under the hood, when `sequence_map` is invoked on a federated type,
-    it injects one of the `federated_map` or `federated_apply` variants, thus
+    it injects `federated_map`, thus
     emitting expressions like
     `federated_map(a -> sequence_map(mapping_fn, x), value)`.
 

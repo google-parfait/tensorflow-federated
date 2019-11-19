@@ -15,6 +15,7 @@
 
 import collections
 import itertools
+import warnings
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -563,27 +564,20 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(str(baz.type_signature), type_string)
 
-  def test_federated_apply_with_int(self):
+  def test_federated_apply_raises_warning(self):
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
 
-    @tff.federated_computation(tff.FederatedType(tf.int32, tff.SERVER))
-    def foo(x):
-      return tff.federated_apply(
-          tff.tf_computation(lambda x: x > 10, tf.int32), x)
+      @tff.federated_computation(tff.FederatedType(tf.int32, tff.SERVER))
+      def foo(x):
+        return tff.federated_apply(
+            tff.tf_computation(lambda x: x * x, tf.int32), x)
 
-    self.assertEqual(str(foo.type_signature), '(int32@SERVER -> bool@SERVER)')
-
-  def test_federated_apply_injected_zip_int(self):
-
-    @tff.federated_computation([
-        tff.FederatedType(tf.int32, tff.SERVER),
-        tff.FederatedType(tf.int32, tff.SERVER)
-    ])
-    def foo(x, y):
-      return tff.federated_apply(
-          tff.tf_computation(lambda x, y: x > 10, [tf.int32, tf.int32]), [x, y])
-
-    self.assertEqual(
-        str(foo.type_signature), '(<int32@SERVER,int32@SERVER> -> bool@SERVER)')
+      self.assertLen(w, 1)
+      self.assertIsInstance(w[0].category(), DeprecationWarning)
+      self.assertIn('tff.federated_apply() is deprecated', str(w[0].message))
+      self.assertEqual(
+          str(foo.type_signature), '(int32@SERVER -> int32@SERVER)')
 
   def test_federated_value_with_bool_on_clients(self):
 

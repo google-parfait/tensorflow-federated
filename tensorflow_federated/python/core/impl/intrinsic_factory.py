@@ -109,45 +109,6 @@ class IntrinsicFactory(object):
         value, zero, accumulate, merge, report)
     return value_impl.ValueImpl(comp, self._context_stack)
 
-  def federated_apply(self, fn, arg):
-    """Implements `federated_apply` as defined in `api/intrinsics.py`.
-
-    Args:
-      fn: As in `api/intrinsics.py`.
-      arg: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
-    fn = value_impl.to_value(fn, None, self._context_stack)
-    py_typecheck.check_type(fn, value_base.Value)
-    py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-
-    arg = value_impl.to_value(arg, None, self._context_stack)
-    if isinstance(arg.type_signature, computation_types.NamedTupleType):
-      if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
-        # We've been passed a value which the user expects to be zipped.
-        arg = self.federated_zip(arg)
-    value_utils.check_federated_value_placement(arg, placements.SERVER,
-                                                'the argument')
-    if not arg.type_signature.all_equal:
-      raise TypeError('The argument should be equal at all locations.')
-
-    if not type_utils.is_assignable_from(fn.type_signature.parameter,
-                                         arg.type_signature.member):
-      raise TypeError(
-          'The function to apply expects a parameter of type {}, but member '
-          'constituents of the argument are of an incompatible type {}.'.format(
-              fn.type_signature.parameter, arg.type_signature.member))
-
-    fn = value_impl.ValueImpl.get_comp(fn)
-    arg = value_impl.ValueImpl.get_comp(arg)
-    comp = building_block_factory.create_federated_apply(fn, arg)
-    return value_impl.ValueImpl(comp, self._context_stack)
-
   def federated_broadcast(self, value):
     """Implements `federated_broadcast` as defined in `api/intrinsics.py`.
 
@@ -258,7 +219,7 @@ class IntrinsicFactory(object):
       comp = building_block_factory.create_federated_map(fn, arg)
     else:
       raise TypeError(
-          'The argument should have placement {} or {}, found {} instead.'
+          'The argument should be placed at {} or {}, placed at {} instead.'
           .format(placements.SERVER, placements.CLIENTS,
                   arg.type_signature.placement))
 
@@ -529,9 +490,10 @@ class IntrinsicFactory(object):
                                             intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       local_fn = value_utils.get_curried(intrinsic_impl)(fn)
-      if arg.type_signature.placement is placements.SERVER:
-        return self.federated_apply(local_fn, arg)
-      elif arg.type_signature.placement is placements.CLIENTS:
+
+      if arg.type_signature.placement in [
+          placements.SERVER, placements.CLIENTS
+      ]:
         return self.federated_map(local_fn, arg)
       else:
         raise TypeError('Unsupported placement {}.'.format(
@@ -591,9 +553,9 @@ class IntrinsicFactory(object):
       call = building_blocks.Call(intrinsic, tup)
       fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)
-      if value.type_signature.placement is placements.SERVER:
-        return self.federated_apply(fn_impl, value)
-      elif value.type_signature.placement is placements.CLIENTS:
+      if value.type_signature.placement in [
+          placements.SERVER, placements.CLIENTS
+      ]:
         return self.federated_map(fn_impl, value)
       else:
         raise TypeError('Unsupported placement {}.'.format(
@@ -634,9 +596,9 @@ class IntrinsicFactory(object):
       intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_SUM.uri,
                                             intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
-      if value.type_signature.placement is placements.SERVER:
-        return self.federated_apply(intrinsic_impl, value)
-      elif value.type_signature.placement is placements.CLIENTS:
+      if value.type_signature.placement in [
+          placements.SERVER, placements.CLIENTS
+      ]:
         return self.federated_map(intrinsic_impl, value)
       else:
         raise TypeError('Unsupported placement {}.'.format(
