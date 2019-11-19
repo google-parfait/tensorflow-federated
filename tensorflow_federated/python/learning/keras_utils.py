@@ -21,7 +21,6 @@ from __future__ import print_function
 import collections
 import itertools
 
-import six
 from six.moves import range
 from six.moves import zip
 import tensorflow as tf
@@ -74,14 +73,19 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
 
 
 def _preprocess_dummy_batch(dummy_batch):
+  """Converts a batch (a nested structure of Python objects) to tensors."""
   dummy_tensors = tf.nest.map_structure(tf.convert_to_tensor, dummy_batch)
-  if py_typecheck.is_named_tuple(dummy_tensors):
-    dummy_tensors = dummy_tensors._asdict()
-  if not isinstance(dummy_tensors, collections.OrderedDict):
-    dummy_tensors = collections.OrderedDict([
-        (k, v) for k, v in six.iteritems(dummy_tensors)
-    ])
-  return dummy_tensors
+  if isinstance(dummy_tensors, (list, tuple, collections.OrderedDict)):
+    return dummy_tensors
+  elif py_typecheck.is_named_tuple(dummy_tensors):
+    return dummy_tensors._asdict()
+  elif isinstance(dummy_tensors, dict):
+    raise TypeError('Called with argument of type `dict`, '
+                    'change to supported `collections.OrderedDict` type.')
+  else:
+    raise NotImplementedError(
+        'No implementation for dummy batch of type {!s}'.format(
+            type(dummy_batch)))
 
 
 def from_keras_model(keras_model,
@@ -172,7 +176,10 @@ def from_keras_model(keras_model,
   # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
   # until the model has been called on input. The work-around is to call
   # Model.test_on_batch() once before asking for metrics.
-  keras_model.test_on_batch(**dummy_tensors)
+  if isinstance(dummy_tensors, collections.Mapping):
+    keras_model.test_on_batch(**dummy_tensors)
+  else:
+    keras_model.test_on_batch(*dummy_tensors)
   return model_utils.enhance(_TrainableKerasModel(keras_model, dummy_tensors))
 
 
@@ -202,7 +209,10 @@ def from_compiled_keras_model(keras_model, dummy_batch):
   # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
   # until the model has been called on input. The work-around is to call
   # Model.test_on_batch() once before asking for metrics.
-  keras_model.test_on_batch(**dummy_tensors)
+  if isinstance(dummy_tensors, collections.Mapping):
+    keras_model.test_on_batch(**dummy_tensors)
+  else:
+    keras_model.test_on_batch(*dummy_tensors)
   return model_utils.enhance(_TrainableKerasModel(keras_model, dummy_tensors))
 
 
@@ -289,7 +299,10 @@ class _KerasModel(model_lib.Model):
 
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. We forced that here.
-    inner_model(dummy_batch['x'])
+    if isinstance(dummy_batch, collections.Mapping):
+      inner_model(dummy_batch['x'])
+    else:
+      inner_model(dummy_batch[0])
 
     def _tensor_spec_with_undefined_batch_dim(tensor):
       # Remove the batch dimension and leave it unspecified.
@@ -404,17 +417,22 @@ class _KerasModel(model_lib.Model):
     return self._input_spec
 
   def _forward_pass(self, batch_input, training=True):
-    # forward_pass requires batch_input be a dictionary that can be passed to
-    # tf.keras.Model.__call__, namely it has keys `x`, and optionally `y`.
     if hasattr(batch_input, '_asdict'):
       batch_input = batch_input._asdict()
-
-    inputs = batch_input.get('x')
+    if isinstance(batch_input, collections.Mapping):
+      inputs = batch_input.get('x')
+    else:
+      inputs = batch_input[0]
     if inputs is None:
       raise KeyError('Received a batch_input that is missing required key `x`. '
                      'Instead have keys {}'.format(list(batch_input.keys())))
+
     predictions = self._keras_model(inputs=inputs, training=training)
-    y_true = batch_input.get('y')
+
+    if isinstance(batch_input, collections.Mapping):
+      y_true = batch_input.get('y')
+    else:
+      y_true = batch_input[1]
     if y_true is not None:
       if len(self._loss_fns) == 1:
         loss_fn = self._loss_fns[0]
@@ -427,7 +445,6 @@ class _KerasModel(model_lib.Model):
           loss_wt = self._loss_weights[i]
           batch_loss += loss_wt * loss_fn(
               y_true=y_true[i], y_pred=predictions[i])
-
     else:
       batch_loss = None
 

@@ -279,6 +279,14 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertGreater(m['loss'][0], 0.0)
     self.assertEqual(m['loss'][1], input_vocab_size * num_iterations)
 
+  def test_preprocess_batch_non_mapping(self):
+    tuple_dummy_batch = ([[1.0], [2.0]], [3.0, 4.0])
+    processed_batch = keras_utils._preprocess_dummy_batch(tuple_dummy_batch)
+    self.assertIsInstance(processed_batch, tuple)
+    # Assert that the Python float was converted to a tf.Tensor.
+    self.assertIsInstance(processed_batch[0][0][0], tf.Tensor)
+    self.assertAllClose(processed_batch, tuple_dummy_batch)
+
   def test_preprocess_batch_only_converts_leaves_to_tensors(self):
     dummy_batch = collections.OrderedDict([
         ('x', [[np.zeros([1, 1], dtype=np.float32)],

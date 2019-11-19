@@ -118,10 +118,10 @@ class FederatedEvaluationTest(test.TestCase):
           metrics=[tf.keras.metrics.Accuracy()])
       return keras_utils.from_compiled_keras_model(
           keras_model,
-          dummy_batch={
-              'x': np.zeros((1, 1), np.float32),
-              'y': np.zeros((1, 1), np.float32)
-          })
+          dummy_batch=collections.OrderedDict([
+              ('x', np.zeros((1, 1), np.float32)),
+              ('y', np.zeros((1, 1), np.float32)),
+          ]))
 
     evaluate_comp = federated_evaluation.build_federated_evaluation(model_fn)
     initial_weights = tf.nest.map_structure(
@@ -129,10 +129,10 @@ class FederatedEvaluationTest(test.TestCase):
         model_utils.enhance(model_fn()).weights)
 
     def _input_dict(temps):
-      return {
-          'x': np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
-          'y': np.reshape(np.array(temps, dtype=np.float32), (-1, 1))
-      }
+      return collections.OrderedDict([
+          ('x', np.reshape(np.array(temps, dtype=np.float32), (-1, 1))),
+          ('y', np.reshape(np.array(temps, dtype=np.float32), (-1, 1))),
+      ])
 
     result = evaluate_comp(
         initial_weights,
