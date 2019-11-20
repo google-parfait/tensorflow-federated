@@ -192,7 +192,7 @@ def broadcast_next_fn(state, value):
     return value + 1
 
   return {
-      'call_count': tff.federated_apply(add_one, state.call_count),
+      'call_count': tff.federated_map(add_one, state.call_count),
   }, tff.federated_broadcast(value)
 
 
@@ -224,7 +224,7 @@ def agg_next_fn(state, value, weight):
     return value + 1
 
   return {
-      'call_count': tff.federated_apply(add_one, state.call_count),
+      'call_count': tff.federated_map(add_one, state.call_count),
   }, tff.federated_mean(value, weight)
 
 

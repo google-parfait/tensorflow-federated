@@ -227,7 +227,7 @@ class FederatedExecutorTest(parameterized.TestCase):
       self.assertIsInstance(v, eager_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 10)
 
-  def test_federated_apply(self):
+  def test_federated_map_at_server(self):
     loop = asyncio.get_event_loop()
     ex = _make_test_executor()
 
@@ -237,7 +237,7 @@ class FederatedExecutorTest(parameterized.TestCase):
 
     @computations.federated_computation
     def comp():
-      return intrinsics.federated_apply(
+      return intrinsics.federated_map(
           add_one, intrinsics.federated_value(10, placements.SERVER))
 
     val = loop.run_until_complete(ex.create_value(comp))
@@ -600,7 +600,7 @@ class FederatedExecutorTest(parameterized.TestCase):
     @computations.federated_computation()
     def bar():
       x = intrinsics.federated_value(make_dataset(), placements.CLIENTS)
-      return intrinsics.federated_apply(
+      return intrinsics.federated_map(
           foo, intrinsics.federated_collect(intrinsics.federated_map(foo, x)))
 
     bar_value = loop.run_until_complete(ex.create_value(bar))

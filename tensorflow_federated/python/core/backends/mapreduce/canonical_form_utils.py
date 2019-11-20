@@ -63,7 +63,7 @@ def get_iterative_process_for_canonical_form(cf):
     """The logic of a single MapReduce sprocessing round."""
     s1 = arg[0]
     c1 = arg[1]
-    s2 = tff.federated_apply(cf.prepare, s1)
+    s2 = tff.federated_map(cf.prepare, s1)
     c2 = tff.federated_broadcast(s2)
     c3 = tff.federated_zip([c1, c2])
     c4 = tff.federated_map(cf.work, c3)
@@ -72,7 +72,7 @@ def get_iterative_process_for_canonical_form(cf):
     s3 = tff.federated_aggregate(c5, cf.zero(), cf.accumulate, cf.merge,
                                  cf.report)
     s4 = tff.federated_zip([s1, s3])
-    s5 = tff.federated_apply(cf.update, s4)
+    s5 = tff.federated_map(cf.update, s4)
     s6 = s5[0]
     s7 = s5[1]
     return s6, s7, c6

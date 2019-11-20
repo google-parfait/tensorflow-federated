@@ -441,10 +441,10 @@ def build_model_delta_optimizer_process(
         client_outputs.weights_delta,
         weight=weight_denom)
 
-    # TODO(b/123408447): remove tff.federated_apply and call
+    # TODO(b/123408447): remove tff.federated_map and call
     # tf_server_update directly once T <-> T@SERVER isomorphism is
     # supported.
-    server_state = tff.federated_apply(
+    server_state = tff.federated_map(
         tf_server_update, (server_state, round_model_delta,
                            new_delta_aggregate_state, new_broadcaster_state))
 

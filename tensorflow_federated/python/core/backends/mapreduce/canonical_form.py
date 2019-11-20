@@ -148,7 +148,7 @@ class CanonicalForm(object):
     # what will happen in this round.
 
     client_input = (
-      tff.federated_broadcast(tff.federated_apply(prepare, server_state)))
+      tff.federated_broadcast(tff.federated_map(prepare, server_state)))
 
     # The clients all independently do local work and produce updates, plus the
     # optional client-side outputs.
@@ -166,7 +166,7 @@ class CanonicalForm(object):
     # emit from this round.
 
     new_server_state, server_output = (
-      tff.federated_apply(update, [server_state, global_update]))
+      tff.federated_map(update, [server_state, global_update]))
 
     # The updated server state, server- and client-side outputs are returned as
     # results of this round.

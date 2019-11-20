@@ -293,8 +293,8 @@ def build_run_one_round_fn(server_update_fn, client_update_fn,
     round_model_delta = tff.federated_mean(
         client_outputs.weights_delta, weight=weight_denom)
 
-    server_state = tff.federated_apply(server_update_fn,
-                                       (server_state, round_model_delta))
+    server_state = tff.federated_map(server_update_fn,
+                                     (server_state, round_model_delta))
 
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)

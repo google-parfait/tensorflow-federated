@@ -122,11 +122,11 @@ class CompositeExecutorTest(absltest.TestCase):
 
     self.assertEqual(comp(), [11] * 12)
 
-  def test_federated_apply(self):
+  def test_federated_map_at_server(self):
 
     @computations.federated_computation
     def comp():
-      return intrinsics.federated_apply(
+      return intrinsics.federated_map(
           computations.tf_computation(lambda x: x + 1, tf.int32),
           intrinsics.federated_value(10, placements.SERVER))
 

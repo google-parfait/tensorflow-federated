@@ -755,7 +755,7 @@ class ReferenceExecutorTest(test.TestCase):
         str(bar.type_signature), '(int32@CLIENTS -> int32@CLIENTS)')
     self.assertEqual(bar(10), 11)
 
-  def test_federated_apply_with_int(self):
+  def test_federated_map_with_int(self):
 
     @computations.tf_computation(tf.int32)
     def foo(x):
@@ -764,12 +764,12 @@ class ReferenceExecutorTest(test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.SERVER, True))
     def bar(x):
-      return intrinsics.federated_apply(foo, x)
+      return intrinsics.federated_map(foo, x)
 
     self.assertEqual(str(bar.type_signature), '(int32@SERVER -> int32@SERVER)')
     self.assertEqual(bar(10), 11)
 
-  def test_federated_apply_with_int_sequence(self):
+  def test_federated_map_with_int_sequence(self):
 
     @computations.tf_computation(tf.int32)
     def foo(x):
@@ -784,7 +784,7 @@ class ReferenceExecutorTest(test.TestCase):
         computation_types.FederatedType(
             computation_types.SequenceType(tf.int32), placements.SERVER, True))
     def baz(x):
-      return intrinsics.federated_apply(bar, x)
+      return intrinsics.federated_map(bar, x)
 
     self.assertEqual(
         str(baz.type_signature), '(int32*@SERVER -> int32*@SERVER)')

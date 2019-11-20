@@ -85,7 +85,7 @@ def build_encoded_broadcast(values, encoders):
 
   def encoded_broadcast_fn(state, value):
     """Encoded broadcast federated_computation."""
-    new_state, encoded_value = tff.federated_apply(encode_fn, (state, value))
+    new_state, encoded_value = tff.federated_map(encode_fn, (state, value))
     client_encoded_value = tff.federated_broadcast(encoded_value)
     client_value = tff.federated_map(decode_fn, client_encoded_value)
     return new_state, client_value
@@ -101,7 +101,7 @@ def _build_encoded_sum_fn(nest_encoder):
     """Encoded sum federated_computation."""
     del weight  # Unused.
     encode_params, decode_before_sum_params, decode_after_sum_params = (
-        tff.federated_apply(nest_encoder.get_params_fn, state))
+        tff.federated_map(nest_encoder.get_params_fn, state))
     encode_params = tff.federated_broadcast(encode_params)
     decode_before_sum_params = tff.federated_broadcast(decode_before_sum_params)
 
@@ -115,11 +115,11 @@ def _build_encoded_sum_fn(nest_encoder):
                                                 nest_encoder.merge_fn,
                                                 nest_encoder.report_fn)
 
-    decoded_values = tff.federated_apply(
+    decoded_values = tff.federated_map(
         nest_encoder.decode_after_sum_fn,
         [aggregated_values.values, decode_after_sum_params])
 
-    updated_state = tff.federated_apply(
+    updated_state = tff.federated_map(
         nest_encoder.update_state_fn,
         [state, aggregated_values.state_update_tensors])
     return updated_state, decoded_values
@@ -213,8 +213,8 @@ def build_encoded_mean(values, encoders):
     updated_state, summed_decoded_values = encoded_sum_fn(
         state, weighted_values)
     summed_weights = tff.federated_sum(weight)
-    decoded_values = tff.federated_apply(
-        divide_fn, [summed_decoded_values, summed_weights])
+    decoded_values = tff.federated_map(divide_fn,
+                                       [summed_decoded_values, summed_weights])
     return updated_state, decoded_values
 
   return StatefulAggregateFn(

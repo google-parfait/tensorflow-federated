@@ -261,14 +261,14 @@ def build_dp_aggregate(query,
     #######################################
     # Orchestration logic
 
-    sample_params = tff.federated_apply(derive_sample_params, global_state)
+    sample_params = tff.federated_map(derive_sample_params, global_state)
     client_sample_params = tff.federated_broadcast(sample_params)
     preprocessed_record = tff.federated_map(preprocess_record,
                                             (client_sample_params, value))
     agg_result = tff.federated_aggregate(preprocessed_record, zero(),
                                          accumulate, merge, report)
 
-    return tff.federated_apply(post_process, (agg_result, global_state))
+    return tff.federated_map(post_process, (agg_result, global_state))
 
   # TODO(b/140236959): Find a way to have this method return only one thing. The
   # best approach is probably to add (to StatefulAggregateFn) a property that

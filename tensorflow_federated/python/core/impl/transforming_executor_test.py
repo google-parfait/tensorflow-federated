@@ -58,7 +58,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
     @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
-      return intrinsics.federated_apply(_identity, x)
+      return intrinsics.federated_map(_identity, x)
 
     def transformation_fn(x):
       x, _ = transformations.remove_mapped_or_applied_identity(x)

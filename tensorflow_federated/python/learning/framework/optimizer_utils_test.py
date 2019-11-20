@@ -59,7 +59,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 
 def _state_incrementing_mean_next(server_state, client_value, weight=None):
   add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
-  new_state = tff.federated_apply(add_one, server_state)
+  new_state = tff.federated_map(add_one, server_state)
   return (new_state, tff.federated_mean(client_value, weight=weight))
 
 
@@ -69,7 +69,7 @@ state_incrementing_mean = tff.utils.StatefulAggregateFn(
 
 def _state_incrementing_broadcast_next(server_state, server_value):
   add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
-  new_state = tff.federated_apply(add_one, server_state)
+  new_state = tff.federated_map(add_one, server_state)
   return (new_state, tff.federated_broadcast(server_value))
 
 

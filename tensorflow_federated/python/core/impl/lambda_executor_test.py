@@ -212,7 +212,7 @@ class LambdaExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(v5.compute())
     self.assertEqual(result.numpy(), 12)
 
-  def test_with_federated_apply(self):
+  def test_with_federated_map(self):
     eager_ex = eager_executor.EagerExecutor()
     federated_ex = federated_executor.FederatedExecutor({
         None: eager_ex,
@@ -227,7 +227,7 @@ class LambdaExecutorTest(absltest.TestCase):
 
     @computations.federated_computation(type_factory.at_server(tf.int32))
     def comp(x):
-      return intrinsics.federated_apply(add_one, x)
+      return intrinsics.federated_map(add_one, x)
 
     v1 = loop.run_until_complete(ex.create_value(comp))
     v2 = loop.run_until_complete(
