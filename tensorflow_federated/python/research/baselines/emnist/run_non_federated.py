@@ -15,7 +15,7 @@
 """Baseline experiment for non-federated EMNIST."""
 
 import collections
-import os
+import os.path
 
 from absl import app
 from absl import flags

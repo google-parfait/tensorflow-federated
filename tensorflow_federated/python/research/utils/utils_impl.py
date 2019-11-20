@@ -20,7 +20,7 @@ import functools
 import inspect
 import itertools
 import multiprocessing
-import os
+import os.path
 import shutil
 import subprocess
 import tempfile
