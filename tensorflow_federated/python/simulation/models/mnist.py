@@ -83,7 +83,7 @@ def create_keras_model(compile_model=False):
   This code is based on the following target, which unfortunately cannot be
   imported as it is a Python binary, not a library:
 
-  https://github.com/tensorflow/models/blob/master/official/mnist/mnist.py
+  https://github.com/tensorflow/models/blob/master/official/r1/mnist/mnist.py
 
   Args:
     compile_model: If True, compile the model with a basic optimizer and loss.
