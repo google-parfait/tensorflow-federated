@@ -20,7 +20,8 @@ from __future__ import print_function
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computation_types
 
 
 class CanonicalForm(object):
@@ -287,7 +288,7 @@ class CanonicalForm(object):
         ('report', report),
         ('update', update),
     ]:
-      py_typecheck.check_type(comp, tff.Computation, label)
+      py_typecheck.check_type(comp, computation_base.Computation, label)
 
       # TODO(b/130633916): Remove private access once an appropriate API for it
       # becomes available.
@@ -308,7 +309,8 @@ class CanonicalForm(object):
               prepare.type_signature.parameter,
               initialize.type_signature.result))
 
-    if (not isinstance(work.type_signature.parameter, tff.NamedTupleType) or
+    if (not isinstance(work.type_signature.parameter,
+                       computation_types.NamedTupleType) or
         len(work.type_signature.parameter) != 2):
       raise TypeError(
           'The `work` computation expects an argument of type {} that is not '
@@ -321,13 +323,14 @@ class CanonicalForm(object):
           'which does not match the result type {} of `prepare`.'.format(
               work.type_signature.parameter[1], prepare.type_signature.result))
 
-    if (not isinstance(work.type_signature.result, tff.NamedTupleType) or
+    if (not isinstance(work.type_signature.result,
+                       computation_types.NamedTupleType) or
         len(work.type_signature.result) != 2):
       raise TypeError(
           'The `work` computation returns a result  of type {} that is not a '
           'two-tuple.'.format(work.type_signature.result))
 
-    expected_accumulate_type = tff.FunctionType(
+    expected_accumulate_type = computation_types.FunctionType(
         [zero.type_signature.result, work.type_signature.result[0]],
         zero.type_signature.result)
     if accumulate.type_signature != expected_accumulate_type:
@@ -337,7 +340,7 @@ class CanonicalForm(object):
           '`zero` and `work`.'.format(accumulate.type_signature,
                                       expected_accumulate_type))
 
-    expected_merge_type = tff.FunctionType(
+    expected_merge_type = computation_types.FunctionType(
         [accumulate.type_signature.result, accumulate.type_signature.result],
         accumulate.type_signature.result)
     if merge.type_signature != expected_merge_type:
@@ -352,7 +355,7 @@ class CanonicalForm(object):
           'which does not match the result type {} of `merge`.'.format(
               report.type_signature.parameter, merge.type_signature.result))
 
-    expected_update_parameter_type = tff.to_type(
+    expected_update_parameter_type = computation_types.to_type(
         [initialize.type_signature.result, report.type_signature.result])
     if update.type_signature.parameter != expected_update_parameter_type:
       raise TypeError(
@@ -361,7 +364,8 @@ class CanonicalForm(object):
           'signatures of `initialize` and `report`.'.format(
               update.type_signature.parameter, expected_update_parameter_type))
 
-    if (not isinstance(update.type_signature.result, tff.NamedTupleType) or
+    if (not isinstance(update.type_signature.result,
+                       computation_types.NamedTupleType) or
         len(update.type_signature.result) != 2):
       raise TypeError(
           'The `update` computation returns a result  of type {} that is not '
