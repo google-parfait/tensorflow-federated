@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+import warnings
+
 from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
 
 from tensorflow_federated.python.core.api.computation_base import Computation
@@ -61,6 +64,20 @@ from tensorflow_federated.python.core import utils
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation
 # pylint: enable=g-bad-import-order,wildcard-import
+
+
+# pylint: disable=g-bad-exception-name
+class Python2DeprecationWarning(Warning):
+  pass
+
+
+# pylint: enable=g-bad-exception-name
+
+if sys.version_info[0] < 3:
+  warnings.warn(
+      "Using TensorFlow Federated with Python 2 is deprecated and will be removed in January 2020.\n"
+      "See https://python3statement.org/ for more information.",
+      Python2DeprecationWarning)
 
 # Used by doc generation script.
 _allowed_symbols = [
