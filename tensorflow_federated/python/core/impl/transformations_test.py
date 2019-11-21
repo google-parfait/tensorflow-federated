@@ -2926,17 +2926,17 @@ class MergeTupleIntrinsicsTest(absltest.TestCase):
     self.assertFalse(modified)
 
 
-class RemoveDuplicateComputationsTest(absltest.TestCase):
+class RemoveDuplicateBlockLocals(absltest.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
-      transformations.remove_duplicate_computations(None)
+      transformations.remove_duplicate_block_locals(None)
 
   def test_raises_value_error_with_non_unique_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
-      transformations.remove_duplicate_computations(block)
+      transformations.remove_duplicate_block_locals(block)
 
   def test_removes_federated_aggregate(self):
     called_intrinsic = test_utils.create_dummy_called_federated_aggregate(
@@ -2952,7 +2952,7 @@ class RemoveDuplicateComputationsTest(absltest.TestCase):
     intermediate_comp, _ = transformations.uniquify_reference_names(comp)
     intermediate_comp, _ = transformations.extract_computations(
         intermediate_comp)
-    transformed_comp, modified = transformations.remove_duplicate_computations(
+    transformed_comp, modified = transformations.remove_duplicate_block_locals(
         intermediate_comp)
     transformed_comp, _ = transformations.uniquify_reference_names(
         transformed_comp)
@@ -3025,7 +3025,7 @@ class RemoveDuplicateComputationsTest(absltest.TestCase):
     comp = tup
 
     intermediate_comp, _ = transformations.extract_computations(comp)
-    transformed_comp, modified = transformations.remove_duplicate_computations(
+    transformed_comp, modified = transformations.remove_duplicate_block_locals(
         intermediate_comp)
 
     # pyformat: disable
@@ -3057,7 +3057,7 @@ class RemoveDuplicateComputationsTest(absltest.TestCase):
     comp = complex_comp
 
     intermediate_comp, _ = transformations.extract_computations(comp)
-    transformed_comp, modified = transformations.remove_duplicate_computations(
+    transformed_comp, modified = transformations.remove_duplicate_block_locals(
         intermediate_comp)
 
     # pyformat: disable
@@ -3107,7 +3107,7 @@ class RemoveDuplicateComputationsTest(absltest.TestCase):
     comp = fn
 
     intermediate_comp, _ = transformations.extract_computations(comp)
-    transformed_comp, modified = transformations.remove_duplicate_computations(
+    transformed_comp, modified = transformations.remove_duplicate_block_locals(
         intermediate_comp)
 
     # pyformat: disable
@@ -3130,6 +3130,24 @@ class RemoveDuplicateComputationsTest(absltest.TestCase):
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
+
+
+class DeduplicateBuildingBlocksTest(absltest.TestCase):
+
+  def test_removes_multiple_selections(self):
+    id_lam = building_blocks.Lambda(
+        'x', [tf.int32, tf.float32],
+        building_blocks.Reference('x', [tf.int32, tf.float32]))
+    ref_to_a = building_blocks.Reference('a', [tf.int32, tf.float32])
+    called_id = building_blocks.Call(id_lam, ref_to_a)
+    sel_0 = building_blocks.Selection(called_id, index=0)
+    tup = building_blocks.Tuple([sel_0, sel_0])
+    fake_lam = building_blocks.Lambda('a', [tf.int32, tf.float32], tup)
+    dups_removed, modified = transformations.remove_duplicate_building_blocks(
+        fake_lam)
+    self.assertTrue(modified)
+    self.assertEqual(
+        tree_analysis.count_types(dups_removed, building_blocks.Selection), 1)
 
 
 class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):

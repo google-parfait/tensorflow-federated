@@ -76,19 +76,6 @@ class CompilerPipeline(object):
     # does not rely on manual maintenance.
     comp, _ = value_transformations.replace_intrinsics_with_bodies(
         comp, self._context_stack)
-
-    # Replaces called lambdas with LET constructs with a single local symbol.
-    comp, _ = transformations.replace_called_lambda_with_block(comp)
-
-    # Removes maped or applied identities.
-    comp, _ = transformations.remove_mapped_or_applied_identity(comp)
-
-    # Remove duplicate computations. This is important! otherwise the semantics
-    # non-deterministic computations (e.g. a `tff.tf_computation` depending on
-    # `tf.random`) will give unexpected behavior. Additionally, this may reduce
-    # the amount of calls into TF for some ASTs.
-    comp, _ = transformations.uniquify_reference_names(comp)
-    comp, _ = transformations.extract_computations(comp)
-    comp, _ = transformations.remove_duplicate_computations(comp)
+    comp, _ = transformations.remove_duplicate_building_blocks(comp)
 
     return computation_impl.ComputationImpl(comp.proto, self._context_stack)
