@@ -21,6 +21,8 @@ upper_tabs:
         path: /federated/tutorials/custom_federated_algorithms_1
       - title: Custom Federated Algorithms Part 2 - Implementing Federated Averaging
         path: /federated/tutorials/custom_federated_algorithms_2
+      - title: High-performance simulations with TFF
+        path: /federated/tutorials/simulations
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining
