@@ -23,7 +23,10 @@ import itertools
 import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import context_stack_impl
@@ -51,28 +54,28 @@ def get_iterative_process_for_canonical_form(cf):
   """
   py_typecheck.check_type(cf, canonical_form.CanonicalForm)
 
-  @tff.federated_computation
+  @computations.federated_computation
   def init_computation():
-    return tff.federated_value(cf.initialize(), tff.SERVER)
+    return intrinsics.federated_value(cf.initialize(), placements.SERVER)
 
-  @tff.federated_computation(init_computation.type_signature.result,
-                             tff.FederatedType(
-                                 cf.work.type_signature.parameter[0],
-                                 tff.CLIENTS))
+  @computations.federated_computation(init_computation.type_signature.result,
+                                      computation_types.FederatedType(
+                                          cf.work.type_signature.parameter[0],
+                                          placements.CLIENTS))
   def next_computation(arg):
     """The logic of a single MapReduce sprocessing round."""
     s1 = arg[0]
     c1 = arg[1]
-    s2 = tff.federated_map(cf.prepare, s1)
-    c2 = tff.federated_broadcast(s2)
-    c3 = tff.federated_zip([c1, c2])
-    c4 = tff.federated_map(cf.work, c3)
+    s2 = intrinsics.federated_map(cf.prepare, s1)
+    c2 = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([c1, c2])
+    c4 = intrinsics.federated_map(cf.work, c3)
     c5 = c4[0]
     c6 = c4[1]
-    s3 = tff.federated_aggregate(c5, cf.zero(), cf.accumulate, cf.merge,
-                                 cf.report)
-    s4 = tff.federated_zip([s1, s3])
-    s5 = tff.federated_map(cf.update, s4)
+    s3 = intrinsics.federated_aggregate(c5, cf.zero(), cf.accumulate, cf.merge,
+                                        cf.report)
+    s4 = intrinsics.federated_zip([s1, s3])
+    s5 = intrinsics.federated_map(cf.update, s4)
     s6 = s5[0]
     s7 = s5[1]
     return s6, s7, c6
@@ -82,8 +85,8 @@ def get_iterative_process_for_canonical_form(cf):
 
 def pack_initialize_comp_type_signature(type_spec):
   """Packs the initialize type to be used by the remainder of the compiler."""
-  if not (isinstance(type_spec, tff.FederatedType) and
-          type_spec.placement == tff.SERVER):
+  if not (isinstance(type_spec, computation_types.FederatedType) and
+          type_spec.placement == placements.SERVER):
     raise TypeError(
         'Expected init type spec to be a federated type placed at the server; '
         'instead found {}'.format(type_spec))
@@ -111,10 +114,10 @@ def pack_next_comp_type_signature(type_signature, previously_packed_types):
     of the `next` computation of a `tff.utils.IterativeProcess`.
   """
   should_raise = False
-  if not (isinstance(type_signature, tff.FunctionType) and
-          isinstance(type_signature.parameter, tff.NamedTupleType) and
-          len(type_signature.parameter) == 2 and
-          isinstance(type_signature.result, tff.NamedTupleType) and
+  if not (isinstance(type_signature, computation_types.FunctionType) and
+          isinstance(type_signature.parameter, computation_types.NamedTupleType)
+          and len(type_signature.parameter) == 2 and isinstance(
+              type_signature.result, computation_types.NamedTupleType) and
           len(type_signature.result) == 3):
     should_raise = True
   if type_signature.parameter[0] != previously_packed_types['initialize_type']:
@@ -123,16 +126,16 @@ def pack_next_comp_type_signature(type_signature, previously_packed_types):
       type_signature.parameter[0], type_signature.result[0],
       type_signature.result[1]
   ]:
-    if not (isinstance(server_placed_type, tff.FederatedType) and
-            server_placed_type.placement == tff.SERVER):
+    if not (isinstance(server_placed_type, computation_types.FederatedType) and
+            server_placed_type.placement == placements.SERVER):
       should_raise = True
 
   if len(type_signature.result) == 3:
     for client_placed_type in [
         type_signature.parameter[1], type_signature.result[2]
     ]:
-      if not (isinstance(client_placed_type, tff.FederatedType) and
-              client_placed_type.placement == tff.CLIENTS):
+      if not (isinstance(client_placed_type, computation_types.FederatedType)
+              and client_placed_type.placement == placements.CLIENTS):
         should_raise = True
   if should_raise:
     # TODO(b/121290421): These error messages, and indeed the 'track boolean and
@@ -182,14 +185,14 @@ def check_and_pack_before_broadcast_type_signature(type_spec,
     `previously_packed_types`.
   """
   should_raise = False
-  if not (isinstance(type_spec, tff.FunctionType) and
-          isinstance(type_spec.parameter, tff.NamedTupleType) and
+  if not (isinstance(type_spec, computation_types.FunctionType) and
+          isinstance(type_spec.parameter, computation_types.NamedTupleType) and
           len(type_spec.parameter) == 2 and
           type_spec.parameter[0] == previously_packed_types['s1_type'] and
           type_spec.parameter[1] == previously_packed_types['c1_type']):
     should_raise = True
-  if not (isinstance(type_spec.result, tff.FederatedType) and
-          type_spec.result.placement == tff.SERVER):
+  if not (isinstance(type_spec.result, computation_types.FederatedType) and
+          type_spec.result.placement == placements.SERVER):
     should_raise = True
   if should_raise:
     # TODO(b/121290421): These error messages, and indeed the 'track boolean and
@@ -207,7 +210,7 @@ def check_and_pack_before_broadcast_type_signature(type_spec,
   s2 = type_spec.result
   newly_determined_types = {}
   newly_determined_types['s2_type'] = s2
-  newly_determined_types['prepare_type'] = tff.FunctionType(
+  newly_determined_types['prepare_type'] = computation_types.FunctionType(
       previously_packed_types['s1_type'].member, s2.member)
   return dict(
       itertools.chain(
@@ -242,26 +245,29 @@ def check_and_pack_before_aggregate_type_signature(type_spec,
     `previously_packed_types`.
   """
   should_raise = False
-  if not (isinstance(type_spec, tff.FunctionType) and
-          isinstance(type_spec.parameter, tff.NamedTupleType)):
+  if not (isinstance(type_spec, computation_types.FunctionType) and
+          isinstance(type_spec.parameter, computation_types.NamedTupleType)):
     should_raise = True
-  if not (isinstance(type_spec.parameter[0], tff.NamedTupleType) and
-          len(type_spec.parameter[0]) == 2 and
+  if not (isinstance(type_spec.parameter[0], computation_types.NamedTupleType)
+          and len(type_spec.parameter[0]) == 2 and
           type_spec.parameter[0][0] == previously_packed_types['s1_type'] and
           type_spec.parameter[0][1] == previously_packed_types['c1_type']):
     should_raise = True
-  if not (isinstance(type_spec.parameter[1], tff.FederatedType) and
-          type_spec.parameter[1].placement == tff.CLIENTS and type_spec
-          .parameter[1].member == previously_packed_types['s2_type'].member):
+  if not (
+      isinstance(type_spec.parameter[1], computation_types.FederatedType) and
+      type_spec.parameter[1].placement == placements.CLIENTS and
+      type_spec.parameter[1].member == previously_packed_types['s2_type'].member
+  ):
     should_raise = True
-  if not (isinstance(type_spec.result, tff.NamedTupleType) and
+  if not (isinstance(type_spec.result, computation_types.NamedTupleType) and
           len(type_spec.result) == 5 and
-          isinstance(type_spec.result[0], tff.FederatedType) and
-          type_spec.result[0].placement == tff.CLIENTS and
+          isinstance(type_spec.result[0], computation_types.FederatedType) and
+          type_spec.result[0].placement == placements.CLIENTS and
           type_utils.is_tensorflow_compatible_type(type_spec.result[1]) and
-          type_spec.result[2] == tff.FunctionType([
-              type_spec.result[1], type_spec.result[0].member
-          ], type_spec.result[1]) and type_spec.result[3] == tff.FunctionType(
+          type_spec.result[2] == computation_types.FunctionType(
+              [type_spec.result[1], type_spec.result[0].member],
+              type_spec.result[1]) and
+          type_spec.result[3] == computation_types.FunctionType(
               [type_spec.result[1], type_spec.result[1]], type_spec.result[1])
           and type_spec.result[4].parameter == type_spec.result[1] and
           type_utils.is_tensorflow_compatible_type(type_spec.result[4].result)):
@@ -285,11 +291,12 @@ def check_and_pack_before_aggregate_type_signature(type_spec,
   newly_determined_types = {}
   c2_type = type_spec.parameter[1]
   newly_determined_types['c2_type'] = c2_type
-  c3_type = tff.FederatedType(
-      [previously_packed_types['c1_type'].member, c2_type.member], tff.CLIENTS)
+  c3_type = computation_types.FederatedType(
+      [previously_packed_types['c1_type'].member, c2_type.member],
+      placements.CLIENTS)
   newly_determined_types['c3_type'] = c3_type
   c5_type = type_spec.result[0]
-  zero_type = tff.FunctionType(None, type_spec.result[1])
+  zero_type = computation_types.FunctionType(None, type_spec.result[1])
   accumulate_type = type_spec.result[2]
   merge_type = type_spec.result[3]
   report_type = type_spec.result[4]
@@ -298,14 +305,14 @@ def check_and_pack_before_aggregate_type_signature(type_spec,
   newly_determined_types['accumulate_type'] = accumulate_type
   newly_determined_types['merge_type'] = merge_type
   newly_determined_types['report_type'] = report_type
-  newly_determined_types['s3_type'] = tff.FederatedType(report_type.result,
-                                                        tff.SERVER)
-  c4_type = tff.FederatedType([
+  newly_determined_types['s3_type'] = computation_types.FederatedType(
+      report_type.result, placements.SERVER)
+  c4_type = computation_types.FederatedType([
       newly_determined_types['c5_type'].member,
       previously_packed_types['c6_type'].member
-  ], tff.CLIENTS)
+  ], placements.CLIENTS)
   newly_determined_types['c4_type'] = c4_type
-  newly_determined_types['work_type'] = tff.FunctionType(
+  newly_determined_types['work_type'] = computation_types.FunctionType(
       c3_type.member, c4_type.member)
   return dict(
       itertools.chain(
@@ -370,23 +377,23 @@ def check_and_pack_after_aggregate_type_signature(type_spec,
                      previously_packed_types['s6_type'],
                      previously_packed_types['s7_type'],
                      previously_packed_types['c6_type'], type_spec))
-  s4_type = tff.FederatedType([
+  s4_type = computation_types.FederatedType([
       previously_packed_types['s1_type'].member,
       previously_packed_types['s3_type'].member
-  ], tff.SERVER)
-  s5_type = tff.FederatedType([
+  ], placements.SERVER)
+  s5_type = computation_types.FederatedType([
       previously_packed_types['s6_type'].member,
       previously_packed_types['s7_type'].member
-  ], tff.SERVER)
+  ], placements.SERVER)
   newly_determined_types = {}
   newly_determined_types['s4_type'] = s4_type
   newly_determined_types['s5_type'] = s5_type
-  newly_determined_types['update_type'] = tff.FunctionType(
+  newly_determined_types['update_type'] = computation_types.FunctionType(
       s4_type.member, s5_type.member)
-  c3_type = tff.FederatedType([
+  c3_type = computation_types.FederatedType([
       previously_packed_types['c1_type'].member,
       previously_packed_types['c2_type'].member
-  ], tff.CLIENTS)
+  ], placements.CLIENTS)
   newly_determined_types['c3_type'] = c3_type
   return dict(
       itertools.chain(
@@ -636,8 +643,10 @@ def get_canonical_form_for_iterative_process(iterative_process):
   next_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.next._computation_proto)  # pylint: disable=protected-access
 
-  if not (isinstance(next_comp.type_signature.parameter, tff.NamedTupleType) and
-          isinstance(next_comp.type_signature.result, tff.NamedTupleType)):
+  if not (isinstance(next_comp.type_signature.parameter,
+                     computation_types.NamedTupleType) and
+          isinstance(next_comp.type_signature.result,
+                     computation_types.NamedTupleType)):
     raise TypeError(
         'Any IterativeProcess compatible with CanonicalForm must '
         'have a `next` function which takes and returns instances '
@@ -652,13 +661,13 @@ def get_canonical_form_for_iterative_process(iterative_process):
       dummy_clients_metrics_appended = building_blocks.Tuple([
           next_result[0],
           next_result[1],
-          tff.federated_value([], tff.CLIENTS)._comp  # pylint: disable=protected-access
+          intrinsics.federated_value([], placements.CLIENTS)._comp  # pylint: disable=protected-access
       ])
     else:
       dummy_clients_metrics_appended = building_blocks.Tuple([
           building_blocks.Selection(next_result, index=0),
           building_blocks.Selection(next_result, index=1),
-          tff.federated_value([], tff.CLIENTS)._comp  # pylint: disable=protected-access
+          intrinsics.federated_value([], placements.CLIENTS)._comp  # pylint: disable=protected-access
       ])
     next_comp = building_blocks.Lambda(next_comp.parameter_name,
                                        next_comp.parameter_type,

@@ -19,8 +19,9 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
@@ -191,32 +192,34 @@ class GetCanonicalFormForIteraticeProcessTest(absltest.TestCase):
 
   def test_returns_canonical_form_with_next_fn_returning_call_directly(self):
 
-    @tff.federated_computation
+    @computations.federated_computation
     def init_fn():
-      return tff.federated_value(42, tff.SERVER)
+      return intrinsics.federated_value(42, placements.SERVER)
 
-    @tff.federated_computation(
-        tff.FederatedType(tf.int32, tff.SERVER),
-        tff.FederatedType(tff.SequenceType(tf.float32), tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.SERVER),
+        computation_types.FederatedType(
+            computation_types.SequenceType(tf.float32), placements.CLIENTS))
     def next_fn(server_state, client_data):
-      broadcast_state = tff.federated_broadcast(server_state)
+      broadcast_state = intrinsics.federated_broadcast(server_state)
 
-      @tff.tf_computation(tf.int32, tff.SequenceType(tf.float32))
+      @computations.tf_computation(tf.int32,
+                                   computation_types.SequenceType(tf.float32))
       @tf.function
       def some_transform(x, y):
         del y  # Unused
         return x + 1
 
-      client_update = tff.federated_map(some_transform,
-                                        (broadcast_state, client_data))
-      aggregate_update = tff.federated_sum(client_update)
-      server_output = tff.federated_value(1234, tff.SERVER)
+      client_update = intrinsics.federated_map(some_transform,
+                                               (broadcast_state, client_data))
+      aggregate_update = intrinsics.federated_sum(client_update)
+      server_output = intrinsics.federated_value(1234, placements.SERVER)
       return aggregate_update, server_output
 
-    @tff.federated_computation(
-        tff.FederatedType(tf.int32, tff.SERVER),
-        tff.FederatedType(
-            computation_types.SequenceType(tf.float32), tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.SERVER),
+        computation_types.FederatedType(
+            computation_types.SequenceType(tf.float32), placements.CLIENTS))
     def nested_next_fn(server_state, client_data):
       return next_fn(server_state, client_data)
 
