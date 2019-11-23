@@ -117,6 +117,29 @@ of the experiment to use different behaviors across rounds.
 
 ### Meta-learning and multi-task learning
 
-### Differential privacy
+### Differential privacy {#dp}
+
+<!-- TODO(b/144509140): Add content describing full details of DP in TFF. I
+(saugenst@) just added a one-liner below pointing to where we use DP in the TFF
+GAN code, as an additional example. -->
+
+Federated GANs (described [below](#gans)) are an example of a TFF project
+implementing user-level differential privacy (e.g.,
+[here in code](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/gans/tff_gans.py#L293)).
 
 ### Robustness and attacks
+
+### Generative Adversarial Networks (GANs) {#gans}
+
+GANs make for an interesting
+[federated orchestration pattern](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/gans/tff_gans.py#L266-L316)
+that looks a little different than standard Federated Averaging. They involve
+two distinct networks (the generator and the discriminator) each trained with
+their own optimization step.
+
+TFF can be used for research on federated training of GANs. For example, the
+DP-FedAvg-GAN algorithm presented in
+[recent work](https://arxiv.org/abs/1911.06679) is
+[implemented in TFF](https://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/research/gans).
+This work demonstrates the effectiveness of combining federated learning,
+generative models, and [differential privacy](#dp).
