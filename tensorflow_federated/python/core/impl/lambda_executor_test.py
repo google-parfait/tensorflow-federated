@@ -158,6 +158,22 @@ class LambdaExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(v2.compute())
     self.assertEqual(result.numpy(), 30)
 
+  def test_create_selection_with_tuples(self):
+    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    loop = asyncio.get_event_loop()
+
+    v1 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    v2 = loop.run_until_complete(ex.create_value(20, tf.int32))
+    v3 = loop.run_until_complete(
+        ex.create_tuple(
+            anonymous_tuple.AnonymousTuple([(None, v1), (None, v2)])))
+    v4 = loop.run_until_complete(ex.create_selection(v3, index=0))
+    v5 = loop.run_until_complete(ex.create_selection(v3, index=1))
+    result0 = loop.run_until_complete(v4.compute())
+    result1 = loop.run_until_complete(v5.compute())
+    self.assertEqual(result0.numpy(), 10)
+    self.assertEqual(result1.numpy(), 20)
+
   def test_with_nested_lambdas(self):
     ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
     loop = asyncio.get_event_loop()
