@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
+from tensorflow_federated.python.core.impl import executor_utils
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
@@ -359,6 +360,7 @@ class EagerExecutor(executor_base.Executor):
     else:
       self._device = None
 
+  @executor_utils.log_async('create value', 'EagerExecutor')
   async def create_value(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
@@ -381,6 +383,7 @@ class EagerExecutor(executor_base.Executor):
       raise RuntimeError('The eager executor may only be used in eager mode.')
     return EagerValue(value, type_spec, self._device)
 
+  @executor_utils.log_async('create call', 'EagerExecutor')
   async def create_call(self, comp, arg=None):
     """Creates a call to `comp` with optional `arg`.
 
@@ -403,14 +406,16 @@ class EagerExecutor(executor_base.Executor):
           comp.type_signature))
     if comp.type_signature.parameter is not None:
       return EagerValue(
-          comp.internal_representation(arg.internal_representation),
-          comp.type_signature.result, self._device)
+          comp.internal_representation(arg.internal_representation),  # pytype: disable=attribute-error
+          comp.type_signature.result,
+          self._device)
     elif arg is None:
       return EagerValue(comp.internal_representation(),
                         comp.type_signature.result, self._device)
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
 
+  @executor_utils.log_async('create tuple', 'EagerExecutor')
   async def create_tuple(self, elements):
     """Creates a tuple of `elements`.
 
@@ -434,6 +439,7 @@ class EagerExecutor(executor_base.Executor):
             (k, v) if k is not None else v for k, v in type_elements
         ]))
 
+  @executor_utils.log_async('create selection', 'EagerExecutor')
   async def create_selection(self, source, index=None, name=None):
     """Creates a selection from `source`.
 

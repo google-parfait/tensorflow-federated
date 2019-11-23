@@ -284,6 +284,7 @@ py_library(
     deps = [
         ":computation_impl",
         ":executor_base",
+        ":executor_utils",
         ":executor_value_base",
         ":type_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -517,6 +518,15 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
     ],
+)
+
+py_test(
+    name = "executor_utils_test",
+    size = "small",
+    srcs = ["executor_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":executor_utils"],
 )
 
 py_library(
