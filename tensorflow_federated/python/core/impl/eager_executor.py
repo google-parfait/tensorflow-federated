@@ -360,7 +360,7 @@ class EagerExecutor(executor_base.Executor):
     else:
       self._device = None
 
-  @executor_utils.log_async('create value', 'EagerExecutor')
+  @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
@@ -383,7 +383,7 @@ class EagerExecutor(executor_base.Executor):
       raise RuntimeError('The eager executor may only be used in eager mode.')
     return EagerValue(value, type_spec, self._device)
 
-  @executor_utils.log_async('create call', 'EagerExecutor')
+  @executor_utils.log_async
   async def create_call(self, comp, arg=None):
     """Creates a call to `comp` with optional `arg`.
 
@@ -415,7 +415,7 @@ class EagerExecutor(executor_base.Executor):
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
 
-  @executor_utils.log_async('create tuple', 'EagerExecutor')
+  @executor_utils.log_async
   async def create_tuple(self, elements):
     """Creates a tuple of `elements`.
 
@@ -439,7 +439,7 @@ class EagerExecutor(executor_base.Executor):
             (k, v) if k is not None else v for k, v in type_elements
         ]))
 
-  @executor_utils.log_async('create selection', 'EagerExecutor')
+  @executor_utils.log_async
   async def create_selection(self, source, index=None, name=None):
     """Creates a selection from `source`.
 

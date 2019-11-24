@@ -55,30 +55,30 @@ class DebugLoggingTest(absltest.TestCase):
 
     with self.assertRaises(TypeError):
 
-      @executor_utils.log_async('foo', 'Test')
+      @executor_utils.log_async
       def _():
         return time.sleep(1)
 
   def test_logging_enter_exit(self):
 
-    @executor_utils.log_async('foo', 'Test')
+    @executor_utils.log_async
     async def foo():
       return await asyncio.sleep(1)
 
     self._test_debug_logging_with_async_function(
-        foo, 'Entering foo(.)*\nExiting foo')
+        foo, 'Entering .*foo.*\nExiting .*foo.*')
 
   def test_logging_provenance(self):
 
-    @executor_utils.log_async('foo', 'Test')
+    @executor_utils.log_async
     async def foo():
       return await asyncio.sleep(1)
 
-    self._test_debug_logging_with_async_function(foo, 'in Test')
+    self._test_debug_logging_with_async_function(foo, 'DebugLoggingTest')
 
   def test_logging_timing_captured(self):
 
-    @executor_utils.log_async('foo', 'Test')
+    @executor_utils.log_async
     async def foo():
       return await asyncio.sleep(1)
 
@@ -86,7 +86,7 @@ class DebugLoggingTest(absltest.TestCase):
 
   def test_logging_timing_captures_value_around_async_call(self):
 
-    @executor_utils.log_async('foo', 'Test')
+    @executor_utils.log_async
     async def foo():
       return await asyncio.sleep(1)
 
@@ -94,7 +94,7 @@ class DebugLoggingTest(absltest.TestCase):
 
   def test_logging_non_blocking(self):
 
-    @executor_utils.log_async('foo', 'Test')
+    @executor_utils.log_async
     async def foo():
       return await asyncio.gather(
           asyncio.sleep(1), asyncio.sleep(1), asyncio.sleep(1))
