@@ -82,6 +82,7 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
+  @executor_utils.log_async
   async def compute(self):
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
@@ -195,6 +196,7 @@ class FederatedExecutor(executor_base.Executor):
               'Unsupported cardinality for placement "{}": {}.'.format(
                   pl, pl_cardinality))
 
+  @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
@@ -308,6 +310,7 @@ class FederatedExecutor(executor_base.Executor):
           return FederatedExecutorValue(
               await child[0].create_value(value, type_spec), type_spec)
 
+  @executor_utils.log_async
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, FederatedExecutorValue)
     if arg is not None:
@@ -348,6 +351,7 @@ class FederatedExecutor(executor_base.Executor):
       raise ValueError('Calling objects of type {} is unsupported.'.format(
           py_typecheck.type_string(type(comp.internal_representation))))
 
+  @executor_utils.log_async
   async def create_tuple(self, elements):
     elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
     for _, v in elem:
@@ -360,6 +364,7 @@ class FederatedExecutor(executor_base.Executor):
             (k, v.type_signature) if k else v.type_signature for k, v in elem
         ]))
 
+  @executor_utils.log_async
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, FederatedExecutorValue)
     py_typecheck.check_type(source.type_signature,
@@ -395,6 +400,7 @@ class FederatedExecutor(executor_base.Executor):
                        'embedded in target executor, received {}'.format(
                            source.internal_representation))
 
+  @executor_utils.log_async
   async def _place(self, arg, placement):
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
     children = self._target_executors[placement]
@@ -405,6 +411,7 @@ class FederatedExecutor(executor_base.Executor):
         computation_types.FederatedType(
             arg.type_signature, placement, all_equal=True))
 
+  @executor_utils.log_async
   async def _map(self, arg, all_equal=None):
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
@@ -435,6 +442,7 @@ class FederatedExecutor(executor_base.Executor):
         computation_types.FederatedType(
             fn_type.result, val_type.placement, all_equal=all_equal))
 
+  @executor_utils.log_async
   async def _zip(self, arg, placement, all_equal):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
@@ -465,18 +473,23 @@ class FederatedExecutor(executor_base.Executor):
             placement,
             all_equal=all_equal))
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_value_at_server(self, arg):
     return await self._place(arg, placement_literals.SERVER)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_value_at_clients(self, arg):
     return await self._place(arg, placement_literals.CLIENTS)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_apply(self, arg):
     return await self._map(arg)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_map(self, arg):
     return await self._map(arg, all_equal=False)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_broadcast(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
     py_typecheck.check_type(arg.internal_representation, list)
@@ -492,12 +505,15 @@ class FederatedExecutor(executor_base.Executor):
             for c in self._target_executors[placement_literals.CLIENTS]
         ]), type_factory.at_clients(arg.type_signature.member, all_equal=True))
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_zip_at_server(self, arg):
     return await self._zip(arg, placement_literals.SERVER, all_equal=True)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_zip_at_clients(self, arg):
     return await self._zip(arg, placement_literals.CLIENTS, all_equal=False)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_reduce(self, arg):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
@@ -540,6 +556,7 @@ class FederatedExecutor(executor_base.Executor):
                                       placement_literals.SERVER,
                                       all_equal=True))
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_aggregate(self, arg):
     val_type, zero_type, accumulate_type, _, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
@@ -580,6 +597,7 @@ class FederatedExecutor(executor_base.Executor):
             computation_types.NamedTupleType(
                 [report_type, pre_report.type_signature])))
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_sum(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
     zero, plus = tuple(await
@@ -600,6 +618,7 @@ class FederatedExecutor(executor_base.Executor):
                 [arg.type_signature, zero.type_signature,
                  plus.type_signature])))
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_mean(self, arg):
     arg_sum = await self._compute_intrinsic_federated_sum(arg)
     member_type = arg_sum.type_signature.member
@@ -619,9 +638,11 @@ class FederatedExecutor(executor_base.Executor):
     result = await child.create_call(multiply, multiply_arg)
     return FederatedExecutorValue([result], arg_sum.type_signature)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
     return await executor_utils.compute_federated_weighted_mean(self, arg)
 
+  @executor_utils.log_async
   async def _compute_intrinsic_federated_collect(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
     type_utils.check_federated_type(

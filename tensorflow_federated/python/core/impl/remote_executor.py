@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_service_utils
+from tensorflow_federated.python.core.impl import executor_utils
 from tensorflow_federated.python.core.impl import executor_value_base
 
 _STREAM_CLOSE_WAIT_SECONDS = 10
@@ -58,6 +59,7 @@ class RemoteValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
+  @executor_utils.log_async
   async def compute(self):
     return await self._executor._compute(self._value_ref)  # pylint: disable=protected-access
 
@@ -118,6 +120,7 @@ class _BidiStream:
     response_thread.daemon = True
     response_thread.start()
 
+  @executor_utils.log_async
   async def send_request(self, request):
     """Send a request on the bidi stream."""
     py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
@@ -183,6 +186,7 @@ class RemoteExecutor(executor_base.Executor):
       self._bidi_stream.close()
       del self._bidi_stream
 
+  @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
     value_proto, type_spec = (
         executor_service_utils.serialize_value(value, type_spec))
@@ -199,6 +203,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateValueResponse)
     return RemoteValue(response.value_ref, type_spec, self)
 
+  @executor_utils.log_async
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, RemoteValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
@@ -219,6 +224,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateCallResponse)
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
 
+  @executor_utils.log_async
   async def create_tuple(self, elements):
     elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
     proto_elem = []
@@ -242,6 +248,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateTupleResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
+  @executor_utils.log_async
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, RemoteValue)
     py_typecheck.check_type(source.type_signature,
@@ -267,6 +274,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
+  @executor_utils.log_async
   async def _compute(self, value_ref):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(value_ref=value_ref)

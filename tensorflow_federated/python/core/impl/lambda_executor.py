@@ -22,6 +22,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
+from tensorflow_federated.python.core.impl import executor_utils
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
@@ -151,6 +152,7 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
+  @executor_utils.log_async
   async def compute(self):
     if isinstance(self._type_signature, computation_types.FunctionType):
       raise TypeError(
@@ -201,6 +203,7 @@ class LambdaExecutor(executor_base.Executor):
     py_typecheck.check_type(target_executor, executor_base.Executor)
     self._target_executor = target_executor
 
+  @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, computation_impl.ComputationImpl):
@@ -224,9 +227,11 @@ class LambdaExecutor(executor_base.Executor):
       return LambdaExecutorValue(await self._target_executor.create_value(
           value, type_spec))
 
+  @executor_utils.log_async
   async def create_tuple(self, elements):
     return LambdaExecutorValue(anonymous_tuple.from_container(elements))
 
+  @executor_utils.log_async
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, LambdaExecutorValue)
     py_typecheck.check_type(source.type_signature,
@@ -249,6 +254,7 @@ class LambdaExecutor(executor_base.Executor):
       else:
         raise ValueError('Either index or name must be present for selection.')
 
+  @executor_utils.log_async
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, LambdaExecutorValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
@@ -294,6 +300,7 @@ class LambdaExecutor(executor_base.Executor):
       else:
         return eval_result
 
+  @executor_utils.log_async
   async def _delegate(self, value):
     """Delegates the entirety of `value` to the target executor.
 
@@ -336,6 +343,7 @@ class LambdaExecutor(executor_base.Executor):
       return await self._target_executor.create_value(value_repr,
                                                       value.type_signature)
 
+  @executor_utils.log_async
   async def _evaluate(self, comp, scope=None):
     """Evaluates or partially evaluates `comp` in `scope`.
 
