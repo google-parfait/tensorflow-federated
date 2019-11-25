@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import collections
 
+import attr
 import six
 from six.moves import zip
 import tensorflow as tf
@@ -32,11 +33,8 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class ClientOutput(
-    collections.namedtuple('ClientOutput', [
-        'weights_delta', 'weights_delta_weight', 'model_output',
-        'optimizer_output'
-    ])):
+@attr.s(cmp=False, frozen=True)
+class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
   Fields:
@@ -50,7 +48,10 @@ class ClientOutput(
   -   `optimizer_output`: additional metrics or other outputs defined by the
       optimizer.
   """
-  __slots__ = ()
+  weights_delta = attr.ib()
+  weights_delta_weight = attr.ib()
+  model_output = attr.ib()
+  optimizer_output = attr.ib()
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -134,20 +135,21 @@ def _build_server_optimizer(model, optimizer):
   return (apply_delta, optimizer_vars)
 
 
-# Represents the state of the server carried between rounds.
-ServerState = collections.namedtuple(
-    'ServerState',
-    [
-        # A ModelWeights structure, containing Tensors or Variables.
-        'model',
-        # A list of Tensors or Variables, in the order
-        # returned by optimizer.variables()
-        'optimizer_state',
-        # State (possibly empty) of the delta_aggregate_fn.
-        'delta_aggregate_state',
-        # State (possibly empty) of the model_broadcast_fn.
-        'model_broadcast_state'
-    ])
+@attr.s(cmp=False, frozen=True)
+class ServerState(object):
+  """Represents the state of the server carried between rounds.
+
+  Attributes:
+    model: A `ModelWeights` structure, containing Tensors or Variables.
+    optimizer_state: A list of Tensors or Variables, in the order returned by
+      `optimizer.variables()`
+    delta_aggregate_state: State (possibly empty) of the delta_aggregate_fn.
+    model_broadcast_state: State (possibly empty) of the model_broadcast_fn.
+  """
+  model = attr.ib()
+  optimizer_state = attr.ib()
+  delta_aggregate_state = attr.ib()
+  model_broadcast_state = attr.ib()
 
 
 def state_with_new_model_weights(server_state, trainable_weights,
