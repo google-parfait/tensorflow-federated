@@ -2137,7 +2137,6 @@ class CreateFederatedZipTest(absltest.TestCase):
                      '<a=<b=<c=int32>@SERVER>>')
 
     comp = building_block_factory.create_federated_zip(value)
-    print(comp.formatted_representation())
 
     self.assertEqual(str(comp.type_signature), '<a=<b=<c=int32>>>@SERVER')
     # pyformat: disable
