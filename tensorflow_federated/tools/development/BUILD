@@ -30,6 +30,31 @@ filegroup(
     tags = ["ignore_srcs"],
 )
 
+py_binary(
+    name = "strip_skipped_cells",
+    srcs = ["strip_skipped_cells.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [],
+)
+
+py_library(
+    name = "strip_skipped_cells_test_lib",
+    testonly = True,
+    srcs = ["strip_skipped_cells.py"],
+    srcs_version = "PY3",
+    deps = [],
+)
+
+py_test(
+    name = "strip_skipped_cells_test",
+    size = "small",
+    srcs = ["strip_skipped_cells_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":strip_skipped_cells_test_lib"],
+)
+
 sh_binary(
     name = "publish_pip_package",
     srcs = ["publish_pip_package.sh"],
