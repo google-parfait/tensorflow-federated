@@ -18,8 +18,8 @@ import abc
 import logging
 import os.path
 import re
-
 from typing import Any, List, Text, Tuple
+
 import tensorflow as tf
 
 

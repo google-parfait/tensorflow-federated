@@ -20,8 +20,8 @@ from __future__ import print_function
 
 import abc
 import collections
-
 from typing import Any
+
 import attr
 import six
 import tensorflow as tf
