@@ -1,3 +1,29 @@
+# Release 0.11.0
+
+## Major Features and Improvements
+
+*   Python 2 support is now deprecated and will be removed in a future release.
+*   `federated_map` now works with both `tff.SERVER` and `tff.CLIENT`
+    placements.
+*   `federated_zip` received significant performance improvements and now works
+    recursively.
+*   Added retry logic to gRPC calls in the execution stack.
+
+## Breaking Changes
+
+*   `collections.OrderedDict` is now required in many places rather than
+    standard Python dictionaries.
+
+## Bug Fixes
+
+*   Fixed computation of the number of examples when Keras is using multiple
+    inputs.
+*   Fixed an assumption that `tff.framework.Tuple` is returned from
+    `IterativeProcess.next`.
+*   Fixed argument packing in polymorphic invocations on the new executor API.
+*   Fixed support for `dir()` in `ValueImpl`.
+*   Fixed a number of issues in the Colab / Jupyter notebook tutorials.
+
 # Release 0.10.1
 
 ## Bug Fixes
