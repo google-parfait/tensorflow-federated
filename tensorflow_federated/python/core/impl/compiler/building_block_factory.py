@@ -1096,8 +1096,8 @@ def create_federated_value(value, placement):
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_zip(value):
-  r"""Creates a called federated zip.
+def _create_flat_federated_zip(value):
+  r"""Private function to create a called federated zip for a non-nested type.
 
             Call
            /    \
@@ -1145,6 +1145,106 @@ def create_federated_zip(value):
     append_fn = _create_fn_to_append_chain_zipped_values(value)
     unnamed_zip = map_fn(append_fn, zipped_args)
     return create_named_federated_tuple(unnamed_zip, names_to_add)
+
+
+def create_federated_zip(value):
+  r"""Creates a called federated zip.
+
+  This function accepts a value whose type signature is a (potentially) nested
+  tuple structure of federated values all with the same placement, and uses
+  one of the federated_zip intrinsics (at client or at server) to promote the
+  placement to the highest level. E.g., A value of type '<A@S, <<B@S>, C@S>>'
+  would be mapped to a value of type '<A, <<B>, C>>@S'.
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` that may contain other nested
+      `computation_types.NamedTupleTypes` bottoming out in at least one element
+      of type `computation_Types.FederatedType`. These federated types must be
+      at the same placement.
+
+  Returns:
+    A `building_blocks.Call` whose type signature is now a federated
+      `computation_types.NamedTupleType`, placed at the same placement as the
+      leaves of `value`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+    ValueError: If `value` does not contain any elements.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(value.type_signature,
+                          computation_types.NamedTupleType)
+
+  # If the type signature is flat, just call _create_flat_federated_zip.
+  elements = anonymous_tuple.to_elements(value.type_signature)
+  if all([(isinstance(type_sig, computation_types.FederatedType))
+          for (_, type_sig) in elements]):
+    return _create_flat_federated_zip(value)
+
+  all_placements = set()
+  nested_selections = []
+
+  def _make_nested_selections(nested):
+    """Generates list of selections from nested representation."""
+    if isinstance(nested.type_signature, computation_types.FederatedType):
+      all_placements.add(nested.type_signature.placement)
+      nested_selections.append(nested)
+    elif isinstance(nested.type_signature, computation_types.NamedTupleType):
+      for i in range(len(nested.type_signature)):
+        inner_selection = building_blocks.Selection(nested, index=i)
+        _make_nested_selections(inner_selection)
+    else:
+      raise TypeError('Only type signatures consisting of structures of '
+                      'NamedTupleType bottoming out in FederatedType can be '
+                      'used in federated_zip.')
+
+  _make_nested_selections(value)
+
+  if not all_placements:
+    raise TypeError('federated_zip is only supported on nested tuples '
+                    'containing at least one FederatedType.')
+  elif len(all_placements) > 1:
+    raise TypeError('federated_zip requires all nested FederatedTypes to '
+                    'have the same placement.')
+
+  placement = all_placements.pop()
+
+  flat = building_blocks.Tuple(nested_selections)
+  flat_zipped = _create_flat_federated_zip(flat)
+
+  # Every building block under the lambda is being constructed below, so it is
+  # safe to have a fixed static name for the reference-- we don't need to worry
+  # about namespace issues as usual.
+  ref = building_blocks.Reference('x', flat_zipped.type_signature.member)
+
+  def _make_flat_selections(type_signature, index):
+    """Generates nested struct of selections from flattened representation."""
+    if isinstance(type_signature, computation_types.FederatedType):
+      return building_blocks.Selection(ref, index=index), index + 1
+    elif isinstance(type_signature, computation_types.NamedTupleType):
+      elements = anonymous_tuple.to_elements(type_signature)
+      return_tuple = []
+      for name, element in elements:
+        selection, index = _make_flat_selections(element, index)
+        return_tuple.append((name, selection))
+      return building_blocks.Tuple(return_tuple), index
+    else:
+      # This shouldn't be possible since the structure was already traversed
+      # above.
+      raise TypeError('Only type signatures consisting of structures of '
+                      'NamedTupleType bottoming out in FederatedType can be '
+                      'used in federated_zip.')
+
+  repacked, _ = _make_flat_selections(value.type_signature, 0)
+  lam = building_blocks.Lambda('x', ref.type_signature, repacked)
+
+  if placement == placement_literals.CLIENTS:
+    return create_federated_map(lam, flat_zipped)
+  elif placement == placement_literals.SERVER:
+    return create_federated_apply(lam, flat_zipped)
+  else:
+    raise TypeError('Unsupported placement {}.'.format(placement))
 
 
 def create_generic_constant(type_spec, scalar_value):

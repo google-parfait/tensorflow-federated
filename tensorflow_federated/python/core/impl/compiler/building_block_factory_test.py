@@ -2007,6 +2007,160 @@ class CreateFederatedZipTest(absltest.TestCase):
     # pyformat: enable
     self.assertEqual(str(comp.type_signature), '<int32,float32,bool>@SERVER')
 
+  def test_flat_raises_type_error_with_inconsistent_placement(self):
+    client_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    server_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER, all_equal=True)
+    value_type = computation_types.NamedTupleType([('a', client_type),
+                                                   ('b', server_type)])
+    value = building_blocks.Data('v', value_type)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '<a=int32@CLIENTS,b=int32@SERVER>')
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_zip(value)
+
+  def test_nested_raises_type_error_with_inconsistent_placement(self):
+    client_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    server_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER, all_equal=True)
+    tuple_type = computation_types.NamedTupleType([('c', server_type),
+                                                   ('d', server_type)])
+    value_type = computation_types.NamedTupleType([('a', client_type),
+                                                   ('b', tuple_type)])
+    value = building_blocks.Data('v', value_type)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '<a=int32@CLIENTS,b=<c=int32@SERVER,d=int32@SERVER>>')
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_zip(value)
+
+  def test_flat_raises_type_error_with_unplaced(self):
+    client_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    value_type = computation_types.NamedTupleType([('a', client_type),
+                                                   ('b', tf.int32)])
+    value = building_blocks.Data('v', value_type)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '<a=int32@CLIENTS,b=int32>')
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_zip(value)
+
+  def test_nested_raises_type_error_with_unplaced(self):
+    client_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    tuple_type = computation_types.NamedTupleType([('c', tf.int32),
+                                                   ('d', tf.int32)])
+    value_type = computation_types.NamedTupleType([('a', client_type),
+                                                   ('b', tuple_type)])
+    value = building_blocks.Data('v', value_type)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '<a=int32@CLIENTS,b=<c=int32,d=int32>>')
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_zip(value)
+
+  def test_nested_returns_federated_zip_at_clients(self):
+    int_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    tuple_type = computation_types.NamedTupleType([('c', int_type),
+                                                   ('d', int_type)])
+    value_type = computation_types.NamedTupleType([('a', int_type),
+                                                   ('b', tuple_type)])
+    value = building_blocks.Data('v', value_type)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '<a=int32@CLIENTS,b=<c=int32@CLIENTS,d=int32@CLIENTS>>')
+
+    comp = building_block_factory.create_federated_zip(value)
+
+    self.assertEqual(
+        str(comp.type_signature), '{<a=int32,b=<c=int32,d=int32>>}@CLIENTS')
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        'federated_map(<\n'
+        '  (x -> <\n'
+        '    a=x[0],\n'
+        '    b=<\n'
+        '      c=x[1],\n'
+        '      d=x[2]\n'
+        '    >\n'
+        '  >),\n'
+        '  federated_map(<\n'
+        '    (x -> <\n'
+        '      x[0],\n'
+        '      x[1],\n'
+        '      x[2]\n'
+        '    >),\n'
+        '    federated_map(<\n'
+        '      (arg -> (let\n'
+        '        comps=<\n'
+        '          (arg -> arg)(arg[0]),\n'
+        '          arg[1]\n'
+        '        >\n'
+        '       in <\n'
+        '        comps[0][0],\n'
+        '        comps[0][1],\n'
+        '        comps[1]\n'
+        '      >)),\n'
+        '      (let\n'
+        '        value=<\n'
+        '          v[0],\n'
+        '          v[1][0],\n'
+        '          v[1][1]\n'
+        '        >\n'
+        '       in federated_zip_at_clients(<\n'
+        '        federated_zip_at_clients(<\n'
+        '          value[0],\n'
+        '          value[1]\n'
+        '        >),\n'
+        '        value[2]\n'
+        '      >))\n'
+        '    >)\n'
+        '  >)\n'
+        '>)'
+    )
+    # pyformat: enable
+
+  def test_nested_returns_federated_zip_at_server(self):
+    value_type = computation_types.NamedTupleType([
+        ('a',
+         computation_types.NamedTupleType([
+             ('b',
+              computation_types.FederatedType(
+                  computation_types.NamedTupleType([('c', tf.int32)]),
+                  placements.SERVER,
+                  all_equal=True))
+         ]))
+    ])
+    value = building_blocks.Data('v', value_type)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '<a=<b=<c=int32>@SERVER>>')
+
+    comp = building_block_factory.create_federated_zip(value)
+    print(comp.formatted_representation())
+
+    self.assertEqual(str(comp.type_signature), '<a=<b=<c=int32>>>@SERVER')
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        'federated_apply(<\n'
+        '  (x -> <\n'
+        '    a=<\n'
+        '      b=x[0]\n'
+        '    >\n'
+        '  >),\n'
+        '  federated_apply(<\n'
+        '    (arg -> <\n'
+        '      arg\n'
+        '    >),\n'
+        '    <\n'
+        '      v[0][0]\n'
+        '    >[0]\n'
+        '  >)\n'
+        '>)'
+    )
+    # pyformat: enable
+
 
 class CreateGenericConstantTest(absltest.TestCase):
 
