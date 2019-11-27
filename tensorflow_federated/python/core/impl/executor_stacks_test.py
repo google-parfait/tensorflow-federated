@@ -22,8 +22,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
-from tensorflow_federated.python.core.impl import set_default_executor
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
 class ExecutorStacksTest(absltest.TestCase):

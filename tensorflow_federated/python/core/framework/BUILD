@@ -30,8 +30,8 @@ py_library(
             "//tensorflow_federated/python/core/impl:federated_executor",
             "//tensorflow_federated/python/core/impl:lambda_executor",
             "//tensorflow_federated/python/core/impl:remote_executor",
-            "//tensorflow_federated/python/core/impl:set_default_executor",
             "//tensorflow_federated/python/core/impl:transforming_executor",
+            "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
         ],
     }),
 )

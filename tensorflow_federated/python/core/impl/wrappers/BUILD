@@ -84,3 +84,36 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
     ],
 )
+
+py_library(
+    name = "set_default_executor",
+    srcs = ["set_default_executor.py"],
+    srcs_version = "PY3",
+    # TODO(b/143772942): Explicitly setting visibility is temporary and can be
+    # removed once  all the appropriate modules have been moved out of the
+    # `impl` package.
+    visibility = default_visibility + [
+        "//tensorflow_federated/python/core/impl:__pkg__",
+    ],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:context_stack_impl",
+        "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl:executor_base",
+    ],
+)
+
+py_test(
+    name = "set_default_executor_test",
+    size = "small",
+    srcs = ["set_default_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":set_default_executor",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:context_stack_impl",
+        "//tensorflow_federated/python/core/impl:eager_executor",
+    ],
+)

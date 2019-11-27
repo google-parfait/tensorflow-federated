@@ -28,8 +28,8 @@ from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import set_default_executor
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
 def _create_bottom_stack():

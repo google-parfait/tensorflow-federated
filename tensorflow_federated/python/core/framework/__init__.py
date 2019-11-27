@@ -79,8 +79,8 @@ if six.PY3:
   from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
   from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
   from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
-  from tensorflow_federated.python.core.impl.set_default_executor import set_default_executor
   from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
+  from tensorflow_federated.python.core.impl.wrappers.set_default_executor import set_default_executor
   # pylint: enable=g-import-not-at-top
 
 # Used by doc generation script.

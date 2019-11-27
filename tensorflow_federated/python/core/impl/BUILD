@@ -176,12 +176,12 @@ py_test(
         ":eager_executor",
         ":federated_executor",
         ":lambda_executor",
-        ":set_default_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -462,11 +462,11 @@ py_test(
     deps = [
         ":executor_stacks",
         ":executor_test_utils",
-        ":set_default_executor",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -478,11 +478,11 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_value_base",
-        ":set_default_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
         "//tensorflow_federated/python/core/utils:tf_computation_utils",
     ],
 )
@@ -847,40 +847,13 @@ py_test(
         ":executor_test_utils",
         ":lambda_executor",
         ":remote_executor",
-        ":set_default_executor",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
         "@com_google_protobuf//:protobuf_python",
-    ],
-)
-
-py_library(
-    name = "set_default_executor",
-    srcs = ["set_default_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        ":execution_context",
-        ":executor_base",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-    ],
-)
-
-py_test(
-    name = "set_default_executor_test",
-    size = "small",
-    srcs = ["set_default_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        ":eager_executor",
-        ":set_default_executor",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 

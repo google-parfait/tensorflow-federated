@@ -121,7 +121,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:executor_stacks",
-        "//tensorflow_federated/python/core/impl:set_default_executor",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 

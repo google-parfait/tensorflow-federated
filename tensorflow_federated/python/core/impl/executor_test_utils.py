@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
-from tensorflow_federated.python.core.impl import set_default_executor
+from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 from tensorflow_federated.python.core.utils import tf_computation_utils
 
 _mnist_model_type = computation_types.NamedTupleType([
