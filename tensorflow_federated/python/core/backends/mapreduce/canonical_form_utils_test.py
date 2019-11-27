@@ -51,7 +51,7 @@ class GetIterativeProcessForCanonicalFormTest(absltest.TestCase):
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
 
-class GetCanonicalFormForIteraticeProcessTest(absltest.TestCase):
+class GetCanonicalFormForIterativeProcessTest(absltest.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
