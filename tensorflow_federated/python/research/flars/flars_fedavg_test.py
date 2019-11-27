@@ -133,8 +133,8 @@ class FlarsFedAvgTest(tf.test.TestCase):
     loss_list = []
     for _ in range(3):
       keras_evaluate(server_state)
-      server_state, loss = it_process.next(server_state, federated_data)
-      loss_list.append(loss)
+      server_state, output = it_process.next(server_state, federated_data)
+      loss_list.append(output.loss)
     keras_evaluate(server_state)
 
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])

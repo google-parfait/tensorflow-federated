@@ -154,7 +154,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
     self.assertSequenceEqual(
-        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0, 0.0])
 
     batch = {
         'x':
@@ -207,7 +207,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
     self.assertSequenceEqual(
-        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0, 0.0])
 
     batch = {
         'x':
@@ -230,6 +230,8 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [2 * num_iterations])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2 * num_iterations)
+    self.assertAllGreater(metrics['training_time_sec'],
+                          [0] * len(metrics['training_time_sec']))
 
   def test_keras_model_using_embeddings(self):
     model = model_examples.build_embedding_keras_model()
