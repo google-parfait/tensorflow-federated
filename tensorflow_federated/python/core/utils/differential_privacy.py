@@ -33,6 +33,10 @@ from tensorflow_federated.python.core.utils import computation_utils
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
 # in this library.
 
+# Note if the functions here change, the documentation at
+# https://github.com/tensorflow/federated/blob/master/docs/tff_for_research.md
+# should be updated.
+
 
 def build_dp_query(clip,
                    noise_multiplier,

@@ -26,7 +26,7 @@ types of logic.
     individual `tf.function`s from 1. by wrapping them as `tff.tf_computation`s
     and then orchestrating them using abstractions like
     `tff.federated_broadcast` and `tff.federated_mean` inside a
-    `tff.federated_comutation`. For example, this
+    `tff.federated_computation`. See, for example, this
     [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L272).
 
 1.  An outer driver script that simulates the control logic of a production FL
@@ -119,11 +119,27 @@ of the experiment to use different behaviors across rounds.
 
 ### Differential privacy {#dp}
 
-<!-- TODO(b/144509140): Add content describing full details of DP in TFF. I
-(saugenst@) just added a one-liner below pointing to where we use DP in the TFF
-GAN code, as an additional example. -->
+TFF is interoperable with the
+[TensorFlow Privacy](https://github.com/tensorflow/privacy) library to enable
+research in new algorithms for federated training of models with differential
+privacy. For an example of training with DP using
+[the basic DP-FedAvg algorithm](https://arxiv.org/abs/1710.06963) and
+[extensions](https://arxiv.org/abs/1812.06210), see
+[this experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/baselines/emnist/run_dp_experiment.py).
 
-Federated GANs (described [below](#gans)) are an example of a TFF project
+If you want to implement a custom DP algorithm and apply it to the aggregate
+updates of federated averaging, you can:
+
+1.  Implement a new DP mean algorithm as a subclass of
+    [`tensorflow_privacy.DPQuery`](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/dp_query/dp_query.py#L54),
+1.  construct your new `DPQuery` similarly to the way standard `DPQueries` are
+    constructed
+    [here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/utils/differential_privacy.py#L37-L134),
+1.  and pass your query instance into `tff.utils.build_dp_aggregate()` similarly
+    to
+    [`run_dp_experiment`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/baselines/emnist/run_dp_experiment.py#L158).
+
+Federated GANs (described [below](#gans)) are another example of a TFF project
 implementing user-level differential privacy (e.g.,
 [here in code](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/gans/tff_gans.py#L293)).
 
