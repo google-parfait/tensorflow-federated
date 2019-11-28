@@ -459,6 +459,8 @@ class _KerasModel(model_lib.Model):
     else:
       batch_loss = None
 
+    # TODO(b/145308951): Follow up here to pass through sample_weight in the
+    # case that we have a model supporting masking.
     for metric in self.get_metrics():
       metric.update_state(y_true=y_true, y_pred=predictions)
     return model_lib.BatchOutput(
