@@ -51,7 +51,7 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/baselines/emnist:models",
         "//tensorflow_federated/python/research/simple_fedavg",
-        "//tensorflow_federated/python/research/utils:checkpoint_utils",
+        "//tensorflow_federated/python/research/utils:checkpoint_manager",
         "//tensorflow_federated/python/research/utils:utils_impl",
     ],
 )
