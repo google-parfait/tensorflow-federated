@@ -15,6 +15,6 @@ retrying~=1.3.3
 six~=1.10
 tensorflow-model-optimization~=0.1.3
 tensorflow-privacy~=0.2.0
-tf-nightly
-tfa-nightly
+tf-nightly==2.1.0.dev20191126
+tfa-nightly==0.7.0.dev20191126
 typing~=3.7.0
