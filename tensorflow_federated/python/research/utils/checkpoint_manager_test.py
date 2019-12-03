@@ -41,6 +41,22 @@ def _create_dummy_state():
   ])
 
 
+class FileCheckpointManagerLoadLatestCheckpointOrDefaultTest(tf.test.TestCase):
+
+  def test_returns_default_and_zero_with_no_checkpoints_and_also_saves(self):
+    temp_dir = self.get_temp_dir()
+    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
+    default = _create_dummy_structure()
+
+    state, round_num = checkpoint_mngr.load_latest_checkpoint_or_default(
+        default)
+
+    self.assertEqual(state, default)
+    self.assertEqual(round_num, 0)
+
+    self.assertEqual(set(os.listdir(temp_dir)), set(['ckpt_0']))
+
+
 class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
 
   def test_returns_none_and_zero_with_no_checkpoints(self):

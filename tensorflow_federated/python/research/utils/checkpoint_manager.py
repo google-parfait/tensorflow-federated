@@ -37,6 +37,24 @@ class CheckpointManager(metaclass=abc.ABCMeta):
   total number of checkpoints that are kept.
   """
 
+  def load_latest_checkpoint_or_default(self, default: Any) -> Tuple[Any, int]:
+    """Returns latest checkpoint; returns `default` if no checkpoints exist.
+
+    Saves `default` as the 0th checkpoint if no checkpoints exist.
+
+    Args:
+      default: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template. This structure
+        will be saved as the checkpoint for round number 0 and returned if there
+        are no pre-existing saved checkpoints.
+    """
+    state, round_num = self.load_latest_checkpoint(default)
+    if state is None:
+      state = default
+      round_num = 0
+      self.save_checkpoint(state, round_num)
+    return state, round_num
+
   @abc.abstractmethod
   def load_latest_checkpoint(self, structure: Any) -> Tuple[Any, int]:
     """Returns the latest checkpointed state.
