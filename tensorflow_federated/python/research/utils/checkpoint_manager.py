@@ -85,7 +85,8 @@ class FileCheckpointManager(CheckpointManager):
     self._keep_total = keep_total
     self._keep_first = keep_first
     path = os.path.join(root_dir, prefix)
-    self._round_num_expression = re.compile(r'{}([0-9]+)$'.format(path))
+    self._round_num_expression = re.compile(r'{}([0-9]+)$'.format(
+        re.escape(path)))
 
   def load_latest_checkpoint(self, structure: Any) -> Tuple[Any, int]:
     """Returns the latest checkpointed state.
