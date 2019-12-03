@@ -156,6 +156,7 @@ class ExecutionContext(context_base.Context):
 
   @retrying.retry(
       retry_on_exception=_is_retryable_error,
+      wait_exponential_max=300000,  # in milliseconds
       wait_exponential_multiplier=1000,  # in milliseconds
       wait_jitter_max=1000  # in milliseconds
   )
