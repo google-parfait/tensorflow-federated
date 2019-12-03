@@ -16,7 +16,6 @@
 
 import collections
 import functools
-import logging
 import os
 import pprint
 import random
@@ -25,6 +24,7 @@ import time
 
 from absl import app
 from absl import flags
+from absl import logging
 import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff

@@ -14,9 +14,9 @@
 # limitations under the License.
 """TFF training loops."""
 
-import logging
 import time
 
+from absl import logging
 import tensorflow_federated as tff
 
 

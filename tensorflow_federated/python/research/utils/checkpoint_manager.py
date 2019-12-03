@@ -15,11 +15,11 @@
 """Utilities for saving and loading experiments."""
 
 import abc
-import logging
 import os.path
 import re
 from typing import Any, List, Text, Tuple
 
+from absl import logging
 import tensorflow as tf
 
 

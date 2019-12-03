@@ -26,11 +26,12 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import logging
-import numpy as np
 
+from absl import logging
+import numpy as np
 import six
 import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 
 

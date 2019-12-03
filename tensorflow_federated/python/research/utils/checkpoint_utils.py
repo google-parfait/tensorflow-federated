@@ -14,10 +14,10 @@
 # limitations under the License.
 """Save or load a nested structure."""
 
-import logging
 import os.path
 import re
 
+from absl import logging
 import tensorflow as tf
 
 

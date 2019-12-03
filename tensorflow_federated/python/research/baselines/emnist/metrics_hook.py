@@ -15,10 +15,10 @@
 """A callback for evaluation of EMNIST models."""
 
 import collections
-import logging
 import os.path
 import sys
 
+from absl import logging
 import attr
 import pandas as pd
 import tensorflow as tf

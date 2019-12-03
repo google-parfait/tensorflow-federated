@@ -16,10 +16,10 @@
 
 import asyncio
 import itertools
-import logging
 import queue
 import threading
 
+from absl import logging
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
