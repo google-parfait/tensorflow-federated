@@ -19,20 +19,26 @@ import tensorflow as tf
 import tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.utils import differential_privacy
 
 
 def wrap_aggregate_fn(dp_aggregate_fn, sample_value):
-  tff_types = tff_framework.type_from_tensors(sample_value)
+  tff_types = type_utils.type_from_tensors(sample_value)
 
-  @tff.federated_computation
+  @computations.federated_computation
   def run_initialize():
-    return tff.federated_value(dp_aggregate_fn.initialize(), tff.SERVER)
+    return intrinsics.federated_value(dp_aggregate_fn.initialize(),
+                                      placement_literals.SERVER)
 
-  @tff.federated_computation(run_initialize.type_signature.result,
-                             tff.FederatedType(tff_types, tff.CLIENTS))
+  @computations.federated_computation(run_initialize.type_signature.result,
+                                      computation_types.FederatedType(
+                                          tff_types,
+                                          placement_literals.CLIENTS))
   def run_aggregate(global_state, client_values):
     return dp_aggregate_fn(global_state, client_values)
 
@@ -162,7 +168,10 @@ class DpUtilsTest(test.TestCase):
 
     def _value_type_fn(value):
       del value
-      return [tff.TensorType(tf.float32), tff.TensorType(tf.float32)]
+      return [
+          computation_types.TensorType(tf.float32),
+          computation_types.TensorType(tf.float32),
+      ]
 
     def _from_anon_tuple_fn(record):
       return list(record)

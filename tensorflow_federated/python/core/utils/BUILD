@@ -68,8 +68,11 @@ py_test(
     deps = [
         ":differential_privacy",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api",
-        "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
     ],
 )
 
