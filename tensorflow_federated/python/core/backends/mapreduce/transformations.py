@@ -75,6 +75,7 @@ from six.moves import range
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.impl import transformations
 
 
 class CanonicalFormCompilationError(Exception):
@@ -440,24 +441,28 @@ def _get_called_intrinsics(comp, uri):
   return intrinsics
 
 
-def _are_comps_bound_exclusively_by_top_level_lambda(comp, comps):
-  """Tests if all computations in `comps` are bound exclusively by `comp`.
+def _contains_no_unbound_references(comps, excluding=None):
+  """Tests if all computations in `comps` contain no unbound references.
 
   Args:
-    comp: The `tff_framework.Lambda` to test. The names of lambda parameters and
-      block variables in `comp` must be unique.
     comps: A Python `list` of computations to test.
+    excluding: A Python `list` of strings representing the names of references
+      to exclude from the test.
 
   Returns:
-    `True` if the unbound references in each computation in `comps` are bound by
-    exclusively the parameter of `comp`, otherwise `False`.
+    `True` if there are not unbound references in any of the computations in
+    `comps` excluding those specified by `excluding`, otherwise `False`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
   py_typecheck.check_type(comps, (list, tuple, set))
-  unbound_references = tff_framework.get_map_of_unbound_references(comp)
-  names = set((comp.parameter_name,))
-  return all(names == unbound_references[e] for e in comps)
+  py_typecheck.check_type(excluding, (list, tuple, set))
+  excluding = set(excluding)
+  for comp in comps:
+    tff_framework.check_has_unique_names(comp)
+    unbound_references = tff_framework.get_map_of_unbound_references(comp)
+    names = unbound_references[comp] - excluding
+    if names:
+      return False
+  return True
 
 
 def _can_extract_intrinsic_to_top_level_lambda(comp, uri):
@@ -472,10 +477,11 @@ def _can_extract_intrinsic_to_top_level_lambda(comp, uri):
     `True` if the intrinsic can be extracted, otherwise `False`.
   """
   py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
   py_typecheck.check_type(uri, six.string_types)
+  tff_framework.check_has_unique_names(comp)
   intrinsics = _get_called_intrinsics(comp, uri)
-  return _are_comps_bound_exclusively_by_top_level_lambda(comp, intrinsics)
+  return _contains_no_unbound_references(
+      intrinsics, excluding=[comp.parameter_name])
 
 
 def _inline_block_variables_required_to_align_intrinsic(comp, uri):
@@ -504,16 +510,28 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
   py_typecheck.check_type(uri, six.string_types)
   while not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
     unbound_references = tff_framework.get_map_of_unbound_references(comp)
-    names = set()
+    variable_names = set()
     intrinsics = _get_called_intrinsics(comp, uri)
     for intrinsic in intrinsics:
-      names.update(unbound_references[intrinsic])
+      names = unbound_references[intrinsic]
+      names.discard(comp.parameter_name)
+      variable_names.update(names)
+    if not variable_names:
+      raise transformations.TransformationError(
+          'Inlining `Block` variables has failed. Expected to find unbound '
+          'references for called `Intrisic`s matching the URI: \'{}\', but '
+          'none were found in the AST: \n{}'.format(
+              uri, comp.formatted_representation()))
     comp, modified = tff_framework.inline_block_locals(
-        comp, variable_names=names)
+        comp, variable_names=variable_names)
     if modified:
       comp, _ = tff_framework.uniquify_reference_names(comp)
     else:
-      raise ValueError('b/141617218')
+      raise transformations.TransformationError(
+          'Inlining `Block` variables has failed, this will result in an '
+          'infinite loop. Expected to modify the AST by inlining the variable '
+          'names: \'{}\', but no transformations to the AST: \n{}'.format(
+              variable_names, comp.formatted_representation()))
   return comp
 
 
@@ -538,7 +556,8 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
   intrinsics = _get_called_intrinsics(comp, uri)
   if len(intrinsics) < 2:
     return comp, False
-  if not _are_comps_bound_exclusively_by_top_level_lambda(comp, intrinsics):
+  if not _contains_no_unbound_references(
+      intrinsics, excluding=[comp.parameter_name]):
     raise ValueError(
         'Expected a computation which binds all the references in all the '
         'intrinsic with the uri: {}.'.format(uri))
@@ -588,7 +607,8 @@ def _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri):
     raise ValueError(
         'Expected a computation with exactly one intrinsic with the uri: {}, '
         'found: {}.'.format(uri, length))
-  if not _are_comps_bound_exclusively_by_top_level_lambda(comp, intrinsics):
+  if not _contains_no_unbound_references(
+      intrinsics, excluding=[comp.parameter_name]):
     raise ValueError(
         'Expected a computation which binds all the references in the '
         'intrinsic with the uri: {}.'.format(uri))

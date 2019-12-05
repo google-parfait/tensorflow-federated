@@ -21,13 +21,14 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
-from tensorflow_federated.python.core.backends.mapreduce import test_utils
+from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -36,9 +37,9 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 class TransformationsTest(absltest.TestCase):
 
   def test_example_training_comp_reduces(self):
-    training_comp = test_utils.construct_example_training_comp()
+    training_comp = mapreduce_test_utils.construct_example_training_comp()
     self.assertIsInstance(
-        test_utils.computation_to_building_block(training_comp.next),
+        mapreduce_test_utils.computation_to_building_block(training_comp.next),
         building_blocks.Lambda)
 
 
@@ -64,9 +65,10 @@ class CheckExtractionResultTest(absltest.TestCase):
 
   def test_raises_non_function_and_compiled_computation(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_temperature_sensor_example()).initialize
+        mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = (
-        test_utils.computation_to_building_block(init).argument.function)
+        mapreduce_test_utils.computation_to_building_block(
+            init).argument.function)
     integer_ref = building_blocks.Reference('x', tf.int32)
     with self.assertRaisesRegex(
         mapreduce_transformations.CanonicalFormCompilationError,
@@ -76,9 +78,10 @@ class CheckExtractionResultTest(absltest.TestCase):
 
   def test_raises_function_and_compiled_computation_of_different_type(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_temperature_sensor_example()).initialize
+        mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = (
-        test_utils.computation_to_building_block(init).argument.function)
+        mapreduce_test_utils.computation_to_building_block(
+            init).argument.function)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     with self.assertRaisesRegex(
@@ -98,9 +101,10 @@ class CheckExtractionResultTest(absltest.TestCase):
 
   def test_passes_function_and_compiled_computation_of_same_type(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_temperature_sensor_example()).initialize
+        mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = (
-        test_utils.computation_to_building_block(init).argument.function)
+        mapreduce_test_utils.computation_to_building_block(
+            init).argument.function)
     function = building_blocks.Reference('f',
                                          compiled_computation.type_signature)
     mapreduce_transformations.check_extraction_result(function,
@@ -121,9 +125,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_already_reduced_case(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_temperature_sensor_example()).initialize
+        mapreduce_test_utils.get_temperature_sensor_example()).initialize
 
-    comp = test_utils.computation_to_building_block(init)
+    comp = mapreduce_test_utils.computation_to_building_block(init)
 
     result = mapreduce_transformations.consolidate_and_extract_local_processing(
         comp)
@@ -224,9 +228,11 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_comps_with_federated_broadcast(self):
-    iterative_process = test_utils.construct_example_training_comp()
-    comp = test_utils.computation_to_building_block(iterative_process.next)
+    iterative_process = mapreduce_test_utils.construct_example_training_comp()
+    comp = mapreduce_test_utils.computation_to_building_block(
+        iterative_process.next)
     uri = intrinsic_defs.FEDERATED_BROADCAST.uri
+
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsic(
         comp, uri)
 
@@ -243,9 +249,39 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
   def test_returns_comps_with_federated_aggregate(self):
-    iterative_process = test_utils.construct_example_training_comp()
-    comp = test_utils.computation_to_building_block(iterative_process.next)
+    iterative_process = mapreduce_test_utils.construct_example_training_comp()
+    comp = mapreduce_test_utils.computation_to_building_block(
+        iterative_process.next)
     uri = intrinsic_defs.FEDERATED_AGGREGATE.uri
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsic(
+        comp, uri)
+
+    def _predicate(comp):
+      return building_block_analysis.is_called_intrinsic(comp, uri)
+
+    self.assertIsInstance(comp, building_blocks.Lambda)
+    self.assertGreater(tree_analysis.count(comp, _predicate), 0)
+    self.assertIsInstance(before, building_blocks.Lambda)
+    self.assertEqual(tree_analysis.count(before, _predicate), 0)
+    self.assertEqual(before.parameter_type, comp.parameter_type)
+    self.assertIsInstance(after, building_blocks.Lambda)
+    self.assertEqual(tree_analysis.count(after, _predicate), 0)
+    self.assertEqual(after.result.type_signature, comp.result.type_signature)
+
+  def test_returns_comps_with_federated_aggregate_no_unbound_references(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    tup = building_blocks.Tuple([
+        federated_aggregate,
+        federated_aggregate,
+    ])
+    comp = building_blocks.Lambda('d', tf.int32, tup)
+
+    uri = intrinsic_defs.FEDERATED_AGGREGATE.uri
+
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsic(
         comp, uri)
 

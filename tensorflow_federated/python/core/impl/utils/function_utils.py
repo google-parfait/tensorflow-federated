@@ -473,8 +473,9 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function "{}" with argspec {} cannot accept a value of type '
-        '{} as a single argument.'.format(fn.__name__, argspec, parameter_type))
+        'The supplied function \'{}\' with argspec \'{}\' cannot accept a '
+        'value of type \'{}\' as a single argument.'.format(
+            fn.__name__, argspec, parameter_type))
   if is_argument_tuple(parameter_type):
     arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
     unpack_possible = is_argspec_compatible_with_types(argspec, *arg_types,

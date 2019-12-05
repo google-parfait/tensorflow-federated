@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_transformations
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -680,9 +681,13 @@ def get_canonical_form_for_iterative_process(iterative_process):
   tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
 
-  before_broadcast, after_broadcast = (
-      transformations.force_align_and_split_by_intrinsic(
-          next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri))
+  if _count_broadcasts(next_comp) == 0:
+    before_broadcast, after_broadcast = (
+        _create_dummy_before_and_after_broadcast(next_comp))
+  else:
+    before_broadcast, after_broadcast = (
+        transformations.force_align_and_split_by_intrinsic(
+            next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri))
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsic(
@@ -738,3 +743,53 @@ def get_canonical_form_for_iterative_process(iterative_process):
       computation_wrapper_instances.building_block_to_computation(report),
       computation_wrapper_instances.building_block_to_computation(update))
   return cf
+
+
+def _count_broadcasts(comp):
+  """Returns the number of called federated broadcasts found in `comp`."""
+  uri = intrinsic_defs.FEDERATED_BROADCAST.uri
+  predicate = lambda x: building_block_analysis.is_called_intrinsic(x, uri)
+  return tree_analysis.count(comp, predicate)
+
+
+def _create_dummy_before_and_after_broadcast(comp):
+  """Creates a before and after broadcast computations for the given `comp`.
+
+  This function is intended to be used instead of
+  `transformations.force_align_and_split_by_intrinsic` to generate dummy before
+  and after computations, when there is no `intrinsic_defs.FEDERATED_BROADCAST`
+  present in `comp`.
+
+  Note: This function does not assert that there is no
+  `intrinsic_defs.FEDERATED_BROADCAST` present in `comp`, the caller is expected
+  to perform this check before calling this function.
+
+  Args:
+    comp: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by `transformations.force_align_and_split_by_intrinsic`.
+  """
+  name_generator = building_block_factory.unique_name_generator(comp)
+
+  parameter_name = six.next(name_generator)
+  empty_tuple = building_blocks.Tuple([])
+  federated_value_at_server = building_block_factory.create_federated_value(
+      empty_tuple, placements.SERVER)
+  before_broadcast = building_blocks.Lambda(parameter_name,
+                                            comp.type_signature.parameter,
+                                            federated_value_at_server)
+
+  parameter_name = six.next(name_generator)
+  type_signature = computation_types.FederatedType(
+      before_broadcast.type_signature.result.member, placements.CLIENTS)
+  parameter_type = computation_types.NamedTupleType(
+      [comp.type_signature.parameter, type_signature])
+  ref = building_blocks.Reference(parameter_name, parameter_type)
+  arg = building_blocks.Selection(ref, index=0)
+  call = building_blocks.Call(comp, arg)
+  after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_broadcast, after_broadcast

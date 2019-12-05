@@ -243,6 +243,32 @@ class GetCanonicalFormForIterativeProcessTest(absltest.TestCase):
         example_iterative_process)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
+  def test_returns_canonical_form_with_no_broadcast(self):
+
+    @computations.tf_computation(tf.int32)
+    @tf.function
+    def map_fn(client_val):
+      del client_val  # unused
+      return 1
+
+    @computations.federated_computation
+    def init_fn():
+      return intrinsics.federated_value(False, placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.bool, placements.SERVER),
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def next_fn(server_val, client_val):
+      del server_val  # Unused
+      result_on_clients = intrinsics.federated_map(map_fn, client_val)
+      aggregated_result = intrinsics.federated_sum(result_on_clients)
+      side_output = intrinsics.federated_value(False, placements.SERVER)
+      return side_output, aggregated_result
+
+    ip = computation_utils.IterativeProcess(init_fn, next_fn)
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
 
 INIT_TYPE = computation_types.FederatedType(tf.float32, placements.SERVER)
 S1_TYPE = INIT_TYPE

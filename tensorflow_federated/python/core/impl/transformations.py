@@ -37,6 +37,10 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
+class TransformationError(Exception):
+  """Raised when a transformation fails."""
+
+
 def _apply_transforms(comp, transforms):
   """Applies all `transforms` in a single walk of `comp`.
 
