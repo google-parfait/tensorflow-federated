@@ -101,9 +101,16 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api",
-        "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:transformations",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
     ],
 )
 
