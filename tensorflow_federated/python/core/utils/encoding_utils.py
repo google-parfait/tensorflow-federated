@@ -252,7 +252,6 @@ def _slice(encoders, nested_value, idx):
   return tree.map_structure_up_to(encoders, lambda t: t[idx], nested_value)
 
 
-# TODO(b/136219266): Remove dependency on tf.contrib.framework.nest.
 def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
                                                        encoders):
   """Utility for creating encode/decode tf_computations for broadcast."""
