@@ -24,7 +24,11 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:value_base",
+        "//tensorflow_federated/python/core/api:values",
     ],
 )
 

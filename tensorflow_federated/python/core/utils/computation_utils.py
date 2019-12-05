@@ -24,7 +24,11 @@ import attr
 import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.api import values
 
 
 def update_state(state, **kwargs):
@@ -97,7 +101,7 @@ class StatefulFn(object):
            of call.
          * ...: The result of the aggregation.
     """
-    return self._next_fn(tff.to_value(state), *args, **kwargs)
+    return self._next_fn(values.to_value(state), *args, **kwargs)
 
 
 class StatefulAggregateFn(StatefulFn):
@@ -140,23 +144,27 @@ class StatefulAggregateFn(StatefulFn):
          * `aggregate`: The result of the aggregation of `value` weighted by
          `weight`.
     """
-    py_typecheck.check_type(state, tff.Value)
-    py_typecheck.check_type(state.type_signature, tff.FederatedType)
-    if state.type_signature.placement is not tff.SERVER:
+    py_typecheck.check_type(state, value_base.Value)
+    py_typecheck.check_type(state.type_signature,
+                            computation_types.FederatedType)
+    if state.type_signature.placement is not placements.SERVER:
       raise TypeError('`state` argument must be a tff.Value placed at SERVER. '
                       'Got: {!s}'.format(state.type_signature))
 
-    py_typecheck.check_type(value, tff.Value)
-    py_typecheck.check_type(value.type_signature, tff.FederatedType)
-    if value.type_signature.placement is not tff.CLIENTS:
+    py_typecheck.check_type(value, value_base.Value)
+    py_typecheck.check_type(value.type_signature,
+                            computation_types.FederatedType)
+    if value.type_signature.placement is not placements.CLIENTS:
       raise TypeError('`value` argument must be a tff.Value placed at CLIENTS. '
                       'Got: {!s}'.format(value.type_signature))
 
     if weight is not None:
-      py_typecheck.check_type(weight, tff.Value)
-      py_typecheck.check_type(weight.type_signature, tff.FederatedType)
-      py_typecheck.check_type(weight.type_signature, tff.FederatedType)
-      if weight.type_signature.placement is not tff.CLIENTS:
+      py_typecheck.check_type(weight, value_base.Value)
+      py_typecheck.check_type(weight.type_signature,
+                              computation_types.FederatedType)
+      py_typecheck.check_type(weight.type_signature,
+                              computation_types.FederatedType)
+      if weight.type_signature.placement is not placements.CLIENTS:
         raise TypeError('If not None, `weight` argument must be a tff.Value '
                         'placed at CLIENTS. Got: {!s}'.format(
                             weight.type_signature))
@@ -197,15 +205,17 @@ class StatefulBroadcastFn(StatefulFn):
          * `value`: The input `value` now placed (communicated) to the
          `tff.CLIENTS`.
     """
-    py_typecheck.check_type(state, tff.Value)
-    py_typecheck.check_type(state.type_signature, tff.FederatedType)
-    if state.type_signature.placement is not tff.SERVER:
+    py_typecheck.check_type(state, value_base.Value)
+    py_typecheck.check_type(state.type_signature,
+                            computation_types.FederatedType)
+    if state.type_signature.placement is not placements.SERVER:
       raise TypeError('`state` argument must be a tff.Value placed at SERVER. '
                       'Got: {!s}'.format(state.type_signature))
 
-    py_typecheck.check_type(value, tff.Value)
-    py_typecheck.check_type(value.type_signature, tff.FederatedType)
-    if value.type_signature.placement is not tff.SERVER:
+    py_typecheck.check_type(value, value_base.Value)
+    py_typecheck.check_type(value.type_signature,
+                            computation_types.FederatedType)
+    if value.type_signature.placement is not placements.SERVER:
       raise TypeError('`value` argument must be a tff.Value placed at CLIENTS. '
                       'Got: {!s}'.format(value.type_signature))
 
@@ -260,15 +270,16 @@ class IterativeProcess(object):
       TypeError: `initialize_fn` and `next_fn` are not compatible function
         types.
     """
-    py_typecheck.check_type(initialize_fn, tff.Computation)
+    py_typecheck.check_type(initialize_fn, computation_base.Computation)
     if initialize_fn.type_signature.parameter is not None:
       raise TypeError(
           'initialize_fn must be a no-arg tff.Computation, but found parameter '
           '{}'.format(initialize_fn.type_signature))
     initialize_result_type = initialize_fn.type_signature.result
 
-    py_typecheck.check_type(next_fn, tff.Computation)
-    if isinstance(next_fn.type_signature.parameter, tff.NamedTupleType):
+    py_typecheck.check_type(next_fn, computation_base.Computation)
+    if isinstance(next_fn.type_signature.parameter,
+                  computation_types.NamedTupleType):
       next_first_param_type = next_fn.type_signature.parameter[0]
     else:
       next_first_param_type = next_fn.type_signature.parameter
@@ -283,7 +294,7 @@ class IterativeProcess(object):
     if next_first_param_type != next_result_type:
       # This might be multiple output next_fn, check if the first argument might
       # be the state. If still not the right type, raise an error.
-      if isinstance(next_result_type, tff.NamedTupleType):
+      if isinstance(next_result_type, computation_types.NamedTupleType):
         next_result_type = next_result_type[0]
       if next_first_param_type != next_result_type:
         raise TypeError('The return type of next_fn should match the '
