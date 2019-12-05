@@ -19,28 +19,32 @@ from absl.testing import absltest
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import values
 from tensorflow_federated.python.core.utils import computation_utils
 
 
 # Create two tff.Computations that perform sum on a sequence: initializes the
 # state to 0 and add each item in a sequence to the state.
-@tff.tf_computation
+@computations.tf_computation
 def initialize():
   return tf.constant(0)
 
 
-@tff.tf_computation([tf.int32, tf.int32])
+@computations.tf_computation([tf.int32, tf.int32])
 def add_int32(current, val):
   return current + val
 
 
-@tff.tf_computation([tf.int32, tf.int32])
+@computations.tf_computation([tf.int32, tf.int32])
 def add_mul_int32(current, val):
   return current + val, current * val
 
 
-@tff.tf_computation(tf.int32)
+@computations.tf_computation(tf.int32)
 def count_int32(current):
   return current + 1
 
@@ -134,10 +138,10 @@ class ComputationUtilsTest(absltest.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'initialize_fn must be a no-arg tff.Computation'):
 
-      @tff.federated_computation(tf.int32)
+      @computations.federated_computation(tf.int32)
       def one_arg_initialize(one_arg):
         del one_arg  # unused
-        return tff.to_value(0)
+        return values.to_value(0)
 
       _ = computation_utils.IterativeProcess(
           initialize_fn=one_arg_initialize, next_fn=add_int32)
@@ -151,7 +155,7 @@ class ComputationUtilsTest(absltest.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'The return type of initialize_fn should match.*'):
 
-      @tff.federated_computation([tf.float32, tf.float32])
+      @computations.federated_computation([tf.float32, tf.float32])
       def add_float32(current, val):
         return current + val
 
@@ -162,7 +166,7 @@ class ComputationUtilsTest(absltest.TestCase):
         TypeError,
         'The return type of next_fn should match the first parameter'):
 
-      @tff.federated_computation(tf.int32)
+      @computations.federated_computation(tf.int32)
       def add_bad_result(_):
         return 0.0
 
@@ -173,7 +177,7 @@ class ComputationUtilsTest(absltest.TestCase):
         TypeError,
         'The return type of next_fn should match the first parameter'):
 
-      @tff.federated_computation(tf.int32)
+      @computations.federated_computation(tf.int32)
       def add_bad_multi_result(_):
         return 0.0, 0
 
@@ -187,26 +191,28 @@ def broadcast_initialize_fn():
 
 def broadcast_next_fn(state, value):
 
-  @tff.tf_computation(tf.int32)
+  @computations.tf_computation(tf.int32)
   def add_one(value):
     return value + 1
 
   return {
-      'call_count': tff.federated_map(add_one, state.call_count),
-  }, tff.federated_broadcast(value)
+      'call_count': intrinsics.federated_map(add_one, state.call_count),
+  }, intrinsics.federated_broadcast(value)
 
 
 class StatefulBroadcastFnTest(absltest.TestCase):
 
   def test_construct_with_default_weight(self):
 
-    @tff.federated_computation(
-        tff.FederatedType(tf.float32, tff.SERVER, all_equal=True))
-    def federated_broadcast_test(values):
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            tf.float32, placements.SERVER, all_equal=True))
+    def federated_broadcast_test(args):
       broadcast_fn = computation_utils.StatefulBroadcastFn(
           initialize_fn=broadcast_initialize_fn, next_fn=broadcast_next_fn)
-      state = tff.federated_value(broadcast_fn.initialize(), tff.SERVER)
-      return broadcast_fn(state, values)
+      state = intrinsics.federated_value(broadcast_fn.initialize(),
+                                         placements.SERVER)
+      return broadcast_fn(state, args)
 
     state, value = federated_broadcast_test(1.0)
     self.assertAlmostEqual(value, 1.0)
@@ -219,26 +225,28 @@ def agg_initialize_fn():
 
 def agg_next_fn(state, value, weight):
 
-  @tff.tf_computation(tf.int32)
+  @computations.tf_computation(tf.int32)
   def add_one(value):
     return value + 1
 
   return {
-      'call_count': tff.federated_map(add_one, state.call_count),
-  }, tff.federated_mean(value, weight)
+      'call_count': intrinsics.federated_map(add_one, state.call_count),
+  }, intrinsics.federated_mean(value, weight)
 
 
 class StatefulAggregateFnTest(absltest.TestCase):
 
   def test_construct_with_default_weight(self):
 
-    @tff.federated_computation(
-        tff.FederatedType(tf.float32, tff.CLIENTS, all_equal=False))
-    def federated_aggregate_test(values):
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            tf.float32, placements.CLIENTS, all_equal=False))
+    def federated_aggregate_test(args):
       aggregate_fn = computation_utils.StatefulAggregateFn(
           initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
-      state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
-      return aggregate_fn(state, values)
+      state = intrinsics.federated_value(aggregate_fn.initialize(),
+                                         placements.SERVER)
+      return aggregate_fn(state, args)
 
     state, mean = federated_aggregate_test([1.0, 2.0, 3.0])
     self.assertAlmostEqual(mean, 2.0)  # (1 + 2 + 3) / (1 + 1 + 1)
@@ -246,14 +254,17 @@ class StatefulAggregateFnTest(absltest.TestCase):
 
   def test_construct_with_explicit_weights(self):
 
-    @tff.federated_computation(
-        tff.FederatedType(tf.float32, tff.CLIENTS, all_equal=False),
-        tff.FederatedType(tf.float32, tff.CLIENTS, all_equal=False))
-    def federated_aggregate_test(values, weights):
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            tf.float32, placements.CLIENTS, all_equal=False),
+        computation_types.FederatedType(
+            tf.float32, placements.CLIENTS, all_equal=False))
+    def federated_aggregate_test(args, weights):
       aggregate_fn = computation_utils.StatefulAggregateFn(
           initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
-      state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
-      return aggregate_fn(state, values, weights)
+      state = intrinsics.federated_value(aggregate_fn.initialize(),
+                                         placements.SERVER)
+      return aggregate_fn(state, args, weights)
 
     state, mean = federated_aggregate_test([1.0, 2.0, 3.0], [4.0, 1.0, 1.0])
     self.assertAlmostEqual(mean, 1.5)  # (1*4 + 2*1 + 3*1) / (4 + 1 + 1)
