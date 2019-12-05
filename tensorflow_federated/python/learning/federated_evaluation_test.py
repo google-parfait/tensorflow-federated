@@ -142,7 +142,8 @@ class FederatedEvaluationTest(test.TestCase):
     # Expect 100% accuracy and no loss because we've constructed the identity
     # function and have the same x's and y's for training data.
     self.assertEqual(
-        str(result), '<accuracy=1.0,loss=0.0,training_time_sec=0.0>')
+        str(result),
+        '<accuracy=1.0,loss=0.0,keras_training_time_client_sum_sec=0.0>')
 
 
 if __name__ == '__main__':

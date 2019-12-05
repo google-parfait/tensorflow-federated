@@ -372,7 +372,8 @@ class _KerasModel(model_lib.Model):
         return super(_TrainingTimeHistory, self).update_state(values=time_value)
 
     self._loss_metric = _WeightedMeanLossMetric()
-    self._training_timing = _TrainingTimeHistory(name='training_time_sec')
+    self._training_timing = _TrainingTimeHistory(
+        name='keras_training_time_client_sum_sec')
 
     metric_variable_type_dict = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, self.report_local_outputs())
