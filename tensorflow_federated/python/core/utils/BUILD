@@ -123,7 +123,9 @@ py_test(
     deps = [
         ":federated_aggregations",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:placements",
     ],
 )
 

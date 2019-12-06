@@ -19,7 +19,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.utils import federated_aggregations
 
 
@@ -27,7 +29,8 @@ class FederatedMinTest(test.TestCase):
 
   def test_federated_min_single_value(self):
 
-    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_min(value):
       return federated_aggregations.federated_min(value)
 
@@ -35,12 +38,13 @@ class FederatedMinTest(test.TestCase):
     self.assertEqual(value, 1.0)
 
   def test_federated_min_on_nested_scalars(self):
-    tuple_type = tff.NamedTupleType([
+    tuple_type = computation_types.NamedTupleType([
         ('x', tf.float32),
         ('y', tf.float32),
     ])
 
-    @tff.federated_computation(tff.FederatedType(tuple_type, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_min(value):
       return federated_aggregations.federated_min(value)
 
@@ -55,7 +59,8 @@ class FederatedMinTest(test.TestCase):
     with self.assertRaisesRegex(TypeError,
                                 r'Type must be int32 or float32. Got: .*'):
 
-      @tff.federated_computation(tff.FederatedType(tf.bool, tff.CLIENTS))
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.bool, placements.CLIENTS))
       def call_federated_min(value):
         return federated_aggregations.federated_min(value)
 
@@ -65,7 +70,8 @@ class FederatedMinTest(test.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.* argument must be a tff.Value placed at CLIENTS'):
 
-      @tff.federated_computation(tff.FederatedType(tf.int32, tff.SERVER))
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.int32, placements.SERVER))
       def call_federated_min(value):
         return federated_aggregations.federated_min(value)
 
@@ -76,7 +82,8 @@ class FederatedMaxTest(test.TestCase):
 
   def test_federated_max_tensor_value(self):
 
-    @tff.federated_computation(tff.FederatedType((tf.int32, [3]), tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType((tf.int32, [3]), placements.CLIENTS))
     def call_federated_max(value):
       return federated_aggregations.federated_max(value)
 
@@ -87,7 +94,8 @@ class FederatedMaxTest(test.TestCase):
 
   def test_federated_max_single_value(self):
 
-    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_max(value):
       return federated_aggregations.federated_max(value)
 
@@ -98,19 +106,21 @@ class FederatedMaxTest(test.TestCase):
     with self.assertRaisesRegex(TypeError,
                                 r'Type must be int32 or float32. Got: .*'):
 
-      @tff.federated_computation(tff.FederatedType(tf.bool, tff.CLIENTS))
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.bool, placements.CLIENTS))
       def call_federated_max(value):
         return federated_aggregations.federated_max(value)
 
       call_federated_max([True, False])
 
   def test_federated_max_on_nested_scalars(self):
-    tuple_type = tff.NamedTupleType([
+    tuple_type = computation_types.NamedTupleType([
         ('a', tf.int32),
         ('b', tf.int32),
     ])
 
-    @tff.federated_computation(tff.FederatedType(tuple_type, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_max(value):
       return federated_aggregations.federated_max(value)
 
@@ -121,12 +131,13 @@ class FederatedMaxTest(test.TestCase):
     self.assertDictEqual(value._asdict(), {'a': 2, 'b': 8})
 
   def test_federated_max_nested_tensor_value(self):
-    tuple_type = tff.NamedTupleType([
+    tuple_type = computation_types.NamedTupleType([
         ('a', (tf.int32, [2])),
         ('b', (tf.int32, [3])),
     ])
 
-    @tff.federated_computation(tff.FederatedType(tuple_type, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_max(value):
       return federated_aggregations.federated_max(value)
 
@@ -143,7 +154,8 @@ class FederatedMaxTest(test.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'):
 
-      @tff.federated_computation(tff.FederatedType(tf.float32, tff.SERVER))
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.float32, placements.SERVER))
       def call_federated_max(value):
         return federated_aggregations.federated_max(value)
 
@@ -154,7 +166,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_single_value(self):
 
-    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return federated_aggregations.federated_sample(value)
 
@@ -162,12 +175,13 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertCountEqual(value, [1.0, 2.0, 5.0])
 
   def test_federated_sample_on_nested_scalars(self):
-    tuple_type = tff.NamedTupleType([
+    tuple_type = computation_types.NamedTupleType([
         ('x', tf.float32),
         ('y', tf.float32),
     ])
 
-    @tff.federated_computation(tff.FederatedType(tuple_type, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_sample(value):
       return federated_aggregations.federated_sample(value)
 
@@ -192,7 +206,8 @@ class FederatedSampleTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'):
 
-      @tff.federated_computation(tff.FederatedType(tf.bool, tff.SERVER))
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.bool, placements.SERVER))
       def call_federated_sample(value):
         return federated_aggregations.federated_sample(value)
 
@@ -200,7 +215,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_max_size_is_100(self):
 
-    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return federated_aggregations.federated_sample(value)
 
@@ -210,7 +226,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_preserves_nan_percentage(self):
 
-    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return federated_aggregations.federated_sample(value)
 
@@ -219,7 +236,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_preserves_inf_percentage(self):
 
-    @tff.federated_computation(tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return federated_aggregations.federated_sample(value)
 
