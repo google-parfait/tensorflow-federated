@@ -17,6 +17,7 @@
 import asyncio
 import collections
 import cachetools
+
 import numpy as np
 import tensorflow as tf
 
@@ -240,7 +241,13 @@ class CachingExecutor(executor_base.Executor):
       cached_value = CachedValue(identifier, hashable_key, type_spec,
                                  target_future)
       self._cache[identifier] = cached_value
-    await cached_value.target_future
+    try:
+      await cached_value.target_future
+    except Exception as e:
+      # do not cache exceptions.
+      del self._cache[hashable_key]
+      del self._cache[identifier]
+      raise e
     # No type check is necessary here; we have either checked
     # `type_utils.are_equivalent_types` or just constructed `target_value`
     # explicitly with `type_spec`.
@@ -268,7 +275,11 @@ class CachingExecutor(executor_base.Executor):
           self._target_executor.create_call(*gathered))
       cached_value = CachedValue(identifier, None, type_spec, target_future)
       self._cache[identifier] = cached_value
-    target_value = await cached_value.target_future
+    try:
+      target_value = await cached_value.target_future
+    except Exception as e:
+      del self._cache[identifier]  # do not cache exceptions.
+      raise e
     type_utils.check_assignable_from(type_spec, target_value.type_signature)
     return cached_value
 
@@ -302,7 +313,11 @@ class CachingExecutor(executor_base.Executor):
               ])))
       cached_value = CachedValue(identifier, None, type_spec, target_future)
       self._cache[identifier] = cached_value
-    target_value = await cached_value.target_future
+    try:
+      target_value = await cached_value.target_future
+    except Exception as e:
+      del self._cache[identifier]  # do not cache exceptions.
+      raise e
     type_utils.check_assignable_from(type_spec, target_value.type_signature)
     return cached_value
 
@@ -328,6 +343,10 @@ class CachingExecutor(executor_base.Executor):
               source_val, index=index, name=name))
       cached_value = CachedValue(identifier, None, type_spec, target_future)
       self._cache[identifier] = cached_value
-    target_value = await cached_value.target_future
+    try:
+      target_value = await cached_value.target_future
+    except Exception as e:
+      del self._cache[identifier]  # do not cache exceptions.
+      raise e
     type_utils.check_assignable_from(type_spec, target_value.type_signature)
     return cached_value

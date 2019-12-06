@@ -55,6 +55,7 @@ py_test(
         ":caching_executor",
         ":computation_impl",
         ":eager_executor",
+        ":executor_base",
         ":executor_test_utils",
         ":lambda_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

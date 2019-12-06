@@ -15,6 +15,7 @@
 
 import asyncio
 import collections
+from unittest import mock
 
 from absl.testing import absltest
 import numpy as np
@@ -26,6 +27,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import lambda_executor
 
@@ -45,7 +47,104 @@ def _tensor_to_id(iterable):
   ]
 
 
+class TestError(Exception):
+  """An error for unittests."""
+
+
+async def raise_error(*args, **kwargs):
+  """A function for mock executors that always raises an error."""
+  del args  # unused
+  del kwargs  # unused
+  raise TestError()
+
+
+# An arbitrary value for testing.
+TEST_VALUE = True
+
+
+async def create_test_value(*args, **kwargs):
+  """A function for mock executors that returns an arbitrary value."""
+  del args  # unused
+  del kwargs  # unused
+  return TEST_VALUE
+
+
+@computations.tf_computation
+def foo():
+  return tf.constant(10)
+
+
 class CachingExecutorTest(absltest.TestCase):
+
+  def test_create_value_does_not_cache_error(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_value(1.0, tf.float32))
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_value(1.0, tf.float32))
+    # Ensure create_value was called twice on the mock (not cached and only
+    # called once).
+    mock_executor.create_value.assert_has_calls([
+        mock.call(1.0, computation_types.TensorType(tf.float32)),
+        mock.call(1.0, computation_types.TensorType(tf.float32))
+    ])
+
+  def test_create_call_does_not_cache_error(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = create_test_value
+    mock_executor.create_call.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    v = loop.run_until_complete(cached_executor.create_value(foo))
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_call(v))
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_call(v))
+    # Ensure create_call was called twice on the mock (not cached and only
+    # called once).
+    mock_executor.create_call.assert_has_calls(
+        [mock.call(TEST_VALUE), mock.call(TEST_VALUE)])
+
+  def test_create_tuple_does_not_cache_error(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = create_test_value
+    mock_executor.create_tuple.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    value = loop.run_until_complete(cached_executor.create_value(foo))
+    value_tuple = (value, value)
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_tuple(value_tuple))
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_tuple(value_tuple))
+    # Ensure create_tuple was called twice on the mock (not cached and only
+    # called once).
+    anon_tuple_value = anonymous_tuple.AnonymousTuple([(None, TEST_VALUE),
+                                                       (None, TEST_VALUE)])
+    mock_executor.create_tuple.assert_has_calls(
+        [mock.call(anon_tuple_value),
+         mock.call(anon_tuple_value)])
+
+  def test_create_selection_does_not_cache_error(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = create_test_value
+    mock_executor.create_selection.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    value = loop.run_until_complete(
+        cached_executor.create_value((1, 2),
+                                     computation_types.NamedTupleType(
+                                         (tf.int32, tf.int32))))
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_selection(value, 1))
+    with self.assertRaises(TestError):
+      _ = loop.run_until_complete(cached_executor.create_selection(value, 1))
+    # Ensure create_tuple was called twice on the mock (not cached and only
+    # called once).
+    mock_executor.create_selection.assert_has_calls([])
 
   def test_with_integer_constant(self):
     ex, tracer = _make_executor_and_tracer_for_test()
@@ -69,10 +168,6 @@ class CachingExecutorTest(absltest.TestCase):
   def test_with_no_arg_tf_computation(self):
     ex, tracer = _make_executor_and_tracer_for_test()
     loop = asyncio.get_event_loop()
-
-    @computations.tf_computation
-    def foo():
-      return tf.constant(10)
 
     v1 = loop.run_until_complete(ex.create_value(foo))
     self.assertIsInstance(v1, caching_executor.CachedValue)
@@ -105,16 +200,16 @@ class CachingExecutorTest(absltest.TestCase):
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
-    def foo(x):
+    def add_one(x):
       return tf.add(x, 1)
 
-    v1 = loop.run_until_complete(ex.create_value(foo))
+    v1 = loop.run_until_complete(ex.create_value(add_one))
     self.assertEqual(str(v1.identifier), '1')
     v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
     self.assertEqual(str(v2.identifier), '2')
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     self.assertEqual(str(v3.identifier), '1(2)')
-    v4 = loop.run_until_complete(ex.create_value(foo))
+    v4 = loop.run_until_complete(ex.create_value(add_one))
     self.assertIs(v4, v1)
     v5 = loop.run_until_complete(ex.create_value(10, tf.int32))
     self.assertIs(v5, v2)
@@ -123,8 +218,8 @@ class CachingExecutorTest(absltest.TestCase):
     c6 = loop.run_until_complete(v6.compute())
     self.assertEqual(c6.numpy(), 11)
     expected_trace = [
-        ('create_value', computation_impl.ComputationImpl.get_proto(foo),
-         foo.type_signature, 1),
+        ('create_value', computation_impl.ComputationImpl.get_proto(add_one),
+         add_one.type_signature, 1),
         ('create_value', 10, computation_types.TensorType(tf.int32), 2),
         ('create_call', 1, 2, 3), ('compute', 3, c6)
     ]
@@ -203,10 +298,10 @@ class CachingExecutorTest(absltest.TestCase):
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
-    def foo(ds):
+    def ds_reduce(ds):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
-    v1 = loop.run_until_complete(ex.create_value(foo))
+    v1 = loop.run_until_complete(ex.create_value(ds_reduce))
     self.assertEqual(str(v1.identifier), '1')
     ds = tf.data.Dataset.from_tensor_slices([10, 20, 30])
     v2 = loop.run_until_complete(
