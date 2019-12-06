@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -425,7 +424,7 @@ class ExtractArgumentsTest(absltest.TestCase):
             building_blocks.Reference('x', tuple_of_federated_types), index=0))
     zeroth_index_extracted = mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0]])
-    unbound_references = transformations.get_map_of_unbound_references(
+    unbound_references = transformation_utils.get_map_of_unbound_references(
         zeroth_index_extracted)[zeroth_index_extracted]
     self.assertEmpty(unbound_references)
 

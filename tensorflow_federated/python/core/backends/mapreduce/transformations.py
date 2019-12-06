@@ -449,30 +449,6 @@ def _get_called_intrinsics(comp, uri):
   return intrinsics
 
 
-def _contains_no_unbound_references(comps, excluding=None):
-  """Tests if all computations in `comps` contain no unbound references.
-
-  Args:
-    comps: A Python `list` of computations to test.
-    excluding: A Python `list` of strings representing the names of references
-      to exclude from the test.
-
-  Returns:
-    `True` if there are not unbound references in any of the computations in
-    `comps` excluding those specified by `excluding`, otherwise `False`.
-  """
-  py_typecheck.check_type(comps, (list, tuple, set))
-  py_typecheck.check_type(excluding, (list, tuple, set))
-  excluding = set(excluding)
-  for comp in comps:
-    tree_analysis.check_has_unique_names(comp)
-    unbound_references = transformations.get_map_of_unbound_references(comp)
-    names = unbound_references[comp] - excluding
-    if names:
-      return False
-  return True
-
-
 def _can_extract_intrinsic_to_top_level_lambda(comp, uri):
   """Tests if the intrinsic for the given `uri` can be extracted.
 
@@ -488,8 +464,9 @@ def _can_extract_intrinsic_to_top_level_lambda(comp, uri):
   py_typecheck.check_type(uri, six.string_types)
   tree_analysis.check_has_unique_names(comp)
   intrinsics = _get_called_intrinsics(comp, uri)
-  return _contains_no_unbound_references(
-      intrinsics, excluding=[comp.parameter_name])
+  return all(
+      tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
+      for x in intrinsics)
 
 
 def _inline_block_variables_required_to_align_intrinsic(comp, uri):
@@ -517,7 +494,8 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(uri, six.string_types)
   while not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
-    unbound_references = transformations.get_map_of_unbound_references(comp)
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        comp)
     variable_names = set()
     intrinsics = _get_called_intrinsics(comp, uri)
     for intrinsic in intrinsics:
@@ -564,8 +542,9 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
   intrinsics = _get_called_intrinsics(comp, uri)
   if len(intrinsics) < 2:
     return comp, False
-  if not _contains_no_unbound_references(
-      intrinsics, excluding=[comp.parameter_name]):
+  if any(
+      not tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
+      for x in intrinsics):
     raise ValueError(
         'Expected a computation which binds all the references in all the '
         'intrinsic with the uri: {}.'.format(uri))
@@ -615,8 +594,9 @@ def _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri):
     raise ValueError(
         'Expected a computation with exactly one intrinsic with the uri: {}, '
         'found: {}.'.format(uri, length))
-  if not _contains_no_unbound_references(
-      intrinsics, excluding=[comp.parameter_name]):
+  if any(
+      not tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
+      for x in intrinsics):
     raise ValueError(
         'Expected a computation which binds all the references in the '
         'intrinsic with the uri: {}.'.format(uri))
@@ -781,9 +761,9 @@ def _check_for_missed_binding(comp, newly_bound_lambda):
   # TODO(b/135608876): Consider whether this pattern is sufficiently pervasive
   # to warrant symbol other than `get_map_of_unbound_references`, even if it
   # has the same underlying implementation.
-  unbound_references_in_comp = transformations.get_map_of_unbound_references(
+  unbound_references_in_comp = transformation_utils.get_map_of_unbound_references(
       comp)[comp]
-  new_lambda_unbound = transformations.get_map_of_unbound_references(
+  new_lambda_unbound = transformation_utils.get_map_of_unbound_references(
       newly_bound_lambda)[newly_bound_lambda]
   newly_unbound_references = new_lambda_unbound.difference(
       unbound_references_in_comp)

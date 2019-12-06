@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
@@ -293,12 +295,53 @@ def count_tensorflow_variables_under(comp):
   total_tf_vars = [0]
 
   def _count_tf_vars(inner_comp):
-    if isinstance(
-        inner_comp, building_blocks.CompiledComputation
-    ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
+    if (isinstance(inner_comp, building_blocks.CompiledComputation) and
+        inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
       total_tf_vars[0] += building_block_analysis.count_tensorflow_variables_in(
           inner_comp)
     return inner_comp, False
 
   transformation_utils.transform_postorder(comp, _count_tf_vars)
   return total_tf_vars[0]
+
+
+def check_contains_no_unbound_references(tree, excluding=None):
+  """Checks that `tree` has no unbound references.
+
+  Args:
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to view as an
+      abstract syntax tree.
+    excluding: A `string` or a collection of `string`s representing the names of
+      references to exclude from the test.
+
+  Raises:
+    ValueError: If `comp` has unbound references.
+  """
+  if not contains_no_unbound_references(tree, excluding):
+    raise ValueError('The AST contains unbound references: {}.'.format(
+        tree.formatted_representation()))
+
+
+def contains_no_unbound_references(tree, excluding=None):
+  """Tests if all the references in `tree` are bound by `tree`.
+
+  Args:
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to view as an
+      abstract syntax tree.
+    excluding: A `string` or a collection of `string`s representing the names of
+      references to exclude from the test.
+
+  Returns:
+    `True` if there are no unbound references in `tree` excluding those
+    specified by `excluding`, otherwise `False`.
+  """
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+  if isinstance(excluding, six.string_types):
+    excluding = [excluding]
+  unbound_references = transformation_utils.get_map_of_unbound_references(tree)
+  if excluding is not None:
+    excluding = set(excluding)
+    names = unbound_references[tree] - excluding
+  else:
+    names = unbound_references[tree]
+  return len(names) == 0  # pylint: disable=g-explicit-length-test

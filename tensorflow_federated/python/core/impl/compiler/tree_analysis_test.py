@@ -283,5 +283,34 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)
 
 
+class ContainsNoUnboundReferencesTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_tree(self):
+    with self.assertRaises(TypeError):
+      tree_analysis.contains_no_unbound_references(None)
+
+  def test_raises_type_error_with_int_excluding(self):
+    ref = building_blocks.Reference('a', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    with self.assertRaises(TypeError):
+      tree_analysis.contains_no_unbound_references(fn, 1)
+
+  def test_returns_false(self):
+    ref = building_blocks.Reference('a', tf.int32)
+    fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
+    self.assertTrue(tree_analysis.contains_no_unbound_references(fn))
+
+  def test_returns_true(self):
+    ref = building_blocks.Reference('a', tf.int32)
+    fn = building_blocks.Lambda('b', tf.int32, ref)
+    self.assertFalse(tree_analysis.contains_no_unbound_references(fn))
+
+  def test_returns_false_with_excluded_reference(self):
+    ref = building_blocks.Reference('a', tf.int32)
+    fn = building_blocks.Lambda('b', tf.int32, ref)
+    self.assertTrue(
+        tree_analysis.contains_no_unbound_references(fn, excluding='a'))
+
+
 if __name__ == '__main__':
   absltest.main()

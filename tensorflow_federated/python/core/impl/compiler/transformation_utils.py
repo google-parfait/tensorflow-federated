@@ -1034,6 +1034,58 @@ def has_unique_names(comp):
   return unique[0]
 
 
+def get_map_of_unbound_references(comp):
+  """Gets a Python `dict` of the unbound references in `comp`.
+
+  Compuations that are equal will have the same collections of unbounded
+  references, so it is safe to use `comp` as the key for this `dict` even though
+  a given compuation may appear in many positions in the AST.
+
+  Args:
+    comp: The computation building block to parse.
+
+  Returns:
+    A Python `dict` of elements where keys are the compuations in `comp` and
+    values are a Python `set` of the names of the unbound references in the
+    subtree of that compuation.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  references = {}
+
+  def _update(comp):
+    """Updates the Python dict of references."""
+    if isinstance(comp, building_blocks.Reference):
+      references[comp] = set((comp.name,))
+    elif isinstance(comp, building_blocks.Block):
+      references[comp] = set()
+      names = []
+      for name, variable in comp.locals:
+        elements = references[variable]
+        references[comp].update([e for e in elements if e not in names])
+        names.append(name)
+      elements = references[comp.result]
+      references[comp].update([e for e in elements if e not in names])
+    elif isinstance(comp, building_blocks.Call):
+      elements = references[comp.function]
+      if comp.argument is not None:
+        elements.update(references[comp.argument])
+      references[comp] = elements
+    elif isinstance(comp, building_blocks.Lambda):
+      elements = references[comp.result]
+      references[comp] = set([e for e in elements if e != comp.parameter_name])
+    elif isinstance(comp, building_blocks.Selection):
+      references[comp] = references[comp.source]
+    elif isinstance(comp, building_blocks.Tuple):
+      elements = [references[e] for e in comp]
+      references[comp] = set(itertools.chain.from_iterable(elements))
+    else:
+      references[comp] = set()
+    return comp, False
+
+  transform_postorder(comp, _update)
+  return references
+
+
 @six.add_metaclass(abc.ABCMeta)
 class TransformSpec(object):
   """"Base class to express the should_transform/transform interface."""

@@ -24,9 +24,9 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_utils
 from tensorflow_federated.python.core.impl import executor_value_base
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 
 
@@ -339,7 +339,9 @@ class LambdaExecutor(executor_base.Executor):
       # something declared outside of its scope, in which case we'll have to
       # do a little bit more work to plumb things through.
 
-      _check_no_unbound_references(value_repr)
+      value_tree = building_blocks.ComputationBuildingBlock.from_proto(
+          value_repr)
+      tree_analysis.check_contains_no_unbound_references(value_tree)
       return await self._target_executor.create_value(value_repr,
                                                       value.type_signature)
 
@@ -431,24 +433,3 @@ class LambdaExecutor(executor_base.Executor):
     else:
       raise NotImplementedError(
           'Unsupported computation type "{}".'.format(which_computation))
-
-
-def _check_no_unbound_references(comp):
-  """Checks that `comp` has no unbound references.
-
-  This is a temporary helper function, to be removed once we provide a more
-  complete support.
-
-  Args:
-    comp: An instance of `pb.Computation` to check.
-
-  Raises:
-    ValueError: If `comp` has unbound references.
-  """
-  py_typecheck.check_type(comp, pb.Computation)
-  blk = building_blocks.ComputationBuildingBlock.from_proto(comp)
-  unbound_map = transformations.get_map_of_unbound_references(blk)
-  unbound_refs = unbound_map[blk]
-  if unbound_refs:
-    raise ValueError(
-        'The computation contains unbound references: {}.'.format(unbound_refs))
