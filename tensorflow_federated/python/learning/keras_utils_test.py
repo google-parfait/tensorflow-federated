@@ -65,7 +65,7 @@ def _create_tff_model_from_keras_model_tuples():
          model_examples.build_linear_regression_keras_functional_model),
         ('sequential',
          model_examples.build_linear_regression_keras_sequential_model),
-        ('sublclass',
+        ('subclass',
          model_examples.build_linear_regression_keras_subclass_model),
     ]:
       tuples.append(('{}_model_{}_dims'.format(name, n_dims), n_dims, model_fn))
@@ -80,7 +80,7 @@ def _create_tff_model_from_compiled_keras_model_tuples():
          model_examples.build_linear_regression_keras_functional_model),
         ('sequential',
          model_examples.build_linear_regression_keras_sequential_model),
-        ('sublclass',
+        ('subclass',
          model_examples.build_linear_regression_keras_subclass_model),
     ]:
       for loss_name, loss in [
