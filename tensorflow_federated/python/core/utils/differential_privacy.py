@@ -26,9 +26,11 @@ import tensorflow as tf
 import tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.utils import computation_utils
+
 
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
 # in this library.
@@ -198,7 +200,7 @@ def build_dp_aggregate(query,
       - the TFF type of the DP aggregator's global state
   """
 
-  @tff.tf_computation
+  @computations.tf_computation
   def initialize_fn():
     return query.initial_global_state()
 
@@ -218,12 +220,12 @@ def build_dp_aggregate(query,
 
     global_state_type = initialize_fn.type_signature.result
 
-    @tff.tf_computation(global_state_type)
+    @computations.tf_computation(global_state_type)
     def derive_sample_params(global_state):
       return query.derive_sample_params(global_state)
 
-    @tff.tf_computation(derive_sample_params.type_signature.result,
-                        value.type_signature.member)
+    @computations.tf_computation(derive_sample_params.type_signature.result,
+                                 value.type_signature.member)
     def preprocess_record(params, record):
       # TODO(b/123092620): Once TFF passes the expected container type (instead
       # of AnonymousTuple), we shouldn't need this.
@@ -234,29 +236,29 @@ def build_dp_aggregate(query,
     # TODO(b/123092620): We should have the expected container type here.
     value_type = value_type_fn(value)
 
-    tensor_specs = tff_framework.type_to_tf_tensor_specs(value_type)
+    tensor_specs = type_utils.type_to_tf_tensor_specs(value_type)
 
-    @tff.tf_computation
+    @computations.tf_computation
     def zero():
       return query.initial_sample_state(tensor_specs)
 
     sample_state_type = zero.type_signature.result
 
-    @tff.tf_computation(sample_state_type,
-                        preprocess_record.type_signature.result)
+    @computations.tf_computation(sample_state_type,
+                                 preprocess_record.type_signature.result)
     def accumulate(sample_state, preprocessed_record):
       return query.accumulate_preprocessed_record(sample_state,
                                                   preprocessed_record)
 
-    @tff.tf_computation(sample_state_type, sample_state_type)
+    @computations.tf_computation(sample_state_type, sample_state_type)
     def merge(sample_state_1, sample_state_2):
       return query.merge_sample_states(sample_state_1, sample_state_2)
 
-    @tff.tf_computation(merge.type_signature.result)
+    @computations.tf_computation(merge.type_signature.result)
     def report(sample_state):
       return sample_state
 
-    @tff.tf_computation(sample_state_type, global_state_type)
+    @computations.tf_computation(sample_state_type, global_state_type)
     def post_process(sample_state, global_state):
       result, new_global_state = query.get_noised_result(
           sample_state, global_state)
@@ -265,14 +267,14 @@ def build_dp_aggregate(query,
     #######################################
     # Orchestration logic
 
-    sample_params = tff.federated_map(derive_sample_params, global_state)
-    client_sample_params = tff.federated_broadcast(sample_params)
-    preprocessed_record = tff.federated_map(preprocess_record,
-                                            (client_sample_params, value))
-    agg_result = tff.federated_aggregate(preprocessed_record, zero(),
-                                         accumulate, merge, report)
+    sample_params = intrinsics.federated_map(derive_sample_params, global_state)
+    client_sample_params = intrinsics.federated_broadcast(sample_params)
+    preprocessed_record = intrinsics.federated_map(
+        preprocess_record, (client_sample_params, value))
+    agg_result = intrinsics.federated_aggregate(preprocessed_record, zero(),
+                                                accumulate, merge, report)
 
-    return tff.federated_map(post_process, (agg_result, global_state))
+    return intrinsics.federated_map(post_process, (agg_result, global_state))
 
   # TODO(b/140236959): Find a way to have this method return only one thing. The
   # best approach is probably to add (to StatefulAggregateFn) a property that

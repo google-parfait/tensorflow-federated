@@ -55,8 +55,9 @@ py_library(
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api",
-        "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )
 
