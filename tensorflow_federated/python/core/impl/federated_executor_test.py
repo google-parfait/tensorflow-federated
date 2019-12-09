@@ -210,6 +210,29 @@ class FederatedExecutorTest(parameterized.TestCase):
     self.assertEqual(
         val.internal_representation[0].internal_representation.numpy(), 10)
 
+  def test_federated_value_at_server_with_tuple(self):
+    self.skipTest('b/145936344')
+    loop = asyncio.get_event_loop()
+    ex = _make_test_executor()
+
+    @computations.federated_computation
+    def comp():
+      return intrinsics.federated_value([10, 10], placements.SERVER)
+
+    val = loop.run_until_complete(ex.create_value(comp))
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertEqual(str(val.type_signature), '<int32,int32>@SERVER')
+    self.assertIsInstance(val.internal_representation, list)
+    self.assertLen(val.internal_representation, 2)
+    self.assertIsInstance(val.internal_representation[0],
+                          eager_executor.EagerValue)
+    self.assertEqual(
+        val.internal_representation[0].internal_representation.numpy(), 10)
+    self.assertIsInstance(val.internal_representation[1],
+                          eager_executor.EagerValue)
+    self.assertEqual(
+        val.internal_representation[1].internal_representation.numpy(), 10)
+
   def test_federated_value_at_clients(self):
     loop = asyncio.get_event_loop()
     ex = _make_test_executor(3)
