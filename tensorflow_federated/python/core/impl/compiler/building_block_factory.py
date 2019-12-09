@@ -105,11 +105,7 @@ def create_compiled_identity(type_signature, name=None):
   """
   type_spec = computation_types.to_type(type_signature)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.is_tensorflow_compatible_type(type_spec):
-    raise TypeError(
-        'Can only construct a TF block with types which only contain tensor, '
-        'sequence or tuple types; you have tried to construct a TF block with '
-        'parameter of type {}'.format(type_spec))
+  type_utils.check_tensorflow_compatible_type(type_spec)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
@@ -230,11 +226,7 @@ def create_compiled_input_replication(type_signature, n_replicas):
   """
   type_spec = computation_types.to_type(type_signature)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.is_tensorflow_compatible_type(type_spec):
-    raise TypeError(
-        'Can only construct a TF block with types which only contain tensor, '
-        'sequence or tuple types; you have tried to construct a TF block with '
-        'parameter of type {}'.format(type_spec))
+  type_utils.check_tensorflow_compatible_type(type_spec)
   py_typecheck.check_type(n_replicas, int)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(

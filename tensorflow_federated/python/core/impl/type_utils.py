@@ -560,6 +560,14 @@ def is_tensorflow_compatible_type(type_spec):
   return type_tree_contains_only(type_spec, tf_comp_whitelist)
 
 
+def check_tensorflow_compatible_type(type_spec):
+  if not is_tensorflow_compatible_type(type_spec):
+    raise TypeError(
+        'Can only construct a TF block with types which only contain tensor, '
+        'sequence or tuple types; you have tried to construct a TF block with '
+        'parameter of type {}'.format(type_spec))
+
+
 def is_generic_op_compatible_type(type_spec):
   """Checks `type_spec` against an explicit whitelist for generic operators."""
   if type_spec is None:
