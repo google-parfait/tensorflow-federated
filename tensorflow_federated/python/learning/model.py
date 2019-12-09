@@ -45,9 +45,9 @@ class Model(object):
   """Represents a model for use in TensorFlow Federated.
 
   Each `Model` will work on a set of `tf.Variables`, and each method should be
-  a computation that can be implemented as a `tf.defun`; this implies the class
-  should essentially be stateless from a Python perspective, as each method
-  will generally only be traced once (per set of arguments) to create the
+  a computation that can be implemented as a `tf.function`; this implies the
+  class should essentially be stateless from a Python perspective, as each
+  method will generally only be traced once (per set of arguments) to create the
   corresponding TensorFlow graph functions. Thus, `Model` instances should
   behave as expected in both eager and graph (TF 1.0) usage.
 
