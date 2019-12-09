@@ -48,14 +48,46 @@ class ValueUtilsTest(parameterized.TestCase):
     self.assertEqual(comp.compact_representation(),
                      '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
 
-  def test_check_federated_value_placement(self):
+  def test_ensure_federated_value(self):
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def _(x):
-      value_utils.check_federated_value_placement(x, placements.CLIENTS)
+      x = value_impl.to_value(x, None, _context_stack)
+      value_utils.ensure_federated_value(x, placements.CLIENTS)
+      return x
+
+  def test_ensure_federated_value_wrong_placement(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def _(x):
+      x = value_impl.to_value(x, None, _context_stack)
       with self.assertRaises(TypeError):
-        value_utils.check_federated_value_placement(x, placements.SERVER)
+        value_utils.ensure_federated_value(x, placements.SERVER)
+      return x
+
+  def test_ensure_federated_value_implicitly_zippable(self):
+
+    @computations.federated_computation(
+        computation_types.NamedTupleType(
+            (computation_types.FederatedType(tf.int32, placements.CLIENTS),
+             computation_types.FederatedType(tf.int32, placements.CLIENTS))))
+    def _(x):
+      x = value_impl.to_value(x, None, _context_stack)
+      value_utils.ensure_federated_value(x)
+      return x
+
+  def test_ensure_federated_value_fails_on_unzippable(self):
+
+    @computations.federated_computation(
+        computation_types.NamedTupleType(
+            (computation_types.FederatedType(tf.int32, placements.CLIENTS),
+             computation_types.FederatedType(tf.int32, placements.SERVER))))
+    def _(x):
+      x = value_impl.to_value(x, None, _context_stack)
+      with self.assertRaises(TypeError):
+        value_utils.ensure_federated_value(x)
       return x
 
 

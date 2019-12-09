@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -60,24 +61,46 @@ def get_curried(fn):
                               value_impl.ValueImpl.get_context_stack(fn))
 
 
-def check_federated_value_placement(value, placement, label=None):
-  """Checks that `value` is a federated value placed at `placement`.
+def ensure_federated_value(value, placement=None, label=None):
+  """Ensures `value` is a federated value placed at `placement`.
+
+  If `value` is not a `computation_types.FederatedType` but is a
+  `computation_types.NamedTupleType` that can be converted via `federated_zip`
+  to a `computation_types.FederatedType`, inserts the call to `federated_zip`
+  and returns the result. If `value` cannot be converted, raises a TypeError.
 
   Args:
-    value: The value to check, an instance of value_base.Value.
-    placement: The expected placement.
+    value: A `value_impl.ValueImpl` to check and convert to a federated value if
+      possible.
+    placement: The expected placement. If None, any placement is allowed.
     label: An optional string label that describes `value`.
 
+  Returns:
+    The value as a `FederatedValue`, automatically zipping if necessary.
+
   Raises:
-    TypeError: if `value` is not a value_base.Value of a federated type with
-      the expected placement `placement`.
+    TypeError: if `value` is not a `FederatedType` and cannot be converted to
+      a `FederatedType` with `federated_zip`.
   """
-  py_typecheck.check_type(value, value_base.Value)
-  py_typecheck.check_type(value.type_signature, computation_types.FederatedType)
+  py_typecheck.check_type(value, value_impl.ValueImpl)
   if label is not None:
     py_typecheck.check_type(label, six.string_types)
-  if value.type_signature.placement is not placement:
+
+  if not isinstance(value.type_signature, computation_types.FederatedType):
+    comp = value_impl.ValueImpl.get_comp(value)
+    context_stack = value_impl.ValueImpl.get_context_stack(value)
+    try:
+      zipped = building_block_factory.create_federated_zip(comp)
+    except (TypeError, ValueError):
+      raise TypeError(
+          'The {} must be a FederatedType or implicitly convertible '
+          'to a FederatedType.'.format(label if label else 'value'))
+    value = value_impl.ValueImpl(zipped, context_stack)
+
+  if placement and value.type_signature.placement is not placement:
     raise TypeError(
         'The {} should be placed at {}, but it is placed at {}.'.format(
             label if label else 'value', placement,
             value.type_signature.placement))
+
+  return value
