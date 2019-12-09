@@ -55,6 +55,7 @@ async def raise_error(*args, **kwargs):
   """A function for mock executors that always raises an error."""
   del args  # unused
   del kwargs  # unused
+  await asyncio.sleep(1)
   raise TestError()
 
 
@@ -66,6 +67,7 @@ async def create_test_value(*args, **kwargs):
   """A function for mock executors that returns an arbitrary value."""
   del args  # unused
   del kwargs  # unused
+  await asyncio.sleep(1)
   return TEST_VALUE
 
 
@@ -92,6 +94,24 @@ class CachingExecutorTest(absltest.TestCase):
         mock.call(1.0, computation_types.TensorType(tf.float32))
     ])
 
+  def test_create_value_does_not_cache_error_avoids_double_cache_delete(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    future1 = cached_executor.create_value(1.0, tf.float32)
+    future2 = cached_executor.create_value(1.0, tf.float32)
+    results = loop.run_until_complete(
+        asyncio.gather(future1, future2, return_exceptions=True))
+    # Ensure create_call is only called once, since the first call inserts the
+    # inner executor future into the cache. However we expect two errors to be
+    # returned.
+    mock_executor.create_value.assert_called_once_with(
+        1.0, computation_types.TensorType(tf.float32))
+    self.assertLen(results, 2)
+    self.assertIsInstance(results[0], TestError)
+    self.assertIsInstance(results[1], TestError)
+
   def test_create_call_does_not_cache_error(self):
     loop = asyncio.get_event_loop()
     mock_executor = mock.create_autospec(executor_base.Executor)
@@ -107,6 +127,25 @@ class CachingExecutorTest(absltest.TestCase):
     # called once).
     mock_executor.create_call.assert_has_calls(
         [mock.call(TEST_VALUE), mock.call(TEST_VALUE)])
+
+  def test_create_call_does_not_cache_error_avoids_double_cache_delete(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = create_test_value
+    mock_executor.create_call.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    v = loop.run_until_complete(cached_executor.create_value(foo))
+    future_call1 = cached_executor.create_call(v)
+    future_call2 = cached_executor.create_call(v)
+    results = loop.run_until_complete(
+        asyncio.gather(future_call1, future_call2, return_exceptions=True))
+    # Ensure create_call is only called once, since the first call inserts the
+    # inner executor future into the cache. However we expect two errors to be
+    # returned.
+    mock_executor.create_call.assert_called_once_with(TEST_VALUE)
+    self.assertLen(results, 2)
+    self.assertIsInstance(results[0], TestError)
+    self.assertIsInstance(results[1], TestError)
 
   def test_create_tuple_does_not_cache_error(self):
     loop = asyncio.get_event_loop()
@@ -128,6 +167,28 @@ class CachingExecutorTest(absltest.TestCase):
         [mock.call(anon_tuple_value),
          mock.call(anon_tuple_value)])
 
+  def test_create_tuple_does_not_cache_error_avoids_double_delete(self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = create_test_value
+    mock_executor.create_tuple.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    value = loop.run_until_complete(cached_executor.create_value(foo))
+    value_tuple = (value, value)
+    future1 = cached_executor.create_tuple(value_tuple)
+    future2 = cached_executor.create_tuple(value_tuple)
+    results = loop.run_until_complete(
+        asyncio.gather(future1, future2, return_exceptions=True))
+    # Ensure create_call is only called once, since the first call inserts the
+    # inner executor future into the cache. However we expect two errors to be
+    # returned.
+    mock_executor.create_tuple.assert_called_once_with(
+        anonymous_tuple.AnonymousTuple([(None, TEST_VALUE),
+                                        (None, TEST_VALUE)]))
+    self.assertLen(results, 2)
+    self.assertIsInstance(results[0], TestError)
+    self.assertIsInstance(results[1], TestError)
+
   def test_create_selection_does_not_cache_error(self):
     loop = asyncio.get_event_loop()
     mock_executor = mock.create_autospec(executor_base.Executor)
@@ -145,6 +206,28 @@ class CachingExecutorTest(absltest.TestCase):
     # Ensure create_tuple was called twice on the mock (not cached and only
     # called once).
     mock_executor.create_selection.assert_has_calls([])
+
+  def test_create_selection_does_not_cache_error_avoids_double_cache_delete(
+      self):
+    loop = asyncio.get_event_loop()
+    mock_executor = mock.create_autospec(executor_base.Executor)
+    mock_executor.create_value.side_effect = create_test_value
+    mock_executor.create_selection.side_effect = raise_error
+    cached_executor = caching_executor.CachingExecutor(mock_executor)
+    value = loop.run_until_complete(
+        cached_executor.create_value((1, 2),
+                                     computation_types.NamedTupleType(
+                                         (tf.int32, tf.int32))))
+    future1 = cached_executor.create_selection(value, 1)
+    future2 = cached_executor.create_selection(value, 1)
+    results = loop.run_until_complete(
+        asyncio.gather(future1, future2, return_exceptions=True))
+    # Ensure create_tuple was called twice on the mock (not cached and only
+    # called once).
+    mock_executor.create_selection.assert_has_calls([])
+    self.assertLen(results, 2)
+    self.assertIsInstance(results[0], TestError)
+    self.assertIsInstance(results[1], TestError)
 
   def test_with_integer_constant(self):
     ex, tracer = _make_executor_and_tracer_for_test()
