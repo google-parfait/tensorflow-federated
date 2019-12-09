@@ -95,16 +95,13 @@ def select_graph_output(comp, name=None, index=None):
         'with return type {}'.format(binding_oneof))
   proto_type = type_serialization.deserialize_type(proto.type)
   py_typecheck.check_type(proto_type.result, computation_types.NamedTupleType)
-  if name is None:
-    result = [x for x in graph_result_binding.tuple.element][index]
-    result_type = proto_type.result[index]
-  else:
+  if name is not None:
     type_names_list = [
         x[0] for x in anonymous_tuple.iter_elements(proto_type.result)
     ]
     index = type_names_list.index(name)
-    result = [x for x in graph_result_binding.tuple.element][index]
-    result_type = proto_type.result[index]
+  result = graph_result_binding.tuple.element[index]
+  result_type = proto_type.result[index]
   serialized_type = type_serialization.serialize_type(
       computation_types.FunctionType(proto_type.parameter, result_type))
   selected_proto = pb.Computation(
