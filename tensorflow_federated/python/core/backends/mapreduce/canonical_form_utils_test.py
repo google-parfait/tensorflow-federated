@@ -140,7 +140,7 @@ class GetCanonicalFormForIterativeProcessTest(absltest.TestCase):
         np.array_equal(metrics.num_examples, alt_metrics.num_examples))
     self.assertTrue(np.array_equal(metrics.loss, alt_metrics.loss))
 
-  def test_returns_caonnical_form_from_tff_learning_structure(self):
+  def test_returns_canonical_form_from_tff_learning_structure(self):
     it = test_utils.construct_example_training_comp()
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
