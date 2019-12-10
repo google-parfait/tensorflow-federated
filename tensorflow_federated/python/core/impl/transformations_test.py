@@ -4385,37 +4385,37 @@ class ComputationsEqualTest(absltest.TestCase):
   def test_raises_type_error(self):
     data = building_blocks.Data('data', tf.int32)
     with self.assertRaises(TypeError):
-      transformations._computations_equal(data, None)
-      transformations._computations_equal(None, data)
+      transformations._trees_equal(data, None)
+      transformations._trees_equal(None, data)
 
   def test_returns_true_for_the_same_comp(self):
     data = building_blocks.Data('data', tf.int32)
-    self.assertTrue(transformations._computations_equal(data, data))
+    self.assertTrue(transformations._trees_equal(data, data))
 
   def test_returns_false_for_comps_with_different_types(self):
     data = building_blocks.Data('data', tf.int32)
     ref = building_blocks.Reference('a', tf.int32)
-    self.assertFalse(transformations._computations_equal(data, ref))
-    self.assertFalse(transformations._computations_equal(ref, data))
+    self.assertFalse(transformations._trees_equal(data, ref))
+    self.assertFalse(transformations._trees_equal(ref, data))
 
   def test_returns_false_for_blocks_with_different_results(self):
     data_1 = building_blocks.Data('data', tf.int32)
     comp_1 = building_blocks.Block([], data_1)
     data_2 = building_blocks.Data('data', tf.float32)
     comp_2 = building_blocks.Block([], data_2)
-    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+    self.assertFalse(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_blocks_with_different_variable_lengths(self):
     data = building_blocks.Data('data', tf.int32)
     comp_1 = building_blocks.Block([('a', data)], data)
     comp_2 = building_blocks.Block([('a', data), ('b', data)], data)
-    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+    self.assertFalse(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_blocks_with_different_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     comp_1 = building_blocks.Block([('a', data)], data)
     comp_2 = building_blocks.Block([('b', data)], data)
-    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+    self.assertFalse(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_blocks_with_different_variable_values(self):
     data = building_blocks.Data('data', tf.int32)
@@ -4423,14 +4423,14 @@ class ComputationsEqualTest(absltest.TestCase):
     comp_1 = building_blocks.Block([('a', data_1)], data)
     data_2 = building_blocks.Data('data', tf.bool)
     comp_2 = building_blocks.Block([('a', data_2)], data)
-    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+    self.assertFalse(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_blocks(self):
     data_1 = building_blocks.Data('data', tf.int32)
     comp_1 = building_blocks.Block([('a', data_1)], data_1)
     data_2 = building_blocks.Data('data', tf.int32)
     comp_2 = building_blocks.Block([('a', data_2)], data_2)
-    self.assertTrue(transformations._computations_equal(comp_1, comp_2))
+    self.assertTrue(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_calls_with_different_functions(self):
     function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
@@ -4441,7 +4441,7 @@ class ComputationsEqualTest(absltest.TestCase):
     fn_2 = building_blocks.Reference('b', function_type_2)
     arg_2 = building_blocks.Data('data', tf.int32)
     comp_2 = building_blocks.Call(fn_2, arg_2)
-    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+    self.assertFalse(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_calls_with_different_arguments(self):
     function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
@@ -4452,7 +4452,7 @@ class ComputationsEqualTest(absltest.TestCase):
     fn_2 = building_blocks.Reference('a', function_type_2)
     arg_2 = building_blocks.Data('b', tf.int32)
     comp_2 = building_blocks.Call(fn_2, arg_2)
-    self.assertFalse(transformations._computations_equal(comp_1, comp_2))
+    self.assertFalse(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_calls(self):
     function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
@@ -4463,7 +4463,7 @@ class ComputationsEqualTest(absltest.TestCase):
     fn_2 = building_blocks.Reference('a', function_type_2)
     arg_2 = building_blocks.Data('data', tf.int32)
     comp_2 = building_blocks.Call(fn_2, arg_2)
-    self.assertTrue(transformations._computations_equal(comp_1, comp_2))
+    self.assertTrue(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_calls_with_no_arguments(self):
     function_type_1 = computation_types.FunctionType(None, tf.int32)
@@ -4472,183 +4472,169 @@ class ComputationsEqualTest(absltest.TestCase):
     function_type_2 = computation_types.FunctionType(None, tf.int32)
     fn_2 = building_blocks.Reference('a', function_type_2)
     comp_2 = building_blocks.Call(fn_2)
-    self.assertTrue(transformations._computations_equal(comp_1, comp_2))
+    self.assertTrue(transformations._trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_compiled_computations_with_different_types(self):
     compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
     compiled_2 = building_block_factory.create_compiled_identity(
         tf.float32, 'a')
-    self.assertFalse(
-        transformations._computations_equal(compiled_1, compiled_2))
+    self.assertFalse(transformations._trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations(self):
     compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
     compiled_2 = building_block_factory.create_compiled_identity(tf.int32, 'a')
-    self.assertTrue(transformations._computations_equal(compiled_1, compiled_2))
+    self.assertTrue(transformations._trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations_with_different_names(self):
     compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
     compiled_2 = building_block_factory.create_compiled_identity(tf.int32, 'b')
-    self.assertTrue(transformations._computations_equal(compiled_1, compiled_2))
+    self.assertTrue(transformations._trees_equal(compiled_1, compiled_2))
 
   def test_returns_false_for_data_with_different_types(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.float32)
-    self.assertFalse(transformations._computations_equal(data_1, data_2))
+    self.assertFalse(transformations._trees_equal(data_1, data_2))
 
   def test_returns_false_for_data_with_different_names(self):
     data_1 = building_blocks.Data('a', tf.int32)
     data_2 = building_blocks.Data('b', tf.int32)
-    self.assertFalse(transformations._computations_equal(data_1, data_2))
+    self.assertFalse(transformations._trees_equal(data_1, data_2))
 
   def test_returns_true_for_data(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
-    self.assertTrue(transformations._computations_equal(data_1, data_2))
+    self.assertTrue(transformations._trees_equal(data_1, data_2))
 
   def test_returns_false_for_intrinsics_with_different_types(self):
     intrinsic_1 = building_blocks.Intrinsic('intrinsic', tf.int32)
     intrinsic_2 = building_blocks.Intrinsic('intrinsic', tf.float32)
-    self.assertFalse(
-        transformations._computations_equal(intrinsic_1, intrinsic_2))
+    self.assertFalse(transformations._trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_false_for_intrinsics_with_different_names(self):
     intrinsic_1 = building_blocks.Intrinsic('a', tf.int32)
     intrinsic_2 = building_blocks.Intrinsic('b', tf.int32)
-    self.assertFalse(
-        transformations._computations_equal(intrinsic_1, intrinsic_2))
+    self.assertFalse(transformations._trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_true_for_intrinsics(self):
     intrinsic_1 = building_blocks.Intrinsic('intrinsic', tf.int32)
     intrinsic_2 = building_blocks.Intrinsic('intrinsic', tf.int32)
-    self.assertTrue(
-        transformations._computations_equal(intrinsic_1, intrinsic_2))
+    self.assertTrue(transformations._trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_false_for_lambdas_with_different_parameter_names(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
     fn_1 = building_blocks.Lambda('b', ref_1.type_signature, ref_1)
     ref_2 = building_blocks.Reference('a', tf.int32)
     fn_2 = building_blocks.Lambda('c', ref_2.type_signature, ref_2)
-    self.assertFalse(transformations._computations_equal(fn_1, fn_2))
+    self.assertFalse(transformations._trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_with_different_parameter_types(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, ref_1)
     ref_2 = building_blocks.Reference('a', tf.float32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, ref_2)
-    self.assertFalse(transformations._computations_equal(fn_1, fn_2))
+    self.assertFalse(transformations._trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_with_different_results(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, ref_1)
     ref_2 = building_blocks.Reference('b', tf.int32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, ref_2)
-    self.assertFalse(transformations._computations_equal(fn_1, fn_2))
+    self.assertFalse(transformations._trees_equal(fn_1, fn_2))
 
   def test_returns_true_for_lambdas(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, ref_1)
     ref_2 = building_blocks.Reference('a', tf.int32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, ref_2)
-    self.assertTrue(transformations._computations_equal(fn_1, fn_2))
+    self.assertTrue(transformations._trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_placements_with_literals(self):
     placement_1 = building_blocks.Placement(placements.CLIENTS)
     placement_2 = building_blocks.Placement(placements.SERVER)
-    self.assertFalse(
-        transformations._computations_equal(placement_1, placement_2))
+    self.assertFalse(transformations._trees_equal(placement_1, placement_2))
 
   def test_returns_true_for_placements(self):
     placement_1 = building_blocks.Placement(placements.CLIENTS)
     placement_2 = building_blocks.Placement(placements.CLIENTS)
-    self.assertTrue(
-        transformations._computations_equal(placement_1, placement_2))
+    self.assertTrue(transformations._trees_equal(placement_1, placement_2))
 
   def test_returns_false_for_references_with_different_types(self):
     reference_1 = building_blocks.Reference('a', tf.int32)
     reference_2 = building_blocks.Reference('a', tf.float32)
-    self.assertFalse(
-        transformations._computations_equal(reference_1, reference_2))
+    self.assertFalse(transformations._trees_equal(reference_1, reference_2))
 
   def test_returns_false_for_references_with_different_names(self):
     reference_1 = building_blocks.Reference('a', tf.int32)
     reference_2 = building_blocks.Reference('b', tf.int32)
-    self.assertFalse(
-        transformations._computations_equal(reference_1, reference_2))
+    self.assertFalse(transformations._trees_equal(reference_1, reference_2))
 
   def test_returns_true_for_references(self):
     reference_1 = building_blocks.Reference('a', tf.int32)
     reference_2 = building_blocks.Reference('a', tf.int32)
-    self.assertTrue(
-        transformations._computations_equal(reference_1, reference_2))
+    self.assertTrue(transformations._trees_equal(reference_1, reference_2))
 
   def test_returns_false_for_selections_with_differet_sources(self):
     ref_1 = building_blocks.Reference('a', [tf.int32, tf.int32])
     selection_1 = building_blocks.Selection(ref_1, index=0)
     ref_2 = building_blocks.Reference('b', [tf.int32, tf.int32])
     selection_2 = building_blocks.Selection(ref_2, index=1)
-    self.assertFalse(
-        transformations._computations_equal(selection_1, selection_2))
+    self.assertFalse(transformations._trees_equal(selection_1, selection_2))
 
   def test_returns_false_for_selections_with_different_indexes(self):
     ref_1 = building_blocks.Reference('a', [tf.int32, tf.int32])
     selection_1 = building_blocks.Selection(ref_1, index=0)
     ref_2 = building_blocks.Reference('a', [tf.int32, tf.int32])
     selection_2 = building_blocks.Selection(ref_2, index=1)
-    self.assertFalse(
-        transformations._computations_equal(selection_1, selection_2))
+    self.assertFalse(transformations._trees_equal(selection_1, selection_2))
 
   def test_returns_false_for_selections_with_differet_names(self):
     ref_1 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
     selection_1 = building_blocks.Selection(ref_1, name='a')
     ref_2 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
     selection_2 = building_blocks.Selection(ref_2, name='b')
-    self.assertFalse(
-        transformations._computations_equal(selection_1, selection_2))
+    self.assertFalse(transformations._trees_equal(selection_1, selection_2))
 
   def test_returns_true_for_selections_with_indexes(self):
     ref_1 = building_blocks.Reference('a', [tf.int32, tf.int32])
     selection_1 = building_blocks.Selection(ref_1, index=0)
     ref_2 = building_blocks.Reference('a', [tf.int32, tf.int32])
     selection_2 = building_blocks.Selection(ref_2, index=0)
-    self.assertTrue(
-        transformations._computations_equal(selection_1, selection_2))
+    self.assertTrue(transformations._trees_equal(selection_1, selection_2))
 
   def test_returns_true_for_selections_with_names(self):
     ref_1 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
     selection_1 = building_blocks.Selection(ref_1, name='a')
     ref_2 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
     selection_2 = building_blocks.Selection(ref_2, name='a')
-    self.assertTrue(
-        transformations._computations_equal(selection_1, selection_2))
+    self.assertTrue(transformations._trees_equal(selection_1, selection_2))
 
   def test_returns_false_for_tuples_with_different_lengths(self):
     data_1 = building_blocks.Data('data', tf.int32)
     tuple_1 = building_blocks.Tuple([data_1])
     data_2 = building_blocks.Data('data', tf.int32)
     tuple_2 = building_blocks.Tuple([data_2, data_2])
-    self.assertFalse(transformations._computations_equal(tuple_1, tuple_2))
+    self.assertFalse(transformations._trees_equal(tuple_1, tuple_2))
 
   def test_returns_false_for_tuples_with_different_names(self):
     data_1 = building_blocks.Data('data', tf.int32)
     tuple_1 = building_blocks.Tuple([('a', data_1), ('b', data_1)])
     data_2 = building_blocks.Data('data', tf.float32)
     tuple_2 = building_blocks.Tuple([('c', data_2), ('d', data_2)])
-    self.assertFalse(transformations._computations_equal(tuple_1, tuple_2))
+    self.assertFalse(transformations._trees_equal(tuple_1, tuple_2))
 
   def test_returns_false_for_tuples_with_different_elements(self):
     data_1 = building_blocks.Data('data', tf.int32)
     tuple_1 = building_blocks.Tuple([data_1, data_1])
     data_2 = building_blocks.Data('data', tf.float32)
     tuple_2 = building_blocks.Tuple([data_2, data_2])
-    self.assertFalse(transformations._computations_equal(tuple_1, tuple_2))
+    self.assertFalse(transformations._trees_equal(tuple_1, tuple_2))
 
   def test_returns_true_for_tuples(self):
     data_1 = building_blocks.Data('data', tf.int32)
     tuple_1 = building_blocks.Tuple([data_1, data_1])
     data_2 = building_blocks.Data('data', tf.int32)
     tuple_2 = building_blocks.Tuple([data_2, data_2])
-    self.assertTrue(transformations._computations_equal(tuple_1, tuple_2))
+    self.assertTrue(transformations._trees_equal(tuple_1, tuple_2))
 
 
 if __name__ == '__main__':

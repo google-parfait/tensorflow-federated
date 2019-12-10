@@ -137,14 +137,15 @@ def remove_lambdas_and_blocks(comp):
 
 
 class ExtractComputation(transformation_utils.TransformSpec):
-  """Extracts a computation if a variable it depends on is not bound.
+  """Extracts a computation if all referenced variables are free (unbound).
 
   This transforms a computation which matches the `predicate` or is a Block, and
-  replaces the computations with a LET
-  construct if a variable it depends on is not bound by the current scope. Both
-  the `parameter_name` of a `building_blocks.Lambda` and the name of
-  any variable defined by a `building_blocks.Block` can affect the
-  scope in which a reference in computation is bound.
+  replaces the computations with a LET construct if it doesn't reference any
+  variables bound by the current scope.
+
+  Both the `parameter_name` of a `building_blocks.Lambda` and the name of
+  any variable defined by a `building_blocks.Block` can affect the scope in
+  which a reference in computation is bound.
 
   NOTE: This function extracts `computation_building_block.Block` because block
   variables can restrict the scope in which computations are bound.
@@ -372,16 +373,18 @@ class ExtractComputation(transformation_utils.TransformSpec):
 
 
 def extract_computations(comp):
-  """Extracts computations to the scope which binds a variable it depends on.
+  """Extracts subcomputations to a binding in the outermost-possible scope.
 
-  NOTE: If a computation does not contain a variable that is bound by a
-  computation in `comp` it will be extracted to the root.
+  Subcomputations that reference only free variables (variables bound outside
+  `comp`) will be extracted to root-level. Computations which reference bound
+  variables will be extracted to the scope in which the innermost variable
+  they reference is bound.
 
   Args:
-    comp: The computation building block in which to perform the transformation.
+    comp: The computation building block on which to perform the transformation.
 
   Returns:
-    A new computation with the transformation applied or the original `comp`.
+    A computation representing `comp` with the transformation applied.
   """
 
   def _predicate(comp):
@@ -391,16 +394,18 @@ def extract_computations(comp):
 
 
 def extract_intrinsics(comp):
-  """Extracts intrinsics to the scope which binds a variable it depends on.
+  """Extracts intrinsics to a binding in the outermost-possible scope.
 
-  NOTE: If an intrinsic does not contain a variable that is bound by a
-  computation in `comp` it will be extracted to the root.
+  Intrinsics that reference only free variables (variables bound outside
+  `comp`) will be extracted to root-level. Intrinsics which reference bound
+  variables will be extracted to the scope in which the innermost variable
+  they depend on is bound.
 
   Args:
     comp: The computation building block in which to perform the transformation.
 
   Returns:
-    A new computation with the transformation applied or the original `comp`.
+    A new computation representing `comp` with the transformation applied.
   """
 
   def _predicate(comp):
@@ -506,7 +511,7 @@ class MergeChainedBlocks(transformation_utils.TransformSpec):
   scoping rules.
 
   Notice that because TFF Block constructs bind their variables in sequence, it
-  is completely safe to add the locals lists together in this implementation,
+  is completely safe to add the locals lists together in this implementation.
   """
 
   def should_transform(self, comp):
@@ -989,7 +994,7 @@ def remove_duplicate_block_locals(comp):
         else:
           value = new_value
       payloads_with_value = symbol_tree.get_all_payloads_with_value(
-          value, _computations_equal)
+          value, _trees_equal)
       if payloads_with_value:
         highest_payload = payloads_with_value[-1]
         lower_payloads = payloads_with_value[:-1]
@@ -1161,7 +1166,7 @@ def uniquify_compiled_computation_names(comp):
   """Replaces all the compiled computations names in `comp` with unique names.
 
   This transform traverses `comp` postorder and replaces the name of all the
-  comiled computations found in `comp` with a unique name.
+  compiled computations found in `comp` with a unique name.
 
   Args:
     comp: The computation building block in which to perform the replacements.
@@ -1249,10 +1254,9 @@ class TFParser(object):
   """Callable taking subset of TFF AST constructs to CompiledComputations.
 
   When this function is applied via `transformation_utils.transform_postorder`
-  to a TFF AST node satisfying its assumptions,  the tree under this node will
-  be reduced to a single instance of
-  `building_blocks.CompiledComputation` representing the same
-  logic.
+  to a TFF AST node satisfying its assumptions, the tree under this node will
+  be reduced to a single instance of `building_blocks.CompiledComputation`
+  representing the same logic.
 
   Notice that this function is designed to be applied to what is essentially
   a subtree of a larger TFF AST; once the processing on a single device has
@@ -1661,19 +1665,13 @@ def unwrap_placement(comp):
     return called_intrinsic, True
 
 
-def _computations_equal(comp_1, comp_2):
-  """Returns `True` if the computations are equal.
+def _trees_equal(comp_1, comp_2):
+  """Returns `True` if the computations are entirely identical.
 
   If you pass objects other than instances of
   `building_blocks.ComputationBuildingBlock` this function will
-  return `False`. Structurally equaivalent computations with different variable
-  names are not considered to be equal.
-
-  NOTE: This function could be quite expensive if you do not
-  `extract_computations` first. Extracting all comptations reduces the equality
-  of two computations in most cases to an identity check. One notable exception
-  to this is `CompiledComputation` for which equality is delegated to the proto
-  object.
+  return `False`. Structurally equivalent computations with different variable
+  names or different operation orderings are not considered to be equal.
 
   Args:
     comp_1: A `building_blocks.ComputationBuildingBlock` to test.
@@ -1691,25 +1689,25 @@ def _computations_equal(comp_1, comp_2):
     return True
   # The unidiomatic-typecheck is intentional, for the purposes of equality this
   # function requires that the types are identical and that a subclass will not
-  # be equal to it's baseclass.
+  # be equal to its baseclass.
   if type(comp_1) != type(comp_2):  # pylint: disable=unidiomatic-typecheck
     return False
   if comp_1.type_signature != comp_2.type_signature:
     return False
   if isinstance(comp_1, building_blocks.Block):
-    if not _computations_equal(comp_1.result, comp_2.result):
+    if not _trees_equal(comp_1.result, comp_2.result):
       return False
     if len(comp_1.locals) != len(comp_2.locals):
       return False
     for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
                                                     comp_2.locals):
-      if name_1 != name_2 or not _computations_equal(value_1, value_2):
+      if name_1 != name_2 or not _trees_equal(value_1, value_2):
         return False
     return True
   elif isinstance(comp_1, building_blocks.Call):
-    return (_computations_equal(comp_1.function, comp_2.function) and
+    return (_trees_equal(comp_1.function, comp_2.function) and
             (comp_1.argument is None and comp_2.argument is None or
-             _computations_equal(comp_1.argument, comp_2.argument)))
+             _trees_equal(comp_1.argument, comp_2.argument)))
   elif isinstance(comp_1, building_blocks.CompiledComputation):
     return comp_1.proto == comp_2.proto
   elif isinstance(comp_1, building_blocks.Data):
@@ -1719,20 +1717,20 @@ def _computations_equal(comp_1, comp_2):
   elif isinstance(comp_1, building_blocks.Lambda):
     return (comp_1.parameter_name == comp_2.parameter_name and
             comp_1.parameter_type == comp_2.parameter_type and
-            _computations_equal(comp_1.result, comp_2.result))
+            _trees_equal(comp_1.result, comp_2.result))
   elif isinstance(comp_1, building_blocks.Placement):
     return comp_1.uri == comp_2.uri
   elif isinstance(comp_1, building_blocks.Reference):
     return comp_1.name == comp_2.name
   elif isinstance(comp_1, building_blocks.Selection):
-    return (_computations_equal(comp_1.source, comp_2.source) and
+    return (_trees_equal(comp_1.source, comp_2.source) and
             comp_1.name == comp_2.name and comp_1.index == comp_2.index)
   elif isinstance(comp_1, building_blocks.Tuple):
     # The element names are checked as part of the `type_signature`.
     if len(comp_1) != len(comp_2):
       return False
     for element_1, element_2 in zip(comp_1, comp_2):
-      if not _computations_equal(element_1, element_2):
+      if not _trees_equal(element_1, element_2):
         return False
     return True
   raise NotImplementedError('Unexpected type found: {}.'.format(type(comp_1)))

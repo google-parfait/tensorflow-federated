@@ -40,7 +40,7 @@ def transform_postorder(comp, transform):
   the element itself. The transformation `transform` should act as an identity
   function on the kinds of elements (computation building blocks) it does not
   care to transform. This corresponds to a post-order traversal of the
-  expression tree, i.e., parameters are alwaysd transformed left-to-right (in
+  expression tree, i.e., parameters are always transformed left-to-right (in
   the order in which they are listed in building block constructors), then the
   parent is visited and transformed with the already-visited, and possibly
   transformed arguments in place.
