@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import os.path
 
 import tensorflow as tf
@@ -86,7 +85,8 @@ class FilePerUserClientData(client_data.ClientData):
       A `tff.simulation.FilePerUserClientData` object.
     """
     client_ids_to_paths_dict = {
-        filename: os.path.join(path, filename) for filename in os.listdir(path)
+        filename: os.path.join(path, filename)
+        for filename in tf.io.gfile.listdir(path)
     }
 
     def create_dataset_for_filename_fn(client_id):
