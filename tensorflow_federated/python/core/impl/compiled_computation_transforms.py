@@ -885,7 +885,8 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
     if not isinstance(function, building_blocks.CompiledComputation):
       return False
     if not (isinstance(argument, building_blocks.Tuple) and
-            all(isinstance(x, building_blocks.Reference) for x in argument)):
+            all(isinstance(x, building_blocks.Reference) for x in argument) and
+            len(argument) > 0):  # pylint: disable=g-explicit-length-test
       return False
     first_ref_name = argument[0].name
     return all(x.name == first_ref_name for x in argument)
