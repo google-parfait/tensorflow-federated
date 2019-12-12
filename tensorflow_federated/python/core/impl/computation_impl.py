@@ -23,6 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
 
@@ -34,6 +35,10 @@ class ComputationImpl(function_utils.ConcreteFunction):
   def get_proto(cls, value):
     py_typecheck.check_type(value, cls)
     return value._computation_proto  # pylint: disable=protected-access
+
+  def to_building_block(self):
+    return building_blocks.ComputationBuildingBlock.from_proto(
+        self._computation_proto)
 
   def __init__(self, computation_proto, context_stack, annotated_type=None):
     """Constructs a new instance of ComputationImpl from the computation_proto.

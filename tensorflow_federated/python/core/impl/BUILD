@@ -29,6 +29,20 @@ py_library(
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
+py_test(
+    name = "ast_generation_test",
+    size = "small",
+    srcs = ["ast_generation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":computation_impl",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+    ],
+)
+
 py_library(
     name = "caching_executor",
     srcs = ["caching_executor.py"],
@@ -196,6 +210,7 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
     ],

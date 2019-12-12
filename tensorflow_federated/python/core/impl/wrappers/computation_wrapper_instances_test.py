@@ -88,12 +88,8 @@ class ComputationWrapperInstancesTest(test.TestCase):
     self.assertEqual(
         str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
 
-    # TODO(b/113112885): Remove this protected member access as noted above.
-    comp = foo._computation_proto
-
-    building_block = (building_blocks.ComputationBuildingBlock.from_proto(comp))
     self.assertEqual(
-        str(building_block),
+        str(foo.to_building_block()),
         '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[0](FEDERATED_arg[1])))'
     )
 
