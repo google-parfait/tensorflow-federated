@@ -115,10 +115,12 @@ class DummyClientComputation(tff.learning.framework.ClientDeltaFn):
     example_vector_sum = dataset.reduce(
         initial_state=tf.zeros((DIM, 1)), reduce_func=reduce_fn_dataset_mean)
 
-    # create a list with the same structure and type as model.trainable
-    # containing a mean of all the examples in the local dataset. Note: this
-    # works for a linear model only (as in the example above)
-    weights_delta = [example_vector_sum / tf.cast(num_examples_sum, tf.float32)]
+    # create an ordered dictionary with the same type as model.trainable
+    # containing a mean of all the examples in the local dataset
+    # Note: this works for a linear model only (as in the example above)
+    key = list(model.weights.trainable.keys())[0]
+    weights_delta = collections.OrderedDict(
+        {key: example_vector_sum / tf.cast(num_examples_sum, tf.float32)})
 
     aggregated_outputs = model.report_local_outputs()
     weights_delta, has_non_finite_delta = (

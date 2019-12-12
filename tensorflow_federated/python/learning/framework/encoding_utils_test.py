@@ -73,10 +73,10 @@ class IterativeProcessTest(test.TestCase, parameterized.TestCase):
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()
-    self.assertEqual(state.model_broadcast_state.trainable[0][0], 1)
+    self.assertEqual(state.model_broadcast_state.trainable.a[0], 1)
 
     state, _ = iterative_process.next(state, federated_ds)
-    self.assertEqual(state.model_broadcast_state.trainable[0][0], 2)
+    self.assertEqual(state.model_broadcast_state.trainable.a[0], 2)
 
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):

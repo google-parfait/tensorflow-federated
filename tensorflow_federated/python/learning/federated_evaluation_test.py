@@ -83,7 +83,7 @@ class FederatedEvaluationTest(test.TestCase):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     self.assertEqual(
         str(evaluate.type_signature),
-        '(<<trainable=<float32>,non_trainable=<>>@SERVER,'
+        '(<<trainable=<max_temp=float32>,non_trainable=<>>@SERVER,'
         '{<temp=float32[?]>*}@CLIENTS> -> <num_over=float32@SERVER>)')
 
     def _temp_dict(temps):
@@ -91,8 +91,8 @@ class FederatedEvaluationTest(test.TestCase):
 
     result = evaluate(
         collections.OrderedDict([
-            ('trainable', [5.0]),
-            ('non_trainable', []),
+            ('trainable', collections.OrderedDict([('max_temp', 5.0)])),
+            ('non_trainable', {}),
         ]), [
             [_temp_dict([1.0, 10.0, 2.0, 7.0]),
              _temp_dict([6.0, 11.0])],

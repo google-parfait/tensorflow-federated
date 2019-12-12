@@ -142,10 +142,14 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     model_vars = self.evaluate(server_state.model)
     train_vars = model_vars.trainable
     self.assertLen(train_vars, 2)
-    self.assertAllClose(train_vars, [np.zeros((2, 1)), 0.0])
-    self.assertAllClose(model_vars.non_trainable, [0.0])
+    self.assertAllClose(train_vars['a'], [[0.0], [0.0]])
+    self.assertEqual(train_vars['b'], 0.0)
+    self.assertEqual(model_vars.non_trainable, {'c': 0.0})
     self.assertLen(server_state.optimizer_state, num_optimizer_vars)
-    weights_delta = [tf.constant([[1.0], [0.0]]), tf.constant(1.0)]
+    weights_delta = collections.OrderedDict([
+        ('a', tf.constant([[1.0], [0.0]])),
+        ('b', tf.constant(1.0)),
+    ])
     server_state = optimizer_utils.server_update_model(server_state,
                                                        weights_delta, model_fn,
                                                        optimizer_fn)
@@ -155,8 +159,9 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
     # so updated_val=0.1
     self.assertLen(train_vars, 2)
-    self.assertAllClose(train_vars, [[[updated_val], [0.0]], updated_val])
-    self.assertAllClose(model_vars.non_trainable, [0.0])
+    self.assertAllClose(train_vars['a'], [[updated_val], [0.0]])
+    self.assertAllClose(train_vars['b'], updated_val)
+    self.assertEqual(model_vars.non_trainable, {'c': 0.0})
 
   def test_orchestration_execute(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
@@ -179,14 +184,18 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()
-    self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
-    self.assertAllClose(list(state.model.non_trainable), [0.0])
+    self.assertSequenceAlmostEqual(state.model.trainable.a,
+                                   np.zeros([2, 1], np.float32))
+    self.assertAlmostEqual(state.model.trainable.b, 0.0)
+    self.assertAlmostEqual(state.model.non_trainable.c, 0.0)
     self.assertEqual(state.delta_aggregate_state, 0)
     self.assertEqual(state.model_broadcast_state, 0)
 
     state, outputs = iterative_process.next(state, federated_ds)
-    self.assertAllClose(list(state.model.trainable), [-np.ones((2, 1)), -1.0])
-    self.assertAllClose(list(state.model.non_trainable), [0.0])
+    self.assertSequenceAlmostEqual(state.model.trainable.a,
+                                   -np.ones([2, 1], np.float32))
+    self.assertAlmostEqual(state.model.trainable.b, -1.0)
+    self.assertAlmostEqual(state.model.non_trainable.c, 0.0)
     self.assertEqual(state.delta_aggregate_state, 1)
     self.assertEqual(state.model_broadcast_state, 1)
 

@@ -47,8 +47,11 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
 
   def initial_weights(self):
     return model_utils.ModelWeights(
-        trainable=[tf.zeros((2, 1)), tf.constant(0.0)],
-        non_trainable=[0.0],
+        trainable=collections.OrderedDict([
+            ('a', tf.constant([[0.0], [0.0]])),
+            ('b', tf.constant(0.0)),
+        ]),
+        non_trainable=collections.OrderedDict([('c', 0.0)]),
     )
 
   def test_client_tf(self):
@@ -58,9 +61,10 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
     # Both trainable parameters should have been updated,
-    # and we don't return the non-trainable variable.
-    self.assertAllGreater(
-        np.linalg.norm(client_outputs.weights_delta, axis=-1), 0.1)
+    # and we don't return the non-trainable 'c'.
+    self.assertCountEqual(['a', 'b'], client_outputs.weights_delta.keys())
+    self.assertGreater(np.linalg.norm(client_outputs.weights_delta['a']), 0.1)
+    self.assertGreater(np.linalg.norm(client_outputs.weights_delta['b']), 0.1)
     self.assertEqual(client_outputs.weights_delta_weight, 8.0)
     self.assertEqual(client_outputs.optimizer_output['num_examples'], 8)
     self.assertEqual(client_outputs.optimizer_output['has_non_finite_delta'], 0)
@@ -88,11 +92,13 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
     dataset = self.dataset()
     client_tf = federated_averaging.ClientFedAvg(model)
     init_weights = self.initial_weights()
-    init_weights.trainable[1] = bad_value
+    init_weights.trainable['b'] = bad_value
     client_outputs = client_tf(dataset, init_weights)
     self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 0.0)
     self.assertAllClose(
-        self.evaluate(client_outputs.weights_delta), [[[0.0], [0.0]], 0.0])
+        self.evaluate(client_outputs.weights_delta['a']),
+        np.array([[0.0], [0.0]]))
+    self.assertAllClose(self.evaluate(client_outputs.weights_delta['b']), 0.0)
     self.assertEqual(
         self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
         1)
@@ -215,8 +221,9 @@ class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
 
     first_state, metric_outputs = iterative_process.next(
         server_state, federated_ds)
-    self.assertAllClose(
-        list(first_state.model.trainable), [[[0.0], [0.0]], 0.0])
+    self.assertEqual(
+        self.evaluate(tf.reduce_sum(first_state.model.trainable.a)) +
+        self.evaluate(tf.reduce_sum(first_state.model.trainable.b)), 0)
     self.assertEqual(metric_outputs.num_examples, 0)
     self.assertTrue(tf.math.is_nan(metric_outputs.loss))
 

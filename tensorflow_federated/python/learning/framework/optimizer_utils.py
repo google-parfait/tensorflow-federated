@@ -245,7 +245,7 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
     An updated `tff.learning.framework.ServerState`.
   """
   py_typecheck.check_type(server_state, ServerState)
-  py_typecheck.check_type(weights_delta, collections.Sequence)
+  py_typecheck.check_type(weights_delta, collections.OrderedDict)
   model = model_utils.enhance(model_fn())
   optimizer = optimizer_fn()
   apply_delta_fn, optimizer_vars = _build_server_optimizer(model, optimizer)

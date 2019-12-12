@@ -402,7 +402,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     tff_weights.assign_weights_to(keras_model)
 
     def assert_all_weights_close(keras_weights, tff_weights):
-      for keras_w, tff_w in zip(keras_weights, tff_weights):
+      for keras_w, tff_w in zip(keras_weights, tff_weights.values()):
         self.assertAllClose(
             self.evaluate(keras_w),
             self.evaluate(tff_w),

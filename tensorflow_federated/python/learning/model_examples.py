@@ -40,14 +40,19 @@ class LinearRegression(model.Model):
     # TODO(b/124070381): Support for integers in num_examples, etc., is handled
     # here in learning, by adding an explicit cast to a float where necessary in
     # order to pass typechecking in the reference executor.
-    self._num_examples = tf.Variable(0, trainable=False)
-    self._num_batches = tf.Variable(0, trainable=False)
-    self._loss_sum = tf.Variable(0.0, trainable=False)
-    self._a = tf.Variable([[0.0]] * feature_dim, trainable=True)
-    self._b = tf.Variable(0.0, trainable=True)
-    # Define a non-trainable model variable (another bias term) for code
-    # coverage in testing.
-    self._c = tf.Variable(0.0, trainable=False)
+    self._num_examples = tf.Variable(0, name='num_examples', trainable=False)
+    self._num_batches = tf.Variable(0, name='num_batches', trainable=False)
+    self._loss_sum = tf.Variable(0.0, name='loss_sum', trainable=False)
+    self._a = tf.Variable(
+        # N.B. The lambda is needed for use in defuns, see ValueError
+        # raised from resource_variable_ops.py.
+        lambda: tf.zeros(shape=(feature_dim, 1)),
+        name='a',
+        trainable=True)
+    self._b = tf.Variable(0.0, name='b', trainable=True)
+    # Define a non-trainable model variable (another bias term)
+    # for code coverage in testing.
+    self._c = tf.Variable(0.0, name='c', trainable=False)
     self._input_spec = LinearRegression.make_batch(
         x=tf.TensorSpec([None, self._feature_dim], tf.float32),
         y=tf.TensorSpec([None, 1], tf.float32))
