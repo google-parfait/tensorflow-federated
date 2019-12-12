@@ -3265,6 +3265,85 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
+class RemoveUnusedBlockLocalsTest(absltest.TestCase):
+
+  def setUp(self):
+    super(RemoveUnusedBlockLocalsTest, self).setUp()
+    self._unused_block_remover = transformations.RemoveUnusedBlockLocals()
+
+  def test_should_transform_block(self):
+    blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
+                                building_blocks.Data('b', tf.int32))
+    self.assertTrue(self._unused_block_remover.should_transform(blk))
+
+  def test_should_not_transform_data(self):
+    data = building_blocks.Data('b', tf.int32)
+    self.assertFalse(self._unused_block_remover.should_transform(data))
+
+  def test_removes_block_with_unused_reference(self):
+    input_data = building_blocks.Data('b', tf.int32)
+    blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
+                                input_data)
+    data, modified = transformations._apply_transforms(
+        blk, self._unused_block_remover)
+    self.assertTrue(modified)
+    self.assertEqual(data.compact_representation(),
+                     input_data.compact_representation())
+
+  def test_removes_nested_blocks_with_unused_reference(self):
+    input_data = building_blocks.Data('b', tf.int32)
+    blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
+                                input_data)
+    higher_level_blk = building_blocks.Block([('y', input_data)], blk)
+    data, modified = transformations._apply_transforms(
+        higher_level_blk, self._unused_block_remover)
+    self.assertTrue(modified)
+    self.assertEqual(data.compact_representation(),
+                     input_data.compact_representation())
+
+  def test_leaves_single_used_reference(self):
+    blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
+                                building_blocks.Reference('x', tf.int32))
+    transformed_blk, modified = transformations._apply_transforms(
+        blk, self._unused_block_remover)
+    self.assertFalse(modified)
+    self.assertEqual(transformed_blk.compact_representation(),
+                     blk.compact_representation())
+
+  def test_leaves_chained_used_references(self):
+    blk = building_blocks.Block(
+        [('x', building_blocks.Data('a', tf.int32)),
+         ('y', building_blocks.Reference('x', tf.int32))],
+        building_blocks.Reference('y', tf.int32))
+    transformed_blk, modified = transformations._apply_transforms(
+        blk, self._unused_block_remover)
+    self.assertFalse(modified)
+    self.assertEqual(transformed_blk.compact_representation(),
+                     blk.compact_representation())
+
+  def test_removes_locals_referencing_each_other_but_unreferenced_in_result(
+      self):
+    input_data = building_blocks.Data('b', tf.int32)
+    blk = building_blocks.Block(
+        [('x', building_blocks.Data('a', tf.int32)),
+         ('y', building_blocks.Reference('x', tf.int32))], input_data)
+    transformed_blk, modified = transformations._apply_transforms(
+        blk, self._unused_block_remover)
+    self.assertTrue(modified)
+    self.assertEqual(transformed_blk.compact_representation(),
+                     input_data.compact_representation())
+
+  def test_leaves_lone_referenced_local(self):
+    ref = building_blocks.Reference('y', tf.int32)
+    blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32)),
+                                 ('y', building_blocks.Data('b', tf.int32))],
+                                ref)
+    transformed_blk, modified = transformations._apply_transforms(
+        blk, self._unused_block_remover)
+    self.assertTrue(modified)
+    self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
+
+
 class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
 
   def test_raises_type_error(self):

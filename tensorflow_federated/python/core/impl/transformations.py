@@ -1085,6 +1085,37 @@ def remove_mapped_or_applied_identity(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
+class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
+  """Removes block local variables which are not used in the result."""
+
+  def should_transform(self, comp):
+    return isinstance(comp, building_blocks.Block)
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    unbound_ref_set = transformation_utils.get_map_of_unbound_references(
+        comp.result)[comp.result]
+    if not unbound_ref_set:
+      return comp.result, True
+    new_locals = []
+    for name, val in reversed(comp.locals):
+      if name in unbound_ref_set:
+        new_locals.append((name, val))
+        unbound_ref_set = unbound_ref_set.union(
+            transformation_utils.get_map_of_unbound_references(val)[val])
+        unbound_ref_set.discard(name)
+    if len(new_locals) == len(comp.locals):
+      return comp, False
+    if not comp.locals:
+      return comp.result, True
+    return building_blocks.Block(reversed(new_locals), comp.result), True
+
+
+def remove_unused_block_locals(comp):
+  return _apply_transforms(comp, RemoveUnusedBlockLocals())
+
+
 class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
   r"""Replaces all the called lambdas in `comp` with a block.
 
