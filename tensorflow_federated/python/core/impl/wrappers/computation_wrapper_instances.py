@@ -28,9 +28,21 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
+# The documentation of the arguments and return values from the wrapper_fns
+# is quite detailed and can be found in `computation_wrapper.py` along with
+# the definitions of `_wrap` and `ComputationWrapper`. In order to avoid having
+# to repeat those descriptions (and make any relevant changes in four separate
+# places) the documentation here simply forwards readers over.
+#
+# pylint:disable=g-doc-args,g-doc-return-or-yield
+
 
 def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
-  """Wrapper function to plug Tensorflow logic in to TFF framework."""
+  """Wrapper function to plug Tensorflow logic into the TFF framework.
+
+  This function is passed through `computation_wrapper.ComputationWrapper`.
+  Documentation its arguments can be found inside the definition of that class.
+  """
   del name  # Unused.
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
@@ -49,6 +61,11 @@ tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
 def _tf2_wrapper_fn(target_fn, parameter_type, unpack, name=None):
+  """Wrapper function to plug Tensorflow 2.0 logic into the TFF framework.
+
+  This function is passed through `computation_wrapper.ComputationWrapper`.
+  Documentation its arguments can be found inside the definition of that class.
+  """
   del name  # Unused.
   comp_pb, extra_type_spec = (
       tensorflow_serialization.serialize_tf2_as_tf_computation(
@@ -65,7 +82,11 @@ def _federated_computation_wrapper_fn(target_fn,
                                       parameter_type,
                                       unpack,
                                       name=None):
-  """Wrapper function to plug orchestration logic in to TFF framework."""
+  """Wrapper function to plug orchestration logic into the TFF framework.
+
+  This function is passed through `computation_wrapper.ComputationWrapper`.
+  Documentation its arguments can be found inside the definition of that class.
+  """
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
@@ -81,6 +102,9 @@ def _federated_computation_wrapper_fn(target_fn,
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(
     _federated_computation_wrapper_fn)
+
+
+# pylint:enable=g-doc-args,g-doc-return-or-yield
 
 
 def building_block_to_computation(building_block):
