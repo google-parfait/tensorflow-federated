@@ -19,6 +19,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
@@ -108,6 +109,30 @@ class CompositeExecutorTest(absltest.TestCase):
     def comp():
       tens = intrinsics.federated_value(10, placements.CLIENTS)
       return intrinsics.federated_aggregate(tens, 0, add_int, add_int, add_five)
+
+    self.assertEqual(comp(), 125)
+
+  def test_federated_aggregate_of_nested_tuple(self):
+    self.skipTest('b/146205831')
+    test_type = computation_types.NamedTupleType([('a', (tf.int32, tf.float32))
+                                                 ])
+
+    @computations.tf_computation(test_type, test_type)
+    def add_int(x, y):
+      return collections.OrderedDict([('a', (x.a[0] + y.a[0], x.a[1] + y.a[1]))
+                                     ])
+
+    @computations.tf_computation(test_type)
+    def add_five(x):
+      return collections.OrderedDict([('a', (x.a[0] + 5, x.a[1] + 1.0))])
+
+    @computations.federated_computation
+    def comp():
+      client_vals = intrinsics.federated_value(
+          collections.OrderedDict([('a', (10, 1.0))]), placements.CLIENTS)
+      zeros = collections.OrderedDict([('a', (0, 0.0))])
+      return intrinsics.federated_aggregate(client_vals, zeros, add_int,
+                                            add_int, add_five)
 
     self.assertEqual(comp(), 125)
 
