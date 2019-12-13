@@ -89,6 +89,14 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
     elif isinstance(self._type_signature, computation_types.FederatedType):
       py_typecheck.check_type(self._value, list)
       if self._type_signature.all_equal:
+        if not self._value:
+          # TODO(b/145936344): this happens when the executor has inferred the
+          # cardinality of clients as 0, which can happen in tff.Computation
+          # that only do a tff.federated_broadcast. This probably should be
+          # handled elsewhere.
+          raise RuntimeError('Arrived at a computation that inferred there are '
+                             '0 clients. Try explicity passing `num_clients` '
+                             'parameter when constructor the executor.')
         vals = [self._value[0]]
       else:
         vals = self._value
@@ -404,7 +412,7 @@ class FederatedExecutor(executor_base.Executor):
   async def _place(self, arg, placement):
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
     children = self._target_executors[placement]
-    val = await arg.internal_representation.compute()
+    val = await arg.compute()
     return FederatedExecutorValue(
         await asyncio.gather(
             *[c.create_value(val, arg.type_signature) for c in children]),
