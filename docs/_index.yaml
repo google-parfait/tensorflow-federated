@@ -60,10 +60,8 @@ landing_page:
         source, _ = tff.simulation.datasets.emnist.load_data()
         def client_data(n):
           return source.create_tf_dataset_for_client(source.client_ids[n]).map(
-              lambda e: {
-                  'x': tf.reshape(e['pixels'], [-1]),
-                  'y': e['label'],
-          }).repeat(10).batch(20)
+              lambda e: (tf.reshape(e['pixels'], [-1]), e['label'])
+          ).repeat(10).batch(20)
 
         # Pick a subset of client devices to participate in training.
         train_data = [client_data(n) for n in range(3)]
