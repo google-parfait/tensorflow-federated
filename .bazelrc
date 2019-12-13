@@ -5,6 +5,8 @@
 
 # Build with optimization enabled.
 build --compilation_mode=opt
+# Enable fast C++ protocol buffers, 10x speedup over pure Python.
+build --define use_fast_cpp_protos=true
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native

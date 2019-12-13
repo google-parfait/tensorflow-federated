@@ -24,6 +24,7 @@ from six.moves import zip
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import type_utils
@@ -1696,6 +1697,34 @@ def unwrap_placement(comp):
     return called_intrinsic, True
 
 
+def _compiled_comp_equal(comp_1, comp_2):
+  """Returns `True` iff the computations are entirely identical.
+
+  Args:
+    comp_1: A `building_blocks.CompiledComputation` to test.
+    comp_2: A `building_blocks.CompiledComputation` to test.
+
+  Raises:
+    TypeError: if `comp_1` or `comp_2` is not a
+      `building_blocks.CompiledComputation`.
+  """
+  py_typecheck.check_type(comp_1, building_blocks.CompiledComputation)
+  py_typecheck.check_type(comp_2, building_blocks.CompiledComputation)
+
+  tensorflow_1 = comp_1.proto.tensorflow
+  tensorflow_2 = comp_2.proto.tensorflow
+  if tensorflow_1.initialize_op != tensorflow_2.initialize_op:
+    return False
+  if tensorflow_1.parameter != tensorflow_2.parameter:
+    return False
+  if tensorflow_1.result != tensorflow_2.result:
+    return False
+
+  graphdef_1 = serialization_utils.unpack_graph_def(tensorflow_1.graph_def)
+  graphdef_2 = serialization_utils.unpack_graph_def(tensorflow_2.graph_def)
+  return graphdef_1 == graphdef_2
+
+
 def _trees_equal(comp_1, comp_2):
   """Returns `True` if the computations are entirely identical.
 
@@ -1740,7 +1769,7 @@ def _trees_equal(comp_1, comp_2):
             (comp_1.argument is None and comp_2.argument is None or
              _trees_equal(comp_1.argument, comp_2.argument)))
   elif isinstance(comp_1, building_blocks.CompiledComputation):
-    return comp_1.proto == comp_2.proto
+    return _compiled_comp_equal(comp_1, comp_2)
   elif isinstance(comp_1, building_blocks.Data):
     return comp_1.uri == comp_2.uri
   elif isinstance(comp_1, building_blocks.Intrinsic):
