@@ -59,6 +59,8 @@ class CompositeExecutorTest(absltest.TestCase):
 
   def setUp(self):
     super(CompositeExecutorTest, self).setUp()
+    # 2 clients per worker stack * 3 worker stacks * 2 middle stacks
+    self._num_clients = 12
     set_default_executor.set_default_executor(
         _create_middle_stack([
             _create_middle_stack([_create_worker_stack() for _ in range(3)]),
@@ -110,10 +112,9 @@ class CompositeExecutorTest(absltest.TestCase):
       tens = intrinsics.federated_value(10, placements.CLIENTS)
       return intrinsics.federated_aggregate(tens, 0, add_int, add_int, add_five)
 
-    self.assertEqual(comp(), 125)
+    self.assertEqual(comp(), self._num_clients * 10 + 5)
 
   def test_federated_aggregate_of_nested_tuple(self):
-    self.skipTest('b/146205831')
     test_type = computation_types.NamedTupleType([('a', (tf.int32, tf.float32))
                                                  ])
 
@@ -124,17 +125,23 @@ class CompositeExecutorTest(absltest.TestCase):
 
     @computations.tf_computation(test_type)
     def add_five(x):
-      return collections.OrderedDict([('a', (x.a[0] + 5, x.a[1] + 1.0))])
+      return collections.OrderedDict([('a', (x.a[0] + 5, x.a[1] + 3.0))])
 
     @computations.federated_computation
     def comp():
       client_vals = intrinsics.federated_value(
-          collections.OrderedDict([('a', (10, 1.0))]), placements.CLIENTS)
+          collections.OrderedDict([('a', (10, 2.0))]), placements.CLIENTS)
       zeros = collections.OrderedDict([('a', (0, 0.0))])
       return intrinsics.federated_aggregate(client_vals, zeros, add_int,
                                             add_int, add_five)
 
-    self.assertEqual(comp(), 125)
+    excepted_value = anonymous_tuple.AnonymousTuple([
+        ('a',
+         anonymous_tuple.AnonymousTuple([(None, self._num_clients * 10 + 5),
+                                         (None, self._num_clients * 2.0 + 3.0)
+                                        ]))
+    ])
+    self.assertEqual(comp(), excepted_value)
 
   def test_federated_broadcast(self):
 
@@ -220,13 +227,12 @@ class CompositeExecutorTest(absltest.TestCase):
           str(anonymous_tuple.map_structure(lambda x: x.numpy(), v)), '<10,20>')
 
   def test_federated_sum(self):
-
     @computations.federated_computation
     def comp():
       return intrinsics.federated_sum(
           intrinsics.federated_value(10, placements.CLIENTS))
 
-    self.assertEqual(comp(), 120)
+    self.assertEqual(comp(), self._num_clients * 10)
 
   def test_federated_mean(self):
 

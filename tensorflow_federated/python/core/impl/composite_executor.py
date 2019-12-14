@@ -96,10 +96,23 @@ class CompositeValue(executor_value_base.ExecutorValue):
         return result
     else:
       py_typecheck.check_type(self._value, anonymous_tuple.AnonymousTuple)
-      elements = anonymous_tuple.to_elements(self._value)
-      keys = [k for k, _ in elements]
-      vals = await asyncio.gather(*[v.compute() for _, v in elements])
-      return anonymous_tuple.AnonymousTuple(list(zip(keys, vals)))
+
+      async def _compute_element(element):
+        py_typecheck.check_type(
+            element,
+            (anonymous_tuple.AnonymousTuple, executor_value_base.ExecutorValue))
+        if isinstance(element, anonymous_tuple.AnonymousTuple):
+          return await _compute_tuple(element)
+        else:
+          return await element.compute()
+
+      async def _compute_tuple(anon_tuple):
+        elements = anonymous_tuple.to_elements(anon_tuple)
+        keys = [k for k, _ in elements]
+        vals = await asyncio.gather(*[_compute_element(v) for _, v in elements])
+        return anonymous_tuple.AnonymousTuple(list(zip(keys, vals)))
+
+      return await _compute_tuple(self._value)
 
 
 def _create_lambda_identity_comp(type_spec):
@@ -151,7 +164,8 @@ class CompositeExecutor(executor_base.Executor):
         combine in this executor, delegate to and collect or aggregate from.
 
     Raises:
-      ValueError: If the value is unrecognized (e.g., a nonexistent intrinsic).
+      ValueError: If `parent_executor` is not an `Executor` instance, or
+        `child_exectuors` is not a list of `Exector` instances.
     """
     py_typecheck.check_type(parent_executor, executor_base.Executor)
     py_typecheck.check_type(child_executors, list)
