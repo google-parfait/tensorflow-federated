@@ -20,14 +20,12 @@ from __future__ import print_function
 
 import collections
 
-import six
-from six.moves import zip
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def model_initializer(model, name=None):
@@ -39,15 +37,8 @@ def model_initializer(model, name=None):
       name=(name or 'model_initializer'))
 
 
-class ModelWeights(
-    collections.namedtuple(
-        'ModelWeightsBase',
-        [
-            # An OrderedDict of `Model.trainable_variables` keyed by name.
-            'trainable',
-            # An OrderedDict of `Model.non_trainable_variables` keyed by name.
-            'non_trainable'
-        ])):
+@attr.s(cmp=False, frozen=True, slots=True)
+class ModelWeights(object):
   """A container for the trainable and non-trainable variables of a `Model`.
 
   Note this does not include the model's local variables.
@@ -55,35 +46,24 @@ class ModelWeights(
   It may also be used to hold other values that are parallel to these variables,
   e.g., tensors corresponding to variable values, or updates to model variables.
   """
-
-  # Necessary to work around for problematic _asdict() returning empty
-  # dictionary between Python 3.4.2 and 3.4.5.
-  #
-  # Addtionally prevents __dict__ from being created, which can improve memory
-  # usage of ModelWeights object.
-  __slots__ = ()
-
-  def __new__(cls, trainable, non_trainable):
-    return super(ModelWeights,
-                 cls).__new__(cls, tensor_utils.to_odict(trainable),
-                              tensor_utils.to_odict(non_trainable))
+  trainable = attr.ib()
+  non_trainable = attr.ib()
 
   @classmethod
   def from_model(cls, model):
     py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
-    # N.B. to_var_dict preserves the order of the variables, which
-    # is critical so we can re-use the list of values e.g. when doing
-    # keras_model.set_weights
-    return cls(
-        tensor_utils.to_var_dict(model.trainable_variables),
-        tensor_utils.to_var_dict(model.non_trainable_variables))
+    return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
   def from_tff_value(cls, anon_tuple):
     py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
-    return cls(
-        anonymous_tuple.to_odict(anon_tuple.trainable),
-        anonymous_tuple.to_odict(anon_tuple.non_trainable))
+    return cls([
+        value
+        for _, value in anonymous_tuple.iter_elements(anon_tuple.trainable)
+    ], [
+        value
+        for _, value in anonymous_tuple.iter_elements(anon_tuple.non_trainable)
+    ])
 
   def assign_weights_to(self, keras_model):
     """Assign these TFF model weights to the weights of a `tf.keras.Model`.
@@ -91,13 +71,10 @@ class ModelWeights(
     Args:
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-
-    def assign_weights(keras_weights, tff_weights):
-      for k, w in zip(keras_weights, six.itervalues(tff_weights)):
-        k.assign(w)
-
-    assign_weights(keras_model.trainable_weights, self.trainable)
-    assign_weights(keras_model.non_trainable_weights, self.non_trainable)
+    tf.nest.map_structure(lambda var, t: var.assign(t),
+                          keras_model.trainable_weights, self.trainable)
+    tf.nest.map_structure(lambda var, t: var.assign(t),
+                          keras_model.non_trainable_weights, self.non_trainable)
 
 
 def enhance(model):
