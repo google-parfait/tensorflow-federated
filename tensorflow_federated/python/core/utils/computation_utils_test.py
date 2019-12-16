@@ -24,6 +24,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import values
+from tensorflow_federated.python.core.impl import executor_stacks
+from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 from tensorflow_federated.python.core.utils import computation_utils
 
 
@@ -186,7 +188,7 @@ class ComputationUtilsTest(absltest.TestCase):
 
 
 def broadcast_initialize_fn():
-  return {'call_count': 0}
+  return collections.OrderedDict([('call_count', 0)])
 
 
 def broadcast_next_fn(state, value):
@@ -195,32 +197,44 @@ def broadcast_next_fn(state, value):
   def add_one(value):
     return value + 1
 
-  return {
-      'call_count': intrinsics.federated_map(add_one, state.call_count),
-  }, intrinsics.federated_broadcast(value)
+  return intrinsics.federated_zip(
+      collections.OrderedDict([
+          ('call_count', intrinsics.federated_map(add_one, state.call_count))
+      ])), intrinsics.federated_broadcast(value)
 
 
 class StatefulBroadcastFnTest(absltest.TestCase):
 
-  def test_construct_with_default_weight(self):
+  def test_execute(self):
+    broadcast_fn = computation_utils.StatefulBroadcastFn(
+        initialize_fn=broadcast_initialize_fn, next_fn=broadcast_next_fn)
+    broadcast_arg_type = computation_types.FederatedType(
+        tf.float32, placements.SERVER)
 
-    @computations.federated_computation(
-        computation_types.FederatedType(
-            tf.float32, placements.SERVER, all_equal=True))
+    @computations.federated_computation(broadcast_arg_type)
     def federated_broadcast_test(args):
-      broadcast_fn = computation_utils.StatefulBroadcastFn(
-          initialize_fn=broadcast_initialize_fn, next_fn=broadcast_next_fn)
       state = intrinsics.federated_value(broadcast_fn.initialize(),
                                          placements.SERVER)
       return broadcast_fn(state, args)
 
+    expected_type_signature = computation_types.FunctionType(
+        parameter=broadcast_arg_type,
+        result=computation_types.NamedTupleType([
+            computation_types.FederatedType(
+                collections.OrderedDict([('call_count', tf.int32)]),
+                placements.SERVER),
+            computation_types.FederatedType(
+                tf.float32, placements.CLIENTS, all_equal=True)
+        ]))
+    self.assertEqual(federated_broadcast_test.type_signature,
+                     expected_type_signature)
     state, value = federated_broadcast_test(1.0)
     self.assertAlmostEqual(value, 1.0)
     self.assertDictEqual(state._asdict(), {'call_count': 1})
 
 
 def agg_initialize_fn():
-  return {'call_count': 0}
+  return collections.OrderedDict([('call_count', 0)])
 
 
 def agg_next_fn(state, value, weight):
@@ -229,39 +243,48 @@ def agg_next_fn(state, value, weight):
   def add_one(value):
     return value + 1
 
-  return {
-      'call_count': intrinsics.federated_map(add_one, state.call_count),
-  }, intrinsics.federated_mean(value, weight)
+  return intrinsics.federated_zip(
+      collections.OrderedDict([
+          ('call_count', intrinsics.federated_map(add_one, state.call_count))
+      ])), intrinsics.federated_mean(value, weight)
 
 
 class StatefulAggregateFnTest(absltest.TestCase):
 
-  def test_construct_with_default_weight(self):
+  def test_execute_with_default_weight(self):
+    aggregate_fn = computation_utils.StatefulAggregateFn(
+        initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
+    aggregate_arg_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS)
 
-    @computations.federated_computation(
-        computation_types.FederatedType(
-            tf.float32, placements.CLIENTS, all_equal=False))
+    @computations.federated_computation(aggregate_arg_type)
     def federated_aggregate_test(args):
-      aggregate_fn = computation_utils.StatefulAggregateFn(
-          initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
       state = intrinsics.federated_value(aggregate_fn.initialize(),
                                          placements.SERVER)
       return aggregate_fn(state, args)
 
+    expected_type_signature = computation_types.FunctionType(
+        parameter=aggregate_arg_type,
+        result=computation_types.NamedTupleType([
+            computation_types.FederatedType(
+                collections.OrderedDict([('call_count', tf.int32)]),
+                placements.SERVER),
+            computation_types.FederatedType(tf.float32, placements.SERVER)
+        ]))
+    self.assertEqual(federated_aggregate_test.type_signature,
+                     expected_type_signature)
     state, mean = federated_aggregate_test([1.0, 2.0, 3.0])
     self.assertAlmostEqual(mean, 2.0)  # (1 + 2 + 3) / (1 + 1 + 1)
     self.assertDictEqual(state._asdict(), {'call_count': 1})
 
-  def test_construct_with_explicit_weights(self):
+  def test_execute_with_explicit_weights(self):
+    aggregate_fn = computation_utils.StatefulAggregateFn(
+        initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
 
     @computations.federated_computation(
-        computation_types.FederatedType(
-            tf.float32, placements.CLIENTS, all_equal=False),
-        computation_types.FederatedType(
-            tf.float32, placements.CLIENTS, all_equal=False))
+        computation_types.FederatedType(tf.float32, placements.CLIENTS),
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def federated_aggregate_test(args, weights):
-      aggregate_fn = computation_utils.StatefulAggregateFn(
-          initialize_fn=agg_initialize_fn, next_fn=agg_next_fn)
       state = intrinsics.federated_value(aggregate_fn.initialize(),
                                          placements.SERVER)
       return aggregate_fn(state, args, weights)
@@ -272,4 +295,10 @@ class StatefulAggregateFnTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
+  # NOTE: num_clients must be explicit here to correctly test the broadcast
+  # behavior. Otherwise TFF will infer there are zero clients, which is an
+  # error.
+  set_default_executor.set_default_executor(
+      executor_stacks.create_local_executor(num_clients=3))
   absltest.main()

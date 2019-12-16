@@ -45,6 +45,8 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:values",
+        "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
