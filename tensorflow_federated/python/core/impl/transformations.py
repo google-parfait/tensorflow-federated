@@ -1080,7 +1080,7 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
       return comp, False
     unbound_ref_set = transformation_utils.get_map_of_unbound_references(
         comp.result)[comp.result]
-    if not unbound_ref_set:
+    if not unbound_ref_set or not comp.locals:
       return comp.result, True
     new_locals = []
     for name, val in reversed(comp.locals):
@@ -1091,8 +1091,6 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
         unbound_ref_set.discard(name)
     if len(new_locals) == len(comp.locals):
       return comp, False
-    if not comp.locals:
-      return comp.result, True
     return building_blocks.Block(reversed(new_locals), comp.result), True
 
 

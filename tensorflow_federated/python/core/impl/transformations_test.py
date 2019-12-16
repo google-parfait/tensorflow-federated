@@ -3290,6 +3290,15 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     self.assertEqual(data.compact_representation(),
                      input_data.compact_representation())
 
+  def test_unwraps_block_with_empty_locals(self):
+    input_data = building_blocks.Data('b', tf.int32)
+    blk = building_blocks.Block([], input_data)
+    data, modified = transformations._apply_transforms(
+        blk, self._unused_block_remover)
+    self.assertTrue(modified)
+    self.assertEqual(data.compact_representation(),
+                     input_data.compact_representation())
+
   def test_removes_nested_blocks_with_unused_reference(self):
     input_data = building_blocks.Data('b', tf.int32)
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
