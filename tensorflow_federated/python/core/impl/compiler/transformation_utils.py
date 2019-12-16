@@ -954,6 +954,25 @@ class ReferenceCounter(BoundVariableTracker):
     return self.count == other.count
 
 
+class TrackRemovedReferences(BoundVariableTracker):
+  """transformation_utils.SymbolTree node for removing References in ASTs."""
+
+  def __init__(self, name, value):
+    super(TrackRemovedReferences, self).__init__(name, value)
+    self._removed = False
+
+  @property
+  def removed(self):
+    return self._removed
+
+  def update(self, value):
+    self._removed = True
+
+  def __str__(self):
+    return 'Name: {}; value: {}; removed: {}'.format(self.name, self.value,
+                                                     self.removed)
+
+
 def get_count_of_references_to_variables(comp):
   """Returns `SymbolTree` counting references to each bound variable in `comp`.
 

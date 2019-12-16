@@ -3365,6 +3365,23 @@ class ReplaceCalledLambdaWithBlockTest(absltest.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
+  def test_replaces_called_lambda_bound_to_block_local(self):
+    fn = test_utils.create_identity_function('a', tf.int32)
+    ref = building_blocks.Reference('x', fn.type_signature)
+    arg = building_blocks.Data('data', tf.int32)
+    call = building_blocks.Call(ref, arg)
+    blk = building_blocks.Block([('x', fn)], call)
+
+    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+        blk)
+
+    self.assertEqual(blk.compact_representation(),
+                     '(let x=(a -> a) in x(data))')
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let a=data in a)')
+    self.assertEqual(transformed_comp.type_signature, blk.type_signature)
+    self.assertTrue(modified)
+
   def test_replaces_nested_called_lambda(self):
     fn = test_utils.create_identity_function('a', tf.int32)
     arg = building_blocks.Data('data', tf.int32)

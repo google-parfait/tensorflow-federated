@@ -1006,25 +1006,8 @@ def remove_duplicate_block_locals(comp):
         return comp, True
     return comp, False
 
-  class TrackRemovedReferences(transformation_utils.BoundVariableTracker):
-    """transformation_utils.SymbolTree node for removing References in ASTs."""
-
-    def __init__(self, name, value):
-      super(TrackRemovedReferences, self).__init__(name, value)
-      self._removed = False
-
-    @property
-    def removed(self):
-      return self._removed
-
-    def update(self, value):
-      self._removed = True
-
-    def __str__(self):
-      return 'Name: {}; value: {}; removed: {}'.format(self.name, self.value,
-                                                       self.removed)
-
-  symbol_tree = transformation_utils.SymbolTree(TrackRemovedReferences)
+  symbol_tree = transformation_utils.SymbolTree(
+      transformation_utils.TrackRemovedReferences)
   return transformation_utils.transform_postorder_with_symbol_bindings(
       comp, _transform, symbol_tree)
 
@@ -1139,21 +1122,60 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
   let x=y in z
   """
 
-  def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Call) and
-            isinstance(comp.function, building_blocks.Lambda))
+  def __init__(self):
+    super(ReplaceCalledLambdaWithBlock, self).__init__(global_transform=True)
 
-  def transform(self, comp):
-    if not self.should_transform(comp):
+  def should_transform(self, comp, referred):
+    return (isinstance(comp, building_blocks.Call) and
+            (isinstance(comp.function, building_blocks.Lambda) or
+             isinstance(referred, building_blocks.Lambda))) or isinstance(
+                 comp, building_blocks.Block)
+
+  def transform(self, comp, symbol_tree):
+    node = None
+    referred = None
+    if isinstance(comp, building_blocks.Call) and isinstance(
+        comp.function, building_blocks.Reference):
+      try:
+        node = symbol_tree.get_payload_with_name(comp.function.name)
+        referred = node.value
+      except NameError:
+        pass
+    if not self.should_transform(comp, referred):
       return comp, False
-    transformed_comp = building_blocks.Block(
-        [(comp.function.parameter_name, comp.argument)], comp.function.result)
+    if isinstance(comp, building_blocks.Block):
+      new_locals = []
+      for name, value in comp.locals:
+        symbol_tree.walk_down_one_variable_binding()
+        if not symbol_tree.get_payload_with_name(name).removed:
+          new_locals.append((name, value))
+      if not new_locals:
+        return comp.result, True
+      elif len(new_locals) == len(comp.locals):
+        return comp, False
+      return building_blocks.Block(new_locals, comp.result), True
+    elif isinstance(referred, building_blocks.Lambda):
+      referred = referred  # type: building_blocks.Lambda
+      transformed_comp = building_blocks.Block(
+          [(referred.parameter_name, comp.argument)], referred.result)
+      symbol_tree.update_payload_with_name(comp.function.name)
+    else:
+      transformed_comp = building_blocks.Block(
+          [(comp.function.parameter_name, comp.argument)], comp.function.result)
     return transformed_comp, True
 
 
 def replace_called_lambda_with_block(comp):
   """Replaces all the called lambdas in `comp` with a block."""
-  return _apply_transforms(comp, ReplaceCalledLambdaWithBlock())
+  lambda_replacer = ReplaceCalledLambdaWithBlock()
+
+  def _transform_fn(comp, symbol_tree):
+    return lambda_replacer.transform(comp, symbol_tree)
+
+  symbol_tree = transformation_utils.SymbolTree(
+      transformation_utils.TrackRemovedReferences)
+  return transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, _transform_fn, symbol_tree)
 
 
 class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
