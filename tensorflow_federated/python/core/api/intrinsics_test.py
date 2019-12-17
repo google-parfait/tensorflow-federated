@@ -109,8 +109,9 @@ class IntrinsicsTest(parameterized.TestCase):
           tff.tf_computation(lambda x, y: x > 10, [tf.int32, tf.int32]), [x, y])
 
     with self.assertRaisesRegex(
-        TypeError, 'You cannot apply federated_map on nested values with mixed '
-        'placements.'):
+        TypeError,
+        'The value to be mapped must be a FederatedType or implicitly '
+        'convertible to a FederatedType.'):
 
       tff.federated_computation(foo, [
           tff.FederatedType(tf.int32, tff.SERVER),

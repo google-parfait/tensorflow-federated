@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
@@ -172,22 +171,7 @@ class IntrinsicFactory(object):
     # values of arbitrary placement.
 
     arg = value_impl.to_value(arg, None, self._context_stack)
-    if isinstance(arg.type_signature, computation_types.NamedTupleType):
-      if len(anonymous_tuple.to_elements(arg.type_signature)) >= 2:
-        # We've been passed a value which the user expects to be zipped.
-        named_type_signatures = anonymous_tuple.to_elements(arg.type_signature)
-        _, first_type_signature = named_type_signatures[0]
-        for _, type_signature in named_type_signatures:
-          py_typecheck.check_type(type_signature,
-                                  computation_types.FederatedType)
-          if type_signature.placement is not first_type_signature.placement:
-            raise TypeError(
-                'You cannot apply federated_map on nested values with mixed '
-                'placements (was given a nested value of type {}).'.format(
-                    arg.type_signature))
-        arg = self.federated_zip(arg)
-
-    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+    arg = value_utils.ensure_federated_value(arg, label='value to be mapped')
 
     # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
     # here based on the actual type of the argument.
