@@ -122,6 +122,83 @@ def create_compiled_identity(type_signature, name=None):
   return building_blocks.CompiledComputation(proto, name)
 
 
+def construct_tensorflow_selecting_outputs_from_tuple(arg_type,
+                                                      output_map,
+                                                      output_names=None):
+  """Constructs TensorFlow selecting and packing elements from its input.
+
+  The result of this function can be called on a deduplicated
+  `building_blocks.Tuple` containing called graphs, thus preventing us from
+  embedding the same TensorFlow computation in the generated graphs, and
+  reducing the amount of work duplicated in the process of generating
+  TensorFlow.
+
+  Args:
+    arg_type: `computation_types.Type` of the argument on which the constructed
+      function will be called. Should be an instance of
+      `computation_types.NamedTupleType`.
+    output_map: Tuple or list with tuple elements, mapping from elements of the
+      argument tuple to the desired result of the generated computation. This
+      mapping is specified by the following conventions: * The first element j
+        of the tuple at index i is the index from `arg_type` to serve as the
+        source for index i of the result of the generated function. * The second
+        element is a list or tuple representing the selections to make from
+        index j of the argument in sequence, so that the list `[0]` for example
+        would represent that index i of the output is the 0th element of the
+        index j of the input, which `[0, 0]` would represent that index i of the
+        output is the 0th element of the 0th element of input j.
+    output_names: Names to apply to the constructed tuple.
+
+  Returns:
+    A `building_blocks.CompiledComputation` representing the specification
+    above.
+
+  Raises:
+    TypeError: If `arg_type` is not a `computation_types.NamedTupleType`, or
+      represents a type which cannot act as an input or output to a TensorFlow
+      computation in TFF, IE does not contain exclusively
+      `computation_types.SequenceType`, `computation_types.NamedTupleType` or
+      `computation_types.TensorType`.
+    ValueError: If the lengths off `output_map` and `output_names` don't match.
+  """
+  type_spec = computation_types.to_type(arg_type)
+  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+  type_utils.check_tensorflow_compatible_type(type_spec)
+  output_map_len = len(output_map)
+  if output_names is None:
+    output_names = [None] * output_map_len
+  output_names_len = len(output_names)
+  if output_names_len != output_map_len:
+    raise ValueError(
+        'Length of output names must match length of output map; you have '
+        'passed names of length {} and output map of length {}'.format(
+            output_names_len, output_map_len))
+  with tf.Graph().as_default() as graph:
+    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'x', type_spec, graph)
+
+  results = []
+  for map_spec in output_map:
+    result_element = parameter_value[map_spec[0]]
+    for selection in map_spec[1]:
+      result_element = result_element[selection]
+    results.append(result_element)
+
+  named_result = anonymous_tuple.AnonymousTuple(zip(output_names, results))
+  result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+      named_result, graph)
+
+  function_type = computation_types.FunctionType(type_spec, result_type)
+  serialized_function_type = type_serialization.serialize_type(function_type)
+  proto = pb.Computation(
+      type=serialized_function_type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          parameter=parameter_binding,
+          result=result_binding))
+  return building_blocks.CompiledComputation(proto)
+
+
 def create_tensorflow_constant(type_spec, scalar_value):
   """Creates called graph returning constant `scalar_value` of type `type_spec`.
 

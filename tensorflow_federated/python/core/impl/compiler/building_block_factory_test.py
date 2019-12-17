@@ -3066,5 +3066,70 @@ class BinaryOperatorTest(absltest.TestCase):
                                         placement_literals.CLIENTS))
 
 
+class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
+
+  def test_raises_non_named_tuple_type(self):
+    with self.assertRaises(TypeError):
+      building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+          tf.int32, [(0, [0])])
+
+  def test_raises_length_mismatch(self):
+    with self.assertRaises(ValueError):
+      building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+          [tf.int32], [(0, [0])], ['a', 'b'])
+
+  def test_construct_selection_from_tuple_with_empty_list_type_signature(self):
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+        [tf.int32, tf.float32], [])
+    self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
+    self.assertEqual(constructed_tf.type_signature,
+                     computation_types.FunctionType([tf.int32, tf.float32], []))
+
+  def test_construct_selection_from_two_tuple_correct_type_signature(self):
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+        [tf.int32, tf.float32], [(0, []), (0, [])])
+    self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
+    self.assertEqual(
+        constructed_tf.type_signature,
+        computation_types.FunctionType([tf.int32, tf.float32],
+                                       [tf.int32, tf.int32]))
+
+  def test_construct_selection_from_two_tuple_correct_singleton_type_signature(
+      self):
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+        [tf.int32, tf.float32], [(0, [])])
+    self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
+    self.assertEqual(
+        constructed_tf.type_signature,
+        computation_types.FunctionType([tf.int32, tf.float32], [tf.int32]))
+
+  def test_construct_selection_from_two_tuple_executes_correctly(self):
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+        [tf.int32, tf.float32], [(0, []), (0, [])])
+    result = test_utils.run_tensorflow(constructed_tf.proto, [0, 1.])
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], 0)
+    self.assertEqual(result[1], 0)
+    result = test_utils.run_tensorflow(constructed_tf.proto, [1, 0.])
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], 1)
+    self.assertEqual(result[1], 1)
+
+  def test_construct_selection_with_names(self):
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+        [('a', tf.int32), ('b', tf.float32)], [(0, []), (1, [])],
+        output_names=['a', 'b'])
+    self.assertEqual(
+        constructed_tf.type_signature,
+        computation_types.FunctionType([('a', tf.int32), ('b', tf.float32)],
+                                       [('a', tf.int32), ('b', tf.float32)]))
+
+  def test_construct_selection_from_nested_tuple_executes_correctly(self):
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+        [[[tf.int32]], tf.float32], [(0, [0, 0])])
+    result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
+    self.assertEqual(result[0], 0)
+
+
 if __name__ == '__main__':
   absltest.main()
