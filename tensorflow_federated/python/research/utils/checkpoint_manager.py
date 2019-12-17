@@ -66,6 +66,20 @@ class CheckpointManager(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
+  def load_checkpoint(self, structure: Any, round_num: int) -> Any:
+    """Returns the checkpointed state at the given `round_num`.
+
+    Args:
+      structure: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template.
+      round_num: An integer representing the round to load from.
+
+    Raises:
+      FileNotFoundError: If checkpoint for given `round_num` doesn't exist.
+    """
+    raise NotImplementedError
+
+  @abc.abstractmethod
   def save_checkpoint(self, state: Any, round_num: int) -> None:
     """Saves a new checkpointed `state` for the given `round_num`.
 
@@ -113,17 +127,37 @@ class FileCheckpointManager(CheckpointManager):
       structure: A nested structure which `tf.convert_to_tensor` supports to use
         as a template when reconstructing the loaded template.
     """
-    state = None
-    round_num = 0
-    checkpoint_paths = self._get_all_checkpoint_paths()
-    if checkpoint_paths:
-      checkpoint_path = max(checkpoint_paths, key=self._round_num)
-      model = tf.compat.v2.saved_model.load(checkpoint_path)
-      flat_obj = model.build_obj_fn()
-      state = tf.nest.pack_sequence_as(structure, flat_obj)
-      round_num = self._round_num(checkpoint_path)
-      logging.info('Checkpoint loaded: %s', checkpoint_path)
+    checkpoint_round_nums = [
+        self._round_num(c) for c in self._get_all_checkpoint_paths()
+    ]
+    if checkpoint_round_nums:
+      round_num = max(checkpoint_round_nums)
+      state = self.load_checkpoint(structure, round_num)
+    else:
+      round_num = 0
+      state = None
     return state, round_num
+
+  def load_checkpoint(self, structure: Any, round_num: int) -> Any:
+    """Returns the checkpointed state at the given `round_num`.
+
+    Args:
+      structure: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template.
+      round_num: An integer representing the round to load from.
+
+    Raises:
+      FileNotFoundError: If checkpoint for given `round_num` doesn't exist.
+    """
+    checkpoint_path = os.path.join(self._root_dir,
+                                   '{}{}'.format(self._prefix, round_num))
+    if not tf.io.gfile.exists(checkpoint_path):
+      raise FileNotFoundError('No such file or directory: %s' % checkpoint_path)
+    model = tf.compat.v2.saved_model.load(checkpoint_path)
+    flat_obj = model.build_obj_fn()
+    state = tf.nest.pack_sequence_as(structure, flat_obj)
+    logging.info('Checkpoint loaded: %s', checkpoint_path)
+    return state
 
   def save_checkpoint(self, state: Any, round_num: int) -> None:
     """Saves a new checkpointed `state` for the given `round_num`.

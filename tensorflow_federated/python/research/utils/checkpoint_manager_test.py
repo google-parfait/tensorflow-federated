@@ -123,6 +123,39 @@ class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
       _, _ = checkpoint_mngr.load_latest_checkpoint(structure)
 
 
+class FileCheckpointManagerLoadCheckpointTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(FileCheckpointManagerLoadCheckpointTest, self).setUp()
+    self._checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
+        self.get_temp_dir())
+
+  def test_raises_file_not_found_error_for_no_checkpoint(self):
+    structure = _create_dummy_structure()
+
+    with self.assertRaises(FileNotFoundError):
+      _ = self._checkpoint_mngr.load_checkpoint(structure, 0)
+
+  def test_returns_state_for_checkpoint(self):
+    state = _create_dummy_state()
+    round_num = 1
+    self._checkpoint_mngr.save_checkpoint(state, round_num)
+    structure = _create_dummy_structure()
+
+    loaded_state = self._checkpoint_mngr.load_checkpoint(structure, round_num)
+
+    self.assertEqual(loaded_state, state)
+
+  def test_raises_value_error_with_bad_structure(self):
+    state = _create_dummy_state()
+    round_num = 1
+    self._checkpoint_mngr.save_checkpoint(state, round_num)
+    structure = None
+
+    with self.assertRaises(ValueError):
+      _, _ = self._checkpoint_mngr.load_checkpoint(structure, round_num)
+
+
 class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
 
   def test_saves_one_checkpoint(self):
