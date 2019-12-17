@@ -23,6 +23,32 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 
 class AnonymousTupleTest(absltest.TestCase):
 
+  def test_construction_from_list(self):
+    v = [('a', 1), ('b', 2), (None, 3)]
+    x = anonymous_tuple.AnonymousTuple(v)
+    self.assertSequenceEqual(anonymous_tuple.to_elements(x), v)
+
+  def test_construction_from_tuple(self):
+    v = (('a', 1), ('b', 2), (None, 3))
+    x = anonymous_tuple.AnonymousTuple(v)
+    self.assertSequenceEqual(anonymous_tuple.to_elements(x), v)
+
+  def test_construction_from_ordereddict(self):
+    v = collections.OrderedDict(a=1, b=2, c=3)
+    x = anonymous_tuple.AnonymousTuple(v.items())
+    self.assertSequenceEqual(anonymous_tuple.to_elements(x), list(v.items()))
+
+  def test_construction_from_generator_expression(self):
+    x = anonymous_tuple.AnonymousTuple(
+        (name, i) for i, name in enumerate(('a', 'b', None)))
+    self.assertSequenceEqual(
+        anonymous_tuple.to_elements(x), [('a', 0), ('b', 1), (None, 2)])
+
+  def test_construction_from_iter_elements(self):
+    x = anonymous_tuple.AnonymousTuple((('a', 1), ('b', 2), (None, 3)))
+    self.assertSequenceEqual(
+        anonymous_tuple.AnonymousTuple(anonymous_tuple.iter_elements(x)), x)
+
   def test_empty(self):
     v = []
     x = anonymous_tuple.AnonymousTuple(v)

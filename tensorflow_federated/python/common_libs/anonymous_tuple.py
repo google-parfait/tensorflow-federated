@@ -70,39 +70,40 @@ class AnonymousTuple(object):
     """Constructs a new anonymous named tuple with the given elements.
 
     Args:
-      elements: A list of element specifications, each being a pair consisting
-        of the element name (either a string, or None), and the element value.
-        The order is significant.
+      elements: An iterable of element specifications, each being a pair
+      consisting of the element name (either `str`, or `None`), and the element
+      value. The order is significant.
 
     Raises:
       TypeError: if the `elements` are not a list, or if any of the items on
         the list is not a pair with a string at the first position.
     """
-    py_typecheck.check_type(elements, list)
-    for e in elements:
+    py_typecheck.check_type(elements, collections.Iterable)
+    values = []
+    names = []
+    name_to_index = {}
+    reserved_names = frozenset(('_asdict',) + AnonymousTuple.__slots__)
+    for idx, e in enumerate(elements):
       if not py_typecheck.is_name_value_pair(e, name_required=False):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {!r}.'.format(e))
-
-    self._element_array = tuple(e[1] for e in elements)
-    self._name_to_index = {}
-    self._name_array = []
-    reserved_names = ('_asdict',) + AnonymousTuple.__slots__
-    for idx, e in enumerate(elements):
-      name = e[0]
-      self._name_array.append(name)
-      if name is None:
-        continue
+      name, value = e
       if name in reserved_names:
         raise ValueError(
             'The names in {} are reserved. You passed the name {}.'.format(
                 reserved_names, name))
-      elif name in self._name_to_index:
+      elif name in name_to_index:
         raise ValueError(
             'AnonymousTuple does not support duplicated names, but found {}'
             .format([e[0] for e in elements]))
-      self._name_to_index[name] = idx
+      names.append(name)
+      values.append(value)
+      if name is not None:
+        name_to_index[name] = idx
+    self._element_array = tuple(values)
+    self._name_to_index = name_to_index
+    self._name_array = names
     self._hash = None
 
   def __len__(self):
