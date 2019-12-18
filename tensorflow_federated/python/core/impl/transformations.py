@@ -491,6 +491,59 @@ def inline_block_locals(comp, variable_names=None):
       comp, transform_spec.transform, symbol_tree)
 
 
+class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
+  """Inlines all Tuple-bound variables which are referenced via Selections.
+
+  This should be used as a preprocessing and optimization step, since this can
+  allow for large tuples which are only referenced as selections to be removed
+  in another pass. Notice this transform makes no effort to remove these tuples,
+  as it does nothing to guarantee that the tuples it inlines are not referenced
+  elsewhere.
+
+  This is implemented as a stanadlone transform, as opposed to simply extending
+  `ReplaceSelectionFromTuple`, in order to preserve ease of chaining that
+  transformation together with inlining all or some block locals.
+  """
+
+  def __init__(self):
+    super(InlineSelectionsFromTuples, self).__init__(global_transform=True)
+
+  def should_transform(self, comp, symbol_tree):
+    if isinstance(comp, building_blocks.Selection) and isinstance(
+        comp.source, building_blocks.Tuple):
+      return True
+    elif (isinstance(comp, building_blocks.Selection) and
+          isinstance(comp.source, building_blocks.Reference)):
+      try:
+        resolved = symbol_tree.get_payload_with_name(comp.source.name)
+        if isinstance(resolved.value, building_blocks.Tuple):
+          return True
+      except NameError:
+        return False
+    return False
+
+  def transform(self, comp, symbol_tree):
+    if not self.should_transform(comp, symbol_tree):
+      return comp, False
+    if isinstance(comp.source, building_blocks.Tuple):
+      tup = comp.source
+    else:
+      tup = symbol_tree.get_payload_with_name(comp.source.name).value
+    if comp.index is None:
+      element_to_inline = getattr(tup, comp.name)
+    else:
+      element_to_inline = tup[comp.index]
+    return element_to_inline, True
+
+
+def inline_selections_from_tuple(comp):
+  symbol_tree = transformation_utils.SymbolTree(
+      transformation_utils.TrackRemovedReferences)
+  transform_spec = InlineSelectionsFromTuples()
+  return transformation_utils.transform_postorder_with_symbol_bindings(
+      comp, transform_spec.transform, symbol_tree)
+
+
 class MergeChainedBlocks(transformation_utils.TransformSpec):
   r"""Merges chained blocks into one block.
 

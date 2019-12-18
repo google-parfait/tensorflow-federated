@@ -1393,6 +1393,83 @@ class InlineBlockLocalsTest(absltest.TestCase):
     self.assertFalse(modified)
 
 
+class InlineSelectionsFromTuplesTest(absltest.TestCase):
+
+  def test_should_transform_selection_from_tuple(self):
+    tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
+    sel = building_blocks.Selection(tup, index=0)
+    selection_inliner = transformations.InlineSelectionsFromTuples()
+    symbol_tree = transformation_utils.SymbolTree(
+        transformation_utils.ReferenceCounter)
+    self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
+
+  def test_should_transform_selection_from_reference_to_bound_tuple(self):
+    tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
+    ref = building_blocks.Reference('a', tup.type_signature)
+    sel = building_blocks.Selection(ref, index=0)
+    symbol_tree = transformation_utils.SymbolTree(
+        transformation_utils.ReferenceCounter)
+    symbol_tree.ingest_variable_binding('a', tup)
+    selection_inliner = transformations.InlineSelectionsFromTuples()
+    self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
+
+  def test_should_not_transform_selection_from_unbound_reference(self):
+    tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
+    ref = building_blocks.Reference('a', tup.type_signature)
+    sel = building_blocks.Selection(ref, index=0)
+    symbol_tree = transformation_utils.SymbolTree(
+        transformation_utils.ReferenceCounter)
+    symbol_tree.ingest_variable_binding('a', tup)
+    selection_inliner = transformations.InlineSelectionsFromTuples()
+    self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
+
+  def test_reduces_selection_from_direct_tuple_by_index(self):
+    data = building_blocks.Data('x', tf.int32)
+    tup = building_blocks.Tuple([data])
+    sel = building_blocks.Selection(tup, index=0)
+    collapsed, modified = transformations.inline_selections_from_tuple(sel)
+    self.assertTrue(modified)
+    self.assertEqual(data.compact_representation(),
+                     collapsed.compact_representation())
+
+  def test_reduces_selection_from_direct_tuple_by_name(self):
+    data = building_blocks.Data('x', tf.int32)
+    tup = building_blocks.Tuple([('a', data)])
+    sel = building_blocks.Selection(tup, name='a')
+    collapsed, modified = transformations.inline_selections_from_tuple(sel)
+    self.assertTrue(modified)
+    self.assertEqual(data.compact_representation(),
+                     collapsed.compact_representation())
+
+  def test_inlines_selection_from_reference_to_tuple_by_index(self):
+    data = building_blocks.Data('x', tf.int32)
+    tup = building_blocks.Tuple([data])
+    ref_to_b = building_blocks.Reference('b', tup.type_signature)
+    sel = building_blocks.Selection(ref_to_b, index=0)
+    blk = building_blocks.Block([('b', tup)], sel)
+    collapsed, modified = transformations.inline_selections_from_tuple(blk)
+
+    expected_blk = building_blocks.Block([('b', tup)], data)
+
+    self.assertTrue(modified)
+    self.assertEqual(collapsed.compact_representation(),
+                     expected_blk.compact_representation())
+
+  def test_inlines_selection_from_reference_to_tuple_by_name(self):
+    data = building_blocks.Data('x', tf.int32)
+    tup = building_blocks.Tuple([('a', data)])
+    ref_to_b = building_blocks.Reference('b', tup.type_signature)
+    sel = building_blocks.Selection(ref_to_b, name='a')
+    blk = building_blocks.Block([('b', tup)], sel)
+    collapsed, modified = transformations.inline_selections_from_tuple(blk)
+
+    expected_blk = building_blocks.Block([('b', tup)], data)
+
+    self.assertTrue(modified)
+    self.assertEqual(collapsed.compact_representation(),
+                     expected_blk.compact_representation())
+
+
 class MergeChainedBlocksTest(absltest.TestCase):
 
   def test_fails_on_none(self):

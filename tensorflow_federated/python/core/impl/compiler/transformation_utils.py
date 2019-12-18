@@ -344,6 +344,10 @@ class SymbolTree(object):
       currently available in `self`.
 
     """
+    # TODO(b/146500785): Update this method to have `dict.get`-like semantics;
+    # IE, we should not be raising here when we address an unavaliable name.
+    # This *will* happen during normal execution, so it is the responsibility of
+    # this method to handle.
     py_typecheck.check_type(name, six.string_types)
     comp = self.active_node  # type: SequentialBindingNode
     while comp.parent is not None or comp.older_sibling is not None:
