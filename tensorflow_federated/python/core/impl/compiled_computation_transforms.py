@@ -37,6 +37,15 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 
+def _index_from_name(type_signature, name):
+  if name is None:
+    raise ValueError
+  source_names_list = [
+      x[0] for x in anonymous_tuple.iter_elements(type_signature)
+  ]
+  return source_names_list.index(name)
+
+
 def select_graph_output(comp, name=None, index=None):
   r"""Makes `CompiledComputation` with same input as `comp` and output `output`.
 
@@ -96,10 +105,7 @@ def select_graph_output(comp, name=None, index=None):
   proto_type = type_serialization.deserialize_type(proto.type)
   py_typecheck.check_type(proto_type.result, computation_types.NamedTupleType)
   if name is not None:
-    type_names_list = [
-        x[0] for x in anonymous_tuple.iter_elements(proto_type.result)
-    ]
-    index = type_names_list.index(name)
+    index = _index_from_name(proto_type.result, name)
   result = graph_result_binding.tuple.element[index]
   result_type = proto_type.result[index]
   serialized_type = type_serialization.serialize_type(
@@ -591,6 +597,78 @@ def _construct_concatenated_type(type_list):
   elif len(non_none_type_list) == 1:
     return non_none_type_list[0]
   return computation_types.NamedTupleType(non_none_type_list)
+
+
+def _called_graph_equality(comp1, comp2):
+  """Not-implemented equality function."""
+  # TODO(b/145820641): Follow up with equality which catches bigger fish.
+  return comp1 is comp2
+
+
+def construct_composed_function_capturing_selections(comp):
+  r"""Replaces Tuples of Selections of Called Graph with a single TF call.
+
+  That is, transforms the pattern:
+
+                            Tuple
+                        /   ...     \
+                  Selection         Similar
+                      |
+                  Selection
+                     ...
+                     Call
+                    /    \
+                Graph     Comp
+
+  Into the pattern:
+
+                              Call
+                            /      \
+            Constructed graph       Constructed Tuple
+
+  The point here being that for any Tuple holding only selections and called
+  graphs (called on arbitrary arguments), this function deduplicates the called
+  graphs themselves, and represents the TFF logic embodied in the selections by
+  calling equivalent TensorFlow.
+
+  Args:
+    comp: Instance of `building_blocks.Tuple` matching the first pattern above.
+
+  Returns:
+    A transformed version of `comp` matching the second pattern above.
+  """
+  output_names = [
+      x[0] for x in anonymous_tuple.iter_elements(comp.type_signature)
+  ]
+  deduped_called_graphs = []
+  output_data_structure = []
+
+  for tuple_elem in comp:
+    index_from_arg = None
+    selection_map = []
+    selected_comp = tuple_elem
+    while isinstance(selected_comp, building_blocks.Selection):
+      index = tuple_elem.index
+      if index is None:
+        index = _index_from_name(tuple_elem.source.type_signature,
+                                 tuple_elem.name)
+      selection_map.append(index)
+      selected_comp = selected_comp.source
+
+    for idx, previously_called_graph in enumerate(deduped_called_graphs):
+      if _called_graph_equality(selected_comp, previously_called_graph):
+        index_from_arg = idx
+    if index_from_arg is None:
+      deduped_called_graphs.append(selected_comp)
+      index_from_arg = len(deduped_called_graphs) - 1
+    output_data_structure.append((index_from_arg, selection_map))
+
+  arg_tuple = building_blocks.Tuple(deduped_called_graphs)
+  tf_representing_selections = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
+      arg_tuple.type_signature,
+      output_data_structure,
+      output_names=output_names)
+  return building_blocks.Call(tf_representing_selections, arg_tuple)
 
 
 def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
@@ -1315,3 +1393,48 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
     pruned = building_blocks.CompiledComputation(
         proto_transformations.prune_tensorflow_proto(inputs_mapped.proto))
     return pruned, True
+
+
+class TupleOfSelectionsAndGraphs(transformation_utils.TransformSpec):
+  r"""Handles Tuple construct of Graphs and Tuples with minimal duplication.
+
+  The amount of duplication is controlled by how much is identified as being
+  equal by `_called_graph_equality`, a private module-level function here.
+  IE, two called graphs will both exist in the resulting structure if and
+  only if they do *not* compare to equal under `_called_graph_equality`.
+
+
+  Transforms the pattern:
+
+                            Tuple
+                        /   ...     \
+                  Selection         Similar
+                      |
+                  Selection
+                     ...
+                     Call
+                    /    \
+                Graph     Comp
+
+  Into the pattern:
+
+                              Call
+                            /      \
+            Constructed graph       Constructed Tuple
+  """
+
+  def should_transform(self, comp):
+    if not isinstance(comp, building_blocks.Tuple):
+      return False
+    for elem in comp:
+      while isinstance(elem, building_blocks.Selection):
+        elem = elem.source
+      if not (isinstance(elem, building_blocks.Call) and
+              isinstance(elem.function, building_blocks.CompiledComputation)):
+        return False
+    return True
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    return construct_composed_function_capturing_selections(comp), True
