@@ -322,10 +322,11 @@ class LambdaExecutor(executor_base.Executor):
     if isinstance(value_repr, executor_value_base.ExecutorValue):
       return value_repr
     elif isinstance(value_repr, anonymous_tuple.AnonymousTuple):
-      elem = anonymous_tuple.to_elements(value_repr)
-      vals = await asyncio.gather(*[self._delegate(v) for _, v in elem])
+      vals = await asyncio.gather(*[self._delegate(v) for v in value_repr])
       return await self._target_executor.create_tuple(
-          anonymous_tuple.AnonymousTuple(list(zip([k for k, _ in elem], vals))))
+          anonymous_tuple.AnonymousTuple(
+              zip((k for k, _ in anonymous_tuple.iter_elements(value_repr)),
+                  vals)))
     elif callable(value_repr):
       raise RuntimeError(
           'Cannot delegate a callable to a target executor; it appears that '
@@ -417,7 +418,7 @@ class LambdaExecutor(executor_base.Executor):
         values.append(val)
       values = await asyncio.gather(*values)
       return await self.create_tuple(
-          anonymous_tuple.AnonymousTuple(list(zip(names, values))))
+          anonymous_tuple.AnonymousTuple(zip(names, values)))
     elif which_computation == 'block':
       for loc in comp.block.local:
         value_which = loc.value.WhichOneof('computation')

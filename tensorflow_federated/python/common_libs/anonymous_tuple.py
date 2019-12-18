@@ -456,9 +456,8 @@ def from_container(value, recursive=False):
     """
     if isinstance(value, AnonymousTuple):
       if recursive:
-        return AnonymousTuple([
-            (k, _convert(v, True)) for k, v in to_elements(value)
-        ])
+        return AnonymousTuple(
+            (k, _convert(v, True)) for k, v in iter_elements(value))
       else:
         return value
     elif py_typecheck.is_attrs(value):
@@ -471,20 +470,20 @@ def from_container(value, recursive=False):
     elif isinstance(value, collections.OrderedDict):
       items = six.iteritems(value)
       if recursive:
-        return AnonymousTuple([(k, _convert(v, True)) for k, v in items])
+        return AnonymousTuple((k, _convert(v, True)) for k, v in items)
       else:
-        return AnonymousTuple(list(items))
+        return AnonymousTuple(items)
     elif isinstance(value, dict):
       items = sorted(list(six.iteritems(value)))
       if recursive:
-        return AnonymousTuple([(k, _convert(v, True)) for k, v in items])
+        return AnonymousTuple((k, _convert(v, True)) for k, v in items)
       else:
         return AnonymousTuple(items)
     elif isinstance(value, (tuple, list)):
       if recursive:
-        return AnonymousTuple([(None, _convert(v, True)) for v in value])
+        return AnonymousTuple((None, _convert(v, True)) for v in value)
       else:
-        return AnonymousTuple([(None, v) for v in value])
+        return AnonymousTuple((None, v) for v in value)
     elif must_be_container:
       raise TypeError('Unable to convert a Python object of type {} into '
                       'an `AnonymousTuple`.'.format(

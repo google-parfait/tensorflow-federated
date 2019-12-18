@@ -66,14 +66,13 @@ async def delegate_entirely_to_executor(arg, arg_type, executor):
   if isinstance(arg, pb.Computation):
     return await executor.create_value(arg, arg_type)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    v_elem = anonymous_tuple.to_elements(arg)
-    t_elem = anonymous_tuple.to_elements(arg_type)
     vals = await asyncio.gather(*[
-        delegate_entirely_to_executor(v, t, executor)
-        for (_, v), (_, t) in zip(v_elem, t_elem)
+        delegate_entirely_to_executor(value, type_spec, executor)
+        for value, type_spec in zip(arg, arg_type)
     ])
     return await executor.create_tuple(
-        anonymous_tuple.AnonymousTuple(list(zip([k for k, _ in t_elem], vals))))
+        anonymous_tuple.AnonymousTuple(
+            zip((k for k, _ in anonymous_tuple.iter_elements(arg_type)), vals)))
   else:
     py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
     return arg

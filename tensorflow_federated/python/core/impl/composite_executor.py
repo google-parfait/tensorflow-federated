@@ -110,7 +110,7 @@ class CompositeValue(executor_value_base.ExecutorValue):
         elements = anonymous_tuple.to_elements(anon_tuple)
         keys = [k for k, _ in elements]
         vals = await asyncio.gather(*[_compute_element(v) for _, v in elements])
-        return anonymous_tuple.AnonymousTuple(list(zip(keys, vals)))
+        return anonymous_tuple.AnonymousTuple(zip(keys, vals))
 
       return await _compute_tuple(self._value)
 
