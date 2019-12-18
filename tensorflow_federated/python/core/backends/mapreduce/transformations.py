@@ -82,6 +82,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
@@ -751,9 +752,9 @@ def _prepare_for_rebinding(comp):
   all_equal_normalized = normalize_all_equal_bit(comp)
   identities_removed, _ = transformations.remove_mapped_or_applied_identity(
       all_equal_normalized)
-  lambdas_and_blocks_removed, _ = transformations.remove_lambdas_and_blocks(
+  for_rebind, _ = compiler_transformations.prepare_for_rebinding(
       identities_removed)
-  return lambdas_and_blocks_removed
+  return for_rebind
 
 
 def _check_for_missed_binding(comp, newly_bound_lambda):

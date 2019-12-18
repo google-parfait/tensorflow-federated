@@ -213,6 +213,18 @@ py_library(
 )
 
 py_library(
+    name = "transformations",
+    srcs = ["transformations.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":building_blocks",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:transformations",
+    ],
+)
+
+py_library(
     name = "transformation_utils",
     srcs = ["transformation_utils.py"],
     srcs_version = "PY2AND3",
