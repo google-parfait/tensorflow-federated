@@ -212,7 +212,7 @@ class CachingExecutor(executor_base.Executor):
       identifier = None
     except TypeError as err:
       raise RuntimeError(
-          'Failed to perform a has table lookup with a value of Python '
+          'Failed to perform a hash table lookup with a value of Python '
           'type {} and TFF type {}, and payload {}: {}'.format(
               py_typecheck.type_string(type(value)), type_spec, value, err))
     if isinstance(identifier, CachedValueIdentifier):
