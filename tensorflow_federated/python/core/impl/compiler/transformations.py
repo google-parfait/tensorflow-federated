@@ -49,9 +49,10 @@ def prepare_for_rebinding(comp):
   # strict output invariants when `remove_lambdas_and_blocks` is moved in here.
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp, _ = transformations.uniquify_reference_names(comp)
+  comp, _ = transformations.replace_called_lambda_with_block(comp)
   block_inliner = transformations.InlineBlock(comp)
   selection_replacer = transformations.ReplaceSelectionFromTuple()
-  transforms = [selection_replacer, block_inliner]
+  transforms = [block_inliner, selection_replacer]
   symbol_tree = transformation_utils.SymbolTree(
       transformation_utils.ReferenceCounter)
 
