@@ -1044,23 +1044,20 @@ def select_output_from_lambda(comp, indices):
                           computation_types.NamedTupleType)
   py_typecheck.check_type(indices, (int, tuple, list))
   result_tuple = comp.result
-  name_generator = building_block_factory.unique_name_generator(comp)
-  new_name = six.next(name_generator)
-  ref_to_result_tuple = building_blocks.Reference(new_name,
-                                                  result_tuple.type_signature)
+  tuple_opt = isinstance(result_tuple, building_blocks.Tuple)
   if isinstance(indices, (tuple, list)):
     if not all(isinstance(x, int) for x in indices):
       raise TypeError('Must select by index in `select_output_from_lambda`.')
     selected_output = [
-        building_blocks.Selection(ref_to_result_tuple, index=x) for x in indices
+        result_tuple[x] if tuple_opt else building_blocks.Selection(
+            result_tuple, index=x) for x in indices
     ]
-    tuple_of_selected_output = building_blocks.Tuple(selected_output)
-    result = building_blocks.Block([(new_name, result_tuple)],
-                                   tuple_of_selected_output)
+    result = building_blocks.Tuple(selected_output)
   else:
-    selected_output = building_blocks.Selection(
-        ref_to_result_tuple, index=indices)
-    result = building_blocks.Block([(new_name, result_tuple)], selected_output)
+    if tuple_opt:
+      result = result_tuple[indices]
+    else:
+      result = building_blocks.Selection(result_tuple, index=indices)
   return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                 result)
 

@@ -552,7 +552,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
                      lam.type_signature.parameter)
     self.assertEqual(zero_selected.type_signature.result,
                      lam.type_signature.result[0])
-    self.assertEqual(str(zero_selected), '(x -> (let _var1=x in _var1[0]))')
+    self.assertEqual(str(zero_selected), '(x -> x[0])')
 
   def test_selects_tuple_of_federated_outputs(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
@@ -569,8 +569,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
         tuple_selected.type_signature.result,
         computation_types.NamedTupleType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
-    self.assertEqual(
-        str(tuple_selected), '(x -> (let _var1=x in <_var1[0],_var1[1]>))')
+    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 
   def test_selects_list_of_federated_outputs(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
@@ -587,8 +586,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
         tuple_selected.type_signature.result,
         computation_types.NamedTupleType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
-    self.assertEqual(
-        str(tuple_selected), '(x -> (let _var1=x in <_var1[0],_var1[1]>))')
+    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 
   def test_selects_single_unplaced_output(self):
     ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.int32])
@@ -610,8 +608,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
         tuple_selected.type_signature.result,
         computation_types.NamedTupleType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
-    self.assertEqual(
-        str(tuple_selected), '(x -> (let _var1=x in <_var1[0],_var1[1]>))')
+    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 
 
 class ConcatenateFunctionOutputsTest(absltest.TestCase):
