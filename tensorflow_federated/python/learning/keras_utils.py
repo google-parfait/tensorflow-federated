@@ -66,7 +66,7 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
       tff_weights, (anonymous_tuple.AnonymousTuple, model_utils.ModelWeights))
   py_typecheck.check_type(keras_model, tf.keras.models.Model)
   if isinstance(tff_weights, anonymous_tuple.AnonymousTuple):
-    weights_to_assign = model_utils.ModelWeights.from_tff_value(tff_weights)
+    weights_to_assign = model_utils.ModelWeights.from_tff_result(tff_weights)
   else:
     weights_to_assign = tff_weights
   weights_to_assign.assign_weights_to(keras_model)

@@ -62,9 +62,9 @@ class ServerState(object):
   optimizer_state = attr.ib()
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     return cls(
-        model=tff.learning.framework.ModelWeights.from_tff_value(
+        model=tff.learning.framework.ModelWeights.from_tff_result(
             anon_tuple.model),
         optimizer_state=list(anon_tuple.optimizer_state))
 

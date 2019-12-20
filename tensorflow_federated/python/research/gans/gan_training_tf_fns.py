@@ -54,7 +54,7 @@ class FromServer(object):
   discriminator_weights = attr.ib()
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     # TODO(b/123092620): These conversions should not be needed.
     return assert_no_anon_tuples(
         cls(generator_weights=list(anon_tuple.generator_weights),
@@ -80,7 +80,7 @@ class ServerState(object):
   dp_averaging_state = attr.ib(default=None)
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     # TODO(b/123092620): These conversions should not be needed.
     return assert_no_anon_tuples(
         cls(
@@ -115,7 +115,7 @@ class ClientOutput(object):
   counters = attr.ib()
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     # TODO(b/123092620): These conversions should not be needed.
     return assert_no_anon_tuples(
         cls(discriminator_weights_delta=list(

@@ -151,7 +151,7 @@ class GanFnsAndTypes(object):
           tff.utils.build_dp_aggregate(
               query=self.train_discriminator_dp_average_query,
               value_type_fn=lambda value: self.discriminator_weights_type,
-              from_anon_tuple_fn=lambda record: list(record)))  # pylint: disable=unnecessary-lambda
+              from_tff_result_fn=lambda record: list(record)))  # pylint: disable=unnecessary-lambda
 
 
 def build_server_initial_state_comp(gan: GanFnsAndTypes):

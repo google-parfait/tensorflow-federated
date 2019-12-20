@@ -149,7 +149,7 @@ def _default_get_value_type_fn(value):
 
 
 # TODO(b/123092620): When fixed, should no longer need this method.
-def _default_from_anon_tuple_fn(record):
+def _default_from_tff_result_fn(record):
   if hasattr(record, '_asdict'):
     return record._asdict()
   return record
@@ -161,7 +161,7 @@ def _default_from_anon_tuple_fn(record):
 # better name than value_type_fn?
 def build_dp_aggregate(query,
                        value_type_fn=_default_get_value_type_fn,
-                       from_anon_tuple_fn=_default_from_anon_tuple_fn):
+                       from_tff_result_fn=_default_from_tff_result_fn):
   """Builds a stateful aggregator for tensorflow_privacy DPQueries.
 
   The returned StatefulAggregateFn can be called with any nested structure for
@@ -182,7 +182,7 @@ def build_dp_aggregate(query,
       probably gets removed once b/123092620 is addressed (and the associated
       processing step gets replaced with a simple call to
       value.type_signature.member).
-    from_anon_tuple_fn: Python function that takes a client record and converts
+    from_tff_result_fn: Python function that takes a client record and converts
       it to the container type that it was in before passing through TFF. (Right
       now, TFF computation causes the client record to be changed into an
       AnonymousTuple, and this method corrects for that). If the value being
@@ -229,7 +229,7 @@ def build_dp_aggregate(query,
     def preprocess_record(params, record):
       # TODO(b/123092620): Once TFF passes the expected container type (instead
       # of AnonymousTuple), we shouldn't need this.
-      record = from_anon_tuple_fn(record)
+      record = from_tff_result_fn(record)
 
       return query.preprocess_record(params, record)
 

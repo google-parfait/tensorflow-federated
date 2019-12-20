@@ -55,7 +55,7 @@ class ModelWeights(object):
     return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
-  def from_tff_value(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
     return cls([
         value

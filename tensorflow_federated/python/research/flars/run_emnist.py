@@ -139,7 +139,7 @@ def _federated_averaging_training_loop(model_fn,
 
   # construct an initial state here to act as a checkpoint template
   inital_state = iterative_process.initialize()
-  inital_state = ServerState.from_anon_tuple(inital_state)
+  inital_state = ServerState.from_tff_result(inital_state)
 
   logging.info('Looking for checkpoints in \'%s\'', checkpoint_dir)
   state, round_num = checkpoint_manager_obj.load_latest_checkpoint(inital_state)
@@ -172,7 +172,7 @@ def _federated_averaging_training_loop(model_fn,
 
     training_start_time = time.time()
     state, tff_train_metrics = iterative_process.next(state, train_data)
-    state = ServerState.from_anon_tuple(state)
+    state = ServerState.from_tff_result(state)
     tff_train_metrics = tff_train_metrics._asdict(recursive=True)
     train_metrics.update(tff_train_metrics)
     train_metrics['training_secs'] = time.time() - training_start_time

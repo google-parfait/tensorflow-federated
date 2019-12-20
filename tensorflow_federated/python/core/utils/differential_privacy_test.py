@@ -173,13 +173,13 @@ class DpUtilsTest(test.TestCase):
           computation_types.TensorType(tf.float32),
       ]
 
-    def _from_anon_tuple_fn(record):
+    def _from_tff_result_fn(record):
       return list(record)
 
     dp_aggregate_fn, _ = differential_privacy.build_dp_aggregate(
         query,
         value_type_fn=_value_type_fn,
-        from_anon_tuple_fn=_from_anon_tuple_fn)
+        from_tff_result_fn=_from_tff_result_fn)
 
     def datapoint(a, b):
       return [tf.Variable(a, name='a'), tf.Variable(b, name='b')]
