@@ -189,13 +189,14 @@ class Model(object):
     Returns:
       Either a `tff.Computation`, or None if no federated aggregation is needed.
 
-
       The `tff.Computation` should take as its single input a
       `tff.CLIENTS`-placed `tff.Value` corresponding to the return value of
-      `Model.report_local_outputs`, and return a dictionary or other structure
-      of `tff.SERVER`-placed values; consumers of this method should generally
-      provide these server-placed values as outputs of the overall computation
-      consuming the model.
+      `Model.report_local_outputs`, and return an `OrderedDict` (possibly
+      nested) of `tff.SERVER`-placed values. The consumer of this
+      method should generally provide these server-placed values as outputs of
+      the overall computation consuming the model. Using an `OrderedDict`
+      allows the value returned by TFF executor to be converted back to an
+      `OrderedDict` via the `._asdict(recursive=True)` member function.
     """
     pass
 
