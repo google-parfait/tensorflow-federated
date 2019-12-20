@@ -79,64 +79,6 @@ def _apply_transforms(comp, transforms):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def remove_lambdas_and_blocks(comp):
-  """Removes any called lambdas and blocks from `comp`.
-
-  This function will rename all the variables in `comp` in a single walk of the
-  AST, then replace called lambdas with blocks in another walk, since this
-  transformation interacts with scope in delicate ways. It will chain inlining
-  the blocks and collapsing the selection-from-tuple pattern together into a
-  final pass.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
-      want to remove called lambdas and blocks.
-
-  Returns:
-    A transformed version of `comp` which has no called lambdas or blocks, and
-    no extraneous selections from tuples.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = uniquify_reference_names(comp)
-  comp, _ = replace_called_lambda_with_block(comp)
-  block_inliner = InlineBlock(comp)
-  selection_replacer = ReplaceSelectionFromTuple()
-  transforms = [block_inliner, selection_replacer]
-  symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.ReferenceCounter)
-
-  def _transform_fn(comp, symbol_tree):
-    """Transform function chaining inlining and collapsing selections.
-
-    This function is inlined here as opposed to factored out and parameterized
-    by the transforms to apply, due to the delicacy of chaining transformations
-    which rely on state. These transformations should be safe if they appear
-    first in the list of transforms, but due to the difficulty of reasoning
-    about the invariants the transforms can rely on in this setting, there is
-    no function exposed which hoists out the internal logic.
-
-    Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock` we wish to
-        check for inlining and collapsing of selections.
-      symbol_tree: Instance of `building_blocks.SymbolTree` defining the
-        bindings available to `comp`.
-
-    Returns:
-      A transformed version of `comp`.
-    """
-    modified = False
-    for transform in transforms:
-      if transform.global_transform:
-        comp, transform_modified = transform.transform(comp, symbol_tree)
-      else:
-        comp, transform_modified = transform.transform(comp)
-      modified = modified or transform_modified
-    return comp, modified
-
-  return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform_fn, symbol_tree)
-
-
 class ExtractComputation(transformation_utils.TransformSpec):
   """Extracts a computation if all referenced variables are free (unbound).
 
@@ -1133,7 +1075,7 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
       return comp, False
     unbound_ref_set = transformation_utils.get_map_of_unbound_references(
         comp.result)[comp.result]
-    if not unbound_ref_set or not comp.locals:
+    if (not unbound_ref_set) or (not comp.locals):
       return comp.result, True
     new_locals = []
     for name, val in reversed(comp.locals):
@@ -1144,6 +1086,8 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
         unbound_ref_set.discard(name)
     if len(new_locals) == len(comp.locals):
       return comp, False
+    elif not new_locals:
+      return comp.result, True
     return building_blocks.Block(reversed(new_locals), comp.result), True
 
 
@@ -1730,6 +1674,33 @@ def unwrap_placement(comp):
       return building_blocks.Lambda(comp.parameter_name, new_parameter_type,
                                     comp.result)
 
+    def _simplify_calls(comp):
+      """Unwraps structures introduced by removing intrinsics."""
+      zip_or_value_removed = (
+          isinstance(comp.function.result, building_blocks.Reference) and
+          comp.function.result.name == comp.function.parameter_name)
+      if zip_or_value_removed:
+        return comp.argument
+      else:
+        map_removed = (
+            isinstance(comp.function.result, building_blocks.Call) and
+            isinstance(comp.function.result.function, building_blocks.Selection)
+            and comp.function.result.function.index == 0 and isinstance(
+                comp.function.result.argument, building_blocks.Selection) and
+            comp.function.result.argument.index == 1 and
+            isinstance(comp.function.result.function.source,
+                       building_blocks.Reference) and
+            comp.function.result.function.source.name ==
+            comp.function.parameter_name and
+            isinstance(comp.function.result.function.source,
+                       building_blocks.Reference) and
+            comp.function.result.function.source.name ==
+            comp.function.parameter_name and
+            isinstance(comp.argument, building_blocks.Tuple))
+        if map_removed:
+          return building_blocks.Call(comp.argument[0], comp.argument[1])
+      return comp
+
     def _transform(comp):
       """Dispatches to helpers above."""
       if isinstance(comp, building_blocks.Reference):
@@ -1738,6 +1709,9 @@ def unwrap_placement(comp):
         return _replace_intrinsics_with_functions(comp), True
       elif isinstance(comp, building_blocks.Lambda):
         return _remove_lambda_placement(comp), True
+      elif isinstance(comp, building_blocks.Call) and isinstance(
+          comp.function, building_blocks.Lambda):
+        return _simplify_calls(comp), True
       elif (isinstance(comp, building_blocks.Data) and
             isinstance(comp.type_signature, computation_types.FederatedType)):
         # TODO(b/135126947): Design and implement Data constructs.

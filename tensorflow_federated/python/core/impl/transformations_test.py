@@ -4341,14 +4341,10 @@ class UnwrapPlacementTest(parameterized.TestCase):
                           building_blocks.Call)
     self.assertEqual(
         placement_unwrapped.argument[0].result.function.compact_representation(
-        ), '(_var2 -> _var2[0](_var2[1]))')
+        ), '(x -> x)')
     self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[0]
-        .compact_representation(), '(x -> x)')
-    self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[1]
-        .compact_representation(),
-        '(_var3 -> _var3[0](_var3[1]))(<(x -> x),_var1>)')
+        placement_unwrapped.argument[0].result.argument.compact_representation(
+        ), '(x -> x)(_var1)')
 
   def test_unwrap_placement_removes_two_federated_applys(self):
     int_ref = building_blocks.Reference('x', tf.int32)
@@ -4402,14 +4398,10 @@ class UnwrapPlacementTest(parameterized.TestCase):
                           building_blocks.Call)
     self.assertEqual(
         placement_unwrapped.argument[0].result.function.compact_representation(
-        ), '(_var2 -> _var2[0](_var2[1]))')
+        ), '(x -> x)')
     self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[0]
-        .compact_representation(), '(x -> x)')
-    self.assertEqual(
-        placement_unwrapped.argument[0].result.argument[1]
-        .compact_representation(),
-        '(_var3 -> _var3[0](_var3[1]))(<(x -> x),_var1>)')
+        placement_unwrapped.argument[0].result.argument.compact_representation(
+        ), '(x -> x)(_var1)')
 
   def test_unwrap_placement_removes_two_federated_maps(self):
     int_ref = building_blocks.Reference('x', tf.int32)

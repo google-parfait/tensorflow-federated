@@ -224,6 +224,22 @@ py_library(
     ],
 )
 
+py_test(
+    name = "transformations_test",
+    srcs = ["transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY2AND3",
+    deps = [
+        ":building_block_factory",
+        ":building_blocks",
+        ":transformation_utils",
+        ":transformations",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:transformations",
+    ],
+)
+
 py_library(
     name = "transformation_utils",
     srcs = ["transformation_utils.py"],

@@ -225,7 +225,7 @@ def consolidate_and_extract_local_processing(comp):
     produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = transformations.remove_lambdas_and_blocks(comp)
+  comp, _ = compiler_transformations.remove_lambdas_and_blocks(comp)
   if isinstance(comp.type_signature, computation_types.FunctionType):
     if isinstance(comp, building_blocks.CompiledComputation):
       return comp
@@ -246,12 +246,11 @@ def consolidate_and_extract_local_processing(comp):
         check_extraction_result(unwrapped.argument[0], extracted)
         return extracted
       else:
-        decorated_func, _ = transformations.insert_called_tf_identity_at_leaves(
-            unwrapped.argument.function)
-        decorated = building_blocks.Call(decorated_func,
-                                         unwrapped.argument.argument)
+        decorated_result, _ = transformations.insert_called_tf_identity_at_leaves(
+            unwrapped.argument)
         rebound = building_blocks.Lambda(comp.parameter_name,
-                                         comp.parameter_type.member, decorated)
+                                         comp.parameter_type.member,
+                                         decorated_result)
         extracted = parse_tff_to_tf(rebound)
         check_extraction_result(rebound, extracted)
         return extracted
@@ -269,10 +268,8 @@ def consolidate_and_extract_local_processing(comp):
       check_extraction_result(unwrapped.argument[0], extracted)
       return extracted
     else:
-      decorated_func, _ = transformations.insert_called_tf_identity_at_leaves(
-          unwrapped.argument.function)
-      decorated = building_blocks.Call(decorated_func,
-                                       unwrapped.argument.argument)
+      decorated, _ = transformations.insert_called_tf_identity_at_leaves(
+          unwrapped.argument)
       extracted = parse_tff_to_tf(decorated)
       check_extraction_result(decorated, extracted)
       return extracted.function
@@ -301,7 +298,7 @@ def parse_tff_to_tf(comp):
     as expected.
   """
   parser_callable = transformations.TFParser()
-  comp, _ = transformations.remove_lambdas_and_blocks(comp)
+  comp, _ = compiler_transformations.remove_lambdas_and_blocks(comp)
   # Parsing all the way up from the leaves can be expensive, so we check whether
   # inserting called identities at the leaves is necessary first.
   new_comp, _ = transformation_utils.transform_postorder(comp, parser_callable)
@@ -312,14 +309,12 @@ def parse_tff_to_tf(comp):
   if isinstance(new_comp, building_blocks.Lambda):
     leaves_decorated, _ = transformations.insert_called_tf_identity_at_leaves(
         new_comp)
-    comp, _ = transformations.remove_lambdas_and_blocks(leaves_decorated)
     parsed_comp, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
     return parsed_comp
   elif isinstance(new_comp, building_blocks.Call):
     leaves_decorated, _ = transformations.insert_called_tf_identity_at_leaves(
         new_comp.function)
-    comp, _ = transformations.remove_lambdas_and_blocks(leaves_decorated)
     parsed_comp, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
     return building_blocks.Call(parsed_comp, None)
