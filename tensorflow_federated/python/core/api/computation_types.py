@@ -143,20 +143,20 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     """Constructs a new instance from the given element types.
 
     Args:
-      elements: Element specifications, in the format of a `list`, `tuple`, or
-        `collections.OrderedDict`. Each element specification is either a type
-        spec (an instance of `tff.Type` or something convertible to it via
-        `tff.to_type`) for the element, or a (name, spec) for elements that have
-        defined names. Alternatively, one can supply here an instance of
+      elements: An iterable of element specifications. Each element
+        specification is either a type spec (an instance of `tff.Type` or
+        something convertible to it via `tff.to_type`) for the element, or a
+        (name, spec) for elements that have defined names. Alternatively, one
+        can supply here an instance of
         `collections.OrderedDict` mapping element names to their types (or
         things that are convertible to types).
     """
-    py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
+    py_typecheck.check_type(elements, collections.Iterable)
     if py_typecheck.is_named_tuple(elements):
       elements = elements  # type: Any
       elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
-      elements = list(elements.items())
+      elements = elements.items()
 
     def _is_full_element_spec(e):
       return py_typecheck.is_name_value_pair(e, name_required=False)
@@ -172,7 +172,7 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     if _is_full_element_spec(elements):
       elements = [(elements[0], to_type(elements[1]))]
     else:
-      elements = [_map_element(e) for e in elements]
+      elements = (_map_element(e) for e in elements)
 
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
 
