@@ -19,19 +19,20 @@ import os
 
 from absl import app
 from absl import flags
+from absl import logging
 import pandas as pd
 import tensorflow as tf
-import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.baselines.stackoverflow import dataset
 from tensorflow_federated.python.research.baselines.stackoverflow import models
 from tensorflow_federated.python.research.utils import utils_impl
 
 with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_string(
-      'exp_name', 'centralized_keras_stackoverflow',
+      'exp_name', 'centralized_stackoverflow',
       'Unique name for the experiment, suitable for '
       'use in filenames.')
-  flags.DEFINE_integer('batch_size', 256, 'Batch size used.')
+  flags.DEFINE_integer('batch_size', 8, 'Batch size used.')
   flags.DEFINE_integer(
       'vocab_size', 10000,
       'Size of the vocab to use; results in most `vocab_size` number of most '
@@ -42,86 +43,26 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'Dimension of latent size to use in recurrent cell')
   flags.DEFINE_integer('num_layers', 1,
                        'Number of stacked recurrent layers to use.')
-  flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adagrad'],
-                    'Optimizer to use; defaults to SGD.')
-  flags.DEFINE_float('learning_rate', 0.01,
-                     'Learning rate to use for centralized optimizer.')
-  flags.DEFINE_float(
-      'momentum', 0.0, 'Momentum value to use fo SGD optimizer. A value of 0.0 '
-      'corresponds to no momentum.')
+  flags.DEFINE_boolean(
+      'shared_embedding', False, 'Boolean indicating whether or not to tie '
+      'input and output embeddings.')
   # TODO(b/141867576): TFF currently needs a concrete maximum sequence length.
   # Follow up when this restriction is lifted.
-  flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use')
-  flags.DEFINE_integer('num_val_examples', 1000,
+  flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
+  flags.DEFINE_integer('epochs', 3, 'Number of epochs to train for.')
+  flags.DEFINE_integer('shuffle_buffer_size', 1000,
+                       'Buffer size for data shuffling.')
+  flags.DEFINE_integer('num_validation_examples', 10000,
                        'Number of examples to take for validation set.')
-  flags.DEFINE_integer(
-      'num_test_examples', 100 * 1000,
-      'Number of examples to use for testing at end of training.')
-  flags.DEFINE_integer('tensorboard_update_frequency', 1000,
+  flags.DEFINE_integer('num_test_examples', 10000,
+                       'Number of examples to take for test set.')
+  flags.DEFINE_integer('tensorboard_update_frequency', 100 * 1000,
                        'Number of steps between tensorboard logging calls.')
-  flags.DEFINE_string('root_output_dir', '/tmp/non_federated_stackoverflow/',
+  flags.DEFINE_string('root_output_dir', '/tmp/centralized_stackoverflow/',
                       'Root directory for writing experiment output.')
+  utils_impl.define_optimizer_flags('centralized')
 
 FLAGS = flags.FLAGS
-
-
-def _create_vocab():
-  vocab_dict = tff.simulation.datasets.stackoverflow.load_word_counts()
-  sorted_pairs = sorted(
-      vocab_dict.items(), key=lambda x: -x[1])[:FLAGS.vocab_size]
-  return list(x[0] for x in sorted_pairs)
-
-
-def construct_word_level_datasets(vocab):
-  """Preprocesses train and test datasets for stackoverflow."""
-  (stackoverflow_train, stackoverflow_val,
-   stackoverflow_test) = tff.simulation.datasets.stackoverflow.load_data()
-  # Mix all clients for training and testing in the centralized setting.
-  raw_test_dataset = stackoverflow_test.create_tf_dataset_from_all_clients()
-  raw_val_dataset = stackoverflow_val.create_tf_dataset_from_all_clients()
-  raw_train_dataset = stackoverflow_train.create_tf_dataset_from_all_clients()
-
-  BatchType = collections.namedtuple('BatchType', ['x', 'y'])  # pylint: disable=invalid-name
-
-  table_values = tf.constant(list(range(FLAGS.vocab_size)), dtype=tf.int64)
-  table = tf.lookup.StaticVocabularyTable(
-      tf.lookup.KeyValueTensorInitializer(vocab, table_values),
-      num_oov_buckets=1)
-
-  def to_ids(x):
-    """Splits a string into word IDs."""
-    s = tf.reshape(x['tokens'], shape=[1])
-    words = tf.string_split(s, sep=' ').values
-    truncated_words = words[:FLAGS.sequence_length]
-    ids = table.lookup(truncated_words)
-    return ids
-
-  def split_input_target(chunk):
-    """Generate input and target data.
-
-    The task of language model is to predict the next word.
-
-    Args:
-      chunk: A Tensor of text data.
-
-    Returns:
-      A namedtuple of input and target data.
-    """
-    input_text = tf.map_fn(lambda x: x[:-1], chunk)
-    target_text = tf.map_fn(lambda x: x[1:], chunk)
-    return BatchType(input_text, target_text)
-
-  def preprocess(dataset):
-    """Notice that this preprocess function repeats forever."""
-    return (dataset.map(to_ids).padded_batch(
-        FLAGS.batch_size,
-        padded_shapes=[FLAGS.sequence_length]).map(split_input_target))
-
-  stackoverflow_train = preprocess(raw_train_dataset)
-  stackoverflow_val = preprocess(raw_val_dataset).take(FLAGS.num_val_examples)
-  stackoverflow_test = preprocess(raw_test_dataset).take(
-      FLAGS.num_test_examples)
-  return stackoverflow_train, stackoverflow_val, stackoverflow_test
 
 
 class AtomicCSVLogger(tf.keras.callbacks.Callback):
@@ -130,31 +71,39 @@ class AtomicCSVLogger(tf.keras.callbacks.Callback):
     self._path = path
 
   def on_epoch_end(self, epoch, logs=None):
-    epoch_path = os.path.join(self._path, 'epoch{}'.format(epoch))
+    epoch_path = os.path.join(self._path, 'results.{:02d}.csv'.format(epoch))
     utils_impl.atomic_write_to_csv(pd.Series(logs), epoch_path)
 
 
 def run_experiment():
   """Runs the training experiment."""
-  vocab = _create_vocab()
-  (stackoverflow_train, stackoverflow_val,
-   stackoverflow_test) = construct_word_level_datasets(vocab)
+  training_set, validation_set, test_set = (
+      dataset.construct_word_level_datasets(
+          vocab_size=FLAGS.vocab_size,
+          batch_size=FLAGS.batch_size,
+          client_epochs_per_round=1,
+          max_seq_len=FLAGS.sequence_length,
+          max_training_elements_per_user=-1,
+          num_validation_examples=FLAGS.num_validation_examples,
+          num_test_examples=FLAGS.num_test_examples))
+  centralized_train = training_set.create_tf_dataset_from_all_clients()
 
   def _lstm_fn():
     return tf.keras.layers.LSTM(FLAGS.latent_size, return_sequences=True)
 
-  model = models.create_recurrent_model(FLAGS.vocab_size, FLAGS.embedding_size,
-                                        FLAGS.num_layers, _lstm_fn,
-                                        'stackoverflow-lstm')
-  if FLAGS.optimizer == 'sgd':
-    optimizer = tf.keras.optimizers.SGD(
-        learning_rate=FLAGS.learning_rate, momentum=FLAGS.momentum)
-  if FLAGS.optimizer == 'adagrad':
-    optimizer = tf.keras.optimizers.Adagrad(learning_rate=FLAGS.learning_rate)
+  model = models.create_recurrent_model(
+      FLAGS.vocab_size,
+      FLAGS.embedding_size,
+      FLAGS.num_layers,
+      _lstm_fn,
+      'stackoverflow-lstm',
+      shared_embedding=FLAGS.shared_embedding)
+  logging.info('Training model: %s', model.summary())
+  optimizer = utils_impl.create_optimizer_from_flags('centralized')
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
       optimizer=optimizer,
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+      weighted_metrics=['acc'])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
                                     'train_results')
@@ -191,18 +140,26 @@ def run_experiment():
                               'hparams.csv')
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
+  oov, bos, eos, pad = dataset.get_special_tokens(FLAGS.vocab_size)
+  class_weight = {x: 1.0 for x in range(FLAGS.vocab_size)}
+  class_weight[oov] = 0.0  # No credit for predicting OOV.
+  class_weight[bos] = 0.0  # Shouldn't matter since this is never a target.
+  class_weight[eos] = 1.0  # Model should learn to predict end of sentence.
+  class_weight[pad] = 0.0  # No credit for predicting pad.
+
   model.fit(
-      stackoverflow_train,
-      epochs=1,
+      centralized_train,
+      epochs=FLAGS.epochs,
       verbose=1,
-      validation_data=stackoverflow_val,
+      class_weight=class_weight,
+      validation_data=validation_set,
       callbacks=[train_csv_logger, train_tensorboard_callback])
   score = model.evaluate(
-      stackoverflow_test,
+      test_set,
       verbose=1,
       callbacks=[test_csv_logger, test_tensorboard_callback])
-  print('Final test loss: %.4f' % score[0])
-  print('Final test accuracy: %.4f' % score[1])
+  logging.info('Final test loss: %.4f', score[0])
+  logging.info('Final test accuracy: %.4f', score[1])
 
 
 def main(argv):
