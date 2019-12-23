@@ -108,6 +108,27 @@ class RemoveLambdasAndBlocksTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
 
+  def test_with_multiple_reference_indirection(self):
+    identity_lam = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    tuple_wrapping_ref = building_blocks.Tuple(
+        [building_blocks.Reference('a', identity_lam.type_signature)])
+    selection_from_ref = building_blocks.Selection(
+        building_blocks.Reference('b', tuple_wrapping_ref.type_signature),
+        index=0)
+    data = building_blocks.Data('a', tf.int32)
+    called_lambda_with_indirection = building_blocks.Call(
+        building_blocks.Reference('c', selection_from_ref.type_signature), data)
+    blk = building_blocks.Block([
+        ('a', identity_lam),
+        ('b', tuple_wrapping_ref),
+        ('c', selection_from_ref),
+    ], called_lambda_with_indirection)
+    lambdas_and_blocks_removed, modified = compiler_transformations.remove_lambdas_and_blocks(
+        blk)
+    self.assertTrue(modified)
+    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
+
 
 if __name__ == '__main__':
   absltest.main()

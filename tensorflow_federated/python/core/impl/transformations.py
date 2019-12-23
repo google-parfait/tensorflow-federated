@@ -1126,14 +1126,22 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
              isinstance(referred, building_blocks.Lambda))) or isinstance(
                  comp, building_blocks.Block)
 
+  def _resolve_reference_to_concrete_value(self, ref, symbol_tree):
+    while isinstance(ref, building_blocks.Reference):
+      referred_payload = symbol_tree.get_payload_with_name(ref.name)
+      ref = referred_payload.value
+    return ref
+
   def transform(self, comp, symbol_tree):
-    node = None
     referred = None
     if isinstance(comp, building_blocks.Call) and isinstance(
         comp.function, building_blocks.Reference):
       try:
         node = symbol_tree.get_payload_with_name(comp.function.name)
         referred = node.value
+        if isinstance(referred, building_blocks.Reference):
+          referred = self._resolve_reference_to_concrete_value(
+              referred, symbol_tree)
       except NameError:
         pass
     if not self.should_transform(comp, referred):
