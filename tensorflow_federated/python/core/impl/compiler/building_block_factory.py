@@ -178,10 +178,16 @@ def construct_tensorflow_selecting_outputs_from_tuple(arg_type,
         'x', type_spec, graph)
 
   results = []
-  for map_spec in output_map:
-    result_element = parameter_value[map_spec[0]]
-    for selection in map_spec[1]:
+  for graph_index, selection_spec in output_map:
+    result_element = parameter_value[graph_index]
+    result_type = type_spec[graph_index]
+    element_type = result_type
+    for selection in selection_spec:
+      if not isinstance(element_type, computation_types.NamedTupleType):
+        raise ValueError(
+            'Expected NamedTupleType here, found {}'.format(result_type))
       result_element = result_element[selection]
+      element_type = element_type[selection]
     results.append(result_element)
 
   named_result = anonymous_tuple.AnonymousTuple(zip(output_names, results))

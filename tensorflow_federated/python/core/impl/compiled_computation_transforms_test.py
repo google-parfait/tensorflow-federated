@@ -2390,6 +2390,27 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertEqual(test_result[0], 0)
     self.assertEqual(test_result[1], 1)
 
+  def test_correct_execution_swapped_nested_selection(self):
+    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    embedded_zero = building_block_factory.create_tensorflow_constant(
+        [[[tf.int32, tf.float32], tf.int32]], 0)
+    embedded_one = building_block_factory.create_tensorflow_constant(
+        [[[tf.int32], [tf.float32, tf.int32]]], 1)
+    first_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Selection(embedded_zero, index=0), index=0),
+        index=1)
+    second_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Selection(embedded_one, index=0), index=1),
+        index=0)
+    repacked_tuple = building_blocks.Tuple([first_selection, second_selection])
+    transformed, _ = transformer.transform(repacked_tuple)
+    arg = self._repack_constant_arg_as_python_structure(transformed.argument)
+    test_result = test_utils.run_tensorflow(transformed.function.proto, arg)
+    self.assertEqual(test_result[0], 0.)
+    self.assertEqual(test_result[1], 1.)
+
 
 if __name__ == '__main__':
   common_test.main()
