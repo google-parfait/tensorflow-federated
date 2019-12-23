@@ -1380,6 +1380,11 @@ class TFParser(object):
     return comp, False
 
 
+def preprocess_for_tf_parse(comp):
+  return _apply_transforms(
+      comp, compiled_computation_transforms.TupleOfSelectionsAndGraphs())
+
+
 def insert_called_tf_identity_at_leaves(comp):
   r"""Inserts an identity TF graph called on References under `comp`.
 

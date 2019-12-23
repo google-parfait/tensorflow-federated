@@ -301,7 +301,9 @@ def parse_tff_to_tf(comp):
   comp, _ = compiler_transformations.remove_lambdas_and_blocks(comp)
   # Parsing all the way up from the leaves can be expensive, so we check whether
   # inserting called identities at the leaves is necessary first.
-  new_comp, _ = transformation_utils.transform_postorder(comp, parser_callable)
+  preprocessed, _ = transformations.preprocess_for_tf_parse(comp)
+  new_comp, _ = transformation_utils.transform_postorder(
+      preprocessed, parser_callable)
   if isinstance(new_comp, building_blocks.CompiledComputation) or isinstance(
       new_comp, building_blocks.Call) and isinstance(
           new_comp.function, building_blocks.CompiledComputation):
