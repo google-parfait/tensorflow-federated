@@ -41,8 +41,7 @@ def build_to_ids_fn(vocab, max_seq_len):
       tf.lookup.KeyValueTensorInitializer(vocab, table_values),
       num_oov_buckets=1)
 
-  oov = len(vocab)
-  bos, eos = oov + 1, oov + 2
+  _, bos, eos, _ = get_special_tokens(len(vocab))
 
   def to_ids(example):
     sentence = tf.reshape(example['tokens'], shape=[1])
@@ -100,13 +99,14 @@ def construct_word_level_datasets(
       use for testing after the final round.
 
   Returns:
-    train: An instance of `tff.simulation.ClientData`
-      representing Stackoverflow data for training.
-    stackoverflow_validation: A split of the Stackoverflow Test data as outlined
+    train: An instance of `tff.simulation.ClientData` representing Stackoverflow
+      data for training.
+    validation: A split of the Stackoverflow Test data as outlined
       in `tff.simulation.datasets.stackoverflow`, containing at most
       `num_validation_examples` examples.
-    test: A split of the same Stackoverflow Test data containing
-    the examples not used in `stackoverflow_validation`.
+    test: A split of the same Stackoverflow Test data containing at most
+      `num_test_examples` of the Stackoverflow Test examples not used in
+      `stackoverflow_validation`.
   """
   if vocab_size <= 0:
     raise ValueError('vocab_size must be a positive integer; you have '
@@ -153,16 +153,15 @@ def construct_word_level_datasets(
 
   train = train.preprocess(preprocess_train)
 
-  stackoverflow_validation = batch_and_split(
-      raw_test.map(to_ids).take(num_validation_examples),
-      max_seq_len, pad)
+  validation = batch_and_split(
+      raw_test.map(to_ids).take(num_validation_examples), max_seq_len, pad)
 
   all_test = raw_test.map(to_ids).skip(num_validation_examples)
   if num_test_examples:
     all_test = all_test.take(num_test_examples)
   test = batch_and_split(all_test, max_seq_len, pad)
 
-  return train, stackoverflow_validation, test
+  return train, validation, test
 
 
 def get_special_tokens(vocab_size):
