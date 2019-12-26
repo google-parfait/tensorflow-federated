@@ -237,6 +237,7 @@ def consolidate_and_extract_local_processing(comp):
                        '`building_blocks.Lambda`; you have passed a {} of type '
                        '{}.'.format(type(comp), comp.type_signature))
     if isinstance(comp.result.type_signature, computation_types.FederatedType):
+      comp, _ = transformations.merge_chained_federated_maps_or_applys(comp)
       unwrapped, _ = transformations.unwrap_placement(comp.result)
       # Unwrapped can be a call to `federated_value_at_P`, or
       # `federated_apply/map`.
@@ -259,6 +260,7 @@ def consolidate_and_extract_local_processing(comp):
       check_extraction_result(comp, extracted)
       return extracted
   elif isinstance(comp.type_signature, computation_types.FederatedType):
+    comp, _ = transformations.merge_chained_federated_maps_or_applys(comp)
     unwrapped, _ = transformations.unwrap_placement(comp)
     # Unwrapped can be a call to `federated_value_at_P`, or
     # `federated_apply/map`.

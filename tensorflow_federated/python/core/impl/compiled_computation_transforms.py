@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import proto_transformations
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
@@ -600,9 +601,25 @@ def _construct_concatenated_type(type_list):
 
 
 def _called_graph_equality(comp1, comp2):
-  """Not-implemented equality function."""
-  # TODO(b/145820641): Follow up with equality which catches bigger fish.
-  return comp1 is comp2
+  """Structural equality function for called TensorFlow graphs."""
+  # pylint: disable=protected-access
+  if comp1 is comp2:
+    return True
+  elif type(comp1.argument) != type(comp2.argument):  # pylint: disable=unidiomatic-typecheck
+    return False
+  elif isinstance(comp1.function, building_blocks.Lambda) or isinstance(
+      comp2.function, building_blocks.Lambda):
+    raise ValueError('All instances of `building_blocks.Lambda` should have '
+                     'been removed before passing to TFF-to-TF compiler; the '
+                     'compiler has been passed {} and {}.'.format(
+                         comp1.function, comp2.function))
+
+  elif not tree_analysis._compiled_comp_equal(comp1.function, comp2.function):
+    return False
+  elif comp1.argument is comp2.argument:
+    return True
+  return tree_analysis._trees_equal(comp1.argument, comp2.argument)
+  # pylint: enable=protected-access
 
 
 def construct_composed_function_capturing_selections(comp):

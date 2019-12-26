@@ -280,6 +280,7 @@ py_library(
         ":placement_literals",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
