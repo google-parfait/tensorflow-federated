@@ -696,8 +696,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(complex_symbol_tree.get_payload_with_name('x').count, 1)
     self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 1)
     self.assertEqual(elder_y.payload.count, 0)
-    with self.assertRaises(NameError):
-      complex_symbol_tree.get_payload_with_name('z')
+    self.assertIsNone(complex_symbol_tree.get_payload_with_name('z'))
 
   def test_symbol_tree_updates_correct_node_across_generations(self):
 
@@ -750,8 +749,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(elder_y.payload.count, 0)
     self.assertEqual(complex_symbol_tree.get_payload_with_name('x').count, 1)
     self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 1)
-    with self.assertRaises(NameError):
-      complex_symbol_tree.get_payload_with_name('z')
+    self.assertIsNone(complex_symbol_tree.get_payload_with_name('z'))
     complex_symbol_tree.pop_scope_up()
     complex_symbol_tree.update_payload_with_name('y')
     complex_symbol_tree.update_payload_with_name('y')
@@ -759,8 +757,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(complex_symbol_tree.get_payload_with_name('y').count, 2)
     self.assertEqual(misdirect_z.payload.count, 0)
     complex_symbol_tree.walk_to_scope_beginning()
-    with self.assertRaises(NameError):
-      complex_symbol_tree.get_payload_with_name('y')
+    self.assertIsNone(complex_symbol_tree.get_payload_with_name('y'))
 
   def test_typechecking_in_symbol_tree_resolve_methods(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)

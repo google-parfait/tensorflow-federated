@@ -331,6 +331,9 @@ class SymbolTree(object):
   def get_payload_with_name(self, name):
     """Returns payload corresponding to `name` in active variable bindings.
 
+    Note that this method obeys `dict.get`-like semantics; instead of raising
+    when asked to address an unbound name, it simply returns `None`.
+
     Args:
       name: String name to find in currently active context.
 
@@ -338,16 +341,7 @@ class SymbolTree(object):
       Returns instance of `BoundVariableTracker` corresponding to `name`
       in context represented by `active_comp`, or `None` if the requested
       name is unbound in the current context.
-
-    Raises:
-      NameError: If requested `name` is not found among the bound names
-      currently available in `self`.
-
     """
-    # TODO(b/146500785): Update this method to have `dict.get`-like semantics;
-    # IE, we should not be raising here when we address an unavaliable name.
-    # This *will* happen during normal execution, so it is the responsibility of
-    # this method to handle.
     py_typecheck.check_type(name, six.string_types)
     comp = self.active_node  # type: SequentialBindingNode
     while comp.parent is not None or comp.older_sibling is not None:
@@ -357,7 +351,7 @@ class SymbolTree(object):
         comp = comp.older_sibling
       elif comp.parent is not None:
         comp = comp.parent
-    raise NameError('Name {} is not available in {}'.format(name, self))
+    return None
 
   def get_all_payloads_with_value(self, value, equal_fn=None):
     """Returns all the payloads whose `value` attribute is equal to `value`.

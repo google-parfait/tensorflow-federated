@@ -402,11 +402,11 @@ class InlineBlock(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     if isinstance(comp, building_blocks.Reference):
-      try:
-        value = symbol_tree.get_payload_with_name(comp.name).value
-      except NameError:
-        # This reference is unbound
+      payload = symbol_tree.get_payload_with_name(comp.name)
+      if payload is None:
         value = None
+      else:
+        value = payload.value
       # This identifies a variable bound by a Block as opposed to a Lambda.
       if value is not None:
         return value, True
@@ -455,12 +455,9 @@ class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
       return True
     elif (isinstance(comp, building_blocks.Selection) and
           isinstance(comp.source, building_blocks.Reference)):
-      try:
-        resolved = symbol_tree.get_payload_with_name(comp.source.name)
-        if isinstance(resolved.value, building_blocks.Tuple):
-          return True
-      except NameError:
-        return False
+      resolved = symbol_tree.get_payload_with_name(comp.source.name)
+      return resolved is not None and isinstance(resolved.value,
+                                                 building_blocks.Tuple)
     return False
 
   def transform(self, comp, symbol_tree):
@@ -1135,14 +1132,12 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
     referred = None
     if isinstance(comp, building_blocks.Call) and isinstance(
         comp.function, building_blocks.Reference):
-      try:
-        node = symbol_tree.get_payload_with_name(comp.function.name)
+      node = symbol_tree.get_payload_with_name(comp.function.name)
+      if node is not None:
         referred = node.value
         if isinstance(referred, building_blocks.Reference):
           referred = self._resolve_reference_to_concrete_value(
               referred, symbol_tree)
-      except NameError:
-        pass
     if not self.should_transform(comp, referred):
       return comp, False
     if isinstance(comp, building_blocks.Block):
@@ -1280,12 +1275,12 @@ def uniquify_reference_names(comp):
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
     if isinstance(comp, building_blocks.Reference):
-      try:
-        new_name = context_tree.get_payload_with_name(comp.name).new_name
-        return building_blocks.Reference(new_name, comp.type_signature,
-                                         comp.context), True
-      except NameError:
+      payload = context_tree.get_payload_with_name(comp.name)
+      if payload is None:
         return comp, False
+      new_name = payload.new_name
+      return building_blocks.Reference(new_name, comp.type_signature,
+                                       comp.context), True
     elif isinstance(comp, building_blocks.Block):
       new_locals = []
       for name, val in comp.locals:

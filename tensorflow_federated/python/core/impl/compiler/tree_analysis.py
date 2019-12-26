@@ -175,9 +175,8 @@ def extract_nodes_consuming(tree, predicate):
       return _is_reference_dependent(comp, symbol_tree)
 
   def _is_reference_dependent(comp, symbol_tree):
-    try:
-      payload = symbol_tree.get_payload_with_name(comp.name)
-    except NameError:
+    payload = symbol_tree.get_payload_with_name(comp.name)
+    if payload is None:
       return False
     # The postorder traversal ensures that we process any
     # bindings before we process the reference to those bindings
