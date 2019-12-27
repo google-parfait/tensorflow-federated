@@ -13,14 +13,14 @@ licenses(["notice"])
 py_library(
     name = "wrappers",
     srcs = ["__init__.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(
     name = "computation_wrapper",
     srcs = ["computation_wrapper.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -48,7 +48,7 @@ py_test(
 py_library(
     name = "computation_wrapper_instances",
     srcs = ["computation_wrapper_instances.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     # TODO(b/143772942): Explicitly setting visibility is temporary and can be
     # removed once  all the appropriate modules have been moved out of the
     # `impl` package.

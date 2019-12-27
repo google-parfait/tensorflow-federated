@@ -15,14 +15,14 @@ licenses(["notice"])
 py_library(
     name = "compiler",
     srcs = ["__init__.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(
     name = "building_block_analysis",
     srcs = ["building_block_analysis.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -50,7 +50,7 @@ py_test(
 py_library(
     name = "building_block_factory",
     srcs = ["building_block_factory.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         ":intrinsic_defs",
@@ -90,7 +90,7 @@ py_test(
 py_library(
     name = "building_blocks",
     srcs = ["building_blocks.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":intrinsic_defs",
         ":placement_literals",
@@ -126,7 +126,7 @@ py_test(
 py_library(
     name = "intrinsic_defs",
     srcs = ["intrinsic_defs.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":type_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -149,7 +149,7 @@ py_test(
 py_library(
     name = "placement_literals",
     srcs = ["placement_literals.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
 )
 
 py_test(
@@ -164,7 +164,7 @@ py_test(
 py_library(
     name = "proto_transformations",
     srcs = ["proto_transformations.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -197,7 +197,7 @@ py_library(
     name = "test_utils",
     testonly = True,
     srcs = ["test_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -215,7 +215,7 @@ py_library(
 py_library(
     name = "transformations",
     srcs = ["transformations.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         ":transformation_utils",
@@ -228,7 +228,7 @@ py_test(
     name = "transformations_test",
     srcs = ["transformations_test.py"],
     python_version = "PY3",
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -243,7 +243,7 @@ py_test(
 py_library(
     name = "transformation_utils",
     srcs = ["transformation_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -272,7 +272,7 @@ py_test(
 py_library(
     name = "tree_analysis",
     srcs = ["tree_analysis.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_blocks",
@@ -309,7 +309,7 @@ py_test(
 py_library(
     name = "type_factory",
     srcs = ["type_factory.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
@@ -328,7 +328,7 @@ py_test(
 py_library(
     name = "type_serialization",
     srcs = ["type_serialization.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":placement_literals",
         "//tensorflow_federated/proto/v0:computation_py_pb2",

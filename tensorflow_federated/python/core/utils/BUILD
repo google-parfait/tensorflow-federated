@@ -7,7 +7,7 @@ licenses(["notice"])
 py_library(
     name = "utils",
     srcs = ["__init__.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = ["//visibility:public"],
     deps = [
         ":computation_utils",
@@ -21,7 +21,7 @@ py_library(
 py_library(
     name = "computation_utils",
     srcs = ["computation_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -53,7 +53,7 @@ py_test(
 py_library(
     name = "differential_privacy",
     srcs = ["differential_privacy.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -82,7 +82,7 @@ py_test(
 py_library(
     name = "encoding_utils",
     srcs = ["encoding_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -108,7 +108,7 @@ py_test(
 py_library(
     name = "federated_aggregations",
     srcs = ["federated_aggregations.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -146,7 +146,7 @@ py_library(
 py_library(
     name = "tf_computation_utils",
     srcs = ["tf_computation_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",

@@ -25,7 +25,7 @@ package_group(
 py_library(
     name = "impl",
     srcs = ["__init__.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
@@ -81,7 +81,7 @@ py_test(
 py_library(
     name = "compiled_computation_transforms",
     srcs = ["compiled_computation_transforms.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = [":compiler_visibility"],
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -127,7 +127,7 @@ py_test(
 py_library(
     name = "compiler_pipeline",
     srcs = ["compiler_pipeline.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":context_stack_base",
@@ -206,7 +206,7 @@ py_test(
 py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_base",
         ":type_utils",
@@ -261,19 +261,19 @@ py_test(
 py_library(
     name = "context_base",
     srcs = ["context_base.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
 )
 
 py_library(
     name = "context_stack_base",
     srcs = ["context_stack_base.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
 )
 
 py_library(
     name = "context_stack_impl",
     srcs = ["context_stack_impl.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
         ":context_base",
@@ -558,7 +558,7 @@ py_library(
 py_library(
     name = "federated_computation_context",
     srcs = ["federated_computation_context.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_base",
         ":context_stack_base",
@@ -586,7 +586,7 @@ py_test(
 py_library(
     name = "federated_computation_utils",
     srcs = ["federated_computation_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_base",
         ":federated_computation_context",
@@ -661,7 +661,7 @@ py_test(
 py_library(
     name = "intrinsic_bodies",
     srcs = ["intrinsic_bodies.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_base",
         ":intrinsic_factory",
@@ -697,7 +697,7 @@ py_test(
 py_library(
     name = "intrinsic_factory",
     srcs = ["intrinsic_factory.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_base",
         ":type_utils",
@@ -758,7 +758,7 @@ py_test(
 py_library(
     name = "reference_executor",
     srcs = ["reference_executor.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
         ":computation_impl",
@@ -813,7 +813,7 @@ py_test(
 py_library(
     name = "runtime_utils",
     srcs = ["runtime_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -878,7 +878,7 @@ py_test(
 py_library(
     name = "tensorflow_deserialization",
     srcs = ["tensorflow_deserialization.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = [":utils_visibility"],
     deps = [
         ":type_utils",
@@ -906,7 +906,7 @@ py_test(
 py_library(
     name = "tensorflow_serialization",
     srcs = ["tensorflow_serialization.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_base",
         ":tf_computation_context",
@@ -941,7 +941,7 @@ py_test(
 py_library(
     name = "tf_computation_context",
     srcs = ["tf_computation_context.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":context_base",
@@ -971,7 +971,7 @@ py_test(
 py_library(
     name = "transformations",
     srcs = ["transformations.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = [":compiler_visibility"],
     deps = [
         ":compiled_computation_transforms",
@@ -1048,7 +1048,7 @@ py_test(
 py_library(
     name = "type_utils",
     srcs = ["type_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = [":utils_visibility"],
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -1081,7 +1081,7 @@ py_test(
 py_library(
     name = "value_impl",
     srcs = ["value_impl.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":context_stack_base",
@@ -1125,7 +1125,7 @@ py_test(
 py_library(
     name = "value_transformations",
     srcs = ["value_transformations.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":context_stack_base",
         ":federated_computation_utils",
@@ -1160,7 +1160,7 @@ py_test(
 py_library(
     name = "value_utils",
     srcs = ["value_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":value_impl",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

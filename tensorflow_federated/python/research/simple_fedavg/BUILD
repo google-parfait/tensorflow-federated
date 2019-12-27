@@ -5,7 +5,7 @@ licenses(["notice"])
 py_library(
     name = "simple_fedavg",
     srcs = ["simple_fedavg.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )
 

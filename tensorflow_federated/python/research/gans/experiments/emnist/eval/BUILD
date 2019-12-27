@@ -5,7 +5,7 @@ licenses(["notice"])
 py_library(
     name = "emnist_eval_util",
     srcs = ["emnist_eval_util.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
 )
 
 py_test(

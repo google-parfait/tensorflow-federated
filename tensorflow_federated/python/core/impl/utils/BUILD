@@ -16,14 +16,14 @@ licenses(["notice"])
 py_library(
     name = "utils",
     srcs = ["__init__.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(
     name = "function_utils",
     srcs = ["function_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -56,7 +56,7 @@ py_test(
 py_library(
     name = "tensorflow_utils",
     srcs = ["tensorflow_utils.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":function_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
