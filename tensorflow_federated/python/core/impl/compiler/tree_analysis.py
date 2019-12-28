@@ -95,9 +95,6 @@ def check_intrinsics_whitelisted_for_reduction(comp):
     ValueError: If we encounter an intrinsic under `comp` that is not
     whitelisted as currently reducible.
   """
-  # TODO(b/135930668): Factor this and other non-transforms (e.g.
-  # `check_has_unique_names` out of this file into a structure specified for
-  # static analysis of ASTs.
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   uri_whitelist = (
       intrinsic_defs.FEDERATED_AGGREGATE.uri,
