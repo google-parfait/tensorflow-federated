@@ -129,6 +129,25 @@ class RemoveLambdasAndBlocksTest(absltest.TestCase):
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
 
+  def test_with_higher_level_lambdas(self):
+    self.skipTest('b/146904968')
+    data = building_blocks.Data('a', tf.int32)
+    dummy = building_blocks.Reference('z', tf.int32)
+    lowest_lambda = building_blocks.Lambda(
+        'z', tf.int32,
+        building_blocks.Tuple([dummy,
+                               building_blocks.Reference('x', tf.int32)]))
+    middle_lambda = building_blocks.Lambda('x', tf.int32, lowest_lambda)
+    lam_arg = building_blocks.Reference('x', middle_lambda.type_signature)
+    rez = building_blocks.Call(lam_arg, data)
+    left_lambda = building_blocks.Lambda('x', middle_lambda.type_signature, rez)
+    higher_call = building_blocks.Call(left_lambda, middle_lambda)
+    high_call = building_blocks.Call(higher_call, data)
+    lambdas_and_blocks_removed, modified = compiler_transformations.remove_lambdas_and_blocks(
+        high_call)
+    self.assertTrue(modified)
+    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
+
 
 if __name__ == '__main__':
   absltest.main()

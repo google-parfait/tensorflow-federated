@@ -609,11 +609,7 @@ def _called_graph_equality(comp1, comp2):
     return False
   elif isinstance(comp1.function, building_blocks.Lambda) or isinstance(
       comp2.function, building_blocks.Lambda):
-    raise ValueError('All instances of `building_blocks.Lambda` should have '
-                     'been removed before passing to TFF-to-TF compiler; the '
-                     'compiler has been passed {} and {}.'.format(
-                         comp1.function, comp2.function))
-
+    return False
   elif not tree_analysis._compiled_comp_equal(comp1.function, comp2.function):
     return False
   elif comp1.argument is comp2.argument:

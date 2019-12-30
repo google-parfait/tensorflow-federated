@@ -90,8 +90,10 @@ def remove_lambdas_and_blocks(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
-  # TODO(b/146057105): Follow up here with formal argument for why sufficiency
-  # of two passes.
+  # TODO(b/146904968): In general, any bounded number of passes of these
+  # transforms as currently implemented is insufficient in order to satisfy
+  # the purpose of this function. Filing a new bug to followup if this becomes a
+  # pressing issue.
   modified = False
   for fn in [
       transformations.remove_unused_block_locals,
