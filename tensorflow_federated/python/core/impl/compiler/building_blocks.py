@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import enum  # pylint: disable=g-bad-import-order
+import enum
 import zlib
 
 import six

@@ -73,7 +73,6 @@ REQUIRED_PACKAGES = [
     'attrs~=18.2',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
-    'enum34~=1.1',
     'grpcio~=1.24.3',
     'h5py~=2.6',
     'numpy~=1.14',
