@@ -14,10 +14,6 @@
 # limitations under the License.
 """A library of static analysis functions that can be applied to ASTs."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import six
 
 from tensorflow_federated.python.common_libs import py_typecheck

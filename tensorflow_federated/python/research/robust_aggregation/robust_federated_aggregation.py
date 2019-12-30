@@ -14,10 +14,6 @@
 # limitations under the License.
 """Simple implementation of the RFA Algorithm for robust aggregation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 import tensorflow_federated as tff
 

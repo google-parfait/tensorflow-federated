@@ -14,10 +14,6 @@
 # limitations under the License.
 """Anonymous named tuples to represent generic tuple values in computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import attr
@@ -70,8 +66,8 @@ class AnonymousTuple(object):
 
     Args:
       elements: An iterable of element specifications, each being a pair
-      consisting of the element name (either `str`, or `None`), and the element
-      value. The order is significant.
+        consisting of the element name (either `str`, or `None`), and the
+        element value. The order is significant.
 
     Raises:
       TypeError: if the `elements` are not a list, or if any of the items on

@@ -14,10 +14,6 @@
 # limitations under the License.
 """Contains implementations of extra federated aggregations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import attr
 import tensorflow as tf

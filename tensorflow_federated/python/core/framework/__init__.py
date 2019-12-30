@@ -14,10 +14,6 @@
 # limitations under the License.
 """Interfaces for extensions, selectively lifted out of `impl`."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import six
 
 from tensorflow_federated.python.core.impl.compiler.building_block_analysis import is_called_intrinsic

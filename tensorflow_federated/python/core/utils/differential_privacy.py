@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utilities for interop with tensorflow_privacy."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
 import numbers
 
@@ -30,7 +26,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.utils import computation_utils
-
 
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
 # in this library.

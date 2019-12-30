@@ -14,10 +14,6 @@
 # limitations under the License.
 """Defines the interface for the context of execution underlying the API."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 
 import six

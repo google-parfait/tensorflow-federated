@@ -14,10 +14,6 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements

@@ -14,10 +14,6 @@
 # limitations under the License.
 """Implementation of HDF5 backed ClientData."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import h5py

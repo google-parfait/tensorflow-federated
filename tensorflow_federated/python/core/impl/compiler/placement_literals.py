@@ -14,10 +14,6 @@
 # limitations under the License.
 """Placement literals for use in computation and type definitions."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 
 class PlacementLiteral(object):
   """A representation of one of the globally recognized placement literals."""

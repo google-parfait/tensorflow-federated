@@ -14,10 +14,6 @@
 # limitations under the License.
 """Libraries for the federated EMNIST dataset for simulation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import hashlib
 import math

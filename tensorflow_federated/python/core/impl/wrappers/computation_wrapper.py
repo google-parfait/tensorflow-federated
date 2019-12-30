@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utilities for constructing decorators/wrappers for functions and defuns."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import types
 
 from tensorflow_federated.python.common_libs import py_typecheck

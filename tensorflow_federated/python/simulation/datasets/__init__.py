@@ -14,10 +14,6 @@
 # limitations under the License.
 """Datasets for running Federated Learning experiments in simulation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.simulation.datasets import emnist
 from tensorflow_federated.python.simulation.datasets import shakespeare
 from tensorflow_federated.python.simulation.datasets import stackoverflow

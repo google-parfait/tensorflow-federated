@@ -14,10 +14,6 @@
 # limitations under the License.
 """Common building blocks for federated optimization algorithms."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
 

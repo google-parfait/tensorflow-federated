@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utilities for serializing and deserializing protocol buffers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from google.protobuf import any_pb2

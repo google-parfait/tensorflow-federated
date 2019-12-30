@@ -20,10 +20,6 @@ the deserialization code (to implement invocation), whereas the serialization
 code depends on the context code (to invoke the Python function in context).
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import six
 import tensorflow as tf
 

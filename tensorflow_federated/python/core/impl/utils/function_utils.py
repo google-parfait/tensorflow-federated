@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utilities for Python functions, defuns, and other types of callables."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import inspect
 import types
 

@@ -14,10 +14,6 @@
 # limitations under the License.
 """Defines utility functions for constructing TFF computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import attr

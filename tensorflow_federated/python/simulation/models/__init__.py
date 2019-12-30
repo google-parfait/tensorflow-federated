@@ -14,10 +14,6 @@
 # limitations under the License.
 """Models for running Federated Learning experiments in simulation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow_federated.python.simulation.models.mnist
 
 # Used by doc generation script.

@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utility methods for working with Keras in TensorFlow Federated."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import itertools
 

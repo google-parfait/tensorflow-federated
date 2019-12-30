@@ -14,10 +14,6 @@
 # limitations under the License.
 """A library of transformations that can be applied to a computation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import six
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -1426,10 +1422,10 @@ def insert_called_tf_identity_at_leaves(comp):
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` whose AST we
       will traverse, replacing appropriate instances of
-      `building_blocks.Reference` with graphs representing the identity
-      function of the appropriate type called on the same reference. `comp`
-      must declare a parameter and result type which are both able to be
-      stamped in to a TensorFlow graph.
+      `building_blocks.Reference` with graphs representing the identity function
+      of the appropriate type called on the same reference. `comp` must declare
+      a parameter and result type which are both able to be stamped in to a
+      TensorFlow graph.
 
   Returns:
     A possibly modified  version of `comp`, where any references now have a

@@ -21,10 +21,6 @@ of a client ID is only available at the preprocessing stage when preparing input
 data for the simulation and is not part of the TensorFlow Federated core APIs.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 
 from absl import logging

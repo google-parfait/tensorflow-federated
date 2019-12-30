@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utility functions for checking Python types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import builtins
 import collections
 import inspect

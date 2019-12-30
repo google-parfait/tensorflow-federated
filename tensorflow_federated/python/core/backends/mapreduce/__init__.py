@@ -26,10 +26,6 @@ form that can be deployed on such systems.
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.core.backends.mapreduce.canonical_form import CanonicalForm
 from tensorflow_federated.python.core.backends.mapreduce.canonical_form_utils import get_canonical_form_for_iterative_process
 from tensorflow_federated.python.core.backends.mapreduce.canonical_form_utils import get_iterative_process_for_canonical_form

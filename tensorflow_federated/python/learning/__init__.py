@@ -14,10 +14,6 @@
 # limitations under the License.
 """The public API for model developers using federated learning algorithms."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.learning import framework
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation

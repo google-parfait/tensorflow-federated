@@ -14,10 +14,6 @@
 # limitations under the License.
 """Definitions of specific computation wrapper instances."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
@@ -102,7 +98,6 @@ def _federated_computation_wrapper_fn(target_fn,
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(
     _federated_computation_wrapper_fn)
-
 
 # pylint:enable=g-doc-args,g-doc-return-or-yield
 

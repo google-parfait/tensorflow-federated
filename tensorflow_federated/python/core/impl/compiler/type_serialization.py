@@ -14,10 +14,6 @@
 # limitations under the License.
 """Utilities for serializing and deserializing TFF computation_types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb

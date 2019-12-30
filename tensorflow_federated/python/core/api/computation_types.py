@@ -14,10 +14,6 @@
 # limitations under the License.
 """Defines functions and classes for building and manipulating TFF types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
 from typing import Any
@@ -147,9 +143,8 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
         specification is either a type spec (an instance of `tff.Type` or
         something convertible to it via `tff.to_type`) for the element, or a
         (name, spec) for elements that have defined names. Alternatively, one
-        can supply here an instance of
-        `collections.OrderedDict` mapping element names to their types (or
-        things that are convertible to types).
+        can supply here an instance of `collections.OrderedDict` mapping element
+        names to their types (or things that are convertible to types).
     """
     py_typecheck.check_type(elements, collections.Iterable)
     if py_typecheck.is_named_tuple(elements):

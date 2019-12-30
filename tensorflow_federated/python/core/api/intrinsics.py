@@ -14,10 +14,6 @@
 # limitations under the License.
 """Defines intrinsics for use in composing federated computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import warnings
 
 from tensorflow_federated.python.core.impl import context_stack_impl

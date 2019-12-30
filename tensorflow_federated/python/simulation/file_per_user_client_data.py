@@ -14,10 +14,6 @@
 # limitations under the License.
 """Implementations of the ClientData abstract base class."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os.path
 
 import tensorflow as tf

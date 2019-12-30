@@ -14,10 +14,6 @@
 # limitations under the License.
 """Defines functions and classes for constructing TFF computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
