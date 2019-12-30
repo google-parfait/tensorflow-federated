@@ -15,10 +15,10 @@
 
 import collections
 
-from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -31,7 +31,20 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 from tensorflow_federated.python.core.utils import computation_utils
 
 
-class GetIterativeProcessForCanonicalFormTest(absltest.TestCase):
+class CanonicalFormTestCase(common_test.TestCase):
+  """A base class that overrides evaluate to handle various executors."""
+
+  def evaluate(self, value):
+    if tf.is_tensor(value):
+      return super().evaluate(value)
+    elif isinstance(value, (np.ndarray, np.number)):
+      return value
+    else:
+      raise TypeError('Cannot evaluate value of type `{!s}`.'.format(
+          type(value)))
+
+
+class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
 
   def test_with_temperature_sensor_example(self):
     cf = test_utils.get_temperature_sensor_example()
@@ -43,7 +56,8 @@ class GetIterativeProcessForCanonicalFormTest(absltest.TestCase):
     state, metrics, stats = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertEqual(str(state), '<num_rounds=1>')
     self.assertEqual(str(metrics), '<ratio_over_threshold=0.5>')
-    self.assertCountEqual([x.num_readings for x in stats], [1, 3])
+    self.assertCountEqual([self.evaluate(x.num_readings) for x in stats],
+                          [1, 3])
 
     state, metrics, stats = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertEqual(str(state), '<num_rounds=2>')
@@ -51,7 +65,7 @@ class GetIterativeProcessForCanonicalFormTest(absltest.TestCase):
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
 
-class GetCanonicalFormForIterativeProcessTest(absltest.TestCase):
+class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
@@ -107,7 +121,8 @@ class GetCanonicalFormForIterativeProcessTest(absltest.TestCase):
     state, metrics, stats = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertEqual(str(state), '<num_rounds=1>')
     self.assertEqual(str(metrics), '<ratio_over_threshold=0.5>')
-    self.assertCountEqual([x.num_readings for x in stats], [1, 3])
+    self.assertCountEqual([self.evaluate(x.num_readings) for x in stats],
+                          [1, 3])
 
     state, metrics, stats = new_it.next(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertEqual(str(state), '<num_rounds=2>')
@@ -309,7 +324,7 @@ def _create_after_aggregate_with_s3_type(x):
                                         [S6_TYPE, S7_TYPE, C6_TYPE])
 
 
-class TypeCheckTest(absltest.TestCase):
+class TypeCheckTest(CanonicalFormTestCase):
 
   def test_init_raises_non_federated_type(self):
     with self.assertRaisesRegex(TypeError, 'init'):
@@ -470,4 +485,4 @@ class TypeCheckTest(absltest.TestCase):
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
-  absltest.main()
+  common_test.main()
