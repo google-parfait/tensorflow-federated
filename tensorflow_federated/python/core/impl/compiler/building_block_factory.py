@@ -16,6 +16,7 @@
 
 import random
 import string
+from typing import Optional, Sequence
 
 import six
 import tensorflow as tf
@@ -117,9 +118,55 @@ def create_compiled_identity(type_signature, name=None):
   return building_blocks.CompiledComputation(proto, name)
 
 
-def construct_tensorflow_selecting_outputs_from_tuple(arg_type,
-                                                      output_map,
-                                                      output_names=None):
+class SelectionSpec(object):
+  """Data class representing map from input tuple to selection of result.
+
+  Attributes:
+    tuple_index: The index of the source of the selection sequence in the
+      desired result of the generated TensorFlow. If this `SelectionSpec`
+      appears at index i of a list of `SelectionSpec`s, index j is the source
+      for the result of the generated function at index i.
+    selection_sequence: A list or tuple representing the selections to make from
+      `tuple_index`, so that the list `[0]` for example would represent the
+      output is the 0th element of `tuple_index`, while `[0, 0]` would represent
+      that the output is the 0th element of the 0th element of `tuple_index`.
+  """
+
+  def __init__(self, tuple_index: int, selection_sequence: Sequence[int]):
+    self._tuple_index = tuple_index
+    self._selection_sequence = selection_sequence
+
+  @property
+  def tuple_index(self):
+    return self._tuple_index
+
+  @property
+  def selection_sequence(self):
+    return self._selection_sequence
+
+  def __str__(self):
+    return 'SelectionSequence(tuple_index={},selection_sequence={}'.format(
+        self._tuple_index, self._selection_sequence)
+
+  def __repr__(self):
+    return str(self)
+
+
+def _extract_selections(parameter_value, output_spec):
+  results = []
+  for selection_spec in output_spec:
+    result_element = parameter_value[selection_spec.tuple_index]
+    for selection in selection_spec.selection_sequence:
+      py_typecheck.check_type(selection, int)
+      result_element = result_element[selection]
+    results.append(result_element)
+  return results
+
+
+def construct_tensorflow_selecting_outputs_from_tuple(
+    arg_type,
+    output_spec: Sequence[SelectionSpec],
+    output_names: Optional[Sequence[str]] = None):
   """Constructs TensorFlow selecting and packing elements from its input.
 
   The result of this function can be called on a deduplicated
@@ -132,16 +179,9 @@ def construct_tensorflow_selecting_outputs_from_tuple(arg_type,
     arg_type: `computation_types.Type` of the argument on which the constructed
       function will be called. Should be an instance of
       `computation_types.NamedTupleType`.
-    output_map: Tuple or list with tuple elements, mapping from elements of the
-      argument tuple to the desired result of the generated computation. This
-      mapping is specified by the following conventions: * The first element j
-        of the tuple at index i is the index from `arg_type` to serve as the
-        source for index i of the result of the generated function. * The second
-        element is a list or tuple representing the selections to make from
-        index j of the argument in sequence, so that the list `[0]` for example
-        would represent that index i of the output is the 0th element of the
-        index j of the input, which `[0, 0]` would represent that index i of the
-        output is the 0th element of the 0th element of input j.
+    output_spec: Tuple or list with SelectionSpec elements, mapping from
+      elements of the argument tuple to the desired result of the generated
+      computation.
     output_names: Names to apply to the constructed tuple.
 
   Returns:
@@ -154,37 +194,28 @@ def construct_tensorflow_selecting_outputs_from_tuple(arg_type,
       computation in TFF, IE does not contain exclusively
       `computation_types.SequenceType`, `computation_types.NamedTupleType` or
       `computation_types.TensorType`.
-    ValueError: If the lengths off `output_map` and `output_names` don't match.
+    ValueError: If the lengths of `output_spec` and `output_names` don't match.
   """
   type_spec = computation_types.to_type(arg_type)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   type_utils.check_tensorflow_compatible_type(type_spec)
-  output_map_len = len(output_map)
+  output_spec_len = len(output_spec)
   if output_names is None:
-    output_names = [None] * output_map_len
+    output_names = [None] * output_spec_len
   output_names_len = len(output_names)
-  if output_names_len != output_map_len:
+  if output_names_len != output_spec_len:
     raise ValueError(
         'Length of output names must match length of output map; you have '
         'passed names of length {} and output map of length {}'.format(
-            output_names_len, output_map_len))
+            output_names_len, output_spec_len))
+  if not all(isinstance(x, SelectionSpec) for x in output_spec):
+    raise ValueError('`output_spec` must only contain instances of '
+                     '`SelectionSpec`.')
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
 
-  results = []
-  for graph_index, selection_spec in output_map:
-    result_element = parameter_value[graph_index]
-    result_type = type_spec[graph_index]
-    element_type = result_type
-    for selection in selection_spec:
-      if not isinstance(element_type, computation_types.NamedTupleType):
-        raise ValueError(
-            'Expected NamedTupleType here, found {}'.format(result_type))
-      result_element = result_element[selection]
-      element_type = element_type[selection]
-    results.append(result_element)
-
+  results = _extract_selections(parameter_value, output_spec)
   named_result = anonymous_tuple.AnonymousTuple(zip(output_names, results))
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(
       named_result, graph)

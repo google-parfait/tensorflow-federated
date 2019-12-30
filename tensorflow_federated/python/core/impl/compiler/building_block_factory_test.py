@@ -3069,14 +3069,16 @@ class BinaryOperatorTest(absltest.TestCase):
 class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
 
   def test_raises_non_named_tuple_type(self):
+    selection_spec = building_block_factory.SelectionSpec(0, [0])
     with self.assertRaises(TypeError):
       building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-          tf.int32, [(0, [0])])
+          tf.int32, selection_spec)
 
   def test_raises_length_mismatch(self):
+    selection_spec = building_block_factory.SelectionSpec(0, [0])
     with self.assertRaises(ValueError):
       building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-          [tf.int32], [(0, [0])], ['a', 'b'])
+          [tf.int32], [selection_spec], ['a', 'b'])
 
   def test_construct_selection_from_tuple_with_empty_list_type_signature(self):
     constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
@@ -3086,8 +3088,10 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
                      computation_types.FunctionType([tf.int32, tf.float32], []))
 
   def test_construct_selection_from_two_tuple_correct_type_signature(self):
+    selection_spec_1 = building_block_factory.SelectionSpec(0, [])
+    selection_spec_2 = building_block_factory.SelectionSpec(0, [])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [(0, []), (0, [])])
+        [tf.int32, tf.float32], [selection_spec_1, selection_spec_2])
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
@@ -3096,16 +3100,19 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
 
   def test_construct_selection_from_two_tuple_correct_singleton_type_signature(
       self):
+    selection_spec = building_block_factory.SelectionSpec(0, [])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [(0, [])])
+        [tf.int32, tf.float32], [selection_spec])
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
         computation_types.FunctionType([tf.int32, tf.float32], [tf.int32]))
 
   def test_construct_selection_from_two_tuple_executes_correctly(self):
+    selection_spec_1 = building_block_factory.SelectionSpec(0, [])
+    selection_spec_2 = building_block_factory.SelectionSpec(0, [])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [(0, []), (0, [])])
+        [tf.int32, tf.float32], [selection_spec_1, selection_spec_2])
     result = test_utils.run_tensorflow(constructed_tf.proto, [0, 1.])
     self.assertLen(result, 2)
     self.assertEqual(result[0], 0)
@@ -3116,8 +3123,11 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     self.assertEqual(result[1], 1)
 
   def test_construct_selection_with_names(self):
+    selection_spec_1 = building_block_factory.SelectionSpec(0, [])
+    selection_spec_2 = building_block_factory.SelectionSpec(1, [])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [('a', tf.int32), ('b', tf.float32)], [(0, []), (1, [])],
+        [('a', tf.int32),
+         ('b', tf.float32)], [selection_spec_1, selection_spec_2],
         output_names=['a', 'b'])
     self.assertEqual(
         constructed_tf.type_signature,
@@ -3125,8 +3135,9 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
                                        [('a', tf.int32), ('b', tf.float32)]))
 
   def test_construct_selection_from_nested_tuple_executes_correctly(self):
+    selection_spec = building_block_factory.SelectionSpec(0, [0, 0])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [[[tf.int32]], tf.float32], [(0, [0, 0])])
+        [[[tf.int32]], tf.float32], [selection_spec])
     result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
     self.assertEqual(result[0], 0)
 

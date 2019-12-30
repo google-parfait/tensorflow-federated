@@ -651,14 +651,14 @@ def construct_composed_function_capturing_selections(comp):
   output_data_structure = []
 
   for tuple_elem in comp:
-    selection_map = []
+    selection_sequence = []
     selected_comp = tuple_elem
     while isinstance(selected_comp, building_blocks.Selection):
       index = selected_comp.index
       if index is None:
         index = _index_from_name(selected_comp.source.type_signature,
                                  selected_comp.name)
-      selection_map.append(index)
+      selection_sequence.append(index)
       selected_comp = selected_comp.source
 
     index_from_arg = None
@@ -671,7 +671,9 @@ def construct_composed_function_capturing_selections(comp):
     # Need to reverse the selection maps, since we walked the tree unwrapping
     # selections from tuples, but we will generate the TensorFlow by adding
     # selections to tuples
-    output_data_structure.append((index_from_arg, selection_map[::-1]))
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=index_from_arg, selection_sequence=selection_sequence[::-1])
+    output_data_structure.append(selection_spec)
 
   arg_tuple = building_blocks.Tuple(deduped_called_graphs)
   tf_representing_selections = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
