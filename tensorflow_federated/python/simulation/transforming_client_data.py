@@ -21,8 +21,6 @@ from __future__ import print_function
 import bisect
 import re
 
-from six.moves import range
-
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck

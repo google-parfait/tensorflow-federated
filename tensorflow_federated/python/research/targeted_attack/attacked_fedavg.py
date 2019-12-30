@@ -35,7 +35,6 @@ How To Back door Federated Learning
 import collections
 
 import attr
-from six.moves import range
 import tensorflow as tf
 import tensorflow_federated as tff
 

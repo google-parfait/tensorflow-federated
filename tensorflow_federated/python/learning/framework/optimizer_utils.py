@@ -23,7 +23,6 @@ import collections
 
 import attr
 import six
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff

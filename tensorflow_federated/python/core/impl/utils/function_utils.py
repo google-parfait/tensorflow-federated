@@ -23,7 +23,6 @@ import types
 
 import attr
 import six
-from six.moves import range
 
 from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple

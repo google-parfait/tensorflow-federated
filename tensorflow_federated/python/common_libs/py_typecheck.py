@@ -18,12 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import builtins
 import collections
 import inspect
 
 import attr
 import six
-from six.moves import builtins
 
 
 def check_type(target, type_spec, label=None):

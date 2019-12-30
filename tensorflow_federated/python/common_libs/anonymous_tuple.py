@@ -22,7 +22,6 @@ import collections
 
 import attr
 import six
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck

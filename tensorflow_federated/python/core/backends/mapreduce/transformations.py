@@ -70,7 +70,6 @@ from __future__ import print_function
 import sys
 
 import six
-from six.moves import range
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types

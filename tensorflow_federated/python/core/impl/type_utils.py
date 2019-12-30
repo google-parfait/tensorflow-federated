@@ -22,7 +22,6 @@ import collections
 import attr
 import numpy as np
 import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple

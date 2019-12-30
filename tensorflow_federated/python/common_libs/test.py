@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
-from six.moves import zip
 import tensorflow as tf
 
 
