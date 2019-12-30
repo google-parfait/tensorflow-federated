@@ -15,10 +15,10 @@
 
 import collections
 
-from absl.testing import absltest
 import attr
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -51,7 +51,7 @@ def count_int32(current):
   return current + 1
 
 
-class ComputationUtilsTest(absltest.TestCase):
+class ComputationUtilsTest(test.TestCase):
 
   def test_update_state_namedtuple(self):
     my_tuple_type = collections.namedtuple('my_tuple_type', 'a b c')
@@ -62,7 +62,7 @@ class ComputationUtilsTest(absltest.TestCase):
     self.assertEqual(state3, my_tuple_type(8, 2, 7))
 
   def test_update_state_dict(self):
-    state = {'a': 1, 'b': 2, 'c': 3}
+    state = collections.OrderedDict([('a', 1), ('b', 2), ('c', 3)])
     state2 = computation_utils.update_state(state, c=7)
     self.assertEqual(state2, {'a': 1, 'b': 2, 'c': 7})
     state3 = computation_utils.update_state(state2, a=8)
@@ -203,7 +203,7 @@ def broadcast_next_fn(state, value):
       ])), intrinsics.federated_broadcast(value)
 
 
-class StatefulBroadcastFnTest(absltest.TestCase):
+class StatefulBroadcastFnTest(test.TestCase):
 
   def test_execute(self):
     broadcast_fn = computation_utils.StatefulBroadcastFn(
@@ -249,7 +249,7 @@ def agg_next_fn(state, value, weight):
       ])), intrinsics.federated_mean(value, weight)
 
 
-class StatefulAggregateFnTest(absltest.TestCase):
+class StatefulAggregateFnTest(test.TestCase):
 
   def test_execute_with_default_weight(self):
     aggregate_fn = computation_utils.StatefulAggregateFn(
@@ -301,4 +301,4 @@ if __name__ == '__main__':
   # error.
   set_default_executor.set_default_executor(
       executor_stacks.create_local_executor(num_clients=3))
-  absltest.main()
+  test.main()
