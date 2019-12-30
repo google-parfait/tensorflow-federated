@@ -119,7 +119,7 @@ def executors(*args):
     if not named_executors:
       named_executors = [
           ('reference', None),
-          ('local', executor_stacks.create_local_executor(1)),
+          ('local', executor_stacks.create_local_executor()),
       ]
     named_parameters_decorator = parameterized.named_parameters(named_executors)
     fn = executor_decorator(fn)

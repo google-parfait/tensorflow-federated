@@ -42,7 +42,8 @@ def _unwrap(value):
   if isinstance(value, tf.Tensor):
     return value.numpy()
   elif isinstance(value, anonymous_tuple.AnonymousTuple):
-    return anonymous_tuple.map_structure(_unwrap, value)
+    return anonymous_tuple.AnonymousTuple(
+        (k, _unwrap(v)) for k, v in anonymous_tuple.iter_elements(value))
   else:
     return value
 

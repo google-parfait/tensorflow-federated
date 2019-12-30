@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -23,10 +24,12 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.utils import test as core_test
 
 
-class IntrinsicBodiesTest(test.TestCase):
+class IntrinsicBodiesTest(test.TestCase, parameterized.TestCase):
 
+  @core_test.executors
   def test_federated_sum(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -42,6 +45,7 @@ class IntrinsicBodiesTest(test.TestCase):
     self.assertEqual(foo([1]), 1)
     self.assertEqual(foo([1, 2, 3]), 6)
 
+  @core_test.executors
   def test_federated_sum_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -66,6 +70,7 @@ class IntrinsicBodiesTest(test.TestCase):
             'b': 6.
         })
 
+  @core_test.executors
   def test_federated_weighted_mean_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -81,6 +86,7 @@ class IntrinsicBodiesTest(test.TestCase):
     self.assertEqual(foo([1]), 1.)
     self.assertEqual(foo([1, 2, 3]), 14. / 6)
 
+  @core_test.executors
   def test_federated_weighted_mean_named_tuple_with_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -104,6 +110,7 @@ class IntrinsicBodiesTest(test.TestCase):
         foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]),
         anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 3.)]))
 
+  @core_test.executors
   def test_federated_mean_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -119,6 +126,7 @@ class IntrinsicBodiesTest(test.TestCase):
     self.assertEqual(foo([1]), 1.)
     self.assertEqual(foo([1, 2, 3]), 2.)
 
+  @core_test.executors
   def test_federated_mean_named_tuple_with_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -140,8 +148,9 @@ class IntrinsicBodiesTest(test.TestCase):
         anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 2.)]))
 
 
-class GenericDivideTest(test.TestCase):
+class GenericDivideTest(test.TestCase, parameterized.TestCase):
 
+  @core_test.executors
   def test_generic_divide_unplaced_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -168,6 +177,7 @@ class GenericDivideTest(test.TestCase):
             anonymous_tuple.AnonymousTuple([('a', 0.25), ('b', 1.)])
         ])
 
+  @core_test.executors
   def test_generic_divide_with_unplaced_scalars(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -182,6 +192,7 @@ class GenericDivideTest(test.TestCase):
     self.assertEqual(foo(2.), 1.)
     self.assertEqual(foo(3.), 1.)
 
+  @core_test.executors
   def test_generic_divide_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -198,6 +209,7 @@ class GenericDivideTest(test.TestCase):
     self.assertEqual(
         foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
+  @core_test.executors
   def test_generic_divide_with_unplaced_named_tuple_and_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -216,6 +228,7 @@ class GenericDivideTest(test.TestCase):
         foo([[1., 1.], 2.]),
         anonymous_tuple.AnonymousTuple([('a', .5), ('b', .5)]))
 
+  @core_test.executors
   def test_generic_divide_with_named_tuple_of_federated_types(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -235,6 +248,7 @@ class GenericDivideTest(test.TestCase):
         foo([[1], [1]]),
         anonymous_tuple.AnonymousTuple([('a', [1.]), ('b', [1.])]))
 
+  @core_test.executors
   def test_federated_generic_divide_with_federated_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -256,6 +270,7 @@ class GenericDivideTest(test.TestCase):
         foo([[1, 1.], [1, 2.], [3, 3.]]),
         [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])] * 3)
 
+  @core_test.executors
   def test_federated_generic_divide_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -271,6 +286,7 @@ class GenericDivideTest(test.TestCase):
     self.assertEqual(foo([1]), [1.])
     self.assertEqual(foo([1, 2, 3]), [1., 1., 1.])
 
+  @core_test.executors
   def test_federated_generic_divide_with_unnamed_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -293,8 +309,9 @@ class GenericDivideTest(test.TestCase):
         [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])] * 3)
 
 
-class GenericMultiplyTest(test.TestCase):
+class GenericMultiplyTest(test.TestCase, parameterized.TestCase):
 
+  @core_test.executors
   def test_generic_multiply_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -321,6 +338,7 @@ class GenericMultiplyTest(test.TestCase):
             anonymous_tuple.AnonymousTuple([('a', 4.), ('b', 16.)])
         ])
 
+  @core_test.executors
   def test_generic_multiply_with_unplaced_scalars(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -335,6 +353,7 @@ class GenericMultiplyTest(test.TestCase):
     self.assertEqual(foo(2.), 4.)
     self.assertEqual(foo(3.), 9.)
 
+  @core_test.executors
   def test_federated_generic_multiply_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -350,6 +369,7 @@ class GenericMultiplyTest(test.TestCase):
     self.assertEqual(foo([1]), [1])
     self.assertEqual(foo([1, 2, 3]), [1, 4, 9])
 
+  @core_test.executors
   def test_generic_multiply_with_unplaced_named_tuple_and_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -368,6 +388,7 @@ class GenericMultiplyTest(test.TestCase):
         foo([[1., 1.], 2.]),
         anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]))
 
+  @core_test.executors
   def test_federated_generic_multiply_with_unnamed_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -384,7 +405,7 @@ class GenericMultiplyTest(test.TestCase):
 
     self.assertEqual(
         foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])])
+        [anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)]),
@@ -392,6 +413,7 @@ class GenericMultiplyTest(test.TestCase):
             anonymous_tuple.AnonymousTuple([(None, 1), (None, 9.)])
         ])
 
+  @core_test.executors
   def test_federated_generic_multiply_with_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -407,8 +429,7 @@ class GenericMultiplyTest(test.TestCase):
         '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])])
+        foo([[1, 1.]]), [anonymous_tuple.AnonymousTuple([('a', 1), ('b', 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([('a', 1), ('b', 1.)]),
@@ -416,6 +437,7 @@ class GenericMultiplyTest(test.TestCase):
             anonymous_tuple.AnonymousTuple([('a', 1), ('b', 9.)])
         ])
 
+  @core_test.executors
   def test_generic_multiply_with_named_tuple_of_federated_types(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -432,9 +454,10 @@ class GenericMultiplyTest(test.TestCase):
     )
 
     self.assertEqual(
-        foo([[1], [1]]),
-        anonymous_tuple.AnonymousTuple([('a', [1.]), ('b', [1.])]))
+        foo([[1], [1]]), anonymous_tuple.AnonymousTuple([('a', [1]),
+                                                         ('b', [1])]))
 
+  @core_test.executors
   def test_generic_multiply_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -453,8 +476,9 @@ class GenericMultiplyTest(test.TestCase):
         foo([1., 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
 
-class GenericAddTest(test.TestCase):
+class GenericAddTest(test.TestCase, parameterized.TestCase):
 
+  @core_test.executors
   def test_federated_generic_add_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -470,6 +494,7 @@ class GenericAddTest(test.TestCase):
     self.assertEqual(foo([1]), [2])
     self.assertEqual(foo([1, 2, 3]), [2, 4, 6])
 
+  @core_test.executors
   def test_federated_generic_add_with_unnamed_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -486,7 +511,7 @@ class GenericAddTest(test.TestCase):
 
     self.assertEqual(
         foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 2.), (None, 2.)])])
+        [anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)]),
@@ -494,6 +519,7 @@ class GenericAddTest(test.TestCase):
             anonymous_tuple.AnonymousTuple([(None, 2), (None, 6.)])
         ])
 
+  @core_test.executors
   def test_federated_generic_add_with_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -509,8 +535,7 @@ class GenericAddTest(test.TestCase):
         '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)])])
+        foo([[1, 1.]]), [anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]),
@@ -518,6 +543,7 @@ class GenericAddTest(test.TestCase):
             anonymous_tuple.AnonymousTuple([('a', 2), ('b', 6.)])
         ])
 
+  @core_test.executors
   def test_generic_add_with_named_tuple_of_federated_types(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -535,8 +561,10 @@ class GenericAddTest(test.TestCase):
 
     self.assertEqual(
         foo([[1], [1]]),
-        anonymous_tuple.AnonymousTuple([('a', [2.]), ('b', [2.])]))
+        anonymous_tuple.AnonymousTuple([('a', tf.constant([2.])),
+                                        ('b', tf.constant([2.]))]))
 
+  @core_test.executors
   def test_generic_add_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -552,6 +580,7 @@ class GenericAddTest(test.TestCase):
     self.assertEqual(
         foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]))
 
+  @core_test.executors
   def test_generic_add_with_unplaced_named_tuple_and_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
@@ -570,6 +599,7 @@ class GenericAddTest(test.TestCase):
         foo([[1., 1.], 1.]),
         anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]))
 
+  @core_test.executors
   def test_generic_add_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
