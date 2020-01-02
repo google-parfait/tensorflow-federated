@@ -26,19 +26,21 @@ class DatasetTest(test.TestCase):
 
   def test_raises_bad_args(self):
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(0, 1, 1, 1, 1, 1, 1)
+      dataset.construct_word_level_datasets(0, 1, 1, 1, 1, 10, 1, 1)
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 0, 1, 1, 1, 1, 1)
+      dataset.construct_word_level_datasets(1, 0, 1, 1, 1, 10, 1, 1)
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 0, 1, 1, 1, 1)
+      dataset.construct_word_level_datasets(1, 1, 0, 1, 1, 10, 1, 1)
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 0, 1, 1, 1)
+      dataset.construct_word_level_datasets(1, 1, 1, 0, 1, 10, 1, 1)
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 1, -2, 1, 1)
+      dataset.construct_word_level_datasets(1, 1, 1, 1, -2, 10, 1, 1)
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 1, -1, 0, 1)
+      dataset.construct_word_level_datasets(1, 1, 1, 1, -1, 1, 0, 1)
     with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 1, -1, 1, 0)
+      dataset.construct_word_level_datasets(1, 1, 1, 1, -1, 10, 0, 1)
+    with self.assertRaises(ValueError):
+      dataset.construct_word_level_datasets(1, 1, 1, 1, -1, 10, 1, 0)
 
   def test_split_input_target(self):
     tokens = tf.constant([[0, 1, 2, 3, 4]], dtype=tf.int64)

@@ -67,14 +67,11 @@ def batch_and_split(dataset, max_seq_len, pad, epochs=1, batch_size=100):
           .map(split_input_target).repeat(epochs))
 
 
-def construct_word_level_datasets(
-    vocab_size,
-    batch_size,
-    client_epochs_per_round,
-    max_seq_len,
-    max_training_elements_per_user,
-    num_validation_examples,
-    num_test_examples=None):
+def construct_word_level_datasets(vocab_size, batch_size,
+                                  client_epochs_per_round, max_seq_len,
+                                  max_training_elements_per_user,
+                                  shuffle_buffer_size, num_validation_examples,
+                                  num_test_examples):
   """Preprocessing for Stackoverflow data.
 
   Notice that this preprocessing function *ignores* the heldout Stackoverflow
@@ -93,6 +90,8 @@ def construct_word_level_datasets(
       truncated to this length.
     max_training_elements_per_user: Integer controlling the maximum number of
       elements to take per user. If -1, takes all elements for each user.
+    shuffle_buffer_size: Buffer size for shuffling training dataset before
+      batching. If None, does not shuffle.
     num_validation_examples: Number of examples from Stackoverflow test set to
       use for validation on each round.
     num_test_examples: Number of examples from Stackoverflow test set to
@@ -109,29 +108,29 @@ def construct_word_level_datasets(
       `stackoverflow_validation`.
   """
   if vocab_size <= 0:
-    raise ValueError('vocab_size must be a positive integer; you have '
-                     'passed {}'.format(vocab_size))
-  elif batch_size <= 0:
-    raise ValueError('batch_size must be a positive integer; you have '
-                     'passed {}'.format(batch_size))
-  elif client_epochs_per_round <= 0:
-    raise ValueError('client_epochs_per_round must be a positive integer; you '
-                     'have passed {}'.format(client_epochs_per_round))
-  elif max_seq_len <= 0:
-    raise ValueError('max_seq_len must be a positive integer; you have '
-                     'passed {}'.format(max_seq_len))
-  elif max_training_elements_per_user < -1:
+    raise ValueError('vocab_size must be a positive integer')
+
+  if batch_size <= 0:
+    raise ValueError('batch_size must be a positive integer')
+
+  if client_epochs_per_round <= 0:
+    raise ValueError('client_epochs_per_round must be a positive integer')
+
+  if max_seq_len <= 0:
+    raise ValueError('max_seq_len must be a positive integer')
+
+  if max_training_elements_per_user < -1:
     raise ValueError(
-        'max_training_elements_per_user must be an integer at '
-        'least -1; you have passed {}'.format(max_training_elements_per_user))
-  elif num_validation_examples <= 1:
-    raise ValueError(
-        'num_validation_examples must be an integer at '
-        'least 1; you have passed {}'.format(num_validation_examples))
-  elif num_test_examples is not None and num_test_examples <= 1:
-    raise ValueError(
-        'num_test_examples must be an integer at '
-        'least 1; you have passed {}'.format(num_test_examples))
+        'max_training_elements_per_user must be an integer at least -1')
+
+  if shuffle_buffer_size is not None and shuffle_buffer_size < 1:
+    raise ValueError('shuffle_buffer_size must be an integer greater than 1.')
+
+  if num_validation_examples <= 1:
+    raise ValueError('num_validation_examples must be an integer at least 1')
+
+  if num_test_examples is not None and num_test_examples <= 1:
+    raise ValueError('num_test_examples must be an integer at least 1')
 
   # Ignoring held-out Stackoverflow users for consistency with other datasets in
   # optimization paper.
@@ -144,22 +143,24 @@ def construct_word_level_datasets(
 
   to_ids = build_to_ids_fn(vocab, max_seq_len)
 
-  pad = len(vocab) + 3
+  _, _, _, pad = get_special_tokens(len(vocab))
 
   def preprocess_train(dataset):
-    truncated = dataset.map(to_ids).take(max_training_elements_per_user)
-    return batch_and_split(
-        truncated, max_seq_len, pad, client_epochs_per_round, batch_size)
+    dataset = dataset.map(to_ids).take(max_training_elements_per_user)
+    if shuffle_buffer_size:
+      dataset = dataset.shuffle(shuffle_buffer_size)
+    return batch_and_split(dataset, max_seq_len, pad, client_epochs_per_round,
+                           batch_size)
 
   train = train.preprocess(preprocess_train)
 
-  validation = batch_and_split(
-      raw_test.map(to_ids).take(num_validation_examples), max_seq_len, pad)
+  raw_test = raw_test.map(to_ids)
 
-  all_test = raw_test.map(to_ids).skip(num_validation_examples)
-  if num_test_examples:
-    all_test = all_test.take(num_test_examples)
-  test = batch_and_split(all_test, max_seq_len, pad)
+  validation = raw_test.take(num_validation_examples)
+  validation = batch_and_split(validation, max_seq_len, pad)
+
+  test = raw_test.skip(num_validation_examples).take(num_test_examples)
+  test = batch_and_split(test, max_seq_len, pad)
 
   return train, validation, test
 
@@ -185,3 +186,14 @@ def get_special_tokens(vocab_size):
   pad = oov + 3
 
   return oov, bos, eos, pad
+
+
+def get_class_weight(vocab_size):
+  oov, bos, eos, pad = get_special_tokens(vocab_size)
+  class_weight = {x: 1.0 for x in range(vocab_size)}
+  class_weight[oov] = 0.0  # No credit for predicting OOV.
+  class_weight[bos] = 0.0  # Shouldn't matter since this is never a target.
+  class_weight[eos] = 1.0  # Model should learn to predict end of sentence.
+  class_weight[pad] = 0.0  # No credit for predicting pad.
+
+  return class_weight
