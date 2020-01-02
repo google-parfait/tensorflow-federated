@@ -942,11 +942,11 @@ class ReferenceExecutor(context_base.Context):
           zeros_val = sess.run(zeros)
       return ComputedValue(zeros_val, type_spec)
     elif isinstance(type_spec, computation_types.NamedTupleType):
+      type_elements_iter = anonymous_tuple.iter_elements(type_spec)
       return ComputedValue(
-          anonymous_tuple.AnonymousTuple([
-              (k, self._generic_zero(v).value)
-              for k, v in anonymous_tuple.iter_elements(type_spec)
-          ]), type_spec)
+          anonymous_tuple.AnonymousTuple(
+              (k, self._generic_zero(v).value) for k, v in type_elements_iter),
+          type_spec)
     elif isinstance(
         type_spec,
         (computation_types.SequenceType, computation_types.FunctionType,

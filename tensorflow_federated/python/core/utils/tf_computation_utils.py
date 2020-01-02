@@ -62,10 +62,10 @@ def create_variables(name, type_spec, **kwargs):
       else:
         return var_name
 
-    return anonymous_tuple.AnonymousTuple([
+    type_elements_iter = anonymous_tuple.iter_elements(type_spec)
+    return anonymous_tuple.AnonymousTuple(
         (k, create_variables(_scoped_name(k, i), v, **kwargs))
-        for i, (k, v) in enumerate(anonymous_tuple.to_elements(type_spec))
-    ])
+        for i, (k, v) in enumerate(type_elements_iter))
   else:
     raise TypeError(
         'Expected a TFF type signature composed of tensors and named tuples, '

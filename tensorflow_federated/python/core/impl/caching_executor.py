@@ -60,11 +60,10 @@ def _get_hashable_key(value, type_spec):
   """
   if isinstance(type_spec, computation_types.NamedTupleType):
     if isinstance(value, anonymous_tuple.AnonymousTuple):
-      v_elem = anonymous_tuple.to_elements(value)
-      t_elem = anonymous_tuple.to_elements(type_spec)
+      type_specs = anonymous_tuple.iter_elements(type_spec)
       r_elem = []
-      for (_, vv), (tk, tv) in zip(v_elem, t_elem):
-        r_elem.append((tk, _get_hashable_key(vv, tv)))
+      for v, (field_name, field_type) in zip(value, type_specs):
+        r_elem.append((field_name, _get_hashable_key(v, field_type)))
       return anonymous_tuple.AnonymousTuple(r_elem)
     else:
       return _get_hashable_key(anonymous_tuple.from_container(value), type_spec)
@@ -315,9 +314,8 @@ class CachingExecutor(executor_base.Executor):
     except KeyError:
       target_future = asyncio.ensure_future(
           self._target_executor.create_tuple(
-              anonymous_tuple.AnonymousTuple([
-                  (k, v) for (k, _), v in zip(element_kv_pairs, gathered)
-              ])))
+              anonymous_tuple.AnonymousTuple(
+                  (k, v) for (k, _), v in zip(element_kv_pairs, gathered))))
       cached_value = CachedValue(identifier, None, type_spec, target_future)
       self._cache[identifier] = cached_value
     try:

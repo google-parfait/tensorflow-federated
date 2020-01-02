@@ -132,9 +132,8 @@ def to_canonical_value(value):
       items = value.items()
     else:
       items = sorted(value.items())
-    return anonymous_tuple.AnonymousTuple([
-        (k, to_canonical_value(v)) for k, v in items
-    ])
+    return anonymous_tuple.AnonymousTuple(
+        (k, to_canonical_value(v)) for k, v in items)
   elif isinstance(value, (tuple, list)):
     return [to_canonical_value(e) for e in value]
   return value

@@ -216,13 +216,11 @@ class LambdaExecutor(executor_base.Executor):
       return result
     elif isinstance(type_spec, computation_types.NamedTupleType):
       v_el = anonymous_tuple.to_elements(anonymous_tuple.from_container(value))
-      t_el = anonymous_tuple.to_elements(type_spec)
       vals = await asyncio.gather(
-          *[self.create_value(v, t) for (_, v), (_, t) in zip(v_el, t_el)])
+          *[self.create_value(val, t) for (_, val), t in zip(v_el, type_spec)])
       return LambdaExecutorValue(
-          anonymous_tuple.AnonymousTuple([
-              (name, val) for (name, _), val in zip(v_el, vals)
-          ]))
+          anonymous_tuple.AnonymousTuple(
+              (name, val) for (name, _), val in zip(v_el, vals)))
     else:
       return LambdaExecutorValue(await self._target_executor.create_value(
           value, type_spec))

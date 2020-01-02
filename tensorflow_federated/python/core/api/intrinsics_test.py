@@ -531,11 +531,17 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assertEqual(str(foo.type_signature), named_type_string)
 
+    def _make_test_tuple(x, k):
+      """Make a test tuple with a name if k is even, otherwise unnamed."""
+      if k % 2 == 0:
+        return str(k), x[k]
+      else:
+        return None, x[k]
+
     @tff.federated_computation([fed_type] * n)
     def bar(x):
-      arg = anonymous_tuple.AnonymousTuple([
-          (str(k), x[k]) if k % 2 == 0 else (None, x[k]) for k in range(n)
-      ])
+      arg = anonymous_tuple.AnonymousTuple(
+          _make_test_tuple(x, k) for k in range(n))
       return tff.federated_zip(arg)
 
     self.assertEqual(str(bar.type_signature), mixed_type_string)

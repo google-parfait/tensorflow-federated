@@ -93,9 +93,8 @@ async def _ingest(executor, val, type_spec):
       ingested.append(_ingest(executor, v, t))
     ingested = await asyncio.gather(*ingested)
     return await executor.create_tuple(
-        anonymous_tuple.AnonymousTuple([
-            (name, val) for (name, _), val in zip(t_elem, ingested)
-        ]))
+        anonymous_tuple.AnonymousTuple(
+            (name, val) for (name, _), val in zip(t_elem, ingested)))
   else:
     return await executor.create_value(val, type_spec)
 
@@ -128,10 +127,10 @@ async def _invoke(executor, comp, arg):
 def _unwrap_execution_context_value(val):
   """Recursively removes wrapping from `val` under anonymous tuples."""
   if isinstance(val, anonymous_tuple.AnonymousTuple):
-    return anonymous_tuple.AnonymousTuple([
+    value_elements_iter = anonymous_tuple.iter_elements(val)
+    return anonymous_tuple.AnonymousTuple(
         (name, _unwrap_execution_context_value(elem))
-        for name, elem in anonymous_tuple.iter_elements(val)
-    ])
+        for name, elem in value_elements_iter)
   elif isinstance(val, ExecutionContextValue):
     return _unwrap_execution_context_value(val.value)
   else:

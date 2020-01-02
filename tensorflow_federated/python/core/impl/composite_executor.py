@@ -222,14 +222,13 @@ class CompositeExecutor(executor_base.Executor):
         raise NotImplementedError(
             'Unimplemented computation type {}.'.format(which_computation))
     elif isinstance(type_spec, computation_types.NamedTupleType):
-      v_el = anonymous_tuple.to_elements(anonymous_tuple.from_container(value))
-      t_el = anonymous_tuple.to_elements(type_spec)
+      value_tuple = anonymous_tuple.from_container(value)
       items = await asyncio.gather(
-          *[self.create_value(v, t) for (_, v), (_, t) in zip(v_el, t_el)])
+          *[self.create_value(v, t) for v, t in zip(value_tuple, type_spec)])
+      type_elemnents_iter = anonymous_tuple.iter_elements(type_spec)
       return self.create_tuple(
-          anonymous_tuple.AnonymousTuple([
-              (k, i) for (k, _), i in zip(t_el, items)
-          ]))
+          anonymous_tuple.AnonymousTuple(
+              (k, i) for (k, _), i in zip(type_elemnents_iter, items)))
     elif isinstance(type_spec, computation_types.FederatedType):
       if type_spec.placement == placement_literals.SERVER:
         if type_spec.all_equal:
@@ -315,16 +314,20 @@ class CompositeExecutor(executor_base.Executor):
           py_typecheck.type_string(type(comp.internal_representation))))
 
   async def create_tuple(self, elements):
-    elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
-    for _, v in elem:
-      py_typecheck.check_type(v, CompositeValue)
+    values = []
+    type_specs = []
+    for name, value in anonymous_tuple.iter_elements(
+        anonymous_tuple.from_container(elements)):
+      py_typecheck.check_type(value, CompositeValue)
+      values.append((name, value.internal_representation))
+      if name is not None:
+        type_spec = (name, value.type_signature)
+      else:
+        type_spec = value.type_signature
+      type_specs.append(type_spec)
     return CompositeValue(
-        anonymous_tuple.AnonymousTuple([
-            (k, v.internal_representation) for k, v in elem
-        ]),
-        computation_types.NamedTupleType([
-            (k, v.type_signature) if k else v.type_signature for k, v in elem
-        ]))
+        anonymous_tuple.AnonymousTuple(values),
+        computation_types.NamedTupleType(type_specs))
 
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, CompositeValue)

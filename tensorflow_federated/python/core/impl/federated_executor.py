@@ -110,15 +110,13 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
       else:
         return results
     elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
-      value_elements = anonymous_tuple.to_elements(self._value)
-      type_elements = anonymous_tuple.to_elements(self._type_signature)
       gathered_values = await asyncio.gather(*[
           FederatedExecutorValue(v, t).compute()
-          for (_, v), (_, t) in zip(value_elements, type_elements)
+          for v, t in zip(self._value, self._type_signature)
       ])
-      return anonymous_tuple.AnonymousTuple([
-          (k, v) for (k, _), v in zip(type_elements, gathered_values)
-      ])
+      type_elements_iter = anonymous_tuple.iter_elements(self._type_signature)
+      return anonymous_tuple.AnonymousTuple(
+          (k, v) for (k, _), v in zip(type_elements_iter, gathered_values))
     else:
       raise RuntimeError(
           'Computing values of type {} represented as {} is not supported in '
@@ -254,10 +252,9 @@ class FederatedExecutor(executor_base.Executor):
         element_values = await asyncio.gather(
             *[self.create_value(x.value) for x in value.tuple.element])
         return await self.create_tuple(
-            anonymous_tuple.AnonymousTuple([
+            anonymous_tuple.AnonymousTuple(
                 (e.name if e.name else None, v)
-                for e, v in zip(value.tuple.element, element_values)
-            ]))
+                for e, v in zip(value.tuple.element, element_values)))
       elif which_computation == 'selection':
         which_selection = value.selection.WhichOneof('selection')
         if which_selection == 'name':
@@ -365,12 +362,10 @@ class FederatedExecutor(executor_base.Executor):
     for _, v in elem:
       py_typecheck.check_type(v, FederatedExecutorValue)
     return FederatedExecutorValue(
-        anonymous_tuple.AnonymousTuple([
-            (k, v.internal_representation) for k, v in elem
-        ]),
-        computation_types.NamedTupleType([
-            (k, v.type_signature) if k else v.type_signature for k, v in elem
-        ]))
+        anonymous_tuple.AnonymousTuple(
+            (k, v.internal_representation) for k, v in elem),
+        computation_types.NamedTupleType(
+            (k, v.type_signature) if k else v.type_signature for k, v in elem))
 
   @executor_utils.log_async
   async def create_selection(self, source, index=None, name=None):
