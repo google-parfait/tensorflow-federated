@@ -856,7 +856,7 @@ class _BeginScopePointer(BoundVariableTracker):
     if name is not None or value is not None:
       raise ValueError('Please don\'t pass a name or value to '
                        '_BeginScopePointer; it will simply be ignored.')
-    super(_BeginScopePointer, self).__init__('BeginScope', None)
+    super().__init__('BeginScope', None)
 
   def update(self, comp=None):
     del comp  # Unused
@@ -938,7 +938,7 @@ class ReferenceCounter(BoundVariableTracker):
       return True
     if not isinstance(other, ReferenceCounter):
       return NotImplemented
-    if not super(ReferenceCounter, self).__eq__(other):
+    if not super().__eq__(other):
       return False
     return self.count == other.count
 

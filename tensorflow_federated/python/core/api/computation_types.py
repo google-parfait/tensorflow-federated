@@ -181,8 +181,7 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
         _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
 
   def __eq__(self, other):
-    return (isinstance(other, NamedTupleType) and
-            super(NamedTupleType, self).__eq__(other))
+    return isinstance(other, NamedTupleType) and super().__eq__(other)
 
 
 # While this lives in the `api` diretory, `NamedTupleTypeWithPyContainerType` is

@@ -3345,7 +3345,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 class RemoveUnusedBlockLocalsTest(common_test.TestCase):
 
   def setUp(self):
-    super(RemoveUnusedBlockLocalsTest, self).setUp()
+    super().setUp()
     self._unused_block_remover = transformations.RemoveUnusedBlockLocals()
 
   def test_should_transform_block(self):

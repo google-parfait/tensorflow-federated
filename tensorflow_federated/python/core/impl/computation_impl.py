@@ -75,5 +75,5 @@ class ComputationImpl(function_utils.ConcreteFunction):
     if not isinstance(type_spec, computation_types.FunctionType):
       type_spec = computation_types.FunctionType(None, type_spec)
 
-    super(ComputationImpl, self).__init__(type_spec, context_stack)
+    super().__init__(type_spec, context_stack)
     self._computation_proto = computation_proto

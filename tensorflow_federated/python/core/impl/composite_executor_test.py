@@ -58,7 +58,7 @@ def _create_middle_stack(children):
 class CompositeExecutorTest(absltest.TestCase):
 
   def setUp(self):
-    super(CompositeExecutorTest, self).setUp()
+    super().setUp()
     # 2 clients per worker stack * 3 worker stacks * 2 middle stacks
     self._num_clients = 12
     set_default_executor.set_default_executor(
@@ -69,7 +69,7 @@ class CompositeExecutorTest(absltest.TestCase):
 
   def tearDown(self):
     set_default_executor.set_default_executor(None)
-    super(CompositeExecutorTest, self).tearDown()
+    super().tearDown()
 
   def test_federated_value_at_server(self):
 

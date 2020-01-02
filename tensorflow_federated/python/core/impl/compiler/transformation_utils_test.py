@@ -50,7 +50,7 @@ def _construct_simple_block(type_signature):
 class UpdatableTracker(transformation_utils.BoundVariableTracker):
 
   def __init__(self, name, value):
-    super(UpdatableTracker, self).__init__(name, value)
+    super().__init__(name, value)
     self.count = 0
 
   def update(self, comp):

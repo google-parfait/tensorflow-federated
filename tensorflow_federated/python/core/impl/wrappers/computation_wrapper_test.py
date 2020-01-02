@@ -35,7 +35,7 @@ class WrappedForTest(function_utils.ConcreteFunction):
     del name
     self._fn = function_utils.wrap_as_zero_or_one_arg_callable(
         fn, parameter_type, unpack)
-    super(WrappedForTest, self).__init__(
+    super().__init__(
         computation_types.FunctionType(parameter_type, tf.string),
         context_stack_impl.context_stack)
 

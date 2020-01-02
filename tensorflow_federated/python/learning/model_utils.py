@@ -104,7 +104,7 @@ class EnhancedModel(model_lib.Model):
   """A wrapper around a Model that adds sanity checking and metadata helpers."""
 
   def __init__(self, model):
-    super(EnhancedModel, self).__init__()
+    super().__init__()
     py_typecheck.check_type(model, model_lib.Model)
     if isinstance(model, EnhancedModel):
       raise ValueError(
@@ -156,7 +156,7 @@ class EnhancedTrainableModel(EnhancedModel, model_lib.TrainableModel):
 
   def __init__(self, model):
     py_typecheck.check_type(model, model_lib.TrainableModel)
-    super(EnhancedTrainableModel, self).__init__(model)
+    super().__init__(model)
 
   def train_on_batch(self, batch_input):
     return py_typecheck.check_type(

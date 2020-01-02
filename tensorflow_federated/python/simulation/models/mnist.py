@@ -23,11 +23,10 @@ class _NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
   def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super(_NumExamplesCounter, self).__init__(name, dtype)
+    super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super(_NumExamplesCounter,
-                 self).update_state(tf.shape(y_pred)[0], sample_weight)
+    return super().update_state(tf.shape(y_pred)[0], sample_weight)
 
 
 def create_simple_keras_model(learning_rate=0.1):

@@ -100,7 +100,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
       TypeError: If types do not match.
       ValueError: If `comp` contains variables with non-unique names.
     """
-    super(ExtractComputation, self).__init__()
+    super().__init__()
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     tree_analysis.check_has_unique_names(comp)
     self._name_generator = building_block_factory.unique_name_generator(comp)
@@ -372,7 +372,7 @@ class InlineBlock(transformation_utils.TransformSpec):
       TypeError: If `variable_names` is a non-`list`, `set` or `tuple`, or
         contains anything other than strings.
     """
-    super(InlineBlock, self).__init__(global_transform=True)
+    super().__init__(global_transform=True)
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     tree_analysis.check_has_unique_names(comp)
     if variable_names is not None:
@@ -439,7 +439,7 @@ class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
   """
 
   def __init__(self):
-    super(InlineSelectionsFromTuples, self).__init__(global_transform=True)
+    super().__init__(global_transform=True)
 
   def should_transform(self, comp, symbol_tree):
     if isinstance(comp, building_blocks.Selection) and isinstance(

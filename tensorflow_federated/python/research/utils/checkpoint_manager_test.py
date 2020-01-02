@@ -126,7 +126,7 @@ class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
 class FileCheckpointManagerLoadCheckpointTest(tf.test.TestCase):
 
   def setUp(self):
-    super(FileCheckpointManagerLoadCheckpointTest, self).setUp()
+    super().setUp()
     self._checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
         self.get_temp_dir())
 

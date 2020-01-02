@@ -33,7 +33,7 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
   """An implementation of a common thread-local context stack to run against."""
 
   def __init__(self):
-    super(ContextStackImpl, self).__init__()
+    super().__init__()
     self._stack = [_make_default_context(self)]
 
   def set_default_context(self, ctx=None):

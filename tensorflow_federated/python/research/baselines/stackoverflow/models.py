@@ -21,7 +21,7 @@ class TransposableEmbedding(tf.keras.layers.Embedding):
   """A Keras Embedding layer implements a transposed projection for output."""
 
   def build(self, input_shape):
-    super(TransposableEmbedding, self).build(input_shape)
+    super().build(input_shape)
     self.transposed_embeddings = tf.keras.backend.transpose(self.embeddings)
 
   def reverse_project(self, inputs):

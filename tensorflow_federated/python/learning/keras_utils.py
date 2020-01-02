@@ -334,7 +334,7 @@ class _KerasModel(model_lib.Model):
       """A `tf.keras.metrics.Metric` wrapper for the loss function."""
 
       def __init__(self, name='loss', dtype=tf.float32):
-        super(_WeightedMeanLossMetric, self).__init__(name, dtype)
+        super().__init__(name, dtype)
         self._loss_fns = loss_fns
         self._loss_weights = loss_weights
 
@@ -354,8 +354,7 @@ class _KerasModel(model_lib.Model):
 
           batch_size = tf.cast(tf.shape(y_pred[0])[0], self._dtype)
 
-        return super(_WeightedMeanLossMetric,
-                     self).update_state(batch_loss, batch_size)
+        return super().update_state(batch_loss, batch_size)
 
     class _TrainingTimeHistory(tf.keras.metrics.Sum):
 

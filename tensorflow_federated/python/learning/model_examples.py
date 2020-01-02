@@ -185,7 +185,7 @@ def build_linear_regression_keras_subclass_model(feature_dims=2):
   class _KerasLinearRegression(tf.keras.Model):
 
     def __init__(self):
-      super(_KerasLinearRegression, self).__init__()
+      super().__init__()
       self._weights = _dense_all_zeros_layer()
 
     def call(self, inputs, training=True):

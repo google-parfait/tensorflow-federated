@@ -50,8 +50,8 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     """
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-    super(ValueImpl, self).__setattr__('_comp', comp)
-    super(ValueImpl, self).__setattr__('_context_stack', context_stack)
+    super().__setattr__('_comp', comp)
+    super().__setattr__('_context_stack', context_stack)
 
   @property
   def type_signature(self):
@@ -110,7 +110,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
                       computation_types.NamedTupleType):
       new_comp = building_block_factory.create_federated_setattr_call(
           self._comp, name, value_comp)
-      super(ValueImpl, self).__setattr__('_comp', new_comp)
+      super().__setattr__('_comp', new_comp)
       return
     elif not isinstance(self._comp.type_signature,
                         computation_types.NamedTupleType):
