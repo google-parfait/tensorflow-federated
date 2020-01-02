@@ -363,6 +363,13 @@ def to_value(arg, type_spec, context_stack):
         'context. TFF does not support mixing TF and federated orchestration '
         'code. Please wrap any TensorFlow constructs with '
         '`tff.tf_computation`.'.format(arg))
+  elif isinstance(arg, function_utils.PolymorphicFunction):
+    # TODO(b/129567727) remove this case when this is no longer an error
+    raise TypeError(
+        'Polymorphic computations cannot be converted to a TFF value. Consider '
+        'explicitly specifying the argument types of a computation before '
+        'passing it to a function that requires a TFF value (such as a TFF '
+        'intrinsic like federated_map).')
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(
