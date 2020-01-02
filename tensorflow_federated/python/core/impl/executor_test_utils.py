@@ -14,82 +14,25 @@
 # limitations under the License.
 """Utils for testing executors."""
 
-import collections
-
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
-from tensorflow_federated.python.core.utils import tf_computation_utils
-
-_mnist_model_type = computation_types.NamedTupleType([
-    ('weights', computation_types.TensorType(tf.float32, [784, 10])),
-    ('bias', computation_types.TensorType(tf.float32, [10]))
-])
-
-_mnist_batch_type = computation_types.NamedTupleType([
-    ('x', computation_types.TensorType(tf.float32, [None, 784])),
-    ('y', computation_types.TensorType(tf.int32, [None]))
-])
-
-_mnist_sample_batch = collections.OrderedDict([('x',
-                                                np.ones([1, 784],
-                                                        dtype=np.float32)),
-                                               ('y', np.ones([1],
-                                                             dtype=np.int32))])
-
-_mnist_initial_model = collections.OrderedDict([
-    ('weights', np.zeros([784, 10], dtype=np.float32)),
-    ('bias', np.zeros([10], dtype=np.float32))
-])
 
 
-@computations.tf_computation(_mnist_model_type, _mnist_batch_type)
-def _mnist_batch_loss(model, batch):
-  predicted_y = tf.nn.softmax(tf.matmul(batch.x, model.weights) + model.bias)
-  return -tf.reduce_mean(
-      tf.reduce_sum(
-          tf.one_hot(batch.y, 10) * tf.math.log(predicted_y), axis=[1]))
+@computations.tf_computation
+def _dummy_tf_computation():
+  return tf.math.add(5, 5)
 
 
-@computations.tf_computation(_mnist_model_type, _mnist_batch_type)
-def _mnist_batch_train(model, batch):
-  optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.01)
-  model_vars = tf_computation_utils.create_variables('v', _mnist_model_type)
-  assign_vars_op = tf_computation_utils.assign(model_vars, model)
-  with tf.control_dependencies([assign_vars_op]):
-    train_op = optimizer.minimize(_mnist_batch_loss(model_vars, batch))
-    with tf.control_dependencies([train_op]):
-      return tf_computation_utils.identity(model_vars)
-
-
-def test_mnist_training(test_obj, executor):
-  """Tests `executor` against MNIST training in the context of test `test_obj`.
-
-  Args:
-    test_obj: The test instance.
-    executor: The executor to be tested.
-  """
-
-  def _get_losses_before_and_after_training_single_batch(ex):
-    set_default_executor.set_default_executor(ex)
-    model = _mnist_initial_model
-    losses = [_mnist_batch_loss(model, _mnist_sample_batch)]
-    for _ in range(20):
-      model = _mnist_batch_train(model, _mnist_sample_batch)
-      losses.append(_mnist_batch_loss(model, _mnist_sample_batch))
-    return losses
-
-  for expected_loss, actual_loss in zip(
-      _get_losses_before_and_after_training_single_batch(None),
-      _get_losses_before_and_after_training_single_batch(executor)):
-    test_obj.assertAlmostEqual(actual_loss, expected_loss, places=3)
+def test_runs_tf(test_obj, executor):
+  """Tests `executor` can run a minimal TF computation."""
+  set_default_executor.set_default_executor(executor)
+  test_obj.assertEqual(_dummy_tf_computation(), 10)
 
 
 class TracingExecutor(executor_base.Executor):

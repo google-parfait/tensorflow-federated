@@ -440,13 +440,13 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
     self.assertLen(
         [x for x in context.tracer.trace if x[0] == 'create_selection'], 2)
 
-  def test_with_mnist_training_example(self):
+  def test_runs_tf(self):
     with test_context() as context:
-      executor_test_utils.test_mnist_training(self, context.executor)
+      executor_test_utils.test_runs_tf(self, context.executor)
 
-  def test_with_mnist_training_example_streaming_rpc(self):
+  def test_runs_tf_streaming_rpc(self):
     with test_context(rpc_mode='STREAMING') as context:
-      executor_test_utils.test_mnist_training(self, context.executor)
+      executor_test_utils.test_runs_tf(self, context.executor)
 
   def test_with_federated_computations(self):
     with test_context():

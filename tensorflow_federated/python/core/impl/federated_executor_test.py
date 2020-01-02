@@ -481,11 +481,11 @@ class FederatedExecutorTest(parameterized.TestCase):
     result = loop.run_until_complete(v5.compute())
     self.assertAlmostEqual(result.numpy(), 2.1, places=3)
 
-  def test_with_mnist_training_example(self):
-    executor_test_utils.test_mnist_training(self, _make_test_executor(1))
+  def test_runs_tf(self):
+    executor_test_utils.test_runs_tf(self, _make_test_executor(1))
 
-  def test_with_mnist_training_example_with_lambda_executor(self):
-    executor_test_utils.test_mnist_training(
+  def test_runs_tf_with_lambda_executor(self):
+    executor_test_utils.test_runs_tf(
         self, _make_test_executor(1, use_lambda_executor=True))
 
   @parameterized.parameters(((1, 2, 3, 4),), (set([1, 2, 3, 4]),),

@@ -499,10 +499,8 @@ py_library(
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
-        "//tensorflow_federated/python/core/utils:tf_computation_utils",
     ],
 )
 

@@ -398,9 +398,9 @@ class CachingExecutorTest(absltest.TestCase):
         ex.create_value(ds, computation_types.SequenceType(tf.int32)))
     self.assertIs(v4, v2)
 
-  def test_with_mnist_training_example(self):
+  def test_runs_tf(self):
     ex, _ = _make_executor_and_tracer_for_test(support_lambdas=True)
-    executor_test_utils.test_mnist_training(self, ex)
+    executor_test_utils.test_runs_tf(self, ex)
 
 
 if __name__ == '__main__':

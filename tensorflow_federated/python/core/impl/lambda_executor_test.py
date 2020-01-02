@@ -278,8 +278,8 @@ class LambdaExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(v3.compute())
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
 
-  def test_with_mnist_training_example(self):
-    executor_test_utils.test_mnist_training(
+  def test_runs_tf(self):
+    executor_test_utils.test_runs_tf(
         self, lambda_executor.LambdaExecutor(eager_executor.EagerExecutor()))
 
 

@@ -81,13 +81,13 @@ class ExecutorStacksTest(absltest.TestCase):
     self.assertAlmostEqual(result, 8.333, places=3)
     set_default_executor.set_default_executor()
 
-  def test_with_mnist_training_example(self):
-    executor_test_utils.test_mnist_training(
-        self, executor_stacks.create_local_executor(1))
+  def test_runs_tf(self):
+    executor_test_utils.test_runs_tf(self,
+                                     executor_stacks.create_local_executor(1))
 
-  def test_with_mnist_training_example_unspecified_clients(self):
-    executor_test_utils.test_mnist_training(
-        self, executor_stacks.create_local_executor())
+  def test_runs_tf_unspecified_clients(self):
+    executor_test_utils.test_runs_tf(self,
+                                     executor_stacks.create_local_executor())
 
   def test_with_no_args(self):
     set_default_executor.set_default_executor(

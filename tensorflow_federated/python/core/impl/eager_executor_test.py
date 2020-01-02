@@ -430,9 +430,8 @@ class EagerExecutorTest(parameterized.TestCase):
       val = loop.run_until_complete(arg.compute())
       self.assertEqual(val.numpy(), 10 * (n + 2))
 
-  def test_with_mnist_training_example(self):
-    executor_test_utils.test_mnist_training(self,
-                                            eager_executor.EagerExecutor())
+  def test_runs_tf(self):
+    executor_test_utils.test_runs_tf(self, eager_executor.EagerExecutor())
 
   @parameterized.parameters(
       *[(dev,) for dev in _get_physical_devices_for_testing()])
