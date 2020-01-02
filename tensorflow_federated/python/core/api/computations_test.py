@@ -473,7 +473,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
     self.assertEqual(comp5(), 75.0)
 
 
-class FederatedComputationsTest(parameterized.TestCase):
+class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_raises_value_error_none_result(self):
     with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
@@ -494,39 +494,18 @@ class FederatedComputationsTest(parameterized.TestCase):
 
   @core_test.executors
   def test_computation_called_once_is_invoked_once(self):
-    count = 0
+
+    @tff.tf_computation
+    def get_random():
+      return tf.random.normal([])
 
     @tff.federated_computation
-    def foo():
-      nonlocal count
-      count += 1
-      return 10
-
-    @tff.federated_computation
-    def bar():
-      value = foo()
+    def same_random_number_twice():
+      value = get_random()
       return value, value
 
-    bar()
-    self.assertEqual(count, 1)
-
-  @core_test.executors
-  def test_computation_called_once_and_selected_from_is_invoked_once(self):
-    count = 0
-
-    @tff.federated_computation
-    def foo():
-      nonlocal count
-      count += 1
-      return [10, 10]
-
-    @tff.federated_computation
-    def bar():
-      value = foo()
-      return value[0], value[1]
-
-    bar()
-    self.assertEqual(count, 1)
+    num1, num2 = same_random_number_twice()
+    self.assertEqual(num1, num2)
 
   def test_computation_typical_usage_as_decorator_with_unlabeled_type(self):
 
