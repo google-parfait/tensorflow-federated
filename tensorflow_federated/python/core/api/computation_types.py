@@ -19,7 +19,6 @@ import collections
 from typing import Any
 
 import attr
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -28,8 +27,7 @@ from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Type(object):
+class Type(object, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent TFF types."""
 
   def compact_representation(self):
@@ -267,7 +265,7 @@ class AbstractType(Type):
       label: A string label of an abstract type. All occurences of the label
         within a computation's type signature refer to the same concrete type.
     """
-    py_typecheck.check_type(label, six.string_types)
+    py_typecheck.check_type(label, str)
     self._label = str(label)
 
   @property

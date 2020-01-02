@@ -14,7 +14,6 @@
 # limitations under the License.
 """Defines utility functions/classes for constructing TF computations."""
 
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -45,7 +44,7 @@ def create_variables(name, type_spec, **kwargs):
     TypeError: if `type_spec` is not a type signature composed of tensor and
       named tuple TFF types.
   """
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):

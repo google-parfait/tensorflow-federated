@@ -63,10 +63,6 @@ simpler than the problem of reducing the entire input computation, hence the
 divide-and-conquer.
 """
 
-import sys
-
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import transformations
@@ -382,7 +378,7 @@ def force_align_and_split_by_intrinsic(comp, uri):
     part of the result as specified above.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   comp = _force_align_intrinsic(comp, uri)
   return _split_by_intrinsic(comp, uri)
 
@@ -407,7 +403,7 @@ def _force_align_intrinsic(comp, uri):
     A new computation with the transformation applied or the original `comp`.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   comp, _ = transformations.uniquify_reference_names(comp)
   if not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
     comp, _ = transformations.replace_called_lambda_with_block(comp)
@@ -432,7 +428,7 @@ def _get_called_intrinsics(comp, uri):
     uri: A URI of an intrinsic.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   intrinsics = []
 
   def _update(comp):
@@ -456,7 +452,7 @@ def _can_extract_intrinsic_to_top_level_lambda(comp, uri):
     `True` if the intrinsic can be extracted, otherwise `False`.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   tree_analysis.check_has_unique_names(comp)
   intrinsics = _get_called_intrinsics(comp, uri)
   return all(
@@ -487,7 +483,7 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
       preventing an intrinsic with the given `uri` from being aligned.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   while not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
     unbound_references = transformation_utils.get_map_of_unbound_references(
         comp)
@@ -533,7 +529,7 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
   tree_analysis.check_has_unique_names(comp)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   intrinsics = _get_called_intrinsics(comp, uri)
   if len(intrinsics) < 2:
     return comp, False
@@ -545,7 +541,7 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
         'intrinsic with the uri: {}.'.format(uri))
   name_generator = building_block_factory.unique_name_generator(comp)
   extracted_intrinsics = building_blocks.Tuple(intrinsics)
-  ref_name = six.next(name_generator)
+  ref_name = next(name_generator)
   ref_type = computation_types.to_type(extracted_intrinsics.type_signature)
   ref = building_blocks.Reference(ref_name, ref_type)
 
@@ -582,7 +578,7 @@ def _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri):
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
   tree_analysis.check_has_unique_names(comp)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   intrinsics = _get_called_intrinsics(comp, uri)
   length = len(intrinsics)
   if length != 1:
@@ -597,7 +593,7 @@ def _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri):
         'intrinsic with the uri: {}.'.format(uri))
   name_generator = building_block_factory.unique_name_generator(comp)
   extracted_intrinsic = intrinsics[0]
-  ref_name = six.next(name_generator)
+  ref_name = next(name_generator)
   ref_type = computation_types.to_type(extracted_intrinsic.type_signature)
   ref = building_blocks.Reference(ref_name, ref_type)
 
@@ -629,7 +625,7 @@ def _insert_comp_in_top_level_lambda(comp, name, comp_to_insert):
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
   tree_analysis.check_has_unique_names(comp)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(comp_to_insert,
                           building_blocks.ComputationBuildingBlock)
   result = comp.result
@@ -669,7 +665,7 @@ def _split_by_intrinsic(comp, uri):
       the given `uri` in `comp`.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   py_typecheck.check_type(comp.result, building_blocks.Block)
 
   def _get_called_intrinsic_from_block_variables(variables, uri):
@@ -694,7 +690,7 @@ def _split_by_intrinsic(comp, uri):
                                   variable.argument)
   parameter_type = computation_types.NamedTupleType(
       (comp.parameter_type, variable.type_signature))
-  ref_name = six.next(name_generator)
+  ref_name = next(name_generator)
   ref = building_blocks.Reference(ref_name, parameter_type)
   sel_0 = building_blocks.Selection(ref, index=0)
   sel_1 = building_blocks.Selection(ref, index=1)
@@ -729,7 +725,7 @@ def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
                           computation_types.FederatedType)
   py_typecheck.check_type(federated_tuple.type_signature.member,
                           computation_types.NamedTupleType)
-  unique_reference_name = six.next(name_generator)
+  unique_reference_name = next(name_generator)
   selection_function_ref = building_blocks.Reference(
       unique_reference_name, federated_tuple.type_signature.member)
   selected_building_block = building_blocks.Selection(
@@ -808,7 +804,7 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
   comp = _prepare_for_rebinding(comp)
   name_generator = building_block_factory.unique_name_generator(comp)
   parameter_name = comp.parameter_name
-  new_name = six.next(name_generator)
+  new_name = next(name_generator)
   new_ref = building_blocks.Reference(new_name,
                                       comp.type_signature.parameter[index])
 
@@ -914,15 +910,12 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
       for selection in selection_list:
         selected_type = selected_type[selection]
       type_list.append(selected_type)
-    except TypeError:
-      six.reraise(
-          TypeError,
-          TypeError(
-              'You have tried to bind a variable to a nonexistent index in your '
-              'lambda parameter type; the selection defined by {} is '
-              'inadmissible for the lambda parameter type {}, in the comp {}.'
-              .format(selection_list, top_level_parameter_type, original_comp)),
-          sys.exc_info()[2])
+    except TypeError as e:
+      raise TypeError(
+          'You have tried to bind a variable to a nonexistent index in your '
+          'lambda parameter type; the selection defined by {} is inadmissible '
+          'for the lambda parameter type {}, in the comp {}.'.format(
+              selection_list, top_level_parameter_type, original_comp)) from e
 
   if not all(isinstance(x, computation_types.FederatedType) for x in type_list):
     raise TypeError(
@@ -946,7 +939,7 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
 
   zip_type = computation_types.FederatedType([x.member for x in type_list],
                                              placement=placement)
-  ref_to_zip = building_blocks.Reference(six.next(name_generator), zip_type)
+  ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
 
   selections_from_zip = [
       _construct_selection_from_federated_tuple(ref_to_zip, x, name_generator)

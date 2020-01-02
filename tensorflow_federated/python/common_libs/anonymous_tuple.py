@@ -17,7 +17,6 @@
 import collections
 
 import attr
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -463,13 +462,13 @@ def from_container(value, recursive=False):
     elif py_typecheck.is_named_tuple(value):
       return _convert(value._asdict(), recursive, must_be_container)
     elif isinstance(value, collections.OrderedDict):
-      items = six.iteritems(value)
+      items = value.items()
       if recursive:
         return AnonymousTuple((k, _convert(v, True)) for k, v in items)
       else:
         return AnonymousTuple(items)
     elif isinstance(value, dict):
-      items = sorted(list(six.iteritems(value)))
+      items = sorted(list(value.items()))
       if recursive:
         return AnonymousTuple((k, _convert(v, True)) for k, v in items)
       else:

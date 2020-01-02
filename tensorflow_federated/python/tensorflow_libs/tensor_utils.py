@@ -18,7 +18,6 @@ import collections
 import functools
 import operator
 
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -85,8 +84,8 @@ def to_odict(d):
     return d
   py_typecheck.check_type(d, dict)
   items = []
-  for k, v in six.iteritems(d):
-    py_typecheck.check_type(k, six.string_types)
+  for k, v in d.items():
+    py_typecheck.check_type(k, str)
     items.append((k, v))
   return collections.OrderedDict(sorted(items))
 

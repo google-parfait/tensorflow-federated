@@ -14,8 +14,6 @@
 # limitations under the License.
 """A library of static analysis functions that can be applied to ASTs."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
@@ -329,7 +327,7 @@ def contains_no_unbound_references(tree, excluding=None):
     specified by `excluding`, otherwise `False`.
   """
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
-  if isinstance(excluding, six.string_types):
+  if isinstance(excluding, str):
     excluding = [excluding]
   unbound_references = transformation_utils.get_map_of_unbound_references(tree)
   if excluding is not None:

@@ -14,7 +14,6 @@
 # limitations under the License.
 """Holds library of transformations for on compiled computations."""
 
-import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -252,7 +251,7 @@ def bind_graph_parameter_as_tuple(comp, name=None):
   """
   py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if name is not None:
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
   proto = comp.proto
   proto_type = type_serialization.deserialize_type(proto.type)
 
@@ -303,7 +302,7 @@ def bind_graph_result_as_tuple(comp, name=None):
   """
   py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   if name is not None:
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
   proto = comp.proto
   proto_type = type_serialization.deserialize_type(proto.type)
 
@@ -737,7 +736,7 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
                      '`None`.')
   for name in output_name_list:
     if name is not None:
-      py_typecheck.check_type(name, six.string_types)
+      py_typecheck.check_type(name, str)
   tf_proto_list = []
   for comp in tf_comp_list:
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)

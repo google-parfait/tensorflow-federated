@@ -11,15 +11,11 @@ py_library(
         ":file_per_user_client_data",
         ":from_tensor_slices_client_data",
         ":hdf5_client_data",
+        ":server_utils",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
-    ] + select({
-        "//tensorflow_federated:py2_mode": [],
-        "//tensorflow_federated:py3_mode": [
-            ":server_utils",
-        ],
-    }),
+    ],
 )
 
 py_library(

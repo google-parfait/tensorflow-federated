@@ -17,11 +17,8 @@
 import abc
 import contextlib
 
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
-class ContextStack(object):
+class ContextStack(object, metaclass=abc.ABCMeta):
   """An interface to a context stack for the API to run against."""
 
   @abc.abstractproperty

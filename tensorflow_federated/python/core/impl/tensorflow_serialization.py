@@ -17,12 +17,10 @@
 import os
 import os.path
 import shutil
-import sys
 import tempfile
 import types
 import zipfile
 
-import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -375,11 +373,9 @@ def serialize_dataset(
     with open(temp_zip, 'rb') as z:
       zip_bytes = z.read()
   except Exception as e:  # pylint: disable=broad-except
-    six.reraise(
-        SerializationError,
-        SerializationError('Error serializing tff.Sequence value. '
-                           'Inner error: {!s}'.format(e)),
-        sys.exc_info()[2])
+    raise SerializationError(
+        'Error serializing tff.Sequence value. Inner error: {!s}'.format(
+            e)) from e
   finally:
     tf.io.gfile.rmtree(temp_dir)
     tf.io.gfile.remove(temp_zip)
@@ -417,11 +413,9 @@ def deserialize_dataset(serialized_bytes):
     loaded = tf.compat.v2.saved_model.load(temp_dir)
     ds = loaded.dataset_fn()
   except Exception as e:  # pylint: disable=broad-except
-    six.reraise(
-        SerializationError,
-        SerializationError('Error deserializing tff.Sequence value. '
-                           'Inner error: {!s}'.format(e)),
-        sys.exc_info()[2])
+    raise SerializationError(
+        'Error deserializing tff.Sequence value. Inner error: {!s}'.format(
+            e)) from e
   finally:
     tf.io.gfile.rmtree(temp_dir)
     tf.io.gfile.remove(temp_zip)

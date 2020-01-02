@@ -17,8 +17,6 @@
 import abc
 import collections
 
-import six
-
 
 class BatchOutput(
     collections.namedtuple('BatchOutput',
@@ -36,8 +34,7 @@ class BatchOutput(
   __slots__ = ()
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Model(object):
+class Model(object, metaclass=abc.ABCMeta):
   """Represents a model for use in TensorFlow Federated.
 
   Each `Model` will work on a set of `tf.Variables`, and each method should be
@@ -197,8 +194,7 @@ class Model(object):
     pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class TrainableModel(Model):
+class TrainableModel(Model, metaclass=abc.ABCMeta):
   """A Model with an additional method for (local) training.
 
   This class is primarily intended to be used in the implementation of

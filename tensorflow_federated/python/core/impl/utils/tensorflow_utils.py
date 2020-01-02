@@ -17,11 +17,9 @@
 import collections
 import functools
 import itertools
-import sys
 
 import attr
 import numpy as np
-import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -55,7 +53,7 @@ class UniqueNameFn(object):
 
   def __call__(self, s):
     s = s if s is not None else ''
-    py_typecheck.check_type(s, six.string_types)
+    py_typecheck.check_type(s, str)
     next_name_int = 1
     proposal = s
     while proposal in self._used_names:
@@ -153,7 +151,7 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
 
   def get_arg_name(i):
     name = arg_names[i]
-    if not isinstance(name, six.string_types):
+    if not isinstance(name, str):
       raise ValueError('arg_names must be strings, but got: {}'.format(name))
     return name
 
@@ -167,7 +165,7 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
     typespec = type_utils.convert_to_py_container(typespec, arg_type)
     arg_typespecs.append(typespec)
     bindings.append(binding)
-  for name, kwarg_type in six.iteritems(kwarg_types):
+  for name, kwarg_type in kwarg_types.items():
     typespec, binding = _get_one_typespec_and_binding(name, kwarg_type)
     typespec = type_utils.convert_to_py_container(typespec, kwarg_type)
     kwarg_typespecs[name] = typespec
@@ -255,16 +253,16 @@ def get_tf2_result_dict_and_binding(result, name_prefix=None):
               pb.TensorFlow.Binding(
                   tensor=pb.TensorFlow.TensorBinding(tensor_name=output_name)))
     elif py_typecheck.is_named_tuple(result):
-      name_value_pairs = six.iteritems(result._asdict())  # pylint: disable=protected-access
+      name_value_pairs = result._asdict().items()  # pylint: disable=protected-access
       return _handle_elements(
           name_value_pairs, name_prefix, container_type=type(result))
     elif isinstance(result, anonymous_tuple.AnonymousTuple):
       return _handle_elements(anonymous_tuple.to_elements(result), name_prefix)
     elif isinstance(result, collections.Mapping):
       if isinstance(result, collections.OrderedDict):
-        name_value_pairs = six.iteritems(result)
+        name_value_pairs = result.items()
       else:
-        name_value_pairs = sorted(six.iteritems(result))
+        name_value_pairs = sorted(result.items())
       return _handle_elements(
           name_value_pairs, name_prefix, container_type=type(result))
     elif isinstance(result, (list, tuple)):
@@ -314,7 +312,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     TypeError: If the arguments are of the wrong computation_types.
     ValueError: If the parameter type cannot be stamped in a TensorFlow graph.
   """
-  py_typecheck.check_type(parameter_name, six.string_types)
+  py_typecheck.check_type(parameter_name, str)
   py_typecheck.check_type(graph, tf.Graph)
   if parameter_type is None:
     return (None, None)
@@ -442,7 +440,7 @@ def capture_result_from_graph(result, graph):
     # the fact that collections.namedtuples inherit from 'tuple' because we'd be
     # failing to retain the information about naming of tuple members.
     # pylint: disable=protected-access
-    name_value_pairs = six.iteritems(result._asdict())
+    name_value_pairs = result._asdict().items()
     # pylint: enable=protected-access
     return _get_bindings_for_elements(
         name_value_pairs, graph,
@@ -453,7 +451,7 @@ def capture_result_from_graph(result, graph):
     name_value_pairs = attr.asdict(
         result, dict_factory=collections.OrderedDict, recurse=False)
     return _get_bindings_for_elements(
-        six.iteritems(name_value_pairs), graph,
+        name_value_pairs.items(), graph,
         functools.partial(
             computation_types.NamedTupleTypeWithPyContainerType,
             container_type=type(result)))
@@ -463,9 +461,9 @@ def capture_result_from_graph(result, graph):
         computation_types.NamedTupleType)
   elif isinstance(result, collections.Mapping):
     if isinstance(result, collections.OrderedDict):
-      name_value_pairs = six.iteritems(result)
+      name_value_pairs = result.items()
     else:
-      name_value_pairs = sorted(six.iteritems(result))
+      name_value_pairs = sorted(result.items())
     return _get_bindings_for_elements(
         name_value_pairs, graph,
         functools.partial(
@@ -487,11 +485,9 @@ def capture_result_from_graph(result, graph):
     try:
       element_type = computation_types.to_type(element_structure)
     except TypeError as e:
-      six.reraise(
-          TypeError,
-          TypeError('TFF does not support Datasets that yield elements of '
-                    'structure {!s}'.format(element_structure)),
-          sys.exc_info()[2])
+      raise TypeError(
+          'TFF does not support Datasets that yield elements of structure {!s}'
+          .format(element_structure)) from e
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
@@ -616,8 +612,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
   py_typecheck.check_type(type_spec, computation_types.Type)
   py_typecheck.check_type(binding, pb.TensorFlow.Binding)
   py_typecheck.check_type(output_map, dict)
-  for k, v in six.iteritems(output_map):
-    py_typecheck.check_type(k, six.string_types)
+  for k, v in output_map.items():
+    py_typecheck.check_type(k, str)
     if not tf.is_tensor(v):
       raise TypeError(
           'Element with key {} in the output map is {}, not a tensor.'.format(
@@ -1067,7 +1063,7 @@ def fetch_value_in_session(sess, value):
         dataset_results, flat_computed_tensors)
 
     def _to_unicode(v):
-      if six.PY3 and isinstance(v, bytes):
+      if isinstance(v, bytes):
         return v.decode('utf-8')
       return v
 
@@ -1099,7 +1095,7 @@ def to_node_name(name):
   Raises:
     ValueError: If `name` is not a valid name of a node or node input.
   """
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   if not name:
     raise ValueError('The argument cannot be empty.')
   if name[0] == '^':
@@ -1123,7 +1119,7 @@ def get_deps_for_graph_node(graph_def, node_name):
     depends on in `graph_def`.
   """
   py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
-  py_typecheck.check_type(node_name, six.string_types)
+  py_typecheck.check_type(node_name, str)
   input_map = {}
   for node in graph_def.node:
     input_map[node.name] = set([to_node_name(x) for x in node.input])
@@ -1148,7 +1144,7 @@ def add_control_deps_for_init_op(graph_def, init_op):
     The updated graph, an instance of `tf.compat.v1.GraphDef`.
   """
   py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
-  py_typecheck.check_type(init_op, six.string_types)
+  py_typecheck.check_type(init_op, str)
   init_op_str = to_node_name(init_op)
   init_op_control_dep = '^{}'.format(init_op_str)
   deps = get_deps_for_graph_node(graph_def,

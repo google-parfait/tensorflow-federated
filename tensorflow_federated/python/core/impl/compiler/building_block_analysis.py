@@ -14,8 +14,6 @@
 # limitations under the License.
 """Utils for TFF computation building blocks."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -33,7 +31,7 @@ def is_called_intrinsic(comp, uri=None):
     `True` if `comp` is a called intrinsic with the given `uri`, otherwise
     `False`.
   """
-  if isinstance(uri, six.string_types):
+  if isinstance(uri, str):
     uri = [uri]
   return (isinstance(comp, building_blocks.Call) and
           isinstance(comp.function, building_blocks.Intrinsic) and

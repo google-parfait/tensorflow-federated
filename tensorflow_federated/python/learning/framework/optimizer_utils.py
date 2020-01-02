@@ -18,7 +18,6 @@ import abc
 import collections
 
 import attr
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
@@ -49,8 +48,7 @@ class ClientOutput(object):
   optimizer_output = attr.ib()
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ClientDeltaFn(object):
+class ClientDeltaFn(object, metaclass=abc.ABCMeta):
   """Represents a client computation that produces an update to a model."""
 
   @abc.abstractproperty

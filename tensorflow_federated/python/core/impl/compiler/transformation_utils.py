@@ -19,8 +19,6 @@ import collections
 import itertools
 import operator
 
-import six
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import type_utils
@@ -208,12 +206,12 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   def _traverse_leaf(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for leaf nodes."""
-    _ = six.next(identifier_seq)
+    _ = next(identifier_seq)
     return transform(comp, context_tree)
 
   def _traverse_selection(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for selection nodes."""
-    _ = six.next(identifier_seq)
+    _ = next(identifier_seq)
     source, source_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.source, transform, context_tree, identifier_seq)
     if source_modified:
@@ -223,7 +221,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   def _traverse_tuple(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for tuple nodes."""
-    _ = six.next(identifier_seq)
+    _ = next(identifier_seq)
     elements = []
     elements_modified = False
     for key, value in anonymous_tuple.iter_elements(comp):
@@ -238,7 +236,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   def _traverse_call(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for call nodes."""
-    _ = six.next(identifier_seq)
+    _ = next(identifier_seq)
     fn, fn_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.function, transform, context_tree, identifier_seq)
     if comp.argument is not None:
@@ -253,7 +251,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   def _traverse_lambda(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for lambda nodes."""
-    comp_id = six.next(identifier_seq)
+    comp_id = next(identifier_seq)
     context_tree.drop_scope_down(comp_id)
     context_tree.ingest_variable_binding(name=comp.parameter_name, value=None)
     result, result_modified = _transform_postorder_with_symbol_bindings_switch(
@@ -268,7 +266,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
 
   def _traverse_block(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for block nodes."""
-    comp_id = six.next(identifier_seq)
+    comp_id = next(identifier_seq)
     context_tree.drop_scope_down(comp_id)
     variables = []
     variables_modified = False
@@ -337,7 +335,7 @@ class SymbolTree(object):
       in context represented by `active_comp`, or `None` if the requested
       name is unbound in the current context.
     """
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     comp = self.active_node  # type: SequentialBindingNode
     while comp.parent is not None or comp.older_sibling is not None:
       if name == comp.payload.name:
@@ -383,7 +381,7 @@ class SymbolTree(object):
       ValueError: If `name` is not found among the bound names currently
         available in `self`.
     """
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     comp = self.active_node  # type: SequentialBindingNode
     while comp.parent is not None or comp.older_sibling is not None:
       if name == comp.payload.name:
@@ -504,7 +502,7 @@ class SymbolTree(object):
         or that we have a symbol tree instance that does not match the
         computation we are currently processing.
     """
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     if value is not None:
       py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
     node = SequentialBindingNode(self.payload_type(name=name, value=value))
@@ -589,8 +587,8 @@ class SymbolTree(object):
       return False
     if len(self_node.children) != len(other_node.children):
       return False
-    for (_, val_1), (_, val_2) in zip(
-        six.iteritems(self_node.children), six.iteritems(other_node.children)):
+    for (_, val_1), (_, val_2) in zip(self_node.children.items(),
+                                      other_node.children.items()):
       # keys not compared to avoid coupling walking logic to `SymbolTree`.
       if not self._equal_under_node(val_1, val_2):
         return False
@@ -620,7 +618,7 @@ class SymbolTree(object):
   def __ne__(self, other):
     return not self == other
 
-  def _string_under_node(self, node):
+  def _string_under_node(self, node) -> str:
     """Rescursive helper function to generate string reps of `SymbolTree`s."""
     py_typecheck.check_type(node, SequentialBindingNode)
     if node is self.active_node:
@@ -630,7 +628,7 @@ class SymbolTree(object):
     symbol_tree_string = '[' + str(node.payload) + active_node_indicator + ']'
     if node.children:
       symbol_tree_string += '->{'
-      for _, child_node in six.iteritems(node.children):
+      for _, child_node in node.children.items():
         if not child_node.older_sibling:
           symbol_tree_string += '('
           symbol_tree_string += self._string_under_node(child_node)
@@ -638,8 +636,7 @@ class SymbolTree(object):
       symbol_tree_string = symbol_tree_string[:-2]
       symbol_tree_string += '}'
     if node.younger_sibling:
-      symbol_tree_string += '-' + six.ensure_str(
-          self._string_under_node(node.younger_sibling))
+      symbol_tree_string += '-' + self._string_under_node(node.younger_sibling)
     return symbol_tree_string
 
   def __str__(self):
@@ -786,8 +783,7 @@ class SequentialBindingNode(object):
     return self._children.get(comp_id)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BoundVariableTracker(object):
+class BoundVariableTracker(object, metaclass=abc.ABCMeta):
   """Abstract class representing a mutable variable binding."""
 
   def __init__(self, name, value):
@@ -809,7 +805,7 @@ class BoundVariableTracker(object):
         `BoundVariableTracker` represents merely a variable declaration (e.g. in
         a lambda).
     """
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     if value is not None:
       py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
     self.name = name
@@ -1098,8 +1094,7 @@ def get_map_of_unbound_references(comp):
   return references
 
 
-@six.add_metaclass(abc.ABCMeta)
-class TransformSpec(object):
+class TransformSpec(object, metaclass=abc.ABCMeta):
   """"Base class to express the should_transform/transform interface."""
 
   def __init__(self, global_transform=False):

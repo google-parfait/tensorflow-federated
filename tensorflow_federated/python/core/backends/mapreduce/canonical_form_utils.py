@@ -16,8 +16,6 @@
 
 import itertools
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -153,9 +151,8 @@ def pack_next_comp_type_signature(type_signature, previously_packed_types):
   newly_determined_types['s7_type'] = type_signature.result[1]
   newly_determined_types['c6_type'] = type_signature.result[2]
   return dict(
-      itertools.chain(
-          six.iteritems(previously_packed_types),
-          six.iteritems(newly_determined_types)))
+      itertools.chain(previously_packed_types.items(),
+                      newly_determined_types.items()))
 
 
 def check_and_pack_before_broadcast_type_signature(type_spec,
@@ -210,9 +207,8 @@ def check_and_pack_before_broadcast_type_signature(type_spec,
   newly_determined_types['prepare_type'] = computation_types.FunctionType(
       previously_packed_types['s1_type'].member, s2.member)
   return dict(
-      itertools.chain(
-          six.iteritems(previously_packed_types),
-          six.iteritems(newly_determined_types)))
+      itertools.chain(previously_packed_types.items(),
+                      newly_determined_types.items()))
 
 
 def check_and_pack_before_aggregate_type_signature(type_spec,
@@ -312,9 +308,8 @@ def check_and_pack_before_aggregate_type_signature(type_spec,
   newly_determined_types['work_type'] = computation_types.FunctionType(
       c3_type.member, c4_type.member)
   return dict(
-      itertools.chain(
-          six.iteritems(previously_packed_types),
-          six.iteritems(newly_determined_types)))
+      itertools.chain(previously_packed_types.items(),
+                      newly_determined_types.items()))
 
 
 def check_and_pack_after_aggregate_type_signature(type_spec,
@@ -393,9 +388,8 @@ def check_and_pack_after_aggregate_type_signature(type_spec,
   ], placements.CLIENTS)
   newly_determined_types['c3_type'] = c3_type
   return dict(
-      itertools.chain(
-          six.iteritems(previously_packed_types),
-          six.iteritems(newly_determined_types)))
+      itertools.chain(previously_packed_types.items(),
+                      newly_determined_types.items()))
 
 
 def extract_prepare(before_broadcast, canonical_form_types):
@@ -770,7 +764,7 @@ def _create_dummy_before_and_after_broadcast(comp):
   """
   name_generator = building_block_factory.unique_name_generator(comp)
 
-  parameter_name = six.next(name_generator)
+  parameter_name = next(name_generator)
   empty_tuple = building_blocks.Tuple([])
   federated_value_at_server = building_block_factory.create_federated_value(
       empty_tuple, placements.SERVER)
@@ -778,7 +772,7 @@ def _create_dummy_before_and_after_broadcast(comp):
                                             comp.type_signature.parameter,
                                             federated_value_at_server)
 
-  parameter_name = six.next(name_generator)
+  parameter_name = next(name_generator)
   type_signature = computation_types.FederatedType(
       before_broadcast.type_signature.result.member, placements.CLIENTS)
   parameter_type = computation_types.NamedTupleType(

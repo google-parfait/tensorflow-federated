@@ -14,8 +14,6 @@
 # limitations under the License.
 """Definitions of all intrinsic for use within the system."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import type_factory
@@ -39,8 +37,8 @@ class IntrinsicDef(object):
       uri: The URI of this intrinsic.
       type_spec: The type of the intrinsic.
     """
-    py_typecheck.check_type(name, six.string_types)
-    py_typecheck.check_type(uri, six.string_types)
+    py_typecheck.check_type(name, str)
+    py_typecheck.check_type(uri, str)
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.Type)
     self._name = str(name)

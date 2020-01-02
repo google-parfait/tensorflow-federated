@@ -17,7 +17,6 @@
 import collections
 
 import h5py
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -63,8 +62,7 @@ class HDF5ClientData(client_data.ClientData):
   def _create_dataset(self, client_id):
     return tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict((name, ds.value) for name, ds in sorted(
-            six.iteritems(self._h5_file[HDF5ClientData._EXAMPLES_GROUP]
-                          [client_id]))))
+            self._h5_file[HDF5ClientData._EXAMPLES_GROUP][client_id].items())))
 
   @property
   def client_ids(self):

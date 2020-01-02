@@ -17,7 +17,6 @@
 import collections
 
 import attr
-import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -49,7 +48,7 @@ def update_state(state, **kwargs):
   elif py_typecheck.is_attrs(state):
     d = attr.asdict(state, dict_factory=collections.OrderedDict)
   else:
-    for key in six.iterkeys(kwargs):
+    for key in kwargs:
       if key not in state:
         raise KeyError(
             'state does not contain a field named "{!s}"'.format(key))

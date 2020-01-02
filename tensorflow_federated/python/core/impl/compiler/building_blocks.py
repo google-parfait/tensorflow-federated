@@ -18,8 +18,6 @@ import abc
 import enum
 import zlib
 
-import six
-
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -39,8 +37,7 @@ def _check_computation_oneof(computation_proto, expected_computation_oneof):
         expected_computation_oneof, computation_oneof))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ComputationBuildingBlock(typed_object.TypedObject):
+class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """The abstract base class for abstractions in the TFF's internal language.
 
   Instances of this class correspond roughly one-to-one to the abstractions
@@ -169,7 +166,7 @@ class Reference(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     super(Reference, self).__init__(type_spec)
     self._name = name
     self._context = context
@@ -247,7 +244,7 @@ class Selection(ComputationBuildingBlock):
           'Expected the source of selection to be a TFF named tuple, '
           'instead found it to be of type {}.'.format(source_type))
     if name is not None:
-      py_typecheck.check_type(name, six.string_types)
+      py_typecheck.check_type(name, str)
       if not name:
         raise ValueError('The name of the selected element cannot be empty.')
       else:
@@ -503,7 +500,7 @@ class Lambda(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(parameter_name, six.string_types)
+    py_typecheck.check_type(parameter_name, str)
     if parameter_type is None:
       raise TypeError('A lambda expression must have a valid parameter type.')
     parameter_type = computation_types.to_type(parameter_type)
@@ -610,7 +607,7 @@ class Block(ComputationBuildingBlock):
     updated_locals = []
     for index, element in enumerate(local_symbols):
       if (not isinstance(element, tuple) or (len(element) != 2) or
-          not isinstance(element[0], six.string_types)):
+          not isinstance(element[0], str)):
         raise TypeError(
             'Expected the locals to be a list of 2-element tuples with string '
             'name as their first element, but this is not the case for the '
@@ -679,7 +676,7 @@ class Intrinsic(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(uri, six.string_types)
+    py_typecheck.check_type(uri, str)
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
@@ -736,7 +733,7 @@ class Data(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
       ValueError: if the user tries to specify an empty URI.
     """
-    py_typecheck.check_type(uri, six.string_types)
+    py_typecheck.check_type(uri, str)
     if not uri:
       raise ValueError('Empty string cannot be passed as URI to Data.')
     if type_spec is None:
@@ -784,7 +781,7 @@ class CompiledComputation(ComputationBuildingBlock):
     """
     py_typecheck.check_type(proto, pb.Computation)
     if name is not None:
-      py_typecheck.check_type(name, six.string_types)
+      py_typecheck.check_type(name, str)
     super(CompiledComputation,
           self).__init__(type_serialization.deserialize_type(proto.type))
     self._proto = proto
@@ -792,7 +789,7 @@ class CompiledComputation(ComputationBuildingBlock):
       self._name = name
     else:
       self._name = '{:x}'.format(
-          zlib.adler32(six.b(repr(self._proto))) & 0xFFFFFFFF)
+          zlib.adler32(repr(self._proto).encode()) & 0xFFFFFFFF)
 
   @property
   def proto(self):

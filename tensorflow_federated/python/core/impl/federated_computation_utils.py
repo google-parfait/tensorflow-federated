@@ -13,8 +13,6 @@
 # limitations under the License.
 """Helpers for creating larger structures out of computating building blocks."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
@@ -52,7 +50,7 @@ def zero_or_one_arg_fn_to_building_block(fn,
   py_typecheck.check_callable(fn)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if suggested_name is not None:
-    py_typecheck.check_type(suggested_name, six.string_types)
+    py_typecheck.check_type(suggested_name, str)
   parameter_type = computation_types.to_type(parameter_type)
   if isinstance(context_stack.current,
                 federated_computation_context.FederatedComputationContext):
@@ -62,7 +60,7 @@ def zero_or_one_arg_fn_to_building_block(fn,
   context = federated_computation_context.FederatedComputationContext(
       context_stack, suggested_name=suggested_name, parent=parent_context)
   if parameter_name is not None:
-    py_typecheck.check_type(parameter_name, six.string_types)
+    py_typecheck.check_type(parameter_name, str)
     parameter_name = '{}_{}'.format(context.name, str(parameter_name))
   with context_stack.install(context):
     if parameter_type is not None:

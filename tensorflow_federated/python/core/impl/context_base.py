@@ -16,11 +16,8 @@
 
 import abc
 
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
-class Context(object):
+class Context(object, metaclass=abc.ABCMeta):
   """Represents the interface to the context that the API executes against.
 
   The interfaces in Core API may be used in a variety of contexts, such as at a

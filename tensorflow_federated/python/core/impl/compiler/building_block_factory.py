@@ -18,7 +18,6 @@ import random
 import string
 from typing import Optional, Sequence
 
-import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -535,7 +534,7 @@ def create_federated_getattr_call(arg, name):
     as defined by `name`.
   """
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
@@ -571,7 +570,7 @@ def create_federated_setattr_call(federated_comp, name, value_comp):
   """
   py_typecheck.check_type(federated_comp,
                           building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(value_comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(federated_comp.type_signature,
                           computation_types.FederatedType)
@@ -615,7 +614,7 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
   """
   py_typecheck.check_type(named_tuple_signature,
                           computation_types.NamedTupleType)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(value_comp, building_blocks.ComputationBuildingBlock)
   value_comp_placeholder = building_blocks.Reference('value_comp_placeholder',
                                                      value_comp.type_signature)
@@ -666,7 +665,7 @@ def create_federated_getattr_comp(comp, name):
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(comp.type_signature.member,
                           computation_types.NamedTupleType)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   element_names = [
       x for x, _ in anonymous_tuple.iter_elements(comp.type_signature.member)
   ]
@@ -1752,8 +1751,7 @@ def create_named_federated_tuple(tuple_to_name, names_to_add):
     TypeError: If the types do not match the description above.
   """
   py_typecheck.check_type(names_to_add, (list, tuple))
-  element_types_to_accept = six.string_types + (type(None),)
-  if not all(isinstance(x, element_types_to_accept) for x in names_to_add):
+  if not all((x is None or isinstance(x, str)) for x in names_to_add):
     raise TypeError('`names_to_add` must contain only instances of `str` or '
                     'NoneType; you have passed in {}'.format(names_to_add))
   py_typecheck.check_type(tuple_to_name,
@@ -1784,7 +1782,7 @@ def create_named_tuple(comp, names):
     TypeError: If the types do not match.
   """
   py_typecheck.check_type(names, (list, tuple))
-  if not all(isinstance(x, (six.string_types, type(None))) for x in names):
+  if not all(isinstance(x, (str, type(None))) for x in names):
     raise TypeError('Expected `names` containing only instances of `str` or '
                     '`None`, found {}'.format(names))
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
@@ -1834,7 +1832,7 @@ def create_zip(comp):
           'length, found: {}'.format(comp.type_signature))
   if not isinstance(comp, building_blocks.Reference):
     name_generator = unique_name_generator(comp)
-    name = six.next(name_generator)
+    name = next(name_generator)
     ref = building_blocks.Reference(name, comp.type_signature)
   else:
     ref = comp

@@ -27,18 +27,6 @@ py_library(
     ],
 )
 
-config_setting(
-    name = "py2_mode",
-    flag_values = {"@bazel_tools//tools/python:python_version": "PY2"},
-    visibility = [":__subpackages__"],
-)
-
-config_setting(
-    name = "py3_mode",
-    flag_values = {"@bazel_tools//tools/python:python_version": "PY3"},
-    visibility = [":__subpackages__"],
-)
-
 py_library(
     name = "version",
     srcs = ["version.py"],

@@ -18,7 +18,6 @@ import inspect
 import types
 
 import attr
-import six
 
 from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -98,29 +97,25 @@ def get_argspec(fn):
 
   def _getargspec(fn):
     """Get the argspec depending on the version of Python being used."""
-    if six.PY2:
-      argspec = inspect.getargspec(fn)  # pylint: disable=deprecated-method
-      return SimpleArgSpec(*argspec)
-    else:
-      signature = inspect.signature(fn)
-      args = []
-      varargs = None
-      keywords = None
-      defaults = None
-      for param in signature.parameters.values():
-        if param.kind == inspect.Parameter.VAR_KEYWORD:
-          keywords = param.name
-        elif param.kind == inspect.Parameter.VAR_POSITIONAL:
-          varargs = param.name
+    signature = inspect.signature(fn)
+    args = []
+    varargs = None
+    keywords = None
+    defaults = None
+    for param in signature.parameters.values():
+      if param.kind == inspect.Parameter.VAR_KEYWORD:
+        keywords = param.name
+      elif param.kind == inspect.Parameter.VAR_POSITIONAL:
+        varargs = param.name
+      else:
+        args.append(param.name)
+      if param.default != inspect.Parameter.empty:
+        if defaults is None:
+          defaults = [param.default]
         else:
-          args.append(param.name)
-        if param.default != inspect.Parameter.empty:
-          if defaults is None:
-            defaults = [param.default]
-          else:
-            defaults.append(param.default)
-      return SimpleArgSpec(args, varargs, keywords,
-                           tuple(defaults) if defaults else None)
+          defaults.append(param.default)
+    return SimpleArgSpec(args, varargs, keywords,
+                         tuple(defaults) if defaults else None)
 
   if isinstance(fn, types.FunctionType):
     return _getargspec(fn)
@@ -171,7 +166,7 @@ def get_callargs_for_argspec(argspec, *args, **kwargs):
       raise TypeError(
           'Argument {} was not specified and does not have a default.'.format(
               specarg))
-  unused_kwargs = {k: v for k, v in six.iteritems(kwargs) if k not in result}
+  unused_kwargs = {k: v for k, v in kwargs.items() if k not in result}
   if argspec.varargs:
     result[argspec.varargs] = args[num_specargs:]
   if argspec.keywords:
@@ -330,7 +325,7 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
   type_spec = computation_types.to_type(type_spec)
   if not type_spec:
     return anonymous_tuple.AnonymousTuple([(None, arg) for arg in args] +
-                                          list(six.iteritems(kwargs)))
+                                          list(kwargs.items()))
   else:
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     py_typecheck.check_type(context, context_base.Context)
@@ -608,7 +603,7 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
                 element_value, expected_type)
           args.append(element_value)
         kwargs = {}
-        for name, expected_type in six.iteritems(kwarg_types):
+        for name, expected_type in kwarg_types.items():
           element_value = getattr(arg, name)
           actual_type = type_utils.infer_type(element_value)
           if not type_utils.is_assignable_from(expected_type, actual_type):

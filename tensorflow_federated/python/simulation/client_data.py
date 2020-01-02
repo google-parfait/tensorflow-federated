@@ -25,14 +25,12 @@ import abc
 
 from absl import logging
 import numpy as np
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ClientData(object):
+class ClientData(object, metaclass=abc.ABCMeta):
   """Object to hold a dataset and a mapping of clients to examples."""
 
   @abc.abstractproperty

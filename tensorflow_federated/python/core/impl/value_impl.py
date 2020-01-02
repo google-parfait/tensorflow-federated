@@ -18,7 +18,6 @@ import abc
 import collections
 
 import attr
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -38,8 +37,7 @@ from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ValueImpl(value_base.Value):
+class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
   """A generic base class for values that appear in TFF computations."""
 
   def __init__(self, comp, context_stack):
@@ -82,7 +80,7 @@ class ValueImpl(value_base.Value):
     return attributes
 
   def __getattr__(self, name):
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     if (isinstance(self._comp.type_signature, computation_types.FederatedType)
         and isinstance(self._comp.type_signature.member,
                        computation_types.NamedTupleType)):
@@ -104,7 +102,7 @@ class ValueImpl(value_base.Value):
         building_blocks.Selection(self._comp, name=name), self._context_stack)
 
   def __setattr__(self, name, value):
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     value_comp = ValueImpl.get_comp(to_value(value, None, self._context_stack))
     if isinstance(self._comp.type_signature,
                   computation_types.FederatedType) and isinstance(
@@ -190,8 +188,7 @@ class ValueImpl(value_base.Value):
     if args or kwargs:
       args = [to_value(x, None, self._context_stack) for x in args]
       kwargs = {
-          k: to_value(v, None, self._context_stack)
-          for k, v in six.iteritems(kwargs)
+          k: to_value(v, None, self._context_stack) for k, v in kwargs.items()
       }
       arg = function_utils.pack_args(self._comp.type_signature.parameter, args,
                                      kwargs, self._context_stack.current)
@@ -342,9 +339,9 @@ def to_value(arg, type_spec, context_stack):
         None, context_stack)
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
-      items = six.iteritems(arg)
+      items = arg.items()
     else:
-      items = sorted(six.iteritems(arg))
+      items = sorted(arg.items())
     value = building_blocks.Tuple([
         (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
         for k, v in items

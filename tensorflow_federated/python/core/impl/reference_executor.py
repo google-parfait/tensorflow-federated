@@ -24,7 +24,6 @@ of computations.
 import collections
 
 import numpy as np
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -426,13 +425,13 @@ class ComputationContext(object):
     self._local_symbols = {}
     if local_symbols is not None:
       py_typecheck.check_type(local_symbols, dict)
-      for k, v in six.iteritems(local_symbols):
-        py_typecheck.check_type(k, six.string_types)
+      for k, v in local_symbols.items():
+        py_typecheck.check_type(k, str)
         py_typecheck.check_type(v, ComputedValue)
         self._local_symbols[str(k)] = v
     if cardinalities is not None:
       py_typecheck.check_type(cardinalities, dict)
-      for k, v in six.iteritems(cardinalities):
+      for k, v in cardinalities.items():
         py_typecheck.check_type(k, placement_literals.PlacementLiteral)
         py_typecheck.check_type(v, int)
       self._cardinalities = cardinalities
@@ -451,7 +450,7 @@ class ComputationContext(object):
     Raises:
       ValueError: If the name cannot be resolved.
     """
-    py_typecheck.check_type(name, six.string_types)
+    py_typecheck.check_type(name, str)
     value = self._local_symbols.get(str(name))
     if value is not None:
       return value

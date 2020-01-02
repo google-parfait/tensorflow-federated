@@ -14,8 +14,6 @@
 # limitations under the License.
 """A library of transformations that can be applied to a computation."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
@@ -48,7 +46,7 @@ def replace_intrinsics_with_callable(comp, uri, body, context_stack):
     TypeError: If types do not match.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(uri, str)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if not callable(body):
     raise TypeError('The body of the intrinsic must be a callable.')
@@ -100,7 +98,7 @@ def replace_intrinsics_with_bodies(comp, context_stack):
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   bodies = intrinsic_bodies.get_intrinsic_bodies(context_stack)
   transformed = False
-  for uri, body in six.iteritems(bodies):
+  for uri, body in bodies.items():
     comp, uri_found = replace_intrinsics_with_callable(comp, uri, body,
                                                        context_stack)
     transformed = transformed or uri_found

@@ -16,8 +16,6 @@
 
 import collections
 
-import six
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -28,7 +26,7 @@ def merge_cardinalities(existing, to_add):
   """Merges dicts `existing` and `to_add`, checking for conflicts."""
   py_typecheck.check_type(existing, dict)
   py_typecheck.check_type(to_add, dict)
-  for key, val in six.iteritems(existing):
+  for key, val in existing.items():
     py_typecheck.check_type(key, placement_literals.PlacementLiteral)
     py_typecheck.check_type(val, int)
   if not to_add:
@@ -37,7 +35,7 @@ def merge_cardinalities(existing, to_add):
     return to_add
   cardinalities = {}
   cardinalities.update(existing)
-  for key, val in six.iteritems(to_add):
+  for key, val in to_add.items():
     py_typecheck.check_type(key, placement_literals.PlacementLiteral)
     py_typecheck.check_type(val, int)
     if key not in cardinalities:

@@ -16,11 +16,8 @@
 
 import abc
 
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
-class TypedObject(object):
+class TypedObject(object, metaclass=abc.ABCMeta):
   """An abstract interface for things that possess TFF type signatures."""
 
   @abc.abstractproperty

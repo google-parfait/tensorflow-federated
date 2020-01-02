@@ -17,7 +17,6 @@ import collections
 
 import attr
 import numpy as np
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -67,16 +66,16 @@ def infer_type(arg):
     items = attr.asdict(
         arg, dict_factory=collections.OrderedDict, recurse=False)
     return computation_types.NamedTupleTypeWithPyContainerType(
-        [(k, infer_type(v)) for k, v in six.iteritems(items)], type(arg))
+        [(k, infer_type(v)) for k, v in items.items()], type(arg))
   elif py_typecheck.is_named_tuple(arg):
     items = arg._asdict()
     return computation_types.NamedTupleTypeWithPyContainerType(
-        [(k, infer_type(v)) for k, v in six.iteritems(items)], type(arg))
+        [(k, infer_type(v)) for k, v in items.items()], type(arg))
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
-      items = six.iteritems(arg)
+      items = arg.items()
     else:
-      items = sorted(six.iteritems(arg))
+      items = sorted(arg.items())
     return computation_types.NamedTupleTypeWithPyContainerType(
         [(k, infer_type(v)) for k, v in items], type(arg))
   elif isinstance(arg, (tuple, list)):
@@ -92,7 +91,7 @@ def infer_type(arg):
     else:
       return computation_types.NamedTupleTypeWithPyContainerType(
           elements, type(arg))
-  elif isinstance(arg, six.string_types):
+  elif isinstance(arg, str):
     return computation_types.TensorType(tf.string)
   elif isinstance(arg, (np.generic, np.ndarray)):
     return computation_types.TensorType(
@@ -130,9 +129,9 @@ def to_canonical_value(value):
     return None
   elif isinstance(value, dict):
     if isinstance(value, collections.OrderedDict):
-      items = six.iteritems(value)
+      items = value.items()
     else:
-      items = sorted(six.iteritems(value))
+      items = sorted(value.items())
     return anonymous_tuple.AnonymousTuple([
         (k, to_canonical_value(v)) for k, v in items
     ])
@@ -185,7 +184,7 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
 
   def _parallel_dict_to_element_list(dtype_dict, shape_dict):
     return [(name, tf_dtypes_and_shapes_to_type(dtype_elem, shape_dict[name]))
-            for name, dtype_elem in six.iteritems(dtype_dict)]
+            for name, dtype_elem in dtype_dict.items()]
 
   if isinstance(dtypes, tf.DType):
     return computation_types.TensorType(dtypes, shapes)
@@ -205,9 +204,9 @@ def tf_dtypes_and_shapes_to_type(dtypes, shapes):
         _parallel_dict_to_element_list(dtype_dict, shapes_dict), type(dtypes))
   elif isinstance(dtypes, dict):
     if isinstance(dtypes, collections.OrderedDict):
-      items = six.iteritems(dtypes)
+      items = dtypes.items()
     else:
-      items = sorted(six.iteritems(dtypes))
+      items = sorted(dtypes.items())
     elements = [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
                 for name, dtypes_elem in items]
     return computation_types.NamedTupleTypeWithPyContainerType(
@@ -421,7 +420,7 @@ def get_named_tuple_element_type(type_spec, name):
     TypeError: if arguments are of the wrong computation_types.
     ValueError: if the tuple does not have an element with the given name.
   """
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   elements = anonymous_tuple.to_elements(type_spec)

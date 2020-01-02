@@ -14,8 +14,6 @@
 # limitations under the License.
 """A library of transformations that can be applied to a computation."""
 
-import six
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -121,7 +119,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
       comp: The computation building block to test.
       names: A Python string or a list, tuple, or set of Python strings.
     """
-    if isinstance(names, six.string_types):
+    if isinstance(names, str):
       names = (names,)
     if comp not in self._unbound_references:
       references = transformation_utils.get_map_of_unbound_references(comp)
@@ -170,7 +168,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
   def _extract_from_block(self, comp):
     """Returns a new computation with all intrinsics extracted."""
     if self._predicate(comp.result):
-      name = six.next(self._name_generator)
+      name = next(self._name_generator)
       variables = comp.locals
       variables.append((name, comp.result))
       result = building_blocks.Reference(name, comp.result.type_signature)
@@ -198,7 +196,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
     """Returns a new computation with all intrinsics extracted."""
     variables = []
     if self._predicate(comp.function):
-      name = six.next(self._name_generator)
+      name = next(self._name_generator)
       variables.append((name, comp.function))
       function = building_blocks.Reference(name, comp.function.type_signature)
     elif isinstance(comp.function, building_blocks.Block):
@@ -209,7 +207,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
       function = comp.function
     if comp.argument is not None:
       if self._predicate(comp.argument):
-        name = six.next(self._name_generator)
+        name = next(self._name_generator)
         variables.append((name, comp.argument))
         argument = building_blocks.Reference(name, comp.argument.type_signature)
       elif isinstance(comp.argument, building_blocks.Block):
@@ -227,7 +225,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
   def _extract_from_lambda(self, comp):
     """Returns a new computation with all intrinsics extracted."""
     if self._predicate(comp.result):
-      name = six.next(self._name_generator)
+      name = next(self._name_generator)
       variables = [(name, comp.result)]
       result = building_blocks.Reference(name, comp.result.type_signature)
       if not self._contains_unbound_reference(comp.result, comp.parameter_name):
@@ -263,7 +261,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
   def _extract_from_selection(self, comp):
     """Returns a new computation with all intrinsics extracted."""
     if self._predicate(comp.source):
-      name = six.next(self._name_generator)
+      name = next(self._name_generator)
       variables = [(name, comp.source)]
       source = building_blocks.Reference(name, comp.source.type_signature)
     else:
@@ -281,7 +279,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
     elements = []
     for name, element in anonymous_tuple.iter_elements(comp):
       if self._passes_test_or_block(element):
-        variable_name = six.next(self._name_generator)
+        variable_name = next(self._name_generator)
         variables.append((variable_name, element))
         ref = building_blocks.Reference(variable_name, element.type_signature)
         elements.append((name, ref))
@@ -380,7 +378,7 @@ class InlineBlock(transformation_utils.TransformSpec):
     if variable_names is not None:
       py_typecheck.check_type(variable_names, (list, tuple, set))
       for name in variable_names:
-        py_typecheck.check_type(name, six.string_types)
+        py_typecheck.check_type(name, str)
     self._variable_names = variable_names
 
   def _should_inline_variable(self, name):
@@ -612,10 +610,10 @@ class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):
       A `building_blocks.Block`.
     """
     functions = building_blocks.Tuple(comps)
-    functions_name = six.next(self._name_generator)
+    functions_name = next(self._name_generator)
     functions_ref = building_blocks.Reference(functions_name,
                                               functions.type_signature)
-    arg_name = six.next(self._name_generator)
+    arg_name = next(self._name_generator)
     arg_type = comps[0].type_signature.parameter
     arg_ref = building_blocks.Reference(arg_name, arg_type)
     arg = arg_ref
@@ -732,7 +730,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       ValueError: If the `uri` has an unexpected value.
     """
     super(MergeTupleIntrinsics, self).__init__()
-    py_typecheck.check_type(uri, six.string_types)
+    py_typecheck.check_type(uri, str)
     self._name_generator = building_block_factory.unique_name_generator(comp)
     expected_uri = (
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
@@ -842,7 +840,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       A `building_blocks.Block`.
     """
     functions = building_blocks.Tuple(comps)
-    fn_name = six.next(self._name_generator)
+    fn_name = next(self._name_generator)
     fn_ref = building_blocks.Reference(fn_name, functions.type_signature)
     if isinstance(type_signature.parameter, computation_types.NamedTupleType):
       arg_type = [[] for _ in range(len(type_signature.parameter))]
@@ -853,7 +851,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
           arg_type[index].append(concrete_type)
     else:
       arg_type = [e.type_signature.parameter for e in comps]
-    arg_name = six.next(self._name_generator)
+    arg_name = next(self._name_generator)
     arg_ref = building_blocks.Reference(arg_name, arg_type)
     if isinstance(type_signature.parameter, computation_types.NamedTupleType):
       arg = building_block_factory.create_zip(arg_ref)
@@ -1232,7 +1230,7 @@ def uniquify_compiled_computation_names(comp):
     if not _should_transform(comp):
       return comp, False
     transformed_comp = building_blocks.CompiledComputation(
-        comp.proto, six.next(name_generator))
+        comp.proto, next(name_generator))
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
@@ -1260,7 +1258,7 @@ def uniquify_reference_names(comp):
     def __init__(self, name, value):
       super(_RenameNode, self).__init__(name, value)
       py_typecheck.check_type(name, str)
-      self.new_name = six.next(name_generator)
+      self.new_name = next(name_generator)
 
     def __str__(self):
       return 'Value: {}, name: {}, new_name: {}'.format(self.value, self.name,
@@ -1603,7 +1601,7 @@ def unwrap_placement(comp):
       if not _should_transform(comp, symbol_tree):
         return comp, False
       if unbound_reference_name_and_type_pair[0][1] is None:
-        name = six.next(name_generator)
+        name = next(name_generator)
         unbound_reference_name_and_type_pair[0] = (name, comp.type_signature)
       else:
         name = unbound_reference_name_and_type_pair[0][0]
@@ -1658,7 +1656,7 @@ def unwrap_placement(comp):
           comp.uri == intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri or
           comp.uri == intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri or
           comp.uri == intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri):
-        arg_name = six.next(name_generator)
+        arg_name = next(name_generator)
         arg_type = comp.type_signature.result.member
         val = building_blocks.Reference(arg_name, arg_type)
         lam = building_blocks.Lambda(arg_name, arg_type, val)
@@ -1667,7 +1665,7 @@ def unwrap_placement(comp):
                             intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
                             intrinsic_defs.FEDERATED_APPLY.uri):
         raise ValueError('Disallowed intrinsic: {}'.format(comp))
-      arg_name = six.next(name_generator)
+      arg_name = next(name_generator)
       tuple_ref = building_blocks.Reference(arg_name, [
           comp.type_signature.parameter[0],
           comp.type_signature.parameter[1].member,

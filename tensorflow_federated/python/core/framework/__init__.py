@@ -14,8 +14,7 @@
 # limitations under the License.
 """Interfaces for extensions, selectively lifted out of `impl`."""
 
-import six
-
+from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.compiler.building_block_analysis import is_called_intrinsic
 from tensorflow_federated.python.core.impl.compiler.building_block_factory import create_federated_map_all_equal
 from tensorflow_federated.python.core.impl.compiler.building_block_factory import create_federated_map_or_apply
@@ -42,6 +41,17 @@ from tensorflow_federated.python.core.impl.compiler.transformations import remov
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
+from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
+from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
+from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
+from tensorflow_federated.python.core.impl.executor_base import Executor
+from tensorflow_federated.python.core.impl.executor_service import ExecutorService
+from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
+from tensorflow_federated.python.core.impl.executor_stacks import create_worker_pool_executor
+from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
+from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
+from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
+from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves
 from tensorflow_federated.python.core.impl.transformations import merge_tuple_intrinsics
@@ -50,6 +60,7 @@ from tensorflow_federated.python.core.impl.transformations import replace_called
 from tensorflow_federated.python.core.impl.transformations import TFParser
 from tensorflow_federated.python.core.impl.transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.transformations import unwrap_placement
+from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compatible_type
@@ -57,27 +68,7 @@ from tensorflow_federated.python.core.impl.type_utils import transform_type_post
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.wrappers.computation_wrapper_instances import building_block_to_computation
-
-# High-performance simulation components currently only available in Python 3,
-# and dependent on targets are are not currently included in the open-source
-# build rule.
-if six.PY3:
-  # pylint: disable=g-import-not-at-top
-  from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
-  from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
-  from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
-  from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
-  from tensorflow_federated.python.core.impl.executor_base import Executor
-  from tensorflow_federated.python.core.impl.executor_service import ExecutorService
-  from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
-  from tensorflow_federated.python.core.impl.executor_stacks import create_worker_pool_executor
-  from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
-  from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
-  from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
-  from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
-  from tensorflow_federated.python.core.impl.transforming_executor import TransformingExecutor
-  from tensorflow_federated.python.core.impl.wrappers.set_default_executor import set_default_executor
-  # pylint: enable=g-import-not-at-top
+from tensorflow_federated.python.core.impl.wrappers.set_default_executor import set_default_executor
 
 # Used by doc generation script.
 _allowed_symbols = [

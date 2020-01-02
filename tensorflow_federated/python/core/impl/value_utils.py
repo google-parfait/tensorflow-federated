@@ -14,8 +14,6 @@
 # limitations under the License.
 """Utilities file for functions with TFF `Value`s as inputs and outputs."""
 
-import six
-
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -80,7 +78,7 @@ def ensure_federated_value(value, placement=None, label=None):
   """
   py_typecheck.check_type(value, value_impl.ValueImpl)
   if label is not None:
-    py_typecheck.check_type(label, six.string_types)
+    py_typecheck.check_type(label, str)
 
   if not isinstance(value.type_signature, computation_types.FederatedType):
     comp = value_impl.ValueImpl.get_comp(value)

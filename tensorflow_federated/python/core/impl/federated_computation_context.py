@@ -14,8 +14,6 @@
 # limitations under the License.
 """The implementation of a context to use in building federated computations."""
 
-import six
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
@@ -40,7 +38,7 @@ class FederatedComputationContext(context_base.Context):
     """
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     if suggested_name:
-      py_typecheck.check_type(suggested_name, six.string_types)
+      py_typecheck.check_type(suggested_name, str)
       suggested_name = str(suggested_name)
     else:
       suggested_name = 'FEDERATED'
