@@ -344,8 +344,10 @@ py_test(
     deps = [
         ":computation_impl",
         ":context_stack_impl",
+        ":executor_stacks",
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -1000,6 +1002,7 @@ py_test(
         ":transformations",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",

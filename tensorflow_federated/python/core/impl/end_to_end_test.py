@@ -15,13 +15,14 @@
 
 import collections
 
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import tensorflow_serialization
+from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
 class IntegrationTest(test.TestCase):
@@ -37,8 +38,8 @@ class IntegrationTest(test.TestCase):
         context_stack_impl.context_stack)
 
     x = executable_return_two_datasets()
-    self.assertEqual(x[0], list(range(5)))
-    self.assertEqual(x[1], list(range(5)))
+    self.assertEqual([i for i in iter(x[0])], list(range(5)))
+    self.assertEqual([i for i in iter(x[1])], list(range(5)))
 
   def test_fetch_value_with_dataset_and_tensor(self):
 
@@ -53,7 +54,7 @@ class IntegrationTest(test.TestCase):
 
     x = executable_return_dataset_and_tensor()
     self.assertEqual(x[0], 0)
-    self.assertEqual(x[1], list(range(5)))
+    self.assertEqual([x for x in iter(x[1])], list(range(5)))
     self.assertEqual(x[2], 5)
 
   def test_fetch_value_with_datasets_nested_at_second_level(self):
@@ -71,8 +72,8 @@ class IntegrationTest(test.TestCase):
 
     x = executable_return_two_datasets()
     self.assertEqual(x[0], 0)
-    self.assertEqual(x[1][0], list(range(5)))
-    self.assertEqual(x[1][1], list(range(5)))
+    self.assertEqual([i for i in iter(x[1][0])], list(range(5)))
+    self.assertEqual([i for i in iter(x[1][1])], list(range(5)))
 
   def test_fetch_value_with_empty_dataset_and_tensors(self):
 
@@ -86,9 +87,12 @@ class IntegrationTest(test.TestCase):
         context_stack_impl.context_stack)
 
     x = executable_return_dataset()
-    self.assertEqual(x[0][0], 0.)
-    self.assertEqual(x[0][1], 0.)
-    self.assertEqual(str(x[1][0]), str(np.zeros([0, 2], dtype=np.int32)))
+    self.assertAllEqual(x[0], [0., 0.])
+    self.assertEqual(
+        tf.data.experimental.get_structure(x[1]),
+        tf.TensorSpec(shape=(None, 2), dtype=tf.int32))
+    with self.assertRaises(StopIteration):
+      _ = next(iter(x[1]))
 
   def test_fetch_value_with_empty_structured_dataset_and_tensors(self):
 
@@ -103,13 +107,19 @@ class IntegrationTest(test.TestCase):
         context_stack_impl.context_stack)
 
     x = executable_return_dataset()
-    self.assertEqual(x[0][0], 0.)
-    self.assertEqual(x[0][1], 0.)
-    self.assertAllClose(x[1][0].a, np.zeros([0], dtype=np.int32))
-    self.assertAllClose(x[1][0].b, np.zeros([0], dtype=np.int32))
-    self.assertTrue(np.array_equal(x[1][0].a, np.zeros([0], dtype=np.int32)))
-    self.assertTrue(np.array_equal(x[1][0].b, np.zeros([0], dtype=np.int32)))
+    self.assertAllEqual(x[0], [0., 0.])
+    self.assertEqual(
+        tf.data.experimental.get_structure(x[1]),
+        collections.OrderedDict([
+            ('a', tf.TensorSpec(shape=(None,), dtype=tf.int32)),
+            ('b', tf.TensorSpec(shape=(None,), dtype=tf.int32)),
+        ]))
+    with self.assertRaises(StopIteration):
+      _ = next(iter(x[1]))
 
 
 if __name__ == '__main__':
+  # Use the local executor.
+  set_default_executor.set_default_executor(
+      executor_stacks.create_local_executor())
   test.main()
