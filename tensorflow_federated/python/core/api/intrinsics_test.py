@@ -17,12 +17,12 @@ import collections
 import itertools
 import warnings
 
-from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core import api as tff
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.utils import test as core_test
@@ -713,4 +713,4 @@ class IntrinsicsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  common_test.main()
