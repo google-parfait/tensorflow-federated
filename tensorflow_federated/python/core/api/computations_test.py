@@ -93,17 +93,16 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
   @core_test.tf1_and_tf2
   def test_tf_fn_with_empty_tuple_type_trivial_logic(self, tf_computation):
-
-    pass_through = tf_computation(lambda x: x, [])
-
-    self.assertEqual(pass_through([]), [])
+    empty_tuple = ()
+    pass_through = tf_computation(lambda x: x, empty_tuple)
+    self.assertEqual(pass_through(empty_tuple), empty_tuple)
 
   @core_test.tf1_and_tf2
   def test_tf_fn_with_empty_tuple_type_nontrivial_logic(self, tf_computation):
-
-    nontrivial_manipulation = tf_computation(lambda x: [x, x], [])
-
-    self.assertEqual(nontrivial_manipulation([]), [[], []])
+    empty_tuple = ()
+    nontrivial_manipulation = tf_computation(lambda x: (x, x), empty_tuple)
+    self.assertEqual(
+        nontrivial_manipulation(empty_tuple), (empty_tuple, empty_tuple))
 
   @core_test.tf1_and_tf2
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(
@@ -333,11 +332,13 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
     args = [
         MyType(1, dict(y=2, z=3)),
-        collections.OrderedDict([('o', 0)]), (0,)
+        collections.OrderedDict([('o', 0)]),
+        (0,),
     ]
     arg_type = [
         MyType(tf.int32, collections.OrderedDict(y=tf.int32, z=tf.int32)),
-        collections.OrderedDict([('o', tf.int32)]), (tf.int32,)
+        collections.OrderedDict([('o', tf.int32)]),
+        (tf.int32,),
     ]
 
     # Explicit type
@@ -383,8 +384,9 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
 
 class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
-  # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
 
+  # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
+  @core_test.executors
   def test_with_tf_datasets(self):
 
     @tff.tf_computation(tff.SequenceType(tf.int64))
@@ -432,6 +434,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
     self.assertEqual(consume(produce()), 45)
 
+  @core_test.executors
   def test_with_sequence_of_pairs(self):
     pairs = tf.data.Dataset.from_tensor_slices(
         (list(range(5)), list(range(5, 10))))
@@ -442,12 +445,14 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
     self.assertEqual(process_pairs(pairs), 45)
 
+  @core_test.executors
   def test_tf_comp_with_sequence_inputs_and_outputs_does_not_fail(self):
 
     @tff.tf_computation(tff.SequenceType(tf.int32))
     def _(x):
       return x
 
+  @core_test.executors
   def test_with_four_element_dataset_pipeline(self):
 
     @tff.tf_computation
@@ -475,6 +480,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
 class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
 
+  @core_test.executors
   def test_raises_value_error_none_result(self):
     with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
 
@@ -507,6 +513,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     num1, num2 = same_random_number_twice()
     self.assertEqual(num1, num2)
 
+  @core_test.executors
   def test_computation_typical_usage_as_decorator_with_unlabeled_type(self):
 
     @tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
@@ -530,6 +537,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(foo(third_power, 10), int(1e9))
     self.assertEqual(foo(third_power, 1), 1)
 
+  @core_test.executors
   def test_computation_typical_usage_as_decorator_with_labeled_type(self):
 
     @tff.federated_computation((
@@ -553,8 +561,11 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(foo(square, 10), int(1e4))
     self.assertEqual(square_drop_y(square_drop_y(10, 5), 100), int(1e4))
     self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
-    with self.assertRaisesRegex(TypeError,
-                                'is not assignable from source type'):
+    with self.assertRaisesRegex(
+        TypeError,
+        r'(is not assignable from source type)|'  # Reference executor
+        '(Expected a value of type .*, found .*)'  # Local executor
+    ):
       foo(square_drop_y, 10)
 
 
