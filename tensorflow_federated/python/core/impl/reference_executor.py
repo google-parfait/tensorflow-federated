@@ -628,6 +628,21 @@ class ReferenceExecutor(context_base.Context):
     computed_comp = self._compute(comp, root_context)
     type_utils.check_assignable_from(comp.type_signature,
                                      computed_comp.type_signature)
+
+    def _convert_to_py_container(value, type_spec):
+      """Converts value to a Python container if type_spec has an annotation."""
+      if type_utils.is_anon_tuple_with_py_container(value, type_spec):
+        return type_utils.convert_to_py_container(value, type_spec)
+      elif isinstance(type_spec, computation_types.SequenceType):
+        if all(
+            type_utils.is_anon_tuple_with_py_container(
+                element, type_spec.element) for element in value):
+          return [
+              type_utils.convert_to_py_container(element, type_spec.element)
+              for element in value
+          ]
+      return value
+
     if not isinstance(computed_comp.type_signature,
                       computation_types.FunctionType):
       if arg is not None:
@@ -635,9 +650,7 @@ class ReferenceExecutor(context_base.Context):
       else:
         value = computed_comp.value
         result_type = fn.type_signature.result
-        if type_utils.is_anon_tuple_with_py_container(value, result_type):
-          return type_utils.convert_to_py_container(value, result_type)
-        return value
+        return _convert_to_py_container(value, result_type)
     else:
       if arg is not None:
 
@@ -663,9 +676,7 @@ class ReferenceExecutor(context_base.Context):
                                        result.type_signature)
       value = result.value
       fn_result_type = fn.type_signature.result
-      if type_utils.is_anon_tuple_with_py_container(value, fn_result_type):
-        return type_utils.convert_to_py_container(value, fn_result_type)
-      return value
+      return _convert_to_py_container(value, fn_result_type)
 
   def _compile(self, comp):
     """Compiles a `computation_base.Computation` to prepare it for execution.

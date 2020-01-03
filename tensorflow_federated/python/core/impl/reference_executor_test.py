@@ -497,7 +497,36 @@ class ReferenceExecutorTest(test.TestCase):
     self.assertEqual(foo((10, 20), (30, 40)), 100)
     self.assertEqual(foo((40, 30), (20, 10)), 100)
 
-  def test_tensorflow_computation_with_empty_sequence(self):
+  def test_tensorflow_computation_with_result_sequence_anon_tuple(self):
+    input_type = computation_types.SequenceType(
+        computation_types.NamedTupleType([('a', tf.int64)]))
+
+    @computations.tf_computation(input_type)
+    def foo(dataset):
+      return dataset.map(lambda x: tf.nest.map_structure(lambda v: v * 2, x))
+
+    self.assertEqual(foo.type_signature.result, input_type)
+    input_value = tf.data.Dataset.range(5).map(
+        lambda x: collections.OrderedDict(a=x))
+    self.assertAllEqual([i for i in foo(input_value)],
+                        [collections.OrderedDict(a=i * 2) for i in range(5)])
+
+  def test_tensorflow_computation_with_result_sequence_py_container(self):
+
+    @computations.tf_computation()
+    def foo():
+      return tf.data.Dataset.range(5).map(
+          lambda x: collections.OrderedDict(a=x))
+
+    self.assertEqual(
+        foo.type_signature.result,
+        computation_types.SequenceType(
+            computation_types.NamedTupleType(
+                collections.OrderedDict(a=tf.int64))))
+    self.assertAllEqual([i for i in foo()],
+                        [collections.OrderedDict(a=i) for i in range(5)])
+
+  def test_tensorflow_computation_with_arg_empty_sequence(self):
     sequence_type = computation_types.SequenceType(tf.float32)
 
     @computations.tf_computation(sequence_type)
@@ -508,7 +537,7 @@ class ReferenceExecutorTest(test.TestCase):
     ds = tf.data.Dataset.from_tensor_slices([])
     self.assertEqual(foo(ds), 1)
 
-  def test_tensorflow_computation_with_sequence_of_one_constant(self):
+  def test_tensorflow_computation_with_arg_sequence_of_one_constant(self):
     sequence_type = computation_types.SequenceType(tf.int32)
 
     @computations.tf_computation(sequence_type)
@@ -519,7 +548,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(foo(ds), 11)
 
-  def test_tensorflow_computation_with_sequence_of_constants(self):
+  def test_tensorflow_computation_with_arg_sequence_of_constants(self):
     sequence_type = computation_types.SequenceType(tf.int32)
 
     @computations.tf_computation(sequence_type)
@@ -529,7 +558,7 @@ class ReferenceExecutorTest(test.TestCase):
     ds = tf.data.Dataset.from_tensor_slices([10, 20])
     self.assertEqual(foo(ds), 30)
 
-  def test_tensorflow_computation_with_sequence_of_tuples(self):
+  def test_tensorflow_computation_with_arg_sequence_of_tuples(self):
     tuple_type = computation_types.NamedTupleType([
         ('x', tf.int32),
         ('y', tf.int32),
@@ -548,7 +577,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(foo(ds), 100)
 
-  def test_tensorflow_computation_with_sequences_of_constants(self):
+  def test_tensorflow_computation_with_arg_sequences_of_constants(self):
     sequence_type = computation_types.SequenceType(tf.int32)
 
     @computations.tf_computation(sequence_type, sequence_type)
