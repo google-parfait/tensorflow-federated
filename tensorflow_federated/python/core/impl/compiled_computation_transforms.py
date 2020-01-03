@@ -674,11 +674,11 @@ def construct_composed_function_capturing_selections(comp):
         tuple_index=index_from_arg, selection_sequence=selection_sequence[::-1])
     output_data_structure.append(selection_spec)
 
+  output_spec_anonymous_tuple = anonymous_tuple.AnonymousTuple(
+      zip(output_names, output_data_structure))
   arg_tuple = building_blocks.Tuple(deduped_called_graphs)
-  tf_representing_selections = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-      arg_tuple.type_signature,
-      output_data_structure,
-      output_names=output_names)
+  tf_representing_selections = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+      arg_tuple.type_signature, output_spec_anonymous_tuple)
   return building_blocks.Call(tf_representing_selections, arg_tuple)
 
 

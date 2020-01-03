@@ -16,7 +16,7 @@
 
 import random
 import string
-from typing import Optional, Sequence
+from typing import Sequence
 
 import tensorflow as tf
 
@@ -162,10 +162,8 @@ def _extract_selections(parameter_value, output_spec):
   return results
 
 
-def construct_tensorflow_selecting_outputs_from_tuple(
-    arg_type,
-    output_spec: Sequence[SelectionSpec],
-    output_names: Optional[Sequence[str]] = None):
+def construct_tensorflow_selecting_and_packing_outputs(
+    arg_type, output_structure: anonymous_tuple.AnonymousTuple):
   """Constructs TensorFlow selecting and packing elements from its input.
 
   The result of this function can be called on a deduplicated
@@ -174,14 +172,25 @@ def construct_tensorflow_selecting_outputs_from_tuple(
   reducing the amount of work duplicated in the process of generating
   TensorFlow.
 
+  The TensorFlow which results here will be a function which takes an argument
+  of type `arg_type`, returning a result specified by `output_structure`. Each
+  `SelectionSpec` nested inside of `output_structure` will represent a selection
+  from one of the arguments of the tuple `arg_type`, with the empty selection
+  being a possibility. The nested structure of `output_structure` will determine
+  how these selections are packed back into a result, IE, the result of the
+  function will be a nested tuple with the same structure as `output_structure`,
+  where the leaves of this structure (the `SelectionSpecs` of
+  `output_structure`) will be selections from the argument.
+
   Args:
     arg_type: `computation_types.Type` of the argument on which the constructed
       function will be called. Should be an instance of
       `computation_types.NamedTupleType`.
-    output_spec: Tuple or list with SelectionSpec elements, mapping from
-      elements of the argument tuple to the desired result of the generated
-      computation.
-    output_names: Names to apply to the constructed tuple.
+    output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec`
+      or `anonymous_tupl.AnonymousTupl` elements, mapping from elements of
+      the nested argument tuple to the desired result of the generated
+      computation. `output_structure` must contain all the names desired on
+      the output of the computation.
 
   Returns:
     A `building_blocks.CompiledComputation` representing the specification
@@ -193,31 +202,31 @@ def construct_tensorflow_selecting_outputs_from_tuple(
       computation in TFF, IE does not contain exclusively
       `computation_types.SequenceType`, `computation_types.NamedTupleType` or
       `computation_types.TensorType`.
-    ValueError: If the lengths of `output_spec` and `output_names` don't match.
   """
+  py_typecheck.check_type(output_structure, anonymous_tuple.AnonymousTuple)
+
+  def _check_output_structure(elem):
+    if isinstance(elem, anonymous_tuple.AnonymousTuple):
+      for x in elem:
+        _check_output_structure(x)
+    elif not isinstance(elem, SelectionSpec):
+      raise TypeError('output_structure can only contain nested anonymous '
+                      'tuples and `SelectionSpecs`; encountered the value {} '
+                      'of type {}.'.format(elem, type(elem)))
+
+  _check_output_structure(output_structure)
+  output_spec = anonymous_tuple.flatten(output_structure)
   type_spec = computation_types.to_type(arg_type)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   type_utils.check_tensorflow_compatible_type(type_spec)
-  output_spec_len = len(output_spec)
-  if output_names is None:
-    output_names = [None] * output_spec_len
-  output_names_len = len(output_names)
-  if output_names_len != output_spec_len:
-    raise ValueError(
-        'Length of output names must match length of output map; you have '
-        'passed names of length {} and output map of length {}'.format(
-            output_names_len, output_spec_len))
-  if not all(isinstance(x, SelectionSpec) for x in output_spec):
-    raise ValueError('`output_spec` must only contain instances of '
-                     '`SelectionSpec`.')
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
-
   results = _extract_selections(parameter_value, output_spec)
-  named_result = anonymous_tuple.AnonymousTuple(zip(output_names, results))
+
+  repacked_result = anonymous_tuple.pack_sequence_as(output_structure, results)
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-      named_result, graph)
+      repacked_result, graph)
 
   function_type = computation_types.FunctionType(type_spec, result_type)
   serialized_function_type = type_serialization.serialize_type(function_type)

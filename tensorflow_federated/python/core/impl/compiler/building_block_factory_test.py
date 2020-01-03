@@ -3069,29 +3069,43 @@ class BinaryOperatorTest(absltest.TestCase):
 class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
 
   def test_raises_non_named_tuple_type(self):
-    selection_spec = building_block_factory.SelectionSpec(0, [0])
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[0])
     with self.assertRaises(TypeError):
-      building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-          tf.int32, selection_spec)
+      building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+          tf.int32, anonymous_tuple.AnonymousTuple([(None, selection_spec)]))
 
-  def test_raises_length_mismatch(self):
-    selection_spec = building_block_factory.SelectionSpec(0, [0])
-    with self.assertRaises(ValueError):
-      building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-          [tf.int32], [selection_spec], ['a', 'b'])
+  def test_raises_non_anonymous_tuple(self):
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[0])
+    with self.assertRaises(TypeError):
+      building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+          [tf.int32], [selection_spec])
+
+  def test_raises_nested_non_anonymous_tuple(self):
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[0])
+    with self.assertRaises(TypeError):
+      building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+          [tf.int32],
+          anonymous_tuple.from_container([[selection_spec]], recursive=False))
 
   def test_construct_selection_from_tuple_with_empty_list_type_signature(self):
-    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [])
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], anonymous_tuple.from_container([]))
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(constructed_tf.type_signature,
                      computation_types.FunctionType([tf.int32, tf.float32], []))
 
   def test_construct_selection_from_two_tuple_correct_type_signature(self):
-    selection_spec_1 = building_block_factory.SelectionSpec(0, [])
-    selection_spec_2 = building_block_factory.SelectionSpec(0, [])
-    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [selection_spec_1, selection_spec_2])
+    selection_spec_1 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    selection_spec_2 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    output_structure = anonymous_tuple.from_container(
+        [selection_spec_1, selection_spec_2])
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], output_structure=output_structure)
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
@@ -3100,19 +3114,25 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
 
   def test_construct_selection_from_two_tuple_correct_singleton_type_signature(
       self):
-    selection_spec = building_block_factory.SelectionSpec(0, [])
-    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [selection_spec])
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    output_structure = anonymous_tuple.from_container([selection_spec])
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], output_structure=output_structure)
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
         computation_types.FunctionType([tf.int32, tf.float32], [tf.int32]))
 
   def test_construct_selection_from_two_tuple_executes_correctly(self):
-    selection_spec_1 = building_block_factory.SelectionSpec(0, [])
-    selection_spec_2 = building_block_factory.SelectionSpec(0, [])
-    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [tf.int32, tf.float32], [selection_spec_1, selection_spec_2])
+    selection_spec_1 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    selection_spec_2 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    output_structure = anonymous_tuple.from_container(
+        [selection_spec_1, selection_spec_2])
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], output_structure=output_structure)
     result = test_utils.run_tensorflow(constructed_tf.proto, [0, 1.])
     self.assertLen(result, 2)
     self.assertEqual(result[0], 0)
@@ -3123,23 +3143,107 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     self.assertEqual(result[1], 1)
 
   def test_construct_selection_with_names(self):
-    selection_spec_1 = building_block_factory.SelectionSpec(0, [])
-    selection_spec_2 = building_block_factory.SelectionSpec(1, [])
-    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [('a', tf.int32),
-         ('b', tf.float32)], [selection_spec_1, selection_spec_2],
-        output_names=['a', 'b'])
+    selection_spec_1 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    selection_spec_2 = building_block_factory.SelectionSpec(
+        tuple_index=1, selection_sequence=[])
+    output_structure = anonymous_tuple.AnonymousTuple([('a', selection_spec_1),
+                                                       ('b', selection_spec_2)])
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [('a', tf.int32), ('b', tf.float32)], output_structure=output_structure)
     self.assertEqual(
         constructed_tf.type_signature,
         computation_types.FunctionType([('a', tf.int32), ('b', tf.float32)],
                                        [('a', tf.int32), ('b', tf.float32)]))
 
+  def test_construct_tuple_packed_selection_with_name(self):
+    selection_spec_1 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    selection_spec_2 = building_block_factory.SelectionSpec(
+        tuple_index=1, selection_sequence=[])
+    output_structure = anonymous_tuple.AnonymousTuple([
+        ('c',
+         anonymous_tuple.from_container([selection_spec_1, selection_spec_2],
+                                        recursive=True))
+    ])
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [('a', tf.int32), ('b', tf.float32)], output_structure=output_structure)
+    self.assertEqual(
+        constructed_tf.type_signature,
+        computation_types.FunctionType([('a', tf.int32), ('b', tf.float32)],
+                                       [('c', [tf.int32, tf.float32])]))
+
   def test_construct_selection_from_nested_tuple_executes_correctly(self):
-    selection_spec = building_block_factory.SelectionSpec(0, [0, 0])
-    constructed_tf = building_block_factory.construct_tensorflow_selecting_outputs_from_tuple(
-        [[[tf.int32]], tf.float32], [selection_spec])
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[0, 0])
+    output_structure = anonymous_tuple.from_container([selection_spec],
+                                                      recursive=True)
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [[[tf.int32]], tf.float32], output_structure=output_structure)
     result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
     self.assertEqual(result[0], 0)
+
+  def test_construct_selection_from_nested_tuple_repack_into_tuple_executes_correctly(
+      self):
+    selection_spec = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[0, 0])
+    output_structure = anonymous_tuple.from_container([[[selection_spec]]],
+                                                      recursive=True)
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [[[tf.int32]], tf.float32], output_structure=output_structure)
+    result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
+    self.assertEqual(result[0][0][0], 0)
+
+  def test_construct_selection_from_two_tuple_repack_named_lower_level_type_signature(
+      self):
+    selection_spec_1 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    selection_spec_2 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    output_structure = anonymous_tuple.from_container([
+        anonymous_tuple.AnonymousTuple([('a', selection_spec_1)]),
+        selection_spec_2
+    ],
+                                                      recursive=True)
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], output_structure=output_structure)
+    self.assertEqual(
+        constructed_tf.type_signature,
+        computation_types.FunctionType([tf.int32, tf.float32],
+                                       [[('a', tf.int32)], tf.int32]))
+
+  def test_construct_selection_from_two_tuple_repack_lower_level_output_executes_correctly(
+      self):
+    selection_spec_1 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    selection_spec_2 = building_block_factory.SelectionSpec(
+        tuple_index=0, selection_sequence=[])
+    output_structure = anonymous_tuple.from_container(
+        [[selection_spec_1], selection_spec_2], recursive=True)
+    constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], output_structure=output_structure)
+    result = test_utils.run_tensorflow(constructed_tf.proto, [0, 1.])
+    self.assertLen(result, 2)
+    self.assertLen(result[0], 1)
+    self.assertEqual(result[0][0], 0)
+    self.assertEqual(result[1], 0)
+    result = test_utils.run_tensorflow(constructed_tf.proto, [1, 0.])
+    self.assertLen(result, 2)
+    self.assertLen(result[0], 1)
+    self.assertEqual(result[0][0], 1)
+    self.assertEqual(result[1], 1)
+    flipped_output_structure = anonymous_tuple.from_container(
+        [selection_spec_1, [selection_spec_2]], recursive=True)
+    flipped_packing_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
+        [tf.int32, tf.float32], output_structure=flipped_output_structure)
+    result = test_utils.run_tensorflow(flipped_packing_tf.proto, [0, 1.])
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], 0)
+    self.assertEqual(result[1][0], 0)
+    result = test_utils.run_tensorflow(flipped_packing_tf.proto, [1, 0.])
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], 1)
+    self.assertEqual(result[1][0], 1)
 
 
 if __name__ == '__main__':
