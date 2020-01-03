@@ -1380,11 +1380,20 @@ class IntermediateParser(TFParser):
     """Populates the parser library with first-pass transforms."""
     super(IntermediateParser, self).__init__()
     self._parse_library = [
-        compiled_computation_transforms.TupleOfSelectionsAndGraphs(),
+        compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(),
     ]
 
 
 def preprocess_for_tf_parse(comp):
+  """Deduplicates called graphs in the AST nested in Selections and Tuples."""
+  pattern = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs()
+  if pattern.should_transform(comp):
+    comp, _ = pattern.transform(comp)
+  elif isinstance(comp, building_blocks.Lambda) and pattern.should_transform(
+      comp.result):
+    new_result, _ = pattern.transform(comp.result)
+    comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                  new_result)
   preprocessor = IntermediateParser()
   return transformation_utils.transform_postorder(comp, preprocessor)
 

@@ -618,8 +618,11 @@ def construct_composed_function_capturing_selections(comp):
 
                             Tuple
                         /   ...     \
-                  Selection         Similar
+                     Tuple         Similar
                       |
+                     ...
+                     Tuple
+                     ...
                   Selection
                      ...
                      Call
@@ -632,10 +635,11 @@ def construct_composed_function_capturing_selections(comp):
                             /      \
             Constructed graph       Constructed Tuple
 
-  The point here being that for any Tuple holding only selections and called
-  graphs (called on arbitrary arguments), this function deduplicates the called
-  graphs themselves, and represents the TFF logic embodied in the selections by
-  calling equivalent TensorFlow.
+  The point here being that for any Tuple holding only tuples, selections and
+  called graphs (called on arbitrary arguments), this function deduplicates the
+  called graphs themselves, and represents the TFF logic embodied in the tuples
+  and selections by calling equivalent TensorFlow. Notice that this function
+  makes no effort to deduplicate the arguments to the called graphs.
 
   Args:
     comp: Instance of `building_blocks.Tuple` matching the first pattern above.
@@ -643,42 +647,62 @@ def construct_composed_function_capturing_selections(comp):
   Returns:
     A transformed version of `comp` matching the second pattern above.
   """
-  output_names = [
-      x[0] for x in anonymous_tuple.iter_elements(comp.type_signature)
-  ]
   deduped_called_graphs = []
-  output_data_structure = []
 
-  for tuple_elem in comp:
-    selection_sequence = []
-    selected_comp = tuple_elem
-    while isinstance(selected_comp, building_blocks.Selection):
-      index = selected_comp.index
-      if index is None:
-        index = _index_from_name(selected_comp.source.type_signature,
-                                 selected_comp.name)
-      selection_sequence.append(index)
-      selected_comp = selected_comp.source
-
+  def _compute_index_from_arg_and_update_graph_collection(called_graph):
     index_from_arg = None
-    for idx, previously_called_graph in enumerate(deduped_called_graphs):
-      if _called_graph_equality(selected_comp, previously_called_graph):
+    for idx, previous_called_graph in enumerate(deduped_called_graphs):
+      if _called_graph_equality(called_graph, previous_called_graph):
         index_from_arg = idx
     if index_from_arg is None:
-      deduped_called_graphs.append(selected_comp)
+      deduped_called_graphs.append(called_graph)
       index_from_arg = len(deduped_called_graphs) - 1
+    return index_from_arg
+
+  def _construct_selection_spec(selection_leaf):
+    """Constructs SelectionSpec from selections terminating in called graph."""
+    selection_sequence = []
+    while isinstance(selection_leaf, building_blocks.Selection):
+      index = selection_leaf.index
+      if index is None:
+        index = _index_from_name(selection_leaf.source.type_signature,
+                                 selection_leaf.name)
+      selection_sequence.append(index)
+      selection_leaf = selection_leaf.source
+
+    if not (isinstance(selection_leaf, building_blocks.Call) and isinstance(
+        selection_leaf.function, building_blocks.CompiledComputation)):
+      raise ValueError('Sequence of selections must terminate a called '
+                       '`building_blocks.CompiledComputation`; this sequence '
+                       'of selections has terminated in {} instead.'.format(
+                           selection_leaf.compact_representation()))
+    index_from_arg = _compute_index_from_arg_and_update_graph_collection(
+        selection_leaf)
     # Need to reverse the selection maps, since we walked the tree unwrapping
     # selections from tuples, but we will generate the TensorFlow by adding
     # selections to tuples
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=index_from_arg, selection_sequence=selection_sequence[::-1])
-    output_data_structure.append(selection_spec)
+    return selection_spec
 
-  output_spec_anonymous_tuple = anonymous_tuple.AnonymousTuple(
-      zip(output_names, output_data_structure))
+  def _construct_output_data_spec(inner_comp):
+    """Constructs output data specification, fills `deduped_called_graphs`."""
+    if isinstance(inner_comp, building_blocks.Tuple):
+      names = (
+          x[0]
+          for x in anonymous_tuple.iter_elements(inner_comp.type_signature))
+      return anonymous_tuple.AnonymousTuple(
+          zip(names, (_construct_output_data_spec(x) for x in inner_comp)))
+    elif isinstance(inner_comp, building_blocks.Selection):
+      return _construct_selection_spec(inner_comp)
+    elif isinstance(inner_comp, building_blocks.Call):
+      return _construct_selection_spec(inner_comp)
+
+  output_data_structure = _construct_output_data_spec(comp)
+
   arg_tuple = building_blocks.Tuple(deduped_called_graphs)
   tf_representing_selections = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
-      arg_tuple.type_signature, output_spec_anonymous_tuple)
+      arg_tuple.type_signature, output_data_structure)
   return building_blocks.Call(tf_representing_selections, arg_tuple)
 
 
@@ -1406,21 +1430,26 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
     return pruned, True
 
 
-class TupleOfSelectionsAndGraphs(transformation_utils.TransformSpec):
-  r"""Handles Tuple construct of Graphs and Tuples with minimal duplication.
+class NestedTupleOfSelectionsAndGraphs(transformation_utils.TransformSpec):
+  r"""Handles Tuples of Graphs, Tuples and Selections without duplication.
 
   The amount of duplication is controlled by how much is identified as being
   equal by `_called_graph_equality`, a private module-level function here.
   IE, two called graphs will both exist in the resulting structure if and
   only if they do *not* compare to equal under `_called_graph_equality`.
 
+  Notice that we should never encounter Selections from Tuples here, by
+  preprocessing before passing to TensorFlow code generations.
 
   Transforms the pattern:
 
                             Tuple
                         /   ...     \
-                  Selection         Similar
+                     Tuple         Similar
                       |
+                     ...
+                     Tuple
+                     ...
                   Selection
                      ...
                      Call
@@ -1434,16 +1463,22 @@ class TupleOfSelectionsAndGraphs(transformation_utils.TransformSpec):
             Constructed graph       Constructed Tuple
   """
 
+  def _should_transform_helper(self, comp):
+    if isinstance(comp, building_blocks.Tuple):
+      return all(self._should_transform_helper(x) for x in comp)
+    elif isinstance(comp, building_blocks.Selection):
+      return not isinstance(
+          comp.source, building_blocks.Tuple) and self._should_transform_helper(
+              comp.source)
+    elif (isinstance(comp, building_blocks.Call) and
+          isinstance(comp.function, building_blocks.CompiledComputation)):
+      return True
+    return False
+
   def should_transform(self, comp):
     if not isinstance(comp, building_blocks.Tuple):
       return False
-    for elem in comp:
-      while isinstance(elem, building_blocks.Selection):
-        elem = elem.source
-      if not (isinstance(elem, building_blocks.Call) and
-              isinstance(elem.function, building_blocks.CompiledComputation)):
-        return False
-    return True
+    return self._should_transform_helper(comp)
 
   def transform(self, comp):
     if not self.should_transform(comp):

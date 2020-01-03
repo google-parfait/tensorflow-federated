@@ -2276,7 +2276,7 @@ class LambdaWrappingNoArgGraphTest(common_test.TestCase,
     self.assertEqual(result, 0)
 
 
-class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
+class NestedTupleOfSelectionsAndGraphsTest(common_test.TestCase):
 
   def _repack_constant_arg_as_python_structure(self, arg):
     """Repacks the tuple of no-arg functions in a Python structure."""
@@ -2288,18 +2288,21 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     return repacked_arg
 
   def test_should_transform_simple_tuple(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     simple_tuple = _create_simple_tuple_of_called_graphs()
     self.assertTrue(transformer.should_transform(simple_tuple))
 
-  def test_should_not_transform_nested_tuple(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+  def test_should_transform_nested_tuple(self):
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     simple_tuple = _create_simple_tuple_of_called_graphs()
     outer_tuple = building_blocks.Tuple([simple_tuple])
-    self.assertFalse(transformer.should_transform(outer_tuple))
+    self.assertTrue(transformer.should_transform(outer_tuple))
 
   def test_creates_correct_structure_from_simple_tuple(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     simple_tuple = _create_simple_tuple_of_called_graphs()
     transformed, _ = transformer.transform(simple_tuple)
     self.assertEqual(transformed.type_signature.compact_representation(),
@@ -2310,7 +2313,8 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertIsInstance(transformed.argument, building_blocks.Tuple)
 
   def test_executes_correctly_from_simple_tuple(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     simple_tuple = _create_simple_tuple_of_called_graphs()
     transformed, indicator = transformer.transform(simple_tuple)
     self.assertTrue(indicator)
@@ -2322,8 +2326,76 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertEqual(test_result[0], 1.)
     self.assertEqual(test_result[1], 1.)
 
+  def test_creates_correct_structure_from_nested_tuple(self):
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
+    simple_tuple = _create_simple_tuple_of_called_graphs()
+    outer_tuple = building_blocks.Tuple([simple_tuple])
+    transformed, _ = transformer.transform(outer_tuple)
+    self.assertEqual(transformed.type_signature.compact_representation(),
+                     outer_tuple.type_signature.compact_representation())
+    self.assertIsInstance(transformed, building_blocks.Call)
+    self.assertIsInstance(transformed.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsInstance(transformed.argument, building_blocks.Tuple)
+
+  def test_executes_correctly_from_nested_tuple(self):
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
+    simple_tuple = _create_simple_tuple_of_called_graphs()
+    outer_tuple = building_blocks.Tuple([simple_tuple])
+    transformed, indicator = transformer.transform(outer_tuple)
+    self.assertTrue(indicator)
+    self.assertEqual(transformed.type_signature.compact_representation(),
+                     outer_tuple.type_signature.compact_representation())
+    tf_proto = transformed.function.proto
+    arg = self._repack_constant_arg_as_python_structure(transformed.argument)
+    test_result = test_utils.run_tensorflow(tf_proto, arg)
+    self.assertLen(test_result, 1)
+    self.assertLen(test_result[0], 2)
+    self.assertEqual(test_result[0][0], 1.)
+    self.assertEqual(test_result[0][1], 1.)
+
+  def test_creates_correct_structure_from_nested_tuple_with_names(self):
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
+    simple_tuple = _create_simple_tuple_of_called_graphs()
+    outer_tuple = building_blocks.Tuple([
+        ('a', building_blocks.Tuple([('b', simple_tuple)]))
+    ])
+    transformed, _ = transformer.transform(outer_tuple)
+    self.assertEqual(transformed.type_signature.compact_representation(),
+                     outer_tuple.type_signature.compact_representation())
+    self.assertIsInstance(transformed, building_blocks.Call)
+    self.assertIsInstance(transformed.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsInstance(transformed.argument, building_blocks.Tuple)
+
+  def test_executes_correctly_from_nested_tuple_with_names(self):
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
+    simple_tuple = _create_simple_tuple_of_called_graphs()
+    outer_tuple = building_blocks.Tuple([
+        ('a', building_blocks.Tuple([('b', simple_tuple)]))
+    ])
+    transformed, indicator = transformer.transform(outer_tuple)
+    self.assertTrue(indicator)
+    self.assertEqual(transformed.type_signature.compact_representation(),
+                     outer_tuple.type_signature.compact_representation())
+    tf_proto = transformed.function.proto
+    arg = self._repack_constant_arg_as_python_structure(transformed.argument)
+    test_result = test_utils.run_tensorflow(tf_proto, arg)
+    self.assertLen(test_result, 1)
+    self.assertEqual(test_result._asdict().keys(), set('a'))
+    self.assertLen(test_result.a, 1)
+    self.assertEqual(test_result.a._asdict().keys(), set('b'))
+    self.assertLen(test_result.a.b, 2)
+    self.assertEqual(test_result.a.b[0], 1.)
+    self.assertEqual(test_result.a.b[1], 1.)
+
   def test_structure_and_type_signature_simple_selections(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     first_selection = _create_simple_selection_from_called_graph()
     second_selection = _create_simple_selection_from_called_graph()
     repacked_tuple = building_blocks.Tuple([first_selection, second_selection])
@@ -2336,7 +2408,8 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertIsInstance(transformed.argument, building_blocks.Tuple)
 
   def test_correct_execution_simple_selections(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     first_selection = _create_simple_selection_from_called_graph()
     second_selection = _create_simple_selection_from_called_graph()
     repacked_tuple = building_blocks.Tuple([first_selection, second_selection])
@@ -2347,7 +2420,8 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertEqual(test_result[1], 0.)
 
   def test_structure_and_type_signature_nested_selections(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     embedded_zero = building_block_factory.create_tensorflow_constant(
         [[[tf.int32]]], 0)
     embedded_one = building_block_factory.create_tensorflow_constant(
@@ -2370,7 +2444,8 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertIsInstance(transformed.argument, building_blocks.Tuple)
 
   def test_correct_execution_nested_selections(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     embedded_zero = building_block_factory.create_tensorflow_constant(
         [[[tf.int32]]], 0)
     embedded_one = building_block_factory.create_tensorflow_constant(
@@ -2391,7 +2466,8 @@ class TupleOfSelectionsAndGraphsTest(common_test.TestCase):
     self.assertEqual(test_result[1], 1)
 
   def test_correct_execution_swapped_nested_selection(self):
-    transformer = compiled_computation_transforms.TupleOfSelectionsAndGraphs()
+    transformer = compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(
+    )
     embedded_zero = building_block_factory.create_tensorflow_constant(
         [[[tf.int32, tf.float32], tf.int32]], 0)
     embedded_one = building_block_factory.create_tensorflow_constant(
