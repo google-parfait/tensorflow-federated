@@ -17,7 +17,7 @@
 import abc
 import os.path
 import re
-from typing import Any, List, Text, Tuple
+from typing import Any, List, Tuple
 
 from absl import logging
 import tensorflow as tf
@@ -98,8 +98,8 @@ class FileCheckpointManager(CheckpointManager):
   """
 
   def __init__(self,
-               root_dir: Text,
-               prefix: Text = 'ckpt_',
+               root_dir: str,
+               prefix: str = 'ckpt_',
                keep_total: int = 5,
                keep_first: bool = True):
     """Returns an initialized `FileCheckpointManager`.
@@ -200,7 +200,7 @@ class FileCheckpointManager(CheckpointManager):
         tf.io.gfile.rmtree(checkpoint_path)
         logging.info('Checkpoint removed: %s', checkpoint_path)
 
-  def _round_num(self, checkpoint_path: Text) -> int:
+  def _round_num(self, checkpoint_path: str) -> int:
     """Returns the round number for the given `checkpoint_path`."""
     match = self._round_num_expression.match(checkpoint_path)
     return int(match.group(1)) if match else -1

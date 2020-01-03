@@ -24,7 +24,7 @@ import os.path
 import shutil
 import subprocess
 import tempfile
-from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Union
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Union
 
 from absl import flags
 from absl import logging
@@ -34,8 +34,8 @@ import tensorflow as tf
 
 
 def iter_grid(
-    grid_dict: Mapping[Text, Sequence[Union[int, float, Text]]]
-) -> Iterator[Dict[Text, Union[int, float, Text]]]:
+    grid_dict: Mapping[str, Sequence[Union[int, float, str]]]
+) -> Iterator[Dict[str, Union[int, float, str]]]:
   """Iterates over all combinations of values in the provied dict-of-lists.
 
   >>> list(iter_grid({'a': [1, 2], 'b': [4.0, 5.0, 6.0]))
@@ -60,7 +60,7 @@ def iter_grid(
 
 
 def atomic_write_to_csv(dataframe: pd.DataFrame,
-                        output_file: Text,
+                        output_file: str,
                         overwrite: bool = True) -> None:
   """Writes `source` to `output_file` as a (possibly zipped) CSV file.
 
@@ -116,7 +116,7 @@ _SUPPORTED_OPTIMIZERS = {
 }
 
 
-def define_optimizer_flags(prefix: Text) -> None:
+def define_optimizer_flags(prefix: str) -> None:
   """Defines flags with `prefix` to configure an optimizer.
 
   This method is inteded to be paired with `create_optimizer_from_flags` using
@@ -209,8 +209,8 @@ def define_optimizer_flags(prefix: Text) -> None:
 
 
 def create_optimizer_from_flags(
-    prefix: Text,
-    overrides: Optional[Mapping[Text, Union[Text, float, int, bool]]] = None
+    prefix: str,
+    overrides: Optional[Mapping[str, Union[str, float, int, bool]]] = None
 ) -> tf.keras.optimizers.Optimizer:
   """Returns an optimizer based on prefixed flags.
 
@@ -421,7 +421,7 @@ def get_hparam_flags():
 
 
 @contextlib.contextmanager
-def record_new_flags() -> Iterator[List[Text]]:
+def record_new_flags() -> Iterator[List[str]]:
   """A context manager that returns all flags created in it's scope.
 
   This is useful to define all of the flags which should be considered
@@ -445,8 +445,8 @@ def record_new_flags() -> Iterator[List[Text]]:
 
 
 def hparams_to_str(wid: int,
-                   param_dict: Mapping[Text, Text],
-                   short_names: Optional[Mapping[Text, Text]] = None) -> Text:
+                   param_dict: Mapping[str, str],
+                   short_names: Optional[Mapping[str, str]] = None) -> str:
   """Convenience method which flattens the hparams to a string.
 
   Used as mapping function for the WorkUnitCustomiser.
@@ -492,11 +492,10 @@ def hparams_to_str(wid: int,
   return hparams_str
 
 
-def launch_experiment(executable: Text,
-                      grid_iter: Iterable[Mapping[Text, Union[int, float,
-                                                              Text]]],
-                      root_output_dir: Text = '/tmp/exp',
-                      short_names: Optional[Mapping[Text, Text]] = None,
+def launch_experiment(executable: str,
+                      grid_iter: Iterable[Mapping[str, Union[int, float, str]]],
+                      root_output_dir: str = '/tmp/exp',
+                      short_names: Optional[Mapping[str, str]] = None,
                       max_workers: int = 1):
   """Launch experiments of grid search in parallel or sequentially.
 
