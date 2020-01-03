@@ -3,10 +3,27 @@ package(default_visibility = ["//tensorflow_federated:__subpackages__"])
 licenses(["notice"])
 
 py_library(
+    name = "cifar100",
+    srcs = ["cifar100.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
+)
+
+py_test(
+    name = "cifar100_test",
+    size = "medium",
+    srcs = ["cifar100_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":cifar100"],
+)
+
+py_library(
     name = "datasets",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     deps = [
+        ":cifar100",
         ":dataset_utils",
         ":emnist",
         ":shakespeare",
