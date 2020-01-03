@@ -74,8 +74,7 @@ def build_encoded_broadcast(values, encoders):
 
   value_type = type_utils.type_from_tensors(values)
 
-  initial_state_fn = _build_initial_state_tf_computation(encoders)
-  state_type = initial_state_fn.type_signature.result
+  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
   encode_fn, decode_fn = _build_encode_decode_tf_computations_for_broadcast(
       state_type, value_type, encoders)
@@ -151,8 +150,7 @@ def build_encoded_sum(values, encoders):
 
   value_type = type_utils.type_from_tensors(values)
 
-  initial_state_fn = _build_initial_state_tf_computation(encoders)
-  state_type = initial_state_fn.type_signature.result
+  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
   nest_encoder = _build_tf_computations_for_gather(state_type, value_type,
                                                    encoders)
@@ -189,8 +187,7 @@ def build_encoded_mean(values, encoders):
 
   value_type = type_utils.type_from_tensors(values)
 
-  initial_state_fn = _build_initial_state_tf_computation(encoders)
-  state_type = initial_state_fn.type_signature.result
+  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
   nest_encoder = _build_tf_computations_for_gather(state_type, value_type,
                                                    encoders)
@@ -227,7 +224,7 @@ def _build_initial_state_tf_computation(encoders):
   def initial_state_fn():
     return tf.nest.map_structure(lambda e: e.initial_state(), encoders)
 
-  return initial_state_fn
+  return initial_state_fn, initial_state_fn.type_signature.result
 
 
 def _slice(encoders, nested_value, idx):

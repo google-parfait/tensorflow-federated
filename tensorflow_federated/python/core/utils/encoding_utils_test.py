@@ -249,9 +249,7 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec((20,), tf.float32)
     encoder = te.encoders.as_simple_encoder(encoder_constructor(), value_spec)
 
-    initial_state_fn = encoding_utils._build_initial_state_tf_computation(
-        encoder)
-    state_type = initial_state_fn.type_signature.result
+    _, state_type = encoding_utils._build_initial_state_tf_computation(encoder)
     value_type = tff.to_type(value_spec)
     encode_fn, decode_fn = (
         encoding_utils._build_encode_decode_tf_computations_for_broadcast(
@@ -283,9 +281,7 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec((20,), tf.float32)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
 
-    initial_state_fn = encoding_utils._build_initial_state_tf_computation(
-        encoder)
-    state_type = initial_state_fn.type_signature.result
+    _, state_type = encoding_utils._build_initial_state_tf_computation(encoder)
     value_type = tff.to_type(value_spec)
     nest_encoder = encoding_utils._build_tf_computations_for_gather(
         state_type, value_type, encoder)
