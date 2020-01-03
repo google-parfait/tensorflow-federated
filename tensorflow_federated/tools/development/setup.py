@@ -78,7 +78,6 @@ REQUIRED_PACKAGES = [
     'numpy~=1.14',
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
-    'six~=1.10',
     'tensorflow-addons~=0.6.0',
     'tensorflow-model-optimization~=0.1.3',
     'tensorflow-privacy~=0.2.0',
