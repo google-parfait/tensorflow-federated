@@ -32,6 +32,8 @@ class IntrinsicFactory(object):
   """A factory that can constructs intrinsics over the given context stack."""
 
   # NOTE: Tests for this class currently go to `api/intrinsics_test.py`.
+  # For more documentation on the specific behaviors of each intrinsic, see
+  # `api/intrinsics.py`.
 
   def __init__(self, context_stack):
     """Constructs this factory over the given context stack.
@@ -43,21 +45,7 @@ class IntrinsicFactory(object):
     self._context_stack = context_stack
 
   def federated_aggregate(self, value, zero, accumulate, merge, report):
-    """Implements `federated_aggregate` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-      zero: As in `api/intrinsics.py`.
-      accumulate: As in `api/intrinsics.py`.
-      merge: As in `api/intrinsics.py`.
-      report: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_aggregate` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     value = value_utils.ensure_federated_value(value, placements.CLIENTS,
                                                'value to be aggregated')
@@ -105,17 +93,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_broadcast(self, value):
-    """Implements `federated_broadcast` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_broadcast` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     value = value_utils.ensure_federated_value(value, placements.SERVER,
                                                'value to be broadcasted')
@@ -128,17 +106,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_collect(self, value):
-    """Implements `federated_collect` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_collect` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     value = value_utils.ensure_federated_value(value, placements.CLIENTS,
                                                'value to be collected')
@@ -148,18 +116,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map(self, fn, arg):
-    """Implements `federated_map` as defined in `api/intrinsics.py`.
-
-    Args:
-      fn: As in `api/intrinsics.py`.
-      arg: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_map` as defined in `api/intrinsics.py`."""
     # TODO(b/113112108): Possibly lift the restriction that the mapped value
     # must be placed at the server or clients. Would occur after adding support
     # for placement labels in the federated types, and expanding the type
@@ -206,21 +163,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map_all_equal(self, fn, arg):
-    """Implements `federated_map` as defined in `api/intrinsic.py`.
-
-    Implements `federated_map` as defined in `api/intrinsic.py` with an argument
-    with the `all_equal` bit set.
-
-    Args:
-      fn: As in `api/intrinsics.py`.
-      arg: As in `api/intrinsics.py`, with the `all_equal` bit set.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """`federated_map` with the `all_equal` bit set in the `arg` and return."""
     # TODO(b/113112108): Possibly lift the restriction that the mapped value
     # must be placed at the clients after adding support for placement labels
     # in the federated types, and expanding the type specification of the
@@ -249,18 +192,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_mean(self, value, weight):
-    """Implements `federated_mean` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-      weight: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_mean` as defined in `api/intrinsics.py`."""
     # TODO(b/113112108): Possibly relax the constraints on numeric types, and
     # inject implicit casts where appropriate. For instance, we might want to
     # allow `tf.int32` values as the input, and automatically cast them to
@@ -303,19 +235,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_reduce(self, value, zero, op):
-    """Implements `federated_reduce` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-      zero: As in `api/intrinsics.py`.
-      op: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_reduce` as defined in `api/intrinsics.py`."""
     # TODO(b/113112108): Since in most cases, it can be assumed that CLIENTS is
     # a non-empty collective (or else, the computation fails), specifying zero
     # at this level of the API should probably be optional. TBD.
@@ -346,17 +266,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_sum(self, value):
-    """Implements `federated_sum` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_sum` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     value = value_utils.ensure_federated_value(value, placements.CLIENTS,
                                                'value to be summed')
@@ -371,18 +281,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_value(self, value, placement):
-    """Implements `federated_value` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-      placement: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_value` as defined in `api/intrinsics.py`."""
     # TODO(b/113112108): Verify that neither the value, nor any of its parts
     # are of a federated type.
 
@@ -393,17 +292,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_zip(self, value):
-    """Implements `federated_zip` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `federated_zip` as defined in `api/intrinsics.py`."""
     # TODO(b/113112108): Extend this to accept *args.
 
     # TODO(b/113112108): We use the iterate/unwrap approach below because
@@ -423,18 +312,7 @@ class IntrinsicFactory(object):
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def sequence_map(self, fn, arg):
-    """Implements `sequence_map` as defined in `api/intrinsics.py`.
-
-    Args:
-      fn: As in `api/intrinsics.py`.
-      arg: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `sequence_map` as defined in `api/intrinsics.py`."""
     fn = value_impl.to_value(fn, None, self._context_stack)
     py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
     arg = value_impl.to_value(arg, None, self._context_stack)
@@ -467,19 +345,7 @@ class IntrinsicFactory(object):
               arg.type_signature))
 
   def sequence_reduce(self, value, zero, op):
-    """Implements `sequence_reduce` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-      zero: As in `api/intrinsics.py`.
-      op: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `sequence_reduce` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     zero = value_impl.to_value(zero, None, self._context_stack)
     op = value_impl.to_value(op, None, self._context_stack)
@@ -525,17 +391,7 @@ class IntrinsicFactory(object):
             value.type_signature.placement))
 
   def sequence_sum(self, value):
-    """Implements `sequence_sum` as defined in `api/intrinsics.py`.
-
-    Args:
-      value: As in `api/intrinsics.py`.
-
-    Returns:
-      As in `api/intrinsics.py`.
-
-    Raises:
-      TypeError: As in `api/intrinsics.py`.
-    """
+    """Implements `sequence_sum` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     if isinstance(value.type_signature, computation_types.SequenceType):
       element_type = value.type_signature.element
