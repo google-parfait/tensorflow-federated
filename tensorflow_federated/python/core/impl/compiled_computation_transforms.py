@@ -997,12 +997,10 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
     argument = comp.argument
     if not isinstance(function, building_blocks.CompiledComputation):
       return False
-    if not (isinstance(argument, building_blocks.Tuple) and
-            all(isinstance(x, building_blocks.Reference) for x in argument) and
-            len(argument) > 0):  # pylint: disable=g-explicit-length-test
+    if not (isinstance(argument, building_blocks.Tuple) and len(argument) > 0):  # pylint: disable=g-explicit-length-test
       return False
-    first_ref_name = argument[0].name
-    return all(x.name == first_ref_name for x in argument)
+    first_arg = argument[0]
+    return all(tree_analysis._trees_equal(x, first_arg) for x in argument[1:])  # pylint: disable=protected-access
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -1013,9 +1011,7 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
     logic_of_tf_comp = comp.function
     composed_tf = compose_tensorflow_blocks(
         [logic_of_tf_comp, preprocess_arg_comp])
-    single_arg = building_blocks.Reference(comp.argument[0].name,
-                                           comp.argument[0].type_signature)
-    called_tf = building_blocks.Call(composed_tf, single_arg)
+    called_tf = building_blocks.Call(composed_tf, comp.argument[0])
     return called_tf, True
 
 
@@ -1108,11 +1104,26 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
   While preserving semantics.
   """
 
+  def __init__(self, only_equal_args=False):
+    self._only_equal_args = only_equal_args
+
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Tuple) and
+    if not (isinstance(comp, building_blocks.Tuple) and
             all(isinstance(x, building_blocks.Call) for x in comp) and all(
                 isinstance(x.function, building_blocks.CompiledComputation)
-                for x in comp))
+                for x in comp)):
+      return False
+    if not self._only_equal_args:
+      return True
+    else:
+      if len(comp) == 0:  # pylint: disable=g-explicit-length-test
+        return False
+      arg_generator = (x.argument for x in comp)
+      first_arg = next(arg_generator)
+      if first_arg is None:
+        return all(x is None for x in arg_generator)
+      return all(
+          tree_analysis._trees_equal(x, first_arg) for x in arg_generator)  # pylint: disable=protected-access
 
   def transform(self, comp):
     if not self.should_transform(comp):
