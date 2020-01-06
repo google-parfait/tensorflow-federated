@@ -1368,12 +1368,10 @@ class TFParser(object):
       `transformation_utils.transform_postorder`.
     """
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-    modified = False
     for option in self._parse_library:
       if option.should_transform(comp):
-        comp, inner_modified = option.transform(comp)
-        modified = modified or inner_modified
-    return comp, modified
+        return option.transform(comp)
+    return comp, False
 
 
 class IntermediateParser(TFParser):
@@ -1382,7 +1380,6 @@ class IntermediateParser(TFParser):
     """Populates the parser library with first-pass transforms."""
     super(IntermediateParser, self).__init__()
     self._parse_library = [
-        compiled_computation_transforms.TupleCalledGraphs(only_equal_args=True),
         compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(),
     ]
 
