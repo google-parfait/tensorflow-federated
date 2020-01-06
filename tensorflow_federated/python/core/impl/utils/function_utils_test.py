@@ -29,24 +29,6 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
 
 
-class SimpleArgSpecTest(test.TestCase):
-
-  def test_str(self):
-    arg_spec = function_utils.SimpleArgSpec(
-        args=[], varargs=[], keywords=[], defaults=[])
-    self.assertEqual('()', str(arg_spec))
-
-    arg_spec = function_utils.SimpleArgSpec(
-        args=[1, 2, 3], varargs=[], keywords=[], defaults=[])
-    self.assertEqual('(args=[1, 2, 3])', str(arg_spec))
-
-    arg_spec = function_utils.SimpleArgSpec(
-        args=[1], varargs=[2., True], keywords={'a': 'b'}, defaults={'x': 3})
-    self.assertEqual(
-        "(args=[1], varargs=[2.0, True], kwargs={'a': 'b'}, defaults={'x': 3})",
-        str(arg_spec))
-
-
 class NoopIngestContextForTest(context_base.Context):
 
   def ingest(self, val, type_spec):
@@ -57,7 +39,7 @@ class NoopIngestContextForTest(context_base.Context):
     raise NotImplementedError
 
 
-class FuncUtilsTest(test.TestCase, parameterized.TestCase):
+class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_is_defun(self):
     self.assertTrue(function_utils.is_defun(tf.function(lambda x: None)))
@@ -67,9 +49,9 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertFalse(function_utils.is_defun(None))
 
   def test_get_defun_argspec_with_typed_non_eager_defun(self):
-    # In a non-eager function with a defined input signature, **kwargs or
-    # default values are not allowed, but *args are, and the input signature may
-    # overlap with *args.
+    # In a tf.function with a defined input signature, **kwargs or default
+    # values are not allowed, but *args are, and the input signature may overlap
+    # with *args.
     fn = tf.function(lambda x, y, *z: None, (
         tf.TensorSpec(None, tf.int32),
         tf.TensorSpec(None, tf.bool),
@@ -77,18 +59,24 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
         tf.TensorSpec(None, tf.float32),
     ))
     self.assertEqual(
-        function_utils.get_argspec(fn),
-        function_utils.SimpleArgSpec(
-            args=['x', 'y'], varargs='z', keywords=None, defaults=None))
+        collections.OrderedDict(function_utils.get_signature(fn).parameters),
+        collections.OrderedDict(
+            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
+        ))
 
   def test_get_defun_argspec_with_untyped_non_eager_defun(self):
-    # In a non-eager function with no input signature, the same restrictions as
-    # in a typed eager function apply.
+    # In a tf.function with no input signature, the same restrictions as in a
+    # typed eager function apply.
     fn = tf.function(lambda x, y, *z: None)
     self.assertEqual(
-        function_utils.get_argspec(fn),
-        function_utils.SimpleArgSpec(
-            args=['x', 'y'], varargs='z', keywords=None, defaults=None))
+        collections.OrderedDict(function_utils.get_signature(fn).parameters),
+        collections.OrderedDict(
+            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
+        ))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -115,13 +103,12 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
           # Values of 'kwargs' to test.
           [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
   # pyformat: enable
-  def test_get_callargs_for_argspec(self, fn, args, kwargs):
-    argspec = function_utils.get_argspec(fn)
+  def test_get_callargs_for_signature(self, fn, args, kwargs):
+    signature = function_utils.get_signature(fn)
     expected_error = None
     try:
       signature = inspect.signature(fn)
       bound_arguments = signature.bind(*args, **kwargs)
-      bound_arguments.apply_defaults()
       expected_callargs = bound_arguments.arguments
     except TypeError as e:
       expected_error = e
@@ -130,26 +117,25 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
     result_callargs = None
     if expected_error is None:
       try:
-        result_callargs = function_utils.get_callargs_for_argspec(
-            argspec, *args, **kwargs)
-        self.assertEqual(result_callargs, expected_callargs)
+        bound_args = signature.bind(*args, **kwargs).arguments
+        self.assertEqual(bound_args, expected_callargs)
       except (TypeError, AssertionError) as test_err:
         raise AssertionError(
-            'With argspec {!s}, args {!s}, kwargs {!s}, expected callargs {!s} '
-            'and error {!s}, tested function returned {!s} and the test has '
-            'failed with message: {!s}'.format(argspec, args, kwargs,
-                                               expected_callargs,
-                                               expected_error, result_callargs,
-                                               test_err))
+            'With signature `{!s}`, args {!s}, kwargs {!s}, expected bound '
+            'args {!s} and error {!s}, tested function returned {!s} and the '
+            'test has failed with message: {!s}'.format(signature, args, kwargs,
+                                                        expected_callargs,
+                                                        expected_error,
+                                                        result_callargs,
+                                                        test_err))
     else:
       with self.assertRaises(TypeError):
-        result_callargs = function_utils.get_callargs_for_argspec(
-            argspec, *args, **kwargs)
+        _ = signature.bind(*args, **kwargs)
 
   # pyformat: disable
   # pylint: disable=g-complex-comprehension
   @parameterized.parameters(
-      (function_utils.get_argspec(params[0]),) + params[1:]
+      (function_utils.get_signature(params[0]),) + params[1:]
       for params in [
           (lambda a: None, [tf.int32], {}),
           (lambda a, b=True: None, [tf.int32, tf.bool], {}),
@@ -160,16 +146,17 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   )
   # pylint: enable=g-complex-comprehension
   # pyformat: enable
-  def test_is_argspec_compatible_with_types_true(self, argspec, args, kwargs):
+  def test_is_signature_compatible_with_types_true(self, signature, args,
+                                                   kwargs):
     self.assertTrue(
-        function_utils.is_argspec_compatible_with_types(
-            argspec, *[computation_types.to_type(a) for a in args],
+        function_utils.is_signature_compatible_with_types(
+            signature, *[computation_types.to_type(a) for a in args],
             **{k: computation_types.to_type(v) for k, v in kwargs.items()}))
 
   # pyformat: disable
   # pylint: disable=g-complex-comprehension
   @parameterized.parameters(
-      (function_utils.get_argspec(params[0]),) + params[1:]
+      (function_utils.get_signature(params[0]),) + params[1:]
       for params in [
           (lambda a=True: None, [tf.int32], {}),
           (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}),
@@ -177,10 +164,11 @@ class FuncUtilsTest(test.TestCase, parameterized.TestCase):
   )
   # pylint: enable=g-complex-comprehension
   # pyformat: enable
-  def test_is_argspec_compatible_with_types_false(self, argspec, args, kwargs):
+  def test_is_signature_compatible_with_types_false(self, signature, args,
+                                                    kwargs):
     self.assertFalse(
-        function_utils.is_argspec_compatible_with_types(
-            argspec, *[computation_types.to_type(a) for a in args],
+        function_utils.is_signature_compatible_with_types(
+            signature, *[computation_types.to_type(a) for a in args],
             **{k: computation_types.to_type(v) for k, v in kwargs.items()}))
 
   # pyformat: disable

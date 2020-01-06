@@ -67,10 +67,9 @@ def _wrap(fn, parameter_type, wrapper_fn):
     fn_name = fn.__name__
   except AttributeError:
     fn_name = None
-  argspec = function_utils.get_argspec(fn)
+  signature = function_utils.get_signature(fn)
   parameter_type = computation_types.to_type(parameter_type)
-  if parameter_type is None and (argspec.args or argspec.varargs or
-                                 argspec.keywords):
+  if parameter_type is None and signature.parameters:
     # There is no TFF type specification, and the function/defun declares
     # parameters. Create a polymorphic template.
     def _wrap_polymorphic(wrapper_fn, fn, parameter_type, name=fn_name):
