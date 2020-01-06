@@ -13,8 +13,13 @@ py_test(
     name = "cifar100_test",
     size = "medium",
     srcs = ["cifar100_test.py"],
+    local = True,
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "manual",
+        "nopresubmit",
+    ],
     deps = [":cifar100"],
 )
 
@@ -65,8 +70,13 @@ py_test(
     name = "emnist_test",
     size = "small",
     srcs = ["emnist_test.py"],
+    local = True,
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "manual",
+        "nopresubmit",
+    ],
     deps = [":emnist"],
 )
 
