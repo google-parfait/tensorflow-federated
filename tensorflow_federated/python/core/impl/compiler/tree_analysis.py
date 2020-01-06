@@ -366,13 +366,15 @@ def _compiled_comp_equal(comp_1, comp_2):
   return graphdef_1 == graphdef_2
 
 
-def _trees_equal(comp_1, comp_2):
+def trees_equal(comp_1, comp_2):
   """Returns `True` if the computations are entirely identical.
 
-  If you pass objects other than instances of
-  `building_blocks.ComputationBuildingBlock` this function will
-  return `False`. Structurally equivalent computations with different variable
-  names or different operation orderings are not considered to be equal.
+  Structurally equivalent computations with different variable
+  names or different operation orderings are not considered to be equal. If
+  either argument is `None`, returns true if and only if both arguments are
+  `None`. Note that this is the desired semantics here, since `None` can appear
+  as the argument to a `building_blocks.Call` and therefore is considered a
+  valid tree.
 
   Args:
     comp_1: A `building_blocks.ComputationBuildingBlock` to test.
@@ -388,10 +390,14 @@ def _trees_equal(comp_1, comp_2):
   # needs to be public. There is a necessary dependency on this function from
   # the TFF-to-TF code generation pipeline, in order to detect some structural
   # equivalence while generating TensorFlow. It was decided that it is
-  # preferable to expose a dependency on this "private" function, and file the
+  # preferable to expose a dependency on this function, and file the
   # bug here, rather than effectively duplicate the logic elsewhere.
-  py_typecheck.check_type(comp_1, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(comp_2, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp_1, (building_blocks.ComputationBuildingBlock, type(None)))
+  py_typecheck.check_type(
+      comp_2, (building_blocks.ComputationBuildingBlock, type(None)))
+  if comp_1 is None or comp_2 is None:
+    return comp_1 is None and comp_2 is None
   if comp_1 is comp_2:
     return True
   # The unidiomatic-typecheck is intentional, for the purposes of equality this
@@ -402,19 +408,18 @@ def _trees_equal(comp_1, comp_2):
   if comp_1.type_signature != comp_2.type_signature:
     return False
   if isinstance(comp_1, building_blocks.Block):
-    if not _trees_equal(comp_1.result, comp_2.result):
+    if not trees_equal(comp_1.result, comp_2.result):
       return False
     if len(comp_1.locals) != len(comp_2.locals):
       return False
     for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
                                                     comp_2.locals):
-      if name_1 != name_2 or not _trees_equal(value_1, value_2):
+      if name_1 != name_2 or not trees_equal(value_1, value_2):
         return False
     return True
   elif isinstance(comp_1, building_blocks.Call):
-    return (_trees_equal(comp_1.function, comp_2.function) and
-            (comp_1.argument is None and comp_2.argument is None or
-             _trees_equal(comp_1.argument, comp_2.argument)))
+    return (trees_equal(comp_1.function, comp_2.function) and
+            trees_equal(comp_1.argument, comp_2.argument))
   elif isinstance(comp_1, building_blocks.CompiledComputation):
     return _compiled_comp_equal(comp_1, comp_2)
   elif isinstance(comp_1, building_blocks.Data):
@@ -424,20 +429,20 @@ def _trees_equal(comp_1, comp_2):
   elif isinstance(comp_1, building_blocks.Lambda):
     return (comp_1.parameter_name == comp_2.parameter_name and
             comp_1.parameter_type == comp_2.parameter_type and
-            _trees_equal(comp_1.result, comp_2.result))
+            trees_equal(comp_1.result, comp_2.result))
   elif isinstance(comp_1, building_blocks.Placement):
     return comp_1.uri == comp_2.uri
   elif isinstance(comp_1, building_blocks.Reference):
     return comp_1.name == comp_2.name
   elif isinstance(comp_1, building_blocks.Selection):
     return (comp_1.name == comp_2.name and comp_1.index == comp_2.index and
-            _trees_equal(comp_1.source, comp_2.source))
+            trees_equal(comp_1.source, comp_2.source))
   elif isinstance(comp_1, building_blocks.Tuple):
     # The element names are checked as part of the `type_signature`.
     if len(comp_1) != len(comp_2):
       return False
     for element_1, element_2 in zip(comp_1, comp_2):
-      if not _trees_equal(element_1, element_2):
+      if not trees_equal(element_1, element_2):
         return False
     return True
   raise NotImplementedError('Unexpected type found: {}.'.format(type(comp_1)))

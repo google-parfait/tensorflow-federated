@@ -595,7 +595,6 @@ def _construct_concatenated_type(type_list):
 
 def _called_graph_equality(comp1, comp2):
   """Structural equality function for called TensorFlow graphs."""
-  # pylint: disable=protected-access
   if comp1 is comp2:
     return True
   elif type(comp1.argument) != type(comp2.argument):  # pylint: disable=unidiomatic-typecheck
@@ -603,12 +602,11 @@ def _called_graph_equality(comp1, comp2):
   elif isinstance(comp1.function, building_blocks.Lambda) or isinstance(
       comp2.function, building_blocks.Lambda):
     return False
-  elif not tree_analysis._compiled_comp_equal(comp1.function, comp2.function):
+  elif not tree_analysis.trees_equal(comp1.function, comp2.function):
     return False
   elif comp1.argument is comp2.argument:
     return True
-  return tree_analysis._trees_equal(comp1.argument, comp2.argument)
-  # pylint: enable=protected-access
+  return tree_analysis.trees_equal(comp1.argument, comp2.argument)
 
 
 def construct_composed_function_capturing_selections(comp):

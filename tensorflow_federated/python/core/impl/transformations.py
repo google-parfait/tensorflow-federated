@@ -978,7 +978,7 @@ def remove_duplicate_block_locals(comp):
         else:
           value = new_value
       payloads_with_value = symbol_tree.get_all_payloads_with_value(
-          value, tree_analysis._trees_equal)  # pylint: disable=protected-access
+          value, tree_analysis.trees_equal)
       if payloads_with_value:
         highest_payload = payloads_with_value[-1]
         lower_payloads = payloads_with_value[:-1]
