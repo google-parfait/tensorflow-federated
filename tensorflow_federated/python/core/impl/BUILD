@@ -678,7 +678,7 @@ py_library(
 
 py_test(
     name = "intrinsic_bodies_test",
-    size = "small",
+    size = "medium",
     srcs = ["intrinsic_bodies_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
