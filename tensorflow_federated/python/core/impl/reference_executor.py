@@ -187,6 +187,12 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     return anonymous_tuple.AnonymousTuple(result_elements)
   elif isinstance(type_spec, computation_types.SequenceType):
     if isinstance(value, tf.data.Dataset):
+      inferred_type_spec = computation_types.SequenceType(
+          computation_types.to_type(tf.data.experimental.get_structure(value)))
+      if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
+        raise TypeError(
+            'Value of type {!s} not assignable to expected type {!s}'.format(
+                inferred_type_spec, type_spec))
       if tf.executing_eagerly():
         return [
             to_representation_for_type(v, type_spec.element, callable_handler)

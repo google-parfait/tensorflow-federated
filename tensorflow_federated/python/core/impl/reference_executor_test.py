@@ -104,6 +104,36 @@ class ReferenceExecutorTest(test.TestCase):
         reference_executor.to_representation_for_type(
             foo, computation_types.SequenceType(tf.int32)), foo)
 
+  def test_to_representation_for_type_with_sequence_type_empty_tensor_slices(
+      self):
+    ds = tf.data.Dataset.from_tensor_slices([])
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            ds, computation_types.SequenceType(tf.float32)), [])
+    with self.assertRaisesRegex(TypeError, 'not assignable to expected type'):
+      reference_executor.to_representation_for_type(
+          ds, computation_types.SequenceType(tf.string))
+
+  def test_to_representation_for_type_with_sequence_type_empty_generator(self):
+
+    # A dummy generator to be able to force the types and shapes of the empty
+    # dataset.
+    def _empty_generator():
+      return iter(())
+
+    ds = tf.data.Dataset.from_generator(
+        _empty_generator,
+        output_types=(tf.int32, tf.float32),
+        output_shapes=((2,), (2, 4)))
+    self.assertEqual(
+        reference_executor.to_representation_for_type(
+            ds,
+            computation_types.SequenceType(
+                computation_types.NamedTupleType([
+                    (None, computation_types.TensorType(tf.int32, (2,))),
+                    (None, computation_types.TensorType(tf.float32, (2, 4))),
+                ]))), [])
+
   def test_to_representation_for_type_with_function_type(self):
 
     def foo(x):
@@ -416,10 +446,11 @@ class ReferenceExecutorTest(test.TestCase):
     def map_y_sum(x):
       return intrinsics.federated_map(test_batch_select_and_reduce, x)
 
-    ds = tf.data.Dataset.from_tensor_slices({
-        'x': [[1., 2.], [3., 4.]],
-        'y': [[5.], [6.]]
-    }).batch(1)
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1., 2.], [3., 4.]]),
+            ('y', [[5.], [6.]]),
+        ])).batch(1)
     self.assertEqual(map_y_sum([ds] * 5), [np.array([[11.]])] * 5)
 
   def test_batching_ordereddict_dataset(self):
