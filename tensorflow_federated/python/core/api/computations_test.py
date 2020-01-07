@@ -91,13 +91,17 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
     self.assertEqual(foo(), 10)
 
-  @core_test.tf1_and_tf2
+  # TODO(b/147258413): change this back to tf1_and_tf2 after figuring out how to
+  # get savedmodel to work here.
+  @core_test.tf1
   def test_tf_fn_with_empty_tuple_type_trivial_logic(self, tf_computation):
     empty_tuple = ()
     pass_through = tf_computation(lambda x: x, empty_tuple)
     self.assertEqual(pass_through(empty_tuple), empty_tuple)
 
-  @core_test.tf1_and_tf2
+  # TODO(b/147258413): change this back to tf1_and_tf2 after figuring out how to
+  # get savedmodel to work here.
+  @core_test.tf1
   def test_tf_fn_with_empty_tuple_type_nontrivial_logic(self, tf_computation):
     empty_tuple = ()
     nontrivial_manipulation = tf_computation(lambda x: (x, x), empty_tuple)

@@ -40,7 +40,7 @@ class TestSetDefaultExecutor(absltest.TestCase):
     self.assertEqual(v, 25)
 
     set_default_executor.set_default_executor()
-    self.assertIn('ReferenceExecutor',
+    self.assertIn('ExecutionContext',
                   str(type(context_stack_impl.context_stack.current).__name__))
 
 

@@ -275,10 +275,10 @@ py_library(
     srcs = ["context_stack_impl.py"],
     srcs_version = "PY3",
     deps = [
-        ":compiler_pipeline",
         ":context_base",
         ":context_stack_base",
-        ":reference_executor",
+        ":execution_context",
+        ":executor_stacks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -292,7 +292,7 @@ py_test(
     deps = [
         ":context_base",
         ":context_stack_impl",
-        ":reference_executor",
+        ":execution_context",
     ],
 )
 

@@ -18,15 +18,15 @@ import contextlib
 import threading
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import reference_executor
+from tensorflow_federated.python.core.impl import execution_context
+from tensorflow_federated.python.core.impl import executor_stacks
 
 
-def _make_default_context(stack):
-  return reference_executor.ReferenceExecutor(
-      compiler_pipeline.CompilerPipeline(stack))
+def _make_default_context():
+  return execution_context.ExecutionContext(
+      executor_stacks.create_local_executor())
 
 
 class ContextStackImpl(context_stack_base.ContextStack, threading.local):
@@ -34,7 +34,7 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
 
   def __init__(self):
     super().__init__()
-    self._stack = [_make_default_context(self)]
+    self._stack = [_make_default_context()]
 
   def set_default_context(self, ctx=None):
     """Places `ctx` at the bottom of the stack.
@@ -47,7 +47,7 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
     if ctx is not None:
       py_typecheck.check_type(ctx, context_base.Context)
     else:
-      ctx = _make_default_context(self)
+      ctx = _make_default_context()
     assert self._stack
     self._stack[0] = ctx
 
