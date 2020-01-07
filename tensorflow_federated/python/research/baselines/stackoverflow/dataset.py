@@ -36,18 +36,19 @@ def split_input_target(chunk):
 
 def build_to_ids_fn(vocab, max_seq_len):
   """Constructs function mapping examples to sequences of token indices."""
-  table_values = tf.constant([x for x in range(len(vocab))], dtype=tf.int64)
+
+  _, _, bos, eos = get_special_tokens(len(vocab))
+
+  table_values = tf.constant(range(len(vocab)), dtype=tf.int64)
   table = tf.lookup.StaticVocabularyTable(
       tf.lookup.KeyValueTensorInitializer(vocab, table_values),
       num_oov_buckets=1)
-
-  _, bos, eos, _ = get_special_tokens(len(vocab))
 
   def to_ids(example):
     sentence = tf.reshape(example['tokens'], shape=[1])
     words = tf.strings.split(sentence, sep=' ').values
     truncated_words = words[:max_seq_len]
-    tokens = table.lookup(truncated_words)
+    tokens = table.lookup(truncated_words) + 1  # Plus one for pad token.
     tokens = tf.cond(
         tf.less(tf.size(tokens), max_seq_len),
         lambda: tf.concat([tokens, [eos]], 0),
@@ -57,13 +58,12 @@ def build_to_ids_fn(vocab, max_seq_len):
   return to_ids
 
 
-def batch_and_split(dataset, max_seq_len, pad, epochs=1, batch_size=100):
+def batch_and_split(dataset, max_seq_len, epochs=1, batch_size=100):
   # Shape out to (max_seq_len+1) because split shortens by one.
   return (dataset
           .padded_batch(
               batch_size,
-              padded_shapes=max_seq_len + 1,
-              padding_values=tf.cast(pad, tf.int64))
+              padded_shapes=max_seq_len + 1)
           .map(split_input_target).repeat(epochs))
 
 
@@ -143,14 +143,14 @@ def construct_word_level_datasets(vocab_size, batch_size,
 
   to_ids = build_to_ids_fn(vocab, max_seq_len)
 
-  _, _, _, pad = get_special_tokens(len(vocab))
+  pad, _, _, _ = get_special_tokens(len(vocab))
 
   def preprocess_train(dataset):
     dataset = dataset.map(to_ids).take(max_training_elements_per_user)
     if shuffle_buffer_size:
       dataset = dataset.shuffle(shuffle_buffer_size)
-    return batch_and_split(dataset, max_seq_len, pad, client_epochs_per_round,
-                           batch_size)
+    return batch_and_split(
+        dataset, max_seq_len, client_epochs_per_round, batch_size)
 
   train = train.preprocess(preprocess_train)
 
@@ -169,31 +169,20 @@ def get_special_tokens(vocab_size):
   """Gets the ids of the four special tokens.
 
   The four special tokens are:
+    pad: padding token
     oov: out of vocabulary
     bos: begin of sentence
     eos: end of sentence
-    pad: padding token
 
   Args:
     vocab_size: The vocabulary size.
 
   Returns:
-    The four-tuple (oov, bos, eos, pad).
+    The four-tuple (pad, oov, bos, eos).
   """
-  oov = vocab_size
-  bos = oov + 1
-  eos = oov + 2
-  pad = oov + 3
+  pad = 0
+  oov = vocab_size + 1
+  bos = vocab_size + 2
+  eos = vocab_size + 3
 
-  return oov, bos, eos, pad
-
-
-def get_class_weight(vocab_size):
-  oov, bos, eos, pad = get_special_tokens(vocab_size)
-  class_weight = {x: 1.0 for x in range(vocab_size)}
-  class_weight[oov] = 0.0  # No credit for predicting OOV.
-  class_weight[bos] = 0.0  # Shouldn't matter since this is never a target.
-  class_weight[eos] = 1.0  # Model should learn to predict end of sentence.
-  class_weight[pad] = 0.0  # No credit for predicting pad.
-
-  return class_weight
+  return pad, oov, bos, eos

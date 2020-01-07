@@ -50,7 +50,7 @@ def create_recurrent_model(vocab_size,
   Returns:
     `tf.keras.Model`.
   """
-  extended_vocab_size = vocab_size + 4  # Count special tokens oov/bos/eos/pad.
+  extended_vocab_size = vocab_size + 4  # Count special tokens pad/oov/bos/eos.
 
   inputs = tf.keras.layers.Input(shape=(None,))
   input_embedding = TransposableEmbedding(

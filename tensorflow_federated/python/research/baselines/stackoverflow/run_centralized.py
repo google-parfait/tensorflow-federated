@@ -70,6 +70,40 @@ with utils_impl.record_new_flags() as hparam_flags:
 FLAGS = flags.FLAGS
 
 
+class MaskedCategoricalAccuracy(tf.keras.metrics.SparseCategoricalAccuracy):
+  """An accuracy metric that masks some tokens."""
+
+  def __init__(self,
+               masked_tokens,
+               name='accuracy',
+               dtype=None):
+    self._masked_tokens = masked_tokens or []
+    super().__init__(name, dtype=dtype)
+
+  def update_state(self, y_true, y_pred, sample_weight=None):
+    """Masks tokens and updates state.
+
+    Args:
+      y_true: Tensor representing ground truth of sequence model. Must contain
+        only nonnegative indices.
+      y_pred: Tensor representing per-element predictions over the sequence
+        model's vocabulary; should have total number of elements equal to the
+        total number of elements in `y_true` multiplied by `self._vocab_size`.
+      sample_weight: (Optional) Tensor representing the per-element weights for
+        computing accuracy over the sequence `y_true`. Must be broadcastable to
+        the flattened shape of `y_true`.
+
+    Returns:
+      Update Op.
+    """
+    if sample_weight is None:
+      sample_weight = tf.ones_like(y_true, tf.float32)
+    for token in self._masked_tokens:
+      mask = tf.cast(tf.not_equal(y_true, token), tf.float32)
+      sample_weight = sample_weight * mask
+    return super().update_state(y_true, y_pred, sample_weight)
+
+
 class AtomicCSVLogger(tf.keras.callbacks.Callback):
 
   def __init__(self, path):
@@ -106,6 +140,8 @@ def run_experiment():
   def _layer_fn():
     return recurrent_model(FLAGS.latent_size, return_sequences=True)
 
+  pad, oov, _, _ = dataset.get_special_tokens(FLAGS.vocab_size)
+
   model = models.create_recurrent_model(
       FLAGS.vocab_size,
       FLAGS.embedding_size,
@@ -118,7 +154,10 @@ def run_experiment():
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
       optimizer=optimizer,
-      weighted_metrics=['acc'])
+      metrics=[
+          MaskedCategoricalAccuracy([pad], 'accuracy_with_oov'),
+          MaskedCategoricalAccuracy([pad, oov], 'accuracy_no_oov')
+      ])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
                                     'train_results')
@@ -155,13 +194,10 @@ def run_experiment():
                               'hparams.csv')
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
-  class_weight = dataset.get_class_weight(FLAGS.vocab_size)
-
   model.fit(
       train_set,
       epochs=FLAGS.epochs,
       verbose=1,
-      class_weight=class_weight,
       validation_data=validation_set,
       callbacks=[train_csv_logger, train_tensorboard_callback])
   score = model.evaluate(

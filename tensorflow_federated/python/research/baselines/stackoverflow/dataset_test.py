@@ -52,8 +52,8 @@ class DatasetTest(test.TestCase):
 
   def test_build_to_ids(self):
     data = {'tokens': 'A B X'}
-    oov, bos, eos, _ = dataset.get_special_tokens(len(VOCAB))
-    expected = [bos, 0, 1, oov, eos]
+    _, oov, bos, eos = dataset.get_special_tokens(len(VOCAB))
+    expected = [bos, 1, 2, oov, eos]
     for max_seq_len in range(1, 8):
       to_ids_fn = dataset.build_to_ids_fn(VOCAB, max_seq_len)
       processed = to_ids_fn(data)
@@ -62,12 +62,12 @@ class DatasetTest(test.TestCase):
 
   def test_batch_and_split(self):
     raw_data = {'tokens': 'A Z C'}
-    oov, bos, eos, pad = dataset.get_special_tokens(len(VOCAB))
-    expected = [bos, 0, oov, 2, eos, pad, pad, pad]
+    pad, oov, bos, eos = dataset.get_special_tokens(len(VOCAB))
+    expected = [bos, 1, oov, 3, eos, pad, pad, pad]
     for max_seq_len in range(1, 8):
       to_ids_fn = dataset.build_to_ids_fn(VOCAB, max_seq_len)
       data = tf.data.Dataset.from_tensor_slices([to_ids_fn(raw_data)])
-      batched = dataset.batch_and_split(data, max_seq_len, pad)
+      batched = dataset.batch_and_split(data, max_seq_len)
       sample_elem = next(iter(batched))
       result = self.evaluate(sample_elem)
       correct = ([expected[:max_seq_len]], [expected[1:max_seq_len+1]])
