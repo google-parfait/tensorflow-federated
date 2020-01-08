@@ -290,10 +290,26 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_base",
         ":context_stack_impl",
+        ":context_stack_test_utils",
         ":execution_context",
     ],
+)
+
+py_library(
+    name = "context_stack_test_utils",
+    srcs = ["context_stack_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [":context_base"],
+)
+
+py_test(
+    name = "context_stack_test_utils_test",
+    size = "small",
+    srcs = ["context_stack_test_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":context_stack_test_utils"],
 )
 
 py_library(

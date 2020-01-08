@@ -117,3 +117,61 @@ py_test(
         "//tensorflow_federated/python/core/impl:eager_executor",
     ],
 )
+
+py_library(
+    name = "get_context_stack",
+    srcs = ["get_context_stack.py"],
+    srcs_version = "PY3",
+    # TODO(b/143772942): Explicitly setting visibility is temporary and can be
+    # removed once  all the appropriate modules have been moved out of the
+    # `impl` package.
+    visibility = default_visibility + [
+        "//tensorflow_federated/python/core/impl:__pkg__",
+    ],
+    deps = [
+        "//tensorflow_federated/python/core/impl:context_stack_impl",
+    ],
+)
+
+py_test(
+    name = "get_context_stack_test",
+    size = "small",
+    srcs = ["get_context_stack_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":get_context_stack",
+        "//tensorflow_federated/python/core/impl:context_stack_impl",
+        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
+        "//tensorflow_federated/python/core/impl:execution_context",
+    ],
+)
+
+py_library(
+    name = "set_default_context",
+    srcs = ["set_default_context.py"],
+    srcs_version = "PY3",
+    # TODO(b/143772942): Explicitly setting visibility is temporary and can be
+    # removed once  all the appropriate modules have been moved out of the
+    # `impl` package.
+    visibility = default_visibility + [
+        "//tensorflow_federated/python/core/impl:__pkg__",
+    ],
+    deps = [
+        "//tensorflow_federated/python/core/impl:context_stack_impl",
+    ],
+)
+
+py_test(
+    name = "set_default_context_test",
+    size = "small",
+    srcs = ["set_default_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":get_context_stack",
+        ":set_default_context",
+        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
+        "//tensorflow_federated/python/core/impl:execution_context",
+    ],
+)

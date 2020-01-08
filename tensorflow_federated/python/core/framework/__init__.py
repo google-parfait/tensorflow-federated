@@ -43,6 +43,8 @@ from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_h
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
 from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
+from tensorflow_federated.python.core.impl.context_base import Context
+from tensorflow_federated.python.core.impl.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
 from tensorflow_federated.python.core.impl.executor_base import Executor
 from tensorflow_federated.python.core.impl.executor_service import ExecutorService
@@ -68,6 +70,8 @@ from tensorflow_federated.python.core.impl.type_utils import transform_type_post
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.wrappers.computation_wrapper_instances import building_block_to_computation
+from tensorflow_federated.python.core.impl.wrappers.get_context_stack import get_context_stack
+from tensorflow_federated.python.core.impl.wrappers.set_default_context import set_default_context
 from tensorflow_federated.python.core.impl.wrappers.set_default_executor import set_default_executor
 
 # Used by doc generation script.
@@ -79,6 +83,8 @@ _allowed_symbols = [
     "CompositeExecutor",
     "ComputationBuildingBlock",
     "ConcurrentExecutor",
+    "Context",
+    "ContextStack",
     "EagerExecutor",
     "Executor",
     "ExecutorService",
@@ -108,6 +114,7 @@ _allowed_symbols = [
     "create_federated_zip",
     "create_local_executor",
     "create_worker_pool_executor",
+    "get_context_stack",
     "get_map_of_unbound_references",
     "inline_block_locals",
     "insert_called_tf_identity_at_leaves",
@@ -118,6 +125,7 @@ _allowed_symbols = [
     "remove_lambdas_and_blocks",
     "remove_mapped_or_applied_identity",
     "replace_called_lambda_with_block",
+    "set_default_context",
     "set_default_executor",
     "transform_postorder",
     "transform_type_postorder",

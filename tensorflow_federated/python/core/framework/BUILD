@@ -10,6 +10,8 @@ py_library(
         "//tensorflow_federated/python/core/impl:caching_executor",
         "//tensorflow_federated/python/core/impl:composite_executor",
         "//tensorflow_federated/python/core/impl:concurrent_executor",
+        "//tensorflow_federated/python/core/impl:context_base",
+        "//tensorflow_federated/python/core/impl:context_stack_base",
         "//tensorflow_federated/python/core/impl:eager_executor",
         "//tensorflow_federated/python/core/impl:executor_base",
         "//tensorflow_federated/python/core/impl:executor_service",
@@ -29,6 +31,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
+        "//tensorflow_federated/python/core/impl/wrappers:get_context_stack",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_context",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
