@@ -1391,6 +1391,18 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
     self.assertEqual(comp_impl((1,)), transformed_comp_impl((1,)))
 
+  def test_cardinalities_inferred_before_function_ingested(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            (computation_types.SequenceType(tf.string)), placements.CLIENTS))
+    def compute_clients(examples):
+      del examples  # Unused
+      return intrinsics.federated_sum(
+          intrinsics.federated_value(1, placements.CLIENTS))
+
+    self.assertEqual(compute_clients([['a', 'b', 'c'], ['a'], ['a', 'b']]), 3)
+
 
 if __name__ == '__main__':
   # We need to be able to individually test all components of the executor, and

@@ -631,6 +631,23 @@ class ReferenceExecutor(context_base.Context):
     comp = self._compile(fn)
     cardinalities = {}
     root_context = ComputationContext(cardinalities=cardinalities)
+    if arg is not None:
+
+      def _handle_callable(fn, fn_type):
+        py_typecheck.check_type(fn, computation_base.Computation)
+        type_utils.check_assignable_from(fn.type_signature, fn_type)
+        computed_fn = self._compute(self._compile(fn), root_context)
+        return computed_fn.value
+
+      computed_arg = ComputedValue(
+          to_representation_for_type(arg, comp.type_signature.parameter,
+                                     _handle_callable),
+          comp.type_signature.parameter)
+      cardinalities.update(
+          runtime_utils.infer_cardinalities(computed_arg.value,
+                                            computed_arg.type_signature))
+    else:
+      computed_arg = None
     computed_comp = self._compute(comp, root_context)
     type_utils.check_assignable_from(comp.type_signature,
                                      computed_comp.type_signature)
@@ -651,31 +668,13 @@ class ReferenceExecutor(context_base.Context):
 
     if not isinstance(computed_comp.type_signature,
                       computation_types.FunctionType):
-      if arg is not None:
+      if computed_arg is not None:
         raise TypeError('Unexpected argument {}.'.format(arg))
       else:
         value = computed_comp.value
         result_type = fn.type_signature.result
         return _convert_to_py_container(value, result_type)
     else:
-      if arg is not None:
-
-        def _handle_callable(fn, fn_type):
-          py_typecheck.check_type(fn, computation_base.Computation)
-          type_utils.check_assignable_from(fn.type_signature, fn_type)
-          computed_fn = self._compute(self._compile(fn), root_context)
-          return computed_fn.value
-
-        computed_arg = ComputedValue(
-            to_representation_for_type(arg,
-                                       computed_comp.type_signature.parameter,
-                                       _handle_callable),
-            computed_comp.type_signature.parameter)
-        cardinalities.update(
-            runtime_utils.infer_cardinalities(computed_arg.value,
-                                              computed_arg.type_signature))
-      else:
-        computed_arg = None
       result = computed_comp.value(computed_arg)
       py_typecheck.check_type(result, ComputedValue)
       type_utils.check_assignable_from(comp.type_signature.result,
