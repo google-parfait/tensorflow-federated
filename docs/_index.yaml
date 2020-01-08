@@ -99,10 +99,10 @@ landing_page:
         path: https://www.youtube.com/watch?v=1YbPmkChcbo
     - heading: "Introducing TensorFlow Federated"
       image_path: /resources/images/tf-logo-card-16x9.png
-      path: https://medium.com/tensorflow/introducing-tensorflow-federated-a4147aa20041
+      path: https://blog.tensorflow.org/2019/03/introducing-tensorflow-federated.html
       buttons:
       - label: "Read on TensorFlow blog"
-        path: https://medium.com/tensorflow/introducing-tensorflow-federated-a4147aa20041
+        path: https://blog.tensorflow.org/2019/03/introducing-tensorflow-federated.html
     - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
       image_path: /resources/images/google-research-card-16x9.png
       path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
