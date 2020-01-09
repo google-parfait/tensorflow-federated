@@ -35,10 +35,7 @@ from tensorflow_federated.python.core.impl import executor_service_utils
 
 
 class ExecutorService(executor_pb2_grpc.ExecutorServicer):
-  """A wrapper around a target executor that makes it into a gRPC service.
-
-  NOTE: This component is only available in Python 3.
-  """
+  """A wrapper around a target executor that makes it into a gRPC service."""
 
   def __init__(self, executor, *args, **kwargs):
     py_typecheck.check_type(executor, executor_base.Executor)

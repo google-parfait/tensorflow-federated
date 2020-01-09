@@ -166,10 +166,7 @@ class _BidiStream:
 
 
 class RemoteExecutor(executor_base.Executor):
-  """The remote executor is a local proxy for a remote executor instance.
-
-  NOTE: This component is only available in Python 3.
-  """
+  """The remote executor is a local proxy for a remote executor instance."""
 
   # TODO(b/134543154): Switch to using an asynchronous gRPC client so we don't
   # have to block on all those calls.

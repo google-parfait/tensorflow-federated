@@ -27,8 +27,6 @@ class TransformingExecutor(executor_base.Executor):
 
   This executor only performs transformations. All other aspects of execution
   are delegated to the underlying target executor.
-
-  NOTE: This component is only available in Python 3.
   """
 
   def __init__(self, transformation_fn, target_executor):

@@ -152,8 +152,6 @@ def _create_inferred_cardinality_executor_fn(max_fanout):
 def create_local_executor(num_clients=None, max_fanout=100):
   """Constructs an executor to execute computations on the local machine.
 
-  NOTE: This function is only available in Python 3.
-
   Args:
     num_clients: The number of clients. If specified, the executor factory
       function returned by `create_local_executor` will be configured to have

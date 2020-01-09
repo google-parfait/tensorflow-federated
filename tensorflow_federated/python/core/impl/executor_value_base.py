@@ -24,8 +24,6 @@ class ExecutorValue(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   The embedded values may represent computations in-flight that may materialize
   in the future or fail before they materialize.
-
-  NOTE: This component is only available in Python 3.
   """
 
   @abc.abstractmethod

@@ -18,10 +18,7 @@ import abc
 
 
 class Executor(object, metaclass=abc.ABCMeta):
-  """Represents the abstract interface that all executors must implement.
-
-  NOTE: This component is only available in Python 3.
-  """
+  """Represents the abstract interface that all executors must implement."""
 
   # TODO(b/134543154): Migrate the reference executor over this new interface.
 

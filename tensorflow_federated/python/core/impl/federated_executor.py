@@ -127,8 +127,6 @@ class FederatedExecutorValue(executor_value_base.ExecutorValue):
 class FederatedExecutor(executor_base.Executor):
   """The federated executor orchestrates federated computations.
 
-  NOTE: This component is only available in Python 3.
-
   The intrinsics currently implemented include:
   - federated_aggregate
   - federated_apply

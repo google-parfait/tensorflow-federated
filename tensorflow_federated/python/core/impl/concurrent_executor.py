@@ -28,8 +28,6 @@ class ConcurrentExecutor(executor_base.Executor):
 
   This executor only handles threading. It delegates all execution to an
   underlying pool of target executors.
-
-  NOTE: This component is only available in Python 3.
   """
 
   # TODO(b/134543154): Upgrade this to a threadpool with multiple workers,
