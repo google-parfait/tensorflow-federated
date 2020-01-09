@@ -72,10 +72,20 @@ class _BidiStream:
   """A bidi stream connection to the Executor service's Execute method."""
 
   def __init__(self, stub, thread_pool_executor):
+    self._stub = stub
+    self._thread_pool_executor = thread_pool_executor
+    self._is_initialized = False
+
+  def _lazy_init(self):
+    """Lazily initialize the underlying gRPC stream."""
+    if self._is_initialized:
+      return
+
+    logging.debug('Initializing RemoteExecutor stream')
+
     self._request_queue = queue.Queue()
     self._response_event_dict = {}
     self._stream_closed_event = threading.Event()
-    self._thread_pool_executor = thread_pool_executor
 
     def request_iter():
       """Iterator that blocks on the request Queue."""
@@ -97,7 +107,7 @@ class _BidiStream:
           # None means we are done processing
           return
 
-    response_iter = stub.Execute(request_iter())
+    response_iter = self._stub.Execute(request_iter())
 
     def response_thread_fn():
       """Consumes response iter and exposes the value on corresponding Event."""
@@ -120,9 +130,13 @@ class _BidiStream:
     response_thread.daemon = True
     response_thread.start()
 
+    self._is_initialized = True
+
   @executor_utils.log_async
   async def send_request(self, request):
     """Send a request on the bidi stream."""
+    self._lazy_init()
+
     py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
     request_type = request.WhichOneof('request')
     response_event = threading.Event()
@@ -141,9 +155,14 @@ class _BidiStream:
     return response
 
   def close(self):
-    self._request_queue.put(None)
-    # Wait for the stream to be closed
-    self._stream_closed_event.wait(_STREAM_CLOSE_WAIT_SECONDS)
+    if self._is_initialized:
+      logging.debug('Closing RemoteExecutor stream')
+
+      self._request_queue.put(None)
+      # Wait for the stream to be closed
+      self._stream_closed_event.wait(_STREAM_CLOSE_WAIT_SECONDS)
+    else:
+      logging.debug('Closing unused stream')
 
 
 class RemoteExecutor(executor_base.Executor):
@@ -171,10 +190,13 @@ class RemoteExecutor(executor_base.Executor):
         for the reply to a streaming RPC message. Uses the default Executor if
         not specified.
     """
+
     py_typecheck.check_type(channel, grpc.Channel)
     py_typecheck.check_type(rpc_mode, str)
     if rpc_mode not in ['REQUEST_REPLY', 'STREAMING']:
       raise ValueError('Invalid rpc_mode: {}'.format(rpc_mode))
+
+    logging.debug('Creating new ExecutorStub with RPC_MODE=%s', rpc_mode)
 
     self._stub = executor_pb2_grpc.ExecutorStub(channel)
     self._bidi_stream = None
