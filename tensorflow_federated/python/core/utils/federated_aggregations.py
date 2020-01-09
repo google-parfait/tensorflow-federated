@@ -161,11 +161,13 @@ def _zeros_for_sample(member_type):
 
   @tff.tf_computation
   def accumlator_type_fn():
+    """Gets the type for the accumulators."""
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if isinstance(member_type, tff.NamedTupleType):
       a = anonymous_tuple.map_structure(
           lambda v: tf.zeros([0] + v.shape.dims, v.dtype), member_type)
-      return _Samples(anonymous_tuple.to_odict(a), tf.zeros([0], tf.float32))
+      return _Samples(
+          anonymous_tuple.to_odict(a, True), tf.zeros([0], tf.float32))
     if member_type.shape:
       s = [0] + member_type.shape.dims
     return _Samples(tf.zeros(s, member_type.dtype), tf.zeros([0], tf.float32))
@@ -192,8 +194,10 @@ def _get_accumulator_type(member_type):
         lambda v: tff.TensorType(v.dtype, [None] + v.shape.dims), member_type)
     return tff.NamedTupleType(
         collections.OrderedDict({
-            'accumulators': tff.NamedTupleType(anonymous_tuple.to_odict(a)),
-            'rands': tff.TensorType(tf.float32, shape=[None])
+            'accumulators':
+                tff.NamedTupleType(anonymous_tuple.to_odict(a, True)),
+            'rands':
+                tff.TensorType(tf.float32, shape=[None])
         }))
   return tff.NamedTupleType(
       collections.OrderedDict({
@@ -260,8 +264,9 @@ def federated_sample(value, max_num_samples=100):
     rands = fed_concat_expand_dims(current.rands, tf.random.uniform(shape=()))
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if isinstance(member_type, tff.NamedTupleType):
-      accumulators = anonymous_tuple.map_structure(fed_concat_expand_dims,
-                                                   current.accumulators, value)
+      accumulators = anonymous_tuple.map_structure(
+          fed_concat_expand_dims, _ensure_anonymous_tuple(current.accumulators),
+          _ensure_anonymous_tuple(value))
     else:
       accumulators = fed_concat_expand_dims(current.accumulators, value)
 
@@ -270,9 +275,12 @@ def federated_sample(value, max_num_samples=100):
 
   @tff.tf_computation(accumulator_type, accumulator_type)
   def merge(a, b):
+    """Merges accumulators through concatenation."""
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if isinstance(accumulator_type, tff.NamedTupleType):
-      samples = anonymous_tuple.map_structure(fed_concat, a, b)
+      samples = anonymous_tuple.map_structure(fed_concat,
+                                              _ensure_anonymous_tuple(a),
+                                              _ensure_anonymous_tuple(b))
     else:
       samples = fed_concat(a, b)
     accumulators, rands = apply_sampling(samples.accumulators, samples.rands)
@@ -283,3 +291,7 @@ def federated_sample(value, max_num_samples=100):
     return value.accumulators
 
   return tff.federated_aggregate(value, zeros, accumulate, merge, report)
+
+
+def _ensure_anonymous_tuple(obj):
+  return anonymous_tuple.from_container(obj, True)

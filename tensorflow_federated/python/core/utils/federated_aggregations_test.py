@@ -244,6 +244,54 @@ class FederatedSampleTest(tf.test.TestCase):
     value = call_federated_sample([1.0] * 100 + [np.inf] * 100)
     self.assertAlmostEqual(np.count_nonzero(np.isinf(value)), 50, delta=10)
 
+  def test_federated_sample_named_tuple_type_of_ordered_dict(self):
+    dict_type = computation_types.to_type(
+        collections.OrderedDict([('x', tf.float32), ('y', tf.float32)]))
+
+    @computations.federated_computation(
+        computation_types.FederatedType(dict_type, placements.CLIENTS))
+    def call_federated_sample(value):
+      return federated_aggregations.federated_sample(value)
+
+    x = 0.0
+    y = 5.0
+    test_type = collections.namedtuple('NestedScalars', ['x', 'y'])
+    value = call_federated_sample(
+        [test_type(x, y),
+         test_type(3.4, 5.6),
+         test_type(1.0, 1.0)])
+    result = value._asdict()
+
+    self.assertIn(y, result['y'])
+    self.assertIn(x, result['x'])
+
+  def test_federated_sample_nested_named_tuples(self):
+    tuple_test_type = (
+        computation_types.NamedTupleType([('x', tf.float32),
+                                          ('y', tf.float32)]))
+    dict_test_type = (
+        computation_types.to_type(
+            collections.OrderedDict([('a', tf.float32), ('b', tf.float32)])))
+    nested_tuple_type = computation_types.NamedTupleType([
+        ('tuple_1', tuple_test_type), ('tuple_2', dict_test_type)
+    ])
+    nested_test_type = collections.namedtuple('Nested', ['tuple_1', 'tuple_2'])
+
+    @computations.federated_computation(
+        computation_types.FederatedType(nested_tuple_type, placements.CLIENTS))
+    def call_federated_sample(value):
+      return federated_aggregations.federated_sample(value)
+
+    tuple_type = collections.namedtuple('NestedScalars', ['x', 'y'])
+    dict_type = collections.namedtuple('NestedScalars', ['a', 'b'])
+    value = call_federated_sample([
+        nested_test_type(tuple_type(1.2, 2.2), dict_type(1.3, 8.8)),
+        nested_test_type(tuple_type(-9.1, 3.1), dict_type(1.2, -5.4))
+    ])._asdict(recursive=True)
+
+    self.assertIn(1.2, value['tuple_1']['x'])
+    self.assertIn(8.8, value['tuple_2']['b'])
+
 
 if __name__ == '__main__':
   test.main()
