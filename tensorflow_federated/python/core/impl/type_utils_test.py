@@ -900,20 +900,20 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         computation_types.FederatedType(tf.int32, placements.CLIENTS),
         placements.CLIENTS)
     with self.assertRaisesRegex(TypeError,
-                                'A {int32}@CLIENTS has been encountered'):
+                                '{int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(nest_federated)
     sequence_in_sequence = computation_types.SequenceType(
         computation_types.SequenceType([tf.int32]))
-    with self.assertRaisesRegex(TypeError, r'A <int32>\* has been encountered'):
+    with self.assertRaisesRegex(TypeError, r'<int32>\* has been encountered'):
       type_utils.check_well_formed(sequence_in_sequence)
     federated_fn = computation_types.FederatedType(
         computation_types.FunctionType(tf.int32, tf.int32), placements.CLIENTS)
     with self.assertRaisesRegex(TypeError,
-                                r'A \(int32 -> int32\) has been encountered'):
+                                r'\(int32 -> int32\) has been encountered'):
       type_utils.check_well_formed(federated_fn)
     tuple_federated_fn = computation_types.NamedTupleType([federated_fn])
     with self.assertRaisesRegex(TypeError,
-                                r'A \(int32 -> int32\) has been encountered'):
+                                r'\(int32 -> int32\) has been encountered'):
       type_utils.check_well_formed(tuple_federated_fn)
 
   def test_extra_well_formed_check_nested_types(self):
@@ -922,7 +922,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         placements.CLIENTS)
     tuple_federated_nest = computation_types.NamedTupleType([nest_federated])
     with self.assertRaisesRegex(TypeError,
-                                r'A {int32}@CLIENTS has been encountered'):
+                                r'{int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(tuple_federated_nest)
     federated_inner = computation_types.FederatedType(tf.int32,
                                                       placements.CLIENTS)
@@ -930,16 +930,16 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
     federated_outer = computation_types.FederatedType(tuple_on_federated,
                                                       placements.CLIENTS)
     with self.assertRaisesRegex(TypeError,
-                                r'A {int32}@CLIENTS has been encountered'):
+                                r'{int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(federated_outer)
     multiple_nest = computation_types.NamedTupleType(
         [computation_types.NamedTupleType([federated_outer])])
     with self.assertRaisesRegex(TypeError,
-                                r'A {int32}@CLIENTS has been encountered'):
+                                r'{int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(multiple_nest)
     sequence_of_federated = computation_types.SequenceType(federated_inner)
     with self.assertRaisesRegex(TypeError,
-                                r'A {int32}@CLIENTS has been encountered'):
+                                r'{int32}@CLIENTS has been encountered'):
       type_utils.check_well_formed(sequence_of_federated)
 
   def test_type_tree_contains_only(self):
@@ -1053,21 +1053,21 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_well_formed_check_succeeds_good_types(self):
     federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    self.assertTrue(type_utils.check_well_formed(federated))
+    type_utils.check_well_formed(federated)
     tensor = computation_types.TensorType(tf.int32)
-    self.assertTrue(type_utils.check_well_formed(tensor))
+    type_utils.check_well_formed(tensor)
     namedtuple = computation_types.NamedTupleType(
         [tf.int32,
          computation_types.NamedTupleType([tf.int32, tf.int32])])
-    self.assertTrue(type_utils.check_well_formed(namedtuple))
+    type_utils.check_well_formed(namedtuple)
     sequence = computation_types.SequenceType(tf.int32)
-    self.assertTrue(type_utils.check_well_formed(sequence))
+    type_utils.check_well_formed(sequence)
     fn = computation_types.FunctionType(tf.int32, tf.int32)
-    self.assertTrue(type_utils.check_well_formed(fn))
+    type_utils.check_well_formed(fn)
     abstract = computation_types.AbstractType('T')
-    self.assertTrue(type_utils.check_well_formed(abstract))
+    type_utils.check_well_formed(abstract)
     placement = computation_types.PlacementType()
-    self.assertTrue(type_utils.check_well_formed(placement))
+    type_utils.check_well_formed(placement)
 
   def test_check_federated_type(self):
     type_spec = computation_types.FederatedType(tf.int32, placements.CLIENTS,
