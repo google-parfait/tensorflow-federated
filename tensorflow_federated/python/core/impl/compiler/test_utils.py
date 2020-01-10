@@ -333,6 +333,7 @@ def create_nested_syntax_tree():
     ['t'=Data('c')]    Data('d') ['u'=Data('e')]  Data('f')
 
 
+  Postorder traversals:
   If we are reading Data URIs, results of a postorder traversal should be:
   [a, b, c, d, e, f, g, h, i, j, k]
 
@@ -343,6 +344,18 @@ def create_nested_syntax_tree():
   And if we are reading both in an interleaved fashion, results of a postorder
   traversal should be:
   [a, b, c, d, t, e, f, u, g, v, h, i, j, w, x, y, z, k]
+
+  Preorder traversals:
+  If we are reading Data URIs, results of a preorder traversal should be:
+  [a, b, c, d, e, f, g, h, i, j, k]
+
+  If we are reading locals declarations, results of a preorder traversal should
+  be:
+  [y, z, v, t, u, x, w]
+
+  And if we are reading both in an interleaved fashion, results of a preorder
+  traversal should be:
+  [y, z, a, b, v, t, c, d, u, e, f, g, x, h, w, i, j, k]
 
   Since we are also exposing the ability to hook into variable declarations,
   it is worthwhile considering the order in which variables are assigned in

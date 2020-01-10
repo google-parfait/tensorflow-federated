@@ -148,6 +148,21 @@ def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
   return count[0]
 
 
+def _get_number_of_nodes_via_transform_preorder(comp, predicate=None):
+  """Returns the number of nodes in `comp` matching `predicate`."""
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  count = 0
+
+  def fn(comp):
+    nonlocal count
+    if predicate is None or predicate(comp):
+      count += 1
+    return comp, False
+
+  transformation_utils.transform_preorder(comp, fn)
+  return count
+
+
 class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_fails_on_none_comp(self):
@@ -1462,6 +1477,176 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     constructed_tree = _make_context_tree()
     self.assertEqual(references, constructed_tree)
+
+
+class TransformPreorderTest(parameterized.TestCase):
+
+  def test_transform_preorder_fails_on_none_comp(self):
+
+    def transform(comp):
+      return comp, False
+
+    with self.assertRaises(TypeError):
+      transformation_utils.transform_preorder(None, transform)
+
+  def test_transform_preorder_fails_on_none_transform(self):
+    comp = building_blocks.Data('x', tf.int32)
+    with self.assertRaises(TypeError):
+      transformation_utils.transform_preorder(comp, None)
+
+  def test_transform_preorder_fails_on_none_recusrive_bool(self):
+    comp = building_blocks.Data('x', tf.int32)
+
+    def transform(comp):
+      return comp, False
+
+    with self.assertRaises(TypeError):
+      transformation_utils.transform_preorder(comp, transform, None)
+
+  def test_transform_preorder_with_lambda_call_selection_and_reference(self):
+    function_type = computation_types.FunctionType(tf.int32, tf.int32)
+    ref = building_blocks.Reference('FEDERATED_arg', [function_type, tf.int32])
+    fn = building_blocks.Selection(ref, index=0)
+    arg = building_blocks.Selection(ref, index=1)
+    call = building_blocks.Call(fn, arg)
+    comp = building_blocks.Lambda(ref.name, tf.int32, call)
+    self.assertEqual(comp.compact_representation(),
+                     '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1]))')
+
+    def _transformation_fn_generator():
+      n = 0
+      while True:
+        n = n + 1
+
+        def _fn(x):
+          intrinsic_type = computation_types.FunctionType(
+              x.type_signature, x.type_signature)
+          intrinsic = building_blocks.Intrinsic('F{}'.format(n), intrinsic_type)
+          call = building_blocks.Call(intrinsic, x)
+          return call, True
+
+        yield _fn
+
+    transformation_fn_sequence = _transformation_fn_generator()
+    # pylint: disable=unnecessary-lambda
+    tx_fn = lambda x: next(transformation_fn_sequence)(x)
+    # pylint: enable=unnecessary-lambda
+    transfomed_comp, modified = transformation_utils.transform_preorder(
+        comp, tx_fn)
+    self.assertTrue(modified)
+    self.assertEqual(
+        transfomed_comp.compact_representation(),
+        'F1((FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1])))')
+    self.assertTrue(modified)
+
+  @parameterized.named_parameters(
+      _construct_trivial_instance_of_all_computation_building_blocks() +
+      [('complex_tree', test_utils.create_nested_syntax_tree())])
+  def test_transform_preorder_returns_untransformed(self, comp):
+
+    def transform_noop(comp):
+      return comp, False
+
+    same_comp, modified = transformation_utils.transform_preorder(
+        comp, transform_noop)
+    self.assertEqual(same_comp.compact_representation(),
+                     comp.compact_representation())
+    self.assertFalse(modified)
+
+  @parameterized.named_parameters(
+      _construct_trivial_instance_of_all_computation_building_blocks())
+  def test_transform_preorder_does_not_construct_new_internal(self, comp):
+
+    def transform_noop(comp):
+      return comp, False
+
+    same_comp, modified = transformation_utils.transform_preorder(
+        comp, transform_noop)
+
+    self.assertEqual(comp, same_comp)
+    self.assertFalse(modified)
+
+  def test_transform_preorder_hits_all_nodes_once(self):
+    complex_ast = test_utils.create_nested_syntax_tree()
+    self.assertEqual(
+        _get_number_of_nodes_via_transform_preorder(complex_ast), 22)
+
+  def test_transform_preorder_walks_to_leaves_in_preorder(self):
+    complex_ast = test_utils.create_nested_syntax_tree()
+
+    leaf_name_order = []
+
+    def transform(comp):
+      if isinstance(comp, building_blocks.Data):
+        leaf_name_order.append(comp.uri)
+      return comp, False
+
+    transformation_utils.transform_preorder(complex_ast, transform)
+
+    self.assertEqual(leaf_name_order,
+                     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
+
+  def test_transform_preorder_walks_block_locals_preorder(self):
+    complex_ast = test_utils.create_nested_syntax_tree()
+
+    leaf_name_order = []
+
+    def transform(comp):
+      if isinstance(comp, building_blocks.Block):
+        for name, _ in comp.locals:
+          leaf_name_order.append(name)
+      return comp, False
+
+    transformation_utils.transform_preorder(complex_ast, transform)
+
+    self.assertEqual(leaf_name_order, ['y', 'z', 'v', 't', 'u', 'x', 'w'])
+
+  def test_transform_preorder_walks_through_all_internal_nodes_preorder(self):
+    """Checks `transform_preorder` walks correctly through any internal node.
+
+    This test is split from the one above because it tests extra cases
+    in `transform_preorder`; in particular, all instances of
+    `building_blocks.ComputationBuildingBlock` which kick off
+    recursive calls of `transform_preorder` are exercised in this test,
+    while only a subset are exercised in the above. For example, if the
+    logic ingesting a `Call` breaks, this test will fail and the one above
+    may pass.
+    """
+    complex_ast = test_utils.create_nested_syntax_tree()
+
+    leaf_name_order = []
+
+    def transform(comp):
+      if isinstance(comp, building_blocks.Block):
+        for name, _ in comp.locals:
+          leaf_name_order.append(name)
+      elif isinstance(comp, building_blocks.Data):
+        leaf_name_order.append(comp.uri)
+      return comp, False
+
+    transformation_utils.transform_preorder(complex_ast, transform)
+    preorder_nodes = [
+        'y',
+        'z',
+        'a',
+        'b',
+        'v',
+        't',
+        'c',
+        'd',
+        'u',
+        'e',
+        'f',
+        'g',
+        'x',
+        'h',
+        'w',
+        'i',
+        'j',
+        'k',
+    ]
+
+    self.assertEqual(leaf_name_order, list(preorder_nodes))
 
 
 class GetUniqueNamesTest(absltest.TestCase):

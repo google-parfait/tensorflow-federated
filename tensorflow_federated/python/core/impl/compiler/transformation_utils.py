@@ -18,6 +18,7 @@ import abc
 import collections
 import itertools
 import operator
+from typing import Callable, Tuple
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -121,6 +122,110 @@ def transform_postorder(comp, transform):
   else:
     raise NotImplementedError(
         'Unrecognized computation building block: {}'.format(str(comp)))
+
+
+TransformReturnType = Tuple[building_blocks.ComputationBuildingBlock, bool]
+
+
+def transform_preorder(
+    comp: building_blocks.ComputationBuildingBlock,
+    transform: Callable[[building_blocks.ComputationBuildingBlock],
+                        TransformReturnType]
+) -> TransformReturnType:
+  """Walks the AST of `comp` preorder, calling `transform` on the way down.
+
+  Notice that this function will stop walking the tree when its transform
+  function modifies a node; this is to prevent the caller from unexpectedly
+  kicking off an infinite recursion. For this purpose the transform function
+  must identify when it has transformed the structure of a building block; if
+  the structure of the building block is modified but `False` is returned as
+  the second element of the tuple returned by `transform`, `transform_preorder`
+  may result in an infinite recursion.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to be
+      transformed in a preorder fashion.
+    transform: Transform function to be applied to the nodes of `comp`. Must
+      return a two-tuple whose first element is a
+      `building_blocks.ComputationBuildingBlock` and whose second element is a
+      Boolean. If the computation which is passed to `comp` is returned in a
+      modified state, must return `True` for the second element.
+
+  Returns:
+    A two-tuple, whose first element is modified version of `comp`, and
+    whose second element is a Boolean indicating whether `comp` was transformed
+    during the walk.
+
+  Raises:
+    TypeError: If the argument types don't match those specified above.
+  """
+
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_callable(transform)
+  inner_comp, modified = transform(comp)
+  if modified:
+    return inner_comp, modified
+  if isinstance(inner_comp, (
+      building_blocks.CompiledComputation,
+      building_blocks.Data,
+      building_blocks.Intrinsic,
+      building_blocks.Placement,
+      building_blocks.Reference,
+  )):
+    return inner_comp, modified
+  elif isinstance(inner_comp, building_blocks.Lambda):
+    transformed_result, result_modified = transform_preorder(
+        inner_comp.result, transform)
+    if not (modified or result_modified):
+      return inner_comp, False
+    return building_blocks.Lambda(inner_comp.parameter_name,
+                                  inner_comp.parameter_type,
+                                  transformed_result), True
+  elif isinstance(inner_comp, building_blocks.Tuple):
+    elements_modified = False
+    elements = []
+    for name, val in anonymous_tuple.iter_elements(inner_comp):
+      result, result_modified = transform_preorder(val, transform)
+      elements_modified = modified or result_modified
+      elements.append((name, result))
+    if not (modified or elements_modified):
+      return inner_comp, False
+    return building_blocks.Tuple(elements), True
+  elif isinstance(inner_comp, building_blocks.Selection):
+    transformed_source, source_modified = transform_preorder(
+        inner_comp.source, transform)
+    if not (modified or source_modified):
+      return inner_comp, False
+    return building_blocks.Selection(transformed_source, inner_comp.name,
+                                     inner_comp.index), True
+  elif isinstance(inner_comp, building_blocks.Call):
+    transformed_fn, fn_modified = transform_preorder(inner_comp.function,
+                                                     transform)
+    if inner_comp.argument is not None:
+      transformed_arg, arg_modified = transform_preorder(
+          inner_comp.argument, transform)
+    else:
+      transformed_arg = None
+      arg_modified = False
+    if not (modified or fn_modified or arg_modified):
+      return inner_comp, False
+    return building_blocks.Call(transformed_fn, transformed_arg), True
+  elif isinstance(inner_comp, building_blocks.Block):
+    transformed_variables = []
+    values_modified = False
+    for key, value in inner_comp.locals:
+      transformed_value, value_modified = transform_preorder(value, transform)
+      transformed_variables.append((key, transformed_value))
+      values_modified = values_modified or value_modified
+    transformed_result, result_modified = transform_preorder(
+        comp.result, transform)
+    if not (modified or values_modified or result_modified):
+      return inner_comp, False
+    return building_blocks.Block(transformed_variables,
+                                 transformed_result), True
+  else:
+    raise NotImplementedError(
+        'Unrecognized computation building block: {}'.format(str(inner_comp)))
 
 
 def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
