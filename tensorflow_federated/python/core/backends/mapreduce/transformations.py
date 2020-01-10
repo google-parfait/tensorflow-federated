@@ -309,10 +309,10 @@ def parse_tff_to_tf(comp):
     return parsed_comp
   elif isinstance(new_comp, building_blocks.Call):
     leaves_decorated, _ = transformations.insert_called_tf_identity_at_leaves(
-        new_comp.function)
+        new_comp)
     parsed_comp, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
-    return building_blocks.Call(parsed_comp, None)
+    return parsed_comp
   else:
     parsed_comp, _ = transformation_utils.transform_postorder(
         new_comp, parser_callable)
