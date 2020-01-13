@@ -943,6 +943,14 @@ def _create_simple_lambda_wrapping_graph():
   return lambda_wrap
 
 
+def _create_simple_lambda_calling_graph_with_arg_thrown_on_floor():
+  integer_identity = building_block_factory.create_compiled_identity(tf.int32)
+  x_data = building_blocks.Data('x', tf.int32)
+  called_integer_identity = building_blocks.Call(integer_identity, x_data)
+  lambda_wrap = building_blocks.Lambda('y', tf.int32, called_integer_identity)
+  return lambda_wrap
+
+
 class LambdaWrappingGraphTest(common_test.TestCase, parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
@@ -964,6 +972,27 @@ class LambdaWrappingGraphTest(common_test.TestCase, parameterized.TestCase):
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_lambda_wrapping_graph()
+    logic = compiled_computation_transforms.LambdaWrappingGraph()
+    parsed, mutated = logic.transform(pattern)
+    self.assertEqual(parsed.type_signature, pattern.type_signature)
+    self.assertTrue(mutated)
+
+  def test_should_transform_arg_thrown_on_floor(self):
+    lambda_throwing_arg_on_floor = _create_simple_lambda_calling_graph_with_arg_thrown_on_floor(
+    )
+    logic = compiled_computation_transforms.LambdaWrappingGraph()
+    self.assertTrue(logic.should_transform(lambda_throwing_arg_on_floor))
+
+  def test_transform_with_arg_thrown_on_floow_constructs_correct_root_node(
+      self):
+    pattern = _create_simple_lambda_calling_graph_with_arg_thrown_on_floor()
+    logic = compiled_computation_transforms.LambdaWrappingGraph()
+    parsed_selection, mutated = logic.transform(pattern)
+    self.assertIsInstance(parsed_selection, building_blocks.CompiledComputation)
+    self.assertTrue(mutated)
+
+  def test_leaves_type_signature_alone_arg_thrown_on_floor(self):
+    pattern = _create_simple_lambda_calling_graph_with_arg_thrown_on_floor()
     logic = compiled_computation_transforms.LambdaWrappingGraph()
     parsed, mutated = logic.transform(pattern)
     self.assertEqual(parsed.type_signature, pattern.type_signature)

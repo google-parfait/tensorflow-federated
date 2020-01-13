@@ -1048,6 +1048,23 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
     return building_blocks.Call(pruned, comp.source.argument), True
 
 
+def _contains_reference_to(comp, name):
+  """Checks that `comp` does not reference `name`."""
+  if comp is None:
+    return False
+  contains_reference = False
+
+  def _transform(inner_comp):
+    nonlocal contains_reference
+    if isinstance(inner_comp,
+                  building_blocks.Reference) and inner_comp.name == name:
+      contains_reference = True
+    return comp, False
+
+  transformation_utils.transform_postorder(comp, _transform)
+  return contains_reference
+
+
 class LambdaWrappingGraph(transformation_utils.TransformSpec):
   r"""`TransformSpec` representing a lambda wrapping a call to a TF graph.
 
@@ -1057,9 +1074,13 @@ class LambdaWrappingGraph(transformation_utils.TransformSpec):
                                 |
                               Call
                              /    \
-          CompiledComputation      Ref(x)
+          CompiledComputation      Arg
 
-  Into:
+  (where Arg either is a reference to `x`, or is does not reference `x` at all)
+
+  Notice that the check that `Arg` does not reference `x` will only be complete
+  if `Arg` does not rebind `x`. At this point in the compiler pipeline, this
+  is a reasonable assumption.
 
                       CompiledComputation
 
@@ -1068,11 +1089,14 @@ class LambdaWrappingGraph(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Lambda) and
-            isinstance(comp.result, building_blocks.Call) and isinstance(
-                comp.result.function, building_blocks.CompiledComputation) and
-            isinstance(comp.result.argument, building_blocks.Reference) and
-            comp.result.argument.name == comp.parameter_name)
+    return (
+        isinstance(comp, building_blocks.Lambda) and
+        isinstance(comp.result, building_blocks.Call) and isinstance(
+            comp.result.function, building_blocks.CompiledComputation) and
+        ((isinstance(comp.result.argument, building_blocks.Reference) and
+          comp.result.argument.name == comp.parameter_name) or
+         (not _contains_reference_to(comp.result.argument, comp.parameter_name)
+          and comp.result.function.type_signature == comp.type_signature)))
 
   def transform(self, comp):
     if not self.should_transform(comp):
