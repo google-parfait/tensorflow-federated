@@ -82,10 +82,10 @@ def _raise_grpc_error_unavailable(*args):
   raise error
 
 
-def _raise_grpc_error_deadline_exceeded(*args):
+def _raise_non_retryable_grpc_error(*args):
   del args  # Unused
   error = grpc.RpcError()
-  error.code = lambda: grpc.StatusCode.DEADLINE_EXCEEDED
+  error.code = lambda: grpc.StatusCode.ABORTED
   raise error
 
 
@@ -126,10 +126,9 @@ class RemoteValueTest(absltest.TestCase):
     with self.assertRaises(execution_context.RetryableError):
       loop.run_until_complete(comp.compute())
 
-  def test_compute_reraises_grpc_error_deadline_exceeded(self, mock_stub):
+  def test_compute_reraises_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
-    instance.Compute = mock.Mock(
-        side_effect=_raise_grpc_error_deadline_exceeded)
+    instance.Compute = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.FunctionType(None, tf.int32)
@@ -139,8 +138,7 @@ class RemoteValueTest(absltest.TestCase):
     with self.assertRaises(grpc.RpcError) as context:
       loop.run_until_complete(comp.compute())
 
-    self.assertEqual(context.exception.code(),
-                     grpc.StatusCode.DEADLINE_EXCEEDED)
+    self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
   def test_compute_reraises_type_error(self, mock_stub):
     instance = mock_stub.return_value
@@ -182,18 +180,17 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(execution_context.RetryableError):
       loop.run_until_complete(executor.create_value(1, tf.int32))
 
-  def test_create_value_reraises_grpc_error_deadline_exceeded(self, mock_stub):
+  def test_create_value_reraises_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
     instance.CreateValue = mock.Mock(
-        side_effect=_raise_grpc_error_deadline_exceeded)
+        side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
 
     with self.assertRaises(grpc.RpcError) as context:
       loop.run_until_complete(executor.create_value(1, tf.int32))
 
-    self.assertEqual(context.exception.code(),
-                     grpc.StatusCode.DEADLINE_EXCEEDED)
+    self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
   def test_create_value_reraises_type_error(self, mock_stub):
     instance = mock_stub.return_value
@@ -232,10 +229,9 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(execution_context.RetryableError):
       loop.run_until_complete(executor.create_call(comp, None))
 
-  def test_create_call_reraises_grpc_error_deadline_exceeded(self, mock_stub):
+  def test_create_call_reraises_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
-    instance.CreateCall = mock.Mock(
-        side_effect=_raise_grpc_error_deadline_exceeded)
+    instance.CreateCall = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.FunctionType(None, tf.int32)
@@ -245,8 +241,7 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(grpc.RpcError) as context:
       loop.run_until_complete(executor.create_call(comp, None))
 
-    self.assertEqual(context.exception.code(),
-                     grpc.StatusCode.DEADLINE_EXCEEDED)
+    self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
   def test_create_call_reraises_type_error(self, mock_stub):
     instance = mock_stub.return_value
@@ -292,10 +287,10 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(execution_context.RetryableError):
       loop.run_until_complete(executor.create_tuple([value_1, value_2]))
 
-  def test_create_tuple_reraises_grpc_error_deadline_exceeded(self, mock_stub):
+  def test_create_tuple_reraises_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
     instance.CreateTuple = mock.Mock(
-        side_effect=_raise_grpc_error_deadline_exceeded)
+        side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.TensorType(tf.int32)
@@ -307,8 +302,7 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(grpc.RpcError) as context:
       loop.run_until_complete(executor.create_tuple([value_1, value_2]))
 
-    self.assertEqual(context.exception.code(),
-                     grpc.StatusCode.DEADLINE_EXCEEDED)
+    self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
   def test_create_tuple_reraises_type_error(self, mock_stub):
     instance = mock_stub.return_value
@@ -353,11 +347,10 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(execution_context.RetryableError):
       loop.run_until_complete(executor.create_selection(source, index=0))
 
-  def test_create_selection_reraises_grpc_error_deadline_exceeded(
-      self, mock_stub):
+  def test_create_selection_reraises_non_retryable_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
     instance.CreateSelection = mock.Mock(
-        side_effect=_raise_grpc_error_deadline_exceeded)
+        side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.NamedTupleType([tf.int32, tf.int32])
@@ -367,8 +360,7 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(grpc.RpcError) as context:
       loop.run_until_complete(executor.create_selection(source, index=0))
 
-    self.assertEqual(context.exception.code(),
-                     grpc.StatusCode.DEADLINE_EXCEEDED)
+    self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
   def test_create_selection_reraises_type_error(self, mock_stub):
     instance = mock_stub.return_value

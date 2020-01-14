@@ -310,8 +310,20 @@ class RemoteExecutor(executor_base.Executor):
     return value
 
   def _is_retryable_grpc_error(self, error):
-    retryable_errors = [grpc.StatusCode.UNAVAILABLE]
-    return isinstance(error, grpc.RpcError) and error.code() in retryable_errors
+    non_retryable_errors = set([
+        grpc.StatusCode.INVALID_ARGUMENT,
+        grpc.StatusCode.NOT_FOUND,
+        grpc.StatusCode.ALREADY_EXISTS,
+        grpc.StatusCode.PERMISSION_DENIED,
+        grpc.StatusCode.FAILED_PRECONDITION,
+        grpc.StatusCode.ABORTED,
+        grpc.StatusCode.OUT_OF_RANGE,
+        grpc.StatusCode.UNIMPLEMENTED,
+        grpc.StatusCode.DATA_LOSS,
+        grpc.StatusCode.UNAUTHENTICATED,
+    ])
+    return (isinstance(error, grpc.RpcError) and
+            error.code() not in non_retryable_errors)
 
   def _handle_grpc_error(self, error):
     py_typecheck.check_type(error, grpc.RpcError)
