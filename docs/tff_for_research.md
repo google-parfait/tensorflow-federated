@@ -149,6 +149,27 @@ example of a TFF project implementing user-level differential privacy (e.g.,
 
 ### Robustness and attacks
 
+TFF can also be used to simulate the targeted attacks on federated learning
+systems and differential privacy based defenses considered in
+*[Can You Really Back door Federated Learning?](https://arxiv.org/abs/1911.07963)*.
+This is done by building an iterative process with potentially malicious clients
+(see
+[`build_federated_averaging_process_attacked`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack/attacked_fedavg.py#L412)).
+The
+[targeted_attack](https://github.com/tensorflow/federated/tree/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack)
+directory contains more details.
+
+*   New attacking algorithms can be implemented by writing a client update
+    function which is a Tensorflow function, see
+    [`ClientProjectBoost`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack/attacked_fedavg.py#L460)
+    for an example.
+*   New defenses can be implemented by customizing
+    ['tff.utils.StatefulAggregateFn'](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/core/utils/computation_utils.py#L103)
+    which aggregates client outputs to get a global update.
+
+For an example script for simulation, see
+[`emnist_with_targeted_attack.py`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack/emnist_with_targeted_attack.py).
+
 ### Generative Adversarial Networks
 
 GANs make for an interesting
