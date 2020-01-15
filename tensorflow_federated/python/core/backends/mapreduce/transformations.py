@@ -389,7 +389,7 @@ def _force_align_intrinsic(comp, uri):
   This function transforms `comp` by extracting and potentially merging all the
   intrinsics for the given `uri`. The result of this transformation should
   contain exactly one instance of the intrinsic for the given `uri` that is
-  bound only by the `paramater_name` of `comp`.
+  bound only by the `parameter_name` of `comp`.
 
   NOTE: This function is generally safe to call on computations that do not fit
   into canonical form. It is left to the caller to determine if the resulting

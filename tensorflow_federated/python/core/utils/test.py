@@ -26,7 +26,7 @@ tf.compat.v1.enable_v2_behavior()  # Required to create a local executor.
 
 
 def tf1_and_tf2(fn):
-  """A decorator for creating test paramaterized by TF computation decorators.
+  """A decorator for creating test parameterized by TF computation decorators.
 
   Args:
     fn: A test function to be decorated. It must accept two arguments: self (a
@@ -65,7 +65,7 @@ def tf2(fn):
 
 
 def executors(*args):
-  """A decorator for creating tests paramaterized by executors.
+  """A decorator for creating tests parameterized by executors.
 
   NOTE: To use this decorator your test is required to inherit from
   `parameterized.TestCase`.
@@ -90,7 +90,7 @@ def executors(*args):
       ```
 
   If the decorator is specified without arguments or is called with no
-  arguments, the default this decorator with paramaterize the test by the
+  arguments, the default this decorator with parameterize the test by the
   following executors:
 
   *   reference executor

@@ -157,9 +157,9 @@ def create_dummy_called_federated_apply(parameter_name,
 def create_dummy_called_federated_broadcast(value_type=tf.int32):
   r"""Returns a dummy called federated broadcast.
 
-                Call
-               /    \
-  federated_map      data
+                      Call
+                     /    \
+  federated_broadcast      data
 
   Args:
     value_type: The type of the value.
