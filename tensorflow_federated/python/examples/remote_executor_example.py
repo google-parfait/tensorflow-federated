@@ -39,6 +39,7 @@ flags.DEFINE_string('host', None, 'The host to connect to.')
 flags.mark_flag_as_required('host')
 flags.DEFINE_string('port', '8000', 'The port to connect to.')
 flags.DEFINE_integer('n_clients', 10, 'Number of clients.')
+flags.DEFINE_integer('n_rounds', 3, 'Number of rounds.')
 
 
 def preprocess(dataset):
@@ -78,7 +79,6 @@ def create_compiled_keras_model():
 
 NUM_EPOCHS = 10
 BATCH_SIZE = 20
-N_ROUNDS = 3
 
 
 def make_remote_executor(inferred_cardinalities):
@@ -146,7 +146,7 @@ def main(argv):
   state, metrics = iterative_process.next(state, federated_train_data)
   print('round  1, metrics={}'.format(metrics))
 
-  for round_num in range(2, N_ROUNDS + 1):
+  for round_num in range(2, FLAGS.n_rounds + 1):
     state, metrics = iterative_process.next(state, federated_train_data)
     print('round {:2d}, metrics={}'.format(round_num, metrics))
 
