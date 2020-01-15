@@ -34,6 +34,8 @@ with utils_impl.record_new_flags() as hparam_flags:
       'use in filenames.')
 
   # Training hyperparameters
+  flags.DEFINE_integer('max_elements_per_user', 1000, 'Max number of training '
+                       'sentences to use per user.')
   flags.DEFINE_integer('batch_size', 8, 'Batch size used.')
   flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
   flags.DEFINE_integer('epochs', 3, 'Number of epochs to train for.')
@@ -47,6 +49,7 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'Number of steps between tensorboard logging calls.')
   flags.DEFINE_string('root_output_dir', '/tmp/centralized_stackoverflow/',
                       'Root directory for writing experiment output.')
+  flags.DEFINE_integer('steps_per_epoch', None, 'Steps per epoch')
   utils_impl.define_optimizer_flags('centralized')
 
   # Modeling flags
@@ -92,16 +95,13 @@ class MaskedCategoricalAccuracy(tf.keras.metrics.SparseCategoricalAccuracy):
       sample_weight: (Optional) Tensor representing the per-element weights for
         computing accuracy over the sequence `y_true`. Must be broadcastable to
         the flattened shape of `y_true`.
-
-    Returns:
-      Update Op.
     """
     if sample_weight is None:
       sample_weight = tf.ones_like(y_true, tf.float32)
     for token in self._masked_tokens:
       mask = tf.cast(tf.not_equal(y_true, token), tf.float32)
       sample_weight = sample_weight * mask
-    return super().update_state(y_true, y_pred, sample_weight)
+    super().update_state(y_true, y_pred, sample_weight)
 
 
 class AtomicCSVLogger(tf.keras.callbacks.Callback):
@@ -127,13 +127,11 @@ def run_experiment():
           batch_size=FLAGS.batch_size,
           client_epochs_per_round=1,
           max_seq_len=FLAGS.sequence_length,
-          max_training_elements_per_user=-1,
+          max_elements_per_user=FLAGS.max_elements_per_user,
+          centralized_train=True,
           shuffle_buffer_size=None,
           num_validation_examples=FLAGS.num_validation_examples,
           num_test_examples=FLAGS.num_test_examples))
-  train_set = (
-      train_set.create_tf_dataset_from_all_clients().shuffle(
-          FLAGS.shuffle_buffer_size))
 
   recurrent_model = tf.keras.layers.LSTM if FLAGS.lstm else tf.keras.layers.GRU
 
@@ -152,7 +150,7 @@ def run_experiment():
   logging.info('Training model: %s', model.summary())
   optimizer = utils_impl.create_optimizer_from_flags('centralized')
   model.compile(
-      loss=tf.keras.losses.sparse_categorical_crossentropy,
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=optimizer,
       metrics=[
           MaskedCategoricalAccuracy([pad], 'accuracy_with_oov'),
@@ -198,6 +196,7 @@ def run_experiment():
       train_set,
       epochs=FLAGS.epochs,
       verbose=1,
+      steps_per_epoch=FLAGS.steps_per_epoch,
       validation_data=validation_set,
       callbacks=[train_csv_logger, train_tensorboard_callback])
   score = model.evaluate(
