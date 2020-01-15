@@ -66,6 +66,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
   async def _HandleRequest(self, req, context, response_queue):
     which = req.WhichOneof('request')
+    logging.debug('Received request of type %s, seq_no %s', which,
+                  req.sequence_number)
     if not which:
       raise RuntimeError('Must set a request type')
     if which == 'create_value':
@@ -87,6 +89,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     response_queue.put_nowait(response)
 
   def Execute(self, request_iter, context):
+    logging.debug('Bidi Execute stream created')
+
     response_queue = queue.Queue()
 
     class RequestIterFinished:
@@ -116,13 +120,15 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       response = response_queue.get()
       if isinstance(response, executor_pb2.ExecuteResponse):
         n_responses += 1
-        logging.debug('Yielding response of type %s with sequence no. %s',
+        logging.debug('Returning response of type %s with sequence no. %s',
                       response.WhichOneof('response'), response.sequence_number)
         yield response
       elif isinstance(response, RequestIterFinished):
         target_responses = response.get_n_reqs()
       else:
         raise ValueError('Illegal response object: {}'.format(response))
+
+    logging.debug('Closing bidi Execute stream')
 
   def CreateValue(self, request, context):
     """Creates a value embedded in the executor.

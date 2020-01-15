@@ -81,7 +81,7 @@ class _BidiStream:
     if self._is_initialized:
       return
 
-    logging.debug('Initializing RemoteExecutor stream')
+    logging.debug('Initializing bidi stream')
 
     self._request_queue = queue.Queue()
     self._response_event_dict = {}
@@ -91,19 +91,21 @@ class _BidiStream:
       """Iterator that blocks on the request Queue."""
 
       for seq in itertools.count():
-        logging.debug('request_iter: waiting for request')
+        logging.debug('Request thread: blocking for next request')
         val = self._request_queue.get()
         if val:
           py_typecheck.check_type(val[0], executor_pb2.ExecuteRequest)
           py_typecheck.check_type(val[1], threading.Event)
           req = val[0]
           req.sequence_number = seq
-          logging.debug('request_iter: got request of type %s',
-                        val[0].WhichOneof('request'))
+          logging.debug(
+              'Request thread: processing request of type %s, seq_no %s',
+              val[0].WhichOneof('request'), seq)
           self._response_event_dict[seq] = val[1]
           yield val[0]
         else:
-          logging.debug('request_iter: got None request')
+          logging.debug(
+              'Request thread: Final request received. Stream will close.')
           # None means we are done processing
           return
 
@@ -112,10 +114,11 @@ class _BidiStream:
     def response_thread_fn():
       """Consumes response iter and exposes the value on corresponding Event."""
       try:
-        logging.debug('response_thread_fn: waiting for response')
+        logging.debug('Response thread: blocking for next response')
         for response in response_iter:
-          logging.debug('response_thread_fn: got response of type %s',
-                        response.WhichOneof('response'))
+          logging.debug(
+              'Response thread: processing response of type %s, seq_no %s',
+              response.WhichOneof('response'), response.sequence_number)
           # Get the corresponding response Event
           response_event = self._response_event_dict[response.sequence_number]
           # Attach the response as an attribute on the Event
@@ -156,13 +159,13 @@ class _BidiStream:
 
   def close(self):
     if self._is_initialized:
-      logging.debug('Closing RemoteExecutor stream')
+      logging.debug('Closing bidi stream')
 
       self._request_queue.put(None)
       # Wait for the stream to be closed
       self._stream_closed_event.wait(_STREAM_CLOSE_WAIT_SECONDS)
     else:
-      logging.debug('Closing unused stream')
+      logging.debug('Closing unused bidi stream')
 
 
 class RemoteExecutor(executor_base.Executor):
@@ -328,8 +331,7 @@ class RemoteExecutor(executor_base.Executor):
   def _handle_grpc_error(self, error):
     py_typecheck.check_type(error, grpc.RpcError)
     if self._is_retryable_grpc_error(error):
-      logging.info('Recieved retryable gRPC error: %s', error)
+      logging.info('Received retryable gRPC error: %s', error)
       raise execution_context.RetryableError(error)
     else:
-      logging.exception('Recieved gRPC error: %s', error)
       raise error
