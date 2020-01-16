@@ -96,3 +96,11 @@ class Executor(object, metaclass=abc.ABCMeta):
       constructed selection.
     """
     raise NotImplementedError
+
+  def close(self):
+    """Release resources associated with this Executor, if any.
+
+    If the executor has one or more target Executors, implementation of this
+    method must close them.
+    """
+    pass

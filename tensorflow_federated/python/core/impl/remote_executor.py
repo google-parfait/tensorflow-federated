@@ -18,8 +18,8 @@ import asyncio
 import itertools
 import queue
 import threading
+import absl.logging as logging
 
-from absl import logging
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
@@ -203,10 +203,11 @@ class RemoteExecutor(executor_base.Executor):
     if rpc_mode == 'STREAMING':
       self._bidi_stream = _BidiStream(self._stub, thread_pool_executor)
 
-  def __del__(self):
+  def close(self):
     if self._bidi_stream:
+      logging.debug('Closing bidi stream')
       self._bidi_stream.close()
-      del self._bidi_stream
+      self._bidi_stream = None
 
   @executor_utils.log_async
   async def create_value(self, value, type_spec=None):

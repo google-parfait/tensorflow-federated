@@ -201,6 +201,9 @@ class LambdaExecutor(executor_base.Executor):
     py_typecheck.check_type(target_executor, executor_base.Executor)
     self._target_executor = target_executor
 
+  def close(self):
+    self._target_executor.close()
+
   @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)

@@ -65,7 +65,6 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   try:
     yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
   finally:
-    remote_exec.__del__()
     set_default_executor.set_default_executor()
     try:
       channel.close()

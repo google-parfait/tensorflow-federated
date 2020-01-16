@@ -193,6 +193,9 @@ class CachingExecutor(executor_base.Executor):
     self._cache = cache
     self._num_values_created = 0
 
+  def close(self):
+    self._target_executor.close()
+
   def __del__(self):
     for k in list(self._cache):
       del self._cache[k]

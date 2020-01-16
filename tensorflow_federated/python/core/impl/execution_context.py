@@ -15,7 +15,7 @@
 """A context for execution based on an embedded executor instance."""
 
 import asyncio
-
+import contextlib
 import retrying
 import tensorflow as tf
 
@@ -161,16 +161,27 @@ class ExecutionContext(context_base.Context):
       wait_jitter_max=1000  # in milliseconds
   )
   def invoke(self, comp, arg):
-    executor = self._executor_factory({})
-    py_typecheck.check_type(executor, executor_base.Executor)
-    if arg:
+
+    @contextlib.contextmanager
+    def executor_closer(executor):
+      """Wraps an Executor into a closeable resource."""
+      try:
+        yield executor
+      finally:
+        executor.close()
+
+    if arg is not None:
       py_typecheck.check_type(arg, ExecutionContextValue)
       unwrapped_arg = _unwrap_execution_context_value(arg)
       cardinalities = runtime_utils.infer_cardinalities(unwrapped_arg,
                                                         arg.type_signature)
-      executor = self._executor_factory(cardinalities)
+    else:
+      cardinalities = {}
+
+    with executor_closer(self._executor_factory(cardinalities)) as executor:
       py_typecheck.check_type(executor, executor_base.Executor)
-      arg = asyncio.get_event_loop().run_until_complete(
-          _ingest(executor, unwrapped_arg, arg.type_signature))
-    return asyncio.get_event_loop().run_until_complete(
-        _invoke(executor, comp, arg))
+      if arg is not None:
+        arg = asyncio.get_event_loop().run_until_complete(
+            _ingest(executor, unwrapped_arg, arg.type_signature))
+      return asyncio.get_event_loop().run_until_complete(
+          _invoke(executor, comp, arg))

@@ -15,7 +15,7 @@
 """An executor that handles federated types and federated operators."""
 
 import asyncio
-
+import absl.logging as logging
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -191,7 +191,7 @@ class FederatedExecutor(executor_base.Executor):
       else:
         for e in v:
           py_typecheck.check_type(e, executor_base.Executor)
-        self._target_executors[k] = v
+        self._target_executors[k] = v.copy()
     for pl in [None, placement_literals.SERVER]:
       if pl in self._target_executors:
         pl_cardinality = len(self._target_executors[pl])
@@ -199,6 +199,12 @@ class FederatedExecutor(executor_base.Executor):
           raise ValueError(
               'Unsupported cardinality for placement "{}": {}.'.format(
                   pl, pl_cardinality))
+
+  def close(self):
+    for p, v in self._target_executors.items():
+      for e in v:
+        logging.debug('Closing child executor for placement: %s', p)
+        e.close()
 
   @executor_utils.log_async
   async def create_value(self, value, type_spec=None):

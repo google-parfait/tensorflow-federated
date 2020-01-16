@@ -17,7 +17,7 @@
 import asyncio
 import functools
 import threading
-import weakref
+import absl.logging as logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import executor_base
@@ -51,11 +51,12 @@ class ConcurrentExecutor(executor_base.Executor):
         target=functools.partial(run_loop, self._event_loop), daemon=True)
     self._thread.start()
 
-    def finalizer(loop, thread):
-      loop.call_soon_threadsafe(loop.stop)
-      thread.join()
-
-    weakref.finalize(self, finalizer, self._event_loop, self._thread)
+  def close(self):
+    logging.debug('Closing, joining thread')
+    self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+    self._thread.join()
+    logging.debug('Thread joined. Closing target executor.')
+    self._target_executor.close()
 
   def _delegate(self, coro):
     return asyncio.wrap_future(
