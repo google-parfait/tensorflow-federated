@@ -801,6 +801,13 @@ def is_sum_compatible(type_spec):
     return False
 
 
+def check_is_sum_compatible(type_spec):
+  if not is_sum_compatible(type_spec):
+    raise TypeError(
+        'Expected a type which is compatible with the sum operator, found {}.'
+        .format(type_spec))
+
+
 def check_federated_type(type_spec,
                          member=None,
                          placement=None,

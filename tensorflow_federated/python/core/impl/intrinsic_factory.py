@@ -270,12 +270,7 @@ class IntrinsicFactory(object):
     value = value_impl.to_value(value, None, self._context_stack)
     value = value_utils.ensure_federated_value(value, placements.CLIENTS,
                                                'value to be summed')
-
-    if not type_utils.is_sum_compatible(value.type_signature):
-      raise TypeError(
-          'The value type {} is not compatible with the sum operator.'.format(
-              value.type_signature))
-
+    type_utils.check_is_sum_compatible(value.type_signature)
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_sum(value)
     return value_impl.ValueImpl(comp, self._context_stack)
@@ -401,10 +396,7 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(value.type_signature.member,
                               computation_types.SequenceType)
       element_type = value.type_signature.member.element
-    if not type_utils.is_sum_compatible(element_type):
-      raise TypeError(
-          'The value type {} is not compatible with the sum operator.'.format(
-              value.type_signature.member))
+    type_utils.check_is_sum_compatible(element_type)
 
     if isinstance(value.type_signature, computation_types.SequenceType):
       value = value_impl.ValueImpl.get_comp(value)
