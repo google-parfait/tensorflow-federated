@@ -92,7 +92,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":api",
+        ":computation_types",
+        ":computations",
+        ":intrinsics",
+        ":placements",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:executor_stacks",
