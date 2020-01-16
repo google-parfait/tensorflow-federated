@@ -28,7 +28,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test as common_test
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.utils import test as core_test
 
@@ -84,7 +86,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
   @core_test.executors
   def test_computation_with_no_args_returns_value(self):
 
-    @tff.tf_computation
+    @computations.tf_computation
     def foo():
       return 10
 
@@ -379,11 +381,11 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     ]
 
     # Explicit type
-    tf_comp = tff.tf_computation(foo, arg_type)
+    tf_comp = computations.tf_computation(foo, arg_type)
     self.assertEqual(tf_comp(*args), 6)
 
     # Polymorphic
-    tf_comp = tff.tf_computation(foo)
+    tf_comp = computations.tf_computation(foo)
     self.assertEqual(tf_comp(*args), 6)
 
 
@@ -393,13 +395,13 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
   @core_test.executors
   def test_with_tf_datasets(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def consume(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     self.assertEqual(str(consume.type_signature), '(int64* -> int64)')
 
-    @tff.tf_computation
+    @computations.tf_computation
     def produce():
       return tf.data.Dataset.range(10)
 
@@ -413,7 +415,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
       ('local', executor_stacks.create_local_executor(1)),)
   def test_consume_infinite_tf_dataset(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def consume(ds):
       # Consume the first 10 elements of the dataset.
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
@@ -426,12 +428,12 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
       ('local', executor_stacks.create_local_executor(1)),)
   def test_produce_and_consume_infinite_tf_dataset(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def consume(ds):
       # Consume the first 10 elements of the dataset.
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
 
-    @tff.tf_computation
+    @computations.tf_computation
     def produce():
       # Produce an infinite dataset.
       return tf.data.Dataset.range(10).repeat()
@@ -443,7 +445,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
     pairs = tf.data.Dataset.from_tensor_slices(
         (list(range(5)), list(range(5, 10))))
 
-    @tff.tf_computation
+    @computations.tf_computation
     def process_pairs(ds):
       return ds.reduce(0, lambda state, pair: state + pair[0] + pair[1])
 
@@ -452,30 +454,30 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
   @core_test.executors
   def test_tf_comp_with_sequence_inputs_and_outputs_does_not_fail(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int32))
+    @computations.tf_computation(computation_types.SequenceType(tf.int32))
     def _(x):
       return x
 
   @core_test.executors
   def test_with_four_element_dataset_pipeline(self):
 
-    @tff.tf_computation
+    @computations.tf_computation
     def comp1():
       return tf.data.Dataset.range(5)
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def comp2(ds):
       return ds.map(lambda x: tf.cast(x + 1, tf.float32))
 
-    @tff.tf_computation(tff.SequenceType(tf.float32))
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
     def comp3(ds):
       return ds.repeat(5)
 
-    @tff.tf_computation(tff.SequenceType(tf.float32))
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
     def comp4(ds):
       return ds.reduce(0.0, lambda x, y: x + y)
 
-    @tff.tf_computation
+    @computations.tf_computation
     def comp5():
       return comp4(comp3(comp2(comp1())))
 
@@ -488,14 +490,14 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
   def test_raises_value_error_none_result(self):
     with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
 
-      @tff.federated_computation(None)
+      @computations.federated_computation(None)
       def _():
         return None
 
   @core_test.executors
   def test_computation_with_no_args_returns_value(self):
 
-    @tff.federated_computation
+    @computations.federated_computation
     def foo():
       return 10
 
@@ -505,11 +507,11 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
   @core_test.executors
   def test_computation_called_once_is_invoked_once(self):
 
-    @tff.tf_computation
+    @computations.tf_computation
     def get_random():
       return tf.random.normal([])
 
-    @tff.federated_computation
+    @computations.federated_computation
     def same_random_number_twice():
       value = get_random()
       return value, value
@@ -520,21 +522,24 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
   @core_test.executors
   def test_computation_typical_usage_as_decorator_with_unlabeled_type(self):
 
-    @tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
+    @computations.federated_computation(
+        computation_types.FunctionType(tf.int32, tf.int32),
+        tf.int32,
+    )
     def foo(f, x):
-      assert isinstance(f, tff.Value)
-      assert isinstance(x, tff.Value)
+      assert isinstance(f, value_base.Value)
+      assert isinstance(x, value_base.Value)
       assert str(f.type_signature) == '(int32 -> int32)'
       assert str(x.type_signature) == 'int32'
       result_value = f(f(x))
-      assert isinstance(result_value, tff.Value)
+      assert isinstance(result_value, value_base.Value)
       assert str(result_value.type_signature) == 'int32'
       return result_value
 
     self.assertEqual(
         str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
 
-    @tff.tf_computation(tf.int32)
+    @computations.tf_computation(tf.int32)
     def third_power(x):
       return x**3
 
@@ -544,18 +549,18 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
   @core_test.executors
   def test_computation_typical_usage_as_decorator_with_labeled_type(self):
 
-    @tff.federated_computation((
-        ('f', tff.FunctionType(tf.int32, tf.int32)),
+    @computations.federated_computation(
+        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32),
-    ))
+    )
     def foo(f, x):
       return f(f(x))
 
-    @tff.tf_computation(tf.int32)
+    @computations.tf_computation(tf.int32)
     def square(x):
       return x**2
 
-    @tff.tf_computation(tf.int32, tf.int32)
+    @computations.tf_computation(tf.int32, tf.int32)
     def square_drop_y(x, y):  # pylint: disable=unused-argument
       return x * x
 
@@ -580,11 +585,12 @@ class ComputationsTest(parameterized.TestCase):
     self.skipTest(
         'b/139135080: Recognize distinct instantiations of the same TF code as '
         '(potentially) distinct at construction time.')
-    @tff.tf_computation
+
+    @computations.tf_computation
     def get_random():
       return tf.random.normal([])
 
-    @tff.federated_computation
+    @computations.federated_computation
     def get_two_random():
       return get_random(), get_random()
 

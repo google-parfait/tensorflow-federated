@@ -66,7 +66,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":api",
+        ":computation_types",
+        ":computations",
+        ":value_base",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/utils:test",
