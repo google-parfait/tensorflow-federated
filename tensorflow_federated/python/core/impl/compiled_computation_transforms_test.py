@@ -1197,6 +1197,37 @@ class TupleCalledGraphsTest(common_test.TestCase, parameterized.TestCase):
       self.assertEqual(result[1], k**2)
     self.assertTrue(mutated)
 
+  def test_transform_results_in_fewer_ops_with_identical_args(self):
+    called_const = building_block_factory.create_tensorflow_constant(
+        tf.float32, 1.0)
+    id_applied_const = building_blocks.Call(
+        building_block_factory.create_compiled_identity(tf.float32),
+        called_const)
+    tuple_with_identical_args = building_blocks.Tuple(
+        [id_applied_const, id_applied_const])
+
+    called_float = building_block_factory.create_tensorflow_constant(
+        tf.float32, 1.0)
+    called_int = building_block_factory.create_tensorflow_constant(tf.int32, 1)
+    id_applied_float = building_blocks.Call(
+        building_block_factory.create_compiled_identity(tf.float32),
+        called_float)
+    id_applied_int = building_blocks.Call(
+        building_block_factory.create_compiled_identity(tf.int32), called_int)
+    tuple_with_distinct_args = building_blocks.Tuple(
+        [id_applied_float, id_applied_int])
+
+    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    identical_tuple_parsed, _ = tuple_parser.transform(
+        tuple_with_identical_args)
+    distinct_tuple_parsed, _ = tuple_parser.transform(tuple_with_distinct_args)
+    ops_under_identical_tuple = tree_analysis.count_tensorflow_ops_under(
+        identical_tuple_parsed)
+    ops_under_distinct_tuple = tree_analysis.count_tensorflow_ops_under(
+        distinct_tuple_parsed)
+
+    self.assertLess(ops_under_identical_tuple, ops_under_distinct_tuple)
+
 
 def _simulate_permutation_behavior(tuple_type, permutation):
   type_elements = anonymous_tuple.to_elements(tuple_type)

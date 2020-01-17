@@ -1111,9 +1111,9 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
 
                               Tuple--------------------
                              / ...                      \
-                         Call                          Call
-                        /    \                        /    \
-     CompiledComputation      Arg1  CompiledComputation    Argn
+                         Call                            Call
+                        /    \                          /    \
+      CompiledComputation      Arg(1)    CompiledComputation  Arg(n)
 
   Into:
 
@@ -1121,9 +1121,27 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
                              /    \
           CompiledComputation      Tuple
                                   / ... \
-                                Arg1    Argn
+                              Arg(1)    Arg(n)
 
   While preserving semantics.
+
+  In addition, this transform makes the following performance claim:
+  if the arguments to these n `CompiledComputations` are identical (that is,
+  if they all pass the `tree_analysis.trees_equal` function pairwise) they
+  will be represented as a single tensor in the resulting graph, which is
+  plumbed through to the concatenated functions. That is, the structure
+  returned by this function will be more accurately represented by:
+
+                              Call
+                             /    \
+          CompiledComputation      Arg
+
+  where `tree_analysis.trees_equal(Arg, Arg(i))` is `True` for all `i`.
+
+  In particular this implies that, although `TupleCalledGraphs` will not check
+  to see if the functions it is passed are identical, calling
+  `TupleCalledGraphs.transform` on distinct called graphs with identical
+  arguments will not introduce any unwarranted duplication.
   """
 
   def __init__(self, only_equal_args=False):
