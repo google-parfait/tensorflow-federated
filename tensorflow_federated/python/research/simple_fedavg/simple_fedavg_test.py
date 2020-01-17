@@ -1,5 +1,5 @@
 # Lint as: python3
-# Copyright 2019, The TensorFlow Federated Authors.
+# Copyright 2020, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -255,7 +255,7 @@ def server_init(model, optimizer):
   Returns:
     A `tff.learning.framework.ServerState` namedtuple.
   """
-  optimizer_vars = simple_fedavg._create_optimizer_vars(model, optimizer)
+  optimizer_vars = simple_fedavg._initialize_optimizer_vars(model, optimizer)
   return (simple_fedavg.ServerState(
       model=simple_fedavg._get_weights(model),
       optimizer_state=optimizer_vars), optimizer_vars)

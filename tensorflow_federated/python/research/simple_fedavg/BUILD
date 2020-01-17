@@ -2,11 +2,25 @@ package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])
 
+py_binary(
+    name = "emnist_fedavg",
+    srcs = ["emnist_fedavg.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":simple_fedavg",
+        "//tensorflow_federated",
+    ],
+)
+
 py_library(
     name = "simple_fedavg",
     srcs = ["simple_fedavg.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+    ],
 )
 
 py_test(
