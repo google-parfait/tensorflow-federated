@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
+from tensorflow_federated.python.core.impl import sizing_executor
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 
@@ -39,6 +40,18 @@ def _create_federated_stack(num_clients):
   executor_dict = {
       placement_literals.CLIENTS: [
           _create_bottom_stack() for _ in range(num_clients)
+      ],
+      placement_literals.SERVER: _create_bottom_stack(),
+      None: _create_bottom_stack()
+  }
+  return _complete_stack(federated_executor.FederatedExecutor(executor_dict))
+
+
+def _create_sizing_stack(num_clients):
+  executor_dict = {
+      placement_literals.CLIENTS: [
+          sizing_executor.SizingExecutor(_create_bottom_stack())
+          for _ in range(num_clients)
       ],
       placement_literals.SERVER: _create_bottom_stack(),
       None: _create_bottom_stack()
