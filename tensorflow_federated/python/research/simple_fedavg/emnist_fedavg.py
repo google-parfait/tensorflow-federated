@@ -51,10 +51,8 @@ def get_emnist_dataset():
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=True)
 
-  example_tuple = collections.namedtuple('Example', ['x', 'y'])
-
   def element_fn(element):
-    return example_tuple(
+    return collections.OrderedDict(
         x=tf.expand_dims(element['pixels'], -1), y=element['label'])
 
   def preprocess_train_dataset(dataset):
@@ -118,20 +116,26 @@ def create_original_fedavg_cnn_model(only_digits=True):
   return model
 
 
-def create_compiled_keras_model(
-):  # TODO(b/144510813): to be simplified, no compiled, explicit optimizer
-  """Create compiled keras model based on the original FedAvg CNN."""
-  model = create_original_fedavg_cnn_model(only_digits=True)
-  model.compile(
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-      optimizer=tf.keras.optimizers.SGD(
-          learning_rate=FLAGS.client_learning_rate),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-  return model
+def tff_model_fn(sample_batch):
+  keras_model = create_original_fedavg_cnn_model(only_digits=True)
+  loss = tf.keras.losses.SparseCategoricalCrossentropy()
+  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
+  return tff.learning.from_keras_model(
+      keras_model,
+      sample_batch,
+      loss,
+      loss_weights=None,
+      metrics=metrics,
+      optimizer=None
+  )  # TODO(b/144510813): define and directly use KerasModelWrapper
 
 
 def server_optimizer_fn():
   return tf.keras.optimizers.SGD(learning_rate=FLAGS.server_learning_rate)
+
+
+def client_optimizer_fn():
+  return tf.keras.optimizers.SGD(learning_rate=FLAGS.client_learning_rate)
 
 
 def main(argv):
@@ -142,18 +146,16 @@ def main(argv):
   train_data, test_data = get_emnist_dataset()
   del test_data  # TODO(b/144510813): add evaluation on test data
 
-  # TODO(b/144510813): sample_batch & tff.learning.Model, to be simplified
+  # TODO(b/144510813): sample_batch to be simplified
   example_dataset = train_data.create_tf_dataset_for_client(
       train_data.client_ids[0])
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
                                        next(iter(example_dataset)))
 
-  def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+  model_fn = functools.partial(tff_model_fn, sample_batch)
 
   iterative_process = simple_fedavg.build_federated_averaging_process(
-      model_fn, server_optimizer_fn)  # to be simplified
+      model_fn, server_optimizer_fn, client_optimizer_fn)
   server_state = iterative_process.initialize()
 
   for round_num in range(FLAGS.total_rounds):

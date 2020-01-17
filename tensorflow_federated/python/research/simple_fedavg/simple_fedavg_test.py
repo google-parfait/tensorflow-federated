@@ -22,20 +22,20 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.simple_fedavg import simple_fedavg
 
-_Batch = collections.namedtuple('Batch', ['x', 'y'])
-
 
 def _create_random_batch():
-  return _Batch(
+  return collections.OrderedDict(
       x=tf.random.uniform(tf.TensorShape([1, 784]), dtype=tf.float32),
       y=tf.constant(1, dtype=tf.int64, shape=[1, 1]))
 
 
 def _model_fn():
   keras_model = tff.simulation.models.mnist.create_keras_model(
-      compile_model=True)
+      compile_model=False
+  )  # TODO(b/144510813): remove denpendency on tff.simulation
   batch = _create_random_batch()
-  return tff.learning.from_compiled_keras_model(keras_model, batch)
+  return tff.learning.from_keras_model(
+      keras_model, batch, loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
 MnistVariables = collections.namedtuple(
@@ -93,6 +93,9 @@ def aggregate_mnist_metrics_across_clients(metrics):
   }
 
 
+ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
+
+
 class MnistModel(tff.learning.Model):
 
   def __init__(self):
@@ -105,6 +108,12 @@ class MnistModel(tff.learning.Model):
   @property
   def non_trainable_variables(self):
     return []
+
+  @property
+  def weights(self):
+    return ModelWeights(
+        trainable=self.trainable_variables,
+        non_trainable=self.non_trainable_variables)
 
   @property
   def local_variables(self):
@@ -135,16 +144,6 @@ class MnistModel(tff.learning.Model):
   @property
   def federated_output_computation(self):
     return aggregate_mnist_metrics_across_clients
-
-
-class MnistTrainableModel(MnistModel, tff.learning.TrainableModel):
-
-  @tf.function
-  def train_on_batch(self, batch):
-    output = self.forward_pass(batch)
-    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.02)
-    optimizer.minimize(output.loss, var_list=self.trainable_variables)
-    return output
 
 
 def create_client_data():
@@ -185,7 +184,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
 
     # Test out manually setting weights:
     keras_model = tff.simulation.models.mnist.create_keras_model(
-        compile_model=True)
+        compile_model=False)
 
     def deterministic_batch():
       return Batch(
@@ -197,9 +196,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
 
     def keras_evaluate(state):
       tff.learning.assign_weights_to_keras_model(keras_model, state.model)
-      # N.B. The loss computed here won't match the
-      # loss computed by TFF because of the Dropout layer.
-      keras_model.test_on_batch(batch.x, batch.y)
+      keras_model.predict(batch.x)
 
     loss_list = []
     for _ in range(3):
@@ -210,32 +207,12 @@ class SimpleFedAvgTest(tf.test.TestCase):
 
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
-  def test_self_contained_example_keras_model(self):
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
-    client_data = create_client_data()
-    train_data = [client_data()]
-    sample_batch = self.evaluate(next(iter(train_data[0])))
-
-    trainer = simple_fedavg.build_federated_averaging_process(model_fn)
-    state = trainer.initialize()
-    losses = []
-    for _ in range(2):
-      state, outputs = trainer.next(state, train_data)
-      # Track the loss.
-      losses.append(outputs.loss)
-    self.assertLess(losses[1], losses[0])
-
   def test_self_contained_example_custom_model(self):
 
     client_data = create_client_data()
     train_data = [client_data()]
 
-    trainer = simple_fedavg.build_federated_averaging_process(
-        MnistTrainableModel)
+    trainer = simple_fedavg.build_federated_averaging_process(MnistModel)
     state = trainer.initialize()
     losses = []
     for _ in range(2):
@@ -255,10 +232,9 @@ def server_init(model, optimizer):
   Returns:
     A `tff.learning.framework.ServerState` namedtuple.
   """
-  optimizer_vars = simple_fedavg._initialize_optimizer_vars(model, optimizer)
-  return (simple_fedavg.ServerState(
-      model=simple_fedavg._get_weights(model),
-      optimizer_state=optimizer_vars), optimizer_vars)
+  simple_fedavg._initialize_optimizer_vars(model, optimizer)
+  return simple_fedavg.ServerState(
+      model=model.weights, optimizer_state=optimizer.variables())
 
 
 class ServerTest(tf.test.TestCase):
@@ -267,38 +243,23 @@ class ServerTest(tf.test.TestCase):
     optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     model = model_fn()
     optimizer = optimizer_fn()
-    state, optimizer_vars = server_init(model, optimizer)
-    weights_delta = tf.nest.map_structure(
-        tf.ones_like,
-        simple_fedavg._get_weights(model).trainable)
+    state = server_init(model, optimizer)
+    weights_delta = tf.nest.map_structure(tf.ones_like,
+                                          model.trainable_variables)
 
     for _ in range(2):
-      state = simple_fedavg.server_update(model, optimizer, optimizer_vars,
-                                          state, weights_delta)
+      state = simple_fedavg.server_update(model, optimizer, state,
+                                          weights_delta)
 
     model_vars = self.evaluate(state.model)
     train_vars = model_vars.trainable
     self.assertLen(train_vars, 2)
     # weights are initialized with all-zeros, weights_delta is all ones,
     # SGD learning rate is 0.1. Updating server for 2 steps.
-    self.assertAllClose(
-        train_vars, {k: np.ones_like(v) * 0.2 for k, v in train_vars.items()})
-
-  def test_self_contained_example_keras_model(self):
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
-    client_data = create_client_data()
-    sample_batch = self.evaluate(next(iter(client_data())))
-
-    self._assert_server_update_with_all_ones(model_fn)
+    self.assertAllClose(train_vars, [np.ones_like(v) * 0.2 for v in train_vars])
 
   def test_self_contained_example_custom_model(self):
-    model_fn = MnistTrainableModel
-
-    self._assert_server_update_with_all_ones(model_fn)
+    self._assert_server_update_with_all_ones(MnistModel)
 
 
 class ClientTest(tf.test.TestCase):
@@ -307,14 +268,17 @@ class ClientTest(tf.test.TestCase):
 
     client_data = create_client_data()
 
-    model = MnistTrainableModel()
+    model = MnistModel()
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     losses = []
     for _ in range(2):
-      outputs = simple_fedavg.client_update(model, client_data(),
-                                            simple_fedavg._get_weights(model))
+      optimizer = optimizer_fn()
+      simple_fedavg._initialize_optimizer_vars(model, optimizer)
+      outputs = simple_fedavg.client_update(model, client_data(), model.weights,
+                                            optimizer)
       losses.append(outputs.model_output['loss'].numpy())
 
-    self.assertAllEqual(outputs.optimizer_output['num_examples'].numpy(), 2)
+    self.assertAllEqual(int(outputs.client_weight.numpy()), 2)
     self.assertLess(losses[1], losses[0])
 
 

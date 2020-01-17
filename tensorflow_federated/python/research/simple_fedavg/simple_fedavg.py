@@ -27,21 +27,9 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-import collections
-
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
-
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
-
-
-def _get_weights(model):
-  model_weights = collections.namedtuple('ModelWeights',
-                                         'trainable non_trainable')
-  return model_weights(
-      trainable=tensor_utils.to_var_dict(model.trainable_variables),
-      non_trainable=tensor_utils.to_var_dict(model.non_trainable_variables))
 
 
 @attr.s(cmp=False, frozen=True)
@@ -51,18 +39,15 @@ class ClientOutput(object):
   Fields:
   -   `weights_delta`: A dictionary of updates to the model's trainable
       variables.
-  -   `weights_delta_weight`: Weight to be used in a weighted mean when
+  -   `client_weight`: Weight to be used in a weighted mean when
       aggregating `weights_delta`.
   -   `model_output`: A structure matching
       `tff.learning.Model.report_local_outputs`, reflecting the results of
       training on the input dataset.
-  -   `optimizer_output`: Additional metrics or other outputs defined by the
-      optimizer.
   """
   weights_delta = attr.ib()
-  weights_delta_weight = attr.ib()
+  client_weight = attr.ib()
   model_output = attr.ib()
-  optimizer_output = attr.ib()
 
 
 @attr.s(cmp=False, frozen=True)
@@ -78,24 +63,24 @@ class ServerState(object):
 
 
 @tf.function
-def server_update(model, server_optimizer, server_optimizer_vars, server_state,
-                  weights_delta):
+def server_update(model, server_optimizer, server_state, weights_delta):
   """Updates `server_state` based on `weights_delta`.
 
   Args:
     model: A `tff.learning.TrainableModel`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`.
-    server_optimizer_vars: A list of previous variables of server_optimzer.
+      If the optimizer creates variables, they must have already been created.
+      May use _initialize_optimizer_vars()
     server_state: A `ServerState`, the state to be updated.
     weights_delta: An update to the trainable variables of the model.
 
   Returns:
     An updated `ServerState`.
   """
-  model_weights = _get_weights(model)
   # Initialize the model with the current state.
+  model_weights = model.weights
   tff.utils.assign(model_weights, server_state.model)
-  tff.utils.assign(server_optimizer_vars, server_state.optimizer_state)
+  tff.utils.assign(server_optimizer.variables(), server_state.optimizer_state)
 
   # Apply the update to the model.
   grads_and_vars = tf.nest.map_structure(
@@ -105,82 +90,88 @@ def server_update(model, server_optimizer, server_optimizer_vars, server_state,
 
   # Create a new state based on the updated model.
   return tff.utils.update_state(
-      server_state, model=model_weights, optimizer_state=server_optimizer_vars)
+      server_state,
+      model=model_weights,
+      optimizer_state=server_optimizer.variables())
 
 
 @tf.function
-def client_update(model, dataset, initial_weights):
+def client_update(model, dataset, initial_weights, client_optimizer):
   """Updates client model.
 
   Args:
     model: A `tff.learning.Model`.
     dataset: A 'tf.data.Dataset'.
     initial_weights: A `tff.learning.Model.weights` from server.
+    client_optimizer: A `tf.keras.optimizers.Optimizer`.
 
   Returns:
     A 'ClientOutput`.
   """
-  model_weights = _get_weights(model)
+  model_weights = model.weights
   tff.utils.assign(model_weights, initial_weights)
 
-  @tf.function
-  def reduce_fn(num_examples_sum, batch):
-    """Runs `tff.learning.Model.train_on_batch` on local client batch."""
-    output = model.train_on_batch(batch)
-    return num_examples_sum + tf.shape(output.predictions)[0]
+  num_examples = tf.constant(0, dtype=tf.int32)
+  for batch in dataset:
+    with tf.GradientTape() as tape:
+      output = model.forward_pass(batch)
+    grads = tape.gradient(output.loss, model_weights.trainable)
+    grads_and_vars = zip(grads, model_weights.trainable)
+    client_optimizer.apply_gradients(grads_and_vars)
+    num_examples += tf.shape(output.predictions)[0]
 
-  num_examples_sum = dataset.reduce(
-      initial_state=tf.constant(0), reduce_func=reduce_fn)
+  # TODO(b/142341957): This control_dependency should not be needed, but is
+  # currently necessary to work around a TF bug with how tf.function handles
+  # tf.data.Datasets.
+  with tf.control_dependencies([num_examples]):
+    aggregated_outputs = model.report_local_outputs()
+    weights_delta = tf.nest.map_structure(lambda a, b: a - b,
+                                          model_weights.trainable,
+                                          initial_weights.trainable)
 
-  weights_delta = tf.nest.map_structure(lambda a, b: a - b,
-                                        model_weights.trainable,
-                                        initial_weights.trainable)
-  aggregated_outputs = model.report_local_outputs()
+  client_weight = tf.cast(num_examples, tf.float32)
 
-  weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
-
-  return ClientOutput(
-      weights_delta, weights_delta_weight, aggregated_outputs,
-      tensor_utils.to_odict({
-          'num_examples': num_examples_sum,
-      }))
+  return ClientOutput(weights_delta, client_weight, aggregated_outputs)
 
 
 def _initialize_optimizer_vars(model, optimizer):
   """Create optimizer variables to assign the optimizer's state."""
-  model_delta = tf.nest.map_structure(tf.zeros_like,
-                                      _get_weights(model).trainable)
+  model_weights = model.weights
+  model_delta = tf.nest.map_structure(tf.zeros_like, model_weights.trainable)
   grads_and_vars = tf.nest.map_structure(
       lambda x, v: (-1.0 * x, v), tf.nest.flatten(model_delta),
-      tf.nest.flatten(_get_weights(model).trainable))
-  optimizer.apply_gradients(grads_and_vars, name='server_update')
-  return optimizer.variables()
+      tf.nest.flatten(model_weights.trainable))
+  optimizer.apply_gradients(grads_and_vars)
+  assert optimizer.variables()
 
 
 def build_federated_averaging_process(
     model_fn,
-    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0)):
+    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
+    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1)):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
     server_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer`.
+      `tf.keras.optimizers.Optimizer` for server update.
+    client_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer` for client update.
 
   Returns:
     A `tff.utils.IterativeProcess`.
   """
 
-  dummy_model_for_metadata = model_fn(
-  )  # TODO(b/144510813):try remove dependency on dummy model, or rename it
+  dummy_model = model_fn(
+  )  # TODO(b/144510813): try remove dependency on dummy model
 
   @tff.tf_computation
   def server_init_tf():
     model = model_fn()
     server_optimizer = server_optimizer_fn()
-    server_optimizer_vars = _initialize_optimizer_vars(model, server_optimizer)
+    _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
-        model=_get_weights(model), optimizer_state=server_optimizer_vars)
+        model=model.weights, optimizer_state=server_optimizer.variables())
 
   server_state_type = server_init_tf.type_signature.result
   model_weights_type = server_state_type.model
@@ -189,15 +180,17 @@ def build_federated_averaging_process(
   def server_update_fn(server_state, model_delta):
     model = model_fn()
     server_optimizer = server_optimizer_fn()
-    server_optimizer_vars = _initialize_optimizer_vars(model, server_optimizer)
-    return server_update(model, server_optimizer, server_optimizer_vars,
-                         server_state, model_delta)
+    _initialize_optimizer_vars(model, server_optimizer)
+    return server_update(model, server_optimizer, server_state, model_delta)
 
-  tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
+  tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
 
   @tff.tf_computation(tf_dataset_type, model_weights_type)
   def client_update_fn(tf_dataset, initial_model_weights):
-    return client_update(model_fn(), tf_dataset, initial_model_weights)
+    model = model_fn()
+    client_optimizer = client_optimizer_fn()
+    return client_update(model, tf_dataset, initial_model_weights,
+                         client_optimizer)
 
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
   federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
@@ -220,14 +213,14 @@ def build_federated_averaging_process(
     client_outputs = tff.federated_map(client_update_fn,
                                        (federated_dataset, client_model))
 
-    weight_denom = client_outputs.weights_delta_weight
+    weight_denom = client_outputs.client_weight
     round_model_delta = tff.federated_mean(
         client_outputs.weights_delta, weight=weight_denom)
 
     server_state = tff.federated_map(server_update_fn,
                                      (server_state, round_model_delta))
 
-    aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
+    aggregated_outputs = dummy_model.federated_output_computation(
         client_outputs.model_output)
     aggregated_outputs = tff.federated_zip(aggregated_outputs)
 
