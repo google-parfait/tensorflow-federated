@@ -108,10 +108,10 @@ customize your federated training loop in order to gain more control over the
 orchestration and optimization logic of the experiment. Again,
 [`simple_fedavg`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py)
 may be a good place to start. For example, you could change the
-[client update](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L129-L163)
+[client update](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L125-L159)
 function to implement a custom local training procedure, modify the
 `tff.federated_computation` that controls the
-[orchestration](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L274-L303)
+[orchestration](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L270-L301)
 to change what is broadcast from the server to client and what is aggregated
 back, and alter
 [the outer loop](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/utils/training_loops.py#L71-L83)
@@ -119,7 +119,32 @@ of the experiment to use different behaviors across rounds.
 
 ### Model and update compression
 
-### Meta-learning and multi-task learning
+TFF uses the
+[tensor_encoding](https://github.com/tensorflow/model-optimization/tree/master/tensorflow_model_optimization/python/core/internal/tensor_encoding)
+API to enable lossy compression algorithms to reduce communicatation costs
+between the server and clients. For an example of training with server-to-client
+and client-to-server
+[compression using Federated Averaging](https://arxiv.org/abs/1812.07210)
+algorithm, see
+[this experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py).
+
+To implement a custom compression algorithm and apply it to the training loop,
+you can:
+
+1.  Implement a new compression algorithm as a subclass of
+    [`EncodingStageInterface`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/encoding_stage.py#L75)
+    or its more general variant,
+    [`AdaptiveEncodingStageInterface`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/encoding_stage.py#L274)
+    following
+    [this example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/sparsity.py).
+1.  Construct your new
+    [`Encoder`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/core_encoder.py#L38)
+    and specialize it for
+    [model broadcast](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py#L118)
+    or
+    [model update averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py#L144).
+1.  Use those objects to build the entire
+    [training computation](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py#L247).
 
 ### Differential privacy
 
