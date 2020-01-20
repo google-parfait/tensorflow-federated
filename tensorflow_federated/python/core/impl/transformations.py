@@ -1394,6 +1394,68 @@ def preprocess_for_tf_parse(comp):
   return transformation_utils.transform_postorder(comp, preprocessor)
 
 
+def group_block_locals_by_namespace(block):
+  """Partitions `block.locals` into classes which share namespaces.
+
+  That is, the computations in each class close over the same set of variables.
+  The sets of variables each class closes over is defined by the sequence of
+  variable bindings in the local_variables statement. That is, if the local
+  variables declare 'a' then 'b', and the variable 'x' is the top level unbound
+  ref, then this function will construct computation classes of the form:
+
+  [[all computations having only x as unbound],
+  [remaining computations having either a or x unbound],
+  [remaining computations having a, b, or x unbound]]
+
+  Args:
+    block: Instance of `building_blocks.Block`, whose local variables we wish to
+      partition in the manner described above.
+
+  Returns:
+    A list of lists, where each computation in the locals of `block` appears in
+    exactly one list, each inner list contains computations which share
+    the same unbound variables, and each computation appears as early as
+    possible. The order of the lists returned is defined by the order of the
+    variable indings in `block`, as described above. In particular, the
+    length of the outer list will always be the number of variables declared
+    in the block locals statement, plus one, and the sum of the lengths of
+    the inner lists will be identical to the number of local variables
+    declared.
+  """
+  py_typecheck.check_type(block, building_blocks.Block)
+  all_unbound_refs = transformation_utils.get_map_of_unbound_references(block)
+  top_level_unbound_ref = all_unbound_refs[block]
+  local_variables = block.locals
+
+  comps_which_are_local_variables = [x[1] for x in local_variables]
+
+  arg_classes = [top_level_unbound_ref]
+
+  for var, _ in local_variables:
+    final_arg_class = arg_classes[-1].copy()
+    final_arg_class.add(var)
+    arg_classes.append(final_arg_class)
+
+  comps_yet_to_partition = [
+      (comp, all_unbound_refs[comp]) for comp in comps_which_are_local_variables
+  ]
+  comp_classes = []
+  for args in arg_classes:
+    cls = []
+    selected_indices = []
+    for idx, (comp, refs) in enumerate(comps_yet_to_partition):
+      if refs.issubset(args):
+        cls.append(comp)
+        selected_indices.append(idx)
+    remaining_comps = []
+    for idx, comp_tuple in enumerate(comps_yet_to_partition):
+      if idx not in selected_indices:
+        remaining_comps.append(comp_tuple)
+    comps_yet_to_partition = remaining_comps
+    comp_classes.append(cls)
+  return comp_classes
+
+
 def insert_called_tf_identity_at_leaves(comp):
   r"""Inserts an identity TF graph called on References under `comp`.
 
