@@ -16,6 +16,7 @@
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 
@@ -143,3 +144,57 @@ def remove_lambdas_and_blocks(comp):
       comp, _transform_fn, symbol_tree)
   modified = modified or inner_modified
   return transformed_comp, modified
+
+
+def construct_tensorflow_calling_lambda_on_concrete_arg(
+    parameter: building_blocks.Reference,
+    body: building_blocks.ComputationBuildingBlock,
+    concrete_arg: building_blocks.ComputationBuildingBlock):
+  """Generates TensorFlow for lambda invocation with given arg, body and param.
+
+  That is, generates TensorFlow block encapsulating the logic represented by
+  invoking a function with parameter `parameter` and body `body`, with argument
+  `concrete_arg`.
+
+  Via the guarantee made in `compiled_computation_transforms.TupleCalledGraphs`,
+  this function makes the claim that the computations which define
+  `concrete_arg` will be executed exactly once in the generated TenosorFlow.
+
+  Args:
+    parameter: Instance of `building_blocks.Reference` defining the parameter of
+      the function to be generated and invoked, as described above. After
+      calling this transformation, every instance of  parameter` in `body` will
+      represent a reference to `concrete_arg`.
+    body: `building_blocks.ComputationBuildingBlock` representing the body of
+      the function for which we are generating TensorFlow.
+    concrete_arg: `building_blocks.ComputationBuildingBlock` representing the
+      argument to be passed to the resulting function. `concrete_arg` will then
+      be referred to by every occurrence of `parameter` in `body`. Therefore
+      `concrete_arg` must have an equivalent type signature to that of
+      `parameter`.
+
+  Returns:
+    A called `building_blocks.CompiledComputation`, as specified above.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types, or the type signature
+      of `concrete_arg` does not match that of `parameter`.
+  """
+  py_typecheck.check_type(parameter, building_blocks.Reference)
+  py_typecheck.check_type(body, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(concrete_arg,
+                          building_blocks.ComputationBuildingBlock)
+  type_utils.check_equivalent_types(parameter.type_signature,
+                                    concrete_arg.type_signature)
+
+  def _generate_simple_tensorflow(comp):
+    tf_parser_callable = transformations.TFParser()
+    comp, _ = transformations.insert_called_tf_identity_at_leaves(comp)
+    comp, _ = transformation_utils.transform_postorder(comp, tf_parser_callable)
+    return comp
+
+  encapsulating_lambda = _generate_simple_tensorflow(
+      building_blocks.Lambda(parameter.name, parameter.type_signature, body))
+  comp_called = _generate_simple_tensorflow(
+      building_blocks.Call(encapsulating_lambda, concrete_arg))
+  return comp_called

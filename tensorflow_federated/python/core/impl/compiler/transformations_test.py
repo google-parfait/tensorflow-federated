@@ -14,19 +14,20 @@
 # limitations under the License.
 """Tests for exported, composite transformations."""
 
-from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 
 
-class RemoveLambdasAndBlocksTest(absltest.TestCase):
+class RemoveLambdasAndBlocksTest(common_test.TestCase):
 
   def assertNoLambdasOrBlocks(self, comp):
 
@@ -149,5 +150,97 @@ class RemoveLambdasAndBlocksTest(absltest.TestCase):
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
 
 
+class TensorFlowCallingLambdaOnConcreteArgTest(common_test.TestCase):
+
+  def test_raises_wrong_arguments(self):
+    good_param = building_blocks.Reference('x', tf.int32)
+    good_body = building_blocks.Tuple(
+        [building_blocks.Reference('x', tf.int32)])
+    good_arg = building_blocks.Data('y', tf.int32)
+    with self.assertRaises(TypeError):
+      compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+          good_body, good_body, good_arg)
+    with self.assertRaises(TypeError):
+      compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+          good_param, [good_param], good_arg)
+    with self.assertRaises(TypeError):
+      compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+          good_param, good_body, [good_arg])
+
+  def test_raises_arg_does_not_match_param(self):
+    good_param = building_blocks.Reference('x', tf.int32)
+    good_body = building_blocks.Tuple(
+        [building_blocks.Reference('x', tf.int32)])
+    bad_arg_type = building_blocks.Data('y', tf.float32)
+    with self.assertRaises(TypeError):
+      compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+          good_param, good_body, bad_arg_type)
+
+  def test_constructs_called_tf_block_of_correct_type_signature(self):
+    param = building_blocks.Reference('x', tf.int32)
+    body = building_blocks.Tuple([building_blocks.Reference('x', tf.int32)])
+    arg = building_blocks.Reference('y', tf.int32)
+    tf_block = compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+        param, body, arg)
+    self.assertIsInstance(tf_block, building_blocks.Call)
+    self.assertIsInstance(tf_block.function,
+                          building_blocks.CompiledComputation)
+    self.assertEqual(tf_block.type_signature, body.type_signature)
+
+  def test_preserves_named_type(self):
+    param = building_blocks.Reference('x', tf.int32)
+    body = building_blocks.Tuple([('a',
+                                   building_blocks.Reference('x', tf.int32))])
+    arg = building_blocks.Reference('y', tf.int32)
+    tf_block = compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+        param, body, arg)
+    self.assertIsInstance(tf_block, building_blocks.Call)
+    self.assertIsInstance(tf_block.function,
+                          building_blocks.CompiledComputation)
+    self.assertEqual(tf_block.type_signature, body.type_signature)
+
+  def test_generated_tensorflow_executes_correctly_int_parameter(self):
+    param = building_blocks.Reference('x', tf.int32)
+    body = building_blocks.Tuple([
+        building_blocks.Reference('x', tf.int32),
+        building_blocks.Reference('x', tf.int32)
+    ])
+    int_constant = building_block_factory.create_tensorflow_constant(
+        tf.int32, 0)
+    tf_block = compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+        param, body, int_constant)
+    result = test_utils.run_tensorflow(tf_block.function.proto)
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], 0)
+    self.assertEqual(result[1], 0)
+
+  def test_generated_tensorflow_executes_correctly_tuple_parameter(self):
+    param = building_blocks.Reference('x', [tf.int32, tf.float32])
+    body = building_blocks.Tuple([
+        building_blocks.Selection(param, index=1),
+        building_blocks.Selection(param, index=0)
+    ])
+    int_constant = building_block_factory.create_tensorflow_constant(
+        [tf.int32, tf.float32], 1)
+    tf_block = compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+        param, body, int_constant)
+    result = test_utils.run_tensorflow(tf_block.function.proto)
+    self.assertLen(result, 2)
+    self.assertEqual(result[0], 1.)
+    self.assertEqual(result[1], 1)
+
+  def test_generated_tensorflow_executes_correctly_sequence_parameter(self):
+    param = building_blocks.Reference('x',
+                                      computation_types.SequenceType(tf.int32))
+    body = building_blocks.Tuple([param])
+    sequence_ref = building_blocks.Reference(
+        'y', computation_types.SequenceType(tf.int32))
+    tf_block = compiler_transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
+        param, body, sequence_ref)
+    result = test_utils.run_tensorflow(tf_block.function.proto, list(range(5)))
+    self.assertLen(result, 1)
+    self.assertAllEqual(result[0], list(range(5)))
+
+
 if __name__ == '__main__':
-  absltest.main()
+  common_test.main()

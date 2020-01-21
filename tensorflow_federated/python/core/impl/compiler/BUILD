@@ -221,6 +221,7 @@ py_library(
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:transformations",
+        "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )
 
@@ -232,8 +233,10 @@ py_test(
     deps = [
         ":building_block_factory",
         ":building_blocks",
+        ":test_utils",
         ":transformation_utils",
         ":transformations",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl:transformations",
