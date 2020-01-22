@@ -1417,21 +1417,20 @@ def group_block_locals_by_namespace(block):
 
   Returns:
     A list of lists, where each computation in the locals of `block` appears in
-    exactly one list, each inner list contains computations which share
-    the same unbound variables, and each computation appears as early as
-    possible. The order of the lists returned is defined by the order of the
-    variable indings in `block`, as described above. In particular, the
-    length of the outer list will always be the number of variables declared
-    in the block locals statement, plus one, and the sum of the lengths of
-    the inner lists will be identical to the number of local variables
-    declared.
+    exactly one list, each inner list contains two-tuples (whose second elements
+    are the computations which share the same unbound variables and first
+    element is the variable name bound to this computation), and each
+    computation appears as early as possible. The order of the lists returned
+    is defined by the order of the variable indings in `block`, as described
+    above. In particular, the length of the outer list will always be the number
+    of variables declared in the block locals statement, plus one, and the sum
+    of the lengths of the inner lists will be identical to the number of local
+    variables declared.
   """
   py_typecheck.check_type(block, building_blocks.Block)
   all_unbound_refs = transformation_utils.get_map_of_unbound_references(block)
   top_level_unbound_ref = all_unbound_refs[block]
   local_variables = block.locals
-
-  comps_which_are_local_variables = [x[1] for x in local_variables]
 
   arg_classes = [top_level_unbound_ref]
 
@@ -1441,15 +1440,15 @@ def group_block_locals_by_namespace(block):
     arg_classes.append(final_arg_class)
 
   comps_yet_to_partition = [
-      (comp, all_unbound_refs[comp]) for comp in comps_which_are_local_variables
+      (name, comp, all_unbound_refs[comp]) for (name, comp) in local_variables
   ]
   comp_classes = []
   for args in arg_classes:
     cls = []
     selected_indices = []
-    for idx, (comp, refs) in enumerate(comps_yet_to_partition):
+    for idx, (name, comp, refs) in enumerate(comps_yet_to_partition):
       if refs.issubset(args):
-        cls.append(comp)
+        cls.append((name, comp))
         selected_indices.append(idx)
     remaining_comps = []
     for idx, comp_tuple in enumerate(comps_yet_to_partition):
@@ -1457,6 +1456,7 @@ def group_block_locals_by_namespace(block):
         remaining_comps.append(comp_tuple)
     comps_yet_to_partition = remaining_comps
     comp_classes.append(cls)
+
   return comp_classes
 
 

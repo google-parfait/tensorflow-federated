@@ -4575,7 +4575,8 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     classes = transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 2)
     self.assertLen(classes[0], 1)
-    self.assertEqual(classes[0][0], single_data)
+    self.assertEqual(classes[0][0][0], 'x')
+    self.assertEqual(classes[0][0][1], single_data)
 
   def test_puts_computation_not_referencing_variable_into_first_list(self):
     first_data = building_blocks.Data('a', tf.int32)
@@ -4586,8 +4587,10 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     classes = transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 3)
     self.assertLen(classes[0], 2)
-    self.assertEqual(classes[0][0], first_data)
-    self.assertEqual(classes[0][1], second_data)
+    self.assertEqual(classes[0][0][0], 'x')
+    self.assertEqual(classes[0][0][1], first_data)
+    self.assertEqual(classes[0][1][0], 'y')
+    self.assertEqual(classes[0][1][1], second_data)
 
   def test_maintains_distinct_elements_in_partition_with_identical_python_objects_in_locals(
       self):
@@ -4597,8 +4600,10 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     classes = transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 3)
     self.assertLen(classes[0], 2)
-    self.assertEqual(classes[0][0], data)
-    self.assertEqual(classes[0][1], data)
+    self.assertEqual(classes[0][0][0], 'x')
+    self.assertEqual(classes[0][0][1], data)
+    self.assertEqual(classes[0][1][0], 'y')
+    self.assertEqual(classes[0][1][1], data)
 
   def test_leaves_computations_referencing_each_sequential_variable_in_singleton_lists(
       self):
@@ -4613,9 +4618,12 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     self.assertLen(classes[1], 1)
     self.assertLen(classes[2], 1)
     self.assertLen(classes[3], 0)
-    self.assertEqual(classes[0][0], data)
-    self.assertEqual(classes[1][0], ref_to_x)
-    self.assertEqual(classes[2][0], ref_to_y)
+    self.assertEqual(classes[0][0][0], 'x')
+    self.assertEqual(classes[0][0][1], data)
+    self.assertEqual(classes[1][0][0], 'y')
+    self.assertEqual(classes[1][0][1], ref_to_x)
+    self.assertEqual(classes[2][0][0], 'z')
+    self.assertEqual(classes[2][0][1], ref_to_y)
 
   def test_moves_computation_at_end_no_unbound_ref_to_beginning(self):
     first_data = building_blocks.Data('a', tf.int32)
@@ -4629,9 +4637,12 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     self.assertLen(classes[1], 1)
     self.assertLen(classes[2], 0)
     self.assertLen(classes[3], 0)
-    self.assertEqual(classes[0][0], first_data)
-    self.assertEqual(classes[0][1], second_data)
-    self.assertEqual(classes[1][0], ref_to_x)
+    self.assertEqual(classes[0][0][0], 'x')
+    self.assertEqual(classes[0][0][1], first_data)
+    self.assertEqual(classes[0][1][0], 'z')
+    self.assertEqual(classes[0][1][1], second_data)
+    self.assertEqual(classes[1][0][0], 'y')
+    self.assertEqual(classes[1][0][1], ref_to_x)
 
 
 if __name__ == '__main__':
