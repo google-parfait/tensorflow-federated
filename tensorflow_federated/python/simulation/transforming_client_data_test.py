@@ -136,8 +136,8 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       index = int(match.group(2))
       for i, actual in enumerate(tf_dataset):
         actual = self.evaluate(actual)
-        expected = {k: v[i] for k, v in TEST_DATA[client].items()}
-        expected['x'] = expected['x'] + 10 * index
+        expected = {k: v[i].copy() for k, v in TEST_DATA[client].items()}
+        expected['x'] += 10 * index
         self.assertCountEqual(actual, expected)
         for k, v in actual.items():
           self.assertAllEqual(v, expected[k])
@@ -158,7 +158,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     for expected_data in TEST_DATA.values():
       for index in range(expansion_factor):
         for i in range(len(expected_data['x'])):
-          example = {k: v[i] for k, v in expected_data.items()}
+          example = {k: v[i].copy() for k, v in expected_data.items()}
           example['x'] += 10 * index
           expected_examples.append(example)
 
