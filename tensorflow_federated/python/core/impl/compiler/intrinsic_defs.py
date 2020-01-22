@@ -414,6 +414,19 @@ GENERIC_MULTIPLY = IntrinsicDef(
 GENERIC_ZERO = IntrinsicDef('GENERIC_ZERO', 'generic_zero',
                             computation_types.AbstractType('T'))
 
+# Computes the sum of client values on the server, securely. Only supported for
+# numeric types, or nested structures made up of numeric computation_types.
+#
+# Type signature: <{T}@CLIENTS,T> -> T@SERVER
+SECURE_SUM = IntrinsicDef(
+    'SECURE_SUM', 'secure_sum',
+    computation_types.FunctionType(
+        parameter=[
+            type_factory.at_clients(computation_types.AbstractType('T')),
+            computation_types.AbstractType('T'),
+        ],
+        result=type_factory.at_server(computation_types.AbstractType('T'))))
+
 # Maps elements of a sequence using a given mapping function that operates
 # independently on each element.
 #

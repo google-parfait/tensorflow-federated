@@ -1085,6 +1085,30 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
                       None, None, True)
 
 
+class IsStructureOfIntegersTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('int', tf.int32),
+      ('ints', ([tf.int32, tf.int32],)),
+      ('federated_int_at_clients',
+       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+  )
+  def test_returns_true(self, type_spec):
+    self.assertTrue(type_utils.is_structure_of_integers(type_spec))
+
+  @parameterized.named_parameters(
+      ('bool', tf.bool),
+      ('string', tf.string),
+      ('int_and_bool', ([tf.int32, tf.bool],)),
+      ('sequence_of_ints', computation_types.SequenceType(tf.int32)),
+      ('placement', computation_types.PlacementType()),
+      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
+      ('abstract', computation_types.AbstractType('T')),
+  )
+  def test_returns_false(self, type_spec):
+    self.assertFalse(type_utils.is_structure_of_integers(type_spec))
+
+
 class IsAnonTupleWithPyContainerTest(test.TestCase):
 
   def test_returns_true(self):

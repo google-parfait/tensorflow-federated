@@ -306,6 +306,20 @@ class IntrinsicFactory(object):
     comp = building_block_factory.create_federated_zip(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
+  def secure_sum(self, value, bitwidth):
+    """Implements `secure_sum` as defined in `api/intrinsics.py`."""
+    value = value_impl.to_value(value, None, self._context_stack)
+    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+                                               'value to be summed')
+    type_utils.check_is_structure_of_integers(value.type_signature)
+    bitwidth = value_impl.to_value(bitwidth, None, self._context_stack)
+    type_utils.check_equivalent_types(value.type_signature.member,
+                                      bitwidth.type_signature)
+    value = value_impl.ValueImpl.get_comp(value)
+    bitwidth = value_impl.ValueImpl.get_comp(bitwidth)
+    comp = building_block_factory.create_secure_sum(value, bitwidth)
+    return value_impl.ValueImpl(comp, self._context_stack)
+
   def sequence_map(self, fn, arg):
     """Implements `sequence_map` as defined in `api/intrinsics.py`."""
     fn = value_impl.to_value(fn, None, self._context_stack)

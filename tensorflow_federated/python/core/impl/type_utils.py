@@ -808,6 +808,37 @@ def check_is_sum_compatible(type_spec):
         .format(type_spec))
 
 
+def is_structure_of_integers(type_spec):
+  """Determines if `type_spec` is a structure of integers.
+
+  Args:
+    type_spec: Either an instance of computation_types.Type, or something
+      convertible to it.
+
+  Returns:
+    `True` iff `type_spec` is a structure of integers, otherwise `False`.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  if isinstance(type_spec, computation_types.TensorType):
+    py_typecheck.check_type(type_spec.dtype, tf.DType)
+    return type_spec.dtype.is_integer
+  elif isinstance(type_spec, computation_types.NamedTupleType):
+    return all(
+        is_structure_of_integers(v)
+        for _, v in anonymous_tuple.iter_elements(type_spec))
+  elif isinstance(type_spec, computation_types.FederatedType):
+    return is_structure_of_integers(type_spec.member)
+  else:
+    return False
+
+
+def check_is_structure_of_integers(type_spec):
+  if not is_sum_compatible(type_spec):
+    raise TypeError(
+        'Expected a type which is structure of integers, found {}.'.format(
+            type_spec))
+
+
 def check_federated_type(type_spec,
                          member=None,
                          placement=None,

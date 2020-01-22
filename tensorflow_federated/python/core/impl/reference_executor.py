@@ -562,6 +562,10 @@ class ReferenceExecutor(context_base.Context):
   this class. High-performance simulations on large data sets will require a
   separate executor optimized for performance. This executor is plugged in as
   the handler of computation invocations at the top level of the context stack.
+
+  NOTE: The `tff.secure_sum()` intrinsic is implemented using a non-secure
+  algorithm in order to enable testing of the semantics of federated
+  computaitons using the  secure sum intrinsic.
   """
 
   def __init__(self, compiler=None):
@@ -610,6 +614,8 @@ class ReferenceExecutor(context_base.Context):
             self._generic_plus,
         intrinsic_defs.GENERIC_ZERO.uri:
             self._generic_zero,
+        intrinsic_defs.SECURE_SUM.uri:
+            self._secure_sum,
         intrinsic_defs.SEQUENCE_MAP.uri:
             self._sequence_map,
         intrinsic_defs.SEQUENCE_REDUCE.uri:
@@ -1021,6 +1027,9 @@ class ReferenceExecutor(context_base.Context):
           'Generic plus not supported for elements of type {}, e.g. {}.'
           'Please file an issue on GitHub if you need this type supported'
           .format(element_type, arg.value[0]))
+
+  def _secure_sum(self, arg):
+    return self._federated_sum(arg)
 
   def _sequence_map(self, arg):
     mapping_type = arg.type_signature[0]

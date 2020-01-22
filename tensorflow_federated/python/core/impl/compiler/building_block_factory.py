@@ -239,7 +239,7 @@ def construct_tensorflow_selecting_and_packing_outputs(
   return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_constant(type_spec, scalar_value):
+def create_tensorflow_constant(type_spec, scalar_value, name=None):
   """Creates called graph returning constant `scalar_value` of type `type_spec`.
 
   `scalar_value` must be a scalar, and cannot be a float if any of the tensor
@@ -251,6 +251,7 @@ def create_tensorflow_constant(type_spec, scalar_value):
       `computation_types.to_type`, and whose resulting type tree can only
       contain named tuples and tensors.
     scalar_value: Scalar value to place in all the tensor leaves of `type_spec`.
+    name: An optional string name to use as the name of the computation.
 
   Returns:
     An instance of `building_blocks.Call`, whose argument is `None`
@@ -318,7 +319,7 @@ def create_tensorflow_constant(type_spec, scalar_value):
           parameter=None,
           result=result_binding))
 
-  noarg_constant_fn = building_blocks.CompiledComputation(proto)
+  noarg_constant_fn = building_blocks.CompiledComputation(proto, name)
   return building_blocks.Call(noarg_constant_fn, None)
 
 
@@ -1304,9 +1305,10 @@ def create_federated_zip(value):
         inner_selection = building_blocks.Selection(nested, index=i)
         _make_nested_selections(inner_selection)
     else:
-      raise TypeError('Only type signatures consisting of structures of '
-                      'NamedTupleType bottoming out in FederatedType can be '
-                      'used in federated_zip.')
+      raise TypeError(
+          'Expected type signatures consisting of structures of NamedTupleType '
+          'bottoming out in FederatedType, found: \n{}'.format(
+              nested.type_signature))
 
   _make_nested_selections(value)
 
@@ -1603,6 +1605,38 @@ def _create_fn_to_append_chain_zipped_values(value):
     result = create_computation_appending(call, sel_1)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, result)
   return fn
+
+
+def create_secure_sum(value, bitwidth):
+  r"""Creates a called secure sum.
+
+            Call
+           /    \
+  Intrinsic      [Comp, Comp]
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    bitwidth: A `building_blocks.ComputationBuildingBlock` to use as the
+      bitwidth value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(bitwidth, building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placement_literals.SERVER)
+  intrinsic_type = computation_types.FunctionType([
+      type_utils.to_non_all_equal(value.type_signature),
+      bitwidth.type_signature,
+  ], result_type)
+  intrinsic = building_blocks.Intrinsic(intrinsic_defs.SECURE_SUM.uri,
+                                        intrinsic_type)
+  values = building_blocks.Tuple([value, bitwidth])
+  return building_blocks.Call(intrinsic, values)
 
 
 def create_sequence_map(fn, arg):

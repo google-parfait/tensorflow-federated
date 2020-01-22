@@ -165,6 +165,8 @@ def _create_inferred_cardinality_executor_fn(max_fanout):
 def create_local_executor(num_clients=None, max_fanout=100):
   """Constructs an executor to execute computations on the local machine.
 
+  NOTE: The `tff.secure_sum()` intrinsic is not implemented by this executor.
+
   Args:
     num_clients: The number of clients. If specified, the executor factory
       function returned by `create_local_executor` will be configured to have
@@ -177,9 +179,8 @@ def create_local_executor(num_clients=None, max_fanout=100):
       order of `log(num_clients) / log(max_fanout)`.
 
   Returns:
-    An executor factory function which returns a
-    `tff.framework.Executor` upon invocation with a dict mapping placements
-    to positive integers.
+    An executor factory function which returns a `tff.framework.Executor` upon
+    invocation with a dict mapping placements to positive integers.
 
   Raises:
     ValueError: If the number of clients is specified and not one or larger.

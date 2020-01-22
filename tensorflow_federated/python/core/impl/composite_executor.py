@@ -573,3 +573,7 @@ class CompositeExecutor(executor_base.Executor):
         type_factory.at_server(
             computation_types.NamedTupleType(
                 [arg.type_signature[0].member, arg.type_signature[1].member])))
+
+  @executor_utils.log_async
+  async def _compute_intrinsic_secure_sum(self, arg):
+    raise NotImplementedError('The secure sum intrinsic is not implemented.')

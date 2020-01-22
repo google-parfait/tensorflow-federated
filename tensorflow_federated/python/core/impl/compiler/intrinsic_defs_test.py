@@ -54,10 +54,13 @@ class IntrinsicDefsTest(parameterized.TestCase):
       ('federated_zip_at_clients', 'FEDERATED_ZIP_AT_CLIENTS',
        '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),
       ('federated_zip_at_server', 'FEDERATED_ZIP_AT_SERVER',
-       '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'))
+       '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'),
+      ('secure_sum', 'SECURE_SUM', '(<{T}@CLIENTS,T> -> T@SERVER)'),
+  )
   def test_type_signature_strings(self, name, type_str):
-    self.assertEqual(
-        str(getattr(intrinsic_defs, name).type_signature), type_str)
+    intrinsic = getattr(intrinsic_defs, name)
+    self.assertEqual(intrinsic.type_signature.compact_representation(),
+                     type_str)
 
 
 if __name__ == '__main__':

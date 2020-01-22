@@ -232,6 +232,9 @@ def federated_reduce(value, zero, op):
 def federated_sum(value):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
+  To sum integer values with stronger privacy properties, consider using
+  `tff.secure_sum`.
+
   Args:
     value: A value of a TFF federated type placed at the `tff.CLIENTS`.
 
@@ -284,6 +287,53 @@ def federated_zip(value):
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_zip(value)
+
+
+def secure_sum(value, bitwidth):
+  """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
+
+  This function computes a sum such that it should not be possible for the
+  server to learn any clients individual value. The specific algorithm and
+  mechanism used to compute the secure sum may vary depending on the target
+  runtime environment the computation is compiled for or executed on. See
+  https://research.google/pubs/pub47246/ for more information.
+
+  Not all executors support `tff.secure_sum()`; consult the documentation for
+  the specific executor or executor stack you plan on using for the specific of
+  how it's handled by that executor.
+
+  TODO(b/148147384): Describe the semantics of secure sum intrinsic.
+
+  Example:
+
+  ```python
+  value = tff.federated_value(1, tff.CLIENTS)
+  result = tff.secure_sum(value, 2)
+
+  value = tff.federated_value([1, 1], tff.CLIENTS)
+  result = tff.secure_sum(value, [2, 4])
+
+  value = tff.federated_value([1, [1, 1]], tff.CLIENTS)
+  result = tff.secure_sum(value, [2, [4, 8]])
+  ```
+
+  NOTE: To sum non-integer values or to sum integers with fewer constraints and
+  weaker privacy properties, consider using `federated_sum`.
+
+  Args:
+    value: A value of a TFF federated type placed at the `tff.CLIENTS`.
+    bitwidth: An integer or nested structure of integers.
+
+  Returns:
+    A representation of the sum of the member constituents of `value` placed
+    on the `tff.SERVER`.
+
+  Raises:
+    TypeError: if the argument is not a federated TFF value placed at
+      `tff.CLIENTS`.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.secure_sum(value, bitwidth)
 
 
 def sequence_map(mapping_fn, value):

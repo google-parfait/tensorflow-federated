@@ -2260,6 +2260,33 @@ class CreateGenericConstantTest(absltest.TestCase):
             np.zeros([2, 2])))
 
 
+class CreateSecureSumTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    bitwidth = building_block_factory.create_compiled_identity(
+        tf.int32, name='b')
+
+    with self.assertRaises(TypeError):
+      building_block_factory.create_secure_sum(None, bitwidth)
+
+  def test_raises_type_error_with_none_bitwidth(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+
+    with self.assertRaises(TypeError):
+      building_block_factory.create_secure_sum(value, None)
+
+  def test_returns_federated_sum(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+    bitwidth = building_block_factory.create_tensorflow_constant(
+        tf.int32, 8, 'b')
+    comp = building_block_factory.create_secure_sum(value, bitwidth)
+    self.assertEqual(comp.compact_representation(), 'secure_sum(<v,comp#b()>)')
+    self.assertEqual(comp.type_signature.compact_representation(),
+                     'int32@SERVER')
+
+
 class CreateSequenceMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):

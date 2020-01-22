@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.api.intrinsics import federated_reduce
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value
 from tensorflow_federated.python.core.api.intrinsics import federated_zip
+from tensorflow_federated.python.core.api.intrinsics import secure_sum
 from tensorflow_federated.python.core.api.intrinsics import sequence_map
 from tensorflow_federated.python.core.api.intrinsics import sequence_reduce
 from tensorflow_federated.python.core.api.intrinsics import sequence_sum

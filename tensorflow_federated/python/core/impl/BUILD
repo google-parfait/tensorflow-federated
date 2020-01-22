@@ -765,6 +765,17 @@ py_library(
     ],
 )
 
+py_test(
+    name = "intrinsic_factory_test",
+    srcs = ["intrinsic_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+    ],
+)
+
 py_library(
     name = "lambda_executor",
     srcs = ["lambda_executor.py"],

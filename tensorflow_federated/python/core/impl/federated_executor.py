@@ -666,3 +666,7 @@ class FederatedExecutor(executor_base.Executor):
         computation_types.FederatedType(
             computation_types.SequenceType(member_type),
             placement_literals.SERVER))
+
+  @executor_utils.log_async
+  async def _compute_intrinsic_secure_sum(self, arg):
+    raise NotImplementedError('The secure sum intrinsic is not implemented.')
