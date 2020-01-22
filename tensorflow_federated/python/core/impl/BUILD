@@ -255,6 +255,7 @@ py_test(
         ":eager_executor",
         ":executor_base",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
