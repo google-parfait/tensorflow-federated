@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -26,13 +27,21 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
-class ExecutorStacksTest(absltest.TestCase):
+class ExecutorStacksTest(parameterized.TestCase):
 
   def test_raises_with_max_fanout_1(self):
     with self.assertRaises(ValueError):
       executor_stacks.create_local_executor(2, 1)
 
-  def test_with_temperature_sensor_example(self):
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'local_executor',
+          'executor': executor_stacks.create_local_executor
+      }, {
+          'testcase_name': 'sizing_executor',
+          'executor': executor_stacks.create_sizing_executor
+      })
+  def test_with_temperature_sensor_example(self, executor):
 
     @computations.tf_computation(
         computation_types.SequenceType(tf.float32), tf.float32)
@@ -56,8 +65,7 @@ class ExecutorStacksTest(absltest.TestCase):
                    intrinsics.federated_broadcast(threshold)])),
           intrinsics.federated_map(count_total, temperatures))
 
-    set_default_executor.set_default_executor(
-        executor_stacks.create_local_executor(3))
+    set_default_executor.set_default_executor(executor(3))
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
         tf.data.Dataset.range(10).map(to_float),
@@ -68,8 +76,7 @@ class ExecutorStacksTest(absltest.TestCase):
     result = comp(temperatures, threshold)
     self.assertAlmostEqual(result, 8.333, places=3)
 
-    set_default_executor.set_default_executor(
-        executor_stacks.create_local_executor())
+    set_default_executor.set_default_executor(executor())
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
         tf.data.Dataset.range(10).map(to_float),
@@ -88,6 +95,14 @@ class ExecutorStacksTest(absltest.TestCase):
   def test_runs_tf_unspecified_clients(self):
     executor_test_utils.test_runs_tf(self,
                                      executor_stacks.create_local_executor())
+
+  def test_sizing_runs_tf(self):
+    executor_test_utils.test_runs_tf(self,
+                                     executor_stacks.create_sizing_executor(1))
+
+  def test_sizing_runs_tf_unspecified_clients(self):
+    executor_test_utils.test_runs_tf(self,
+                                     executor_stacks.create_sizing_executor())
 
   def test_with_no_args(self):
     set_default_executor.set_default_executor(

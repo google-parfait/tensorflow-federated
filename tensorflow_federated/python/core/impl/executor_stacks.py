@@ -100,13 +100,15 @@ def _aggregate_stacks(executors, max_fanout):
   return executors[0]
 
 
-def _create_full_stack(num_clients, max_fanout):
+def _create_full_stack(num_clients, max_fanout, stack_func):
   """Creates a full executor stack.
 
   Args:
     num_clients: The number of clients to support. Must be 0 or larger.
     max_fanout: The maximum fanout at any point in the hierarchy. Must be 2 or
       larger.
+    stack_func: A function taking one argument which is the number of clients
+      and returns an executor_base.Executor.
 
   Returns:
     An executor stack, potentially multi-level, that spans all clients.
@@ -122,26 +124,27 @@ def _create_full_stack(num_clients, max_fanout):
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   if num_clients < 1:
-    return _create_federated_stack(0)
+    return stack_func(0)
   else:
     executors = []
     while num_clients > 0:
       n = min(num_clients, max_fanout)
-      executors.append(_create_federated_stack(n))
+      executors.append(stack_func(n))
       num_clients -= n
     return _aggregate_stacks(executors, max_fanout)
 
 
-def _create_explicit_cardinality_executor_fn(num_clients, max_fanout):
+def _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
+                                             stack_func):
   """Creates executor function with fixed cardinality."""
 
   def _return_executor(_):
-    return _create_full_stack(num_clients, max_fanout)
+    return _create_full_stack(num_clients, max_fanout, stack_func)
 
   return _return_executor
 
 
-def _create_inferred_cardinality_executor_fn(max_fanout):
+def _create_inferred_cardinality_executor_fn(max_fanout, stack_func):
   """Creates executor function with variable cardinality."""
 
   def _create_variable_clients_executors(cardinalities):
@@ -157,7 +160,8 @@ def _create_inferred_cardinality_executor_fn(max_fanout):
             'least one; you have passed {} for placement {}.'.format(v, k))
 
     return _create_full_stack(
-        cardinalities.get(placement_literals.CLIENTS, 0), max_fanout)
+        cardinalities.get(placement_literals.CLIENTS, 0), max_fanout,
+        stack_func)
 
   return _create_variable_clients_executors
 
@@ -187,6 +191,7 @@ def create_local_executor(num_clients=None, max_fanout=100):
   """
   # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
 
+  stack_func = _create_federated_stack
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   if num_clients is not None:
@@ -194,9 +199,48 @@ def create_local_executor(num_clients=None, max_fanout=100):
     if num_clients <= 0:
       raise ValueError('If specifying `num_clients`, cardinality must be at '
                        'least one; you have passed {}.'.format(num_clients))
-    return _create_explicit_cardinality_executor_fn(num_clients, max_fanout)
+    return _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
+                                                    stack_func)
   else:
-    return _create_inferred_cardinality_executor_fn(max_fanout)
+    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func)
+
+
+def create_sizing_executor(num_clients=None, max_fanout=100):
+  """Constructs an executor to execute computations on the local machine with sizing.
+
+  Args:
+    num_clients: The number of clients. If specified, the executor factory
+      function returned by `create_local_executor` will be configured to have
+      exactly `num_clients` clients. If unspecified (`None`), then the function
+      returned will attempt to infer cardinalities of all placements for which
+      it is passed values.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(num_clients) / log(max_fanout)`.
+
+  Returns:
+    An executor factory function which returns a
+    `tff.framework.Executor` upon invocation with a dict mapping placements
+    to positive integers.
+
+  Raises:
+    ValueError: If the number of clients is specified and not one or larger.
+  """
+  # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
+
+  stack_func = _create_sizing_stack
+  if max_fanout < 2:
+    raise ValueError('Max fanout must be greater than 1.')
+  if num_clients is not None:
+    py_typecheck.check_type(num_clients, int)
+    if num_clients <= 0:
+      raise ValueError('If specifying `num_clients`, cardinality must be at '
+                       'least one; you have passed {}.'.format(num_clients))
+    return _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
+                                                    stack_func)
+  else:
+    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func)
 
 
 def create_worker_pool_executor(executors, max_fanout=100):
