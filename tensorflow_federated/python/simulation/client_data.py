@@ -22,6 +22,7 @@ data for the simulation and is not part of the TensorFlow Federated core APIs.
 """
 
 import abc
+from typing import List, Iterable
 
 from absl import logging
 import numpy as np
@@ -34,12 +35,12 @@ class ClientData(object, metaclass=abc.ABCMeta):
   """Object to hold a dataset and a mapping of clients to examples."""
 
   @abc.abstractproperty
-  def client_ids(self):
-    """The list of string identifiers for clients in this dataset."""
+  def client_ids(self) -> List[str]:
+    """A list of string identifiers for clients in this dataset."""
     pass
 
   @abc.abstractmethod
-  def create_tf_dataset_for_client(self, client_id):
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing the client training examples.
 
     Args:
@@ -60,8 +61,36 @@ class ClientData(object, metaclass=abc.ABCMeta):
     """
     pass
 
-  def create_tf_dataset_from_all_clients(self, seed=None):
+  def datasets(self, limit_count=None, seed=None) -> Iterable[tf.data.Dataset]:
+    """Yields the `tf.data.Dataset` for each client in random order.
+
+    This function is intended for use building a static array of client data
+    to be provided to the top-level federated computation.
+
+    Args:
+      limit_count: Optional, a maximum number of datasets to return.
+      seed: Optional, a seed to determine the order in which clients are
+        processed in the joined dataset. The seed can be any 32-bit unsigned
+        integer or an array of such integers.
+    """
+    # Create a copy to prevent the original list being reordered
+    client_ids = self.client_ids.copy()
+    np.random.RandomState(seed=seed).shuffle(client_ids)
+    count = 0
+    for client_id in client_ids:
+      if limit_count is not None and count >= limit_count:
+        return
+      count += 1
+      dataset = self.create_tf_dataset_for_client(client_id)
+      py_typecheck.check_type(dataset, tf.data.Dataset)
+      yield dataset
+
+  def create_tf_dataset_from_all_clients(self, seed=None) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
+
+    This function is intended for use training centralized, non-distributed
+    models (num_clients=1). This can be useful as a point of comparison
+    against federated models.
 
     NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
     other devices, as it uses `tf.py_func` internally.
@@ -72,7 +101,8 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
     Args:
       seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset.
+        processed in the joined dataset. The seed can be any 32-bit unsigned
+        integer or an array of such integers.
 
     Returns:
       A `tf.data.Dataset` object.
@@ -82,10 +112,8 @@ class ClientData(object, metaclass=abc.ABCMeta):
     # recursion depth.
     # NOTE: Tests are via the simple concrete from_tensor_slices_client_data.
     def _generator():
-      client_ids = list(self.client_ids)
-      np.random.RandomState(seed=seed).shuffle(client_ids)
-      for client_id in client_ids:
-        for example in self.create_tf_dataset_for_client(client_id):
+      for dataset in self.datasets(seed=seed):
+        for example in dataset:
           yield example
 
     types = tf.nest.map_structure(lambda t: t.dtype,
