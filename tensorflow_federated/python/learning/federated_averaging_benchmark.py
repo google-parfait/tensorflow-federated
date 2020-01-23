@@ -45,12 +45,23 @@ def generate_fake_mnist_data():
 
 
 def executors_benchmark(fn):
+  """Generates different local executors for basic benchmarks."""
 
   def wrapped_fn(self):
+    """Runs `fn` against different local executor stacks."""
     tff.framework.set_default_executor()
     fn(self, "reference executor")
     tff.framework.set_default_executor(tff.framework.create_local_executor())
     fn(self, "local executor")
+    tff.framework.set_default_executor(tff.framework.create_sizing_executor())
+    fn(self, "sizing executor")
+    tff.framework.set_default_executor(
+        tff.framework.create_local_executor(clients_per_bottom_stack=2))
+    fn(self, "local executor, 2 clients per worker")
+    tff.framework.set_default_executor(
+        tff.framework.create_local_executor(clients_per_bottom_stack=4))
+    fn(self, "local executor, 4 clients per worker")
+    tff.framework.set_default_executor()
 
   return wrapped_fn
 

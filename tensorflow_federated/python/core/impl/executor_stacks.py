@@ -36,10 +36,14 @@ def _create_bottom_stack():
   return _complete_stack(eager_executor.EagerExecutor())
 
 
-def _create_federated_stack(num_clients):
+def _create_federated_stack(num_clients, clients_per_thread):
+  """Constructs local federated stack."""
+  bottom_stacks = [
+      _create_bottom_stack() for _ in range(num_clients // clients_per_thread)
+  ]
   executor_dict = {
       placement_literals.CLIENTS: [
-          _create_bottom_stack() for _ in range(num_clients)
+          bottom_stacks[k % len(bottom_stacks)] for k in range(num_clients)
       ],
       placement_literals.SERVER: _create_bottom_stack(),
       None: _create_bottom_stack()
@@ -47,11 +51,15 @@ def _create_federated_stack(num_clients):
   return _complete_stack(federated_executor.FederatedExecutor(executor_dict))
 
 
-def _create_sizing_stack(num_clients):
+def _create_sizing_stack(num_clients, clients_per_thread):
+  """Constructs local stack with sizing wired in at each client."""
+  sizing_stacks = [
+      sizing_executor.SizingExecutor(_create_bottom_stack())
+      for _ in range(num_clients // clients_per_thread)
+  ]
   executor_dict = {
       placement_literals.CLIENTS: [
-          sizing_executor.SizingExecutor(_create_bottom_stack())
-          for _ in range(num_clients)
+          sizing_stacks[k % len(sizing_stacks)] for k in range(num_clients)
       ],
       placement_literals.SERVER: _create_bottom_stack(),
       None: _create_bottom_stack()
@@ -100,7 +108,7 @@ def _aggregate_stacks(executors, max_fanout):
   return executors[0]
 
 
-def _create_full_stack(num_clients, max_fanout, stack_func):
+def _create_full_stack(num_clients, max_fanout, stack_func, clients_per_thread):
   """Creates a full executor stack.
 
   Args:
@@ -109,6 +117,9 @@ def _create_full_stack(num_clients, max_fanout, stack_func):
       larger.
     stack_func: A function taking one argument which is the number of clients
       and returns an executor_base.Executor.
+    clients_per_thread: The number of clients to pin on each bottom stack
+      executor. Adjusting this parameter can be helpful in the case of
+      lightweight client work.
 
   Returns:
     An executor stack, potentially multi-level, that spans all clients.
@@ -124,27 +135,29 @@ def _create_full_stack(num_clients, max_fanout, stack_func):
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   if num_clients < 1:
-    return stack_func(0)
+    return stack_func(0, 1)
   else:
     executors = []
     while num_clients > 0:
       n = min(num_clients, max_fanout)
-      executors.append(stack_func(n))
+      executors.append(stack_func(n, clients_per_thread))
       num_clients -= n
     return _aggregate_stacks(executors, max_fanout)
 
 
 def _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
-                                             stack_func):
+                                             stack_func, clients_per_thread):
   """Creates executor function with fixed cardinality."""
 
   def _return_executor(_):
-    return _create_full_stack(num_clients, max_fanout, stack_func)
+    return _create_full_stack(num_clients, max_fanout, stack_func,
+                              clients_per_thread)
 
   return _return_executor
 
 
-def _create_inferred_cardinality_executor_fn(max_fanout, stack_func):
+def _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
+                                             clients_per_thread):
   """Creates executor function with variable cardinality."""
 
   def _create_variable_clients_executors(cardinalities):
@@ -161,12 +174,14 @@ def _create_inferred_cardinality_executor_fn(max_fanout, stack_func):
 
     return _create_full_stack(
         cardinalities.get(placement_literals.CLIENTS, 0), max_fanout,
-        stack_func)
+        stack_func, clients_per_thread)
 
   return _create_variable_clients_executors
 
 
-def create_local_executor(num_clients=None, max_fanout=100):
+def create_local_executor(num_clients=None,
+                          max_fanout=100,
+                          clients_per_thread=1):
   """Constructs an executor to execute computations on the local machine.
 
   NOTE: The `tff.secure_sum()` intrinsic is not implemented by this executor.
@@ -181,6 +196,9 @@ def create_local_executor(num_clients=None, max_fanout=100):
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
+    clients_per_thread: The number of clients which will share a single thread.
+      Adjusting this parameter away from 1 can be useful if clients work is
+      light.
 
   Returns:
     An executor factory function which returns a `tff.framework.Executor` upon
@@ -200,12 +218,16 @@ def create_local_executor(num_clients=None, max_fanout=100):
       raise ValueError('If specifying `num_clients`, cardinality must be at '
                        'least one; you have passed {}.'.format(num_clients))
     return _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
-                                                    stack_func)
+                                                    stack_func,
+                                                    clients_per_thread)
   else:
-    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func)
+    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
+                                                    clients_per_thread)
 
 
-def create_sizing_executor(num_clients=None, max_fanout=100):
+def create_sizing_executor(num_clients=None,
+                           max_fanout=100,
+                           clients_per_thread=1):
   """Constructs an executor to execute computations on the local machine with sizing.
 
   Args:
@@ -218,6 +240,9 @@ def create_sizing_executor(num_clients=None, max_fanout=100):
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
+    clients_per_thread: The number of clients which will share a single thread.
+      Adjusting this parameter away from 1 can be useful if clients work is
+      light.
 
   Returns:
     An executor factory function which returns a
@@ -238,9 +263,11 @@ def create_sizing_executor(num_clients=None, max_fanout=100):
       raise ValueError('If specifying `num_clients`, cardinality must be at '
                        'least one; you have passed {}.'.format(num_clients))
     return _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
-                                                    stack_func)
+                                                    stack_func,
+                                                    clients_per_thread)
   else:
-    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func)
+    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
+                                                    clients_per_thread)
 
 
 def create_worker_pool_executor(executors, max_fanout=100):
