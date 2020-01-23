@@ -41,7 +41,7 @@ main() {
 
   # Build the TensorFlow Federated runtime image
   docker build \
-      --file "tensorflow_federated/tools/runtime/gcp/Dockerfile" \
+      --file "tensorflow_federated/tools/runtime/container/local.Dockerfile" \
       --tag tff-runtime \
       .
 }

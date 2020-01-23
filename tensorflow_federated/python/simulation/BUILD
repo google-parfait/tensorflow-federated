@@ -124,14 +124,3 @@ py_test(
         ":transforming_client_data",
     ],
 )
-
-py_binary(
-    name = "worker",
-    srcs = ["worker.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":server_utils",
-        "//tensorflow_federated/python/core/framework",
-    ],
-)

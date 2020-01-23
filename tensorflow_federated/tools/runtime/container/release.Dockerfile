@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,28 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Tool to publish the TensorFlow Federated runtime image to GCP.
-#
-# Usage:
-#   bazel run //tensorflow_federated/tools/runtime/gcp:publish_image
-# Arguments:
-#   registry: A name of a container registry.
-set -e
+# This Dockerfile is used to create a Docker image of the TensorFlow Federated
+# (TFF) remote executor service from a released version of TFF. Pass
+# --build-arg VERSION=X.Y.Z to docker build to specify the release number.
+FROM python:3.6-buster
 
-die() {
-  echo >&2 "$@"
-  exit 1
-}
+ARG VERSION
 
-main() {
-  local registry="$1"
+RUN test -n "${VERSION}"
 
-  if [[ -z "${registry}" ]]; then
-    die "A registry was not specified."
-  fi
+RUN python3 --version
 
-  docker tag tff-runtime "${registry}"
-  docker push "${registry}"
-}
+COPY "tensorflow_federated/runtime/remote/remote_executor_service.py" /
 
-main "$@"
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 freeze
+
+RUN pip3 install --no-cache-dir --upgrade "tensorflow_federated==${VERSION}"
+
+EXPOSE 8000
+
+CMD ["python3", "/remote_executor_service.py"]
