@@ -25,6 +25,7 @@ from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model import TrainableModel
+from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval
 
 # Used by doc generation script.
 _allowed_symbols = [
@@ -35,6 +36,7 @@ _allowed_symbols = [
     "build_federated_averaging_process",
     "build_federated_evaluation",
     "build_federated_sgd_process",
+    "build_personalization_eval",
     "framework",
     "from_compiled_keras_model",
     "from_keras_model",

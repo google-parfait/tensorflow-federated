@@ -14,6 +14,7 @@ py_library(
         ":federated_sgd",
         ":keras_utils",
         ":model",
+        ":personalization_eval",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
     ],
@@ -186,6 +187,17 @@ py_library(
     ],
 )
 
+py_library(
+    name = "personalization_eval",
+    srcs = ["personalization_eval.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":model_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
+    ],
+)
+
 py_test(
     name = "model_utils_test",
     srcs = ["model_utils_test.py"],
@@ -195,5 +207,20 @@ py_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
+    ],
+)
+
+py_test(
+    name = "personalization_eval_test",
+    srcs = ["personalization_eval_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":keras_utils",
+        ":model_examples",
+        ":model_utils",
+        ":personalization_eval",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
     ],
 )
