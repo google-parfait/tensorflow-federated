@@ -21,6 +21,12 @@ py_test(
 )
 
 py_library(
+    name = "metrics",
+    srcs = ["metrics.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "models",
     srcs = ["models.py"],
     srcs_version = "PY3",
@@ -41,7 +47,22 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         ":dataset",
+        ":metrics",
         ":models",
+        "//tensorflow_federated/python/research/utils:utils_impl",
+    ],
+)
+
+py_binary(
+    name = "run_federated",
+    srcs = ["run_federated.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":dataset",
+        ":metrics",
+        ":models",
+        "//tensorflow_federated",
         "//tensorflow_federated/python/research/utils:utils_impl",
     ],
 )

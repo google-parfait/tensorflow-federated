@@ -24,6 +24,7 @@ import pandas as pd
 import tensorflow as tf
 
 from tensorflow_federated.python.research.baselines.stackoverflow import dataset
+from tensorflow_federated.python.research.baselines.stackoverflow import metrics
 from tensorflow_federated.python.research.baselines.stackoverflow import models
 from tensorflow_federated.python.research.utils import utils_impl
 
@@ -73,37 +74,6 @@ with utils_impl.record_new_flags() as hparam_flags:
 FLAGS = flags.FLAGS
 
 
-class MaskedCategoricalAccuracy(tf.keras.metrics.SparseCategoricalAccuracy):
-  """An accuracy metric that masks some tokens."""
-
-  def __init__(self,
-               masked_tokens,
-               name='accuracy',
-               dtype=None):
-    self._masked_tokens = masked_tokens or []
-    super().__init__(name, dtype=dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    """Masks tokens and updates state.
-
-    Args:
-      y_true: Tensor representing ground truth of sequence model. Must contain
-        only nonnegative indices.
-      y_pred: Tensor representing per-element predictions over the sequence
-        model's vocabulary; should have total number of elements equal to the
-        total number of elements in `y_true` multiplied by `self._vocab_size`.
-      sample_weight: (Optional) Tensor representing the per-element weights for
-        computing accuracy over the sequence `y_true`. Must be broadcastable to
-        the flattened shape of `y_true`.
-    """
-    if sample_weight is None:
-      sample_weight = tf.ones_like(y_true, tf.float32)
-    for token in self._masked_tokens:
-      mask = tf.cast(tf.not_equal(y_true, token), tf.float32)
-      sample_weight = sample_weight * mask
-    super().update_state(y_true, y_pred, sample_weight)
-
-
 class AtomicCSVLogger(tf.keras.callbacks.Callback):
 
   def __init__(self, path):
@@ -138,7 +108,7 @@ def run_experiment():
   def _layer_fn():
     return recurrent_model(FLAGS.latent_size, return_sequences=True)
 
-  pad, oov, _, _ = dataset.get_special_tokens(FLAGS.vocab_size)
+  pad, oov, _, eos = dataset.get_special_tokens(FLAGS.vocab_size)
 
   model = models.create_recurrent_model(
       FLAGS.vocab_size,
@@ -153,8 +123,10 @@ def run_experiment():
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=optimizer,
       metrics=[
-          MaskedCategoricalAccuracy([pad], 'accuracy_with_oov'),
-          MaskedCategoricalAccuracy([pad, oov], 'accuracy_no_oov')
+          metrics.MaskedCategoricalAccuracy([pad], 'accuracy_with_oov'),
+          metrics.MaskedCategoricalAccuracy([pad, oov], 'accuracy_no_oov'),
+          metrics.MaskedCategoricalAccuracy([pad, oov, eos],
+                                            'accuracy_no_oov_no_eos')
       ])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
