@@ -18,6 +18,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -51,17 +52,24 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
 
     state = it.initialize()
-    self.assertEqual(str(state), '<num_rounds=0>')
+    self.assertLen(state, 1)
+    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
+    self.assertEqual(state[0], 0)
 
     state, metrics, stats = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertEqual(str(state), '<num_rounds=1>')
-    self.assertEqual(str(metrics), '<ratio_over_threshold=0.5>')
+    self.assertLen(state, 1)
+    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
+    self.assertEqual(state[0], 1)
+    self.assertLen(metrics, 1)
+    self.assertAllEqual(
+        anonymous_tuple.name_list(metrics), ['ratio_over_threshold'])
+    self.assertEqual(metrics[0], 0.5)
     self.assertCountEqual([self.evaluate(x.num_readings) for x in stats],
                           [1, 3])
 
     state, metrics, stats = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertEqual(str(state), '<num_rounds=2>')
-    self.assertEqual(str(metrics), '<ratio_over_threshold=0.75>')
+    self.assertAllEqual(state, (2,))
+    self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
 
@@ -116,17 +124,24 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state = new_it.initialize()
-    self.assertEqual(str(state), '<num_rounds=0>')
+    self.assertLen(state, 1)
+    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
+    self.assertEqual(state[0], 0)
 
     state, metrics, stats = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertEqual(str(state), '<num_rounds=1>')
-    self.assertEqual(str(metrics), '<ratio_over_threshold=0.5>')
+    self.assertLen(state, 1)
+    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
+    self.assertEqual(state[0], 1)
+    self.assertLen(metrics, 1)
+    self.assertAllEqual(
+        anonymous_tuple.name_list(metrics), ['ratio_over_threshold'])
+    self.assertEqual(metrics[0], 0.5)
     self.assertCountEqual([self.evaluate(x.num_readings) for x in stats],
                           [1, 3])
 
     state, metrics, stats = new_it.next(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertEqual(str(state), '<num_rounds=2>')
-    self.assertEqual(str(metrics), '<ratio_over_threshold=0.75>')
+    self.assertAllEqual(state, (2,))
+    self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
   def test_mnist_training_round_trip(self):
@@ -139,21 +154,20 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     self.assertEqual(str(state1), str(state2))
     dummy_x = np.array([[0.5] * 784], dtype=np.float32)
     dummy_y = np.array([1], dtype=np.int32)
-    client_data = [collections.OrderedDict([('x', dummy_x), ('y', dummy_y)])]
+    client_data = [collections.OrderedDict(x=dummy_x, y=dummy_y)]
     round_1 = it.next(state1, [client_data])
     state = round_1[0]
     metrics = round_1[1]
     alt_round_1 = new_it.next(state2, [client_data])
     alt_state = alt_round_1[0]
     alt_metrics = alt_round_1[1]
-    self.assertEqual(str(round_1), str(alt_round_1))
-    self.assertTrue(np.array_equal(state.model.weights, state.model.weights))
-    self.assertTrue(np.array_equal(state.model.bias, alt_state.model.bias))
-    self.assertTrue(np.array_equal(state.num_rounds, alt_state.num_rounds))
-    self.assertTrue(np.array_equal(metrics.num_rounds, alt_metrics.num_rounds))
-    self.assertTrue(
-        np.array_equal(metrics.num_examples, alt_metrics.num_examples))
-    self.assertTrue(np.array_equal(metrics.loss, alt_metrics.loss))
+    self.assertAllEqual(
+        anonymous_tuple.name_list(state), anonymous_tuple.name_list(alt_state))
+    self.assertAllEqual(
+        anonymous_tuple.name_list(metrics),
+        anonymous_tuple.name_list(alt_metrics))
+    self.assertAllClose(state, alt_state)
+    self.assertAllClose(metrics, alt_metrics)
 
   def test_returns_canonical_form_from_tff_learning_structure(self):
     it = test_utils.construct_example_training_comp()
@@ -173,37 +187,38 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
 
     state1 = it.initialize()
     state2 = new_it.initialize()
-    self.assertEqual(str(state1), str(state2))
 
-    sample_batch = collections.OrderedDict([('x',
-                                             np.array([[1., 1.]],
-                                                      dtype=np.float32)),
-                                            ('y', np.array([[0]],
-                                                           dtype=np.int32))])
+    sample_batch = collections.OrderedDict(
+        x=np.array([[1., 1.]], dtype=np.float32),
+        y=np.array([[0]], dtype=np.int32))
     client_data = [sample_batch]
 
     round_1 = it.next(state1, [client_data])
     state = round_1[0]
+    state_names = anonymous_tuple.name_list(state)
+    state_arrays = anonymous_tuple.flatten(state)
     metrics = round_1[1]
+    metrics_names = [x[0] for x in anonymous_tuple.iter_elements(metrics)]
+    metrics_arrays = anonymous_tuple.flatten(metrics)
 
     alt_round_1 = new_it.next(state2, [client_data])
     alt_state = alt_round_1[0]
+    alt_state_names = anonymous_tuple.name_list(alt_state)
+    alt_state_arrays = anonymous_tuple.flatten(alt_state)
     alt_metrics = alt_round_1[1]
+    alt_metrics_names = [
+        x[0] for x in anonymous_tuple.iter_elements(alt_metrics)
+    ]
+    alt_metrics_arrays = anonymous_tuple.flatten(alt_metrics)
 
-    self.assertTrue(
-        np.array_equal(state.model.trainable[0], alt_state.model.trainable[0]))
-    self.assertTrue(
-        np.array_equal(state.model.trainable[1], alt_state.model.trainable[1]))
-    self.assertEqual(
-        str(state.model.non_trainable), str(alt_state.model.non_trainable))
-    self.assertEqual(state.optimizer_state[0], alt_state.optimizer_state[0])
     self.assertEmpty(state.delta_aggregate_state)
-    self.assertEmpty(alt_state.delta_aggregate_state)
     self.assertEmpty(state.model_broadcast_state)
-    self.assertEmpty(alt_state.model_broadcast_state)
-    self.assertEqual(metrics.sparse_categorical_accuracy,
-                     alt_metrics.sparse_categorical_accuracy)
-    self.assertEqual(metrics.loss, alt_metrics.loss)
+    self.assertAllEqual(state_names, alt_state_names)
+    self.assertAllEqual(metrics_names, alt_metrics_names)
+    self.assertAllClose(state_arrays, alt_state_arrays)
+    self.assertAllClose(metrics_arrays[:2], alt_metrics_arrays[:2])
+    # Final metric is execution time
+    self.assertAlmostEqual(metrics_arrays[2], alt_metrics_arrays[2], delta=1e-5)
 
   def test_returns_canonical_form_with_next_fn_returning_call_directly(self):
 
