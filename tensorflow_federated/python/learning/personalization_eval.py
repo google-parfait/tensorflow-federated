@@ -40,14 +40,14 @@ def build_personalization_eval(model_fn,
     personalize_fn_dict: An `OrderedDict` that maps a `string` (representing a
       strategy name) to a no-argument function that returns a `tf.function`.
       Each `tf.function` represents a personalization strategy: it accepts a
-        `tff.learning.Model` (with weights already initialized to the provided
-        model weights when users invoke the returned TFF computation), a
-        training `tf.dataset.Dataset`, a test `tf.dataset.Dataset`, and an
-        arbitrary context object (which is used to hold any extra information
-        that a personalization strategy may use), trains a personalized model,
-        and returns the evaluation metrics. The evaluation metrics are usually
-        represented as an `OrderedDict` (or a nested `OrderedDict`) of `string`
-        metric names to scalar `tf.Tensor`s.
+      `tff.learning.Model` (with weights already initialized to the provided
+      model weights when users invoke the returned TFF computation), a training
+      `tf.dataset.Dataset`, a test `tf.dataset.Dataset`, and an arbitrary
+      context object (which is used to hold any extra information that a
+      personalization strategy may use), trains a personalized model, and
+      returns the evaluation metrics. The evaluation metrics are usually
+      represented as an `OrderedDict` (or a nested `OrderedDict`) of `string`
+      metric names to scalar `tf.Tensor`s.
     baseline_evaluate_fn: A `tf.function` that accepts a `tff.learning.Model`
       (with weights already initialized to the provided model weights when users
       invoke the returned TFF computation), and a `tf.dataset.Dataset`,
