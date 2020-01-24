@@ -194,6 +194,7 @@ class CachingExecutor(executor_base.Executor):
     self._num_values_created = 0
 
   def close(self):
+    self._cache.clear()
     self._target_executor.close()
 
   def __del__(self):

@@ -229,6 +229,16 @@ class CachingExecutorTest(absltest.TestCase):
     self.assertIsInstance(results[0], TestError)
     self.assertIsInstance(results[1], TestError)
 
+  def test_close_clears_cache(self):
+    ex, _ = _make_executor_and_tracer_for_test()
+    loop = asyncio.get_event_loop()
+    v1 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    self.assertIs(v2, v1)
+    ex.close()
+    v3 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    self.assertIsNot(v3, v1)
+
   def test_with_integer_constant(self):
     ex, tracer = _make_executor_and_tracer_for_test()
     loop = asyncio.get_event_loop()

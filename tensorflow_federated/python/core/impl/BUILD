@@ -251,6 +251,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":caching_executor",
         ":concurrent_executor",
         ":eager_executor",
         ":executor_base",

@@ -21,6 +21,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_base
@@ -97,9 +98,7 @@ class ConcurrentExecutorTest(absltest.TestCase):
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
 
-  def test_close_then_use_executor(self):
-    ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
-    ex.close()
+  def use_executor(self, ex):
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -115,9 +114,25 @@ class ConcurrentExecutorTest(absltest.TestCase):
               ])),
           name='a')
 
-    result = asyncio.get_event_loop().run_until_complete(compute())
+    return asyncio.get_event_loop().run_until_complete(compute())
+
+  def test_close_then_use_executor(self):
+    ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
+    ex.close()
+    result = self.use_executor(ex)
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
+
+  def test_close_then_use_executor_with_cache(self):
+    # Integration that use after close is compatible with the combined
+    # concurrent executors and cached executors. This was broken in
+    # the past due to interactions between closing, caching, and the
+    # concurrent executor. See b/148288711 for context.
+    ex = concurrent_executor.ConcurrentExecutor(
+        caching_executor.CachingExecutor(eager_executor.EagerExecutor()))
+    self.use_executor(ex)
+    ex.close()
+    self.use_executor(ex)
 
   def test_multiple_computations_with_same_executor(self):
 
