@@ -217,6 +217,7 @@ py_library(
     srcs = ["transformations.py"],
     srcs_version = "PY3",
     deps = [
+        ":building_block_factory",
         ":building_blocks",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -236,6 +237,7 @@ py_test(
         ":test_utils",
         ":transformation_utils",
         ":transformations",
+        ":tree_analysis",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",

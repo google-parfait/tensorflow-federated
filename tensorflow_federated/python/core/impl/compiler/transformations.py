@@ -14,9 +14,12 @@
 # limitations under the License.
 """Contains composite transformations, upon which higher compiler levels depend."""
 
+from typing import Mapping
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 
@@ -198,3 +201,208 @@ def construct_tensorflow_calling_lambda_on_concrete_arg(
   comp_called = _generate_simple_tensorflow(
       building_blocks.Call(encapsulating_lambda, concrete_arg))
   return comp_called
+
+
+def _replace_references_in_comp_with_selections_from_arg(
+    comp: building_blocks.ComputationBuildingBlock,
+    arg_ref: building_blocks.Reference, name_to_output_index: Mapping[str,
+                                                                      int]):
+  """Uses `name_to_output_index` to rebind references in `comp`."""
+
+  def _replace_values_with_selections(inner_comp):
+    if isinstance(inner_comp, building_blocks.Reference):
+      selected_index = name_to_output_index[inner_comp.name]
+      return building_blocks.Selection(
+          source=arg_ref, index=selected_index), True
+    return inner_comp, False
+
+  comp_replaced, _ = transformation_utils.transform_postorder(
+      comp, _replace_values_with_selections)
+  return comp_replaced
+
+
+def _construct_tensorflow_representing_single_local_assignment(
+    arg_ref, arg_class, previous_output, name_to_output_index):
+  """Constructs TensorFlow to represent assignment to a block local in sequence.
+
+  Creates a tuple which represents all computations in the block local sequence
+  depending on those variables which have already been processed, by combining
+  the elements of `previous_output` with the computations in `arg_class`. Then
+  generates TensorFlow to capture the logic this tuple encapsulates.
+
+  Args:
+    arg_ref: `building_blocks.Reference` to use in representing
+      `previous_output` inside the body of the Lambda to be parsed to
+      TensorFlow. Notice that this is here for name safety.
+    arg_class: `list` of `building_blocks.ComputationBuildingBlock`s which are
+      dependent on the block local being processed or any preceding block local;
+      this should be one of the classes resulting from
+      `group_block_locals_by_namespace`.
+    previous_output: The result of parsing previous block local bindings into
+      functions in the same manner.
+    name_to_output_index: `dict` mapping block local variables to their index in
+      the result of the generated TensorFlow. This is used to resolve references
+      in the computations of `arg_class`, but will not be modified.
+
+  Returns:
+    Called instance of `building_blocks.CompiledComputation` representing
+    the tuple described above.
+  """
+  pass_through_args = [
+      building_blocks.Selection(source=arg_ref, index=idx)
+      for idx, _ in enumerate(previous_output.type_signature)
+  ]
+
+  vals_replaced = [
+      _replace_references_in_comp_with_selections_from_arg(
+          c, arg_ref, name_to_output_index) for c in arg_class
+  ]
+  return_tuple = building_blocks.Tuple(pass_through_args + vals_replaced)
+
+  comp_called = construct_tensorflow_calling_lambda_on_concrete_arg(
+      arg_ref, return_tuple, previous_output)
+  return comp_called
+
+
+def _get_unbound_ref(block):
+  """Helper to get unbound ref name and type spec if it exists in `block`."""
+  all_unbound_refs = transformation_utils.get_map_of_unbound_references(block)
+  top_level_unbound_ref = all_unbound_refs[block]
+  num_unbound_refs = len(top_level_unbound_ref)
+  if num_unbound_refs == 0:
+    return None
+  elif num_unbound_refs > 1:
+    raise ValueError('`create_tensorflow_representing_block` must be passed '
+                     'a block with at most a single unbound reference; '
+                     'encountered the block {} with {} unbound '
+                     'references.'.format(block, len(top_level_unbound_ref)))
+
+  unbound_ref_name = top_level_unbound_ref.pop()
+
+  top_level_type_spec = None
+
+  def _get_unbound_ref_type_spec(inner_comp):
+    if (isinstance(inner_comp, building_blocks.Reference) and
+        inner_comp.name == unbound_ref_name):
+      nonlocal top_level_type_spec
+      top_level_type_spec = inner_comp.type_signature
+    return inner_comp, False
+
+  transformation_utils.transform_postorder(block, _get_unbound_ref_type_spec)
+  return building_blocks.Reference(unbound_ref_name, top_level_type_spec)
+
+
+def _check_parameters_for_tf_block_generation(block):
+  """Helper to validate parameters for parsing block locals into TF graphs."""
+  py_typecheck.check_type(block, building_blocks.Block)
+  for _, comp in block.locals:
+    if not (isinstance(comp, building_blocks.Call) and
+            isinstance(comp.function, building_blocks.CompiledComputation)):
+      raise ValueError(
+          'create_tensorflow_representing_block may only be called '
+          'on a block whose local variables are all bound to '
+          'called TensorFlow computations; encountered a local '
+          'bound to {}'.format(comp))
+
+  def _check_contains_only_refs_sels_and_tuples(inner_comp):
+    if not isinstance(inner_comp,
+                      (building_blocks.Reference, building_blocks.Selection,
+                       building_blocks.Tuple)):
+      raise ValueError(
+          'create_tensorflow_representing_block may only be called '
+          'on a block whose result contains only Selections, '
+          'Tuples and References; encountered the building block '
+          '{}.'.format(inner_comp))
+    return inner_comp, False
+
+  transformation_utils.transform_postorder(
+      block.result, _check_contains_only_refs_sels_and_tuples)
+
+
+def create_tensorflow_representing_block(block):
+  """Generates non-duplicated TensorFlow for Block locals binding called graphs.
+
+  Assuming that the argument `block` satisfies the following conditions:
+
+  1. The local variables in `block` are all called graphs, with arbitrary
+      arguments.
+  2. The result of the Block contains tuples, selections and references,
+     but nothing else.
+
+  Then `create_tensorflow_representing_block` will generate a structure, which
+  may contain tensorflow functions, calls to tensorflow functions, and
+  references, but which have generated this TensorFlow code without duplicating
+  work done by referencing the block locals.
+
+  Args:
+    block: Instance of `building_blocks.Block`, whose local variables are all
+      called instances of `building_blocks.CompiledComputation`, and whose
+      result contains only instances of `building_blocks.Reference`,
+      `building_blocks.Selection` or `building_blocks.Tuple`.
+
+  Returns:
+    A transformed version of `block`, which has pushed references to the called
+    graphs in the locals of `block` into TensorFlow.
+
+  Raises:
+    TypeError: If `block` is not an instance of `building_blocks.Block`.
+    ValueError: If the locals of `block` are anything other than called graphs,
+      or if the result of `block` contains anything other than selections,
+      references and tuples.
+  """
+  _check_parameters_for_tf_block_generation(block)
+
+  name_generator = building_block_factory.unique_name_generator(block)
+
+  def _construct_reference_representing(comp_to_represent):
+    """Helper closing over `name_generator` for name safety."""
+    arg_type = comp_to_represent.type_signature
+    arg_name = next(name_generator)
+    return building_blocks.Reference(arg_name, arg_type)
+
+  top_level_ref = _get_unbound_ref(block)
+  named_comp_classes = transformations.group_block_locals_by_namespace(block)
+
+  if top_level_ref:
+    first_comps = [x[1] for x in named_comp_classes[0]]
+    tup = building_blocks.Tuple([top_level_ref] + first_comps)
+    output_comp = construct_tensorflow_calling_lambda_on_concrete_arg(
+        top_level_ref, tup, top_level_ref)
+    name_to_output_index = {top_level_ref.name: 0}
+  else:
+    output_comp = building_block_factory.create_compiled_empty_tuple()
+    name_to_output_index = {}
+
+  block_local_names = [x[0] for x in block.locals]
+
+  def _update_name_to_output_index(name_class):
+    """Helper closing over `name_to_output_index` and `block_local_names`."""
+    offset = len(name_to_output_index.keys())
+    for idx, comp_name in enumerate(name_class):
+      for var_name in block_local_names:
+        if var_name == comp_name:
+          name_to_output_index[var_name] = idx + offset
+
+  if top_level_ref:
+    first_names = [x[0] for x in named_comp_classes[0]]
+    _update_name_to_output_index(first_names)
+    remaining_comp_classes = named_comp_classes[1:]
+  else:
+    remaining_comp_classes = named_comp_classes[:]
+
+  for named_comp_class in remaining_comp_classes:
+    if named_comp_class:
+      comp_class = [x[1] for x in named_comp_class]
+      name_class = [x[0] for x in named_comp_class]
+      arg_ref = _construct_reference_representing(output_comp)
+      output_comp = _construct_tensorflow_representing_single_local_assignment(
+          arg_ref, comp_class, output_comp, name_to_output_index)
+      _update_name_to_output_index(name_class)
+
+  arg_ref = _construct_reference_representing(output_comp)
+  result_replaced = _replace_references_in_comp_with_selections_from_arg(
+      block.result, arg_ref, name_to_output_index)
+  comp_called = construct_tensorflow_calling_lambda_on_concrete_arg(
+      arg_ref, result_replaced, output_comp)
+
+  return comp_called, True

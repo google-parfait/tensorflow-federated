@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
 class RemoveLambdasAndBlocksTest(common_test.TestCase):
@@ -240,6 +241,221 @@ class TensorFlowCallingLambdaOnConcreteArgTest(common_test.TestCase):
     result = test_utils.run_tensorflow(tf_block.function.proto, list(range(5)))
     self.assertLen(result, 1)
     self.assertAllEqual(result[0], list(range(5)))
+
+
+class BlockLocalsTFGraphTest(common_test.TestCase):
+
+  def test_raises_with_naked_graph_as_block_local(self):
+    graph = building_block_factory.create_compiled_identity(tf.int32)
+    block_locals = [('graph', graph)]
+    ref_to_graph = building_blocks.Reference('graph', graph.type_signature)
+    block = building_blocks.Block(block_locals, ref_to_graph)
+    with self.assertRaises(ValueError):
+      compiler_transformations.create_tensorflow_representing_block(block)
+
+  def test_raises_with_lambda_in_result(self):
+    ref_to_int = building_blocks.Reference('var', tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
+    block_locals = [('call', called_tf_id)]
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    lam = building_blocks.Lambda(ref_to_call.name, ref_to_call.type_signature,
+                                 ref_to_call)
+    block = building_blocks.Block(block_locals, lam)
+    with self.assertRaises(ValueError):
+      compiler_transformations.create_tensorflow_representing_block(block)
+
+  def test_returns_correct_structure_with_tuple_in_result(self):
+    ref_to_int = building_blocks.Reference('var', tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_called = building_blocks.Call(second_tf_id, ref_to_call)
+    ref_to_second_call = building_blocks.Reference('second_call',
+                                                   called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id), ('second_call', second_called)]
+    block = building_blocks.Block(
+        block_locals,
+        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    self.assertEqual(tf_representing_block.type_signature, block.type_signature)
+    self.assertIsInstance(tf_representing_block, building_blocks.Call)
+    self.assertIsInstance(tf_representing_block.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsInstance(tf_representing_block.argument,
+                          building_blocks.Reference)
+    self.assertEqual(tf_representing_block.argument.name, 'var')
+
+  def test_executes_correctly_with_tuple_in_result(self):
+    ref_to_int = building_blocks.Reference('var', tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_called = building_blocks.Call(second_tf_id, ref_to_call)
+    ref_to_second_call = building_blocks.Reference('second_call',
+                                                   called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id), ('second_call', second_called)]
+    block = building_blocks.Block(
+        block_locals,
+        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    result_ones = test_utils.run_tensorflow(
+        tf_representing_block.function.proto, 1)
+    self.assertAllEqual(result_ones, [1, 1])
+    result_zeros = test_utils.run_tensorflow(
+        tf_representing_block.function.proto, 0)
+    self.assertAllEqual(result_zeros, [0, 0])
+
+  def test_returns_correct_structure_with_no_unbound_references(self):
+    concrete_int = building_block_factory.create_tensorflow_constant(
+        tf.int32, 1)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, concrete_int)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_called = building_blocks.Call(second_tf_id, ref_to_call)
+    ref_to_second_call = building_blocks.Reference('second_call',
+                                                   called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id), ('second_call', second_called)]
+    block = building_blocks.Block(
+        block_locals,
+        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    self.assertEqual(tf_representing_block.type_signature, block.type_signature)
+    self.assertIsInstance(tf_representing_block, building_blocks.Call)
+    self.assertIsInstance(tf_representing_block.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsNone(tf_representing_block.argument)
+
+  def test_returned_tensorflow_executes_correctly_with_no_unbound_refs(self):
+    concrete_int = building_block_factory.create_tensorflow_constant(
+        tf.int32, 1)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, concrete_int)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_called = building_blocks.Call(second_tf_id, ref_to_call)
+    ref_to_second_call = building_blocks.Reference('second_call',
+                                                   called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id), ('second_call', second_called)]
+    block = building_blocks.Block(
+        block_locals,
+        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    result = test_utils.run_tensorflow(tf_representing_block.function.proto)
+    self.assertAllEqual(result, [1, 1])
+
+  def test_returns_single_called_graph_with_selection_in_result(self):
+    ref_to_tuple = building_blocks.Reference('var', [tf.int32, tf.int32])
+    first_tf_id = building_block_factory.create_compiled_identity(
+        ref_to_tuple.type_signature)
+    called_tf_id = building_blocks.Call(first_tf_id, ref_to_tuple)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id)]
+    block = building_blocks.Block(
+        block_locals, building_blocks.Selection(ref_to_call, index=0))
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    self.assertEqual(tf_representing_block.type_signature, block.type_signature)
+    self.assertIsInstance(tf_representing_block, building_blocks.Call)
+    self.assertIsInstance(tf_representing_block.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsInstance(tf_representing_block.argument,
+                          building_blocks.Reference)
+    self.assertEqual(tf_representing_block.argument.name, 'var')
+
+  def test_returns_single_called_graph_after_resolving_multiple_variables(self):
+    ref_to_int = building_blocks.Reference('var', tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_called = building_blocks.Call(second_tf_id, ref_to_call)
+    ref_to_second_call = building_blocks.Reference('second_call',
+                                                   called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id), ('second_call', second_called)]
+    block = building_blocks.Block(block_locals, ref_to_second_call)
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    self.assertEqual(tf_representing_block.type_signature, block.type_signature)
+    self.assertIsInstance(tf_representing_block, building_blocks.Call)
+    self.assertIsInstance(tf_representing_block.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsInstance(tf_representing_block.argument,
+                          building_blocks.Reference)
+    self.assertEqual(tf_representing_block.argument.name, 'var')
+
+  def test_executes_correctly_after_resolving_multiple_variables(self):
+    ref_to_int = building_blocks.Reference('var', tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
+    ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
+    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_called = building_blocks.Call(second_tf_id, ref_to_call)
+    ref_to_second_call = building_blocks.Reference('second_call',
+                                                   called_tf_id.type_signature)
+    block_locals = [('call', called_tf_id), ('second_call', second_called)]
+    block = building_blocks.Block(block_locals, ref_to_second_call)
+    tf_representing_block, _ = compiler_transformations.create_tensorflow_representing_block(
+        block)
+    result_one = test_utils.run_tensorflow(tf_representing_block.function.proto,
+                                           1)
+    self.assertEqual(result_one, 1)
+    result_zero = test_utils.run_tensorflow(
+        tf_representing_block.function.proto, 0)
+    self.assertEqual(result_zero, 0)
+
+  def test_ops_not_duplicated_in_resulting_tensorflow(self):
+
+    def _construct_block_and_inlined_tuple(k):
+      concrete_int = building_block_factory.create_tensorflow_constant(
+          tf.int32, 1)
+      first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+      called_tf_id = building_blocks.Call(first_tf_id, concrete_int)
+      for _ in range(k):
+        # Simulating large TF computation
+        called_tf_id = building_blocks.Call(first_tf_id, called_tf_id)
+      ref_to_call = building_blocks.Reference('call',
+                                              called_tf_id.type_signature)
+      block_locals = [('call', called_tf_id)]
+      block = building_blocks.Block(
+          block_locals, building_blocks.Tuple([ref_to_call, ref_to_call]))
+      inlined_tuple = building_blocks.Tuple([called_tf_id, called_tf_id])
+      return block, inlined_tuple
+
+    block_with_5_ids, inlined_tuple_with_5_ids = _construct_block_and_inlined_tuple(
+        5)
+    block_with_10_ids, inlined_tuple_with_10_ids = _construct_block_and_inlined_tuple(
+        10)
+    tf_representing_block_with_5_ids, _ = compiler_transformations.create_tensorflow_representing_block(
+        block_with_5_ids)
+    tf_representing_block_with_10_ids, _ = compiler_transformations.create_tensorflow_representing_block(
+        block_with_10_ids)
+    block_ops_with_5_ids = tree_analysis.count_tensorflow_ops_under(
+        tf_representing_block_with_5_ids)
+    block_ops_with_10_ids = tree_analysis.count_tensorflow_ops_under(
+        tf_representing_block_with_10_ids)
+
+    parser_callable = transformations.TFParser()
+    naively_generated_tf_with_5_ids, _ = transformation_utils.transform_postorder(
+        inlined_tuple_with_5_ids, parser_callable)
+    naively_generated_tf_with_10_ids, _ = transformation_utils.transform_postorder(
+        inlined_tuple_with_10_ids, parser_callable)
+    tuple_ops_with_5_ids = tree_analysis.count_tensorflow_ops_under(
+        naively_generated_tf_with_5_ids)
+    tuple_ops_with_10_ids = tree_analysis.count_tensorflow_ops_under(
+        naively_generated_tf_with_10_ids)
+
+    # asserting that block ops are linear in k with slope 1.
+    self.assertEqual((block_ops_with_10_ids - block_ops_with_5_ids) / 5, 1)
+    # asserting that tuple ops are linear in k with slope 2.
+    self.assertEqual((tuple_ops_with_10_ids - tuple_ops_with_5_ids) / 5, 2)
 
 
 if __name__ == '__main__':
