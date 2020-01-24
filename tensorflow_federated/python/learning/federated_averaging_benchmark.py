@@ -49,8 +49,7 @@ def executors_benchmark(fn):
 
   def wrapped_fn(self):
     """Runs `fn` against different local executor stacks."""
-    tff.framework.set_default_executor()
-    fn(self, "reference executor")
+    # TODO(b/148233458): Re-enable reference executor benchmarks when possible.
     tff.framework.set_default_executor(tff.framework.create_local_executor())
     fn(self, "local executor")
     tff.framework.set_default_executor(tff.framework.create_sizing_executor())
@@ -123,102 +122,6 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
                                                         executor_id),
         wall_time=np.mean(execution_array),
         iters=num_rounds,
-        extras={"std_dev": np.std(execution_array)})
-
-  def benchmark_fc_api_mnist(self):
-    """Code adapted from FC API tutorial ipynb."""
-    # TODO(b/139129100): Follow up when sequence_reduce is implemented in the
-    # local executor.
-    executor_id = "reference executor"
-    n_rounds = 10
-
-    batch_type = tff.NamedTupleType([("x",
-                                      tff.TensorType(tf.float32, [None, 784])),
-                                     ("y", tff.TensorType(tf.int32, [None]))])
-
-    model_type = tff.NamedTupleType([("weights",
-                                      tff.TensorType(tf.float32, [784, 10])),
-                                     ("bias", tff.TensorType(tf.float32,
-                                                             [10]))])
-
-    local_data_type = tff.SequenceType(batch_type)
-
-    server_model_type = tff.FederatedType(model_type, tff.SERVER)
-    client_data_type = tff.FederatedType(local_data_type, tff.CLIENTS)
-    server_float_type = tff.FederatedType(tf.float32, tff.SERVER)
-
-    computation_building_start = time.time()
-
-    # pylint: disable=missing-docstring
-    @tff.tf_computation(model_type, batch_type)
-    def batch_loss(model, batch):
-      predicted_y = tf.nn.softmax(
-          tf.matmul(batch.x, model.weights) + model.bias)
-      return -tf.reduce_mean(
-          tf.reduce_sum(
-              tf.one_hot(batch.y, 10) * tf.math.log(predicted_y), axis=[1]))
-
-    initial_model = collections.OrderedDict([
-        ("weights", np.zeros([784, 10], dtype=np.float32)),
-        ("bias", np.zeros([10], dtype=np.float32))
-    ])
-
-    @tff.tf_computation(model_type, batch_type, tf.float32)
-    def batch_train(initial_model, batch, learning_rate):
-      model_vars = tff.utils.create_variables("v", model_type)
-      init_model = tff.utils.assign(model_vars, initial_model)
-
-      optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate)
-      with tf.control_dependencies([init_model]):
-        train_model = optimizer.minimize(batch_loss(model_vars, batch))
-
-      with tf.control_dependencies([train_model]):
-        return tff.utils.identity(model_vars)
-
-    @tff.federated_computation(model_type, tf.float32, local_data_type)
-    def local_train(initial_model, learning_rate, all_batches):
-
-      @tff.federated_computation(model_type, batch_type)
-      def batch_fn(model, batch):
-        return batch_train(model, batch, learning_rate)
-
-      # Blocked on implementing sequence_reduce in local executor.
-      return tff.sequence_reduce(all_batches, initial_model, batch_fn)
-
-    @tff.federated_computation(server_model_type, server_float_type,
-                               client_data_type)
-    def federated_train(model, learning_rate, data):
-      return tff.federated_mean(
-          tff.federated_map(local_train, [
-              tff.federated_broadcast(model),
-              tff.federated_broadcast(learning_rate), data
-          ]))
-
-    computation_building_stop = time.time()
-    building_time = computation_building_stop - computation_building_start
-    self.report_benchmark(
-        name="computation_building_time, FC API, executor {}".format(
-            executor_id),
-        wall_time=building_time,
-        iters=1)
-
-    model = initial_model
-    learning_rate = 0.1
-
-    federated_data = generate_fake_mnist_data()
-
-    execution_array = []
-    for _ in range(n_rounds):
-      execution_start = time.time()
-      model = federated_train(model, learning_rate, federated_data)
-      execution_stop = time.time()
-      execution_array.append(execution_stop - execution_start)
-
-    self.report_benchmark(
-        name="Average per round execution time, FC API, executor {}".format(
-            executor_id),
-        wall_time=np.mean(execution_array),
-        iters=n_rounds,
         extras={"std_dev": np.std(execution_array)})
 
   @executors_benchmark
