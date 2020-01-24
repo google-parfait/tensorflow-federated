@@ -408,15 +408,14 @@ def _force_align_intrinsic(comp, uri):
   if not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
     comp, _ = transformations.replace_called_lambda_with_block(comp)
   comp = _inline_block_variables_required_to_align_intrinsic(comp, uri)
-  comp, modified = _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(
-      comp, uri)
+  comp, modified = _extract_intrinsics_to_top_level_lambda(comp, uri)
   if modified:
     comp, modified = transformations.merge_tuple_intrinsics(comp, uri)
     if modified:
       # Required because merge_tuple_intrinsics calls into computation factories
       # that do not name references uniquely.
       comp, _ = transformations.uniquify_reference_names(comp)
-  comp, _ = _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri)
+  comp, _ = _extract_intrinsics_to_top_level_lambda(comp, uri)
   return comp
 
 
@@ -512,8 +511,23 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
   return comp
 
 
-def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
-  """Extracts multiple intrinsics from `comp` as a tuple for the given `uri`.
+def _extract_intrinsics_to_top_level_lambda(comp, uri):
+  r"""Extracts intrinsics in `comp` for the given `uri`.
+
+  This transformation creates an AST such that all the called intrinsics for the
+  given `uri` in body of the `tff.framework.Block` returned by the top level
+  lambda have been extracted to the top level lambda and replaced by selections
+  from a reference to the constructed variable.
+
+                       Lambda
+                       |
+                       Block
+                      /     \
+        [x=Tuple, ...]       Comp
+           |
+           [Call,                  Call]
+           /    \                 /    \
+  Intrinsic      Comp    Intrinsic      Comp
 
   Args:
     comp: The `tff.framework.Lambda` to transform. The names of lambda
@@ -528,21 +542,24 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
       exclusively bound by `comp`.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  tree_analysis.check_has_unique_names(comp)
   py_typecheck.check_type(uri, str)
-  intrinsics = _get_called_intrinsics(comp, uri)
-  if len(intrinsics) < 2:
-    return comp, False
-  if any(
-      not tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
-      for x in intrinsics):
-    raise ValueError(
-        'Expected a computation which binds all the references in all the '
-        'intrinsic with the uri: {}.'.format(uri))
+  tree_analysis.check_has_unique_names(comp)
+
   name_generator = building_block_factory.unique_name_generator(comp)
-  extracted_intrinsics = building_blocks.Tuple(intrinsics)
+
+  intrinsics = _get_called_intrinsics(comp, uri)
+  for intrinsic in intrinsics:
+    if not tree_analysis.contains_no_unbound_references(intrinsic,
+                                                        comp.parameter_name):
+      raise ValueError(
+          'Expected a computation which binds all the references in all the '
+          'intrinsic with the uri: {}.'.format(uri))
+  if len(intrinsics) > 1:
+    extracted_comp = building_blocks.Tuple(intrinsics)
+  else:
+    extracted_comp = intrinsics[0]
   ref_name = next(name_generator)
-  ref_type = computation_types.to_type(extracted_intrinsics.type_signature)
+  ref_type = computation_types.to_type(extracted_comp.type_signature)
   ref = building_blocks.Reference(ref_name, ref_type)
 
   def _should_transform(comp):
@@ -551,63 +568,16 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
   def _transform(comp):
     if not _should_transform(comp):
       return comp, False
-    index = intrinsics.index(comp)
-    comp = building_blocks.Selection(ref, index=index)
-    return comp, True
+    if len(intrinsics) > 1:
+      index = intrinsics.index(comp)
+      comp = building_blocks.Selection(ref, index=index)
+      return comp, True
+    else:
+      return ref, True
 
   comp, _ = transformation_utils.transform_postorder(comp, _transform)
   comp = _insert_comp_in_top_level_lambda(
-      comp, name=ref.name, comp_to_insert=extracted_intrinsics)
-  return comp, True
-
-
-def _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri):
-  """Extracts an intrinsic from `comp` as a reference for the given `uri`.
-
-  Args:
-    comp: The `tff.framework.Lambda` to transform. The names of lambda
-      parameters and block variables in `comp` must be unique.
-    uri: A URI of an intrinsic.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    ValueError: If there is more than one intrinsic for the give `uri` or if the
-      intrinsic is not exclusively bound by `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  tree_analysis.check_has_unique_names(comp)
-  py_typecheck.check_type(uri, str)
-  intrinsics = _get_called_intrinsics(comp, uri)
-  length = len(intrinsics)
-  if length != 1:
-    raise ValueError(
-        'Expected a computation with exactly one intrinsic with the uri: {}, '
-        'found: {}.'.format(uri, length))
-  if any(
-      not tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
-      for x in intrinsics):
-    raise ValueError(
-        'Expected a computation which binds all the references in the '
-        'intrinsic with the uri: {}.'.format(uri))
-  name_generator = building_block_factory.unique_name_generator(comp)
-  extracted_intrinsic = intrinsics[0]
-  ref_name = next(name_generator)
-  ref_type = computation_types.to_type(extracted_intrinsic.type_signature)
-  ref = building_blocks.Reference(ref_name, ref_type)
-
-  def _should_transform(comp):
-    return building_block_analysis.is_called_intrinsic(comp, uri)
-
-  def _transform(comp):
-    if not _should_transform(comp):
-      return comp, False
-    return ref, True
-
-  comp, _ = transformation_utils.transform_postorder(comp, _transform)
-  comp = _insert_comp_in_top_level_lambda(
-      comp, name=ref.name, comp_to_insert=extracted_intrinsic)
+      comp, name=ref.name, comp_to_insert=extracted_comp)
   return comp, True
 
 
