@@ -17,6 +17,8 @@
 import asyncio
 import functools
 import threading
+import weakref
+
 import absl.logging as logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -41,39 +43,33 @@ class ConcurrentExecutor(executor_base.Executor):
     """
     py_typecheck.check_type(target_executor, executor_base.Executor)
     self._target_executor = target_executor
-    self._event_loop = None
-
-  def _lazy_init(self):
-    """Lazily initialize the event-loop.
-
-    The ConcurrentExecutor is closed after every computation, and may need to
-    be re-initialized if it is re-used.
-    """
-    if self._event_loop is not None:
-      return
+    self._event_loop = asyncio.new_event_loop()
 
     def run_loop(loop):
       loop.run_forever()
       loop.close()
 
-    self._event_loop = asyncio.new_event_loop()
     self._thread = threading.Thread(
         target=functools.partial(run_loop, self._event_loop), daemon=True)
     self._thread.start()
 
+    def finalizer(loop, thread):
+      logging.debug('Finalizing, joining thread.')
+      loop.call_soon_threadsafe(loop.stop)
+      thread.join()
+      logging.debug('Thread joined.')
+
+    weakref.finalize(self, finalizer, self._event_loop, self._thread)
+
   def close(self):
-    if self._event_loop is not None:
-      logging.debug('Closing, joining thread')
-      self._event_loop.call_soon_threadsafe(self._event_loop.stop)
-      self._thread.join()
-      self._event_loop = None
-      logging.debug('Thread joined. Closing target executor.')
-    else:
-      logging.debug('Closing uninitialized ConcurrentExecutor')
+    # Close does not clean up the event loop or thread.
+    # Using the executor again after cleanup used to lazily re-initialized the
+    # event loop, but this resulted in bugs related to the persistence of values
+    # associated with the old event loop ("futures are tied to different event
+    # loops"). See the closed bug b/148288711 for more information.
     self._target_executor.close()
 
   def _delegate(self, coro):
-    self._lazy_init()
     return asyncio.wrap_future(
         asyncio.run_coroutine_threadsafe(coro, self._event_loop))
 
