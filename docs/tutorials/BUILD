@@ -4,7 +4,9 @@ licenses(["notice"])
 
 exports_files([
     "custom_federated_algorithms_1.ipynb",
+    "custom_federated_algorithms_2.ipynb",
     "federated_learning_for_image_classification.ipynb",
+    "federated_learning_for_text_generation.ipynb",
     "simulations.ipynb",
 ])
 
