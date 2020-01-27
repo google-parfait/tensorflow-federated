@@ -1380,24 +1380,6 @@ class TFParser(object):
     return comp, modified
 
 
-class IntermediateParser(TFParser):
-
-  def __init__(self):
-    """Populates the parser library with first-pass transforms."""
-    super(IntermediateParser, self).__init__()
-    self._parse_library = [
-        compiled_computation_transforms.TupleCalledGraphs(only_equal_args=True),
-        compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(),
-    ]
-
-
-def preprocess_for_tf_parse(comp):
-  """Deduplicates called graphs in the AST nested in Selections and Tuples."""
-  preprocessor = IntermediateParser()
-  comp, _ = transformation_utils.transform_preorder(comp, preprocessor)
-  return transformation_utils.transform_postorder(comp, preprocessor)
-
-
 def group_block_locals_by_namespace(block):
   """Partitions `block.locals` into classes which share namespaces.
 

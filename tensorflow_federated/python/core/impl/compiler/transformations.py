@@ -13,15 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains composite transformations, upon which higher compiler levels depend."""
-
 from typing import Mapping
 
+from absl import logging
+
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 
 
 def prepare_for_rebinding(comp):
@@ -406,3 +409,96 @@ def create_tensorflow_representing_block(block):
       arg_ref, result_replaced, output_comp)
 
   return comp_called, True
+
+
+class IntermediateParser(transformations.TFParser):
+
+  def __init__(self):
+    """Populates the parser library with first-pass transforms."""
+    super().__init__()
+    self._parse_library = [
+        compiled_computation_transforms.TupleCalledGraphs(only_equal_args=True),
+        compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(),
+    ]
+
+
+def preprocess_for_tf_parse(comp):
+  """Deduplicates called graphs in the AST nested in Selections and Tuples."""
+  preprocessor = IntermediateParser()
+  comp, _ = transformation_utils.transform_preorder(comp, preprocessor)
+  return remove_duplicate_called_graphs(comp)
+
+
+def remove_duplicate_called_graphs(comp):
+  """Deduplicates called graphs for a subset of TFF AST constructs.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose called
+      graphs we wish to deduplicate, according to `tree_analysis.trees_equal`.
+      For `comp` to be eligible here, it must be either a lambda itself whose
+      body contains no lambdas or blocks, or another computation containing no
+      lambdas or blocks. This restriction is necessary because
+      `remove_duplicate_called_graphs` makes no effort to ensure that it is not
+      pulling references out of their defining scope, except for the case where
+      `comp` is a lambda itself. This function exits early and logs a warning if
+      this assumption is violated. Additionally, `comp` must contain only
+      computations which can be represented in TensorFlow, IE, satisfy the type
+      restriction in `type_utils.is_tensorflow_compatible_type`.
+
+  Returns:
+    Either a called instance of `building_blocks.CompiledComputation` or a
+    `building_blocks.CompiledComputation` itself, depending on whether `comp`
+    is of non-functional or functional type respectively. Additionally, returns
+    a boolean to match the `transformation_utils.TransformSpec` pattern.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  tree_analysis.check_has_unique_names(comp)
+  name_generator = building_block_factory.unique_name_generator(comp)
+  if isinstance(comp, building_blocks.Lambda):
+    comp_to_check = comp.result
+  else:
+    comp_to_check = comp
+  if tree_analysis.count_types(
+      comp_to_check, (building_blocks.Lambda, building_blocks.Block)) > 0:
+    logging.warning(
+        'The preprocessors have failed to remove called lambdas '
+        'and blocks; falling back to less efficient, but '
+        'guaranteed, TensorFlow generation with computation %s.', comp)
+    return comp, False
+
+  leaf_called_graphs = []
+
+  def _pack_called_graphs_into_block(inner_comp):
+    """Packs deduplicated bindings to called graphs in `leaf_called_graphs`."""
+    if (isinstance(inner_comp, building_blocks.Call) and
+        isinstance(inner_comp.function, building_blocks.CompiledComputation)):
+      for (name, x) in leaf_called_graphs:
+        if tree_analysis.trees_equal(x, inner_comp):
+          return building_blocks.Reference(name,
+                                           inner_comp.type_signature), True
+      new_name = next(name_generator)
+      leaf_called_graphs.append((new_name, inner_comp))
+      return building_blocks.Reference(new_name,
+                                       inner_comp.type_signature), True
+
+    return inner_comp, False
+
+  if isinstance(comp, building_blocks.Lambda):
+    transformed_result, _ = transformation_utils.transform_postorder(
+        comp.result, _pack_called_graphs_into_block)
+    packed_into_block = building_blocks.Block(leaf_called_graphs,
+                                              transformed_result)
+    parsed, _ = create_tensorflow_representing_block(packed_into_block)
+    tff_func = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                      parsed)
+    tf_parser_callable = transformations.TFParser()
+    comp, _ = transformations.insert_called_tf_identity_at_leaves(tff_func)
+    tf_generated, _ = transformation_utils.transform_postorder(
+        comp, tf_parser_callable)
+  else:
+    transformed_result, _ = transformation_utils.transform_postorder(
+        comp, _pack_called_graphs_into_block)
+    packed_into_block = building_blocks.Block(leaf_called_graphs,
+                                              transformed_result)
+    tf_generated, _ = create_tensorflow_representing_block(packed_into_block)
+  return tf_generated, True
