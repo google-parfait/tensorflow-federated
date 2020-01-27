@@ -538,7 +538,6 @@ class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):
   with the following computation containing one federated map or apply
   intrinsic:
 
-
             Call
            /    \
   Intrinsic      Tuple

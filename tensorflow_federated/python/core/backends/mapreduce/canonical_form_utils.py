@@ -676,12 +676,12 @@ def get_canonical_form_for_iterative_process(iterative_process):
         _create_dummy_before_and_after_broadcast(next_comp))
   else:
     before_broadcast, after_broadcast = (
-        transformations.force_align_and_split_by_intrinsic(
-            next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri))
+        transformations.force_align_and_split_by_intrinsics(
+            next_comp, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
 
   before_aggregate, after_aggregate = (
-      transformations.force_align_and_split_by_intrinsic(
-          after_broadcast, intrinsic_defs.FEDERATED_AGGREGATE.uri))
+      transformations.force_align_and_split_by_intrinsics(
+          after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
   init_info_packed = pack_initialize_comp_type_signature(
       initialize_comp.type_signature)
@@ -746,7 +746,7 @@ def _create_dummy_before_and_after_broadcast(comp):
   """Creates a before and after broadcast computations for the given `comp`.
 
   This function is intended to be used instead of
-  `transformations.force_align_and_split_by_intrinsic` to generate dummy before
+  `transformations.force_align_and_split_by_intrinsics` to generate dummy before
   and after computations, when there is no `intrinsic_defs.FEDERATED_BROADCAST`
   present in `comp`.
 
@@ -760,7 +760,8 @@ def _create_dummy_before_and_after_broadcast(comp):
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
     is a `tff_framework.ComputationBuildingBlock` that represents a part of the
-    result as specified by `transformations.force_align_and_split_by_intrinsic`.
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
   """
   name_generator = building_block_factory.unique_name_generator(comp)
 

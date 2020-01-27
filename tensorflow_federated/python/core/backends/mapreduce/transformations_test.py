@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
+from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -226,13 +227,13 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
 class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
-  def test_returns_comps_with_federated_broadcast(self):
+  def test_returns_trees_with_one_federated_broadcast(self):
     iterative_process = mapreduce_test_utils.construct_example_training_comp()
     comp = mapreduce_test_utils.computation_to_building_block(
         iterative_process.next)
-    uri = intrinsic_defs.FEDERATED_BROADCAST.uri
+    uri = [intrinsic_defs.FEDERATED_BROADCAST.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsic(
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     def _predicate(comp):
@@ -247,13 +248,13 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertEqual(tree_analysis.count(after, _predicate), 0)
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
-  def test_returns_comps_with_federated_aggregate(self):
+  def test_returns_trees_with_federated_aggregate(self):
     iterative_process = mapreduce_test_utils.construct_example_training_comp()
     comp = mapreduce_test_utils.computation_to_building_block(
         iterative_process.next)
-    uri = intrinsic_defs.FEDERATED_AGGREGATE.uri
+    uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsic(
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     def _predicate(comp):
@@ -268,7 +269,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertEqual(tree_analysis.count(after, _predicate), 0)
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
-  def test_returns_comps_with_federated_aggregate_no_unbound_references(self):
+  def test_returns_trees_with_federated_aggregate_no_unbound_references(self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
@@ -278,10 +279,9 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         federated_aggregate,
     ])
     comp = building_blocks.Lambda('d', tf.int32, tup)
+    uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    uri = intrinsic_defs.FEDERATED_AGGREGATE.uri
-
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsic(
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     def _predicate(comp):
@@ -296,8 +296,1011 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertEqual(tree_analysis.count(after, _predicate), 0)
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
+  def test_returns_trees_with_one_federated_aggregate(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsics = building_blocks.Tuple([federated_aggregate])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-class ExtractArgumentsTest(absltest.TestCase):
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  data,\n'
+        '  data,\n'
+        '  (_var2 -> data),\n'
+        '  (_var3 -> data),\n'
+        '  (_var4 -> data)\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1]\n'
+        ' in <\n'
+        '  _var3\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_two_federated_aggregates(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        federated_aggregate,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  federated_map(<\n'
+        '    (_var2 -> <\n'
+        '      _var2[0],\n'
+        '      _var2[1]\n'
+        '    >),\n'
+        '    federated_map(<\n'
+        '      (_var3 -> _var3),\n'
+        '      (let\n'
+        '        _var4=<\n'
+        '          data,\n'
+        '          data\n'
+        '        >\n'
+        '       in federated_zip_at_clients(<\n'
+        '        _var4[0],\n'
+        '        _var4[1]\n'
+        '      >))\n'
+        '    >)\n'
+        '  >),\n'
+        '  <\n'
+        '    data,\n'
+        '    data\n'
+        '  >,\n'
+        '  (let\n'
+        '    _var7=<\n'
+        '      (_var5 -> data),\n'
+        '      (_var6 -> data)\n'
+        '    >\n'
+        '   in (_var8 -> <\n'
+        '    _var7[0](<\n'
+        '      <\n'
+        '        _var8[0][0],\n'
+        '        _var8[1][0]\n'
+        '      >,\n'
+        '      <\n'
+        '        _var8[0][1],\n'
+        '        _var8[1][1]\n'
+        '      >\n'
+        '    >[0]),\n'
+        '    _var7[1](<\n'
+        '      <\n'
+        '        _var8[0][0],\n'
+        '        _var8[1][0]\n'
+        '      >,\n'
+        '      <\n'
+        '        _var8[0][1],\n'
+        '        _var8[1][1]\n'
+        '      >\n'
+        '    >[1])\n'
+        '  >)),\n'
+        '  (let\n'
+        '    _var11=<\n'
+        '      (_var9 -> data),\n'
+        '      (_var10 -> data)\n'
+        '    >\n'
+        '   in (_var12 -> <\n'
+        '    _var11[0](<\n'
+        '      <\n'
+        '        _var12[0][0],\n'
+        '        _var12[1][0]\n'
+        '      >,\n'
+        '      <\n'
+        '        _var12[0][1],\n'
+        '        _var12[1][1]\n'
+        '      >\n'
+        '    >[0]),\n'
+        '    _var11[1](<\n'
+        '      <\n'
+        '        _var12[0][0],\n'
+        '        _var12[1][0]\n'
+        '      >,\n'
+        '      <\n'
+        '        _var12[0][1],\n'
+        '        _var12[1][1]\n'
+        '      >\n'
+        '    >[1])\n'
+        '  >)),\n'
+        '  (let\n'
+        '    _var15=<\n'
+        '      (_var13 -> data),\n'
+        '      (_var14 -> data)\n'
+        '    >\n'
+        '   in (_var16 -> <\n'
+        '    _var15[0](_var16[0]),\n'
+        '    _var15[1](_var16[1])\n'
+        '  >))\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1],\n'
+        '  _var8=(_var4 -> <\n'
+        '    _var4[0],\n'
+        '    _var4[1]\n'
+        '  >)((let\n'
+        '    _var5=_var3\n'
+        '   in <\n'
+        '    federated_apply(<\n'
+        '      (_var6 -> _var6[0]),\n'
+        '      _var5\n'
+        '    >),\n'
+        '    federated_apply(<\n'
+        '      (_var7 -> _var7[1]),\n'
+        '      _var5\n'
+        '    >)\n'
+        '  >))\n'
+        ' in <\n'
+        '  _var8[0],\n'
+        '  _var8[1]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_secure_sum(self):
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([secure_sum])
+    fn = building_blocks.Lambda('a', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [intrinsic_defs.SECURE_SUM.uri]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  data,\n'
+        '  data\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1]\n'
+        ' in <\n'
+        '  _var3\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_two_secure_sums(self):
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        secure_sum,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('a', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [intrinsic_defs.SECURE_SUM.uri]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  federated_map(<\n'
+        '    (_var2 -> <\n'
+        '      _var2[0],\n'
+        '      _var2[1]\n'
+        '    >),\n'
+        '    federated_map(<\n'
+        '      (_var3 -> _var3),\n'
+        '      (let\n'
+        '        _var4=<\n'
+        '          data,\n'
+        '          data\n'
+        '        >\n'
+        '       in federated_zip_at_clients(<\n'
+        '        _var4[0],\n'
+        '        _var4[1]\n'
+        '      >))\n'
+        '    >)\n'
+        '  >),\n'
+        '  <\n'
+        '    data,\n'
+        '    data\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1],\n'
+        '  _var8=(_var4 -> <\n'
+        '    _var4[0],\n'
+        '    _var4[1]\n'
+        '  >)((let\n'
+        '    _var5=_var3\n'
+        '   in <\n'
+        '    federated_apply(<\n'
+        '      (_var6 -> _var6[0]),\n'
+        '      _var5\n'
+        '    >),\n'
+        '    federated_apply(<\n'
+        '      (_var7 -> _var7[1]),\n'
+        '      _var5\n'
+        '    >)\n'
+        '  >))\n'
+        ' in <\n'
+        '  _var8[0],\n'
+        '  _var8[0]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_federated_aggregate_only(
+      self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  data,\n'
+        '  data,\n'
+        '  (_var2 -> data),\n'
+        '  (_var3 -> data),\n'
+        '  (_var4 -> data)\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1]\n'
+        ' in <\n'
+        '  _var3,\n'
+        '  secure_sum(<\n'
+        '    data,\n'
+        '    data\n'
+        '  >)\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_secure_sum_only(
+      self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [intrinsic_defs.SECURE_SUM.uri]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  data,\n'
+        '  data\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1]\n'
+        ' in <\n'
+        '  federated_aggregate(<\n'
+        '    data,\n'
+        '    data,\n'
+        '    (_var4 -> data),\n'
+        '    (_var5 -> data),\n'
+        '    (_var6 -> data)\n'
+        '  >),\n'
+        '  _var3\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_federated_aggregate_first(
+      self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.SECURE_SUM.uri,
+    ]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  <\n'
+        '    data,\n'
+        '    data,\n'
+        '    (_var2 -> data),\n'
+        '    (_var3 -> data),\n'
+        '    (_var4 -> data)\n'
+        '  >,\n'
+        '  <\n'
+        '    data,\n'
+        '    data\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1]\n'
+        ' in <\n'
+        '  _var3[0],\n'
+        '  _var3[1]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_secure_sum_first(
+      self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+    ]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  <\n'
+        '    data,\n'
+        '    data\n'
+        '  >,\n'
+        '  <\n'
+        '    data,\n'
+        '    data,\n'
+        '    (_var2 -> data),\n'
+        '    (_var3 -> data),\n'
+        '    (_var4 -> data)\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1]\n'
+        ' in <\n'
+        '  _var3[1],\n'
+        '  _var3[0]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_two_federated_aggregates_and_one_secure_sum(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        federated_aggregate,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.SECURE_SUM.uri,
+    ]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  <\n'
+        '    federated_map(<\n'
+        '      (_var2 -> <\n'
+        '        _var2[0],\n'
+        '        _var2[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (_var3 -> _var3),\n'
+        '        (let\n'
+        '          _var4=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          _var4[0],\n'
+        '          _var4[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >),\n'
+        '    <\n'
+        '      data,\n'
+        '      data\n'
+        '    >,\n'
+        '    (let\n'
+        '      _var7=<\n'
+        '        (_var5 -> data),\n'
+        '        (_var6 -> data)\n'
+        '      >\n'
+        '     in (_var8 -> <\n'
+        '      _var7[0](<\n'
+        '        <\n'
+        '          _var8[0][0],\n'
+        '          _var8[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var8[0][1],\n'
+        '          _var8[1][1]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var7[1](<\n'
+        '        <\n'
+        '          _var8[0][0],\n'
+        '          _var8[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var8[0][1],\n'
+        '          _var8[1][1]\n'
+        '        >\n'
+        '      >[1])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var11=<\n'
+        '        (_var9 -> data),\n'
+        '        (_var10 -> data)\n'
+        '      >\n'
+        '     in (_var12 -> <\n'
+        '      _var11[0](<\n'
+        '        <\n'
+        '          _var12[0][0],\n'
+        '          _var12[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var12[0][1],\n'
+        '          _var12[1][1]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var11[1](<\n'
+        '        <\n'
+        '          _var12[0][0],\n'
+        '          _var12[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var12[0][1],\n'
+        '          _var12[1][1]\n'
+        '        >\n'
+        '      >[1])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var15=<\n'
+        '        (_var13 -> data),\n'
+        '        (_var14 -> data)\n'
+        '      >\n'
+        '     in (_var16 -> <\n'
+        '      _var15[0](_var16[0]),\n'
+        '      _var15[1](_var16[1])\n'
+        '    >))\n'
+        '  >,\n'
+        '  <\n'
+        '    data,\n'
+        '    data\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1],\n'
+        '  _var8=<\n'
+        '    (_var4 -> <\n'
+        '      _var4[0],\n'
+        '      _var4[1]\n'
+        '    >)((let\n'
+        '      _var5=_var3[0]\n'
+        '     in <\n'
+        '      federated_apply(<\n'
+        '        (_var6 -> _var6[0]),\n'
+        '        _var5\n'
+        '      >),\n'
+        '      federated_apply(<\n'
+        '        (_var7 -> _var7[1]),\n'
+        '        _var5\n'
+        '      >)\n'
+        '    >)),\n'
+        '    _var3[1]\n'
+        '  >,\n'
+        '  _var9=<\n'
+        '    _var8[0][0],\n'
+        '    _var8[0][1],\n'
+        '    _var8[1]\n'
+        '  >\n'
+        ' in <\n'
+        '  _var9[0],\n'
+        '  _var9[1],\n'
+        '  _var9[2]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_federated_aggregate_and_two_secure_sums(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        federated_aggregate,
+        secure_sum,
+        secure_sum,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.SECURE_SUM.uri,
+    ]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  <\n'
+        '    data,\n'
+        '    data,\n'
+        '    (_var2 -> data),\n'
+        '    (_var3 -> data),\n'
+        '    (_var4 -> data)\n'
+        '  >,\n'
+        '  <\n'
+        '    federated_map(<\n'
+        '      (_var5 -> <\n'
+        '        _var5[0],\n'
+        '        _var5[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (_var6 -> _var6),\n'
+        '        (let\n'
+        '          _var7=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          _var7[0],\n'
+        '          _var7[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >),\n'
+        '    <\n'
+        '      data,\n'
+        '      data\n'
+        '    >\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1],\n'
+        '  _var8=<\n'
+        '    _var3[0],\n'
+        '    (_var4 -> <\n'
+        '      _var4[0],\n'
+        '      _var4[1]\n'
+        '    >)((let\n'
+        '      _var5=_var3[1]\n'
+        '     in <\n'
+        '      federated_apply(<\n'
+        '        (_var6 -> _var6[0]),\n'
+        '        _var5\n'
+        '      >),\n'
+        '      federated_apply(<\n'
+        '        (_var7 -> _var7[1]),\n'
+        '        _var5\n'
+        '      >)\n'
+        '    >))\n'
+        '  >,\n'
+        '  _var9=<\n'
+        '    _var8[0],\n'
+        '    _var8[1][0],\n'
+        '    _var8[1][1]\n'
+        '  >\n'
+        ' in <\n'
+        '  _var9[0],\n'
+        '  _var9[1],\n'
+        '  _var9[1]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_two_secure_sums_and_one_federated_aggregate(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        secure_sum,
+        secure_sum,
+        federated_aggregate,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.SECURE_SUM.uri,
+    ]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  <\n'
+        '    data,\n'
+        '    data,\n'
+        '    (_var2 -> data),\n'
+        '    (_var3 -> data),\n'
+        '    (_var4 -> data)\n'
+        '  >,\n'
+        '  <\n'
+        '    federated_map(<\n'
+        '      (_var5 -> <\n'
+        '        _var5[0],\n'
+        '        _var5[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (_var6 -> _var6),\n'
+        '        (let\n'
+        '          _var7=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          _var7[0],\n'
+        '          _var7[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >),\n'
+        '    <\n'
+        '      data,\n'
+        '      data\n'
+        '    >\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1],\n'
+        '  _var8=<\n'
+        '    _var3[0],\n'
+        '    (_var4 -> <\n'
+        '      _var4[0],\n'
+        '      _var4[1]\n'
+        '    >)((let\n'
+        '      _var5=_var3[1]\n'
+        '     in <\n'
+        '      federated_apply(<\n'
+        '        (_var6 -> _var6[0]),\n'
+        '        _var5\n'
+        '      >),\n'
+        '      federated_apply(<\n'
+        '        (_var7 -> _var7[1]),\n'
+        '        _var5\n'
+        '      >)\n'
+        '    >))\n'
+        '  >,\n'
+        '  _var9=<\n'
+        '    _var8[0],\n'
+        '    _var8[1][0],\n'
+        '    _var8[1][1]\n'
+        '  >\n'
+        ' in <\n'
+        '  _var9[1],\n'
+        '  _var9[1],\n'
+        '  _var9[0]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_returns_trees_with_one_secure_sum_and_two_federated_aggregates(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    secure_sum = test_utils.create_dummy_called_secure_sum()
+    called_intrinsics = building_blocks.Tuple([
+        secure_sum,
+        federated_aggregate,
+        federated_aggregate,
+    ])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.SECURE_SUM.uri,
+    ]
+
+    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    # pyformat: disable
+    before, _ = transformations.uniquify_reference_names(before)
+    self.assertEqual(
+        before.formatted_representation(),
+        '(_var1 -> <\n'
+        '  <\n'
+        '    federated_map(<\n'
+        '      (_var2 -> <\n'
+        '        _var2[0],\n'
+        '        _var2[1]\n'
+        '      >),\n'
+        '      federated_map(<\n'
+        '        (_var3 -> _var3),\n'
+        '        (let\n'
+        '          _var4=<\n'
+        '            data,\n'
+        '            data\n'
+        '          >\n'
+        '         in federated_zip_at_clients(<\n'
+        '          _var4[0],\n'
+        '          _var4[1]\n'
+        '        >))\n'
+        '      >)\n'
+        '    >),\n'
+        '    <\n'
+        '      data,\n'
+        '      data\n'
+        '    >,\n'
+        '    (let\n'
+        '      _var7=<\n'
+        '        (_var5 -> data),\n'
+        '        (_var6 -> data)\n'
+        '      >\n'
+        '     in (_var8 -> <\n'
+        '      _var7[0](<\n'
+        '        <\n'
+        '          _var8[0][0],\n'
+        '          _var8[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var8[0][1],\n'
+        '          _var8[1][1]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var7[1](<\n'
+        '        <\n'
+        '          _var8[0][0],\n'
+        '          _var8[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var8[0][1],\n'
+        '          _var8[1][1]\n'
+        '        >\n'
+        '      >[1])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var11=<\n'
+        '        (_var9 -> data),\n'
+        '        (_var10 -> data)\n'
+        '      >\n'
+        '     in (_var12 -> <\n'
+        '      _var11[0](<\n'
+        '        <\n'
+        '          _var12[0][0],\n'
+        '          _var12[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var12[0][1],\n'
+        '          _var12[1][1]\n'
+        '        >\n'
+        '      >[0]),\n'
+        '      _var11[1](<\n'
+        '        <\n'
+        '          _var12[0][0],\n'
+        '          _var12[1][0]\n'
+        '        >,\n'
+        '        <\n'
+        '          _var12[0][1],\n'
+        '          _var12[1][1]\n'
+        '        >\n'
+        '      >[1])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var15=<\n'
+        '        (_var13 -> data),\n'
+        '        (_var14 -> data)\n'
+        '      >\n'
+        '     in (_var16 -> <\n'
+        '      _var15[0](_var16[0]),\n'
+        '      _var15[1](_var16[1])\n'
+        '    >))\n'
+        '  >,\n'
+        '  <\n'
+        '    data,\n'
+        '    data\n'
+        '  >\n'
+        '>)'
+    )
+    after, _ = transformations.uniquify_reference_names(after)
+    self.assertEqual(
+        after.formatted_representation(),
+        '(_var1 -> (let\n'
+        '  _var2=_var1[0],\n'
+        '  _var3=_var1[1],\n'
+        '  _var8=<\n'
+        '    (_var4 -> <\n'
+        '      _var4[0],\n'
+        '      _var4[1]\n'
+        '    >)((let\n'
+        '      _var5=_var3[0]\n'
+        '     in <\n'
+        '      federated_apply(<\n'
+        '        (_var6 -> _var6[0]),\n'
+        '        _var5\n'
+        '      >),\n'
+        '      federated_apply(<\n'
+        '        (_var7 -> _var7[1]),\n'
+        '        _var5\n'
+        '      >)\n'
+        '    >)),\n'
+        '    _var3[1]\n'
+        '  >,\n'
+        '  _var9=<\n'
+        '    _var8[0][0],\n'
+        '    _var8[0][1],\n'
+        '    _var8[1]\n'
+        '  >\n'
+        ' in <\n'
+        '  _var9[2],\n'
+        '  _var9[0],\n'
+        '  _var9[1]\n'
+        '>))'
+    )
+    # pyformat: enable
+
+  def test_raises_value_error_for_expected_uri(self):
+    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsics = building_blocks.Tuple([federated_aggregate])
+    fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
+                                called_intrinsics)
+    comp = fn
+    uri = [
+        intrinsic_defs.FEDERATED_AGGREGATE.uri,
+        intrinsic_defs.SECURE_SUM.uri,
+    ]
+
+    with self.assertRaises(ValueError):
+      mapreduce_transformations.force_align_and_split_by_intrinsics(comp, uri)
+
+
+class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
