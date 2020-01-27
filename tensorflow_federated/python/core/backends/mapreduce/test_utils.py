@@ -314,40 +314,6 @@ def computation_to_building_block(comp):
       comp._computation_proto)  # pylint: disable=protected-access
 
 
-def get_iterative_process_for_canonical_form_example():
-  """Construct a simple `IterativeProcess` compatible with `CanonicalForm`.
-
-  The computation itself is non-sensical; but demonstrates the required type
-  signatures for `CanonicalForm```.
-
-  Returns:
-    An `IterativeProcess` compatible with `CanonicalForm`.
-  """
-
-  @computations.tf_computation(tf.int32, tf.float32)
-  def add_two(x_int, y_float):
-    return tf.cast(x_int, tf.float32) + y_float
-
-  @computations.federated_computation
-  def init_fn():
-    return intrinsics.federated_value(1.234, placements.SERVER)
-
-  @computations.federated_computation([
-      computation_types.FederatedType(tf.float32, placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  ])
-  def next_fn(server_val, client_val):
-    """Defines a series of federated computations compatible with CanonicalForm."""
-    broadcast_val = intrinsics.federated_broadcast(server_val)
-    values_on_clients = intrinsics.federated_zip((client_val, broadcast_val))
-    result_on_clients = intrinsics.federated_map(add_two, values_on_clients)
-    aggregated_result = intrinsics.federated_mean(result_on_clients)
-    side_output = intrinsics.federated_value([1, 2, 3, 4, 5], placements.SERVER)
-    return aggregated_result, side_output
-
-  return computation_utils.IterativeProcess(init_fn, next_fn)
-
-
 def get_unused_lambda_arg_iterative_process():
   """Returns an iterative process having a Lambda not referencing its arg."""
   server_state_type = computation_types.NamedTupleType([('num_clients',
