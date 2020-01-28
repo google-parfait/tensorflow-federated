@@ -116,9 +116,6 @@ def construct_word_level_datasets(
       `num_test_examples` of the Stackoverflow Test examples not used in
       `stackoverflow_validation`.
   """
-  if vocab_size <= 0:
-    raise ValueError('vocab_size must be a positive integer')
-
   if batch_size <= 0:
     raise ValueError('batch_size must be a positive integer')
 
@@ -145,8 +142,7 @@ def construct_word_level_datasets(
   # optimization paper.
   (train, _, raw_test) = tff.simulation.datasets.stackoverflow.load_data()
 
-  vocab_dict = tff.simulation.datasets.stackoverflow.load_word_counts()
-  vocab = list(vocab_dict.keys())[:vocab_size]
+  vocab = get_vocab(vocab_size)
 
   to_ids = build_to_ids_fn(vocab, max_seq_len)
 
@@ -184,6 +180,23 @@ def construct_word_level_datasets(
 
   return train, validation, test
 
+def get_vocab(vocab_size):
+  """Gets the vocab items from the Stackoverlow dataset as a list.
+
+  Args:
+    vocab_size: Integer representing size of the vocab to use. Vocabulary will
+      then be the `vocab_size` most frequent words in the Stackoverflow dataset.
+
+  Returns:
+    vocab: A list of vocab elements of size `vocab_size`.
+  """
+  if vocab_size <= 0:
+    raise ValueError('vocab_size must be a positive integer')
+
+  vocab_dict = tff.simulation.datasets.stackoverflow.load_word_counts()
+  vocab = list(vocab_dict.keys())[:vocab_size]
+
+  return vocab
 
 def get_special_tokens(vocab_size):
   """Gets the ids of the four special tokens.
