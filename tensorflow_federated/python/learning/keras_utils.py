@@ -432,7 +432,7 @@ class _KerasModel(model_lib.Model):
       raise KeyError('Received a batch_input that is missing required key `x`. '
                      'Instead have keys {}'.format(list(batch_input.keys())))
 
-    predictions = self._keras_model(inputs=inputs, training=training)
+    predictions = self._keras_model(inputs, training=training)
 
     if isinstance(batch_input, collections.Mapping):
       y_true = batch_input.get('y')
