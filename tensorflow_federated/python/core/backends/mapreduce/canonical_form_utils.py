@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -671,13 +670,14 @@ def get_canonical_form_for_iterative_process(iterative_process):
   tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
 
-  if _count_broadcasts(next_comp) == 0:
-    before_broadcast, after_broadcast = (
-        _create_dummy_before_and_after_broadcast(next_comp))
-  else:
+  if tree_analysis.contains_called_intrinsic(
+      next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri):
     before_broadcast, after_broadcast = (
         transformations.force_align_and_split_by_intrinsics(
             next_comp, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
+  else:
+    before_broadcast, after_broadcast = (
+        _create_dummy_before_and_after_broadcast(next_comp))
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsics(
@@ -733,13 +733,6 @@ def get_canonical_form_for_iterative_process(iterative_process):
       computation_wrapper_instances.building_block_to_computation(report),
       computation_wrapper_instances.building_block_to_computation(update))
   return cf
-
-
-def _count_broadcasts(comp):
-  """Returns the number of called federated broadcasts found in `comp`."""
-  uri = intrinsic_defs.FEDERATED_BROADCAST.uri
-  predicate = lambda x: building_block_analysis.is_called_intrinsic(x, uri)
-  return tree_analysis.count(comp, predicate)
 
 
 def _create_dummy_before_and_after_broadcast(comp):
