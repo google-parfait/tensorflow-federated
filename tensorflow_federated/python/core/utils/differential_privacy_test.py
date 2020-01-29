@@ -18,6 +18,7 @@ import collections
 import tensorflow as tf
 import tensorflow_privacy
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -242,6 +243,19 @@ class DpUtilsTest(test.TestCase):
 
     self.assertEqual(dp_global_state_type.__class__.__name__,
                      'NamedTupleTypeWithPyContainerType')
+
+  def test_default_from_tff_result_fn(self):
+
+    def check(elements, expected):
+      record = anonymous_tuple.AnonymousTuple(elements)
+      result = differential_privacy._default_from_tff_result_fn(record)
+      self.assertEqual(result, expected)
+
+    check([('a', 1), ('b', 2)], collections.OrderedDict([('a', 1), ('b', 2)]))
+    check([(None, 1), (None, 2)], [1, 2])
+
+    with self.assertRaisesRegex(ValueError, 'partially named fields'):
+      check([('a', 1), (None, 2)], None)
 
 
 if __name__ == '__main__':

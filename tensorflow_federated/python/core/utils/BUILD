@@ -57,6 +57,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -71,6 +72,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":differential_privacy",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",

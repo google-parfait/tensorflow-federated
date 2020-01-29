@@ -21,6 +21,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -137,16 +138,24 @@ def build_dp_query(clip,
 
 # TODO(b/123092620): When fixed, should no longer need this method.
 def _default_get_value_type_fn(value):
-  value_type = value.type_signature.member
-  if hasattr(value_type, '_asdict'):
-    return value_type._asdict()
-  return value_type
+  return _default_from_tff_result_fn(value.type_signature.member)
 
 
 # TODO(b/123092620): When fixed, should no longer need this method.
 def _default_from_tff_result_fn(record):
-  if hasattr(record, '_asdict'):
-    return record._asdict()
+  """Converts AnonymousTuple to dict or list if possible."""
+  if isinstance(record, anonymous_tuple.AnonymousTuple):
+    try:
+      record = record._asdict()
+    except ValueError:
+      # At least some of the fields in `record` were not named. If all of the
+      # fields were not named, we can return a `list`. Otherwise `record`
+      # is partially named, which is not supported.
+      if anonymous_tuple.name_list(record):
+        raise ValueError(
+            'Cannot construct a default from a TFF result that '
+            'has partially named fields. TFF result: {!s}'.format(record))
+      record = [elt for _, elt in anonymous_tuple.iter_elements(record)]
   return record
 
 
