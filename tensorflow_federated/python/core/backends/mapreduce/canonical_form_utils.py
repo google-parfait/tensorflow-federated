@@ -626,22 +626,7 @@ def get_canonical_form_for_iterative_process(iterative_process):
             next_comp.type_signature.result))
 
   if len(next_comp.type_signature.result) == 2:
-    next_result = next_comp.result
-    if isinstance(next_result, building_blocks.Tuple):
-      dummy_clients_metrics_appended = building_blocks.Tuple([
-          next_result[0],
-          next_result[1],
-          intrinsics.federated_value([], placements.CLIENTS)._comp  # pylint: disable=protected-access
-      ])
-    else:
-      dummy_clients_metrics_appended = building_blocks.Tuple([
-          building_blocks.Selection(next_result, index=0),
-          building_blocks.Selection(next_result, index=1),
-          intrinsics.federated_value([], placements.CLIENTS)._comp  # pylint: disable=protected-access
-      ])
-    next_comp = building_blocks.Lambda(next_comp.parameter_name,
-                                       next_comp.parameter_type,
-                                       dummy_clients_metrics_appended)
+    next_comp = _create_next_with_fake_client_output(next_comp)
 
   initialize_comp = replace_intrinsics_with_bodies(initialize_comp)
   next_comp = replace_intrinsics_with_bodies(next_comp)
@@ -657,7 +642,7 @@ def get_canonical_form_for_iterative_process(iterative_process):
             next_comp, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
   else:
     before_broadcast, after_broadcast = (
-        _create_dummy_before_and_after_broadcast(next_comp))
+        _create_before_and_after_broadcast_for_no_broadcast(next_comp))
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsics(
@@ -714,20 +699,53 @@ def get_canonical_form_for_iterative_process(iterative_process):
   return cf
 
 
-def _create_dummy_before_and_after_broadcast(comp):
-  """Creates a before and after broadcast computations for the given `comp`.
+def _create_next_with_fake_client_output(tree):
+  """Creates a next computation with a fake client output.
 
-  This function is intended to be used instead of
-  `transformations.force_align_and_split_by_intrinsics` to generate dummy before
-  and after computations, when there is no `intrinsic_defs.FEDERATED_BROADCAST`
-  present in `comp`.
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create a next computation with
+  a fake client output when no client output is returned by the `next` function
+  of the `tff.utils.IterativeProcess`.
 
-  Note: This function does not assert that there is no
-  `intrinsic_defs.FEDERATED_BROADCAST` present in `comp`, the caller is expected
-  to perform this check before calling this function.
+  NOTE: This function does not assert that there is no client output in `tree`,
+  the caller is expected to perform this check before calling this function.
 
   Args:
-    comp: An instance of `building_blocks.ComputationBuildingBlock`.
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A new `building_blocks.ComputationBuildingBlock` representing a next
+    computaiton with a fake client output.
+  """
+  if isinstance(tree.result, building_blocks.Tuple):
+    arg_1 = tree.result[0]
+    arg_2 = tree.result[1]
+  else:
+    arg_1 = building_blocks.Selection(tree.result, index=0)
+    arg_2 = building_blocks.Selection(tree.result, index=1)
+
+  empty_tuple = building_blocks.Tuple([])
+  client_output = building_block_factory.create_federated_value(
+      empty_tuple, placements.CLIENTS)
+  output = building_blocks.Tuple([arg_1, arg_2, client_output])
+  return building_blocks.Lambda(tree.parameter_name, tree.parameter_type,
+                                output)
+
+
+def _create_before_and_after_broadcast_for_no_broadcast(tree):
+  """Creates a before and after broadcast computations for the given `tree`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`.
+
+  NOTE: This function does not assert that there is no
+  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`, the caller is expected to
+  perform this check before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
 
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
@@ -735,24 +753,24 @@ def _create_dummy_before_and_after_broadcast(comp):
     result as specified by
     `transformations.force_align_and_split_by_intrinsics`.
   """
-  name_generator = building_block_factory.unique_name_generator(comp)
+  name_generator = building_block_factory.unique_name_generator(tree)
 
   parameter_name = next(name_generator)
   empty_tuple = building_blocks.Tuple([])
-  federated_value_at_server = building_block_factory.create_federated_value(
-      empty_tuple, placements.SERVER)
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.SERVER)
   before_broadcast = building_blocks.Lambda(parameter_name,
-                                            comp.type_signature.parameter,
-                                            federated_value_at_server)
+                                            tree.type_signature.parameter,
+                                            value)
 
   parameter_name = next(name_generator)
   type_signature = computation_types.FederatedType(
       before_broadcast.type_signature.result.member, placements.CLIENTS)
   parameter_type = computation_types.NamedTupleType(
-      [comp.type_signature.parameter, type_signature])
+      [tree.type_signature.parameter, type_signature])
   ref = building_blocks.Reference(parameter_name, parameter_type)
   arg = building_blocks.Selection(ref, index=0)
-  call = building_blocks.Call(comp, arg)
+  call = building_blocks.Call(tree, arg)
   after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
 
   return before_broadcast, after_broadcast
