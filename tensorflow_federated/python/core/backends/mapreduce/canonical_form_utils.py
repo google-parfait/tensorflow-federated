@@ -405,8 +405,8 @@ def extract_prepare(before_broadcast, canonical_form_types):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we fail to extract a
-    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -416,11 +416,6 @@ def extract_prepare(before_broadcast, canonical_form_types):
           before_broadcast, s1_index_in_before_broadcast)).result.function
   prepare = transformations.consolidate_and_extract_local_processing(
       s1_to_s2_computation)
-  if not isinstance(prepare, building_blocks.CompiledComputation):
-    raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `building_blocks.CompiledComputation` from '
-        'prepare, instead received a {} (of type {}).'.format(
-            type(prepare), prepare.type_signature))
   if prepare.type_signature != canonical_form_types['prepare_type']:
     raise transformations.CanonicalFormCompilationError(
         'Extracted a TF block of the wrong type. Expected a function with type '
@@ -445,8 +440,8 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we fail to extract a
-    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -476,11 +471,6 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
 
   work = transformations.consolidate_and_extract_local_processing(
       c3_to_c4_computation)
-  if not isinstance(work, building_blocks.CompiledComputation):
-    raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `building_blocks.CompiledComputation` from '
-        'work, instead received a {} (of type {}).'.format(
-            type(work), work.type_signature))
   if work.type_signature != canonical_form_types['work_type']:
     raise transformations.CanonicalFormCompilationError(
         'Extracted a TF block of the wrong type. Expected a function with type '
@@ -504,8 +494,8 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: if we fail to extract
-    `building_blocks.CompiledComputation`s, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an ASTs of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -529,11 +519,6 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
   report = transformations.consolidate_and_extract_local_processing(report_tff)
   for name, tf_block in (('zero', zero), ('accumulate', accumulate),
                          ('merge', merge), ('report', report)):
-    if not isinstance(tf_block, building_blocks.CompiledComputation):
-      raise transformations.CanonicalFormCompilationError(
-          'Failed to extract a `building_blocks.CompiledComputation` from '
-          '{}, instead received a {} (of type {}).'.format(
-              name, type(tf_block), tf_block.type_signature))
     if tf_block.type_signature != canonical_form_types['{}_type'.format(name)]:
       raise transformations.CanonicalFormCompilationError(
           'Extracted a TF block of the wrong type. Expected a function with type '
@@ -557,8 +542,8 @@ def extract_update(after_aggregate, canonical_form_types):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we fail to extract a
-    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -576,11 +561,6 @@ def extract_update(after_aggregate, canonical_form_types):
 
   update = transformations.consolidate_and_extract_local_processing(
       s4_to_s5_computation)
-  if not isinstance(update, building_blocks.CompiledComputation):
-    raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `building_blocks.CompiledComputation` from '
-        'update, instead received a {} (of type {}).'.format(
-            type(update), update.type_signature))
   if update.type_signature != canonical_form_types['update_type']:
     raise transformations.CanonicalFormCompilationError(
         'Extracted a TF block of the wrong type. Expected a function with type '
@@ -703,9 +683,8 @@ def get_canonical_form_for_iterative_process(iterative_process):
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)
 
-  if not (isinstance(initialize, building_blocks.CompiledComputation) and
-          initialize.type_signature.result ==
-          canonical_form_types['initialize_type'].member):
+  if initialize.type_signature.result != canonical_form_types[
+      'initialize_type'].member:
     raise transformations.CanonicalFormCompilationError(
         'Compilation of initialize has failed. Expected to extract a '
         '`building_blocks.CompiledComputation` of type {}, instead we extracted '
