@@ -218,7 +218,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     self.assertAllClose(state_arrays, alt_state_arrays)
     self.assertAllClose(metrics_arrays[:2], alt_metrics_arrays[:2])
     # Final metric is execution time
-    self.assertAlmostEqual(metrics_arrays[2], alt_metrics_arrays[2], delta=1e-5)
+    self.assertAlmostEqual(metrics_arrays[2], alt_metrics_arrays[2], delta=1e-3)
 
   def test_returns_canonical_form_with_next_fn_returning_call_directly(self):
 
