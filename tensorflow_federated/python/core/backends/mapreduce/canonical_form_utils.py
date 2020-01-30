@@ -84,7 +84,8 @@ def pack_initialize_comp_type_signature(type_spec):
     raise TypeError(
         'Expected init type spec to be a federated type placed at the server; '
         'instead found {}'.format(type_spec))
-  return {'initialize_type': type_spec}
+  initialize_type = computation_types.FunctionType(None, type_spec.member)
+  return {'initialize_type': initialize_type}
 
 
 def pack_next_comp_type_signature(type_signature, previously_packed_types):
@@ -114,7 +115,8 @@ def pack_next_comp_type_signature(type_signature, previously_packed_types):
               type_signature.result, computation_types.NamedTupleType) and
           len(type_signature.result) == 3):
     should_raise = True
-  if type_signature.parameter[0] != previously_packed_types['initialize_type']:
+  if (type_signature.parameter[0].member !=
+      previously_packed_types['initialize_type'].result):
     should_raise = True
   for server_placed_type in [
       type_signature.parameter[0], type_signature.result[0],
@@ -668,14 +670,11 @@ def get_canonical_form_for_iterative_process(iterative_process):
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)
 
-  if initialize.type_signature.result != canonical_form_types[
-      'initialize_type'].member:
+  if initialize.type_signature != canonical_form_types['initialize_type']:
     raise transformations.CanonicalFormCompilationError(
-        'Compilation of initialize has failed. Expected to extract a '
-        '`building_blocks.CompiledComputation` of type {}, instead we extracted '
-        'a {} of type {}.'.format(next_comp.type_signature.parameter[0],
-                                  type(initialize),
-                                  initialize.type_signature.result))
+        'Extracted a TF block of the wrong type. Expected a function with type '
+        '{}, but the type signature of the TF block was {}'.format(
+            canonical_form_types['initialize_type'], initialize.type_signature))
 
   prepare = extract_prepare(before_broadcast, canonical_form_types)
 

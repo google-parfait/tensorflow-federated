@@ -300,8 +300,8 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
 
-INIT_TYPE = computation_types.FederatedType(tf.float32, placements.SERVER)
-S1_TYPE = INIT_TYPE
+INIT_TYPE = computation_types.FunctionType(None, tf.float32)
+S1_TYPE = computation_types.FederatedType(INIT_TYPE.result, placements.SERVER)
 C1_TYPE = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 S6_TYPE = computation_types.FederatedType(tf.float64, placements.SERVER)
 S7_TYPE = computation_types.FederatedType(tf.bool, placements.SERVER)
@@ -348,9 +348,7 @@ class TypeCheckTest(CanonicalFormTestCase):
   def test_init_passes_with_float_at_server(self):
     cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
         computation_types.FederatedType(tf.float32, placements.SERVER))
-    self.assertIsInstance(cf_types['initialize_type'],
-                          computation_types.FederatedType)
-    self.assertEqual(cf_types['initialize_type'].placement, placements.SERVER)
+    self.assertEqual(cf_types['initialize_type'], INIT_TYPE)
 
   def test_next_succeeds_match_with_init_type(self):
     cf_types = {'initialize_type': INIT_TYPE}
