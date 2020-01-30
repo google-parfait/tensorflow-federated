@@ -100,7 +100,6 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     tf.keras.backend.clear_session()
-    tff.framework.set_default_executor(tff.framework.create_local_executor())
     super().setUp()
 
   def test_convert_fails_on_non_keras_model(self):

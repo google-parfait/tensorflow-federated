@@ -74,13 +74,7 @@ development, but for now see the
 [High-performance simulations with TFF](https://github.com/tensorflow/federated/blob/master/docs/tutorials/simulations.ipynb)
 tutorial as well as instructions on
 [setting up simulations with TFF on GCP](https://github.com/tensorflow/federated/blob/master/docs/gcp_setup.md).
-For fast-single machine experiments, use
-
-```python
-tff.framework.set_default_executor(tff.framework.create_local_executor())
-```
-
-This should become the default soon.
+The high-performance TFF runtime is enabled by default.
 
 ## TFF for different research areas
 
