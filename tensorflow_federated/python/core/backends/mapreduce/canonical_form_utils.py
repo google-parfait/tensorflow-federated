@@ -77,6 +77,13 @@ def get_iterative_process_for_canonical_form(cf):
   return computation_utils.IterativeProcess(init_computation, next_computation)
 
 
+def _check_type_equal(actual, expected, label):
+  if actual != expected:
+    raise transformations.CanonicalFormCompilationError(
+        'Expected \'{}\' to have a type signature of {}, found {}.'.format(
+            label, expected, actual))
+
+
 def pack_initialize_comp_type_signature(type_spec):
   """Packs the initialize type to be used by the remainder of the compiler."""
   if not (isinstance(type_spec, computation_types.FederatedType) and
@@ -393,14 +400,12 @@ def check_and_pack_after_aggregate_type_signature(type_spec,
                       newly_determined_types.items()))
 
 
-def extract_prepare(before_broadcast, canonical_form_types):
+def extract_prepare(before_broadcast):
   """Converts `before_broadcast` into `prepare`.
 
   Args:
     before_broadcast: The first result of splitting `next_comp` on
       `intrinsic_defs.FEDERATED_BROADCAST`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `prepare` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -418,15 +423,10 @@ def extract_prepare(before_broadcast, canonical_form_types):
           before_broadcast, s1_index_in_before_broadcast)).result.function
   prepare = transformations.consolidate_and_extract_local_processing(
       s1_to_s2_computation)
-  if prepare.type_signature != canonical_form_types['prepare_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['prepare_type'], prepare.type_signature))
   return prepare
 
 
-def extract_work(before_aggregate, after_aggregate, canonical_form_types):
+def extract_work(before_aggregate, after_aggregate):
   """Converts `before_aggregate` and `after_aggregate` to `work`.
 
   Args:
@@ -434,8 +434,6 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
       `intrinsic_defs.FEDERATED_AGGREGATE`.
     after_aggregate: The second result of splitting `after_broadcast` on
       `intrinsic_defs.FEDERATED_AGGREGATE`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `work` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -473,22 +471,15 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
 
   work = transformations.consolidate_and_extract_local_processing(
       c3_to_c4_computation)
-  if work.type_signature != canonical_form_types['work_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['work_type'], work.type_signature))
   return work
 
 
-def extract_aggregate_functions(before_aggregate, canonical_form_types):
+def extract_aggregate_functions(before_aggregate):
   """Converts `before_aggregate` to aggregation functions.
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
       `intrinsic_defs.FEDERATED_AGGREGATE`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
@@ -519,25 +510,15 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
       accumulate_tff)
   merge = transformations.consolidate_and_extract_local_processing(merge_tff)
   report = transformations.consolidate_and_extract_local_processing(report_tff)
-  for name, tf_block in (('zero', zero), ('accumulate', accumulate),
-                         ('merge', merge), ('report', report)):
-    if tf_block.type_signature != canonical_form_types['{}_type'.format(name)]:
-      raise transformations.CanonicalFormCompilationError(
-          'Extracted a TF block of the wrong type. Expected a function with type '
-          '{}, but the type signature of the TF block was {}'.format(
-              canonical_form_types['{}_type'.format(name)],
-              tf_block.type_signature))
   return zero, accumulate, merge, report
 
 
-def extract_update(after_aggregate, canonical_form_types):
+def extract_update(after_aggregate):
   """Converts `after_aggregate` to `update`.
 
   Args:
     after_aggregate: The second result of splitting `after_broadcast` on
       `intrinsic_defs.FEDERATED_AGGREGATE`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `update` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -563,16 +544,11 @@ def extract_update(after_aggregate, canonical_form_types):
 
   update = transformations.consolidate_and_extract_local_processing(
       s4_to_s5_computation)
-  if update.type_signature != canonical_form_types['update_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['update_type'], update.type_signature))
   return update
 
 
 def replace_intrinsics_with_bodies(comp):
-  """Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
+  """Replaces intrinsics with their bodies as defined in `intrinsic_bodies.py`.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
@@ -650,52 +626,52 @@ def get_canonical_form_for_iterative_process(iterative_process):
       transformations.force_align_and_split_by_intrinsics(
           after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
-  init_info_packed = pack_initialize_comp_type_signature(
+  type_info = pack_initialize_comp_type_signature(
       initialize_comp.type_signature)
 
-  next_info_packed = pack_next_comp_type_signature(next_comp.type_signature,
-                                                   init_info_packed)
+  type_info = pack_next_comp_type_signature(next_comp.type_signature, type_info)
 
-  before_broadcast_info_packed = (
-      check_and_pack_before_broadcast_type_signature(
-          before_broadcast.type_signature, next_info_packed))
+  type_info = check_and_pack_before_broadcast_type_signature(
+      before_broadcast.type_signature, type_info)
 
-  before_aggregate_info_packed = (
-      check_and_pack_before_aggregate_type_signature(
-          before_aggregate.type_signature, before_broadcast_info_packed))
+  type_info = check_and_pack_before_aggregate_type_signature(
+      before_aggregate.type_signature, type_info)
 
-  canonical_form_types = check_and_pack_after_aggregate_type_signature(
-      after_aggregate.type_signature, before_aggregate_info_packed)
+  type_info = check_and_pack_after_aggregate_type_signature(
+      after_aggregate.type_signature, type_info)
 
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)
+  _check_type_equal(initialize.type_signature, type_info['initialize_type'],
+                    'initialize')
 
-  if initialize.type_signature != canonical_form_types['initialize_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['initialize_type'], initialize.type_signature))
+  prepare = extract_prepare(before_broadcast)
+  _check_type_equal(prepare.type_signature, type_info['prepare_type'],
+                    'prepare')
 
-  prepare = extract_prepare(before_broadcast, canonical_form_types)
+  work = extract_work(before_aggregate, after_aggregate)
+  _check_type_equal(work.type_signature, type_info['work_type'], 'work')
 
-  work = extract_work(before_aggregate, after_aggregate, canonical_form_types)
+  zero, accumulate, merge, report = extract_aggregate_functions(
+      before_aggregate)
+  _check_type_equal(zero.type_signature, type_info['zero_type'], 'zero')
+  _check_type_equal(accumulate.type_signature, type_info['accumulate_type'],
+                    'accumulate')
+  _check_type_equal(merge.type_signature, type_info['merge_type'], 'merge')
+  _check_type_equal(report.type_signature, type_info['report_type'], 'report')
 
-  zero_noarg_function, accumulate, merge, report = extract_aggregate_functions(
-      before_aggregate, canonical_form_types)
+  update = extract_update(after_aggregate)
+  _check_type_equal(update.type_signature, type_info['update_type'], 'update')
 
-  update = extract_update(after_aggregate, canonical_form_types)
-
-  cf = canonical_form.CanonicalForm(
+  return canonical_form.CanonicalForm(
       computation_wrapper_instances.building_block_to_computation(initialize),
       computation_wrapper_instances.building_block_to_computation(prepare),
       computation_wrapper_instances.building_block_to_computation(work),
-      computation_wrapper_instances.building_block_to_computation(
-          zero_noarg_function),
+      computation_wrapper_instances.building_block_to_computation(zero),
       computation_wrapper_instances.building_block_to_computation(accumulate),
       computation_wrapper_instances.building_block_to_computation(merge),
       computation_wrapper_instances.building_block_to_computation(report),
       computation_wrapper_instances.building_block_to_computation(update))
-  return cf
 
 
 def _create_next_with_fake_client_output(tree):
