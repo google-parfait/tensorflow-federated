@@ -555,6 +555,8 @@ def _string_representation(type_spec, formatted):
       result_lines = _lines_for_type(type_spec.result, formatted)
       return _combine([['('], parameter_lines, [' -> '], result_lines, [')']])
     elif isinstance(type_spec, NamedTupleType):
+      if len(type_spec) == 0:  # pylint: disable=g-explicit-length-test
+        return ['<>']
       elements = anonymous_tuple.to_elements(type_spec)
       elements_lines = _lines_for_named_types(elements, formatted)
       if formatted:

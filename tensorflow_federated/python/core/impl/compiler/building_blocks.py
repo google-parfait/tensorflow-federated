@@ -965,6 +965,8 @@ def _string_representation(comp, formatted):
     elif isinstance(comp, Placement):
       return [comp._literal.name]  # pylint: disable=protected-access
     elif isinstance(comp, Tuple):
+      if len(comp) == 0:  # pylint: disable=g-explicit-length-test
+        return ['<>']
       elements = anonymous_tuple.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements, formatted)
       if formatted:
