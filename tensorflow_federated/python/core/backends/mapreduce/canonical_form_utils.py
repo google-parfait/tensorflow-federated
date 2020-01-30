@@ -400,6 +400,309 @@ def check_and_pack_after_aggregate_type_signature(type_spec,
                       newly_determined_types.items()))
 
 
+def _create_next_with_fake_client_output(tree):
+  r"""Creates a next computation with a fake client output.
+
+  This function returns the AST:
+
+  Lambda
+  |
+  [Comp, Comp, Tuple]
+               |
+               []
+
+  In the AST, `Lambda` and the first two `Comps`s in the result of `Lambda` are
+  `tree` and the empty `Tuple` is the fake client output.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create a next computation with
+  a fake client output when no client output is returned by `tree` (which
+  represents the `next` function of the `tff.utils.IterativeProcess`). As a
+  result, this function does not assert that there is no client output in `tree`
+  and it does not assert that `tree` has the expected structure, the caller is
+  expected to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A new `building_blocks.ComputationBuildingBlock` representing a next
+    computaiton with a fake client output.
+  """
+  if isinstance(tree.result, building_blocks.Tuple):
+    arg_1 = tree.result[0]
+    arg_2 = tree.result[1]
+  else:
+    arg_1 = building_blocks.Selection(tree.result, index=0)
+    arg_2 = building_blocks.Selection(tree.result, index=1)
+
+  empty_tuple = building_blocks.Tuple([])
+  client_output = building_block_factory.create_federated_value(
+      empty_tuple, placements.CLIENTS)
+  output = building_blocks.Tuple([arg_1, arg_2, client_output])
+  return building_blocks.Lambda(tree.parameter_name, tree.parameter_type,
+                                output)
+
+
+def _create_before_and_after_broadcast_for_no_broadcast(tree):
+  r"""Creates a before and after broadcast computations for the given `tree`.
+
+  This function returns the two ASTs:
+
+  Lambda
+  |
+  Tuple
+  |
+  []
+
+       Lambda(x)
+       |
+       Call
+      /    \
+  Comp      Sel(0)
+           /
+     Ref(x)
+
+  The first AST is an empty structure that has a type signature satisfying the
+  requirements of before broadcast.
+
+  In the second AST, `Comp` is `tree`; `Lambda` has a type signature satisfying
+  the requirements of after broadcast; and the argument passed to `Comp` is a
+  selection from the parameter of `Lambda` which intentionally drops `c2` on the
+  floor.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`. as a result, this function
+  does not assert that there is no `intrinsic_defs.FEDERATED_BROADCAST` in
+  `tree` and it does not assert that `tree` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
+  """
+  name_generator = building_block_factory.unique_name_generator(tree)
+
+  parameter_name = next(name_generator)
+  empty_tuple = building_blocks.Tuple([])
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.SERVER)
+  before_broadcast = building_blocks.Lambda(parameter_name,
+                                            tree.type_signature.parameter,
+                                            value)
+
+  parameter_name = next(name_generator)
+  type_signature = computation_types.FederatedType(
+      before_broadcast.type_signature.result.member, placements.CLIENTS)
+  parameter_type = computation_types.NamedTupleType(
+      [tree.type_signature.parameter, type_signature])
+  ref = building_blocks.Reference(parameter_name, parameter_type)
+  arg = building_blocks.Selection(ref, index=0)
+  call = building_blocks.Call(tree, arg)
+  after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_broadcast, after_broadcast
+
+
+def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
+  r"""Creates a before and after aggregate computations for the given `tree`.
+
+  This function returns the two ASTs:
+
+  Lambda
+  |
+  Tuple
+  |
+  [Tuple, Comp]
+   |
+   [Tuple, [], Lambda, Lambda, Lambda]
+    |          |       |       |
+    []         []      []      []
+
+       Lambda(x)
+       |
+       Call
+      /    \
+  Comp      Tuple
+            |
+            [Sel(0),      Sel(1)]
+            /            /
+         Ref(x)    Sel(1)
+                  /
+            Ref(x)
+
+  In the first AST, the second element returned by `Lambda`, `Comp`, is the
+  result of the before aggregate returned by force aligning and splitting `tree`
+  by `intrinsic_defs.SECURE_SUM.uri` and the first element returned by `Lambda`
+  is an empty structure that represents the argument to the federated
+  aggregate intrinsic. Therefore, the first AST has a type signature satisfying
+  the requirements of before aggregate.
+
+  In the second AST, `Comp` is the after aggregate returned by force aligning
+  and splitting `tree` by intrinsic_defs.SECURE_SUM.uri; `Lambda` has a type
+  signature satisfying the requirements of after aggregate; and the argument
+  passed to `Comp` is a selection from the parameter of `Lambda` which
+  intentionally drops `s3` on the floor.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.FEDERATED_AGGREGATE` in `tree`. as a result, this function
+  does not assert that there is no `intrinsic_defs.FEDERATED_AGGREGATE` in
+  `tree` and it does not assert that `tree` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
+  """
+  name_generator = building_block_factory.unique_name_generator(tree)
+
+  before_aggregate, after_aggregate = (
+      transformations.force_align_and_split_by_intrinsics(
+          tree, [intrinsic_defs.SECURE_SUM.uri]))
+
+  def _create_empty_function(type_elements):
+    ref_name = next(name_generator)
+    ref_type = computation_types.NamedTupleType(type_elements)
+    ref = building_blocks.Reference(ref_name, ref_type)
+    empty_tuple = building_blocks.Tuple([])
+    return building_blocks.Lambda(ref.name, ref.type_signature, empty_tuple)
+
+  empty_tuple = building_blocks.Tuple([])
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.CLIENTS)
+  zero = empty_tuple
+  accumulate = _create_empty_function([[], []])
+  merge = _create_empty_function([[], []])
+  report = _create_empty_function([])
+  args = building_blocks.Tuple([value, zero, accumulate, merge, report])
+  result = building_blocks.Tuple([args, before_aggregate.result])
+  before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
+                                            before_aggregate.parameter_type,
+                                            result)
+
+  ref_name = next(name_generator)
+  s3_type = computation_types.FederatedType([], placements.SERVER)
+  ref_type = computation_types.NamedTupleType([
+      after_aggregate.parameter_type[0],
+      computation_types.NamedTupleType(
+          [s3_type, after_aggregate.parameter_type[1]]),
+  ])
+  ref = building_blocks.Reference(ref_name, ref_type)
+  sel_arg = building_blocks.Selection(ref, index=0)
+  sel = building_blocks.Selection(ref, index=1)
+  sel_s4 = building_blocks.Selection(sel, index=1)
+  arg = building_blocks.Tuple([sel_arg, sel_s4])
+  call = building_blocks.Call(after_aggregate, arg)
+  after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_aggregate, after_aggregate
+
+
+def _create_before_and_after_aggregate_for_no_secure_sum(tree):
+  r"""Creates a before and after aggregate computations for the given `tree`.
+
+  Lambda
+  |
+  Tuple
+  |
+  [Comp, Tuple]
+         |
+         [Tuple, []]
+          |
+          []
+
+       Lambda(x)
+       |
+       Call
+      /    \
+  Comp      Tuple
+            |
+            [Sel(0),      Sel(0)]
+            /            /
+         Ref(x)    Sel(1)
+                  /
+            Ref(x)
+
+  In the first AST, the first element returned by `Lambda`, `Comp`, is the
+  result of the before aggregate returned by force aligning and splitting `tree`
+  by `intrinsic_defs.FEDERATED_AGGREGATE.uri` and the second element returned by
+  `Lambda` is an empty structure that represents the argument to the secure sum
+  intrinsic. Therefore, the first AST has a type signature satisfying the
+  requirements of before aggregate.
+
+  In the second AST, `Comp` is the after aggregate returned by force aligning
+  and splitting `tree` by intrinsic_defs.FEDERATED_AGGREGATE.uri; `Lambda` has a
+  type signature satisfying the requirements of after aggregate; and the
+  argument passed to `Comp` is a selection from the parameter of `Lambda` which
+  intentionally drops `s4` on the floor.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.SECURE_SUM` in `tree`. as a result, this function
+  does not assert that there is no `intrinsic_defs.SECURE_SUM` in `tree` and it
+  does not assert that `tree` has the expected structure, the caller is expected
+  to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
+  """
+  name_generator = building_block_factory.unique_name_generator(tree)
+
+  before_aggregate, after_aggregate = (
+      transformations.force_align_and_split_by_intrinsics(
+          tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+
+  empty_tuple = building_blocks.Tuple([])
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.CLIENTS)
+  bitwidth = empty_tuple
+  args = building_blocks.Tuple([value, bitwidth])
+  result = building_blocks.Tuple([before_aggregate.result, args])
+  before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
+                                            before_aggregate.parameter_type,
+                                            result)
+
+  ref_name = next(name_generator)
+  s4_type = computation_types.FederatedType([], placements.SERVER)
+  ref_type = computation_types.NamedTupleType([
+      after_aggregate.parameter_type[0],
+      computation_types.NamedTupleType([
+          after_aggregate.parameter_type[1],
+          s4_type,
+      ]),
+  ])
+  ref = building_blocks.Reference(ref_name, ref_type)
+  sel_arg = building_blocks.Selection(ref, index=0)
+  sel = building_blocks.Selection(ref, index=1)
+  sel_s3 = building_blocks.Selection(sel, index=0)
+  arg = building_blocks.Tuple([sel_arg, sel_s3])
+  call = building_blocks.Call(after_aggregate, arg)
+  after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_aggregate, after_aggregate
+
+
 def extract_prepare(before_broadcast):
   """Converts `before_broadcast` into `prepare`.
 
@@ -672,80 +975,3 @@ def get_canonical_form_for_iterative_process(iterative_process):
       computation_wrapper_instances.building_block_to_computation(merge),
       computation_wrapper_instances.building_block_to_computation(report),
       computation_wrapper_instances.building_block_to_computation(update))
-
-
-def _create_next_with_fake_client_output(tree):
-  """Creates a next computation with a fake client output.
-
-  This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create a next computation with
-  a fake client output when no client output is returned by the `next` function
-  of the `tff.utils.IterativeProcess`.
-
-  NOTE: This function does not assert that there is no client output in `tree`,
-  the caller is expected to perform this check before calling this function.
-
-  Args:
-    tree: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A new `building_blocks.ComputationBuildingBlock` representing a next
-    computaiton with a fake client output.
-  """
-  if isinstance(tree.result, building_blocks.Tuple):
-    arg_1 = tree.result[0]
-    arg_2 = tree.result[1]
-  else:
-    arg_1 = building_blocks.Selection(tree.result, index=0)
-    arg_2 = building_blocks.Selection(tree.result, index=1)
-
-  empty_tuple = building_blocks.Tuple([])
-  client_output = building_block_factory.create_federated_value(
-      empty_tuple, placements.CLIENTS)
-  output = building_blocks.Tuple([arg_1, arg_2, client_output])
-  return building_blocks.Lambda(tree.parameter_name, tree.parameter_type,
-                                output)
-
-
-def _create_before_and_after_broadcast_for_no_broadcast(tree):
-  """Creates a before and after broadcast computations for the given `tree`.
-
-  This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create before and after
-  broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`.
-
-  NOTE: This function does not assert that there is no
-  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`, the caller is expected to
-  perform this check before calling this function.
-
-  Args:
-    tree: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
-    result as specified by
-    `transformations.force_align_and_split_by_intrinsics`.
-  """
-  name_generator = building_block_factory.unique_name_generator(tree)
-
-  parameter_name = next(name_generator)
-  empty_tuple = building_blocks.Tuple([])
-  value = building_block_factory.create_federated_value(empty_tuple,
-                                                        placements.SERVER)
-  before_broadcast = building_blocks.Lambda(parameter_name,
-                                            tree.type_signature.parameter,
-                                            value)
-
-  parameter_name = next(name_generator)
-  type_signature = computation_types.FederatedType(
-      before_broadcast.type_signature.result.member, placements.CLIENTS)
-  parameter_type = computation_types.NamedTupleType(
-      [tree.type_signature.parameter, type_signature])
-  ref = building_blocks.Reference(parameter_name, parameter_type)
-  arg = building_blocks.Selection(ref, index=0)
-  call = building_blocks.Call(tree, arg)
-  after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
-
-  return before_broadcast, after_broadcast
