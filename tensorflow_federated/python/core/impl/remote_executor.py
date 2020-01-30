@@ -18,6 +18,8 @@ import asyncio
 import itertools
 import queue
 import threading
+import weakref
+
 import absl.logging as logging
 
 import grpc
@@ -39,7 +41,7 @@ _STREAM_CLOSE_WAIT_SECONDS = 10
 class RemoteValue(executor_value_base.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
 
-  def __init__(self, value_ref, type_spec, executor):
+  def __init__(self, value_ref: executor_pb2.ValueRef, type_spec, executor):
     """Creates the value.
 
     Args:
@@ -54,6 +56,13 @@ class RemoteValue(executor_value_base.ExecutorValue):
     self._value_ref = value_ref
     self._type_signature = type_spec
     self._executor = executor
+
+    # Clean up the value and the memory associated with it on the remote
+    # worker when no references to it remain.
+    def finalizer(value_ref, executor):
+      executor._dispose(value_ref)  # pylint: disable=protected-access
+
+    weakref.finalize(self, finalizer, value_ref, executor)
 
   @property
   def type_signature(self):
@@ -177,7 +186,8 @@ class RemoteExecutor(executor_base.Executor):
   def __init__(self,
                channel,
                rpc_mode='REQUEST_REPLY',
-               thread_pool_executor=None):
+               thread_pool_executor=None,
+               dispose_batch_size=20):
     """Creates a remote executor.
 
     Args:
@@ -189,10 +199,15 @@ class RemoteExecutor(executor_base.Executor):
       thread_pool_executor: Optional concurrent.futures.Executor used to wait
         for the reply to a streaming RPC message. Uses the default Executor if
         not specified.
+      dispose_batch_size: The batch size for requests to dispose of remote
+        worker values. Lower values will result in more requests to the
+        remote worker, but will result in values being cleaned up sooner
+        and therefore may result in lower memory usage on the remote worker.
     """
 
     py_typecheck.check_type(channel, grpc.Channel)
     py_typecheck.check_type(rpc_mode, str)
+    py_typecheck.check_type(dispose_batch_size, int)
     if rpc_mode not in ['REQUEST_REPLY', 'STREAMING']:
       raise ValueError('Invalid rpc_mode: {}'.format(rpc_mode))
 
@@ -200,6 +215,8 @@ class RemoteExecutor(executor_base.Executor):
 
     self._stub = executor_pb2_grpc.ExecutorStub(channel)
     self._bidi_stream = None
+    self._dispose_batch_size = dispose_batch_size
+    self._dispose_request = executor_pb2.DisposeRequest()
     if rpc_mode == 'STREAMING':
       self._bidi_stream = _BidiStream(self._stub, thread_pool_executor)
 
@@ -208,6 +225,25 @@ class RemoteExecutor(executor_base.Executor):
       logging.debug('Closing bidi stream')
       self._bidi_stream.close()
       self._bidi_stream = None
+
+  def _dispose(self, value_ref: executor_pb2.ValueRef):
+    """Disposes of the remote value stored on the worker service."""
+    self._dispose_request.value_ref.append(value_ref)
+    if len(self._dispose_request.value_ref) < self._dispose_batch_size:
+      return
+    dispose_request = self._dispose_request
+    self._dispose_request = executor_pb2.DisposeRequest()
+    if not self._bidi_stream:
+      try:
+        self._stub.Dispose(dispose_request)
+      except grpc.RpcError as e:
+        self._handle_grpc_error(e)
+    else:
+      send_request_fut = self._bidi_stream.send_request(
+          executor_pb2.ExecuteRequest(dispose=dispose_request))
+      # We don't care about the response, and so don't bother to await it.
+      # Just start it as a task so that it runs at some point.
+      asyncio.get_event_loop().create_task(send_request_fut)
 
   @executor_utils.log_async
   async def create_value(self, value, type_spec=None):

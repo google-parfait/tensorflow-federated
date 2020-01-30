@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl import executor_value_base
 class TestEnv(object):
   """A test environment that consists of a single client and backend service."""
 
-  def __init__(self, executor):
+  def __init__(self, executor: executor_base.Executor):
     port = portpicker.pick_unused_port()
     server_pool = logging_pool.pool(max_workers=1)
     self._server = grpc.server(server_pool)
@@ -55,13 +55,19 @@ class TestEnv(object):
   def stub(self):
     return self._stub
 
-  def get_value(self, value_id):
+  def get_value(self, value_id: str):
+    """Retrieves a value using the `Compute` endpoint."""
     response = self._stub.Compute(
         executor_pb2.ComputeRequest(
             value_ref=executor_pb2.ValueRef(id=value_id)))
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = executor_service_utils.deserialize_value(response.value)
     return value
+
+  def get_value_future_directly(self, value_id: str):
+    """Retrieves value by reaching inside the service object."""
+    with self._service._lock:
+      return self._service._values[value_id]
 
 
 class ExecutorServiceTest(absltest.TestCase):
@@ -147,6 +153,28 @@ class ExecutorServiceTest(absltest.TestCase):
     value = env.get_value(value_id)
     self.assertEqual(value, 10)
     del env
+
+  def test_executor_service_value_unavailable_after_dispose(self):
+    env = TestEnv(eager_executor.EagerExecutor())
+    value_proto, _ = executor_service_utils.serialize_value(
+        tf.constant(10.0).numpy(), tf.float32)
+    # Create the value
+    response = env.stub.CreateValue(
+        executor_pb2.CreateValueRequest(value=value_proto))
+    self.assertIsInstance(response, executor_pb2.CreateValueResponse)
+    value_id = str(response.value_ref.id)
+    # Check that the value appears in the _values map
+    env.get_value_future_directly(value_id)
+    # Dispose of the value
+    dispose_request = executor_pb2.DisposeRequest()
+    dispose_request.value_ref.append(response.value_ref)
+    response = env.stub.Dispose(dispose_request)
+    self.assertIsInstance(response, executor_pb2.DisposeResponse)
+    # Check that the value is gone from the _values map
+    # get_value_future_directly is used here so that we can catch the
+    # exception rather than having it occur on the GRPC thread.
+    with self.assertRaises(KeyError):
+      env.get_value_future_directly(value_id)
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
     env = TestEnv(eager_executor.EagerExecutor())

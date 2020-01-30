@@ -46,6 +46,7 @@ message ExecuteRequest {
     CreateTupleRequest create_tuple = 3;
     CreateSelectionRequest create_selection = 4;
     ComputeRequest compute = 5;
+    DisposeRequest dispose = 7;
   }
   int32 sequence_number = 6;
 }
@@ -57,6 +58,7 @@ message ExecuteResponse {
     CreateTupleResponse create_tuple = 3;
     CreateSelectionResponse create_selection = 4;
     ComputeResponse compute = 5;
+    DisposeResponse dispose = 7;
   }
   int32 sequence_number = 6;
 }
