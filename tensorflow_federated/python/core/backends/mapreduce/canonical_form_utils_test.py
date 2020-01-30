@@ -437,7 +437,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
     ip = get_iterative_process_for_sum_example_with_no_secure_sum()
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
-    next_tree = canonical_form_utils.replace_intrinsics_with_bodies(next_tree)
+    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
 
     before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_secure_sum(
         next_tree)

@@ -850,7 +850,7 @@ def extract_update(after_aggregate):
   return update
 
 
-def replace_intrinsics_with_bodies(comp):
+def _replace_intrinsics_with_bodies(comp):
   """Replaces intrinsics with their bodies as defined in `intrinsic_bodies.py`.
 
   Args:
@@ -909,8 +909,8 @@ def get_canonical_form_for_iterative_process(iterative_process):
   if len(next_comp.type_signature.result) == 2:
     next_comp = _create_next_with_fake_client_output(next_comp)
 
-  initialize_comp = replace_intrinsics_with_bodies(initialize_comp)
-  next_comp = replace_intrinsics_with_bodies(next_comp)
+  initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
+  next_comp = _replace_intrinsics_with_bodies(next_comp)
 
   tree_analysis.check_intrinsics_whitelisted_for_reduction(initialize_comp)
   tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
