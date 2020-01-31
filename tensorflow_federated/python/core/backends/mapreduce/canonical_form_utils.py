@@ -703,7 +703,7 @@ def _create_before_and_after_aggregate_for_no_secure_sum(tree):
   return before_aggregate, after_aggregate
 
 
-def extract_prepare(before_broadcast):
+def _extract_prepare(before_broadcast):
   """Converts `before_broadcast` into `prepare`.
 
   Args:
@@ -729,7 +729,7 @@ def extract_prepare(before_broadcast):
   return prepare
 
 
-def extract_work(before_aggregate, after_aggregate):
+def _extract_work(before_aggregate, after_aggregate):
   """Converts `before_aggregate` and `after_aggregate` to `work`.
 
   Args:
@@ -777,7 +777,7 @@ def extract_work(before_aggregate, after_aggregate):
   return work
 
 
-def extract_aggregate_functions(before_aggregate):
+def _extract_aggregate_functions(before_aggregate):
   """Converts `before_aggregate` to aggregation functions.
 
   Args:
@@ -816,7 +816,7 @@ def extract_aggregate_functions(before_aggregate):
   return zero, accumulate, merge, report
 
 
-def extract_update(after_aggregate):
+def _extract_update(after_aggregate):
   """Converts `after_aggregate` to `update`.
 
   Args:
@@ -948,14 +948,14 @@ def get_canonical_form_for_iterative_process(iterative_process):
   _check_type_equal(initialize.type_signature, type_info['initialize_type'],
                     'initialize')
 
-  prepare = extract_prepare(before_broadcast)
+  prepare = _extract_prepare(before_broadcast)
   _check_type_equal(prepare.type_signature, type_info['prepare_type'],
                     'prepare')
 
-  work = extract_work(before_aggregate, after_aggregate)
+  work = _extract_work(before_aggregate, after_aggregate)
   _check_type_equal(work.type_signature, type_info['work_type'], 'work')
 
-  zero, accumulate, merge, report = extract_aggregate_functions(
+  zero, accumulate, merge, report = _extract_aggregate_functions(
       before_aggregate)
   _check_type_equal(zero.type_signature, type_info['zero_type'], 'zero')
   _check_type_equal(accumulate.type_signature, type_info['accumulate_type'],
@@ -963,7 +963,7 @@ def get_canonical_form_for_iterative_process(iterative_process):
   _check_type_equal(merge.type_signature, type_info['merge_type'], 'merge')
   _check_type_equal(report.type_signature, type_info['report_type'], 'report')
 
-  update = extract_update(after_aggregate)
+  update = _extract_update(after_aggregate)
   _check_type_equal(update.type_signature, type_info['update_type'], 'update')
 
   return canonical_form.CanonicalForm(
