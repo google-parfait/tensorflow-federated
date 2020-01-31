@@ -18,6 +18,7 @@ These tests also serve as examples for users who are familiar with Keras.
 """
 
 import collections
+import warnings
 
 from absl.testing import parameterized
 import numpy as np
@@ -113,10 +114,13 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1)
 
-    with self.assertRaisesRegex(ValueError, '`keras_model` must be compiled'):
-      keras_utils.from_compiled_keras_model(
-          keras_model=keras_model,
-          dummy_batch=_create_dummy_batch(feature_dims=1))
+    with warnings.catch_warnings(record=True) as w:
+      with self.assertRaisesRegex(ValueError, '`keras_model` must be compiled'):
+        keras_utils.from_compiled_keras_model(
+            keras_model=keras_model,
+            dummy_batch=_create_dummy_batch(feature_dims=1))
+      self.assertLen(w, 1)
+      self.assertTrue(issubclass(w[0].category, DeprecationWarning))
 
   # Test class for batches using namedtuple.
   _make_test_batch = collections.namedtuple('TestBatch', ['x', 'y'])
@@ -200,8 +204,12 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
         optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
         loss=loss_fn,
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
-    tff_model = keras_utils.from_compiled_keras_model(
-        keras_model=keras_model, dummy_batch=_create_dummy_batch(feature_dims))
+    with warnings.catch_warnings(record=True) as w:
+      tff_model = keras_utils.from_compiled_keras_model(
+          keras_model=keras_model,
+          dummy_batch=_create_dummy_batch(feature_dims))
+      self.assertLen(w, 1)
+      self.assertTrue(issubclass(w[0].category, DeprecationWarning))
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
