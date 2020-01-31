@@ -92,8 +92,6 @@ class TffGansTest(tf.test.TestCase, parameterized.TestCase):
     if with_dp:
       # Check DP averaging aggregation initial state is correct.
       dp_averaging_state = server_state.dp_averaging_state
-      self.assertAlmostEqual(dp_averaging_state.numerator_state.l2_norm_clip,
-                             BEFORE_DP_L2_NORM_CLIP)
       self.assertAlmostEqual(
           dp_averaging_state.numerator_state.sum_state.l2_norm_clip,
           BEFORE_DP_L2_NORM_CLIP)
@@ -142,7 +140,7 @@ class TffGansTest(tf.test.TestCase, parameterized.TestCase):
       if not with_dp:
         return dp_averaging_state
       new_dp_averaging_state = dp_averaging_state._asdict(recursive=True)
-      new_dp_averaging_state['numerator_state']['l2_norm_clip'] = (
+      new_dp_averaging_state['numerator_state']['sum_state']['l2_norm_clip'] = (
           UPDATE_DP_L2_NORM_CLIP)
       return new_dp_averaging_state
 
@@ -179,11 +177,11 @@ class TffGansTest(tf.test.TestCase, parameterized.TestCase):
       # passed as argument to server computation (compare before and after).
       initial_dp_averaging_state = server_state.dp_averaging_state
       self.assertAlmostEqual(
-          initial_dp_averaging_state.numerator_state.l2_norm_clip,
+          initial_dp_averaging_state.numerator_state.sum_state.l2_norm_clip,
           BEFORE_DP_L2_NORM_CLIP)
       new_dp_averaging_state = final_server_state.dp_averaging_state
       self.assertAlmostEqual(
-          new_dp_averaging_state.numerator_state.l2_norm_clip,
+          new_dp_averaging_state.numerator_state.sum_state.l2_norm_clip,
           UPDATE_DP_L2_NORM_CLIP)
 
   @parameterized.named_parameters(('no_dp', False), ('dp', True))
@@ -196,9 +194,6 @@ class TffGansTest(tf.test.TestCase, parameterized.TestCase):
     if with_dp:
       # Check that initial DP averaging aggregator state is correct.
       dp_averaging_state = server_state.dp_averaging_state
-      self.assertAlmostEqual(
-          dp_averaging_state['numerator_state']['l2_norm_clip'],
-          BEFORE_DP_L2_NORM_CLIP)
       self.assertAlmostEqual(
           dp_averaging_state['numerator_state']['sum_state']['l2_norm_clip'],
           BEFORE_DP_L2_NORM_CLIP)
@@ -241,9 +236,6 @@ class TffGansTest(tf.test.TestCase, parameterized.TestCase):
       # Check that DP averaging aggregator state has updated properly over the
       # above rounds.
       dp_averaging_state = server_state.dp_averaging_state
-      self.assertAlmostEqual(
-          dp_averaging_state['numerator_state']['l2_norm_clip'],
-          AFTER_2_RDS_DP_L2_NORM_CLIP)
       self.assertAlmostEqual(
           dp_averaging_state['numerator_state']['sum_state']['l2_norm_clip'],
           AFTER_2_RDS_DP_L2_NORM_CLIP)
