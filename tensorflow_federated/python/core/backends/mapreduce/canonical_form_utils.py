@@ -84,6 +84,38 @@ def _check_type_equal(actual, expected, label):
             label, expected, actual))
 
 
+def _check_iterative_process_compatible_with_canonical_form(
+    initialize_tree, next_tree):
+  """Tests compatibility with `tff.backends.mapreduce.CanonicalForm`.
+
+  Args:
+    initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
+      that maps to the `initalize` property of a `tff.utils.IterativeProcess`.
+    next_tree: An instance of `building_blocks.ComputationBuildingBlock` that
+      maps to the `next` property of a `tff.utils.IterativeProcess`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  py_typecheck.check_type(initialize_tree,
+                          building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(initialize_tree.type_signature,
+                          computation_types.FederatedType)
+  py_typecheck.check_type(next_tree, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(next_tree.type_signature,
+                          computation_types.FunctionType)
+  py_typecheck.check_type(next_tree.type_signature.parameter,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_len(next_tree.type_signature.parameter, 2)
+  py_typecheck.check_type(next_tree.type_signature.result,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_len(next_tree.type_signature.parameter, 2)
+  next_result_len = len(next_tree.type_signature.result)
+  if next_result_len != 2 and next_result_len != 3:
+    raise TypeError(
+        'Expected length of 2 or 3, found {}.'.format(next_result_len))
+
+
 def pack_initialize_comp_type_signature(type_spec):
   """Packs the initialize type to be used by the remainder of the compiler."""
   if not (isinstance(type_spec, computation_types.FederatedType) and
@@ -906,28 +938,16 @@ def get_canonical_form_for_iterative_process(iterative_process):
 
   initialize_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.initialize._computation_proto)  # pylint: disable=protected-access
-
   next_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.next._computation_proto)  # pylint: disable=protected-access
-
-  if not (isinstance(next_comp.type_signature.parameter,
-                     computation_types.NamedTupleType) and
-          isinstance(next_comp.type_signature.result,
-                     computation_types.NamedTupleType)):
-    raise TypeError(
-        'Any IterativeProcess compatible with CanonicalForm must '
-        'have a `next` function which takes and returns instances '
-        'of `tff.NamedTupleType`; your next function takes '
-        'parameters of type {} and returns results of type {}'.format(
-            next_comp.type_signature.parameter,
-            next_comp.type_signature.result))
+  _check_iterative_process_compatible_with_canonical_form(
+      initialize_comp, next_comp)
 
   if len(next_comp.type_signature.result) == 2:
     next_comp = _create_next_with_fake_client_output(next_comp)
 
   initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
   next_comp = _replace_intrinsics_with_bodies(next_comp)
-
   tree_analysis.check_intrinsics_whitelisted_for_reduction(initialize_comp)
   tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)

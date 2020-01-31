@@ -550,8 +550,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     bad_it = computation_utils.IterativeProcess(
         it.initialize,
         computation_wrapper_instances.building_block_to_computation(lam))
-    with self.assertRaisesRegex(TypeError,
-                                'instances of `tff.NamedTupleType`.'):
+    with self.assertRaises(TypeError):
       canonical_form_utils.get_canonical_form_for_iterative_process(bad_it)
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
