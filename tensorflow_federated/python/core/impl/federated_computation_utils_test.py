@@ -30,24 +30,25 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
       (lambda f, x: f(f(x)),
        [('f', computation_types.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32)],
-       '(foo -> foo.f(foo.f(foo.x)))'),
+       '(FEDERATED_foo -> FEDERATED_foo.f(FEDERATED_foo.f(FEDERATED_foo.x)))'),
       (lambda f, g, x: f(g(x)),
        [('f', computation_types.FunctionType(tf.int32, tf.int32)),
         ('g', computation_types.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32)],
-       '(foo -> foo.f(foo.g(foo.x)))'),
+       '(FEDERATED_foo -> FEDERATED_foo.f(FEDERATED_foo.g(FEDERATED_foo.x)))'),
       (lambda x: (x[1], x[0]),
        (tf.int32, tf.int32),
-       '(foo -> <foo[1],foo[0]>)'),
-      (lambda: 'stuff', None, 'stuff'))
+       '(FEDERATED_foo -> <FEDERATED_foo[1],FEDERATED_foo[0]>)'),
+      (lambda: 'stuff', None, 'comp#'))
   # pyformat: enable
-  def zero_or_one_arg_fn_to_building_block(self, fn, parameter_type, fn_str):
+  def test_zero_or_one_arg_fn_to_building_block(self, fn, parameter_type,
+                                                fn_str):
     parameter_name = 'foo'
     parameter_type = computation_types.to_type(parameter_type)
     fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
     result = federated_computation_utils.zero_or_one_arg_fn_to_building_block(
         fn, parameter_name, parameter_type, context_stack_impl.context_stack)
-    self.assertEqual(str(result), fn_str)
+    self.assertStartsWith(str(result), fn_str)
 
 
 if __name__ == '__main__':
