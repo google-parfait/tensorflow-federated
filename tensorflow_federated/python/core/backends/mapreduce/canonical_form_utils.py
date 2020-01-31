@@ -850,6 +850,22 @@ def _extract_update(after_aggregate):
   return update
 
 
+def _get_type_info(initialize_tree, next_tree, before_broadcast,
+                   after_broadcast, before_aggregate, after_aggregate):
+  """Returns type information for an `tff.utils.IterativeProcess`."""
+  del after_broadcast  # Unused
+  type_info = pack_initialize_comp_type_signature(
+      initialize_tree.type_signature)
+  type_info = pack_next_comp_type_signature(next_tree.type_signature, type_info)
+  type_info = check_and_pack_before_broadcast_type_signature(
+      before_broadcast.type_signature, type_info)
+  type_info = check_and_pack_before_aggregate_type_signature(
+      before_aggregate.type_signature, type_info)
+  type_info = check_and_pack_after_aggregate_type_signature(
+      after_aggregate.type_signature, type_info)
+  return type_info
+
+
 def _replace_intrinsics_with_bodies(comp):
   """Replaces intrinsics with their bodies as defined in `intrinsic_bodies.py`.
 
@@ -929,19 +945,8 @@ def get_canonical_form_for_iterative_process(iterative_process):
       transformations.force_align_and_split_by_intrinsics(
           after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
-  type_info = pack_initialize_comp_type_signature(
-      initialize_comp.type_signature)
-
-  type_info = pack_next_comp_type_signature(next_comp.type_signature, type_info)
-
-  type_info = check_and_pack_before_broadcast_type_signature(
-      before_broadcast.type_signature, type_info)
-
-  type_info = check_and_pack_before_aggregate_type_signature(
-      before_aggregate.type_signature, type_info)
-
-  type_info = check_and_pack_after_aggregate_type_signature(
-      after_aggregate.type_signature, type_info)
+  type_info = _get_type_info(initialize_comp, next_comp, before_broadcast,
+                             after_broadcast, before_aggregate, after_aggregate)
 
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)

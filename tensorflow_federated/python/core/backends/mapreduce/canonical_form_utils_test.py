@@ -482,6 +482,63 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
     # pyformat: enable
 
 
+class GetTypeInfoTest(common_test.TestCase):
+
+  def test_returns_type_info(self):
+    ip = get_iterative_process_for_sum_example()
+    initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.initialize._computation_proto)
+    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+    initialize_tree = canonical_form_utils._replace_intrinsics_with_bodies(
+        initialize_tree)
+    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
+    before_broadcast, after_broadcast = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
+    before_aggregate, after_aggregate = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+
+    type_info = canonical_form_utils._get_type_info(initialize_tree, next_tree,
+                                                    before_broadcast,
+                                                    after_broadcast,
+                                                    before_aggregate,
+                                                    after_aggregate)
+
+    actual = {
+        label: type_signature.compact_representation()
+        for label, type_signature in type_info.items()
+    }
+    # pyformat: disable
+    expected = {
+        'accumulate_type': '(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
+        'c1_type': '{int32}@CLIENTS',
+        'c2_type': '<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@CLIENTS',
+        'c3_type': '{<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>>}@CLIENTS',
+        'c4_type': '{<<int32,int32,int32,int32,int32,int32>,<>>}@CLIENTS',
+        'c5_type': '{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
+        'c6_type': '{<>}@CLIENTS',
+        'initialize_type': '( -> <int32,int32>)',
+        'merge_type': '(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
+        'prepare_type': '(<int32,int32> -> <<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>)',
+        'report_type': '(<int32,int32,int32,int32,int32,int32> -> <int32,int32,int32,int32,int32,int32>)',
+        's1_type': '<int32,int32>@SERVER',
+        's2_type': '<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
+        's3_type': '<int32,int32,int32,int32,int32,int32>@SERVER',
+        's4_type': '<<int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
+        's5_type': '<<int32,int32>,<>>@SERVER',
+        's6_type': '<int32,int32>@SERVER',
+        's7_type': '<>@SERVER',
+        'update_type': '(<<int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <<int32,int32>,<>>)',
+        'work_type': '(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<int32,int32,int32,int32,int32,int32>,<>>)',
+        'zero_type': '( -> <int32,int32,int32,int32,int32,int32>)'
+    }
+    # pyformat: enable
+
+    self.assertEqual(actual, expected)
+
+
 class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
