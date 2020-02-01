@@ -53,8 +53,9 @@ def create_recurrent_model(vocab_size,
   extended_vocab_size = vocab_size + 4  # Count special tokens pad/oov/bos/eos.
 
   inputs = tf.keras.layers.Input(shape=(None,))
-  input_embedding = TransposableEmbedding(
-      input_dim=extended_vocab_size, output_dim=embedding_size, mask_zero=True)
+  input_embedding = TransposableEmbedding(input_dim=extended_vocab_size,
+                                          output_dim=embedding_size,
+                                          mask_zero=True)
   embedded = input_embedding(inputs)
   projected = embedded
 

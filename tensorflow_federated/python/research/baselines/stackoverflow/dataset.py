@@ -111,7 +111,7 @@ def construct_word_level_datasets(vocab_size, client_batch_size,
       `num_test_examples` of the Stackoverflow Test examples not used in
       `stackoverflow_validation`.
   """
-  
+
   if vocab_size <= 0:
     raise ValueError('vocab_size must be a positive integer')
 
