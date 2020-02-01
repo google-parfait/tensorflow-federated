@@ -94,7 +94,7 @@ def run_experiment():
   train_set, validation_set, test_set = (
       dataset.construct_word_level_datasets(
           vocab_size=FLAGS.vocab_size,
-          batch_size=FLAGS.batch_size,
+          client_batch_size=FLAGS.batch_size,
           client_epochs_per_round=1,
           max_seq_len=FLAGS.sequence_length,
           max_elements_per_user=FLAGS.max_elements_per_user,

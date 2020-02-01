@@ -49,7 +49,7 @@ class DatasetTest(test.TestCase):
     for max_seq_len in range(1, 8):
       to_ids_fn = dataset.build_to_ids_fn(VOCAB, max_seq_len)
       data = tf.data.Dataset.from_tensor_slices([to_ids_fn(raw_data)])
-      batched = dataset.batch_and_split(data, max_seq_len)
+      batched = dataset.batch_and_split(data, max_seq_len, 1)
       sample_elem = next(iter(batched))
       result = self.evaluate(sample_elem)
       correct = ([expected[:max_seq_len]], [expected[1:max_seq_len+1]])
