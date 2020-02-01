@@ -16,6 +16,7 @@
 
 import collections
 import itertools
+import warnings
 
 import tensorflow as tf
 
@@ -180,6 +181,8 @@ def from_keras_model(keras_model,
 def from_compiled_keras_model(keras_model, dummy_batch):
   """Builds a `tff.learning.Model` for an example mini batch.
 
+  **WARNING: DEPRECATED**. Migrate to `tff.learning.from_keras_model`.
+
   Args:
     keras_model: A `tf.keras.Model` object that was compiled.
     dummy_batch: A nested structure of values that are convertible to *batched*
@@ -194,6 +197,12 @@ def from_compiled_keras_model(keras_model, dummy_batch):
     TypeError: If `keras_model` is not an instance of `tf.keras.Model`.
     ValueError: If `keras_model` was *not* compiled.
   """
+  # TODO(b/148576550): remove after sufficient notice.
+  warnings.warn(
+      'from_compiled_keras_model is deprecated, use from_keras_model '
+      'with an uncompiled model',
+      DeprecationWarning,
+      stacklevel=2)
   py_typecheck.check_type(keras_model, tf.keras.Model)
   # Optimizer attribute is only set after calling tf.keras.Model.compile().
   if not keras_model.optimizer:
@@ -432,7 +441,7 @@ class _KerasModel(model_lib.Model):
       raise KeyError('Received a batch_input that is missing required key `x`. '
                      'Instead have keys {}'.format(list(batch_input.keys())))
 
-    predictions = self._keras_model(inputs=inputs, training=training)
+    predictions = self._keras_model(inputs, training=training)
 
     if isinstance(batch_input, collections.Mapping):
       y_true = batch_input.get('y')

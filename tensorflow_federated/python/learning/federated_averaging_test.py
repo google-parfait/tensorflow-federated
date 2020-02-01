@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
@@ -99,10 +98,6 @@ class FederatedAveragingClientTest(test.TestCase, parameterized.TestCase):
 
 
 class FederatedAveragingTffTest(test.TestCase, parameterized.TestCase):
-
-  def setUp(self):
-    tff.framework.set_default_executor(tff.framework.create_local_executor())
-    super().setUp()
 
   def test_orchestration_execute(self):
     iterative_process = federated_averaging.build_federated_averaging_process(

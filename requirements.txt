@@ -2,7 +2,7 @@
 # here, also add it to the Dockerfile and (if it is needed by the PIP package)
 # to tools/development/setup.py.
 absl-py~=0.7
-attrs~=18.2
+attrs~=19.3
 cachetools~=3.1.1
 dm-tree~=0.1.1
 grpcio~=1.24.3

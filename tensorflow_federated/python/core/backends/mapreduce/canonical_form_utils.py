@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -78,6 +77,45 @@ def get_iterative_process_for_canonical_form(cf):
   return computation_utils.IterativeProcess(init_computation, next_computation)
 
 
+def _check_type_equal(actual, expected, label):
+  if actual != expected:
+    raise transformations.CanonicalFormCompilationError(
+        'Expected \'{}\' to have a type signature of {}, found {}.'.format(
+            label, expected, actual))
+
+
+def _check_iterative_process_compatible_with_canonical_form(
+    initialize_tree, next_tree):
+  """Tests compatibility with `tff.backends.mapreduce.CanonicalForm`.
+
+  Args:
+    initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
+      that maps to the `initalize` property of a `tff.utils.IterativeProcess`.
+    next_tree: An instance of `building_blocks.ComputationBuildingBlock` that
+      maps to the `next` property of a `tff.utils.IterativeProcess`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  py_typecheck.check_type(initialize_tree,
+                          building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(initialize_tree.type_signature,
+                          computation_types.FederatedType)
+  py_typecheck.check_type(next_tree, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(next_tree.type_signature,
+                          computation_types.FunctionType)
+  py_typecheck.check_type(next_tree.type_signature.parameter,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_len(next_tree.type_signature.parameter, 2)
+  py_typecheck.check_type(next_tree.type_signature.result,
+                          computation_types.NamedTupleType)
+  py_typecheck.check_len(next_tree.type_signature.parameter, 2)
+  next_result_len = len(next_tree.type_signature.result)
+  if next_result_len != 2 and next_result_len != 3:
+    raise TypeError(
+        'Expected length of 2 or 3, found {}.'.format(next_result_len))
+
+
 def pack_initialize_comp_type_signature(type_spec):
   """Packs the initialize type to be used by the remainder of the compiler."""
   if not (isinstance(type_spec, computation_types.FederatedType) and
@@ -85,7 +123,8 @@ def pack_initialize_comp_type_signature(type_spec):
     raise TypeError(
         'Expected init type spec to be a federated type placed at the server; '
         'instead found {}'.format(type_spec))
-  return {'initialize_type': type_spec}
+  initialize_type = computation_types.FunctionType(None, type_spec.member)
+  return {'initialize_type': initialize_type}
 
 
 def pack_next_comp_type_signature(type_signature, previously_packed_types):
@@ -115,7 +154,8 @@ def pack_next_comp_type_signature(type_signature, previously_packed_types):
               type_signature.result, computation_types.NamedTupleType) and
           len(type_signature.result) == 3):
     should_raise = True
-  if type_signature.parameter[0] != previously_packed_types['initialize_type']:
+  if (type_signature.parameter[0].member !=
+      previously_packed_types['initialize_type'].result):
     should_raise = True
   for server_placed_type in [
       type_signature.parameter[0], type_signature.result[0],
@@ -392,22 +432,323 @@ def check_and_pack_after_aggregate_type_signature(type_spec,
                       newly_determined_types.items()))
 
 
-def extract_prepare(before_broadcast, canonical_form_types):
+def _create_next_with_fake_client_output(tree):
+  r"""Creates a next computation with a fake client output.
+
+  This function returns the AST:
+
+  Lambda
+  |
+  [Comp, Comp, Tuple]
+               |
+               []
+
+  In the AST, `Lambda` and the first two `Comps`s in the result of `Lambda` are
+  `tree` and the empty `Tuple` is the fake client output.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create a next computation with
+  a fake client output when no client output is returned by `tree` (which
+  represents the `next` function of the `tff.utils.IterativeProcess`). As a
+  result, this function does not assert that there is no client output in `tree`
+  and it does not assert that `tree` has the expected structure, the caller is
+  expected to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A new `building_blocks.ComputationBuildingBlock` representing a next
+    computaiton with a fake client output.
+  """
+  if isinstance(tree.result, building_blocks.Tuple):
+    arg_1 = tree.result[0]
+    arg_2 = tree.result[1]
+  else:
+    arg_1 = building_blocks.Selection(tree.result, index=0)
+    arg_2 = building_blocks.Selection(tree.result, index=1)
+
+  empty_tuple = building_blocks.Tuple([])
+  client_output = building_block_factory.create_federated_value(
+      empty_tuple, placements.CLIENTS)
+  output = building_blocks.Tuple([arg_1, arg_2, client_output])
+  return building_blocks.Lambda(tree.parameter_name, tree.parameter_type,
+                                output)
+
+
+def _create_before_and_after_broadcast_for_no_broadcast(tree):
+  r"""Creates a before and after broadcast computations for the given `tree`.
+
+  This function returns the two ASTs:
+
+  Lambda
+  |
+  Tuple
+  |
+  []
+
+       Lambda(x)
+       |
+       Call
+      /    \
+  Comp      Sel(0)
+           /
+     Ref(x)
+
+  The first AST is an empty structure that has a type signature satisfying the
+  requirements of before broadcast.
+
+  In the second AST, `Comp` is `tree`; `Lambda` has a type signature satisfying
+  the requirements of after broadcast; and the argument passed to `Comp` is a
+  selection from the parameter of `Lambda` which intentionally drops `c2` on the
+  floor.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`. as a result, this function
+  does not assert that there is no `intrinsic_defs.FEDERATED_BROADCAST` in
+  `tree` and it does not assert that `tree` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
+  """
+  name_generator = building_block_factory.unique_name_generator(tree)
+
+  parameter_name = next(name_generator)
+  empty_tuple = building_blocks.Tuple([])
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.SERVER)
+  before_broadcast = building_blocks.Lambda(parameter_name,
+                                            tree.type_signature.parameter,
+                                            value)
+
+  parameter_name = next(name_generator)
+  type_signature = computation_types.FederatedType(
+      before_broadcast.type_signature.result.member, placements.CLIENTS)
+  parameter_type = computation_types.NamedTupleType(
+      [tree.type_signature.parameter, type_signature])
+  ref = building_blocks.Reference(parameter_name, parameter_type)
+  arg = building_blocks.Selection(ref, index=0)
+  call = building_blocks.Call(tree, arg)
+  after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_broadcast, after_broadcast
+
+
+def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
+  r"""Creates a before and after aggregate computations for the given `tree`.
+
+  This function returns the two ASTs:
+
+  Lambda
+  |
+  Tuple
+  |
+  [Tuple, Comp]
+   |
+   [Tuple, [], Lambda, Lambda, Lambda]
+    |          |       |       |
+    []         []      []      []
+
+       Lambda(x)
+       |
+       Call
+      /    \
+  Comp      Tuple
+            |
+            [Sel(0),      Sel(1)]
+            /            /
+         Ref(x)    Sel(1)
+                  /
+            Ref(x)
+
+  In the first AST, the second element returned by `Lambda`, `Comp`, is the
+  result of the before aggregate returned by force aligning and splitting `tree`
+  by `intrinsic_defs.SECURE_SUM.uri` and the first element returned by `Lambda`
+  is an empty structure that represents the argument to the federated
+  aggregate intrinsic. Therefore, the first AST has a type signature satisfying
+  the requirements of before aggregate.
+
+  In the second AST, `Comp` is the after aggregate returned by force aligning
+  and splitting `tree` by intrinsic_defs.SECURE_SUM.uri; `Lambda` has a type
+  signature satisfying the requirements of after aggregate; and the argument
+  passed to `Comp` is a selection from the parameter of `Lambda` which
+  intentionally drops `s3` on the floor.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.FEDERATED_AGGREGATE` in `tree`. as a result, this function
+  does not assert that there is no `intrinsic_defs.FEDERATED_AGGREGATE` in
+  `tree` and it does not assert that `tree` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
+  """
+  name_generator = building_block_factory.unique_name_generator(tree)
+
+  before_aggregate, after_aggregate = (
+      transformations.force_align_and_split_by_intrinsics(
+          tree, [intrinsic_defs.SECURE_SUM.uri]))
+
+  def _create_empty_function(type_elements):
+    ref_name = next(name_generator)
+    ref_type = computation_types.NamedTupleType(type_elements)
+    ref = building_blocks.Reference(ref_name, ref_type)
+    empty_tuple = building_blocks.Tuple([])
+    return building_blocks.Lambda(ref.name, ref.type_signature, empty_tuple)
+
+  empty_tuple = building_blocks.Tuple([])
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.CLIENTS)
+  zero = empty_tuple
+  accumulate = _create_empty_function([[], []])
+  merge = _create_empty_function([[], []])
+  report = _create_empty_function([])
+  args = building_blocks.Tuple([value, zero, accumulate, merge, report])
+  result = building_blocks.Tuple([args, before_aggregate.result])
+  before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
+                                            before_aggregate.parameter_type,
+                                            result)
+
+  ref_name = next(name_generator)
+  s3_type = computation_types.FederatedType([], placements.SERVER)
+  ref_type = computation_types.NamedTupleType([
+      after_aggregate.parameter_type[0],
+      computation_types.NamedTupleType(
+          [s3_type, after_aggregate.parameter_type[1]]),
+  ])
+  ref = building_blocks.Reference(ref_name, ref_type)
+  sel_arg = building_blocks.Selection(ref, index=0)
+  sel = building_blocks.Selection(ref, index=1)
+  sel_s4 = building_blocks.Selection(sel, index=1)
+  arg = building_blocks.Tuple([sel_arg, sel_s4])
+  call = building_blocks.Call(after_aggregate, arg)
+  after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_aggregate, after_aggregate
+
+
+def _create_before_and_after_aggregate_for_no_secure_sum(tree):
+  r"""Creates a before and after aggregate computations for the given `tree`.
+
+  Lambda
+  |
+  Tuple
+  |
+  [Comp, Tuple]
+         |
+         [Tuple, []]
+          |
+          []
+
+       Lambda(x)
+       |
+       Call
+      /    \
+  Comp      Tuple
+            |
+            [Sel(0),      Sel(0)]
+            /            /
+         Ref(x)    Sel(1)
+                  /
+            Ref(x)
+
+  In the first AST, the first element returned by `Lambda`, `Comp`, is the
+  result of the before aggregate returned by force aligning and splitting `tree`
+  by `intrinsic_defs.FEDERATED_AGGREGATE.uri` and the second element returned by
+  `Lambda` is an empty structure that represents the argument to the secure sum
+  intrinsic. Therefore, the first AST has a type signature satisfying the
+  requirements of before aggregate.
+
+  In the second AST, `Comp` is the after aggregate returned by force aligning
+  and splitting `tree` by intrinsic_defs.FEDERATED_AGGREGATE.uri; `Lambda` has a
+  type signature satisfying the requirements of after aggregate; and the
+  argument passed to `Comp` is a selection from the parameter of `Lambda` which
+  intentionally drops `s4` on the floor.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create before and after
+  broadcast computations for the given `tree` when there is no
+  `intrinsic_defs.SECURE_SUM` in `tree`. as a result, this function
+  does not assert that there is no `intrinsic_defs.SECURE_SUM` in `tree` and it
+  does not assert that `tree` has the expected structure, the caller is expected
+  to perform these checks before calling this function.
+
+  Args:
+    tree: An instance of `building_blocks.ComputationBuildingBlock`.
+
+  Returns:
+    A pair of the form `(before, after)`, where each of `before` and `after`
+    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
+    result as specified by
+    `transformations.force_align_and_split_by_intrinsics`.
+  """
+  name_generator = building_block_factory.unique_name_generator(tree)
+
+  before_aggregate, after_aggregate = (
+      transformations.force_align_and_split_by_intrinsics(
+          tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+
+  empty_tuple = building_blocks.Tuple([])
+  value = building_block_factory.create_federated_value(empty_tuple,
+                                                        placements.CLIENTS)
+  bitwidth = empty_tuple
+  args = building_blocks.Tuple([value, bitwidth])
+  result = building_blocks.Tuple([before_aggregate.result, args])
+  before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
+                                            before_aggregate.parameter_type,
+                                            result)
+
+  ref_name = next(name_generator)
+  s4_type = computation_types.FederatedType([], placements.SERVER)
+  ref_type = computation_types.NamedTupleType([
+      after_aggregate.parameter_type[0],
+      computation_types.NamedTupleType([
+          after_aggregate.parameter_type[1],
+          s4_type,
+      ]),
+  ])
+  ref = building_blocks.Reference(ref_name, ref_type)
+  sel_arg = building_blocks.Selection(ref, index=0)
+  sel = building_blocks.Selection(ref, index=1)
+  sel_s3 = building_blocks.Selection(sel, index=0)
+  arg = building_blocks.Tuple([sel_arg, sel_s3])
+  call = building_blocks.Call(after_aggregate, arg)
+  after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
+
+  return before_aggregate, after_aggregate
+
+
+def _extract_prepare(before_broadcast):
   """Converts `before_broadcast` into `prepare`.
 
   Args:
     before_broadcast: The first result of splitting `next_comp` on
       `intrinsic_defs.FEDERATED_BROADCAST`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `prepare` as specified by `canonical_form.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we fail to extract a
-    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -417,20 +758,10 @@ def extract_prepare(before_broadcast, canonical_form_types):
           before_broadcast, s1_index_in_before_broadcast)).result.function
   prepare = transformations.consolidate_and_extract_local_processing(
       s1_to_s2_computation)
-  if not isinstance(prepare, building_blocks.CompiledComputation):
-    raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `building_blocks.CompiledComputation` from '
-        'prepare, instead received a {} (of type {}).'.format(
-            type(prepare), prepare.type_signature))
-  if prepare.type_signature != canonical_form_types['prepare_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['prepare_type'], prepare.type_signature))
   return prepare
 
 
-def extract_work(before_aggregate, after_aggregate, canonical_form_types):
+def _extract_work(before_aggregate, after_aggregate):
   """Converts `before_aggregate` and `after_aggregate` to `work`.
 
   Args:
@@ -438,16 +769,14 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
       `intrinsic_defs.FEDERATED_AGGREGATE`.
     after_aggregate: The second result of splitting `after_broadcast` on
       `intrinsic_defs.FEDERATED_AGGREGATE`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `work` as specified by `canonical_form.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we fail to extract a
-    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -477,27 +806,15 @@ def extract_work(before_aggregate, after_aggregate, canonical_form_types):
 
   work = transformations.consolidate_and_extract_local_processing(
       c3_to_c4_computation)
-  if not isinstance(work, building_blocks.CompiledComputation):
-    raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `building_blocks.CompiledComputation` from '
-        'work, instead received a {} (of type {}).'.format(
-            type(work), work.type_signature))
-  if work.type_signature != canonical_form_types['work_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['work_type'], work.type_signature))
   return work
 
 
-def extract_aggregate_functions(before_aggregate, canonical_form_types):
+def _extract_aggregate_functions(before_aggregate):
   """Converts `before_aggregate` to aggregation functions.
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
       `intrinsic_defs.FEDERATED_AGGREGATE`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
@@ -505,8 +822,8 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: if we fail to extract
-    `building_blocks.CompiledComputation`s, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an ASTs of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -528,38 +845,23 @@ def extract_aggregate_functions(before_aggregate, canonical_form_types):
       accumulate_tff)
   merge = transformations.consolidate_and_extract_local_processing(merge_tff)
   report = transformations.consolidate_and_extract_local_processing(report_tff)
-  for name, tf_block in (('zero', zero), ('accumulate', accumulate),
-                         ('merge', merge), ('report', report)):
-    if not isinstance(tf_block, building_blocks.CompiledComputation):
-      raise transformations.CanonicalFormCompilationError(
-          'Failed to extract a `building_blocks.CompiledComputation` from '
-          '{}, instead received a {} (of type {}).'.format(
-              name, type(tf_block), tf_block.type_signature))
-    if tf_block.type_signature != canonical_form_types['{}_type'.format(name)]:
-      raise transformations.CanonicalFormCompilationError(
-          'Extracted a TF block of the wrong type. Expected a function with type '
-          '{}, but the type signature of the TF block was {}'.format(
-              canonical_form_types['{}_type'.format(name)],
-              tf_block.type_signature))
   return zero, accumulate, merge, report
 
 
-def extract_update(after_aggregate, canonical_form_types):
+def _extract_update(after_aggregate):
   """Converts `after_aggregate` to `update`.
 
   Args:
     after_aggregate: The second result of splitting `after_broadcast` on
       `intrinsic_defs.FEDERATED_AGGREGATE`.
-    canonical_form_types: `dict` holding the `canonical_form.CanonicalForm` type
-      signatures specified by the `tff.utils.IterativeProcess` we are compiling.
 
   Returns:
     `update` as specified by `canonical_form.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we fail to extract a
-    `building_blocks.CompiledComputation`, or we extract one of the wrong type.
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
   """
   # See `get_iterative_process_for_canonical_form()` above for the meaning of
   # variable names used in the code below.
@@ -577,21 +879,27 @@ def extract_update(after_aggregate, canonical_form_types):
 
   update = transformations.consolidate_and_extract_local_processing(
       s4_to_s5_computation)
-  if not isinstance(update, building_blocks.CompiledComputation):
-    raise transformations.CanonicalFormCompilationError(
-        'Failed to extract a `building_blocks.CompiledComputation` from '
-        'update, instead received a {} (of type {}).'.format(
-            type(update), update.type_signature))
-  if update.type_signature != canonical_form_types['update_type']:
-    raise transformations.CanonicalFormCompilationError(
-        'Extracted a TF block of the wrong type. Expected a function with type '
-        '{}, but the type signature of the TF block was {}'.format(
-            canonical_form_types['update_type'], update.type_signature))
   return update
 
 
-def replace_intrinsics_with_bodies(comp):
-  """Reduces intrinsics to their bodies as defined in `intrinsic_bodies.py`.
+def _get_type_info(initialize_tree, next_tree, before_broadcast,
+                   after_broadcast, before_aggregate, after_aggregate):
+  """Returns type information for an `tff.utils.IterativeProcess`."""
+  del after_broadcast  # Unused
+  type_info = pack_initialize_comp_type_signature(
+      initialize_tree.type_signature)
+  type_info = pack_next_comp_type_signature(next_tree.type_signature, type_info)
+  type_info = check_and_pack_before_broadcast_type_signature(
+      before_broadcast.type_signature, type_info)
+  type_info = check_and_pack_before_aggregate_type_signature(
+      before_aggregate.type_signature, type_info)
+  type_info = check_and_pack_after_aggregate_type_signature(
+      after_aggregate.type_signature, type_info)
+  return type_info
+
+
+def _replace_intrinsics_with_bodies(comp):
+  """Replaces intrinsics with their bodies as defined in `intrinsic_bodies.py`.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
@@ -630,157 +938,65 @@ def get_canonical_form_for_iterative_process(iterative_process):
 
   initialize_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.initialize._computation_proto)  # pylint: disable=protected-access
-
   next_comp = building_blocks.ComputationBuildingBlock.from_proto(
       iterative_process.next._computation_proto)  # pylint: disable=protected-access
-
-  if not (isinstance(next_comp.type_signature.parameter,
-                     computation_types.NamedTupleType) and
-          isinstance(next_comp.type_signature.result,
-                     computation_types.NamedTupleType)):
-    raise TypeError(
-        'Any IterativeProcess compatible with CanonicalForm must '
-        'have a `next` function which takes and returns instances '
-        'of `tff.NamedTupleType`; your next function takes '
-        'parameters of type {} and returns results of type {}'.format(
-            next_comp.type_signature.parameter,
-            next_comp.type_signature.result))
+  _check_iterative_process_compatible_with_canonical_form(
+      initialize_comp, next_comp)
 
   if len(next_comp.type_signature.result) == 2:
-    next_result = next_comp.result
-    if isinstance(next_result, building_blocks.Tuple):
-      dummy_clients_metrics_appended = building_blocks.Tuple([
-          next_result[0],
-          next_result[1],
-          intrinsics.federated_value([], placements.CLIENTS)._comp  # pylint: disable=protected-access
-      ])
-    else:
-      dummy_clients_metrics_appended = building_blocks.Tuple([
-          building_blocks.Selection(next_result, index=0),
-          building_blocks.Selection(next_result, index=1),
-          intrinsics.federated_value([], placements.CLIENTS)._comp  # pylint: disable=protected-access
-      ])
-    next_comp = building_blocks.Lambda(next_comp.parameter_name,
-                                       next_comp.parameter_type,
-                                       dummy_clients_metrics_appended)
+    next_comp = _create_next_with_fake_client_output(next_comp)
 
-  initialize_comp = replace_intrinsics_with_bodies(initialize_comp)
-  next_comp = replace_intrinsics_with_bodies(next_comp)
-
+  initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
+  next_comp = _replace_intrinsics_with_bodies(next_comp)
   tree_analysis.check_intrinsics_whitelisted_for_reduction(initialize_comp)
   tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
 
-  if _count_broadcasts(next_comp) == 0:
-    before_broadcast, after_broadcast = (
-        _create_dummy_before_and_after_broadcast(next_comp))
-  else:
+  if tree_analysis.contains_called_intrinsic(
+      next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri):
     before_broadcast, after_broadcast = (
         transformations.force_align_and_split_by_intrinsics(
             next_comp, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
+  else:
+    before_broadcast, after_broadcast = (
+        _create_before_and_after_broadcast_for_no_broadcast(next_comp))
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsics(
           after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
-  init_info_packed = pack_initialize_comp_type_signature(
-      initialize_comp.type_signature)
-
-  next_info_packed = pack_next_comp_type_signature(next_comp.type_signature,
-                                                   init_info_packed)
-
-  before_broadcast_info_packed = (
-      check_and_pack_before_broadcast_type_signature(
-          before_broadcast.type_signature, next_info_packed))
-
-  before_aggregate_info_packed = (
-      check_and_pack_before_aggregate_type_signature(
-          before_aggregate.type_signature, before_broadcast_info_packed))
-
-  canonical_form_types = check_and_pack_after_aggregate_type_signature(
-      after_aggregate.type_signature, before_aggregate_info_packed)
+  type_info = _get_type_info(initialize_comp, next_comp, before_broadcast,
+                             after_broadcast, before_aggregate, after_aggregate)
 
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)
+  _check_type_equal(initialize.type_signature, type_info['initialize_type'],
+                    'initialize')
 
-  if not (isinstance(initialize, building_blocks.CompiledComputation) and
-          initialize.type_signature.result ==
-          canonical_form_types['initialize_type'].member):
-    raise transformations.CanonicalFormCompilationError(
-        'Compilation of initialize has failed. Expected to extract a '
-        '`building_blocks.CompiledComputation` of type {}, instead we extracted '
-        'a {} of type {}.'.format(next_comp.type_signature.parameter[0],
-                                  type(initialize),
-                                  initialize.type_signature.result))
+  prepare = _extract_prepare(before_broadcast)
+  _check_type_equal(prepare.type_signature, type_info['prepare_type'],
+                    'prepare')
 
-  prepare = extract_prepare(before_broadcast, canonical_form_types)
+  work = _extract_work(before_aggregate, after_aggregate)
+  _check_type_equal(work.type_signature, type_info['work_type'], 'work')
 
-  work = extract_work(before_aggregate, after_aggregate, canonical_form_types)
+  zero, accumulate, merge, report = _extract_aggregate_functions(
+      before_aggregate)
+  _check_type_equal(zero.type_signature, type_info['zero_type'], 'zero')
+  _check_type_equal(accumulate.type_signature, type_info['accumulate_type'],
+                    'accumulate')
+  _check_type_equal(merge.type_signature, type_info['merge_type'], 'merge')
+  _check_type_equal(report.type_signature, type_info['report_type'], 'report')
 
-  zero_noarg_function, accumulate, merge, report = extract_aggregate_functions(
-      before_aggregate, canonical_form_types)
+  update = _extract_update(after_aggregate)
+  _check_type_equal(update.type_signature, type_info['update_type'], 'update')
 
-  update = extract_update(after_aggregate, canonical_form_types)
-
-  cf = canonical_form.CanonicalForm(
+  return canonical_form.CanonicalForm(
       computation_wrapper_instances.building_block_to_computation(initialize),
       computation_wrapper_instances.building_block_to_computation(prepare),
       computation_wrapper_instances.building_block_to_computation(work),
-      computation_wrapper_instances.building_block_to_computation(
-          zero_noarg_function),
+      computation_wrapper_instances.building_block_to_computation(zero),
       computation_wrapper_instances.building_block_to_computation(accumulate),
       computation_wrapper_instances.building_block_to_computation(merge),
       computation_wrapper_instances.building_block_to_computation(report),
       computation_wrapper_instances.building_block_to_computation(update))
-  return cf
-
-
-def _count_broadcasts(comp):
-  """Returns the number of called federated broadcasts found in `comp`."""
-  uri = intrinsic_defs.FEDERATED_BROADCAST.uri
-  predicate = lambda x: building_block_analysis.is_called_intrinsic(x, uri)
-  return tree_analysis.count(comp, predicate)
-
-
-def _create_dummy_before_and_after_broadcast(comp):
-  """Creates a before and after broadcast computations for the given `comp`.
-
-  This function is intended to be used instead of
-  `transformations.force_align_and_split_by_intrinsics` to generate dummy before
-  and after computations, when there is no `intrinsic_defs.FEDERATED_BROADCAST`
-  present in `comp`.
-
-  Note: This function does not assert that there is no
-  `intrinsic_defs.FEDERATED_BROADCAST` present in `comp`, the caller is expected
-  to perform this check before calling this function.
-
-  Args:
-    comp: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
-    result as specified by
-    `transformations.force_align_and_split_by_intrinsics`.
-  """
-  name_generator = building_block_factory.unique_name_generator(comp)
-
-  parameter_name = next(name_generator)
-  empty_tuple = building_blocks.Tuple([])
-  federated_value_at_server = building_block_factory.create_federated_value(
-      empty_tuple, placements.SERVER)
-  before_broadcast = building_blocks.Lambda(parameter_name,
-                                            comp.type_signature.parameter,
-                                            federated_value_at_server)
-
-  parameter_name = next(name_generator)
-  type_signature = computation_types.FederatedType(
-      before_broadcast.type_signature.result.member, placements.CLIENTS)
-  parameter_type = computation_types.NamedTupleType(
-      [comp.type_signature.parameter, type_signature])
-  ref = building_blocks.Reference(parameter_name, parameter_type)
-  arg = building_blocks.Selection(ref, index=0)
-  call = building_blocks.Call(comp, arg)
-  after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
-
-  return before_broadcast, after_broadcast

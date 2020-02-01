@@ -17,6 +17,9 @@
 import tensorflow as tf
 import tensorflow_federated as tff
 
+EVAL_BATCH_SIZE = 100
+DEFAULT_SHUFFLE_BUFFER_SIZE = 10000
+
 
 def split_input_target(chunk):
   """Generate input and target data.
@@ -58,25 +61,17 @@ def build_to_ids_fn(vocab, max_seq_len):
   return to_ids
 
 
-def batch_and_split(dataset, max_seq_len, epochs=1, batch_size=100):
+def batch_and_split(dataset, max_seq_len, batch_size):
   # Shape out to (max_seq_len+1) because split shortens by one.
-  return (dataset
-          .padded_batch(
-              batch_size,
-              padded_shapes=max_seq_len + 1)
-          .map(split_input_target).repeat(epochs))
+  return (dataset.padded_batch(batch_size, padded_shapes=[max_seq_len + 1]).map(
+      split_input_target, num_parallel_calls=tf.data.experimental.AUTOTUNE))
 
 
-def construct_word_level_datasets(
-    vocab_size,
-    batch_size,
-    client_epochs_per_round,
-    max_seq_len,
-    max_elements_per_user,
-    centralized_train,
-    shuffle_buffer_size,
-    num_validation_examples,
-    num_test_examples):
+def construct_word_level_datasets(vocab_size, client_batch_size,
+                                  client_epochs_per_round, max_seq_len,
+                                  max_elements_per_user, centralized_train,
+                                  shuffle_buffer_size, num_validation_examples,
+                                  num_test_examples):
   """Preprocessing for Stackoverflow data.
 
   Notice that this preprocessing function *ignores* the heldout Stackoverflow
@@ -87,23 +82,23 @@ def construct_word_level_datasets(
   Args:
     vocab_size: Integer representing size of the vocab to use. Vocabulary will
       then be the `vocab_size` most frequent words in the Stackoverflow dataset.
-    batch_size: Integer representing batch size to use.
+    client_batch_size: Integer representing batch size to use.
     client_epochs_per_round: Number of epochs for which to repeat train client
-      dataset.
+      dataset (only used if centralized_train=False).
     max_seq_len: Integer determining shape of padded batches. Sequences will be
       padded up to this length, and sentences longer than `max_seq_len` will be
       truncated to this length.
-    max_elements_per_user: Integer controlling the maximum number of
-      elements to take per user. If -1, takes all elements for each user.
+    max_elements_per_user: Integer controlling the maximum number of elements to
+      take per user. If -1, takes all elements for each user.
     centralized_train: If True, returns a single `tf.data.Dataset` with shuffled
-      training elements. If False, returns a `tff.simulation.ClientData` for
-      the training set.
+      training elements. If False, returns a `tff.simulation.ClientData` for the
+      training set.
     shuffle_buffer_size: Buffer size for shuffling training dataset before
       batching. If None, does not shuffle.
     num_validation_examples: Number of examples from Stackoverflow test set to
       use for validation on each round.
-    num_test_examples: Number of examples from Stackoverflow test set to
-      use for testing after the final round.
+    num_test_examples: Number of examples from Stackoverflow test set to use for
+      testing after the final round.
 
   Returns:
     train: Depending on `centralized_train`, either an instance of
@@ -116,8 +111,12 @@ def construct_word_level_datasets(
       `num_test_examples` of the Stackoverflow Test examples not used in
       `stackoverflow_validation`.
   """
-  if batch_size <= 0:
-    raise ValueError('batch_size must be a positive integer')
+  
+  if vocab_size <= 0:
+    raise ValueError('vocab_size must be a positive integer')
+
+  if client_batch_size <= 0:
+    raise ValueError('client_batch_size must be a positive integer')
 
   if client_epochs_per_round <= 0:
     raise ValueError('client_epochs_per_round must be a positive integer')
@@ -129,7 +128,9 @@ def construct_word_level_datasets(
     raise ValueError(
         'max_elements_per_user must be an integer at least -1')
 
-  if shuffle_buffer_size is not None and shuffle_buffer_size < 1:
+  if not shuffle_buffer_size:
+    shuffle_buffer_size = DEFAULT_SHUFFLE_BUFFER_SIZE
+  elif shuffle_buffer_size < 1:
     raise ValueError('shuffle_buffer_size must be an integer greater than 1.')
 
   if num_validation_examples <= 1:
@@ -146,37 +147,40 @@ def construct_word_level_datasets(
 
   to_ids = build_to_ids_fn(vocab, max_seq_len)
 
-  def shuffle_and_take(dataset):
-    if shuffle_buffer_size:
-      dataset = dataset.shuffle(shuffle_buffer_size)
-    return dataset.take(max_elements_per_user)
-
-  def preprocess_train(dataset):
-    dataset = dataset.map(to_ids)
-    if not centralized_train:
-      dataset = batch_and_split(
-          dataset, max_seq_len, client_epochs_per_round, batch_size)
-    return dataset
-
-  train = train.preprocess(shuffle_and_take).preprocess(preprocess_train)
   if centralized_train:
-    train = train.create_tf_dataset_from_all_clients()
-    if shuffle_buffer_size:
-      train = train.shuffle(shuffle_buffer_size)
-    train = batch_and_split(train, max_seq_len)
 
-  raw_test = raw_test.preprocess(shuffle_and_take)
-  raw_test = raw_test.create_tf_dataset_from_all_clients()
+    def preprocess_train(dataset):
+      return (dataset.take(max_elements_per_user).map(
+          to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE))
 
-  if shuffle_buffer_size:
-    raw_test = raw_test.shuffle(shuffle_buffer_size)
-  raw_test = raw_test.map(to_ids)
+    train = (
+        train.preprocess(preprocess_train).create_tf_dataset_from_all_clients()
+        .shuffle(shuffle_buffer_size))
+    train = batch_and_split(train, max_seq_len, client_batch_size)
+  else:
 
-  validation = raw_test.take(num_validation_examples)
-  validation = batch_and_split(validation, max_seq_len)
+    def preprocess_train(dataset):
+      dataset = (
+          dataset.take(max_elements_per_user).shuffle(
+              shuffle_buffer_size).repeat(client_epochs_per_round).map(
+                  to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE))
+      return batch_and_split(dataset, max_seq_len, client_batch_size)
 
-  test = raw_test.skip(num_validation_examples).take(num_test_examples)
-  test = batch_and_split(test, max_seq_len)
+    train = train.preprocess(preprocess_train)
+
+  def preprocess_test(dataset):
+    return (dataset.take(max_elements_per_user).map(
+        to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE))
+
+  raw_test = (
+      raw_test.preprocess(preprocess_test).create_tf_dataset_from_all_clients())
+
+  validation = batch_and_split(
+      raw_test.take(num_validation_examples), max_seq_len, EVAL_BATCH_SIZE)
+
+  test = batch_and_split(
+      raw_test.skip(num_validation_examples).take(num_test_examples),
+      max_seq_len, EVAL_BATCH_SIZE)
 
   return train, validation, test
 

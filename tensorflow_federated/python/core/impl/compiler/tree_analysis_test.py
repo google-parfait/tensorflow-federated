@@ -283,6 +283,31 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)
 
 
+class ContainsCalledIntrinsic(absltest.TestCase):
+
+  def test_raises_type_error_with_none_tree(self):
+    with self.assertRaises(TypeError):
+      tree_analysis.contains_called_intrinsic(None)
+
+  def test_returns_true_with_none_uri(self):
+    comp = test_utils.create_dummy_called_federated_broadcast()
+    self.assertTrue(tree_analysis.contains_called_intrinsic(comp))
+
+  def test_returns_true_with_matching_uri(self):
+    comp = test_utils.create_dummy_called_federated_broadcast()
+    uri = intrinsic_defs.FEDERATED_BROADCAST.uri
+    self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uri))
+
+  def test_returns_false_with_no_called_intrinsic(self):
+    comp = test_utils.create_identity_function('a')
+    self.assertFalse(tree_analysis.contains_called_intrinsic(comp))
+
+  def test_returns_false_with_unmatched_called_intrinsic(self):
+    comp = test_utils.create_dummy_called_federated_broadcast()
+    uri = intrinsic_defs.FEDERATED_MAP.uri
+    self.assertFalse(tree_analysis.contains_called_intrinsic(comp, uri))
+
+
 class ContainsNoUnboundReferencesTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_tree(self):
@@ -295,21 +320,21 @@ class ContainsNoUnboundReferencesTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       tree_analysis.contains_no_unbound_references(fn, 1)
 
-  def test_returns_false(self):
+  def test_returns_true(self):
     ref = building_blocks.Reference('a', tf.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     self.assertTrue(tree_analysis.contains_no_unbound_references(fn))
 
-  def test_returns_true(self):
-    ref = building_blocks.Reference('a', tf.int32)
-    fn = building_blocks.Lambda('b', tf.int32, ref)
-    self.assertFalse(tree_analysis.contains_no_unbound_references(fn))
-
-  def test_returns_false_with_excluded_reference(self):
+  def test_returns_true_with_excluded_reference(self):
     ref = building_blocks.Reference('a', tf.int32)
     fn = building_blocks.Lambda('b', tf.int32, ref)
     self.assertTrue(
         tree_analysis.contains_no_unbound_references(fn, excluding='a'))
+
+  def test_returns_false(self):
+    ref = building_blocks.Reference('a', tf.int32)
+    fn = building_blocks.Lambda('b', tf.int32, ref)
+    self.assertFalse(tree_analysis.contains_no_unbound_references(fn))
 
 
 class ComputationsEqualTest(absltest.TestCase):

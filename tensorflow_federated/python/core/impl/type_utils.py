@@ -568,9 +568,8 @@ def is_tensorflow_compatible_type(type_spec):
 def check_tensorflow_compatible_type(type_spec):
   if not is_tensorflow_compatible_type(type_spec):
     raise TypeError(
-        'Can only construct a TF block with types which only contain tensor, '
-        'sequence or tuple types; you have tried to construct a TF block with '
-        'parameter of type {}'.format(type_spec))
+        'Expected type to be compatible with TensorFlow (i.e. tensor, '
+        'sequence, or tuple types), found {}.'.format(type_spec))
 
 
 def is_generic_op_compatible_type(type_spec):

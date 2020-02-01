@@ -27,9 +27,257 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
+from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
+from tensorflow_federated.python.core.impl import transformations as impl_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.utils import computation_utils
+
+
+def get_iterative_process_for_sum_example():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return [1, 1], []
+
+  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    client_input = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates, client_output = intrinsics.federated_map(work, c3)
+    federated_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    s6 = intrinsics.federated_zip(
+        [server_state, [federated_update, secure_update]])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_server_state():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([], placements.SERVER)
+
+  @computations.tf_computation(tf.int32)
+  def work(client_data):
+    del client_data  # Unused
+    return [1, 1], []
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def update(global_update):
+    return [], global_update
+
+  @computations.federated_computation([
+      computation_types.FederatedType([], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    del server_state  # Unused
+    client_updates, client_output = intrinsics.federated_map(work, client_data)
+    federated_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    s5 = intrinsics.federated_zip([federated_update, secure_update])
+    new_server_state, server_output = intrinsics.federated_map(update, s5)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_client_output():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return [1, 1]
+
+  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    client_input = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates = intrinsics.federated_map(work, c3)
+    federated_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    s6 = intrinsics.federated_zip(
+        [server_state, [federated_update, secure_update]])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_federated_aggregate():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value(0, placements.SERVER)
+
+  @computations.tf_computation(tf.int32)
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, tf.int32)
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return 1, []
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation([
+      computation_types.FederatedType(tf.int32, placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    client_input = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates, client_output = intrinsics.federated_map(work, c3)
+    secure_update = intrinsics.secure_sum(client_updates, 8)
+    s6 = intrinsics.federated_zip([server_state, secure_update])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_secure_sum():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value(0, placements.SERVER)
+
+  @computations.tf_computation(tf.int32)
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, tf.int32)
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return 1, []
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation([
+      computation_types.FederatedType(tf.int32, placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    client_input = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates, client_output = intrinsics.federated_map(work, c3)
+    federated_update = intrinsics.federated_sum(client_updates)
+    s6 = intrinsics.federated_zip([server_state, federated_update])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_aggregation():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return [1, 1], []
+
+  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    client_input = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    _, client_output = intrinsics.federated_map(work, c3)
+    federated_update = intrinsics.federated_value(1, placements.SERVER)
+    secure_update = intrinsics.federated_value(1, placements.SERVER)
+    s6 = intrinsics.federated_zip(
+        [server_state, [federated_update, secure_update]])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
 class CanonicalFormTestCase(common_test.TestCase):
@@ -73,6 +321,224 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
 
+class CreateNextWithFakeClientOutputTest(common_test.TestCase):
+
+  def test_returns_tree(self):
+    ip = get_iterative_process_for_sum_example_with_no_client_output()
+    old_next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+
+    new_next_tree = canonical_form_utils._create_next_with_fake_client_output(
+        old_next_tree)
+
+    self.assertIsInstance(new_next_tree, building_blocks.Lambda)
+    self.assertIsInstance(new_next_tree.result, building_blocks.Tuple)
+    self.assertLen(new_next_tree.result, 3)
+    self.assertEqual(new_next_tree.result[0].formatted_representation(),
+                     old_next_tree.result[0].formatted_representation())
+    self.assertEqual(new_next_tree.result[1].formatted_representation(),
+                     old_next_tree.result[1].formatted_representation())
+
+    # pyformat: disable
+    self.assertEqual(
+        new_next_tree.result[2].formatted_representation(),
+        'federated_value_at_clients(<>)'
+    )
+    # pyformat: enable
+
+
+class CreateBeforeAndAfterBroadcastForNoBroadcastTest(common_test.TestCase):
+
+  def test_returns_tree(self):
+    ip = get_iterative_process_for_sum_example_with_no_server_state()
+    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+
+    before_broadcast, after_broadcast = canonical_form_utils._create_before_and_after_broadcast_for_no_broadcast(
+        next_tree)
+
+    # pyformat: disable
+    self.assertEqual(
+        before_broadcast.formatted_representation(),
+        '(_var1 -> federated_value_at_server(<>))'
+    )
+    # pyformat: enable
+
+    self.assertIsInstance(after_broadcast, building_blocks.Lambda)
+    self.assertIsInstance(after_broadcast.result, building_blocks.Call)
+    self.assertEqual(after_broadcast.result.function.formatted_representation(),
+                     next_tree.formatted_representation())
+
+    # pyformat: disable
+    self.assertEqual(
+        after_broadcast.result.argument.formatted_representation(),
+        '_var2[0]'
+    )
+    # pyformat: enable
+
+
+class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
+    common_test.TestCase):
+
+  def test_returns_tree(self):
+    ip = get_iterative_process_for_sum_example_with_no_federated_aggregate()
+    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+
+    before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_federated_aggregate(
+        next_tree)
+
+    before_secure_sum, after_secure_sum = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            next_tree, [intrinsic_defs.SECURE_SUM.uri]))
+    self.assertIsInstance(before_aggregate, building_blocks.Lambda)
+    self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
+    self.assertLen(before_aggregate.result, 2)
+
+    # pyformat: disable
+    self.assertEqual(
+        before_aggregate.result[0].formatted_representation(),
+        '<\n'
+        '  federated_value_at_clients(<>),\n'
+        '  <>,\n'
+        '  (_var1 -> <>),\n'
+        '  (_var2 -> <>),\n'
+        '  (_var3 -> <>)\n'
+        '>'
+    )
+    # pyformat: enable
+
+    self.assertEqual(before_aggregate.result[1].formatted_representation(),
+                     before_secure_sum.result.formatted_representation())
+
+    self.assertIsInstance(after_aggregate, building_blocks.Lambda)
+    self.assertIsInstance(after_aggregate.result, building_blocks.Call)
+    actual_tree, _ = impl_transformations.uniquify_reference_names(
+        after_aggregate.result.function)
+    expected_tree, _ = impl_transformations.uniquify_reference_names(
+        after_secure_sum)
+    self.assertEqual(actual_tree.formatted_representation(),
+                     expected_tree.formatted_representation())
+
+    # pyformat: disable
+    self.assertEqual(
+        after_aggregate.result.argument.formatted_representation(),
+        '<\n'
+        '  _var4[0],\n'
+        '  _var4[1][1]\n'
+        '>'
+    )
+    # pyformat: enable
+
+
+class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
+
+  def test_returns_tree(self):
+    ip = get_iterative_process_for_sum_example_with_no_secure_sum()
+    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
+
+    before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_secure_sum(
+        next_tree)
+
+    before_federated_aggregate, after_federated_aggregate = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            next_tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+    self.assertIsInstance(before_aggregate, building_blocks.Lambda)
+    self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
+    self.assertLen(before_aggregate.result, 2)
+    self.assertEqual(
+        before_aggregate.result[0].formatted_representation(),
+        before_federated_aggregate.result.formatted_representation())
+
+    # pyformat: disable
+    self.assertEqual(
+        before_aggregate.result[1].formatted_representation(),
+        '<\n'
+        '  federated_value_at_clients(<>),\n'
+        '  <>\n'
+        '>'
+    )
+    # pyformat: enable
+
+    self.assertIsInstance(after_aggregate, building_blocks.Lambda)
+    self.assertIsInstance(after_aggregate.result, building_blocks.Call)
+    actual_tree, _ = impl_transformations.uniquify_reference_names(
+        after_aggregate.result.function)
+    expected_tree, _ = impl_transformations.uniquify_reference_names(
+        after_federated_aggregate)
+    self.assertEqual(actual_tree.formatted_representation(),
+                     expected_tree.formatted_representation())
+
+    # pyformat: disable
+    self.assertEqual(
+        after_aggregate.result.argument.formatted_representation(),
+        '<\n'
+        '  _var1[0],\n'
+        '  _var1[1][0]\n'
+        '>'
+    )
+    # pyformat: enable
+
+
+class GetTypeInfoTest(common_test.TestCase):
+
+  def test_returns_type_info(self):
+    ip = get_iterative_process_for_sum_example()
+    initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.initialize._computation_proto)
+    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+    initialize_tree = canonical_form_utils._replace_intrinsics_with_bodies(
+        initialize_tree)
+    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
+    before_broadcast, after_broadcast = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
+    before_aggregate, after_aggregate = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+
+    type_info = canonical_form_utils._get_type_info(initialize_tree, next_tree,
+                                                    before_broadcast,
+                                                    after_broadcast,
+                                                    before_aggregate,
+                                                    after_aggregate)
+
+    actual = {
+        label: type_signature.compact_representation()
+        for label, type_signature in type_info.items()
+    }
+    # pyformat: disable
+    expected = {
+        'accumulate_type': '(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
+        'c1_type': '{int32}@CLIENTS',
+        'c2_type': '<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@CLIENTS',
+        'c3_type': '{<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>>}@CLIENTS',
+        'c4_type': '{<<int32,int32,int32,int32,int32,int32>,<>>}@CLIENTS',
+        'c5_type': '{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
+        'c6_type': '{<>}@CLIENTS',
+        'initialize_type': '( -> <int32,int32>)',
+        'merge_type': '(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
+        'prepare_type': '(<int32,int32> -> <<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>)',
+        'report_type': '(<int32,int32,int32,int32,int32,int32> -> <int32,int32,int32,int32,int32,int32>)',
+        's1_type': '<int32,int32>@SERVER',
+        's2_type': '<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
+        's3_type': '<int32,int32,int32,int32,int32,int32>@SERVER',
+        's4_type': '<<int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
+        's5_type': '<<int32,int32>,<>>@SERVER',
+        's6_type': '<int32,int32>@SERVER',
+        's7_type': '<>@SERVER',
+        'update_type': '(<<int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <<int32,int32>,<>>)',
+        'work_type': '(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<int32,int32,int32,int32,int32,int32>,<>>)',
+        'zero_type': '( -> <int32,int32,int32,int32,int32,int32>)'
+    }
+    # pyformat: enable
+
+    self.assertEqual(actual, expected)
+
+
 class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
@@ -84,8 +550,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     bad_it = computation_utils.IterativeProcess(
         it.initialize,
         computation_wrapper_instances.building_block_to_computation(lam))
-    with self.assertRaisesRegex(TypeError,
-                                'instances of `tff.NamedTupleType`.'):
+    with self.assertRaises(TypeError):
       canonical_form_utils.get_canonical_form_for_iterative_process(bad_it)
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
@@ -218,7 +683,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     self.assertAllClose(state_arrays, alt_state_arrays)
     self.assertAllClose(metrics_arrays[:2], alt_metrics_arrays[:2])
     # Final metric is execution time
-    self.assertAlmostEqual(metrics_arrays[2], alt_metrics_arrays[2], delta=1e-5)
+    self.assertAlmostEqual(metrics_arrays[2], alt_metrics_arrays[2], delta=1e-3)
 
   def test_returns_canonical_form_with_next_fn_returning_call_directly(self):
 
@@ -300,8 +765,8 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
 
-INIT_TYPE = computation_types.FederatedType(tf.float32, placements.SERVER)
-S1_TYPE = INIT_TYPE
+INIT_TYPE = computation_types.FunctionType(None, tf.float32)
+S1_TYPE = computation_types.FederatedType(INIT_TYPE.result, placements.SERVER)
 C1_TYPE = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 S6_TYPE = computation_types.FederatedType(tf.float64, placements.SERVER)
 S7_TYPE = computation_types.FederatedType(tf.bool, placements.SERVER)
@@ -348,9 +813,7 @@ class TypeCheckTest(CanonicalFormTestCase):
   def test_init_passes_with_float_at_server(self):
     cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
         computation_types.FederatedType(tf.float32, placements.SERVER))
-    self.assertIsInstance(cf_types['initialize_type'],
-                          computation_types.FederatedType)
-    self.assertEqual(cf_types['initialize_type'].placement, placements.SERVER)
+    self.assertEqual(cf_types['initialize_type'], INIT_TYPE)
 
   def test_next_succeeds_match_with_init_type(self):
     cf_types = {'initialize_type': INIT_TYPE}

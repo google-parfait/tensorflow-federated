@@ -24,7 +24,7 @@ def is_called_intrinsic(comp, uri=None):
 
   Args:
     comp: The computation building block to test.
-    uri: A uri or a collection of uris; the same as what is accepted by
+    uri: An optional URI or list of URIs; the same form as what is accepted by
       isinstance.
 
   Returns:

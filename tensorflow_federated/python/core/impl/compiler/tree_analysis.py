@@ -314,6 +314,22 @@ def check_contains_no_unbound_references(tree, excluding=None):
         tree.formatted_representation()))
 
 
+def contains_called_intrinsic(tree, uri=None):
+  """Tests if `tree` contains a called intrinsic for the given `uri`.
+
+  Args:
+    tree: A `tff.framework.ComputationBuildingBlock`.
+    uri: An optional URI or list of URIs; the same as what is accepted by
+      `building_block_analysis.is_called_intrinsic`.
+
+  Returns:
+    `True` if there is a called intrinsic in `tree` for the given `uri`,
+    otherwise `False`.
+  """
+  predicate = lambda x: building_block_analysis.is_called_intrinsic(x, uri)
+  return count(tree, predicate) > 0
+
+
 def contains_no_unbound_references(tree, excluding=None):
   """Tests if all the references in `tree` are bound by `tree`.
 

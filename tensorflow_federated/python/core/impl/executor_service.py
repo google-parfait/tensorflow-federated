@@ -20,6 +20,7 @@ import queue
 import sys
 import threading
 import traceback
+from typing import Iterable
 import uuid
 import weakref
 
@@ -32,6 +33,12 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_service_utils
+
+
+def _set_invalid_arg_err(context: grpc.ServicerContext, err):
+  logging.error(traceback.format_exc())
+  context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+  context.set_details(str(err))
 
 
 class ExecutorService(executor_pb2_grpc.ExecutorServicer):
@@ -64,7 +71,12 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
     weakref.finalize(self, finalize, self._event_loop, self._thread)
 
-  async def _HandleRequest(self, req, context, response_queue):
+  async def _HandleRequest(
+      self,
+      req: executor_pb2.ExecuteRequest,
+      context: grpc.ServicerContext,
+      response_queue: queue.Queue,
+  ):
     which = req.WhichOneof('request')
     logging.debug('Received request of type %s, seq_no %s', which,
                   req.sequence_number)
@@ -85,10 +97,20 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     elif which == 'compute':
       response = executor_pb2.ExecuteResponse(
           compute=await self._Compute(req.compute, context))
+    elif which == 'dispose':
+      response = executor_pb2.ExecuteResponse(
+          dispose=self.Dispose(req.dispose, context))
+    else:
+      raise RuntimeError('Unknown request type')
     response.sequence_number = req.sequence_number
     response_queue.put_nowait(response)
 
-  def Execute(self, request_iter, context):
+  def Execute(
+      self,
+      request_iter: Iterable[executor_pb2.ExecuteRequest],
+      context: grpc.ServicerContext,
+  ) -> Iterable[executor_pb2.ExecuteResponse]:
+    """Yields responses to streaming requests."""
     logging.debug('Bidi Execute stream created')
 
     response_queue = queue.Queue()
@@ -130,16 +152,12 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
     logging.debug('Closing bidi Execute stream')
 
-  def CreateValue(self, request, context):
-    """Creates a value embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateValueRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateValueResponse`.
-    """
+  def CreateValue(
+      self,
+      request: executor_pb2.CreateValueRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.CreateValueResponse:
+    """Creates a value embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateValueRequest)
     try:
       value, value_type = (
@@ -152,21 +170,15 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateValueResponse(
           value_ref=executor_pb2.ValueRef(id=value_id))
     except (ValueError, TypeError) as err:
-      logging.error(traceback.format_exc())
-      context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-      context.set_details(str(err))
+      _set_invalid_arg_err(context, err)
       return executor_pb2.CreateValueResponse()
 
-  def CreateCall(self, request, context):
-    """Creates a call embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateCallRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateCallResponse`.
-    """
+  def CreateCall(
+      self,
+      request: executor_pb2.CreateCallRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.CreateCallResponse:
+    """Creates a call embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateCallRequest)
     try:
       function_id = str(request.function_ref.id)
@@ -188,21 +200,15 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateCallResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
-      logging.error(traceback.format_exc())
-      context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-      context.set_details(str(err))
+      _set_invalid_arg_err(context, err)
       return executor_pb2.CreateCallResponse()
 
-  def CreateTuple(self, request, context):
-    """Creates a tuple embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateTupleRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateTupleResponse`.
-    """
+  def CreateTuple(
+      self,
+      request: executor_pb2.CreateTupleRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.CreateTupleResponse:
+    """Creates a tuple embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateTupleRequest)
     try:
       with self._lock:
@@ -225,21 +231,15 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateTupleResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
-      logging.error(traceback.format_exc())
-      context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-      context.set_details(str(err))
+      _set_invalid_arg_err(context, err)
       return executor_pb2.CreateTupleResponse()
 
-  def CreateSelection(self, request, context):
-    """Creates a selection embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.CreateSelectionRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.CreateSelectionResponse`.
-    """
+  def CreateSelection(
+      self,
+      request: executor_pb2.CreateSelectionRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.CreateSelectionResponse:
+    """Creates a selection embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateSelectionRequest)
     try:
       with self._lock:
@@ -261,34 +261,24 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       return executor_pb2.CreateSelectionResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
-      logging.error(traceback.format_exc())
-      context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-      context.set_details(str(err))
+      _set_invalid_arg_err(context, err)
       return executor_pb2.CreateSelectionResponse()
 
-  def Compute(self, request, context):
-    """Computes a value embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.ComputeRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.ComputeResponse`.
-    """
+  def Compute(
+      self,
+      request: executor_pb2.ComputeRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.ComputeResponse:
+    """Computes a value embedded in the executor."""
     return asyncio.run_coroutine_threadsafe(
         self._Compute(request, context), self._event_loop).result()
 
-  async def _Compute(self, request, context):
-    """Computes a value embedded in the executor.
-
-    Args:
-      request: An instance of `executor_pb2.ComputeRequest`.
-      context: An instance of `grpc.ServicerContext`.
-
-    Returns:
-      An instance of `executor_pb2.ComputeResponse`.
-    """
+  async def _Compute(
+      self,
+      request: executor_pb2.ComputeRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.ComputeResponse:
+    """Asynchronous implemention of `Compute`."""
     py_typecheck.check_type(request, executor_pb2.ComputeRequest)
     try:
       value_id = str(request.value_ref.id)
@@ -301,7 +291,20 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           result_val, val_type)
       return executor_pb2.ComputeResponse(value=value_proto)
     except (ValueError, TypeError) as err:
-      logging.error(traceback.format_exc())
-      context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-      context.set_details(str(err))
+      _set_invalid_arg_err(context, err)
       return executor_pb2.ComputeResponse()
+
+  def Dispose(
+      self,
+      request: executor_pb2.DisposeRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.DisposeResponse:
+    """Disposes of a value, making it no longer available for future calls."""
+    py_typecheck.check_type(request, executor_pb2.DisposeRequest)
+    try:
+      with self._lock:
+        for value_ref in request.value_ref:
+          del self._values[value_ref.id]
+    except KeyError as err:
+      _set_invalid_arg_err(context, err)
+    return executor_pb2.DisposeResponse()
