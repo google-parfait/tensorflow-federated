@@ -12,9 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utils for converting to/from the canonical form."""
+"""Utils for converting to/from the canonical form.
 
-import itertools
+Note: Refer to `get_iterative_process_for_canonical_form()` for the meaning of
+variable names used in this module.
+"""
+
+import collections
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -24,11 +28,11 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.utils import computation_utils
@@ -57,7 +61,7 @@ def get_iterative_process_for_canonical_form(cf):
                                           cf.work.type_signature.parameter[0],
                                           placements.CLIENTS))
   def next_computation(arg):
-    """The logic of a single MapReduce sprocessing round."""
+    """The logic of a single MapReduce processing round."""
     s1 = arg[0]
     c1 = arg[1]
     s2 = intrinsics.federated_map(cf.prepare, s1)
@@ -77,11 +81,34 @@ def get_iterative_process_for_canonical_form(cf):
   return computation_utils.IterativeProcess(init_computation, next_computation)
 
 
-def _check_type_equal(actual, expected, label):
+def _check_len_equal(target, length):
+  py_typecheck.check_type(length, int)
+  if len(target) != length:
+    raise transformations.CanonicalFormCompilationError(
+        'Expected length of {}, found {}.'.format(length, len(target)))
+
+
+def _check_placement_equal(actual, expected):
+  py_typecheck.check_type(actual, placement_literals.PlacementLiteral)
+  py_typecheck.check_type(expected, placement_literals.PlacementLiteral)
   if actual != expected:
     raise transformations.CanonicalFormCompilationError(
-        'Expected \'{}\' to have a type signature of {}, found {}.'.format(
-            label, expected, actual))
+        'Expected placement of {}, found {}.'.format(expected, actual))
+
+
+def _check_type_equal(actual, expected):
+  py_typecheck.check_type(actual, computation_types.Type)
+  py_typecheck.check_type(expected, computation_types.Type)
+  if actual != expected:
+    raise transformations.CanonicalFormCompilationError(
+        'Expected type of {}, found {}.'.format(expected, actual))
+
+
+def _check_type(target, type_spec):
+  py_typecheck.check_type(type_spec, type)
+  if not isinstance(target, type_spec):
+    raise transformations.CanonicalFormCompilationError(
+        'Expected type of {}, found {}.'.format(type_spec, type(target)))
 
 
 def _check_iterative_process_compatible_with_canonical_form(
@@ -90,9 +117,9 @@ def _check_iterative_process_compatible_with_canonical_form(
 
   Args:
     initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
-      that maps to the `initalize` property of a `tff.utils.IterativeProcess`.
+      representing the `initalize` component of an `tff.utils.IterativeProcess`.
     next_tree: An instance of `building_blocks.ComputationBuildingBlock` that
-      maps to the `next` property of a `tff.utils.IterativeProcess`.
+      representing `next` component of an `tff.utils.IterativeProcess`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -114,322 +141,6 @@ def _check_iterative_process_compatible_with_canonical_form(
   if next_result_len != 2 and next_result_len != 3:
     raise TypeError(
         'Expected length of 2 or 3, found {}.'.format(next_result_len))
-
-
-def pack_initialize_comp_type_signature(type_spec):
-  """Packs the initialize type to be used by the remainder of the compiler."""
-  if not (isinstance(type_spec, computation_types.FederatedType) and
-          type_spec.placement == placements.SERVER):
-    raise TypeError(
-        'Expected init type spec to be a federated type placed at the server; '
-        'instead found {}'.format(type_spec))
-  initialize_type = computation_types.FunctionType(None, type_spec.member)
-  return {'initialize_type': initialize_type}
-
-
-def pack_next_comp_type_signature(type_signature, previously_packed_types):
-  """Packs types that can be inferred from `next.type_signature` into a dict.
-
-  The `next` portion of a `tff.utils.IterativeProcess` should have type
-  signature `<s1, c1> -> <s6, s7, c6>`, where `sn` and `cn` are as defined in
-  `canonical_form.py`.
-
-  Args:
-    type_signature: The `type_signature` attribute of the `next` portion of the
-      `tff.utils.IterativeProcess` from which we are looking to extract an
-      instance of `canonical_form.CanonicalForm`.
-    previously_packed_types: A `dict` containing the initialize type.
-
-  Returns:
-    A `dict` packing the types which can be inferred from `type_signature`.
-
-  Raises:
-    TypeError: If `type_signature` is incompatible with being a type signature
-    of the `next` computation of a `tff.utils.IterativeProcess`.
-  """
-  should_raise = False
-  if not (isinstance(type_signature, computation_types.FunctionType) and
-          isinstance(type_signature.parameter, computation_types.NamedTupleType)
-          and len(type_signature.parameter) == 2 and isinstance(
-              type_signature.result, computation_types.NamedTupleType) and
-          len(type_signature.result) == 3):
-    should_raise = True
-  if (type_signature.parameter[0].member !=
-      previously_packed_types['initialize_type'].result):
-    should_raise = True
-  for server_placed_type in [
-      type_signature.parameter[0], type_signature.result[0],
-      type_signature.result[1]
-  ]:
-    if not (isinstance(server_placed_type, computation_types.FederatedType) and
-            server_placed_type.placement == placements.SERVER):
-      should_raise = True
-
-  if len(type_signature.result) == 3:
-    for client_placed_type in [
-        type_signature.parameter[1], type_signature.result[2]
-    ]:
-      if not (isinstance(client_placed_type, computation_types.FederatedType)
-              and client_placed_type.placement == placements.CLIENTS):
-        should_raise = True
-  if should_raise:
-    # TODO(b/121290421): These error messages, and indeed the 'track boolean and
-    # raise once' logic of these methods as well, is intended to be provisional
-    # and revisited when we've seen the compilation pipeline fail more clearly,
-    # or maybe preferably iteratively improved as new failure modes are
-    # encountered.
-    raise TypeError(
-        'Checking the types of `next` has failed. Expected a '
-        'type signature of `<s1,c1> -> <s6,s7,c6>` as defined in '
-        '`canonical_form.CanonicalForm`, but given '
-        '`next` computation has type signature {}'.format(type_signature))
-
-  newly_determined_types = {}
-  newly_determined_types['s1_type'] = type_signature.parameter[0]
-  newly_determined_types['c1_type'] = type_signature.parameter[1]
-  newly_determined_types['s6_type'] = type_signature.result[0]
-  newly_determined_types['s7_type'] = type_signature.result[1]
-  newly_determined_types['c6_type'] = type_signature.result[2]
-  return dict(
-      itertools.chain(previously_packed_types.items(),
-                      newly_determined_types.items()))
-
-
-def check_and_pack_before_broadcast_type_signature(type_spec,
-                                                   previously_packed_types):
-  """Checks types inferred from `before_broadcast` and packs in `previously_packed_types`.
-
-  After splitting the `next` portion of a `tff.utils.IterativeProcess` into
-  `before_broadcast` and `after_broadcast`, `before_broadcast` should have
-  type signature `<s1, c1> -> s2`. This function validates `c1` and `s1`
-  against the existing entries in `previously_packed_types`, then packs `s2`.
-
-  Args:
-    type_spec: The `type_signature` attribute of the `before_broadcast` portion
-      of the `tff.utils.IterativeProcess` from which we are looking to extract
-      an instance of `canonical_form.CanonicalForm`.
-    previously_packed_types: Dict containing the information from `next` in the
-      iterative process we are parsing.
-
-  Returns:
-    A `dict` packing the types which can be inferred from `type_signature`.
-
-  Raises:
-    TypeError: If `type_signature` is incompatible with
-    `previously_packed_types`.
-  """
-  should_raise = False
-  if not (isinstance(type_spec, computation_types.FunctionType) and
-          isinstance(type_spec.parameter, computation_types.NamedTupleType) and
-          len(type_spec.parameter) == 2 and
-          type_spec.parameter[0] == previously_packed_types['s1_type'] and
-          type_spec.parameter[1] == previously_packed_types['c1_type']):
-    should_raise = True
-  if not (isinstance(type_spec.result, computation_types.FederatedType) and
-          type_spec.result.placement == placements.SERVER):
-    should_raise = True
-  if should_raise:
-    # TODO(b/121290421): These error messages, and indeed the 'track boolean and
-    # raise once' logic of these methods as well, is intended to be provisional
-    # and revisited when we've seen the compilation pipeline fail more clearly,
-    # or maybe preferably iteratively improved as new failure modes are
-    # encountered.
-    raise TypeError('We have encountered an error checking the type signature '
-                    'of `before_broadcast`; expected it to have the form '
-                    '`<s1,c1> -> s2`, with `s1` matching {} and `c1` matching '
-                    '{}, as defined in `connical_form.CanonicalForm`, but '
-                    'encountered a type spec {}'.format(
-                        previously_packed_types['s1_type'],
-                        previously_packed_types['c1_type'], type_spec))
-  s2 = type_spec.result
-  newly_determined_types = {}
-  newly_determined_types['s2_type'] = s2
-  newly_determined_types['prepare_type'] = computation_types.FunctionType(
-      previously_packed_types['s1_type'].member, s2.member)
-  return dict(
-      itertools.chain(previously_packed_types.items(),
-                      newly_determined_types.items()))
-
-
-def check_and_pack_before_aggregate_type_signature(type_spec,
-                                                   previously_packed_types):
-  """Checks types inferred from `before_aggregate` and packs in `previously_packed_types`.
-
-  After splitting the `after_broadcast` portion of a
-  `tff.utils.IterativeProcess` into `before_aggregate` and `after_aggregate`,
-  `before_aggregate` should have type signature
-  `<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>`. This
-  function validates `c1`, `s1` and `c2` against the existing entries in
-  `previously_packed_types`, then packs `s5`, `zero`, `accumulate`, `merge` and
-  `report`.
-
-  Args:
-    type_spec: The `type_signature` attribute of the `before_aggregate` portion
-      of the `tff.utils.IterativeProcess` from which we are looking to extract
-      an instance of `canonical_form.CanonicalForm`.
-    previously_packed_types: Dict containing the information from `next` and
-      `before_broadcast` in the iterative process we are parsing.
-
-  Returns:
-    A `dict` packing the types which can be inferred from `type_spec`.
-
-  Raises:
-    TypeError: If `type_signature` is incompatible with
-    `previously_packed_types`.
-  """
-  should_raise = False
-  if not (isinstance(type_spec, computation_types.FunctionType) and
-          isinstance(type_spec.parameter, computation_types.NamedTupleType)):
-    should_raise = True
-  if not (isinstance(type_spec.parameter[0], computation_types.NamedTupleType)
-          and len(type_spec.parameter[0]) == 2 and
-          type_spec.parameter[0][0] == previously_packed_types['s1_type'] and
-          type_spec.parameter[0][1] == previously_packed_types['c1_type']):
-    should_raise = True
-  if not (
-      isinstance(type_spec.parameter[1], computation_types.FederatedType) and
-      type_spec.parameter[1].placement == placements.CLIENTS and
-      type_spec.parameter[1].member == previously_packed_types['s2_type'].member
-  ):
-    should_raise = True
-  if not (isinstance(type_spec.result, computation_types.NamedTupleType) and
-          len(type_spec.result) == 5 and
-          isinstance(type_spec.result[0], computation_types.FederatedType) and
-          type_spec.result[0].placement == placements.CLIENTS and
-          type_utils.is_tensorflow_compatible_type(type_spec.result[1]) and
-          type_spec.result[2] == computation_types.FunctionType(
-              [type_spec.result[1], type_spec.result[0].member],
-              type_spec.result[1]) and
-          type_spec.result[3] == computation_types.FunctionType(
-              [type_spec.result[1], type_spec.result[1]], type_spec.result[1])
-          and type_spec.result[4].parameter == type_spec.result[1] and
-          type_utils.is_tensorflow_compatible_type(type_spec.result[4].result)):
-    should_raise = True
-  if should_raise:
-    # TODO(b/121290421): These error messages, and indeed the 'track boolean and
-    # raise once' logic of these methods as well, is intended to be provisional
-    # and revisited when we've seen the compilation pipeline fail more clearly,
-    # or maybe preferably iteratively improved as new failure modes are
-    # encountered.
-    raise TypeError(
-        'Encountered a type error while checking '
-        '`before_aggregate`. Expected a type signature of the '
-        'form `<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>`, '
-        'where `s1` matches {}, `c1` matches {}, and `c2` matches '
-        'the result of broadcasting {}, as defined in '
-        '`canonical_form.CanonicalForm`. Found type signature {}.'.format(
-            previously_packed_types['s1_type'],
-            previously_packed_types['c1_type'],
-            previously_packed_types['s2_type'], type_spec))
-  newly_determined_types = {}
-  c2_type = type_spec.parameter[1]
-  newly_determined_types['c2_type'] = c2_type
-  c3_type = computation_types.FederatedType(
-      [previously_packed_types['c1_type'].member, c2_type.member],
-      placements.CLIENTS)
-  newly_determined_types['c3_type'] = c3_type
-  c5_type = type_spec.result[0]
-  zero_type = computation_types.FunctionType(None, type_spec.result[1])
-  accumulate_type = type_spec.result[2]
-  merge_type = type_spec.result[3]
-  report_type = type_spec.result[4]
-  newly_determined_types['c5_type'] = c5_type
-  newly_determined_types['zero_type'] = zero_type
-  newly_determined_types['accumulate_type'] = accumulate_type
-  newly_determined_types['merge_type'] = merge_type
-  newly_determined_types['report_type'] = report_type
-  newly_determined_types['s3_type'] = computation_types.FederatedType(
-      report_type.result, placements.SERVER)
-  c4_type = computation_types.FederatedType([
-      newly_determined_types['c5_type'].member,
-      previously_packed_types['c6_type'].member
-  ], placements.CLIENTS)
-  newly_determined_types['c4_type'] = c4_type
-  newly_determined_types['work_type'] = computation_types.FunctionType(
-      c3_type.member, c4_type.member)
-  return dict(
-      itertools.chain(previously_packed_types.items(),
-                      newly_determined_types.items()))
-
-
-def check_and_pack_after_aggregate_type_signature(type_spec,
-                                                  previously_packed_types):
-  """Checks types inferred from `after_aggregate` and packs in `previously_packed_types`.
-
-  After splitting the `next` portion of a `tff.utils.IterativeProcess` all the
-  way down, `after_aggregate` should have
-  type signature `<<<s1,c1>,c2>,s3> -> <s6,s7,c6>`. This
-  function validates every element of the above, extracting and packing in
-  addition types of `s3` and `s4`.
-
-  Args:
-    type_spec: The `type_signature` attribute of the `after_aggregate` portion
-      of the `tff.utils.IterativeProcess` from which we are looking to extract
-      an instance of `canonical_form.CanonicalForm`.
-    previously_packed_types: Dict containing the information from `next`,
-      `before_broadcast` and `before_aggregate` in the iterative process we are
-      parsing.
-
-  Returns:
-    A `dict` packing the types which can be inferred from `type_spec`.
-
-  Raises:
-    TypeError: If `type_signature` is incompatible with
-    `previously_packed_types`.
-  """
-  should_raise = False
-  if not (type_spec.parameter[0][0][0] == previously_packed_types['s1_type'] and
-          type_spec.parameter[0][0][1] == previously_packed_types['c1_type'] and
-          type_spec.parameter[0][1] == previously_packed_types['c2_type'] and
-          type_spec.parameter[1] == previously_packed_types['s3_type']):
-    should_raise = True
-  if not (type_spec.result[0] == previously_packed_types['s6_type'] and
-          type_spec.result[1] == previously_packed_types['s7_type']):
-    should_raise = True
-  if len(type_spec.result
-        ) == 3 and type_spec.result[2] != previously_packed_types['c6_type']:
-    should_raise = True
-  if should_raise:
-    # TODO(b/121290421): These error messages, and indeed the 'track boolean and
-    # raise once' logic of these methods as well, is intended to be provisional
-    # and revisited when we've seen the compilation pipeline fail more clearly,
-    # or maybe preferably iteratively improved as new failure modes are
-    # encountered.
-    raise TypeError(
-        'Encountered a type error while checking `after_aggregate`; '
-        'expected a type signature of the form '
-        '`<<<s1,c1>,c2>,s3> -> <s6,s7,c6>`, where s1 matches {}, '
-        'c1 matches {}, c2 matches {}, s3 matches {}, s6 matches '
-        '{}, s7 matches {}, c6 matches {}, as defined in '
-        '`canonical_form.CanonicalForm`. Encountered a type signature '
-        '{}.'.format(previously_packed_types['s1_type'],
-                     previously_packed_types['c1_type'],
-                     previously_packed_types['c2_type'],
-                     previously_packed_types['s3_type'],
-                     previously_packed_types['s6_type'],
-                     previously_packed_types['s7_type'],
-                     previously_packed_types['c6_type'], type_spec))
-  s4_type = computation_types.FederatedType([
-      previously_packed_types['s1_type'].member,
-      previously_packed_types['s3_type'].member
-  ], placements.SERVER)
-  s5_type = computation_types.FederatedType([
-      previously_packed_types['s6_type'].member,
-      previously_packed_types['s7_type'].member
-  ], placements.SERVER)
-  newly_determined_types = {}
-  newly_determined_types['s4_type'] = s4_type
-  newly_determined_types['s5_type'] = s5_type
-  newly_determined_types['update_type'] = computation_types.FunctionType(
-      s4_type.member, s5_type.member)
-  c3_type = computation_types.FederatedType([
-      previously_packed_types['c1_type'].member,
-      previously_packed_types['c2_type'].member
-  ], placements.CLIENTS)
-  newly_determined_types['c3_type'] = c3_type
-  return dict(
-      itertools.chain(previously_packed_types.items(),
-                      newly_determined_types.items()))
 
 
 def _create_next_with_fake_client_output(tree):
@@ -750,8 +461,6 @@ def _extract_prepare(before_broadcast):
     transformations.CanonicalFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  # See `get_iterative_process_for_canonical_form()` above for the meaning of
-  # variable names used in the code below.
   s1_index_in_before_broadcast = 0
   s1_to_s2_computation = (
       transformations.bind_single_selection_as_argument_to_lower_level_lambda(
@@ -778,8 +487,6 @@ def _extract_work(before_aggregate, after_aggregate):
     transformations.CanonicalFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  # See `get_iterative_process_for_canonical_form()` above for the meaning of
-  # variable names used in the code below.
   c3_elements_in_before_aggregate_parameter = [[0, 1], [1]]
   c3_to_before_aggregate_computation = (
       transformations.zip_selection_as_argument_to_lower_level_lambda(
@@ -825,8 +532,6 @@ def _extract_aggregate_functions(before_aggregate):
     transformations.CanonicalFormCompilationError: If we extract an ASTs of the
       wrong type.
   """
-  # See `get_iterative_process_for_canonical_form()` above for the meaning of
-  # variable names used in the code below.
   zero_index_in_before_aggregate_result = 1
   zero_tff = transformations.select_output_from_lambda(
       before_aggregate, zero_index_in_before_aggregate_result).result
@@ -863,8 +568,6 @@ def _extract_update(after_aggregate):
     transformations.CanonicalFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  # See `get_iterative_process_for_canonical_form()` above for the meaning of
-  # variable names used in the code below.
   s5_elements_in_after_aggregate_result = [0, 1]
   s5_output_extracted = transformations.select_output_from_lambda(
       after_aggregate, s5_elements_in_after_aggregate_result)
@@ -882,20 +585,208 @@ def _extract_update(after_aggregate):
   return update
 
 
-def _get_type_info(initialize_tree, next_tree, before_broadcast,
-                   after_broadcast, before_aggregate, after_aggregate):
-  """Returns type information for an `tff.utils.IterativeProcess`."""
-  del after_broadcast  # Unused
-  type_info = pack_initialize_comp_type_signature(
-      initialize_tree.type_signature)
-  type_info = pack_next_comp_type_signature(next_tree.type_signature, type_info)
-  type_info = check_and_pack_before_broadcast_type_signature(
-      before_broadcast.type_signature, type_info)
-  type_info = check_and_pack_before_aggregate_type_signature(
-      before_aggregate.type_signature, type_info)
-  type_info = check_and_pack_after_aggregate_type_signature(
-      after_aggregate.type_signature, type_info)
-  return type_info
+def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
+                   before_aggregate, after_aggregate):
+  """Returns type information for an `tff.utils.IterativeProcess`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` to create the expected type
+  signatures when compiling a given `tff.utils.IterativeProcess` into a
+  `tff.backends.mapreduce.CanonicalForm` and returns a `collections.OrderedDict`
+  whose keys and order match the explicit and intermediate componets of
+  `tff.backends.mapreduce.CanonicalForm` defined here:
+
+  ```
+  s1 = arg[0]
+  c1 = arg[1]
+  s2 = intrinsics.federated_map(cf.prepare, s1)
+  c2 = intrinsics.federated_broadcast(s2)
+  c3 = intrinsics.federated_zip([c1, c2])
+  c4 = intrinsics.federated_map(cf.work, c3)
+  c5 = c4[0]
+  c6 = c4[1]
+  s3 = intrinsics.federated_aggregate(c5,
+                                      cf.zero(),
+                                      cf.accumulate,
+                                      cf.merge,
+                                      cf.report)
+  s4 = intrinsics.federated_zip([s1, s3])
+  s5 = intrinsics.federated_map(cf.update, s4)
+  s6 = s5[0]
+  s7 = s5[1]
+  ```
+
+  Note that the type signatures for the `initalize` and `next` components of an
+  `tff.utils.IterativeProcess` are:
+
+  initalize:  `( -> s1)`
+  next:       `(<s1,c1> -> <s6,s7,c6>)`
+
+  However, the `next` component of an `tff.utils.IterativeProcess` has been
+  split into a before and after broadcast and a before and after aggregate with
+  the given semantics:
+
+  ```
+  (arg -> after(<arg, intrinsic(before(arg))>))
+  ```
+
+  as a result, the type signatures for the components split from the `next`
+  component of an `tff.utils.IterativeProcess` are:
+
+  before_broadcast:  `(<s1,c1> -> s2)`
+  after_broadcast:   `(<<s1,c1>,c2> -> <s6,s7,c6>)`
+  before_aggregate:  `(<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>)`
+  after_aggregate:   `(<<<s1,c1>,c2>,s3> -> <s6,s7,c6>)`
+
+  Args:
+    initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
+      representing the `initalize` component of an `tff.utils.IterativeProcess`.
+    before_broadcast: The first result of splitting `next` component of an
+      `tff.utils.IterativeProcess` on broadcast.
+    after_broadcast: The second result of splitting `next` component of an
+      `tff.utils.IterativeProcess` on broadcast.
+    before_aggregate: The first result of splitting `next` component of an
+      `tff.utils.IterativeProcess` on aggregate.
+    after_aggregate: The second result of splitting `next` component of an
+      `tff.utils.IterativeProcess` on aggregate.
+
+  Raises:
+    transformations.CanonicalFormCompilationError: If the arguments are of the
+      wrong types.
+  """
+
+  # The type signature of `initalize` is: `( -> s1)`.
+  _check_type(initialize_tree.type_signature, computation_types.FederatedType)
+  _check_placement_equal(initialize_tree.type_signature.placement,
+                         placements.SERVER)
+
+  initialize_type = computation_types.FunctionType(
+      None, initialize_tree.type_signature.member)
+
+  # The type signature of `before_broadcast` is: `(<s1,c1> -> s2)`.
+  _check_type(before_broadcast.type_signature, computation_types.FunctionType)
+  _check_type(before_broadcast.type_signature.parameter,
+              computation_types.NamedTupleType)
+  _check_len_equal(before_broadcast.type_signature.parameter, 2)
+  s1_type = before_broadcast.type_signature.parameter[0]
+  _check_type(s1_type, computation_types.FederatedType)
+  _check_placement_equal(s1_type.placement, placements.SERVER)
+  c1_type = before_broadcast.type_signature.parameter[1]
+  _check_type(c1_type, computation_types.FederatedType)
+  _check_placement_equal(c1_type.placement, placements.CLIENTS)
+  s2_type = before_broadcast.type_signature.result
+  _check_type(s2_type, computation_types.FederatedType)
+  _check_placement_equal(s2_type.placement, placements.SERVER)
+
+  prepare_type = computation_types.FunctionType(s1_type.member, s2_type.member)
+
+  # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s6,s7,c6>)'.
+  _check_type(after_broadcast.type_signature, computation_types.FunctionType)
+  _check_type(after_broadcast.type_signature.parameter,
+              computation_types.NamedTupleType)
+  _check_len_equal(after_broadcast.type_signature.parameter, 2)
+  _check_type(after_broadcast.type_signature.parameter[0],
+              computation_types.NamedTupleType)
+  _check_len_equal(after_broadcast.type_signature.parameter[0], 2)
+  _check_type_equal(after_broadcast.type_signature.parameter[0][0], s1_type)
+  _check_type_equal(after_broadcast.type_signature.parameter[0][1], c1_type)
+  c2_type = after_broadcast.type_signature.parameter[1]
+  _check_type(c2_type, computation_types.FederatedType)
+  _check_placement_equal(c2_type.placement, placements.CLIENTS)
+
+  # The type signature of `before_aggregate` is:
+  # `(<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>)`.
+  _check_type(before_aggregate.type_signature, computation_types.FunctionType)
+  _check_type(before_aggregate.type_signature.parameter,
+              computation_types.NamedTupleType)
+  _check_len_equal(before_aggregate.type_signature.parameter, 2)
+  _check_type(before_aggregate.type_signature.parameter[0],
+              computation_types.NamedTupleType)
+  _check_len_equal(before_aggregate.type_signature.parameter[0], 2)
+  _check_type_equal(before_aggregate.type_signature.parameter[0][0], s1_type)
+  _check_type_equal(before_aggregate.type_signature.parameter[0][1], c1_type)
+  _check_type_equal(before_aggregate.type_signature.parameter[1], c2_type)
+  _check_type(before_aggregate.type_signature.result,
+              computation_types.NamedTupleType)
+  _check_len_equal(before_aggregate.type_signature.result, 5)
+  c5_type = before_aggregate.type_signature.result[0]
+  _check_type(c5_type, computation_types.FederatedType)
+  _check_placement_equal(c5_type.placement, placements.CLIENTS)
+  zero_type = computation_types.FunctionType(
+      None, before_aggregate.type_signature.result[1])
+  accumulate_type = before_aggregate.type_signature.result[2]
+  _check_type(accumulate_type, computation_types.FunctionType)
+  merge_type = before_aggregate.type_signature.result[3]
+  _check_type(merge_type, computation_types.FunctionType)
+  report_type = before_aggregate.type_signature.result[4]
+  _check_type(report_type, computation_types.FunctionType)
+
+  c3_type = computation_types.FederatedType([c1_type.member, c2_type.member],
+                                            placements.CLIENTS)
+
+  # The type signature of `after_aggregate` is:
+  # `(<<<s1,c1>,c2>,s3> -> <s6,s7,c6>)'.
+  _check_type(after_aggregate.type_signature, computation_types.FunctionType)
+  _check_type(after_aggregate.type_signature.parameter,
+              computation_types.NamedTupleType)
+  _check_len_equal(after_aggregate.type_signature.parameter, 2)
+  _check_type(after_aggregate.type_signature.parameter[0],
+              computation_types.NamedTupleType)
+  _check_len_equal(after_aggregate.type_signature.parameter[0], 2)
+  _check_type(after_aggregate.type_signature.parameter[0][0],
+              computation_types.NamedTupleType)
+  _check_len_equal(after_aggregate.type_signature.parameter[0][0], 2)
+  _check_type_equal(after_aggregate.type_signature.parameter[0][0][0], s1_type)
+  _check_type_equal(after_aggregate.type_signature.parameter[0][0][1], c1_type)
+  _check_type_equal(after_aggregate.type_signature.parameter[0][1], c2_type)
+  s3_type = after_aggregate.type_signature.parameter[1]
+  _check_type(s3_type, computation_types.FederatedType)
+  _check_placement_equal(s3_type.placement, placements.SERVER)
+  _check_type(after_aggregate.type_signature.result,
+              computation_types.NamedTupleType)
+  _check_len_equal(after_aggregate.type_signature.result, 3)
+  s6_type = after_aggregate.type_signature.result[0]
+  _check_type(s6_type, computation_types.FederatedType)
+  _check_placement_equal(s6_type.placement, placements.SERVER)
+  s7_type = after_aggregate.type_signature.result[1]
+  _check_type(s7_type, computation_types.FederatedType)
+  _check_placement_equal(s7_type.placement, placements.SERVER)
+  c6_type = after_aggregate.type_signature.result[2]
+  _check_type(c6_type, computation_types.FederatedType)
+  _check_placement_equal(c6_type.placement, placements.CLIENTS)
+
+  c4_type = computation_types.FederatedType([c5_type.member, c6_type.member],
+                                            placements.CLIENTS)
+  work_type = computation_types.FunctionType(c3_type.member, c4_type.member)
+  s4_type = computation_types.FederatedType([s1_type.member, s3_type.member],
+                                            placements.SERVER)
+  s5_type = computation_types.FederatedType([s6_type.member, s7_type.member],
+                                            placements.SERVER)
+  update_type = computation_types.FunctionType(s4_type.member, s5_type.member)
+
+  return collections.OrderedDict(
+      initialize_type=initialize_type,
+      s1_type=s1_type,
+      c1_type=c1_type,
+      s2_type=s2_type,
+      prepare_type=prepare_type,
+      c2_type=c2_type,
+      c3_type=c3_type,
+      c4_type=c4_type,
+      work_type=work_type,
+      c5_type=c5_type,
+      c6_type=c6_type,
+      zero_type=zero_type,
+      accumulate_type=accumulate_type,
+      merge_type=merge_type,
+      report_type=report_type,
+      s3_type=s3_type,
+      s4_type=s4_type,
+      s5_type=s5_type,
+      update_type=update_type,
+      s6_type=s6_type,
+      s7_type=s7_type,
+  )
 
 
 def _replace_intrinsics_with_bodies(comp):
@@ -965,31 +856,28 @@ def get_canonical_form_for_iterative_process(iterative_process):
       transformations.force_align_and_split_by_intrinsics(
           after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
-  type_info = _get_type_info(initialize_comp, next_comp, before_broadcast,
-                             after_broadcast, before_aggregate, after_aggregate)
+  type_info = _get_type_info(initialize_comp, before_broadcast, after_broadcast,
+                             before_aggregate, after_aggregate)
 
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_comp)
-  _check_type_equal(initialize.type_signature, type_info['initialize_type'],
-                    'initialize')
+  _check_type_equal(initialize.type_signature, type_info['initialize_type'])
 
   prepare = _extract_prepare(before_broadcast)
-  _check_type_equal(prepare.type_signature, type_info['prepare_type'],
-                    'prepare')
+  _check_type_equal(prepare.type_signature, type_info['prepare_type'])
 
   work = _extract_work(before_aggregate, after_aggregate)
-  _check_type_equal(work.type_signature, type_info['work_type'], 'work')
+  _check_type_equal(work.type_signature, type_info['work_type'])
 
   zero, accumulate, merge, report = _extract_aggregate_functions(
       before_aggregate)
-  _check_type_equal(zero.type_signature, type_info['zero_type'], 'zero')
-  _check_type_equal(accumulate.type_signature, type_info['accumulate_type'],
-                    'accumulate')
-  _check_type_equal(merge.type_signature, type_info['merge_type'], 'merge')
-  _check_type_equal(report.type_signature, type_info['report_type'], 'report')
+  _check_type_equal(zero.type_signature, type_info['zero_type'])
+  _check_type_equal(accumulate.type_signature, type_info['accumulate_type'])
+  _check_type_equal(merge.type_signature, type_info['merge_type'])
+  _check_type_equal(report.type_signature, type_info['report_type'])
 
   update = _extract_update(after_aggregate)
-  _check_type_equal(update.type_signature, type_info['update_type'], 'update')
+  _check_type_equal(update.type_signature, type_info['update_type'])
 
   return canonical_form.CanonicalForm(
       computation_wrapper_instances.building_block_to_computation(initialize),

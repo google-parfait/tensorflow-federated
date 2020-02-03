@@ -500,40 +500,45 @@ class GetTypeInfoTest(common_test.TestCase):
         mapreduce_transformations.force_align_and_split_by_intrinsics(
             after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
-    type_info = canonical_form_utils._get_type_info(initialize_tree, next_tree,
+    type_info = canonical_form_utils._get_type_info(initialize_tree,
                                                     before_broadcast,
                                                     after_broadcast,
                                                     before_aggregate,
                                                     after_aggregate)
 
-    actual = {
-        label: type_signature.compact_representation()
+    actual = collections.OrderedDict([
+        (label, type_signature.compact_representation())
         for label, type_signature in type_info.items()
-    }
+    ])
+    # Note: THE CONTENTS OF THIS DICTIONARY IS NOT IMPORTANT. The purpose of
+    # this test is not to assert that this value returned by
+    # `canonical_form_utils._get_type_info`, but instead to act as a signal when
+    # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
+    # into a `tff.backends.mapreduce.CanonicalForm`.
     # pyformat: disable
-    expected = {
-        'accumulate_type': '(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
-        'c1_type': '{int32}@CLIENTS',
-        'c2_type': '<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@CLIENTS',
-        'c3_type': '{<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>>}@CLIENTS',
-        'c4_type': '{<<int32,int32,int32,int32,int32,int32>,<>>}@CLIENTS',
-        'c5_type': '{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
-        'c6_type': '{<>}@CLIENTS',
-        'initialize_type': '( -> <int32,int32>)',
-        'merge_type': '(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
-        'prepare_type': '(<int32,int32> -> <<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>)',
-        'report_type': '(<int32,int32,int32,int32,int32,int32> -> <int32,int32,int32,int32,int32,int32>)',
-        's1_type': '<int32,int32>@SERVER',
-        's2_type': '<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
-        's3_type': '<int32,int32,int32,int32,int32,int32>@SERVER',
-        's4_type': '<<int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
-        's5_type': '<<int32,int32>,<>>@SERVER',
-        's6_type': '<int32,int32>@SERVER',
-        's7_type': '<>@SERVER',
-        'update_type': '(<<int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <<int32,int32>,<>>)',
-        'work_type': '(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<int32,int32,int32,int32,int32,int32>,<>>)',
-        'zero_type': '( -> <int32,int32,int32,int32,int32,int32>)'
-    }
+    expected = collections.OrderedDict(
+        initialize_type='( -> <int32,int32>)',
+        s1_type='<int32,int32>@SERVER',
+        c1_type='{int32}@CLIENTS',
+        s2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
+        prepare_type='(<int32,int32> -> <<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>)',
+        c2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@CLIENTS',
+        c3_type='{<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>>}@CLIENTS',
+        c4_type='{<<int32,int32,int32,int32,int32,int32>,<>>}@CLIENTS',
+        work_type='(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<int32,int32,int32,int32,int32,int32>,<>>)',
+        c5_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
+        c6_type='{<>}@CLIENTS',
+        zero_type='( -> <int32,int32,int32,int32,int32,int32>)',
+        accumulate_type='(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
+        merge_type='(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
+        report_type='(<int32,int32,int32,int32,int32,int32> -> <int32,int32,int32,int32,int32,int32>)',
+        s3_type='<int32,int32,int32,int32,int32,int32>@SERVER',
+        s4_type='<<int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
+        s5_type='<<int32,int32>,<>>@SERVER',
+        update_type='(<<int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <<int32,int32>,<>>)',
+        s6_type='<int32,int32>@SERVER',
+        s7_type='<>@SERVER',
+    )
     # pyformat: enable
 
     self.assertEqual(actual, expected)
@@ -764,202 +769,6 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
-
-INIT_TYPE = computation_types.FunctionType(None, tf.float32)
-S1_TYPE = computation_types.FederatedType(INIT_TYPE.result, placements.SERVER)
-C1_TYPE = computation_types.FederatedType(tf.float32, placements.CLIENTS)
-S6_TYPE = computation_types.FederatedType(tf.float64, placements.SERVER)
-S7_TYPE = computation_types.FederatedType(tf.bool, placements.SERVER)
-C6_TYPE = computation_types.FederatedType(tf.int64, placements.CLIENTS)
-S2_TYPE = computation_types.FederatedType([tf.float32], placements.SERVER)
-C2_TYPE = computation_types.FederatedType(S2_TYPE.member, placements.CLIENTS)
-C5_TYPE = computation_types.FederatedType([tf.float64], placements.CLIENTS)
-ZERO_TYPE = computation_types.TensorType(tf.int64)
-ACCUMULATE_TYPE = computation_types.FunctionType([ZERO_TYPE, C5_TYPE.member],
-                                                 ZERO_TYPE)
-MERGE_TYPE = computation_types.FunctionType([ZERO_TYPE, ZERO_TYPE], ZERO_TYPE)
-REPORT_TYPE = computation_types.FunctionType(ZERO_TYPE, tf.int64)
-S3_TYPE = computation_types.FederatedType(REPORT_TYPE.result, placements.SERVER)
-
-
-def _create_next_type_with_s1_type(x):
-  param_type = computation_types.NamedTupleType([x, C1_TYPE])
-  result_type = computation_types.NamedTupleType([S6_TYPE, S7_TYPE, C6_TYPE])
-  return computation_types.FunctionType(param_type, result_type)
-
-
-def _create_before_broadcast_type_with_s1_type(x):
-  return computation_types.FunctionType(
-      computation_types.NamedTupleType([x, C1_TYPE]), S2_TYPE)
-
-
-def _create_before_aggregate_with_c2_type(x):
-  return computation_types.FunctionType(
-      [[S1_TYPE, C1_TYPE], x],
-      [C5_TYPE, ZERO_TYPE, ACCUMULATE_TYPE, MERGE_TYPE, REPORT_TYPE])
-
-
-def _create_after_aggregate_with_s3_type(x):
-  return computation_types.FunctionType([[[S1_TYPE, C1_TYPE], C2_TYPE], x],
-                                        [S6_TYPE, S7_TYPE, C6_TYPE])
-
-
-class TypeCheckTest(CanonicalFormTestCase):
-
-  def test_init_raises_non_federated_type(self):
-    with self.assertRaisesRegex(TypeError, 'init'):
-      canonical_form_utils.pack_initialize_comp_type_signature(tf.float32)
-
-  def test_init_passes_with_float_at_server(self):
-    cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
-        computation_types.FederatedType(tf.float32, placements.SERVER))
-    self.assertEqual(cf_types['initialize_type'], INIT_TYPE)
-
-  def test_next_succeeds_match_with_init_type(self):
-    cf_types = {'initialize_type': INIT_TYPE}
-    next_type = _create_next_type_with_s1_type(S1_TYPE)
-    packed_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    # Checking contents of the returned dict.
-    self.assertEqual(packed_types['s1_type'], S1_TYPE)
-    self.assertEqual(packed_types['c1_type'], C1_TYPE)
-    self.assertEqual(packed_types['s6_type'], S6_TYPE)
-    self.assertEqual(packed_types['s7_type'], S7_TYPE)
-    self.assertEqual(packed_types['c6_type'], C6_TYPE)
-
-  def test_next_fails_mismatch_with_init_type(self):
-    cf_types = {'initialize_type': INIT_TYPE}
-    next_type = _create_next_type_with_s1_type(
-        computation_types.FederatedType(tf.int32, placements.SERVER))
-    with self.assertRaisesRegex(TypeError, 'next'):
-      canonical_form_utils.pack_next_comp_type_signature(next_type, cf_types)
-
-  def test_before_broadcast_succeeds_match_with_next_type(self):
-    cf_types = {'initialize_type': INIT_TYPE}
-    next_type = _create_next_type_with_s1_type(S1_TYPE)
-    cf_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    good_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        S1_TYPE)
-    packed_types = (
-        canonical_form_utils.check_and_pack_before_broadcast_type_signature(
-            good_before_broadcast_type, cf_types))
-    # Checking contents of the returned dict.
-    self.assertEqual(
-        packed_types['s2_type'],
-        computation_types.FederatedType(C2_TYPE.member, placements.SERVER))
-    self.assertEqual(
-        packed_types['prepare_type'],
-        computation_types.FunctionType(S1_TYPE.member, S2_TYPE.member))
-
-  def test_before_broadcast_fails_mismatch_with_next_type(self):
-    cf_types = {'initialize_type': INIT_TYPE}
-    next_type = _create_next_type_with_s1_type(S1_TYPE)
-    cf_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    bad_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        computation_types.FederatedType(tf.int32, placements.SERVER))
-    with self.assertRaisesRegex(TypeError, 'before_broadcast'):
-      canonical_form_utils.check_and_pack_before_broadcast_type_signature(
-          bad_before_broadcast_type, cf_types)
-
-  def test_before_aggregate_succeeds_and_packs(self):
-    cf_types = {'initialize_type': INIT_TYPE}
-    next_type = _create_next_type_with_s1_type(S1_TYPE)
-    good_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        S1_TYPE)
-    cf_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    cf_types = (
-        canonical_form_utils.check_and_pack_before_broadcast_type_signature(
-            good_before_broadcast_type, cf_types))
-    good_before_aggregate_type = _create_before_aggregate_with_c2_type(C2_TYPE)
-    packed_types = (
-        canonical_form_utils.check_and_pack_before_aggregate_type_signature(
-            good_before_aggregate_type, cf_types))
-
-    # Checking contents of the returned dict.
-    self.assertEqual(packed_types['c5_type'], C5_TYPE)
-    self.assertEqual(packed_types['zero_type'].result, ZERO_TYPE)
-    self.assertEqual(packed_types['accumulate_type'], ACCUMULATE_TYPE)
-    self.assertEqual(packed_types['merge_type'], MERGE_TYPE)
-    self.assertEqual(packed_types['report_type'], REPORT_TYPE)
-
-  def test_before_aggregate_fails_mismatch_with_before_broadcast_type(self):
-    cf_types = {'initialize_type': INIT_TYPE}
-    next_type = _create_next_type_with_s1_type(S1_TYPE)
-    good_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        S1_TYPE)
-    cf_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    cf_types = (
-        canonical_form_utils.check_and_pack_before_broadcast_type_signature(
-            good_before_broadcast_type, cf_types))
-    bad_before_aggregate_type = _create_before_aggregate_with_c2_type(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    with self.assertRaisesRegex(TypeError, 'before_aggregate'):
-      canonical_form_utils.check_and_pack_before_aggregate_type_signature(
-          bad_before_aggregate_type, cf_types)
-
-  def test_after_aggregate_succeeds_and_packs(self):
-    good_init_type = computation_types.FederatedType(tf.float32,
-                                                     placements.SERVER)
-    cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
-        good_init_type)
-    next_type = _create_next_type_with_s1_type(S1_TYPE)
-    good_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        S1_TYPE)
-    cf_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    cf_types = (
-        canonical_form_utils.check_and_pack_before_broadcast_type_signature(
-            good_before_broadcast_type, cf_types))
-    good_before_aggregate_type = _create_before_aggregate_with_c2_type(C2_TYPE)
-    cf_types = (
-        canonical_form_utils.check_and_pack_before_aggregate_type_signature(
-            good_before_aggregate_type, cf_types))
-    good_after_aggregate_type = _create_after_aggregate_with_s3_type(S3_TYPE)
-    packed_types = (
-        canonical_form_utils.check_and_pack_after_aggregate_type_signature(
-            good_after_aggregate_type, cf_types))
-    # Checking contents of the returned dict.
-    self.assertEqual(
-        packed_types['s4_type'],
-        computation_types.FederatedType([S1_TYPE.member, S3_TYPE.member],
-                                        placements.SERVER))
-    self.assertEqual(
-        packed_types['c3_type'],
-        computation_types.FederatedType([C1_TYPE.member, C2_TYPE.member],
-                                        placements.CLIENTS))
-    self.assertEqual(
-        packed_types['update_type'],
-        computation_types.FunctionType(packed_types['s4_type'].member,
-                                       packed_types['s5_type'].member))
-
-  def test_after_aggregate_raises_mismatch_with_before_aggregate(self):
-    good_init_type = computation_types.FederatedType(tf.float32,
-                                                     placements.SERVER)
-    cf_types = canonical_form_utils.pack_initialize_comp_type_signature(
-        good_init_type)
-    next_type = _create_next_type_with_s1_type(
-        computation_types.FederatedType(tf.float32, placements.SERVER))
-    good_before_broadcast_type = _create_before_broadcast_type_with_s1_type(
-        computation_types.FederatedType(tf.float32, placements.SERVER))
-    cf_types = canonical_form_utils.pack_next_comp_type_signature(
-        next_type, cf_types)
-    cf_types = (
-        canonical_form_utils.check_and_pack_before_broadcast_type_signature(
-            good_before_broadcast_type, cf_types))
-    good_before_aggregate_type = _create_before_aggregate_with_c2_type(C2_TYPE)
-    cf_types = (
-        canonical_form_utils.check_and_pack_before_aggregate_type_signature(
-            good_before_aggregate_type, cf_types))
-    bad_after_aggregate_type = _create_after_aggregate_with_s3_type(
-        computation_types.FederatedType(tf.int32, placements.SERVER))
-
-    with self.assertRaisesRegex(TypeError, 'after_aggregate'):
-      canonical_form_utils.check_and_pack_after_aggregate_type_signature(
-          bad_after_aggregate_type, cf_types)
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
