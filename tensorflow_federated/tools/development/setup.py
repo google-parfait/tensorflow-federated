@@ -79,7 +79,7 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
     'tensorflow-addons~=0.7.0',
-    'tensorflow-model-optimization~=0.1.3',
+    'tensorflow-model-optimization~=0.2.1',
     'tensorflow-privacy~=0.2.0',
     'tensorflow~=2.1.0',
 ]
