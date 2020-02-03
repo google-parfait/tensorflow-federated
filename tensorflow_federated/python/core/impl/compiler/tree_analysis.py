@@ -384,18 +384,25 @@ def _compiled_comp_equal(comp_1, comp_2):
 
 
 def trees_equal(comp_1, comp_2):
-  """Returns `True` if the computations are entirely identical.
+  """Returns `True` if the computations are structurally equivalent.
 
-  Structurally equivalent computations with different variable
-  names or different operation orderings are not considered to be equal. If
-  either argument is `None`, returns true if and only if both arguments are
-  `None`. Note that this is the desired semantics here, since `None` can appear
-  as the argument to a `building_blocks.Call` and therefore is considered a
-  valid tree.
+  Equivalent computations with different operation orderings are
+  not considered to be equal, but computations which are equivalent up to
+  reference renaming are. If either argument is `None`, returns true if and
+  only if both arguments are `None`. Note that this is the desired semantics
+  here, since `None` can appear as the argument to a `building_blocks.Call`
+  and therefore is considered a valid tree.
+
+  Note that the equivalence relation here is also known as alpha equivalence
+  in lambda calculus.
 
   Args:
     comp_1: A `building_blocks.ComputationBuildingBlock` to test.
     comp_2: A `building_blocks.ComputationBuildingBlock` to test.
+
+  Returns:
+    `True` exactly when the computations are structurally equal, up to
+    renaming.
 
   Raises:
     TypeError: If `comp_1` or `comp_2` is not an instance of
@@ -403,63 +410,68 @@ def trees_equal(comp_1, comp_2):
     NotImplementedError: If `comp_1` and `comp_2` are an unexpected subclass of
       `building_blocks.ComputationBuildingBlock`.
   """
-  # TODO(b/146892021): TFF needs a structural AST equality function, which
-  # needs to be public. There is a necessary dependency on this function from
-  # the TFF-to-TF code generation pipeline, in order to detect some structural
-  # equivalence while generating TensorFlow. It was decided that it is
-  # preferable to expose a dependency on this function, and file the
-  # bug here, rather than effectively duplicate the logic elsewhere.
   py_typecheck.check_type(
       comp_1, (building_blocks.ComputationBuildingBlock, type(None)))
   py_typecheck.check_type(
       comp_2, (building_blocks.ComputationBuildingBlock, type(None)))
-  if comp_1 is None or comp_2 is None:
-    return comp_1 is None and comp_2 is None
-  if comp_1 is comp_2:
-    return True
-  # The unidiomatic-typecheck is intentional, for the purposes of equality this
-  # function requires that the types are identical and that a subclass will not
-  # be equal to its baseclass.
-  if type(comp_1) != type(comp_2):  # pylint: disable=unidiomatic-typecheck
-    return False
-  if comp_1.type_signature != comp_2.type_signature:
-    return False
-  if isinstance(comp_1, building_blocks.Block):
-    if not trees_equal(comp_1.result, comp_2.result):
+
+  def _trees_equal(comp_1, comp_2, reference_equivalences):
+    """Internal helper for `trees_equal`."""
+    # The unidiomatic-typecheck is intentional, for the purposes of equality
+    # this function requires that the types are identical and that a subclass
+    # will not be equal to its baseclass.
+    if comp_1 is None or comp_2 is None:
+      return comp_1 is None and comp_2 is None
+    if type(comp_1) != type(comp_2):  # pylint: disable=unidiomatic-typecheck
       return False
-    if len(comp_1.locals) != len(comp_2.locals):
+    if comp_1.type_signature != comp_2.type_signature:
       return False
-    for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
-                                                    comp_2.locals):
-      if name_1 != name_2 or not trees_equal(value_1, value_2):
+    if isinstance(comp_1, building_blocks.Block):
+      if len(comp_1.locals) != len(comp_2.locals):
         return False
-    return True
-  elif isinstance(comp_1, building_blocks.Call):
-    return (trees_equal(comp_1.function, comp_2.function) and
-            trees_equal(comp_1.argument, comp_2.argument))
-  elif isinstance(comp_1, building_blocks.CompiledComputation):
-    return _compiled_comp_equal(comp_1, comp_2)
-  elif isinstance(comp_1, building_blocks.Data):
-    return comp_1.uri == comp_2.uri
-  elif isinstance(comp_1, building_blocks.Intrinsic):
-    return comp_1.uri == comp_2.uri
-  elif isinstance(comp_1, building_blocks.Lambda):
-    return (comp_1.parameter_name == comp_2.parameter_name and
-            comp_1.parameter_type == comp_2.parameter_type and
-            trees_equal(comp_1.result, comp_2.result))
-  elif isinstance(comp_1, building_blocks.Placement):
-    return comp_1.uri == comp_2.uri
-  elif isinstance(comp_1, building_blocks.Reference):
-    return comp_1.name == comp_2.name
-  elif isinstance(comp_1, building_blocks.Selection):
-    return (comp_1.name == comp_2.name and comp_1.index == comp_2.index and
-            trees_equal(comp_1.source, comp_2.source))
-  elif isinstance(comp_1, building_blocks.Tuple):
-    # The element names are checked as part of the `type_signature`.
-    if len(comp_1) != len(comp_2):
-      return False
-    for element_1, element_2 in zip(comp_1, comp_2):
-      if not trees_equal(element_1, element_2):
+      for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
+                                                      comp_2.locals):
+        if not _trees_equal(value_1, value_2, reference_equivalences):
+          return False
+        reference_equivalences.append((name_1, name_2))
+      return _trees_equal(comp_1.result, comp_2.result, reference_equivalences)
+    elif isinstance(comp_1, building_blocks.Call):
+      return (_trees_equal(comp_1.function, comp_2.function,
+                           reference_equivalences) and
+              _trees_equal(comp_1.argument, comp_2.argument,
+                           reference_equivalences))
+    elif isinstance(comp_1, building_blocks.CompiledComputation):
+      return _compiled_comp_equal(comp_1, comp_2)
+    elif isinstance(comp_1, building_blocks.Data):
+      return comp_1.uri == comp_2.uri
+    elif isinstance(comp_1, building_blocks.Intrinsic):
+      return comp_1.uri == comp_2.uri
+    elif isinstance(comp_1, building_blocks.Lambda):
+      if comp_1.parameter_type != comp_2.parameter_type:
         return False
-    return True
-  raise NotImplementedError('Unexpected type found: {}.'.format(type(comp_1)))
+      reference_equivalences.append(
+          (comp_1.parameter_name, comp_2.parameter_name))
+      return _trees_equal(comp_1.result, comp_2.result, reference_equivalences)
+    elif isinstance(comp_1, building_blocks.Placement):
+      return comp_1.uri == comp_2.uri
+    elif isinstance(comp_1, building_blocks.Reference):
+      for comp_1_candidate, comp_2_candidate in reversed(
+          reference_equivalences):
+        if comp_1.name == comp_1_candidate:
+          return comp_2.name == comp_2_candidate
+      return comp_1.name == comp_2.name
+    elif isinstance(comp_1, building_blocks.Selection):
+      return (comp_1.name == comp_2.name and
+              comp_1.index == comp_2.index and _trees_equal(
+                  comp_1.source, comp_2.source, reference_equivalences))
+    elif isinstance(comp_1, building_blocks.Tuple):
+      # The element names are checked as part of the `type_signature`.
+      if len(comp_1) != len(comp_2):
+        return False
+      for element_1, element_2 in zip(comp_1, comp_2):
+        if not _trees_equal(element_1, element_2, reference_equivalences):
+          return False
+      return True
+    raise NotImplementedError('Unexpected type found: {}.'.format(type(comp_1)))
+
+  return _trees_equal(comp_1, comp_2, [])

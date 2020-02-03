@@ -377,11 +377,44 @@ class ComputationsEqualTest(absltest.TestCase):
     comp_2 = building_blocks.Block([('a', data), ('b', data)], data)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
 
-  def test_returns_false_for_blocks_with_different_variable_names(self):
+  def test_returns_true_for_blocks_with_different_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     comp_1 = building_blocks.Block([('a', data)], data)
     comp_2 = building_blocks.Block([('b', data)], data)
+    self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
+
+  def test_returns_true_for_blocks_resulting_reference_to_same_local(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_a = building_blocks.Reference('a', data.type_signature)
+    ref_to_b = building_blocks.Reference('b', data.type_signature)
+    comp_1 = building_blocks.Block([('a', data)], ref_to_a)
+    comp_2 = building_blocks.Block([('b', data)], ref_to_b)
+    self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
+
+  def test_returns_true_for_blocks_referring_to_same_comp_in_local(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_a = building_blocks.Reference('a', data.type_signature)
+    ref_to_b = building_blocks.Reference('b', data.type_signature)
+    comp_1 = building_blocks.Block([('a', data), ('b', ref_to_a)], data)
+    comp_2 = building_blocks.Block([('b', data), ('a', ref_to_b)], data)
+    self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
+
+  def test_returns_true_for_blocks_referring_same_local(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_a = building_blocks.Reference('a', data.type_signature)
+    ref_to_b = building_blocks.Reference('b', data.type_signature)
+    comp_1 = building_blocks.Block([('a', data), ('b', ref_to_a)], ref_to_b)
+    comp_2 = building_blocks.Block([('b', data), ('a', ref_to_b)], ref_to_a)
+    self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
+
+  def test_returns_false_for_blocks_referring_to_different_local(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_a = building_blocks.Reference('a', data.type_signature)
+    ref_to_b = building_blocks.Reference('b', data.type_signature)
+    comp_1 = building_blocks.Block([('a', data), ('b', ref_to_a)], ref_to_a)
+    comp_2 = building_blocks.Block([('b', data), ('a', ref_to_b)], ref_to_a)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
+    self.assertFalse(tree_analysis.trees_equal(comp_2, comp_1))
 
   def test_returns_false_for_blocks_with_different_variable_values(self):
     data = building_blocks.Data('data', tf.int32)
@@ -486,12 +519,12 @@ class ComputationsEqualTest(absltest.TestCase):
     intrinsic_2 = building_blocks.Intrinsic('intrinsic', tf.int32)
     self.assertTrue(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
-  def test_returns_false_for_lambdas_with_different_parameter_names(self):
+  def test_returns_true_for_lambdas_representing_identical_functions(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
-    fn_1 = building_blocks.Lambda('b', ref_1.type_signature, ref_1)
-    ref_2 = building_blocks.Reference('a', tf.int32)
-    fn_2 = building_blocks.Lambda('c', ref_2.type_signature, ref_2)
-    self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
+    fn_1 = building_blocks.Lambda('a', ref_1.type_signature, ref_1)
+    ref_2 = building_blocks.Reference('b', tf.int32)
+    fn_2 = building_blocks.Lambda('b', ref_2.type_signature, ref_2)
+    self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_with_different_parameter_types(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
@@ -501,11 +534,36 @@ class ComputationsEqualTest(absltest.TestCase):
     self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_with_different_results(self):
+    data_1 = building_blocks.Data('x', tf.int32)
     ref_1 = building_blocks.Reference('a', tf.int32)
-    fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, ref_1)
+    fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, data_1)
+    data_2 = building_blocks.Data('y', tf.int32)
     ref_2 = building_blocks.Reference('b', tf.int32)
-    fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, ref_2)
+    fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, data_2)
     self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
+
+  def test_returns_true_for_lambdas_with_different_parameter_names_but_same_result(
+      self):
+    data_1 = building_blocks.Data('x', tf.int32)
+    ref_1 = building_blocks.Reference('a', tf.int32)
+    fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, data_1)
+    ref_2 = building_blocks.Reference('b', tf.int32)
+    fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, data_1)
+    self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
+
+  def test_returns_false_for_lambdas_referring_to_different_unbound_variables(
+      self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    ref_to_y = building_blocks.Reference('y', tf.int32)
+    fn_1 = building_blocks.Lambda('a', tf.int32, ref_to_x)
+    fn_2 = building_blocks.Lambda('a', tf.int32, ref_to_y)
+    self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
+
+  def test_returns_true_for_lambdas_referring_to_same_unbound_variables(self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    fn_1 = building_blocks.Lambda('a', tf.int32, ref_to_x)
+    fn_2 = building_blocks.Lambda('a', tf.int32, ref_to_x)
+    self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_true_for_lambdas(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
