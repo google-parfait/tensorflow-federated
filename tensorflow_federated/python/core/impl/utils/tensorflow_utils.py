@@ -1058,7 +1058,12 @@ def fetch_value_in_session(sess, value):
         flat_tensors.append(v)
       else:
         raise ValueError('Unsupported value type {}.'.format(v))
-    flat_computed_tensors = sess.run(flat_tensors)
+    # Note that `flat_tensors` could be an empty tuple, but it could also be a
+    # list of empty tuples.
+    if flat_tensors or any(x for x in flat_tensors):
+      flat_computed_tensors = sess.run(flat_tensors)
+    else:
+      flat_computed_tensors = flat_tensors
     flattened_results = _interleave_dataset_results_and_tensors(
         dataset_results, flat_computed_tensors)
 

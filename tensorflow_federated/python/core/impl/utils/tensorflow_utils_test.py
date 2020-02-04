@@ -735,6 +735,31 @@ class GraphUtilsTest(test.TestCase):
       y = tensorflow_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=10>>')
 
+  @test.graph_mode_test
+  def test_fetch_value_in_session_with_empty_structure(self):
+    x = anonymous_tuple.AnonymousTuple([
+        ('a',
+         anonymous_tuple.AnonymousTuple([
+             ('b', anonymous_tuple.AnonymousTuple([])),
+         ])),
+    ])
+    with tf.compat.v1.Session() as sess:
+      y = tensorflow_utils.fetch_value_in_session(sess, x)
+    self.assertEqual(str(y), '<a=<b=<>>>')
+
+  @test.graph_mode_test
+  def test_fetch_value_in_session_with_partially_empty_structure(self):
+    x = anonymous_tuple.AnonymousTuple([
+        ('a',
+         anonymous_tuple.AnonymousTuple([
+             ('b', anonymous_tuple.AnonymousTuple([])),
+             ('c', tf.constant(10)),
+         ])),
+    ])
+    with tf.compat.v1.Session() as sess:
+      y = tensorflow_utils.fetch_value_in_session(sess, x)
+    self.assertEqual(str(y), '<a=<b=<>,c=10>>')
+
   def test_make_empty_list_structure_for_element_type_spec_w_tuple_dict(self):
     type_spec = computation_types.to_type(
         [tf.int32, [('a', tf.bool), ('b', tf.float32)]])
