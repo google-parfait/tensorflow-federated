@@ -22,27 +22,46 @@ from tensorflow_model_optimization.python.core.internal import tensor_encoding a
 
 # TODO(b/137613901): Subclass te.testing.BaseEncodingStageTest when the symbol
 # is exposed in tensorflow_model_optimization package.
-class OddEvenSparseEncodingStageTest(tf.test.TestCase):
+class OddEvenSparseEncodingStageTest(te.testing.BaseEncodingStageTest):
   """Tests for OddEvenSparseEncodingStage."""
 
-  def test_one_to_many_run_two_rounds(self):
+  def default_encoding_stage(self):
+    """See base class."""
+    return sparsity.OddEvenSparseEncodingStage()
+
+  def default_input(self):
+    """See base class."""
+    return tf.random.uniform([5])
+
+  @property
+  def is_lossless(self):
+    """See base class."""
+    return False
+
+  def common_asserts_for_test_data(self, data):
+    """See base class."""
+    num_elements = data.x.size
+    num_equal = np.sum(np.where(data.x == data.decoded_x, 1, 0))
+    # Checks two possible values if num_elements is an odd number.
+    self.assertIn(num_equal, [num_elements // 2, num_elements // 2 + 1])
+
+  def test_one_to_many_run_few_rounds(self):
     stage = sparsity.OddEvenSparseEncodingStage()
-    x = tf.ones([5])
-    state = self.evaluate(stage.initial_state())
+    x_fn = lambda: tf.ones([5])
+    initial_state = self.evaluate(stage.initial_state())
 
-    decoded_x_list = []
-    for _ in range(2):
-      encode_params, decode_params = stage.get_params(state)
-      encoded_x, state_update_tensors = stage.encode(x, encode_params)
-      state = stage.update_state(state, state_update_tensors)
-      decoded_x = stage.decode(encoded_x, decode_params, shape=tf.shape(x))
-      state, decoded_x = self.evaluate([state, decoded_x])
-      decoded_x_list.append(decoded_x)
+    # Odd and even indices should be aggregated in different rounds.
+    # Round 1.
+    data = self.run_one_to_many_encode_decode(stage, x_fn, initial_state)
+    self.assertAllClose(np.array([1., 0., 1., 0., 1.]), data.decoded_x)
 
-    # Odd and even indices should be aggregated in the two rounds.
-    self.assertAllClose(np.array([1., 0., 1., 0., 1.]), decoded_x_list[0])
-    self.assertAllClose(np.array([0., 1., 0., 1., 0.]), decoded_x_list[1])
-    self.assertAllClose(np.ones(5), sum(decoded_x_list))
+    # Round 2.
+    data = self.run_one_to_many_encode_decode(stage, x_fn, data.updated_state)
+    self.assertAllClose(np.array([0., 1., 0., 1., 0.]), data.decoded_x)
+
+    # Round 3.
+    data = self.run_one_to_many_encode_decode(stage, x_fn, data.updated_state)
+    self.assertAllClose(np.array([1., 0., 1., 0., 1.]), data.decoded_x)
 
 
 class SparseQuantizingEncoderTest(tf.test.TestCase):
@@ -53,4 +72,8 @@ class SparseQuantizingEncoderTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  # TODO(b/148756730): Delete this explicit graph mode enforcement. This is a
+  # temporary workaround due to a bug in tfmot package, and can be removed in a
+  # tfmot version following 0.2.1.
+  tf.compat.v1.disable_v2_behavior()
   tf.test.main()

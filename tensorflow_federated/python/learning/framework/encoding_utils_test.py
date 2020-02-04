@@ -108,86 +108,6 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
         optimizer_output={'client_weight': client_weight})
 
 
-# TODO(b/137613901): Remove this in next update of tfmot package, when
-# te.testing is available.
-@te.core.tf_style_adaptive_encoding_stage
-class PlusOneOverNEncodingStage(te.core.AdaptiveEncodingStageInterface):
-  """[Example] adaptive encoding stage, adding 1/N in N-th iteration.
-
-  This is an example implementation of an `AdaptiveEncodingStageInterface` that
-  modifies state, which controls the creation of params. This is also a simple
-  example of how an `EncodingStageInterface` can be wrapped as an
-  `AdaptiveEncodingStageInterface`, without modifying the wrapped encode and
-  decode methods.
-  """
-
-  ENCODED_VALUES_KEY = 'pn_values'
-  ADD_PARAM_KEY = 'pn_add'
-  ITERATION_STATE_KEY = 'pn_iteration'
-
-  @property
-  def name(self):
-    """See base class."""
-    return 'plus_one_over_n'
-
-  @property
-  def compressible_tensors_keys(self):
-    """See base class."""
-    return [self.ENCODED_VALUES_KEY]
-
-  @property
-  def commutes_with_sum(self):
-    """See base class."""
-    return False
-
-  @property
-  def decode_needs_input_shape(self):
-    """See base class."""
-    return False
-
-  @property
-  def state_update_aggregation_modes(self):
-    """See base class."""
-    return {}
-
-  def initial_state(self):
-    """See base class."""
-    return {self.ITERATION_STATE_KEY: tf.constant(1, dtype=tf.int32)}
-
-  def update_state(self, state, state_update_tensors):
-    """See base class."""
-    del state_update_tensors  # Unused.
-    return {
-        self.ITERATION_STATE_KEY:
-            state[self.ITERATION_STATE_KEY] + tf.constant(1, dtype=tf.int32)
-    }
-
-  def get_params(self, state):
-    """See base class."""
-    params = {
-        self.ADD_PARAM_KEY:
-            1 / tf.cast(state[self.ITERATION_STATE_KEY], tf.float32)
-    }
-    return params, params
-
-  def encode(self, x, encode_params):
-    """See base class."""
-    return {self.ENCODED_VALUES_KEY: x + encode_params[self.ADD_PARAM_KEY]}, {}
-
-  def decode(self,
-             encoded_tensors,
-             decode_params,
-             num_summands=None,
-             shape=None):
-    """See base class."""
-    del num_summands  # Unused.
-    del shape  # Unused.
-    decoded_x = (
-        encoded_tensors[self.ENCODED_VALUES_KEY] -
-        decode_params[self.ADD_PARAM_KEY])
-    return decoded_x
-
-
 def _test_encoder_fn(top_level_encoder):
   """Returns an example mapping of tensor to encoder, determined by shape."""
   if top_level_encoder == 'simple':
@@ -198,7 +118,8 @@ def _test_encoder_fn(top_level_encoder):
     raise ValueError('Unknown top_level_encoder.')
 
   identity_encoder = te.encoders.identity()
-  test_encoder = te.core.EncoderComposer(PlusOneOverNEncodingStage()).make()
+  test_encoder = te.core.EncoderComposer(
+      te.testing.PlusOneOverNEncodingStage()).make()
 
   def encoder_fn(tensor):
     if np.prod(tensor.shape) > 1:
