@@ -24,14 +24,17 @@ from tensorflow_federated.python.simulation.datasets import dataset_utils
 class DatasetUtilsTest(tf.test.TestCase):
 
   def test_deterministic_dataset_mixture(self):
+    tf.random.set_seed(0)
     a = tf.data.Dataset.range(5)
     b = tf.data.Dataset.range(5).map(lambda x: x + 5)
-    mixture = dataset_utils.build_dataset_mixture(a, b, a_probability=0.5)
-    expected_examples = [0, 1, 2, 3, 9]
+    mixture = dataset_utils.build_dataset_mixture(
+        a, b, a_probability=0.5, op_seed=0)
+    expected_examples = [0, 6, 7, 3, 4]
     actual_examples = [self.evaluate(x) for x in mixture]
     self.assertAllEqual(expected_examples, actual_examples)
 
   def test_deterministic_dataset_mixture_distribution(self):
+    tf.random.set_seed(0)
     # Create a dataset of infinite fives.
     a = tf.data.Dataset.from_tensor_slices([8]).repeat(None)
     # Create a normal sampling of integers around mean=5
@@ -39,27 +42,45 @@ class DatasetUtilsTest(tf.test.TestCase):
         tf.cast(tf.random.normal(shape=[1000], mean=5, stddev=2.0), tf.int32))
     # Create a mixture of 1000 integers (bounded by the size of `b` since `a` is
     # infinite).
-    mixture = dataset_utils.build_dataset_mixture(a, b, a_probability=0.8)
+    mixture = dataset_utils.build_dataset_mixture(
+        a, b, a_probability=0.8, op_seed=0)
 
     # Count each label. Expect approximately 800 values of '8', then the
     # remaining 200 normally distributed around 5.
     counts = collections.Counter(self.evaluate(x) for x in mixture)
     self.assertEqual(
         {
-            8: 804,
-            5: 47,
-            3: 37,
-            4: 36,
-            6: 27,
-            7: 16,
-            2: 14,
-            1: 10,
-            0: 5,
-            9: 3,
-            10: 1,
+            8: 809,
+            4: 41,
+            3: 35,
+            5: 35,
+            6: 23,
+            7: 21,
+            2: 20,
+            1: 7,
+            9: 4,
+            10: 2,
+            11: 1,
+            0: 1,
+            -2: 1,
         },
         counts,
         msg=str(counts))
+
+  def test_non_deterministic_dataset_mixture_different(self):
+    tf.random.set_seed(None)  # re-enable non-determinism in the unittests.
+    # Make two mixtures of zeros and ones, long enough that it is extremely
+    # unlikely that randomly picking between the two will ever yield the same
+    # result.
+    num_examples = 100
+    a = tf.data.Dataset.from_tensor_slices([0] * num_examples)
+    b = tf.data.Dataset.from_tensor_slices([1] * num_examples)
+    mixture_1 = dataset_utils.build_dataset_mixture(a, b, a_probability=0.5)
+    mixture_2 = dataset_utils.build_dataset_mixture(a, b, a_probability=0.5)
+    # The mixtures should produce different samples.
+    self.assertNotEqual(
+        self.evaluate(list(iter(mixture_1))),
+        self.evaluate(list(iter(mixture_2))))
 
   def test_filter_single_label_dataset(self):
     # Create a uniform sampling of integers in [0, 10).

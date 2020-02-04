@@ -17,7 +17,7 @@
 import tensorflow as tf
 
 
-def build_dataset_mixture(a, b, a_probability):
+def build_dataset_mixture(a, b, a_probability, op_seed=None):
   """Build a new dataset that probabilistically returns examples.
 
   Args:
@@ -25,6 +25,10 @@ def build_dataset_mixture(a, b, a_probability):
     b: the second `tf.data.Dataset`.
     a_probability: the `float` probability to select the next example from the
       `a` dataset.
+    op_seed: an optional `int` seed for the TensorFlow PRNG op. Strongly
+      recommended to only use in unittests. Note: only setting this seed will
+      not enable deterministic behavior, callers must also use
+      `tf.random.set_seed` to enable deterministic behavior.
 
   Returns:
     A `tf.data.Dataset` that returns examples from dataset `a` with probability
@@ -33,9 +37,9 @@ def build_dataset_mixture(a, b, a_probability):
     smaller of `a` or `b`.
   """
 
-  @tf.function
   def _random_pick_example(example_a, example_b):
-    if tf.random.uniform(shape=[], minval=0.0, maxval=1.0) < a_probability:
+    if tf.random.uniform(
+        shape=(), minval=0.0, maxval=1.0, seed=op_seed) < a_probability:
       return example_a
     return example_b
 
