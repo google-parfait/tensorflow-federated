@@ -862,6 +862,17 @@ class ReferenceExecutorTest(test.TestCase):
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(foo([1, 2, 3]), 6)
 
+  def test_secure_sum_with_list_of_integers(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      return intrinsics.secure_sum(x, 8)
+
+    self.assertEqual(foo.type_signature.compact_representation(),
+                     '({int32}@CLIENTS -> int32@SERVER)')
+    self.assertEqual(foo([1, 2, 3]), 6)
+
   def test_federated_value_at_clients_and_at_server(self):
 
     @computations.federated_computation(tf.int32)

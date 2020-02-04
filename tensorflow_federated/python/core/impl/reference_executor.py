@@ -1029,7 +1029,11 @@ class ReferenceExecutor(context_base.Context):
           .format(element_type, arg.value[0]))
 
   def _secure_sum(self, arg):
-    return self._federated_sum(arg)
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    py_typecheck.check_len(arg.type_signature, 2)
+    value = ComputedValue(arg.value[0], arg.type_signature[0])
+    return self._federated_sum(value)
 
   def _sequence_map(self, arg):
     mapping_type = arg.type_signature[0]
