@@ -18,7 +18,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.utils import encoding_utils
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
@@ -44,21 +46,24 @@ class EncodedBroadcastTest(test.TestCase, parameterized.TestCase):
                                    encoder_constructor):
     value = value_constructor(np.random.rand(20))
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_simple_encoder(encoder_constructor(), value_spec)
     broadcast_fn = encoding_utils.build_encoded_broadcast(value, encoder)
     state_type = broadcast_fn._initialize_fn.type_signature.result
-    broadcast_signature = tff.federated_computation(
+    broadcast_signature = computations.federated_computation(
         broadcast_fn._next_fn,
-        tff.FederatedType(broadcast_fn._initialize_fn.type_signature.result,
-                          tff.SERVER),
-        tff.FederatedType(value_type, tff.SERVER)).type_signature
+        computation_types.FederatedType(
+            broadcast_fn._initialize_fn.type_signature.result,
+            placements.SERVER),
+        computation_types.FederatedType(value_type,
+                                        placements.SERVER)).type_signature
 
     self.assertIsInstance(broadcast_fn, StatefulBroadcastFn)
     self.assertEqual(state_type, broadcast_signature.result[0].member)
-    self.assertEqual(tff.SERVER, broadcast_signature.result[0].placement)
+    self.assertEqual(placements.SERVER, broadcast_signature.result[0].placement)
     self.assertEqual(value_type, broadcast_signature.result[1].member)
-    self.assertEqual(tff.CLIENTS, broadcast_signature.result[1].placement)
+    self.assertEqual(placements.CLIENTS,
+                     broadcast_signature.result[1].placement)
 
   @parameterized.named_parameters(*_bad_encoder_named_parameters)
   def test_build_encoded_broadcast_raises_bad_encoder(self, bad_encoder):
@@ -95,33 +100,36 @@ class EncodedSumTest(test.TestCase, parameterized.TestCase):
   def test_build_encoded_sum(self, value_constructor, encoder_constructor):
     value = value_constructor(np.random.rand(20))
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
     gather_fn = encoding_utils.build_encoded_sum(value, encoder)
     state_type = gather_fn._initialize_fn.type_signature.result
-    gather_signature = tff.federated_computation(
-        gather_fn._next_fn, tff.FederatedType(state_type, tff.SERVER),
-        tff.FederatedType(value_type, tff.CLIENTS),
-        tff.FederatedType(tff.to_type(tf.float32), tff.CLIENTS)).type_signature
+    gather_signature = computations.federated_computation(
+        gather_fn._next_fn,
+        computation_types.FederatedType(state_type, placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+        computation_types.FederatedType(
+            computation_types.to_type(tf.float32),
+            placements.CLIENTS)).type_signature
 
     self.assertIsInstance(gather_fn, StatefulAggregateFn)
     self.assertEqual(state_type, gather_signature.result[0].member)
-    self.assertEqual(tff.SERVER, gather_signature.result[0].placement)
+    self.assertEqual(placements.SERVER, gather_signature.result[0].placement)
     self.assertEqual(value_type, gather_signature.result[1].member)
-    self.assertEqual(tff.SERVER, gather_signature.result[1].placement)
+    self.assertEqual(placements.SERVER, gather_signature.result[1].placement)
 
   def test_run_encoded_sum(self):
     value = np.array([0.0, 1.0, 2.0, -1.0])
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
     gather_fn = encoding_utils.build_encoded_sum(value, encoder)
     initial_state = gather_fn.initialize()
 
-    @tff.federated_computation(
-        tff.FederatedType(gather_fn._initialize_fn.type_signature.result,
-                          tff.SERVER),
-        tff.FederatedType(value_type, tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            gather_fn._initialize_fn.type_signature.result, placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS))
     def call_gather(state, value):
       return gather_fn(state, value)
 
@@ -169,34 +177,38 @@ class EncodedMeanTest(test.TestCase, parameterized.TestCase):
   def test_build_encoded_mean(self, value_constructor, encoder_constructor):
     value = value_constructor(np.random.rand(20))
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
     gather_fn = encoding_utils.build_encoded_mean(value, encoder)
     state_type = gather_fn._initialize_fn.type_signature.result
-    gather_signature = tff.federated_computation(
-        gather_fn._next_fn, tff.FederatedType(state_type, tff.SERVER),
-        tff.FederatedType(value_type, tff.CLIENTS),
-        tff.FederatedType(tff.to_type(tf.float32), tff.CLIENTS)).type_signature
+    gather_signature = computations.federated_computation(
+        gather_fn._next_fn,
+        computation_types.FederatedType(state_type, placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+        computation_types.FederatedType(
+            computation_types.to_type(tf.float32),
+            placements.CLIENTS)).type_signature
 
     self.assertIsInstance(gather_fn, StatefulAggregateFn)
     self.assertEqual(state_type, gather_signature.result[0].member)
-    self.assertEqual(tff.SERVER, gather_signature.result[0].placement)
+    self.assertEqual(placements.SERVER, gather_signature.result[0].placement)
     self.assertEqual(value_type, gather_signature.result[1].member)
-    self.assertEqual(tff.SERVER, gather_signature.result[1].placement)
+    self.assertEqual(placements.SERVER, gather_signature.result[1].placement)
 
   def test_run_encoded_mean(self):
     value = np.array([0.0, 1.0, 2.0, -1.0])
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
     gather_fn = encoding_utils.build_encoded_mean(value, encoder)
     initial_state = gather_fn.initialize()
 
-    @tff.federated_computation(
-        tff.FederatedType(gather_fn._initialize_fn.type_signature.result,
-                          tff.SERVER),
-        tff.FederatedType(value_type, tff.CLIENTS),
-        tff.FederatedType(tff.to_type(tf.float32), tff.CLIENTS))
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            gather_fn._initialize_fn.type_signature.result, placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+        computation_types.FederatedType(
+            computation_types.to_type(tf.float32), placements.CLIENTS))
     def call_gather(state, value, weight):
       return gather_fn(state, value, weight)
 
@@ -252,7 +264,7 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
     encoder = te.encoders.as_simple_encoder(encoder_constructor(), value_spec)
 
     _, state_type = encoding_utils._build_initial_state_tf_computation(encoder)
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     encode_fn, decode_fn = (
         encoding_utils._build_encode_decode_tf_computations_for_broadcast(
             state_type, value_type, encoder))
@@ -286,7 +298,7 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
 
     _, state_type = encoding_utils._build_initial_state_tf_computation(encoder)
-    value_type = tff.to_type(value_spec)
+    value_type = computation_types.to_type(value_spec)
     nest_encoder = encoding_utils._build_tf_computations_for_gather(
         state_type, value_type, encoder)
 
