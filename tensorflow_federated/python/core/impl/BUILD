@@ -370,6 +370,14 @@ py_test(
 )
 
 py_library(
+    name = "executor_base",
+    srcs = ["executor_base.py"],
+    srcs_version = "PY3",
+    deps = [
+    ],
+)
+
+py_library(
     name = "execution_context",
     srcs = ["execution_context.py"],
     srcs_version = "PY3",
@@ -404,9 +412,29 @@ py_test(
 )
 
 py_library(
-    name = "executor_base",
-    srcs = ["executor_base.py"],
+    name = "executor_factory",
+    srcs = ["executor_factory.py"],
     srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+    ],
+)
+
+py_test(
+    name = "executor_factory_test",
+    size = "small",
+    srcs = ["executor_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":eager_executor",
+        ":executor_base",
+        ":executor_factory",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+    ],
 )
 
 py_library(
