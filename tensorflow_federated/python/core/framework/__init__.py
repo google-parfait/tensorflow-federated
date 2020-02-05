@@ -46,12 +46,12 @@ from tensorflow_federated.python.core.impl.concurrent_executor import Concurrent
 from tensorflow_federated.python.core.impl.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
-from tensorflow_federated.python.core.impl.executor_base import Executor
 from tensorflow_federated.python.core.impl.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executor_stacks import create_local_executor
 from tensorflow_federated.python.core.impl.executor_stacks import create_sizing_executor
 from tensorflow_federated.python.core.impl.executor_stacks import create_worker_pool_executor
-from tensorflow_federated.python.core.impl.executor_value_base import ExecutorValue
+from tensorflow_federated.python.core.impl.executors.executor_base import Executor
+from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
 from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
 from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor

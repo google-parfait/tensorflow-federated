@@ -99,7 +99,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:execution_context",
-        "//tensorflow_federated/python/core/impl:executor_base",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
     ],
 )
 
@@ -128,9 +128,7 @@ py_library(
     visibility = default_visibility + [
         "//tensorflow_federated/python/core/impl:__pkg__",
     ],
-    deps = [
-        "//tensorflow_federated/python/core/impl:context_stack_impl",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl:context_stack_impl"],
 )
 
 py_test(
@@ -157,9 +155,7 @@ py_library(
     visibility = default_visibility + [
         "//tensorflow_federated/python/core/impl:__pkg__",
     ],
-    deps = [
-        "//tensorflow_federated/python/core/impl:context_stack_impl",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl:context_stack_impl"],
 )
 
 py_test(

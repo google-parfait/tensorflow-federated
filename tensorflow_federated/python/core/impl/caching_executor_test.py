@@ -27,9 +27,9 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
-from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl import lambda_executor
+from tensorflow_federated.python.core.impl.executors import executor_base
 
 
 def _make_executor_and_tracer_for_test(support_lambdas=False):

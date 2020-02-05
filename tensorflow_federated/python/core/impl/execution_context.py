@@ -24,10 +24,10 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import executor_base
-from tensorflow_federated.python.core.impl import executor_value_base
 from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
 class RetryableError(Exception):

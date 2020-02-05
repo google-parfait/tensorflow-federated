@@ -18,9 +18,9 @@ from unittest import mock
 
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.impl import eager_executor
-from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.executors import executor_base
 
 
 class ExecutorFactoryImplTest(common_test.TestCase):

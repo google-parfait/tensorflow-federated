@@ -18,8 +18,8 @@ import abc
 from typing import Callable, Mapping
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import executor_base
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.executors import executor_base
 
 CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
 
