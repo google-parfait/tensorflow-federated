@@ -331,10 +331,21 @@ class FederatedExecutor(executor_base.Executor):
       arg = FederatedExecutorValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
-      if which_computation == 'tensorflow':
+      comp_type_signature = comp.type_signature
+      if which_computation == 'lambda':
+        # Pull the inner computation out of called no-arg lambdas.
+        if comp.type_signature.parameter is not None:
+          raise ValueError(
+              'Directly calling lambdas with arguments is unsupported. '
+              'Found call to lambda with type {}.'.format(comp.type_signature))
+        return await self.create_value(
+            getattr(comp.internal_representation, 'lambda').result,
+            comp.type_signature.result)
+      elif which_computation == 'tensorflow':
+        # Run tensorflow computations.
         child = self._target_executors[None][0]
         embedded_comp = await child.create_value(comp.internal_representation,
-                                                 comp.type_signature)
+                                                 comp_type_signature)
         if arg is not None:
           embedded_arg = await executor_utils.delegate_entirely_to_executor(
               arg.internal_representation, arg.type_signature, child)

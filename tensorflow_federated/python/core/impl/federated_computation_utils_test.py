@@ -39,11 +39,11 @@ class ComputationBuildingUtilsTest(parameterized.TestCase):
       (lambda x: (x[1], x[0]),
        (tf.int32, tf.int32),
        '(FEDERATED_foo -> <FEDERATED_foo[1],FEDERATED_foo[0]>)'),
-      (lambda: 'stuff', None, 'comp#'))
+      (lambda: 'stuff', None, '( -> comp#'))
   # pyformat: enable
   def test_zero_or_one_arg_fn_to_building_block(self, fn, parameter_type,
                                                 fn_str):
-    parameter_name = 'foo'
+    parameter_name = 'foo' if parameter_type is not None else None
     parameter_type = computation_types.to_type(parameter_type)
     fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
     result = federated_computation_utils.zero_or_one_arg_fn_to_building_block(

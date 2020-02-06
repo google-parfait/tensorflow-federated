@@ -242,8 +242,8 @@ def consolidate_and_extract_local_processing(comp):
       else:
         decorated_result, _ = transformations.insert_called_tf_identity_at_leaves(
             unwrapped.argument)
-        rebound = building_blocks.Lambda(comp.parameter_name,
-                                         comp.parameter_type.member,
+        member_type = None if comp.parameter_type is None else comp.parameter_type.member
+        rebound = building_blocks.Lambda(comp.parameter_name, member_type,
                                          decorated_result)
         extracted = parse_tff_to_tf(rebound)
         check_extraction_result(rebound, extracted)
@@ -287,10 +287,10 @@ def parse_tff_to_tf(comp):
 
   Returns:
     The result of parsing TFF to TF. If successful, this is either a single
-    `tff.framework.CompiledComputation`, or a call to one. If unseccesful, there
-    may be more TFF constructs still remaining. Notice it is not the job of this
-    function, but rather its callers, to check that the result of this parse is
-    as expected.
+    `tff.framework.CompiledComputation`, or a call to one. If unsuccessful,
+    there may be more TFF constructs still remaining. Notice it is not the job
+    of this function, but rather its callers, to check that the result of this
+    parse is as expected.
   """
   parser_callable = transformations.TFParser()
   comp, _ = compiler_transformations.remove_lambdas_and_blocks(comp)

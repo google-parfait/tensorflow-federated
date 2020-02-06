@@ -19,6 +19,7 @@ variable names used in this module.
 """
 
 import collections
+from typing import Callable
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -81,34 +82,64 @@ def get_iterative_process_for_canonical_form(cf):
   return computation_utils.IterativeProcess(init_computation, next_computation)
 
 
-def _check_len_equal(target, length):
+def _check_len(
+    target,
+    length,
+    err_fn: Callable[[str],
+                     Exception] = transformations.CanonicalFormCompilationError,
+):
   py_typecheck.check_type(length, int)
   if len(target) != length:
-    raise transformations.CanonicalFormCompilationError(
-        'Expected length of {}, found {}.'.format(length, len(target)))
+    raise err_fn('Expected length of {}, found {}.'.format(length, len(target)))
 
 
-def _check_placement_equal(actual, expected):
-  py_typecheck.check_type(actual, placement_literals.PlacementLiteral)
-  py_typecheck.check_type(expected, placement_literals.PlacementLiteral)
-  if actual != expected:
-    raise transformations.CanonicalFormCompilationError(
-        'Expected placement of {}, found {}.'.format(expected, actual))
+def _check_placement(
+    target,
+    placement: placement_literals.PlacementLiteral,
+    err_fn: Callable[[str],
+                     Exception] = transformations.CanonicalFormCompilationError,
+):
+  py_typecheck.check_type(target, computation_types.FederatedType)
+  py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+  if target.placement != placement:
+    raise err_fn(
+        'Expected value with placement {}, found value of type {}.'.format(
+            placement, target))
 
 
-def _check_type_equal(actual, expected):
+def _check_type_equal(
+    actual,
+    expected,
+    err_fn: Callable[[str],
+                     Exception] = transformations.CanonicalFormCompilationError,
+):
   py_typecheck.check_type(actual, computation_types.Type)
   py_typecheck.check_type(expected, computation_types.Type)
   if actual != expected:
-    raise transformations.CanonicalFormCompilationError(
-        'Expected type of {}, found {}.'.format(expected, actual))
+    raise err_fn('Expected type of {}, found {}.'.format(expected, actual))
 
 
-def _check_type(target, type_spec):
+def _check_type(
+    target,
+    type_spec,
+    err_fn: Callable[[str],
+                     Exception] = transformations.CanonicalFormCompilationError,
+):
   py_typecheck.check_type(type_spec, type)
   if not isinstance(target, type_spec):
-    raise transformations.CanonicalFormCompilationError(
-        'Expected type of {}, found {}.'.format(type_spec, type(target)))
+    raise err_fn('Expected type of {}, found {}.'.format(
+        type_spec, type(target)))
+
+
+def _check_type_is_no_arg_fn(
+    target,
+    err_fn: Callable[[str],
+                     Exception] = transformations.CanonicalFormCompilationError,
+):
+  _check_type(target, computation_types.FunctionType, err_fn)
+  if target.parameter is not None:
+    raise err_fn(('Expected function to take no argument, but found '
+                  'parameter of type {}.').format(target.parameter))
 
 
 def _check_iterative_process_compatible_with_canonical_form(
@@ -126,8 +157,10 @@ def _check_iterative_process_compatible_with_canonical_form(
   """
   py_typecheck.check_type(initialize_tree,
                           building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(initialize_tree.type_signature,
-                          computation_types.FederatedType)
+  init_tree_ty = initialize_tree.type_signature
+  _check_type_is_no_arg_fn(init_tree_ty, TypeError)
+  _check_type(init_tree_ty.result, computation_types.FederatedType, TypeError)
+  _check_placement(init_tree_ty.result, placements.SERVER, TypeError)
   py_typecheck.check_type(next_tree, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(next_tree.type_signature,
                           computation_types.FunctionType)
@@ -656,27 +689,30 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   """
 
   # The type signature of `initalize` is: `( -> s1)`.
-  _check_type(initialize_tree.type_signature, computation_types.FederatedType)
-  _check_placement_equal(initialize_tree.type_signature.placement,
-                         placements.SERVER)
-
+  init_tree_ty = initialize_tree.type_signature
+  _check_type_is_no_arg_fn(init_tree_ty)
+  _check_type(init_tree_ty.result, computation_types.FederatedType)
+  _check_placement(init_tree_ty.result, placements.SERVER)
+  # The named components of canonical form have no placement, so we must
+  # remove the placement on the return type of initialize_tree
   initialize_type = computation_types.FunctionType(
-      None, initialize_tree.type_signature.member)
+      initialize_tree.type_signature.parameter,
+      initialize_tree.type_signature.result.member)
 
   # The type signature of `before_broadcast` is: `(<s1,c1> -> s2)`.
   _check_type(before_broadcast.type_signature, computation_types.FunctionType)
   _check_type(before_broadcast.type_signature.parameter,
               computation_types.NamedTupleType)
-  _check_len_equal(before_broadcast.type_signature.parameter, 2)
+  _check_len(before_broadcast.type_signature.parameter, 2)
   s1_type = before_broadcast.type_signature.parameter[0]
   _check_type(s1_type, computation_types.FederatedType)
-  _check_placement_equal(s1_type.placement, placements.SERVER)
+  _check_placement(s1_type, placements.SERVER)
   c1_type = before_broadcast.type_signature.parameter[1]
   _check_type(c1_type, computation_types.FederatedType)
-  _check_placement_equal(c1_type.placement, placements.CLIENTS)
+  _check_placement(c1_type, placements.CLIENTS)
   s2_type = before_broadcast.type_signature.result
   _check_type(s2_type, computation_types.FederatedType)
-  _check_placement_equal(s2_type.placement, placements.SERVER)
+  _check_placement(s2_type, placements.SERVER)
 
   prepare_type = computation_types.FunctionType(s1_type.member, s2_type.member)
 
@@ -684,34 +720,34 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type(after_broadcast.type_signature, computation_types.FunctionType)
   _check_type(after_broadcast.type_signature.parameter,
               computation_types.NamedTupleType)
-  _check_len_equal(after_broadcast.type_signature.parameter, 2)
+  _check_len(after_broadcast.type_signature.parameter, 2)
   _check_type(after_broadcast.type_signature.parameter[0],
               computation_types.NamedTupleType)
-  _check_len_equal(after_broadcast.type_signature.parameter[0], 2)
+  _check_len(after_broadcast.type_signature.parameter[0], 2)
   _check_type_equal(after_broadcast.type_signature.parameter[0][0], s1_type)
   _check_type_equal(after_broadcast.type_signature.parameter[0][1], c1_type)
   c2_type = after_broadcast.type_signature.parameter[1]
   _check_type(c2_type, computation_types.FederatedType)
-  _check_placement_equal(c2_type.placement, placements.CLIENTS)
+  _check_placement(c2_type, placements.CLIENTS)
 
   # The type signature of `before_aggregate` is:
   # `(<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>)`.
   _check_type(before_aggregate.type_signature, computation_types.FunctionType)
   _check_type(before_aggregate.type_signature.parameter,
               computation_types.NamedTupleType)
-  _check_len_equal(before_aggregate.type_signature.parameter, 2)
+  _check_len(before_aggregate.type_signature.parameter, 2)
   _check_type(before_aggregate.type_signature.parameter[0],
               computation_types.NamedTupleType)
-  _check_len_equal(before_aggregate.type_signature.parameter[0], 2)
+  _check_len(before_aggregate.type_signature.parameter[0], 2)
   _check_type_equal(before_aggregate.type_signature.parameter[0][0], s1_type)
   _check_type_equal(before_aggregate.type_signature.parameter[0][1], c1_type)
   _check_type_equal(before_aggregate.type_signature.parameter[1], c2_type)
   _check_type(before_aggregate.type_signature.result,
               computation_types.NamedTupleType)
-  _check_len_equal(before_aggregate.type_signature.result, 5)
+  _check_len(before_aggregate.type_signature.result, 5)
   c5_type = before_aggregate.type_signature.result[0]
   _check_type(c5_type, computation_types.FederatedType)
-  _check_placement_equal(c5_type.placement, placements.CLIENTS)
+  _check_placement(c5_type, placements.CLIENTS)
   zero_type = computation_types.FunctionType(
       None, before_aggregate.type_signature.result[1])
   accumulate_type = before_aggregate.type_signature.result[2]
@@ -729,31 +765,31 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type(after_aggregate.type_signature, computation_types.FunctionType)
   _check_type(after_aggregate.type_signature.parameter,
               computation_types.NamedTupleType)
-  _check_len_equal(after_aggregate.type_signature.parameter, 2)
+  _check_len(after_aggregate.type_signature.parameter, 2)
   _check_type(after_aggregate.type_signature.parameter[0],
               computation_types.NamedTupleType)
-  _check_len_equal(after_aggregate.type_signature.parameter[0], 2)
+  _check_len(after_aggregate.type_signature.parameter[0], 2)
   _check_type(after_aggregate.type_signature.parameter[0][0],
               computation_types.NamedTupleType)
-  _check_len_equal(after_aggregate.type_signature.parameter[0][0], 2)
+  _check_len(after_aggregate.type_signature.parameter[0][0], 2)
   _check_type_equal(after_aggregate.type_signature.parameter[0][0][0], s1_type)
   _check_type_equal(after_aggregate.type_signature.parameter[0][0][1], c1_type)
   _check_type_equal(after_aggregate.type_signature.parameter[0][1], c2_type)
   s3_type = after_aggregate.type_signature.parameter[1]
   _check_type(s3_type, computation_types.FederatedType)
-  _check_placement_equal(s3_type.placement, placements.SERVER)
+  _check_placement(s3_type, placements.SERVER)
   _check_type(after_aggregate.type_signature.result,
               computation_types.NamedTupleType)
-  _check_len_equal(after_aggregate.type_signature.result, 3)
+  _check_len(after_aggregate.type_signature.result, 3)
   s6_type = after_aggregate.type_signature.result[0]
   _check_type(s6_type, computation_types.FederatedType)
-  _check_placement_equal(s6_type.placement, placements.SERVER)
+  _check_placement(s6_type, placements.SERVER)
   s7_type = after_aggregate.type_signature.result[1]
   _check_type(s7_type, computation_types.FederatedType)
-  _check_placement_equal(s7_type.placement, placements.SERVER)
+  _check_placement(s7_type, placements.SERVER)
   c6_type = after_aggregate.type_signature.result[2]
   _check_type(c6_type, computation_types.FederatedType)
-  _check_placement_equal(c6_type.placement, placements.CLIENTS)
+  _check_placement(c6_type, placements.CLIENTS)
 
   c4_type = computation_types.FederatedType([c5_type.member, c6_type.member],
                                             placements.CLIENTS)

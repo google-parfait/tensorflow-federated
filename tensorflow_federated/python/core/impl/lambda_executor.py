@@ -375,8 +375,9 @@ class LambdaExecutor(executor_base.Executor):
       def _make_comp_fn(scope, result, name, type_spec):
 
         async def _comp_fn(arg):
-          return await self._evaluate(result,
-                                      LambdaExecutorScope({name: arg}, scope))
+          new_scope = scope if arg is None else LambdaExecutorScope({name: arg},
+                                                                    scope)
+          return await self._evaluate(result, new_scope)
 
         return LambdaExecutorValue(_comp_fn, type_spec=type_spec)
 

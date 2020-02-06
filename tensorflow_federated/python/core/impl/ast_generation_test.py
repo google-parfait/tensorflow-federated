@@ -47,7 +47,7 @@ class AstGenerationTest(test.TestCase):
       return five()
 
     self.assert_ast_equal(federated_five,
-                          '{}()'.format(self.formatted_computation(five)))
+                          '( -> {}())'.format(self.formatted_computation(five)))
 
   def test_only_one_random_actually_generates_two_calls_to_random_bad(self):
     """This test should *NOT* pass, but unfortunately it does.
@@ -70,10 +70,10 @@ class AstGenerationTest(test.TestCase):
       return (single_random_number, single_random_number)
 
     rand = self.formatted_computation(rand)
-    self.assert_ast_equal(same_rand_tuple, ('<\n'
+    self.assert_ast_equal(same_rand_tuple, ('( -> <\n'
                                             '  {0}(),\n'
                                             '  {0}()\n'
-                                            '>').format(rand))
+                                            '>)').format(rand))
 
 
 if __name__ == '__main__':

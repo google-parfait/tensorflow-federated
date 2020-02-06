@@ -607,6 +607,10 @@ class SymbolTree(object):
         or that we have a symbol tree instance that does not match the
         computation we are currently processing.
     """
+    # pylint: disable=g-explicit-bool-comparison
+    if (name is None or name == '') and value is None:
+      # pylint: enable=g-explicit-bool-comparison
+      return
     py_typecheck.check_type(name, str)
     if value is not None:
       py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
@@ -1107,7 +1111,8 @@ def get_unique_names(comp):
     if isinstance(comp, building_blocks.Block):
       names.update([name for name, _ in comp.locals])
     elif isinstance(comp, building_blocks.Lambda):
-      names.add(comp.parameter_name)
+      if comp.parameter_type is not None:
+        names.add(comp.parameter_name)
     return comp, False
 
   transform_postorder(comp, _update)

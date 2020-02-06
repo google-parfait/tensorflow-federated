@@ -816,6 +816,13 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(context, ComputationContext)
 
     def _wrap(arg):
+      """Wraps `context` in a new context which sets the parameter's value."""
+      if comp.parameter_type is None:
+        if arg is not None:
+          raise TypeError(
+              'No-argument lambda called with argument of type {}.'.format(
+                  arg.type_signature))
+        return context
       py_typecheck.check_type(arg, ComputedValue)
       if not type_utils.is_assignable_from(comp.parameter_type,
                                            arg.type_signature):

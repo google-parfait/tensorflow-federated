@@ -45,6 +45,29 @@ class TransformationsTest(absltest.TestCase):
 
 class CheckExtractionResultTest(absltest.TestCase):
 
+  def get_function_from_argument_to_call_in_call_in_lambda(self, tree):
+    """Unwraps a function from a series of nested calls and lambdas.
+
+    The specific shape being unwrapped is the following:
+      (_ -> _(_(_)))
+              ^ this value is what is returned
+
+    Args:
+      tree: A series of nested calls and lambdas as described above.
+
+    Returns:
+      Inner function value described above.
+    """
+    self.assertIsInstance(tree, building_blocks.Lambda)
+    self.assertIsNone(tree.parameter_type)
+    self.assertIsInstance(tree.result, building_blocks.Call)
+    self.assertIsInstance(tree.result.argument, building_blocks.Call)
+    return tree.result.argument.function
+
+  def compiled_computation_for_initialize(self, initialize):
+    block = mapreduce_test_utils.computation_to_building_block(initialize)
+    return self.get_function_from_argument_to_call_in_call_in_lambda(block)
+
   def test_raises_on_none_args(self):
     with self.assertRaisesRegex(TypeError, 'None'):
       mapreduce_transformations.check_extraction_result(
@@ -66,9 +89,7 @@ class CheckExtractionResultTest(absltest.TestCase):
   def test_raises_non_function_and_compiled_computation(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
-    compiled_computation = (
-        mapreduce_test_utils.computation_to_building_block(
-            init).argument.function)
+    compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
     with self.assertRaisesRegex(
         mapreduce_transformations.CanonicalFormCompilationError,
@@ -79,9 +100,7 @@ class CheckExtractionResultTest(absltest.TestCase):
   def test_raises_function_and_compiled_computation_of_different_type(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
-    compiled_computation = (
-        mapreduce_test_utils.computation_to_building_block(
-            init).argument.function)
+    compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     with self.assertRaisesRegex(
@@ -102,9 +121,7 @@ class CheckExtractionResultTest(absltest.TestCase):
   def test_passes_function_and_compiled_computation_of_same_type(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
-    compiled_computation = (
-        mapreduce_test_utils.computation_to_building_block(
-            init).argument.function)
+    compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference('f',
                                          compiled_computation.type_signature)
     mapreduce_transformations.check_extraction_result(function,

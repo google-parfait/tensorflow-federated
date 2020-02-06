@@ -1284,6 +1284,8 @@ def uniquify_reference_names(comp):
         new_locals.append((new_name, val))
       return building_blocks.Block(new_locals, comp.result), True
     elif isinstance(comp, building_blocks.Lambda):
+      if comp.parameter_type is None:
+        return comp, False
       context_tree.walk_down_one_variable_binding()
       new_name = context_tree.get_payload_with_name(
           comp.parameter_name).new_name

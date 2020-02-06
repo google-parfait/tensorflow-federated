@@ -13,6 +13,8 @@
 # limitations under the License.
 """Helpers for creating larger structures out of computating building blocks."""
 
+from typing import Any, Optional
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_stack_base
@@ -21,11 +23,13 @@ from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
-def zero_or_one_arg_fn_to_building_block(fn,
-                                         parameter_name,
-                                         parameter_type,
-                                         context_stack,
-                                         suggested_name=None):
+def zero_or_one_arg_fn_to_building_block(
+    fn,
+    parameter_name: Optional[str],
+    parameter_type: Optional[Any],
+    context_stack: context_stack_base.ContextStack,
+    suggested_name: Optional[str] = None,
+) -> building_blocks.ComputationBuildingBlock:
   """Converts a zero- or one-argument `fn` into a computation building block.
 
   Args:
@@ -38,7 +42,6 @@ def zero_or_one_arg_fn_to_building_block(fn,
     suggested_name: The optional suggested name to use for the federated context
       that will be used to serialize this function's body (ideally the name of
       the underlying Python function). It might be modified to avoid conflicts.
-      If not `None`, it must be a string.
 
   Returns:
     An instance of `building_blocks.ComputationBuildingBlock` that
@@ -77,7 +80,4 @@ def zero_or_one_arg_fn_to_building_block(fn,
           'value.'.format(fn.__code__.co_firstlineno, fn.__code__.co_filename))
     result = value_impl.to_value(result, None, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
-    if parameter_type is None:
-      return result_comp
-    else:
-      return building_blocks.Lambda(parameter_name, parameter_type, result_comp)
+    return building_blocks.Lambda(parameter_name, parameter_type, result_comp)

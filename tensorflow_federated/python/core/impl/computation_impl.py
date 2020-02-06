@@ -68,12 +68,9 @@ class ComputationImpl(function_utils.ConcreteFunction):
 
     type_utils.check_well_formed(type_spec)
 
-    # We may need to modify the type signature to reflect the fact that in the
-    # underlying framework for composing computations, there is no concept of
-    # no-argument lambdas, but in Python, every computation needs to look like
-    # a function that needs to be invoked.
     if not isinstance(type_spec, computation_types.FunctionType):
-      type_spec = computation_types.FunctionType(None, type_spec)
+      raise TypeError('{} is not a functional type, from proto: {}'.format(
+          str(type_spec), str(computation_proto)))
 
     super().__init__(type_spec, context_stack)
     self._computation_proto = computation_proto
