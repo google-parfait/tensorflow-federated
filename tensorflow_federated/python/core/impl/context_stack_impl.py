@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.impl import executor_stacks
 
 def _make_default_context():
   return execution_context.ExecutionContext(
-      executor_stacks.create_local_executor())
+      executor_stacks.local_executor_factory())
 
 
 class ContextStackImpl(context_stack_base.ContextStack, threading.local):

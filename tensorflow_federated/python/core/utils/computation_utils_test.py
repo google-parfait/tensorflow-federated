@@ -300,5 +300,5 @@ if __name__ == '__main__':
   # behavior. Otherwise TFF will infer there are zero clients, which is an
   # error.
   set_default_executor.set_default_executor(
-      executor_stacks.create_local_executor(num_clients=3))
+      executor_stacks.local_executor_factory(num_clients=3))
   test.main()

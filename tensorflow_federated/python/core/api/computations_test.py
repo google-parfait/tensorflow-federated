@@ -412,7 +412,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
   @core_test.executors(
-      ('local', executor_stacks.create_local_executor(1)),)
+      ('local', executor_stacks.local_executor_factory(1)),)
   def test_consume_infinite_tf_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int64))
@@ -425,7 +425,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
   @core_test.executors(
-      ('local', executor_stacks.create_local_executor(1)),)
+      ('local', executor_stacks.local_executor_factory(1)),)
   def test_produce_and_consume_infinite_tf_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int64))
@@ -507,7 +507,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
   @core_test.executors(
-      ('local', executor_stacks.create_local_executor(1)),)
+      ('local', executor_stacks.local_executor_factory(num_clients=1)),)
   def test_computation_called_once_is_invoked_once(self):
 
     @computations.tf_computation

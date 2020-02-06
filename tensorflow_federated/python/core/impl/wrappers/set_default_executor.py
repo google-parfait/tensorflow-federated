@@ -14,29 +14,26 @@
 # limitations under the License.
 """A utility to change the default executor."""
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl import executor_factory
 
 
-def set_default_executor(executor=None):
+def set_default_executor(executor_factory_instance=None):
   """Places an `executor`-backed execution context at the top of the stack.
 
   Args:
-    executor: Either an instance of `executor_base.Executor`, a factory function
-      returning such executors, or `None`. If `executor` is a factory function,
-      the constructed context will infer the number of clients from the data it
-      is passed, if possible. If `None`, causes the default reference executor
-      to be installed (as is the default).
+    executor_factory_instance: An instance of
+      `executor_factory.ExecutorFactory`, or `None` for the default executor.
   """
-  # TODO(b/140112504): Follow up here when we implement the ExecutorFactory
-  # interface.
-  if isinstance(executor, executor_base.Executor):
-    context = execution_context.ExecutionContext(lambda x: executor)
-  elif callable(executor):
-    context = execution_context.ExecutionContext(executor)
-  else:
-    py_typecheck.check_none(executor)
+  if executor_factory_instance is None:
     context = None
+  elif isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
+    context = execution_context.ExecutionContext(executor_factory_instance)
+  else:
+    raise TypeError(
+        '`set_default_executor` expects either an '
+        '`executor_factory.ExecutorFactory` or `None` for the '
+        'default context; you passed an argument of type {}.'.format(
+            type(executor_factory_instance)))
   context_stack_impl.context_stack.set_default_context(context)

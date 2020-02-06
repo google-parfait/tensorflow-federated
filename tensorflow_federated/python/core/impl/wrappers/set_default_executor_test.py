@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
@@ -33,7 +34,9 @@ class TestSetDefaultExecutor(absltest.TestCase):
     def comp(ds):
       return ds.take(5).reduce(np.int32(0), lambda x, y: x + y)
 
-    set_default_executor.set_default_executor(eager_executor.EagerExecutor())
+    set_default_executor.set_default_executor(
+        executor_factory.ExecutorFactoryImpl(
+            lambda _: eager_executor.EagerExecutor()))
 
     ds = tf.data.Dataset.range(1).map(lambda x: tf.constant(5)).repeat()
     v = comp(ds)

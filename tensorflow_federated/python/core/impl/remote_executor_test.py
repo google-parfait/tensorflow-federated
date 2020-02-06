@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import execution_context
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import executor_service
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
@@ -53,7 +54,8 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
-  target_executor = executor_stacks.create_local_executor(num_clients=3)(None)
+  target_executor = executor_stacks.local_executor_factory(
+      num_clients=3).create_executor({})
   tracer = executor_test_utils.TracingExecutor(target_executor)
   service = executor_service.ExecutorService(tracer)
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
@@ -61,7 +63,8 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   channel = grpc.insecure_channel('localhost:{}'.format(port))
   remote_exec = remote_executor.RemoteExecutor(channel, rpc_mode)
   executor = lambda_executor.LambdaExecutor(remote_exec)
-  set_default_executor.set_default_executor(executor)
+  set_default_executor.set_default_executor(
+      executor_factory.ExecutorFactoryImpl(lambda _: executor))
   try:
     yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
   finally:

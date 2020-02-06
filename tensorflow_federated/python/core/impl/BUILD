@@ -191,6 +191,7 @@ py_test(
         ":composite_executor",
         ":concurrent_executor",
         ":eager_executor",
+        ":executor_factory",
         ":federated_executor",
         ":lambda_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -254,6 +255,7 @@ py_test(
         ":caching_executor",
         ":concurrent_executor",
         ":eager_executor",
+        ":executor_factory",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
@@ -362,10 +364,8 @@ py_test(
     deps = [
         ":computation_impl",
         ":context_stack_impl",
-        ":executor_stacks",
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -375,6 +375,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":context_base",
+        ":executor_factory",
         ":runtime_utils",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -504,6 +505,7 @@ py_library(
         ":composite_executor",
         ":concurrent_executor",
         ":eager_executor",
+        ":executor_factory",
         ":federated_executor",
         ":lambda_executor",
         ":sizing_executor",
@@ -526,6 +528,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
@@ -537,6 +540,7 @@ py_library(
     srcs = ["executor_test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":executor_factory",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
@@ -937,6 +941,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_context",
+        ":executor_factory",
         ":executor_service",
         ":executor_stacks",
         ":executor_test_utils",

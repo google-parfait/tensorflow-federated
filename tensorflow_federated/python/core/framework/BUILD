@@ -13,7 +13,7 @@ py_library(
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
         "//tensorflow_federated/python/core/impl:eager_executor",
-        "//tensorflow_federated/python/core/impl:executor_service",
+        "//tensorflow_federated/python/core/impl:executor_factory",
         "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl:federated_executor",
         "//tensorflow_federated/python/core/impl:lambda_executor",

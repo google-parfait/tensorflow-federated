@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
@@ -173,7 +174,8 @@ class ConcurrentExecutorTest(absltest.TestCase):
 
     ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
 
-    set_default_executor.set_default_executor(ex)
+    set_default_executor.set_default_executor(
+        executor_factory.ExecutorFactoryImpl(lambda _: ex))
 
     self.assertEqual(add_one(7), 8)
 

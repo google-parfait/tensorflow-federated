@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
@@ -31,17 +32,17 @@ class ExecutorStacksTest(parameterized.TestCase):
 
   def test_raises_with_max_fanout_1(self):
     with self.assertRaises(ValueError):
-      executor_stacks.create_local_executor(2, 1)
+      executor_stacks.local_executor_factory(2, 1)
 
   @parameterized.named_parameters(
       {
           'testcase_name': 'local_executor',
-          'executor': executor_stacks.create_local_executor
+          'executor_factory_fn': executor_stacks.local_executor_factory
       }, {
           'testcase_name': 'sizing_executor',
-          'executor': executor_stacks.create_sizing_executor
+          'executor_factory_fn': executor_stacks.sizing_executor_factory
       })
-  def test_with_temperature_sensor_example(self, executor):
+  def test_with_temperature_sensor_example(self, executor_factory_fn):
 
     @computations.tf_computation(
         computation_types.SequenceType(tf.float32), tf.float32)
@@ -65,7 +66,8 @@ class ExecutorStacksTest(parameterized.TestCase):
                    intrinsics.federated_broadcast(threshold)])),
           intrinsics.federated_map(count_total, temperatures))
 
-    set_default_executor.set_default_executor(executor(3))
+    set_default_executor.set_default_executor(executor_factory_fn(3))
+
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
         tf.data.Dataset.range(10).map(to_float),
@@ -76,7 +78,7 @@ class ExecutorStacksTest(parameterized.TestCase):
     result = comp(temperatures, threshold)
     self.assertAlmostEqual(result, 8.333, places=3)
 
-    set_default_executor.set_default_executor(executor())
+    set_default_executor.set_default_executor(executor_factory_fn())
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
         tf.data.Dataset.range(10).map(to_float),
@@ -89,24 +91,39 @@ class ExecutorStacksTest(parameterized.TestCase):
     set_default_executor.set_default_executor()
 
   def test_runs_tf(self):
-    executor_test_utils.test_runs_tf(self,
-                                     executor_stacks.create_local_executor(1))
+    executor_test_utils.test_runs_tf(
+        self,
+        executor_stacks.local_executor_factory(1).create_executor({}))
 
   def test_runs_tf_unspecified_clients(self):
-    executor_test_utils.test_runs_tf(self,
-                                     executor_stacks.create_local_executor())
+    executor_test_utils.test_runs_tf(
+        self,
+        executor_stacks.local_executor_factory().create_executor({}))
 
   def test_sizing_runs_tf(self):
-    executor_test_utils.test_runs_tf(self,
-                                     executor_stacks.create_sizing_executor(1))
+    executor_test_utils.test_runs_tf(
+        self,
+        executor_stacks.sizing_executor_factory(1).create_executor({}))
 
   def test_sizing_runs_tf_unspecified_clients(self):
-    executor_test_utils.test_runs_tf(self,
-                                     executor_stacks.create_sizing_executor())
+    executor_test_utils.test_runs_tf(
+        self,
+        executor_stacks.sizing_executor_factory().create_executor({}))
 
   def test_with_no_args(self):
     set_default_executor.set_default_executor(
-        executor_stacks.create_local_executor())
+        executor_stacks.local_executor_factory())
+
+  def test_executor_factory_raises_with_wrong_cardinalities(self):
+    ex_factory = executor_stacks.local_executor_factory(num_clients=5)
+    cardinalities = {
+        placement_literals.SERVER: 1,
+        None: 1,
+        placement_literals.CLIENTS: 1
+    }
+    with self.assertRaisesRegex(ValueError,
+                                'construct an executor with 1 clients'):
+      ex_factory.create_executor(cardinalities)
 
     @computations.tf_computation
     def foo():
@@ -118,7 +135,7 @@ class ExecutorStacksTest(parameterized.TestCase):
 
   def test_with_num_clients_larger_than_fanout(self):
     set_default_executor.set_default_executor(
-        executor_stacks.create_local_executor(max_fanout=3))
+        executor_stacks.local_executor_factory(max_fanout=3))
 
     @computations.federated_computation(type_factory.at_clients(tf.int32))
     def foo(x):

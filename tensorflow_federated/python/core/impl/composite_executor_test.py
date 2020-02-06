@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl.compiler import type_factory
@@ -61,11 +62,16 @@ class CompositeExecutorTest(absltest.TestCase):
     super().setUp()
     # 2 clients per worker stack * 3 worker stacks * 2 middle stacks
     self._num_clients = 12
+
+    def _stack_fn(x):
+      del x  # Unused
+      return _create_middle_stack([
+          _create_middle_stack([_create_worker_stack() for _ in range(3)]),
+          _create_middle_stack([_create_worker_stack() for _ in range(3)])
+      ])
+
     set_default_executor.set_default_executor(
-        _create_middle_stack([
-            _create_middle_stack([_create_worker_stack() for _ in range(3)]),
-            _create_middle_stack([_create_worker_stack() for _ in range(3)])
-        ]))
+        executor_factory.ExecutorFactoryImpl(_stack_fn))
 
   def tearDown(self):
     set_default_executor.set_default_executor(None)

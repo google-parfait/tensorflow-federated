@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -140,15 +141,13 @@ def _unwrap_execution_context_value(val):
 class ExecutionContext(context_base.Context):
   """Represents an execution context backed by an `executor_base.Executor`."""
 
-  def __init__(self, executor_fn):
+  def __init__(self, executor_fn: executor_factory.ExecutorFactory):
     """Initializes execution context.
 
     Args:
-      executor_fn: Callable taking a dict of `placement_literals.Placement` keys
-        and integer values to an instance of `executor_base.Executor`.
+      executor_fn: Instance of `executor_factory.ExecutorFactory`.
     """
-    # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
-    py_typecheck.check_callable(executor_fn)
+    py_typecheck.check_type(executor_fn, executor_factory.ExecutorFactory)
     self._executor_factory = executor_fn
 
   def ingest(self, val, type_spec):
@@ -178,7 +177,8 @@ class ExecutionContext(context_base.Context):
     else:
       cardinalities = {}
 
-    with executor_closer(self._executor_factory(cardinalities)) as executor:
+    with executor_closer(
+        self._executor_factory.create_executor(cardinalities)) as executor:
       py_typecheck.check_type(executor, executor_base.Executor)
       if arg is not None:
         arg = asyncio.get_event_loop().run_until_complete(

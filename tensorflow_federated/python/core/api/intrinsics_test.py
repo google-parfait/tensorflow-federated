@@ -752,7 +752,7 @@ class IntrinsicsTest(parameterized.TestCase):
         str(foo3.type_signature), '({int32*}@CLIENTS -> {int32}@CLIENTS)')
 
   @core_test.executors(
-      ('local', executor_stacks.create_local_executor()),)
+      ('local', executor_stacks.local_executor_factory()),)
   def test_federated_zip_with_twenty_elements_local_executor(self):
 
     n = 20

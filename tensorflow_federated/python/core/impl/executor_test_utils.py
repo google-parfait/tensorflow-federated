@@ -19,6 +19,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
@@ -31,7 +32,9 @@ def _dummy_tf_computation():
 
 def test_runs_tf(test_obj, executor):
   """Tests `executor` can run a minimal TF computation."""
-  set_default_executor.set_default_executor(executor)
+  py_typecheck.check_type(executor, executor_base.Executor)
+  set_default_executor.set_default_executor(
+      executor_factory.ExecutorFactoryImpl(lambda _: executor))
   test_obj.assertEqual(_dummy_tf_computation(), 10)
 
 

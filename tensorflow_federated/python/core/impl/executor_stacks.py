@@ -19,6 +19,7 @@ from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
+from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import sizing_executor
@@ -145,19 +146,27 @@ def _create_full_stack(num_clients, max_fanout, stack_func, clients_per_thread):
     return _aggregate_stacks(executors, max_fanout)
 
 
-def _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
-                                             stack_func, clients_per_thread):
+def _create_explicit_cardinality_factory(
+    num_clients, max_fanout, stack_func,
+    clients_per_thread) -> executor_factory.ExecutorFactory:
   """Creates executor function with fixed cardinality."""
 
-  def _return_executor(_):
+  def _return_executor(cardinalities):
+    n_requested_clients = cardinalities.get(placement_literals.CLIENTS)
+    if n_requested_clients is not None and n_requested_clients != num_clients:
+      raise ValueError('Expected to construct an executor with {} clients, '
+                       'but executor is hardcoded for {}'.format(
+                           n_requested_clients, num_clients))
     return _create_full_stack(num_clients, max_fanout, stack_func,
                               clients_per_thread)
 
-  return _return_executor
+  return executor_factory.ExecutorFactoryImpl(
+      executor_stack_fn=_return_executor)
 
 
-def _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
-                                             clients_per_thread):
+def _create_inferred_cardinality_factory(
+    max_fanout, stack_func,
+    clients_per_thread) -> executor_factory.ExecutorFactory:
   """Creates executor function with variable cardinality."""
 
   def _create_variable_clients_executors(cardinalities):
@@ -176,19 +185,21 @@ def _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
         cardinalities.get(placement_literals.CLIENTS, 0), max_fanout,
         stack_func, clients_per_thread)
 
-  return _create_variable_clients_executors
+  return executor_factory.ExecutorFactoryImpl(
+      executor_stack_fn=_create_variable_clients_executors)
 
 
-def create_local_executor(num_clients=None,
-                          max_fanout=100,
-                          clients_per_thread=1):
-  """Constructs an executor to execute computations on the local machine.
+def local_executor_factory(
+    num_clients=None,
+    max_fanout=100,
+    clients_per_thread=1) -> executor_factory.ExecutorFactory:
+  """Constructs an executor factory to execute computations locally.
 
   NOTE: The `tff.secure_sum()` intrinsic is not implemented by this executor.
 
   Args:
     num_clients: The number of clients. If specified, the executor factory
-      function returned by `create_local_executor` will be configured to have
+      function returned by `local_executor_factory` will be configured to have
       exactly `num_clients` clients. If unspecified (`None`), then the function
       returned will attempt to infer cardinalities of all placements for which
       it is passed values.
@@ -201,14 +212,12 @@ def create_local_executor(num_clients=None,
       light.
 
   Returns:
-    An executor factory function which returns a `tff.framework.Executor` upon
-    invocation with a dict mapping placements to positive integers.
+    An instance of `executor_factory.ExecutorFactory` encapsulating the
+    executor construction logic specified above.
 
   Raises:
     ValueError: If the number of clients is specified and not one or larger.
   """
-  # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
-
   stack_func = _create_federated_stack
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
@@ -217,22 +226,22 @@ def create_local_executor(num_clients=None,
     if num_clients <= 0:
       raise ValueError('If specifying `num_clients`, cardinality must be at '
                        'least one; you have passed {}.'.format(num_clients))
-    return _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
-                                                    stack_func,
-                                                    clients_per_thread)
+    return _create_explicit_cardinality_factory(num_clients, max_fanout,
+                                                stack_func, clients_per_thread)
   else:
-    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
-                                                    clients_per_thread)
+    return _create_inferred_cardinality_factory(max_fanout, stack_func,
+                                                clients_per_thread)
 
 
-def create_sizing_executor(num_clients=None,
-                           max_fanout=100,
-                           clients_per_thread=1):
+def sizing_executor_factory(
+    num_clients=None,
+    max_fanout=100,
+    clients_per_thread=1) -> executor_factory.ExecutorFactory:
   """Constructs an executor to execute computations on the local machine with sizing.
 
   Args:
     num_clients: The number of clients. If specified, the executor factory
-      function returned by `create_local_executor` will be configured to have
+      function returned by `sizing_executor_factory` will be configured to have
       exactly `num_clients` clients. If unspecified (`None`), then the function
       returned will attempt to infer cardinalities of all placements for which
       it is passed values.
@@ -245,15 +254,12 @@ def create_sizing_executor(num_clients=None,
       light.
 
   Returns:
-    An executor factory function which returns a
-    `tff.framework.Executor` upon invocation with a dict mapping placements
-    to positive integers.
+    An instance of `executor_factory.ExecutorFactory` encapsulating the
+    executor construction logic specified above.
 
   Raises:
     ValueError: If the number of clients is specified and not one or larger.
   """
-  # TODO(b/140112504): Follow up with an ExecutorFactory abstract class.
-
   stack_func = _create_sizing_stack
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
@@ -262,15 +268,16 @@ def create_sizing_executor(num_clients=None,
     if num_clients <= 0:
       raise ValueError('If specifying `num_clients`, cardinality must be at '
                        'least one; you have passed {}.'.format(num_clients))
-    return _create_explicit_cardinality_executor_fn(num_clients, max_fanout,
-                                                    stack_func,
-                                                    clients_per_thread)
+    return _create_explicit_cardinality_factory(num_clients, max_fanout,
+                                                stack_func, clients_per_thread)
   else:
-    return _create_inferred_cardinality_executor_fn(max_fanout, stack_func,
-                                                    clients_per_thread)
+    return _create_inferred_cardinality_factory(max_fanout, stack_func,
+                                                clients_per_thread)
 
 
-def create_worker_pool_executor(executors, max_fanout=100):
+def worker_pool_executor_factory(executors,
+                                 max_fanout=100
+                                ) -> executor_factory.ExecutorFactory:
   """Create an executor backed by a worker pool.
 
   Args:
@@ -283,7 +290,8 @@ def create_worker_pool_executor(executors, max_fanout=100):
       order of `log(num_clients) / log(max_fanout)`.
 
   Returns:
-    An instance of `tff.framework.Executor`.
+    An instance of `executor_factory.ExecutorFactory` encapsulating the
+    executor construction logic specified above.
   """
   py_typecheck.check_type(executors, list)
   py_typecheck.check_type(max_fanout, int)
@@ -292,4 +300,9 @@ def create_worker_pool_executor(executors, max_fanout=100):
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   executors = [_complete_stack(e) for e in executors]
-  return _aggregate_stacks(executors, max_fanout)
+
+  def _stack_fn(cardinalities):
+    del cardinalities  # Unused
+    return _aggregate_stacks(executors, max_fanout)
+
+  return executor_factory.ExecutorFactoryImpl(executor_stack_fn=_stack_fn)

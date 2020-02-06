@@ -36,7 +36,7 @@ flags.DEFINE_integer('fanout', '100',
 def main(argv):
   del argv
   tf.compat.v1.enable_v2_behavior()
-  executor_factory = framework.create_local_executor(
+  executor_factory = framework.local_executor_factory(
       num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
   executor = executor_factory(None)
   if FLAGS.private_key:

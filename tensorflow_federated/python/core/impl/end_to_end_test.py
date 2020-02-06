@@ -20,9 +20,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_impl
-from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
 class IntegrationTest(test.TestCase):
@@ -119,7 +117,4 @@ class IntegrationTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  # Use the local executor.
-  set_default_executor.set_default_executor(
-      executor_stacks.create_local_executor())
   test.main()

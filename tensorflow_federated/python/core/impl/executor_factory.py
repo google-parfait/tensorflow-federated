@@ -91,7 +91,7 @@ class ExecutorFactoryImpl(ExecutorFactory):
     self._executors = {}
 
   def _get_hashable_key(self, cardinalities: CardinalitiesType):
-    return tuple(sorted(cardinalities.items()))
+    return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
 
   def create_executor(
       self, cardinalities: CardinalitiesType) -> executor_base.Executor:

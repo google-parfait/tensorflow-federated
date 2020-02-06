@@ -52,13 +52,13 @@ def executors_benchmark(fn):
     # TODO(b/148233458): Re-enable reference executor benchmarks when possible.
     tff.framework.set_default_executor()
     fn(self, "local executor")
-    tff.framework.set_default_executor(tff.framework.create_sizing_executor())
+    tff.framework.set_default_executor(tff.framework.sizing_executor_factory())
     fn(self, "sizing executor")
     tff.framework.set_default_executor(
-        tff.framework.create_local_executor(clients_per_thread=2))
+        tff.framework.local_executor_factory(clients_per_thread=2))
     fn(self, "local executor, 2 clients per worker")
     tff.framework.set_default_executor(
-        tff.framework.create_local_executor(clients_per_thread=4))
+        tff.framework.local_executor_factory(clients_per_thread=4))
     fn(self, "local executor, 4 clients per worker")
     tff.framework.set_default_executor()
 

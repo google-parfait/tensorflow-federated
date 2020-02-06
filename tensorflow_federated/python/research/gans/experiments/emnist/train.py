@@ -401,7 +401,7 @@ def main(argv):
     print('{} : {} '.format(k, v))
 
   tff.framework.set_default_executor(
-      tff.framework.create_local_executor(
+      tff.framework.local_executor_factory(
           num_clients=FLAGS.num_clients_per_round))
 
   # Trained classifier model.

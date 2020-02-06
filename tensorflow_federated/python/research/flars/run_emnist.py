@@ -162,7 +162,7 @@ def _federated_averaging_training_loop(model_fn,
     # Reset the executor to clear the cache, and clear the default graph to
     # garbage collect tf.Functions that will no longer be used.
     tff.framework.set_default_executor(
-        tff.framework.create_local_executor(max_fanout=25))
+        tff.framework.local_executor_factory(max_fanout=25))
     tf.compat.v1.reset_default_graph()
 
     round_start_time = time.time()

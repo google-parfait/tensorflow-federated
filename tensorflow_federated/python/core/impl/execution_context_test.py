@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 
 def _test_ctx(num_clients=None):
   return execution_context.ExecutionContext(
-      executor_stacks.create_local_executor(num_clients))
+      executor_stacks.local_executor_factory(num_clients))
 
 
 class RetryableErrorTest(absltest.TestCase):

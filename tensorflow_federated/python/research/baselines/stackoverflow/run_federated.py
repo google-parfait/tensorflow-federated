@@ -78,7 +78,7 @@ FLAGS = flags.FLAGS
 def run_experiment():
   """Runs the training experiment."""
   tff.framework.set_default_executor(
-      tff.framework.create_local_executor(max_fanout=10))
+      tff.framework.local_executor_factory(max_fanout=10))
 
   def _layer_fn():
     layer_type = tf.keras.layers.LSTM if FLAGS.lstm else tf.keras.layers.GRU
