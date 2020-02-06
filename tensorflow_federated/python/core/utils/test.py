@@ -19,8 +19,11 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl import executor_stacks
-from tensorflow_federated.python.core.impl.wrappers import set_default_executor
+from tensorflow_federated.python.core.impl import reference_executor
 
 tf.compat.v1.enable_v2_behavior()  # Required to create a local executor.
 
@@ -108,17 +111,27 @@ def executors(*args):
   """
 
   def executor_decorator(fn):
+    """Create a wrapped function with custom execution contexts."""
 
     def wrapped_fn(self, executor):
-      set_default_executor.set_default_executor(executor)
-      fn(self)
+      """Install a particular execution context before running `fn`."""
+      # Executors inheriting from `executor_base.Executor` will need to be
+      # wrapped in an execution context. The `ReferenceExecutor` is special and
+      # inherits from `context_base.Context`, so we don't wrap.
+      if not isinstance(executor, context_base.Context):
+        context = execution_context.ExecutionContext(executor)
+      else:
+        context = executor
+      with context_stack_impl.context_stack.install(context):
+        fn(self)
 
     return wrapped_fn
 
   def decorator(fn, named_executors=None):
+    """Construct a custom `parameterized.named_parameter` decorator for `fn`."""
     if not named_executors:
       named_executors = [
-          ('reference', None),
+          ('reference', reference_executor.ReferenceExecutor(compiler=None)),
           ('local', executor_stacks.create_local_executor()),
       ]
     named_parameters_decorator = parameterized.named_parameters(named_executors)

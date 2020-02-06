@@ -147,8 +147,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:context_base",
+        "//tensorflow_federated/python/core/impl:context_stack_impl",
+        "//tensorflow_federated/python/core/impl:execution_context",
         "//tensorflow_federated/python/core/impl:executor_stacks",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
+        "//tensorflow_federated/python/core/impl:reference_executor",
     ],
 )
 

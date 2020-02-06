@@ -504,7 +504,10 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
     self.assertEqual(foo(), 10)
 
-  @core_test.executors
+  # TODO(b/131363314): The reference executor should support generating and
+  # returning infinite datasets
+  @core_test.executors(
+      ('local', executor_stacks.create_local_executor(1)),)
   def test_computation_called_once_is_invoked_once(self):
 
     @computations.tf_computation
