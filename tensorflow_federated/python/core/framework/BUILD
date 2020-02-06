@@ -7,7 +7,6 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
-        "//tensorflow_federated/python/core/impl:caching_executor",
         "//tensorflow_federated/python/core/impl:composite_executor",
         "//tensorflow_federated/python/core/impl:concurrent_executor",
         "//tensorflow_federated/python/core/impl:context_base",
@@ -29,6 +28,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",

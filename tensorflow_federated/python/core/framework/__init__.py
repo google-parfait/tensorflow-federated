@@ -14,7 +14,6 @@
 # limitations under the License.
 """Interfaces for extensions, selectively lifted out of `impl`."""
 
-from tensorflow_federated.python.core.impl.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.compiler.building_block_analysis import is_called_intrinsic
 from tensorflow_federated.python.core.impl.compiler.building_block_factory import create_federated_map_all_equal
 from tensorflow_federated.python.core.impl.compiler.building_block_factory import create_federated_map_or_apply
@@ -51,6 +50,7 @@ from tensorflow_federated.python.core.impl.executor_service import ExecutorServi
 from tensorflow_federated.python.core.impl.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks import sizing_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_executor_factory
+from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor

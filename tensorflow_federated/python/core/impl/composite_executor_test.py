@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import caching_executor
 from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl import eager_executor
@@ -31,6 +30,7 @@ from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 

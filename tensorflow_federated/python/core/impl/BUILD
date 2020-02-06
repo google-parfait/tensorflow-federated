@@ -44,41 +44,6 @@ py_test(
 )
 
 py_library(
-    name = "caching_executor",
-    srcs = ["caching_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":computation_impl",
-        ":type_utils",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-    ],
-)
-
-py_test(
-    name = "caching_executor_test",
-    size = "small",
-    srcs = ["caching_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":caching_executor",
-        ":computation_impl",
-        ":eager_executor",
-        ":executor_test_utils",
-        ":lambda_executor",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-    ],
-)
-
-py_library(
     name = "compiled_computation_transforms",
     srcs = ["compiled_computation_transforms.py"],
     srcs_version = "PY3",
@@ -187,7 +152,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":composite_executor",
         ":concurrent_executor",
         ":eager_executor",
@@ -200,6 +164,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
@@ -252,11 +217,11 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":concurrent_executor",
         ":eager_executor",
         ":executor_factory",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
@@ -501,7 +466,6 @@ py_library(
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":composite_executor",
         ":concurrent_executor",
         ":eager_executor",
@@ -511,6 +475,7 @@ py_library(
         ":sizing_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
     ],
 )
@@ -558,13 +523,13 @@ py_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":eager_executor",
         ":lambda_executor",
         ":sizing_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
     ],
 )
 
