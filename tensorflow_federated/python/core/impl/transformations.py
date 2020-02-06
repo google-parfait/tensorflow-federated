@@ -1152,8 +1152,12 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
           [(referred.parameter_name, comp.argument)], referred.result)
       symbol_tree.update_payload_with_name(comp.function.name)
     else:
-      transformed_comp = building_blocks.Block(
-          [(comp.function.parameter_name, comp.argument)], comp.function.result)
+      if comp.function.parameter_type is not None:
+        transformed_comp = building_blocks.Block(
+            [(comp.function.parameter_name, comp.argument)],
+            comp.function.result)
+      else:
+        transformed_comp = comp.function.result
     return transformed_comp, True
 
 

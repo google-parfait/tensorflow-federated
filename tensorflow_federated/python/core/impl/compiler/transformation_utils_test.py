@@ -1693,6 +1693,13 @@ class HasUniqueNamesTest(absltest.TestCase):
     lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
     self.assertTrue(transformation_utils.has_unique_names(lambda_1))
 
+  def test_returns_false_on_multiple_no_arg_lambdas(self):
+    data = building_blocks.Data('x', tf.int32)
+    lambda_1 = building_blocks.Lambda(None, None, data)
+    lambda_2 = building_blocks.Lambda(None, None, data)
+    tup = building_blocks.Tuple([lambda_1, lambda_2])
+    self.assertTrue(transformation_utils.has_unique_names(tup))
+
   def test_returns_false_on_nested_lambdas_with_same_variable_name(self):
     ref_to_x = building_blocks.Reference('x', tf.int32)
     lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)

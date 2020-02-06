@@ -1143,6 +1143,8 @@ def has_unique_names(comp):
             unique[0] = False
           names.add(name)
       elif isinstance(comp, building_blocks.Lambda):
+        if comp.parameter_type is None:
+          return comp, False
         if comp.parameter_name in names:
           unique[0] = False
         names.add(comp.parameter_name)
