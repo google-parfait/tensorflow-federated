@@ -47,6 +47,7 @@ from tensorflow_federated.python.core.impl.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.eager_executor import EagerExecutor
 from tensorflow_federated.python.core.impl.executor_factory import ExecutorFactory
+from tensorflow_federated.python.core.impl.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks import sizing_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_executor_factory
