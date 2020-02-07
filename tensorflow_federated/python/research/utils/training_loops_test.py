@@ -32,9 +32,12 @@ def _create_random_batch():
 
 def _model_fn():
   keras_model = tff.simulation.models.mnist.create_keras_model(
-      compile_model=True)
+      compile_model=False)
   batch = _create_random_batch()
-  return tff.learning.from_compiled_keras_model(keras_model, batch)
+  return tff.learning.from_keras_model(
+      keras_model,
+      dummy_batch=batch,
+      loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
 class TrainingLoopsTest(tf.test.TestCase):
@@ -61,10 +64,12 @@ class TrainingLoopsTest(tf.test.TestCase):
       tff.learning.assign_weights_to_keras_model(keras_model, state.model)
       loss_list.append(keras_model.test_on_batch(batch.x, batch.y))
 
+    client_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
     training_loops.federated_averaging_training_loop(
         _model_fn,
+        client_optimizer_fn,
         server_optimizer_fn,
         client_datasets_fn,
         total_rounds=3,

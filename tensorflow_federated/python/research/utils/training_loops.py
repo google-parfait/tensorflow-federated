@@ -21,6 +21,7 @@ import tensorflow_federated as tff
 
 
 def federated_averaging_training_loop(model_fn,
+                                      client_optimizer_fn,
                                       server_optimizer_fn,
                                       client_datasets_fn,
                                       total_rounds=10,
@@ -33,6 +34,8 @@ def federated_averaging_training_loop(model_fn,
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
+    client_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`.
     client_datasets_fn: A function that takes the round number, and returns a
@@ -58,6 +61,7 @@ def federated_averaging_training_loop(model_fn,
 
   iterative_process = tff.learning.build_federated_averaging_process(
       model_fn,
+      client_optimizer_fn=client_optimizer_fn,
       server_optimizer_fn=server_optimizer_fn,
       client_weight_fn=client_weight_fn,
       stateful_model_broadcast_fn=stateful_model_broadcast_fn,
