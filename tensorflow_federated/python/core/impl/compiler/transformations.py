@@ -18,6 +18,7 @@ from typing import Mapping
 from absl import logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
@@ -502,3 +503,86 @@ def remove_duplicate_called_graphs(comp):
                                               transformed_result)
     tf_generated, _ = create_tensorflow_representing_block(packed_into_block)
   return tf_generated, True
+
+
+class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
+  """Deduplicates before applying an interim transform, then repacks."""
+
+  def __init__(self, comp: building_blocks.ComputationBuildingBlock,
+               interim_transform_spec: transformation_utils.TransformSpec):
+    """Constructs a new instance.
+
+    Args:
+      comp: Instance of `building_blocks.ComputationBuildingBlock` on which to
+        apply the transform.
+      interim_transform_spec: Instance of `transformation_utils.TransformSpec`
+        whose `transform` method must take a `building_blocks.Tuple` and return
+        a named tuple type, to be applied after deduplication.
+
+    Raises:
+      TypeError: If types do not match.
+      ValueError: If the `uri` has an unexpected value.
+    """
+    super().__init__()
+    py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(interim_transform_spec,
+                            transformation_utils.TransformSpec)
+    self._name_generator = building_block_factory.unique_name_generator(comp)
+    self._interim_transform = interim_transform_spec
+
+  def should_transform(self, comp):
+    return self._interim_transform.should_transform(comp) and isinstance(
+        comp, building_blocks.Tuple)
+
+  def _construct_deduped_tuple_and_selection_map(self, comp):
+    deduped_tuple = []
+    selection_map = []
+    for called_intrinsic in comp:
+      index_in_deduped_tuple = None
+      for idx, previous_called_intrinsic in enumerate(deduped_tuple):
+        if tree_analysis.trees_equal(called_intrinsic,
+                                     previous_called_intrinsic):
+          index_in_deduped_tuple = idx
+      if index_in_deduped_tuple is None:
+        deduped_tuple.append(called_intrinsic)
+        index_in_deduped_tuple = len(deduped_tuple) - 1
+      selection_map.append(index_in_deduped_tuple)
+    return deduped_tuple, selection_map
+
+  def transform(self, comp):
+
+    if not self.should_transform(comp):
+      return comp, False
+
+    deduped_tuple, selection_map = self._construct_deduped_tuple_and_selection_map(
+        comp)
+    transform_applied, _ = self._interim_transform.transform(
+        building_blocks.Tuple(deduped_tuple))
+    if not isinstance(transform_applied.type_signature,
+                      computation_types.NamedTupleType):
+      raise TypeError
+    if len(comp) == len(deduped_tuple):
+      # Fall back if no optimization is made.
+      return transform_applied, True
+    lam_arg = building_blocks.Reference(
+        next(self._name_generator), transform_applied.type_signature)
+    replacement_tuple = []
+    for i in selection_map:
+      selected = building_blocks.Selection(lam_arg, index=i)
+      replacement_tuple.append(selected)
+    tup = building_blocks.Tuple(replacement_tuple)
+    lam = building_blocks.Lambda(lam_arg.name, lam_arg.type_signature, tup)
+    return building_blocks.Call(lam, transform_applied), True
+
+
+def dedupe_and_merge_tuple_intrinsics(comp, uri):
+  r"""Merges tuples of called intrinsics into one called intrinsic."""
+  transform_spec = transformations.MergeTupleIntrinsics(comp, uri)
+  dedupe_and_merger = RemoveDuplicatesAndApplyTransform(comp, transform_spec)
+
+  def _transform(comp):
+    if dedupe_and_merger.should_transform(comp):
+      return dedupe_and_merger.transform(comp)
+    return comp, False
+
+  return transformation_utils.transform_postorder(comp, _transform)

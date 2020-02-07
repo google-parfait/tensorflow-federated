@@ -20,8 +20,10 @@ from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
@@ -562,6 +564,218 @@ class DeduplicateCalledGraphsTest(common_test.TestCase):
     second_factor = (tuple_ops_with_3_layers - tuple_ops_with_2_layers) / (
         tuple_ops_with_2_layers - tuple_ops_with_1_layers)
     self.assertEqual(first_factor, second_factor)
+
+
+class DedupeAndMergeTupleIntrinsicsTest(common_test.TestCase):
+
+  def test_noops_in_case_of_distinct_maps(self):
+    called_intrinsic1 = test_utils.create_dummy_called_federated_map(
+        parameter_name='a', parameter_type=tf.int32)
+    called_intrinsic2 = test_utils.create_dummy_called_federated_map(
+        parameter_name='a', parameter_type=tf.float32)
+    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    comp = calls
+
+    deduped_and_merged_comp, deduped_modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_MAP.uri)
+    directly_merged_comp, directly_modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_MAP.uri)
+
+    self.assertTrue(deduped_modified)
+    self.assertTrue(directly_modified)
+    self.assertEqual(deduped_and_merged_comp.compact_representation(),
+                     directly_merged_comp.compact_representation())
+
+  def test_noops_in_case_of_distinct_applies(self):
+    called_intrinsic1 = test_utils.create_dummy_called_federated_apply(
+        parameter_name='a', parameter_type=tf.int32)
+    called_intrinsic2 = test_utils.create_dummy_called_federated_apply(
+        parameter_name='a', parameter_type=tf.float32)
+    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    comp = calls
+
+    deduped_and_merged_comp, deduped_modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_APPLY.uri)
+    directly_merged_comp, directly_modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_APPLY.uri)
+
+    self.assertTrue(deduped_modified)
+    self.assertTrue(directly_modified)
+    self.assertEqual(deduped_and_merged_comp.compact_representation(),
+                     directly_merged_comp.compact_representation())
+
+  def test_constructs_broadcast_of_tuple_with_one_element(self):
+    called_intrinsic = test_utils.create_dummy_called_federated_broadcast()
+    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
+
+    federated_broadcast = []
+
+    def _find_federated_broadcast(comp):
+      if building_block_analysis.is_called_intrinsic(
+          comp, intrinsic_defs.FEDERATED_BROADCAST.uri):
+        federated_broadcast.append(comp)
+      return comp, False
+
+    transformation_utils.transform_postorder(transformed_comp,
+                                             _find_federated_broadcast)
+
+    self.assertTrue(modified)
+    self.assertEqual(comp.compact_representation(),
+                     '<federated_broadcast(data),federated_broadcast(data)>')
+
+    self.assertLen(federated_broadcast, 1)
+    self.assertLen(federated_broadcast[0].type_signature.member, 1)
+    self.assertEqual(
+        transformed_comp.formatted_representation(), '(_var1 -> <\n'
+        '  _var1[0],\n'
+        '  _var1[0]\n'
+        '>)((x -> <\n'
+        '  x[0]\n'
+        '>)((let\n'
+        '  value=federated_broadcast(federated_apply(<\n'
+        '    (arg -> <\n'
+        '      arg\n'
+        '    >),\n'
+        '    <\n'
+        '      data\n'
+        '    >[0]\n'
+        '  >))\n'
+        ' in <\n'
+        '  federated_map_all_equal(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >)\n'
+        '>)))')
+
+  def test_dedupe_noops_in_case_of_distinct_broadcasts(self):
+    called_intrinsic1 = test_utils.create_dummy_called_federated_broadcast(
+        tf.int32)
+    called_intrinsic2 = test_utils.create_dummy_called_federated_broadcast(
+        tf.float32)
+    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    comp = calls
+
+    deduped_and_merged_comp, deduped_modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
+
+    directly_merged_comp, directly_modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
+
+    self.assertTrue(deduped_modified)
+    self.assertTrue(directly_modified)
+    self.assertEqual(deduped_and_merged_comp.compact_representation(),
+                     directly_merged_comp.compact_representation())
+
+  def test_constructs_aggregate_of_tuple_with_one_element(self):
+    called_intrinsic = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+    federated_agg = []
+
+    def _find_federated_aggregate(comp):
+      if building_block_analysis.is_called_intrinsic(
+          comp, intrinsic_defs.FEDERATED_AGGREGATE.uri):
+        federated_agg.append(comp)
+      return comp, False
+
+    transformation_utils.transform_postorder(transformed_comp,
+                                             _find_federated_aggregate)
+    self.assertTrue(modified)
+    self.assertLen(federated_agg, 1)
+    self.assertLen(federated_agg[0].type_signature.member, 1)
+    self.assertEqual(
+        transformed_comp.formatted_representation(), '(_var1 -> <\n'
+        '  _var1[0],\n'
+        '  _var1[0]\n'
+        '>)((x -> <\n'
+        '  x[0]\n'
+        '>)((let\n'
+        '  value=federated_aggregate(<\n'
+        '    federated_map(<\n'
+        '      (arg -> <\n'
+        '        arg\n'
+        '      >),\n'
+        '      <\n'
+        '        data\n'
+        '      >[0]\n'
+        '    >),\n'
+        '    <\n'
+        '      data\n'
+        '    >,\n'
+        '    (let\n'
+        '      _var1=<\n'
+        '        (a -> data)\n'
+        '      >\n'
+        '     in (_var2 -> <\n'
+        '      _var1[0](<\n'
+        '        <\n'
+        '          _var2[0][0],\n'
+        '          _var2[1][0]\n'
+        '        >\n'
+        '      >[0])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var3=<\n'
+        '        (b -> data)\n'
+        '      >\n'
+        '     in (_var4 -> <\n'
+        '      _var3[0](<\n'
+        '        <\n'
+        '          _var4[0][0],\n'
+        '          _var4[1][0]\n'
+        '        >\n'
+        '      >[0])\n'
+        '    >)),\n'
+        '    (let\n'
+        '      _var5=<\n'
+        '        (c -> data)\n'
+        '      >\n'
+        '     in (_var6 -> <\n'
+        '      _var5[0](_var6[0])\n'
+        '    >))\n'
+        '  >)\n'
+        ' in <\n'
+        '  federated_apply(<\n'
+        '    (arg -> arg[0]),\n'
+        '    value\n'
+        '  >)\n'
+        '>)))')
+
+  def test_identical_to_merge_tuple_intrinsics_with_different_intrinsics(self):
+    called_intrinsic1 = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c',
+        value_type=tf.int32)
+    # These compare as not equal.
+    called_intrinsic2 = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='x',
+        merge_parameter_name='y',
+        report_parameter_name='z',
+        value_type=tf.float32)
+    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    comp = calls
+
+    deduped_and_merged_comp, deduped_modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+    directly_merged_comp, directly_modified = transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+    self.assertTrue(deduped_modified)
+    self.assertTrue(directly_modified)
+    self.assertEqual(deduped_and_merged_comp.formatted_representation(),
+                     directly_merged_comp.formatted_representation())
 
 
 if __name__ == '__main__':

@@ -223,6 +223,7 @@ py_library(
         ":transformation_utils",
         ":tree_analysis",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:compiled_computation_transforms",
         "//tensorflow_federated/python/core/impl:transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
@@ -235,8 +236,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":building_block_analysis",
         ":building_block_factory",
         ":building_blocks",
+        ":intrinsic_defs",
         ":test_utils",
         ":transformation_utils",
         ":transformations",

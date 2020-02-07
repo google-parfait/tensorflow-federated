@@ -459,7 +459,7 @@ def _force_align_intrinsics_to_top_level_lambda(comp, uri):
       comp, _ = _group_by_intrinsics_in_top_level_lambda(comp)
     modified = False
     for intrinsic_uri in uri:
-      comp, transform_modified = transformations.merge_tuple_intrinsics(
+      comp, transform_modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
           comp, intrinsic_uri)
       if transform_modified:
         # Required because merging called intrinsics invokes building block

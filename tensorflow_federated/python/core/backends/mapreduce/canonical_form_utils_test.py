@@ -553,17 +553,20 @@ class GetTypeInfoTest(common_test.TestCase):
     # this test is not to assert that this value returned by
     # `canonical_form_utils._get_type_info`, but instead to act as a signal when
     # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
-    # into a `tff.backends.mapreduce.CanonicalForm`.
+    # into a `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs
+    # to be updated, one recommendation is to print k=\'v\' while iterating
+    # over the k-v pairs of the ordereddict.
     # pyformat: disable
+
     expected = collections.OrderedDict(
         initialize_type='( -> <int32,int32>)',
         s1_type='<int32,int32>@SERVER',
         c1_type='{int32}@CLIENTS',
-        prepare_type='(<int32,int32> -> <<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>)',
-        s2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
-        c2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@CLIENTS',
-        c3_type='{<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>>}@CLIENTS',
-        work_type='(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>)',
+        prepare_type='(<int32,int32> -> <<int32,int32>>)',
+        s2_type='<<int32,int32>>@SERVER',
+        c2_type='<<int32,int32>>@CLIENTS',
+        c3_type='{<int32,<<int32,int32>>>}@CLIENTS',
+        work_type='(<int32,<<int32,int32>>> -> <<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>)',
         c4_type='{<<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>}@CLIENTS',
         c5_type='{<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>}@CLIENTS',
         c6_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
@@ -582,7 +585,7 @@ class GetTypeInfoTest(common_test.TestCase):
         s7_type='<<int32,int32>,<>>@SERVER',
         s8_type='<int32,int32>@SERVER',
         s9_type='<>@SERVER',
-    )
+        )
     # pyformat: enable
 
     items = zip(actual.items(), expected.items())
@@ -623,17 +626,20 @@ class GetTypeInfoTest(common_test.TestCase):
     # this test is not to assert that this value returned by
     # `canonical_form_utils._get_type_info`, but instead to act as a signal when
     # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
-    # into a `tff.backends.mapreduce.CanonicalForm`.
+    # into a `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs
+    # to be updated, one recommendation is to print k=\'v\' while iterating
+    # over the k-v pairs of the ordereddict.
     # pyformat: disable
+
     expected = collections.OrderedDict(
         initialize_type='( -> int32)',
         s1_type='int32@SERVER',
         c1_type='{int32}@CLIENTS',
-        prepare_type='(int32 -> <int32,int32,int32>)',
-        s2_type='<int32,int32,int32>@SERVER',
-        c2_type='<int32,int32,int32>@CLIENTS',
-        c3_type='{<int32,<int32,int32,int32>>}@CLIENTS',
-        work_type='(<int32,<int32,int32,int32>> -> <<<int32,int32>,<>>,<>>)',
+        prepare_type='(int32 -> <int32>)',
+        s2_type='<int32>@SERVER',
+        c2_type='<int32>@CLIENTS',
+        c3_type='{<int32,<int32>>}@CLIENTS',
+        work_type='(<int32,<int32>> -> <<<int32,int32>,<>>,<>>)',
         c4_type='{<<<int32,int32>,<>>,<>>}@CLIENTS',
         c5_type='{<<int32,int32>,<>>}@CLIENTS',
         c6_type='{<int32,int32>}@CLIENTS',

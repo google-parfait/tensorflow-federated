@@ -99,7 +99,8 @@ def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
 
 def create_dummy_called_federated_aggregate(accumulate_parameter_name,
                                             merge_parameter_name,
-                                            report_parameter_name):
+                                            report_parameter_name,
+                                            value_type=tf.int32):
   r"""Returns a dummy called federated aggregate.
 
                       Call
@@ -114,11 +115,14 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
     accumulate_parameter_name: The name of the accumulate parameter.
     merge_parameter_name: The name of the merge parameter.
     report_parameter_name: The name of the report parameter.
+    value_type: The TFF type of the value to be aggregated, placed at
+      CLIENTS.
   """
-  value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  value = building_blocks.Data('data', value_type)
+  federated_value_type = computation_types.FederatedType(
+      value_type, placements.CLIENTS)
+  value = building_blocks.Data('data', federated_value_type)
   zero = building_blocks.Data('data', tf.float32)
-  accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
+  accumulate_type = computation_types.NamedTupleType((tf.float32, value_type))
   accumulate_result = building_blocks.Data('data', tf.float32)
   accumulate = building_blocks.Lambda(accumulate_parameter_name,
                                       accumulate_type, accumulate_result)
