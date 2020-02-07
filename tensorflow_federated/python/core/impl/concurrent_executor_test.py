@@ -58,6 +58,9 @@ class ConcurrentExecutorTest(absltest.TestCase):
       async def create_selection(self, source, index=None, name=None):
         raise NotImplementedError
 
+      def close(self):
+        pass
+
     def make_output():
       test_ex = FakeExecutor()
       executors = [

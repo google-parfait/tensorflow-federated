@@ -101,6 +101,9 @@ class TracingExecutor(executor_base.Executor):
                                        elements), wrapped_val.index))
     return wrapped_val
 
+  def close(self):
+    self._target.close()
+
   async def create_selection(self, source, index=None, name=None):
     target_val = await self._target.create_selection(
         source.value, index=index, name=name)

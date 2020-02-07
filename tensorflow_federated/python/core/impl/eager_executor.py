@@ -474,3 +474,6 @@ class EagerExecutor(executor_base.Executor):
           getattr(source.type_signature, str(name)))
     else:
       raise ValueError('Must specify either name or index.')
+
+  def close(self):
+    pass

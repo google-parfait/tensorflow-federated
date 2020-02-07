@@ -97,10 +97,11 @@ class Executor(object, metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
+  @abc.abstractmethod
   def close(self):
     """Release resources associated with this Executor, if any.
 
     If the executor has one or more target Executors, implementation of this
     method must close them.
     """
-    pass
+    raise NotImplementedError

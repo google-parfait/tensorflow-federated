@@ -110,6 +110,9 @@ class ExecutorServiceTest(absltest.TestCase):
       async def create_selection(self, source, index=None, name=None):
         raise NotImplementedError
 
+      def close(self):
+        pass
+
     ex = SlowExecutor()
     env = TestEnv(ex)
     self.assertEqual(ex.status, 'idle')

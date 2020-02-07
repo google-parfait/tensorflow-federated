@@ -125,6 +125,9 @@ class SizingExecutor(executor_base.Executor):
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val
 
+  def close(self):
+    self._target.close()
+
 
 class SizingExecutorValue(executor_value_base.ExecutorValue):
   """A value managed by `TracingExecutor`."""
