@@ -103,6 +103,19 @@ py_library(
     ],
 )
 
+py_test(
+    name = "server_utils_test",
+    size = "small",
+    srcs = ["server_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":server_utils",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/framework",
+    ],
+)
+
 py_library(
     name = "transforming_client_data",
     srcs = ["transforming_client_data.py"],
