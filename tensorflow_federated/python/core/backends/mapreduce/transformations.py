@@ -1006,12 +1006,12 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   happens on the clients, but the server-processing still declares some
   parameters placed at the clients.
 
-  `selected_index_lists` must be a list of lists. Each list represents
-  a sequence of selections to the parameter of `comp`. For example, if `var`
-  is the parameter of `comp`, the list `[0, 1, 0]` would represent the
-  selection `x[0][1][0]`. The elements of these inner lists must be integers;
-  that is, the selections must be positional. Notice we do not allow for tuples
-  due to automatic unwrapping.
+  `selected_index_lists` must be a list of lists. Each list represents a
+  sequence of selections to the parameter of `comp`. For example, if `x` is the
+  parameter of `comp`, the list `[0, 1, 0]` would represent the selection
+  `x[0][1][0]`. The elements of these inner lists must be integers; that is, the
+  selections must be positional. Notice we do not allow for tuples due to
+  automatic unwrapping.
 
   WARNING: Currently, this function must be called before we insert called
   graphs over references (see

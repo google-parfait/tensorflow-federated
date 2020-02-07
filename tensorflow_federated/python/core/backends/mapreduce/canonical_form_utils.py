@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -70,14 +71,18 @@ def get_iterative_process_for_canonical_form(cf):
     c3 = intrinsics.federated_zip([c1, c2])
     c4 = intrinsics.federated_map(cf.work, c3)
     c5 = c4[0]
-    c6 = c4[1]
-    s3 = intrinsics.federated_aggregate(c5, cf.zero(), cf.accumulate, cf.merge,
+    c6 = c5[0]
+    c7 = c5[1]
+    c8 = c4[1]
+    s3 = intrinsics.federated_aggregate(c6, cf.zero(), cf.accumulate, cf.merge,
                                         cf.report)
-    s4 = intrinsics.federated_zip([s1, s3])
-    s5 = intrinsics.federated_map(cf.update, s4)
-    s6 = s5[0]
-    s7 = s5[1]
-    return s6, s7, c6
+    s4 = intrinsics.secure_sum(c7, cf.bitwidth())
+    s5 = intrinsics.federated_zip([s3, s4])
+    s6 = intrinsics.federated_zip([s1, s5])
+    s7 = intrinsics.federated_map(cf.update, s6)
+    s8 = s7[0]
+    s9 = s7[1]
+    return s8, s9, c8
 
   return computation_utils.IterativeProcess(init_computation, next_computation)
 
@@ -250,7 +255,7 @@ def _create_before_and_after_broadcast_for_no_broadcast(tree):
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`. as a result, this function
+  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`. As a result, this function
   does not assert that there is no `intrinsic_defs.FEDERATED_BROADCAST` in
   `tree` and it does not assert that `tree` has the expected structure, the
   caller is expected to perform these checks before calling this function.
@@ -330,7 +335,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_AGGREGATE` in `tree`. as a result, this function
+  `intrinsic_defs.FEDERATED_AGGREGATE` in `tree`. As a result, this function
   does not assert that there is no `intrinsic_defs.FEDERATED_AGGREGATE` in
   `tree` and it does not assert that `tree` has the expected structure, the
   caller is expected to perform these checks before calling this function.
@@ -429,7 +434,7 @@ def _create_before_and_after_aggregate_for_no_secure_sum(tree):
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.SECURE_SUM` in `tree`. as a result, this function
+  `intrinsic_defs.SECURE_SUM` in `tree`. As a result, this function
   does not assert that there is no `intrinsic_defs.SECURE_SUM` in `tree` and it
   does not assert that `tree` has the expected structure, the caller is expected
   to perform these checks before calling this function.
@@ -480,7 +485,12 @@ def _create_before_and_after_aggregate_for_no_secure_sum(tree):
 
 
 def _extract_prepare(before_broadcast):
-  """Converts `before_broadcast` into `prepare`.
+  """extracts `prepare` from `before_broadcast`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` only. As a result, this function
+  does not assert that `before_broadcast` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
 
   Args:
     before_broadcast: The first result of splitting `next_comp` on
@@ -498,19 +508,24 @@ def _extract_prepare(before_broadcast):
   s1_to_s2_computation = (
       transformations.bind_single_selection_as_argument_to_lower_level_lambda(
           before_broadcast, s1_index_in_before_broadcast)).result.function
-  prepare = transformations.consolidate_and_extract_local_processing(
+  return transformations.consolidate_and_extract_local_processing(
       s1_to_s2_computation)
-  return prepare
 
 
 def _extract_work(before_aggregate, after_aggregate):
-  """Converts `before_aggregate` and `after_aggregate` to `work`.
+  """Extracts `work` from `before_aggregate` and `after_aggregate`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` only. As a result, this function
+  does not assert that `before_aggregate` or `after_aggregate` has the expected
+  structure, the caller is expected to perform these checks before calling this
+  function.
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
-      `intrinsic_defs.FEDERATED_AGGREGATE`.
+      aggregate intrinsics.
     after_aggregate: The second result of splitting `after_broadcast` on
-      `intrinsic_defs.FEDERATED_AGGREGATE`.
+      aggregate intrinsics.
 
   Returns:
     `work` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -525,36 +540,40 @@ def _extract_work(before_aggregate, after_aggregate):
       transformations.zip_selection_as_argument_to_lower_level_lambda(
           before_aggregate,
           c3_elements_in_before_aggregate_parameter).result.function)
-  c5_index_in_before_aggregate_result = 0
-  c3_to_c5_computation = transformations.select_output_from_lambda(
-      c3_to_before_aggregate_computation, c5_index_in_before_aggregate_result)
-  c6_index_in_after_aggregate_result = 2
-  after_aggregate_to_c6_computation = transformations.select_output_from_lambda(
-      after_aggregate, c6_index_in_after_aggregate_result)
+  c6_index_in_before_aggregate_result = [[0, 0], [1, 0]]
+  c3_to_c6_computation = transformations.select_output_from_lambda(
+      c3_to_before_aggregate_computation, c6_index_in_before_aggregate_result)
+  c8_index_in_after_aggregate_result = 2
+  after_aggregate_to_c8_computation = transformations.select_output_from_lambda(
+      after_aggregate, c8_index_in_after_aggregate_result)
   c3_elements_in_after_aggregate_parameter = [[0, 0, 1], [0, 1]]
-  c3_to_c6_computation = (
+  c3_to_c8_computation = (
       transformations.zip_selection_as_argument_to_lower_level_lambda(
-          after_aggregate_to_c6_computation,
+          after_aggregate_to_c8_computation,
           c3_elements_in_after_aggregate_parameter).result.function)
   c3_to_unzipped_c4_computation = transformations.concatenate_function_outputs(
-      c3_to_c5_computation, c3_to_c6_computation)
+      c3_to_c6_computation, c3_to_c8_computation)
   c3_to_c4_computation = building_blocks.Lambda(
       c3_to_unzipped_c4_computation.parameter_name,
       c3_to_unzipped_c4_computation.parameter_type,
       building_block_factory.create_federated_zip(
           c3_to_unzipped_c4_computation.result))
 
-  work = transformations.consolidate_and_extract_local_processing(
+  return transformations.consolidate_and_extract_local_processing(
       c3_to_c4_computation)
-  return work
 
 
-def _extract_aggregate_functions(before_aggregate):
-  """Converts `before_aggregate` to aggregation functions.
+def _extract_federated_aggregate_functions(before_aggregate):
+  """Extracts federated aggregate functions from `before_aggregate`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` only. As a result, this function
+  does not assert that `before_aggregate` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
-      `intrinsic_defs.FEDERATED_AGGREGATE`.
+      aggregate intrinsics.
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
@@ -565,18 +584,22 @@ def _extract_aggregate_functions(before_aggregate):
     transformations.CanonicalFormCompilationError: If we extract an ASTs of the
       wrong type.
   """
-  zero_index_in_before_aggregate_result = 1
+  federated_aggregate_index_in_before_aggregate_result = 0
+  federated_aggregate = transformations.select_output_from_lambda(
+      before_aggregate, federated_aggregate_index_in_before_aggregate_result)
+  zero_index_in_federated_aggregate_result = 1
   zero_tff = transformations.select_output_from_lambda(
-      before_aggregate, zero_index_in_before_aggregate_result).result
-  accumulate_index_in_before_aggregate_result = 2
+      federated_aggregate, zero_index_in_federated_aggregate_result).result
+  accumulate_index_in_federated_aggregate_result = 2
   accumulate_tff = transformations.select_output_from_lambda(
-      before_aggregate, accumulate_index_in_before_aggregate_result).result
-  merge_index_in_before_aggregate_result = 3
+      federated_aggregate,
+      accumulate_index_in_federated_aggregate_result).result
+  merge_index_in_federated_aggregate_result = 3
   merge_tff = transformations.select_output_from_lambda(
-      before_aggregate, merge_index_in_before_aggregate_result).result
-  report_index_in_before_aggregate_result = 4
+      federated_aggregate, merge_index_in_federated_aggregate_result).result
+  report_index_in_federated_aggregate_result = 4
   report_tff = transformations.select_output_from_lambda(
-      before_aggregate, report_index_in_before_aggregate_result).result
+      federated_aggregate, report_index_in_federated_aggregate_result).result
 
   zero = transformations.consolidate_and_extract_local_processing(zero_tff)
   accumulate = transformations.consolidate_and_extract_local_processing(
@@ -586,12 +609,47 @@ def _extract_aggregate_functions(before_aggregate):
   return zero, accumulate, merge, report
 
 
+def _extract_secure_sum_functions(before_aggregate):
+  """Extracts secure sum from `before_aggregate`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` only. As a result, this function
+  does not assert that `before_aggregate` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
+
+  Args:
+    before_aggregate: The first result of splitting `after_broadcast` on
+      aggregate intrinsics.
+
+  Returns:
+    `bitwidth` as specified by `canonical_form.CanonicalForm`, an instance of
+    `building_blocks.CompiledComputation`.
+
+  Raises:
+    transformations.CanonicalFormCompilationError: If we extract an AST of the
+      wrong type.
+  """
+  secure_sum_index_in_before_aggregate_result = 1
+  secure_sum = transformations.select_output_from_lambda(
+      before_aggregate, secure_sum_index_in_before_aggregate_result)
+  bitwidth_index_in_secure_sum_result = 1
+  bitwidth_tff = transformations.select_output_from_lambda(
+      secure_sum, bitwidth_index_in_secure_sum_result).result
+
+  return transformations.consolidate_and_extract_local_processing(bitwidth_tff)
+
+
 def _extract_update(after_aggregate):
-  """Converts `after_aggregate` to `update`.
+  """Extracts `update` from `after_aggregate`.
+
+  This function is intended to be used by
+  `get_canonical_form_for_iterative_process` only. As a result, this function
+  does not assert that `after_aggregate` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
 
   Args:
     after_aggregate: The second result of splitting `after_broadcast` on
-      `intrinsic_defs.FEDERATED_AGGREGATE`.
+      aggregate intrinsics.
 
   Returns:
     `update` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -601,21 +659,49 @@ def _extract_update(after_aggregate):
     transformations.CanonicalFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  s5_elements_in_after_aggregate_result = [0, 1]
-  s5_output_extracted = transformations.select_output_from_lambda(
-      after_aggregate, s5_elements_in_after_aggregate_result)
-  s5_output_zipped = building_blocks.Lambda(
-      s5_output_extracted.parameter_name, s5_output_extracted.parameter_type,
-      building_block_factory.create_federated_zip(s5_output_extracted.result))
-  s4_elements_in_after_aggregate_parameter = [[0, 0, 0], [1]]
-  s4_to_s5_computation = (
+  s7_elements_in_after_aggregate_result = [0, 1]
+  s7_output_extracted = transformations.select_output_from_lambda(
+      after_aggregate, s7_elements_in_after_aggregate_result)
+  s7_output_zipped = building_blocks.Lambda(
+      s7_output_extracted.parameter_name, s7_output_extracted.parameter_type,
+      building_block_factory.create_federated_zip(s7_output_extracted.result))
+  s6_elements_in_after_aggregate_parameter = [[0, 0, 0], [1, 0], [1, 1]]
+  s6_to_s7_computation = (
       transformations.zip_selection_as_argument_to_lower_level_lambda(
-          s5_output_zipped,
-          s4_elements_in_after_aggregate_parameter).result.function)
+          s7_output_zipped,
+          s6_elements_in_after_aggregate_parameter).result.function)
 
-  update = transformations.consolidate_and_extract_local_processing(
-      s4_to_s5_computation)
-  return update
+  # TODO(b/148942011): The transformation
+  # `zip_selection_as_argument_to_lower_level_lambda` does not support selecting
+  # from nested structures, therefore we need to pack the type signature
+  # `<s1, s3, s4>` as `<s1, <s3, s4>>`.
+  name_generator = building_block_factory.unique_name_generator(
+      s6_to_s7_computation)
+
+  pack_ref_name = next(name_generator)
+  pack_ref_type = computation_types.NamedTupleType([
+      s6_to_s7_computation.parameter_type.member[0],
+      computation_types.NamedTupleType([
+          s6_to_s7_computation.parameter_type.member[1],
+          s6_to_s7_computation.parameter_type.member[2],
+      ]),
+  ])
+  pack_ref = building_blocks.Reference(pack_ref_name, pack_ref_type)
+  sel_s1 = building_blocks.Selection(pack_ref, index=0)
+  sel = building_blocks.Selection(pack_ref, index=1)
+  sel_s3 = building_blocks.Selection(sel, index=0)
+  sel_s4 = building_blocks.Selection(sel, index=1)
+  result = building_blocks.Tuple([sel_s1, sel_s3, sel_s4])
+  pack_fn = building_blocks.Lambda(pack_ref.name, pack_ref.type_signature,
+                                   result)
+  ref_name = next(name_generator)
+  ref_type = computation_types.FederatedType(pack_ref_type, placements.SERVER)
+  ref = building_blocks.Reference(ref_name, ref_type)
+  unpacked_args = building_block_factory.create_federated_map_or_apply(
+      pack_fn, ref)
+  call = building_blocks.Call(s6_to_s7_computation, unpacked_args)
+  fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
+  return transformations.consolidate_and_extract_local_processing(fn)
 
 
 def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
@@ -637,23 +723,27 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   c3 = intrinsics.federated_zip([c1, c2])
   c4 = intrinsics.federated_map(cf.work, c3)
   c5 = c4[0]
-  c6 = c4[1]
-  s3 = intrinsics.federated_aggregate(c5,
+  c6 = c5[0]
+  c7 = c5[1]
+  c8 = c4[1]
+  s3 = intrinsics.federated_aggregate(c6,
                                       cf.zero(),
                                       cf.accumulate,
                                       cf.merge,
                                       cf.report)
-  s4 = intrinsics.federated_zip([s1, s3])
-  s5 = intrinsics.federated_map(cf.update, s4)
-  s6 = s5[0]
-  s7 = s5[1]
+  s4 = intrinsics.secure_sum(c7, cf.bitwidth())
+  s5 = intrinsics.federated_zip([s3, s4])
+  s6 = intrinsics.federated_zip([s1, s5])
+  s7 = intrinsics.federated_map(cf.update, s6)
+  s8 = s7[0]
+  s9 = s7[1]
   ```
 
   Note that the type signatures for the `initalize` and `next` components of an
   `tff.utils.IterativeProcess` are:
 
   initalize:  `( -> s1)`
-  next:       `(<s1,c1> -> <s6,s7,c6>)`
+  next:       `(<s1,c1> -> <s8,s9,c8>)`
 
   However, the `next` component of an `tff.utils.IterativeProcess` has been
   split into a before and after broadcast and a before and after aggregate with
@@ -667,9 +757,9 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   component of an `tff.utils.IterativeProcess` are:
 
   before_broadcast:  `(<s1,c1> -> s2)`
-  after_broadcast:   `(<<s1,c1>,c2> -> <s6,s7,c6>)`
-  before_aggregate:  `(<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>)`
-  after_aggregate:   `(<<<s1,c1>,c2>,s3> -> <s6,s7,c6>)`
+  after_broadcast:   `(<<s1,c1>,c2> -> <s8,s9,c8>)`
+  before_aggregate:  `(<<s1,c1>,c2> -> <<c6,zero,accumulate,merge,report>,c7>)`
+  after_aggregate:   `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9,c8>)`
 
   Args:
     initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
@@ -716,7 +806,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
 
   prepare_type = computation_types.FunctionType(s1_type.member, s2_type.member)
 
-  # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s6,s7,c6>)'.
+  # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s8,s9,c8>)'.
   _check_type(after_broadcast.type_signature, computation_types.FunctionType)
   _check_type(after_broadcast.type_signature.parameter,
               computation_types.NamedTupleType)
@@ -729,9 +819,21 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   c2_type = after_broadcast.type_signature.parameter[1]
   _check_type(c2_type, computation_types.FederatedType)
   _check_placement(c2_type, placements.CLIENTS)
+  _check_type(after_broadcast.type_signature.result,
+              computation_types.NamedTupleType)
+  _check_len(after_broadcast.type_signature.result, 3)
+  s8_type = after_broadcast.type_signature.result[0]
+  _check_type(s8_type, computation_types.FederatedType)
+  _check_placement(s8_type, placements.SERVER)
+  s9_type = after_broadcast.type_signature.result[1]
+  _check_type(s9_type, computation_types.FederatedType)
+  _check_placement(s9_type, placements.SERVER)
+  c8_type = after_broadcast.type_signature.result[2]
+  _check_type(c8_type, computation_types.FederatedType)
+  _check_placement(c8_type, placements.CLIENTS)
 
   # The type signature of `before_aggregate` is:
-  # `(<<s1,c1>,c2> -> <c5,zero,accumulate,merge,report>)`.
+  # `(<<s1,c1>,c2> -> <<c6,zero,accumulate,merge,report>,<c7,bitwidth>>)`.
   _check_type(before_aggregate.type_signature, computation_types.FunctionType)
   _check_type(before_aggregate.type_signature.parameter,
               computation_types.NamedTupleType)
@@ -744,24 +846,39 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type_equal(before_aggregate.type_signature.parameter[1], c2_type)
   _check_type(before_aggregate.type_signature.result,
               computation_types.NamedTupleType)
-  _check_len(before_aggregate.type_signature.result, 5)
-  c5_type = before_aggregate.type_signature.result[0]
-  _check_type(c5_type, computation_types.FederatedType)
-  _check_placement(c5_type, placements.CLIENTS)
+  _check_len(before_aggregate.type_signature.result, 2)
+  _check_len(before_aggregate.type_signature.result[0], 5)
+  c6_type = before_aggregate.type_signature.result[0][0]
+  _check_type(c6_type, computation_types.FederatedType)
+  _check_placement(c6_type, placements.CLIENTS)
   zero_type = computation_types.FunctionType(
-      None, before_aggregate.type_signature.result[1])
-  accumulate_type = before_aggregate.type_signature.result[2]
+      None, before_aggregate.type_signature.result[0][1])
+  type_utils.check_tensorflow_compatible_type(zero_type.result)
+  accumulate_type = before_aggregate.type_signature.result[0][2]
   _check_type(accumulate_type, computation_types.FunctionType)
-  merge_type = before_aggregate.type_signature.result[3]
+  merge_type = before_aggregate.type_signature.result[0][3]
   _check_type(merge_type, computation_types.FunctionType)
-  report_type = before_aggregate.type_signature.result[4]
+  report_type = before_aggregate.type_signature.result[0][4]
   _check_type(report_type, computation_types.FunctionType)
+  _check_type(before_aggregate.type_signature.result[1],
+              computation_types.NamedTupleType)
+  _check_len(before_aggregate.type_signature.result[1], 2)
+  c7_type = before_aggregate.type_signature.result[1][0]
+  _check_type(c7_type, computation_types.FederatedType)
+  _check_placement(c7_type, placements.CLIENTS)
+  bitwidth_type = computation_types.FunctionType(
+      None, before_aggregate.type_signature.result[1][1])
+  type_utils.check_tensorflow_compatible_type(bitwidth_type.result)
 
   c3_type = computation_types.FederatedType([c1_type.member, c2_type.member],
                                             placements.CLIENTS)
+  c5_type = computation_types.FederatedType([c6_type.member, c7_type.member],
+                                            placements.CLIENTS)
+  c4_type = computation_types.FederatedType([c5_type.member, c8_type.member],
+                                            placements.CLIENTS)
 
   # The type signature of `after_aggregate` is:
-  # `(<<<s1,c1>,c2>,s3> -> <s6,s7,c6>)'.
+  # `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9,c8>)'.
   _check_type(after_aggregate.type_signature, computation_types.FunctionType)
   _check_type(after_aggregate.type_signature.parameter,
               computation_types.NamedTupleType)
@@ -775,53 +892,54 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type_equal(after_aggregate.type_signature.parameter[0][0][0], s1_type)
   _check_type_equal(after_aggregate.type_signature.parameter[0][0][1], c1_type)
   _check_type_equal(after_aggregate.type_signature.parameter[0][1], c2_type)
-  s3_type = after_aggregate.type_signature.parameter[1]
+  _check_len(after_aggregate.type_signature.parameter[1], 2)
+  s3_type = after_aggregate.type_signature.parameter[1][0]
   _check_type(s3_type, computation_types.FederatedType)
   _check_placement(s3_type, placements.SERVER)
-  _check_type(after_aggregate.type_signature.result,
-              computation_types.NamedTupleType)
-  _check_len(after_aggregate.type_signature.result, 3)
-  s6_type = after_aggregate.type_signature.result[0]
-  _check_type(s6_type, computation_types.FederatedType)
-  _check_placement(s6_type, placements.SERVER)
-  s7_type = after_aggregate.type_signature.result[1]
-  _check_type(s7_type, computation_types.FederatedType)
-  _check_placement(s7_type, placements.SERVER)
-  c6_type = after_aggregate.type_signature.result[2]
-  _check_type(c6_type, computation_types.FederatedType)
-  _check_placement(c6_type, placements.CLIENTS)
+  s4_type = after_aggregate.type_signature.parameter[1][1]
+  _check_type(s4_type, computation_types.FederatedType)
+  _check_placement(s4_type, placements.SERVER)
+  _check_type_equal(after_aggregate.type_signature.result[0], s8_type)
+  _check_type_equal(after_aggregate.type_signature.result[1], s9_type)
+  _check_type_equal(after_aggregate.type_signature.result[2], c8_type)
 
-  c4_type = computation_types.FederatedType([c5_type.member, c6_type.member],
-                                            placements.CLIENTS)
   work_type = computation_types.FunctionType(c3_type.member, c4_type.member)
-  s4_type = computation_types.FederatedType([s1_type.member, s3_type.member],
+
+  s5_type = computation_types.FederatedType([s3_type.member, s4_type.member],
                                             placements.SERVER)
-  s5_type = computation_types.FederatedType([s6_type.member, s7_type.member],
+  s6_type = computation_types.FederatedType([s1_type.member, s5_type.member],
                                             placements.SERVER)
-  update_type = computation_types.FunctionType(s4_type.member, s5_type.member)
+  s7_type = computation_types.FederatedType([s8_type.member, s9_type.member],
+                                            placements.SERVER)
+  update_type = computation_types.FunctionType(s6_type.member, s7_type.member)
 
   return collections.OrderedDict(
       initialize_type=initialize_type,
       s1_type=s1_type,
       c1_type=c1_type,
-      s2_type=s2_type,
       prepare_type=prepare_type,
+      s2_type=s2_type,
       c2_type=c2_type,
       c3_type=c3_type,
-      c4_type=c4_type,
       work_type=work_type,
+      c4_type=c4_type,
       c5_type=c5_type,
       c6_type=c6_type,
+      c7_type=c7_type,
+      c8_type=c8_type,
       zero_type=zero_type,
       accumulate_type=accumulate_type,
       merge_type=merge_type,
       report_type=report_type,
       s3_type=s3_type,
+      bitwidth_type=bitwidth_type,
       s4_type=s4_type,
       s5_type=s5_type,
-      update_type=update_type,
       s6_type=s6_type,
+      update_type=update_type,
       s7_type=s7_type,
+      s8_type=s8_type,
+      s9_type=s9_type,
   )
 
 
@@ -888,9 +1006,28 @@ def get_canonical_form_for_iterative_process(iterative_process):
     before_broadcast, after_broadcast = (
         _create_before_and_after_broadcast_for_no_broadcast(next_comp))
 
-  before_aggregate, after_aggregate = (
-      transformations.force_align_and_split_by_intrinsics(
-          after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+  contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
+      next_comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+  contains_secure_sum = tree_analysis.contains_called_intrinsic(
+      next_comp, intrinsic_defs.SECURE_SUM.uri)
+  if contains_federated_aggregate and contains_secure_sum:
+    before_aggregate, after_aggregate = (
+        transformations.force_align_and_split_by_intrinsics(
+            after_broadcast, [
+                intrinsic_defs.FEDERATED_AGGREGATE.uri,
+                intrinsic_defs.SECURE_SUM.uri,
+            ]))
+  elif not contains_federated_aggregate:
+    before_aggregate, after_aggregate = (
+        _create_before_and_after_aggregate_for_no_federated_aggregate(
+            after_broadcast))
+  elif not contains_secure_sum:
+    before_aggregate, after_aggregate = (
+        _create_before_and_after_aggregate_for_no_secure_sum(after_broadcast))
+  else:
+    raise ValueError(
+        'Expected an `tff.utils.IterativeProcess` containing at least one '
+        '`federated_aggregate` or `secure_sum`, found none.')
 
   type_info = _get_type_info(initialize_comp, before_broadcast, after_broadcast,
                              before_aggregate, after_aggregate)
@@ -905,12 +1042,15 @@ def get_canonical_form_for_iterative_process(iterative_process):
   work = _extract_work(before_aggregate, after_aggregate)
   _check_type_equal(work.type_signature, type_info['work_type'])
 
-  zero, accumulate, merge, report = _extract_aggregate_functions(
+  zero, accumulate, merge, report = _extract_federated_aggregate_functions(
       before_aggregate)
   _check_type_equal(zero.type_signature, type_info['zero_type'])
   _check_type_equal(accumulate.type_signature, type_info['accumulate_type'])
   _check_type_equal(merge.type_signature, type_info['merge_type'])
   _check_type_equal(report.type_signature, type_info['report_type'])
+
+  bitwidth = _extract_secure_sum_functions(before_aggregate)
+  _check_type_equal(bitwidth.type_signature, type_info['bitwidth_type'])
 
   update = _extract_update(after_aggregate)
   _check_type_equal(update.type_signature, type_info['update_type'])
@@ -923,4 +1063,5 @@ def get_canonical_form_for_iterative_process(iterative_process):
       computation_wrapper_instances.building_block_to_computation(accumulate),
       computation_wrapper_instances.building_block_to_computation(merge),
       computation_wrapper_instances.building_block_to_computation(report),
+      computation_wrapper_instances.building_block_to_computation(bitwidth),
       computation_wrapper_instances.building_block_to_computation(update))

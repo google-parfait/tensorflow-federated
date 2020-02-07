@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
-
 from absl.testing import absltest
 import tensorflow as tf
 
@@ -36,18 +34,20 @@ class CanonicalFormTest(absltest.TestCase):
 
     capture = CapturePrint()
     cf.summary(print_fn=capture)
+    # pyformat: disable
     self.assertEqual(
         capture.summary,
-        textwrap.dedent("""\
-    initialize: ( -> <num_rounds=int32>)
-    prepare   : (<num_rounds=int32> -> <max_temperature=float32>)
-    work      : (<float32*,<max_temperature=float32>> -> <<is_over=bool>,<num_readings=int32>>)
-    zero      : ( -> <num_total=int32,num_over=int32>)
-    accumulate: (<<num_total=int32,num_over=int32>,<is_over=bool>> -> <num_total=int32,num_over=int32>)
-    merge     : (<<num_total=int32,num_over=int32>,<num_total=int32,num_over=int32>> -> <num_total=int32,num_over=int32>)
-    report    : (<num_total=int32,num_over=int32> -> <ratio_over_threshold=float32>)
-    update    : ( -> <num_rounds=int32>)
-    """))
+        'initialize: ( -> <num_rounds=int32>)\n'
+        'prepare   : (<num_rounds=int32> -> <max_temperature=float32>)\n'
+        'work      : (<float32*,<max_temperature=float32>> -> <<<is_over=bool>,<>>,<num_readings=int32>>)\n'
+        'zero      : ( -> <num_total=int32,num_over=int32>)\n'
+        'accumulate: (<<num_total=int32,num_over=int32>,<is_over=bool>> -> <num_total=int32,num_over=int32>)\n'
+        'merge     : (<<num_total=int32,num_over=int32>,<num_total=int32,num_over=int32>> -> <num_total=int32,num_over=int32>)\n'
+        'report    : (<num_total=int32,num_over=int32> -> <ratio_over_threshold=float32>)\n'
+        'bitwidth  : ( -> <>)\n'
+        'update    : ( -> <num_rounds=int32>)\n'
+    )
+    # pyformat: enable
 
 
 if __name__ == '__main__':

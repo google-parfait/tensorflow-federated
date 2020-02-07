@@ -157,7 +157,7 @@ class CanonicalForm(object):
     # update at the server.
 
     global_update = (
-      tff.federated_aggregate(client_udpates, zero, accumulate, merge, report))
+      tff.federated_aggregate(client_updates, zero, accumulate, merge, report))
 
     # Finally, the server produces a new state as well as server-side output to
     # emit from this round.
@@ -248,7 +248,7 @@ class CanonicalForm(object):
   """
 
   def __init__(self, initialize, prepare, work, zero, accumulate, merge, report,
-               update):
+               bitwidth, update):
     """Constructs a representation of a MapReduce-like iterative process.
 
     NOTE: All the computations supplied here as arguments must be TensorFlow
@@ -264,6 +264,7 @@ class CanonicalForm(object):
       merge: The computation to use for merging pairs of accumulators.
       report: The computation that produces the final server-side aggregate for
         the top level accumulator (the global update).
+      bitwidth: The computation that produces the bitwidth for secure sum.
       update: The computation that takes the global update and the server state
         and produces the new server state, as well as server-side output.
 
@@ -282,6 +283,7 @@ class CanonicalForm(object):
         ('accumulate', accumulate),
         ('merge', merge),
         ('report', report),
+        ('bitwidth', bitwidth),
         ('update', update),
     ]:
       py_typecheck.check_type(comp, computation_base.Computation, label)
@@ -327,7 +329,7 @@ class CanonicalForm(object):
           'two-tuple.'.format(work.type_signature.result))
 
     expected_accumulate_type = computation_types.FunctionType(
-        [zero.type_signature.result, work.type_signature.result[0]],
+        [zero.type_signature.result, work.type_signature.result[0][0]],
         zero.type_signature.result)
     if accumulate.type_signature != expected_accumulate_type:
       raise TypeError(
@@ -351,13 +353,15 @@ class CanonicalForm(object):
           'which does not match the result type {} of `merge`.'.format(
               report.type_signature.parameter, merge.type_signature.result))
 
-    expected_update_parameter_type = computation_types.to_type(
-        [initialize.type_signature.result, report.type_signature.result])
+    expected_update_parameter_type = computation_types.to_type([
+        initialize.type_signature.result,
+        [report.type_signature.result, work.type_signature.result[0][1]],
+    ])
     if update.type_signature.parameter != expected_update_parameter_type:
       raise TypeError(
           'The `update` computation expects an argument of type {}, '
           'which does not match the expected {} as implied by the type '
-          'signatures of `initialize` and `report`.'.format(
+          'signatures of `initialize`, `report`, and `work`.'.format(
               update.type_signature.parameter, expected_update_parameter_type))
 
     if (not isinstance(update.type_signature.result,
@@ -382,6 +386,7 @@ class CanonicalForm(object):
     self._accumulate = accumulate
     self._merge = merge
     self._report = report
+    self._bitwidth = bitwidth
     self._update = update
 
   @property
@@ -413,6 +418,10 @@ class CanonicalForm(object):
     return self._report
 
   @property
+  def bitwidth(self):
+    return self._bitwidth
+
+  @property
   def update(self):
     return self._update
 
@@ -431,6 +440,7 @@ class CanonicalForm(object):
         ('accumulate', self.accumulate),
         ('merge', self.merge),
         ('report', self.report),
+        ('bitwidth', self.bitwidth),
         ('update', self.initialize),
     ]
     for name, comp in computations:

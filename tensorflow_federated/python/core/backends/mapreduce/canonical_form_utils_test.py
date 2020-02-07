@@ -15,6 +15,7 @@
 
 import collections
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -28,6 +29,8 @@ from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
+from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import transformations as impl_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -280,6 +283,39 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
+def get_iterative_process_for_concise_sum_example():
+  """Returns an iterative process for a sum example."""
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return [1, 1]
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    client_input = intrinsics.federated_broadcast(server_state)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates = intrinsics.federated_map(work, c3)
+    federated_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    new_server_state = intrinsics.federated_zip(
+        [federated_update, secure_update])
+    server_output = intrinsics.federated_value([], placements.SERVER)
+    return new_server_state, server_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
 class CanonicalFormTestCase(common_test.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
@@ -484,7 +520,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
 
 class GetTypeInfoTest(common_test.TestCase):
 
-  def test_returns_type_info(self):
+  def test_returns_type_info_for_sum_example(self):
     ip = get_iterative_process_for_sum_example()
     initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.initialize._computation_proto)
@@ -498,7 +534,10 @@ class GetTypeInfoTest(common_test.TestCase):
             next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
     before_aggregate, after_aggregate = (
         mapreduce_transformations.force_align_and_split_by_intrinsics(
-            after_broadcast, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
+            after_broadcast, [
+                intrinsic_defs.FEDERATED_AGGREGATE.uri,
+                intrinsic_defs.SECURE_SUM.uri,
+            ]))
 
     type_info = canonical_form_utils._get_type_info(initialize_tree,
                                                     before_broadcast,
@@ -520,31 +559,113 @@ class GetTypeInfoTest(common_test.TestCase):
         initialize_type='( -> <int32,int32>)',
         s1_type='<int32,int32>@SERVER',
         c1_type='{int32}@CLIENTS',
-        s2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
         prepare_type='(<int32,int32> -> <<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>)',
+        s2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@SERVER',
         c2_type='<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>@CLIENTS',
         c3_type='{<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>>}@CLIENTS',
-        c4_type='{<<int32,int32,int32,int32,int32,int32>,<>>}@CLIENTS',
-        work_type='(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<int32,int32,int32,int32,int32,int32>,<>>)',
-        c5_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
-        c6_type='{<>}@CLIENTS',
+        work_type='(<int32,<<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>,<int32,int32>>> -> <<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>)',
+        c4_type='{<<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>}@CLIENTS',
+        c5_type='{<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>}@CLIENTS',
+        c6_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
+        c7_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
+        c8_type='{<>}@CLIENTS',
         zero_type='( -> <int32,int32,int32,int32,int32,int32>)',
         accumulate_type='(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
         merge_type='(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
         report_type='(<int32,int32,int32,int32,int32,int32> -> <int32,int32,int32,int32,int32,int32>)',
         s3_type='<int32,int32,int32,int32,int32,int32>@SERVER',
-        s4_type='<<int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
-        s5_type='<<int32,int32>,<>>@SERVER',
-        update_type='(<<int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <<int32,int32>,<>>)',
-        s6_type='<int32,int32>@SERVER',
-        s7_type='<>@SERVER',
+        bitwidth_type='( -> <int32,int32,int32,int32,int32,int32>)',
+        s4_type='<int32,int32,int32,int32,int32,int32>@SERVER',
+        s5_type='<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
+        s6_type='<<int32,int32>,<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>>@SERVER',
+        update_type='(<<int32,int32>,<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>> -> <<int32,int32>,<>>)',
+        s7_type='<<int32,int32>,<>>@SERVER',
+        s8_type='<int32,int32>@SERVER',
+        s9_type='<>@SERVER',
     )
     # pyformat: enable
 
-    self.assertEqual(actual, expected)
+    items = zip(actual.items(), expected.items())
+    for (actual_key, actual_value), (expected_key, expected_value) in items:
+      self.assertEqual(actual_key, expected_key)
+      self.assertEqual(
+          actual_value, expected_value,
+          'The value of \'{}\' is not equal to the expected value'.format(
+              actual_key))
+
+  def test_returns_type_info_for_sum_example_with_no_secure_sum(self):
+    ip = get_iterative_process_for_sum_example_with_no_secure_sum()
+    initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.initialize._computation_proto)
+    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
+        ip.next._computation_proto)
+    initialize_tree = canonical_form_utils._replace_intrinsics_with_bodies(
+        initialize_tree)
+    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
+    before_broadcast, after_broadcast = (
+        mapreduce_transformations.force_align_and_split_by_intrinsics(
+            next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
+    before_aggregate, after_aggregate = (
+        canonical_form_utils
+        ._create_before_and_after_aggregate_for_no_secure_sum(after_broadcast))
+
+    type_info = canonical_form_utils._get_type_info(initialize_tree,
+                                                    before_broadcast,
+                                                    after_broadcast,
+                                                    before_aggregate,
+                                                    after_aggregate)
+
+    actual = collections.OrderedDict([
+        (label, type_signature.compact_representation())
+        for label, type_signature in type_info.items()
+    ])
+    # Note: THE CONTENTS OF THIS DICTIONARY IS NOT IMPORTANT. The purpose of
+    # this test is not to assert that this value returned by
+    # `canonical_form_utils._get_type_info`, but instead to act as a signal when
+    # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
+    # into a `tff.backends.mapreduce.CanonicalForm`.
+    # pyformat: disable
+    expected = collections.OrderedDict(
+        initialize_type='( -> int32)',
+        s1_type='int32@SERVER',
+        c1_type='{int32}@CLIENTS',
+        prepare_type='(int32 -> <int32,int32,int32>)',
+        s2_type='<int32,int32,int32>@SERVER',
+        c2_type='<int32,int32,int32>@CLIENTS',
+        c3_type='{<int32,<int32,int32,int32>>}@CLIENTS',
+        work_type='(<int32,<int32,int32,int32>> -> <<<int32,int32>,<>>,<>>)',
+        c4_type='{<<<int32,int32>,<>>,<>>}@CLIENTS',
+        c5_type='{<<int32,int32>,<>>}@CLIENTS',
+        c6_type='{<int32,int32>}@CLIENTS',
+        c7_type='<>@CLIENTS',
+        c8_type='{<>}@CLIENTS',
+        zero_type='( -> <int32,int32>)',
+        accumulate_type='(<<int32,int32>,<int32,int32>> -> <int32,int32>)',
+        merge_type='(<<int32,int32>,<int32,int32>> -> <int32,int32>)',
+        report_type='(<int32,int32> -> <int32,int32>)',
+        s3_type='<int32,int32>@SERVER',
+        bitwidth_type='( -> <>)',
+        s4_type='<>@SERVER',
+        s5_type='<<int32,int32>,<>>@SERVER',
+        s6_type='<int32,<<int32,int32>,<>>>@SERVER',
+        update_type='(<int32,<<int32,int32>,<>>> -> <int32,<>>)',
+        s7_type='<int32,<>>@SERVER',
+        s8_type='int32@SERVER',
+        s9_type='<>@SERVER',
+    )
+    # pyformat: enable
+
+    items = zip(actual.items(), expected.items())
+    for (actual_key, actual_value), (expected_key, expected_value) in items:
+      self.assertEqual(actual_key, expected_key)
+      self.assertEqual(
+          actual_value, expected_value,
+          'The value of \'{}\' is not equal to the expected value'.format(
+              actual_key))
 
 
-class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
+class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
+                                              parameterized.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
@@ -769,7 +890,36 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase):
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('sum_example',
+       get_iterative_process_for_sum_example()),
+      ('sum_example_with_no_server_state',
+       get_iterative_process_for_sum_example_with_no_server_state()),
+      ('sum_example_with_no_client_output',
+       get_iterative_process_for_sum_example_with_no_client_output()),
+      ('sum_example_with_no_federated_aggregate',
+       get_iterative_process_for_sum_example_with_no_federated_aggregate()),
+      ('sum_example_with_no_secure_sum',
+       get_iterative_process_for_sum_example_with_no_secure_sum()),
+      ('concise_sum_example',
+       get_iterative_process_for_concise_sum_example()),
+  )
+  # pyformat: enable
+  def test_returns_canonical_form(self, ip):
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
+  def test_raises_value_error_for_sum_example_with_no_aggregation(self):
+    ip = get_iterative_process_for_sum_example_with_no_aggregation()
+
+    with self.assertRaises(ValueError):
+      canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
-  common_test.main()
+  reference_executor = reference_executor.ReferenceExecutor()
+  with context_stack_impl.context_stack.install(reference_executor):
+    common_test.main()

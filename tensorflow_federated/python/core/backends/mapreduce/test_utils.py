@@ -45,8 +45,9 @@ def get_temperature_sensor_example():
 
   # The state of the server is a singleton tuple containing just the integer
   # counter `num_rounds`.
-  server_state_type = computation_types.NamedTupleType([('num_rounds', tf.int32)
-                                                       ])
+  server_state_type = computation_types.NamedTupleType([
+      ('num_rounds', tf.int32),
+  ])
 
   @computations.tf_computation(server_state_type)
   def prepare(state):
@@ -54,8 +55,9 @@ def get_temperature_sensor_example():
 
   # The initial state of the client is a singleton tuple containing a single
   # float `max_temperature`, which is the threshold received from the server.
-  client_state_type = computation_types.NamedTupleType([('max_temperature',
-                                                         tf.float32)])
+  client_state_type = computation_types.NamedTupleType([
+      ('max_temperature', tf.float32),
+  ])
 
   # The client data is a sequence of floats.
   client_data_type = computation_types.SequenceType(tf.float32)
@@ -74,11 +76,13 @@ def get_temperature_sensor_example():
         'num': np.int32(0),
         'max': np.float32(-459.67)
     }, fn)
-    return ({
-        'is_over': reduce_result['max'] > state.max_temperature
-    }, {
-        'num_readings': reduce_result['num']
-    })
+    client_updates = collections.OrderedDict([
+        ('is_over', reduce_result['max'] > state.max_temperature),
+    ])
+    client_outputs = collections.OrderedDict([
+        ('num_readings', reduce_result['num']),
+    ])
+    return ((client_updates, []), client_outputs)
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
   client_update_type = computation_types.NamedTupleType([('is_over', tf.bool)])
@@ -115,18 +119,22 @@ def get_temperature_sensor_example():
                                  tf.cast(accumulator['num_total'], tf.float32))
     }
 
-  # The type of the combined update is a singleton tuple containing a float
-  # named `ratio_over_threshold`.
-  combined_update_type = computation_types.NamedTupleType([
-      ('ratio_over_threshold', tf.float32)
+  @computations.tf_computation
+  def bitwidth():
+    return []
+
+  update_type = computation_types.NamedTupleType([
+      computation_types.NamedTupleType([('ratio_over_threshold', tf.float32)]),
+      computation_types.NamedTupleType([]),
   ])
 
-  @computations.tf_computation(server_state_type, combined_update_type)
+  @computations.tf_computation(server_state_type, update_type)
   def update(state, update):
-    return ({'num_rounds': state.num_rounds + 1}, update)
+    return ({'num_rounds': state.num_rounds + 1}, update[0])
 
   return canonical_form.CanonicalForm(initialize, prepare, work, zero,
-                                      accumulate, merge, report, update)
+                                      accumulate, merge, report, bitwidth,
+                                      update)
 
 
 def get_mnist_training_example():
@@ -205,7 +213,8 @@ def get_mnist_training_example():
       with tf.control_dependencies([num_examples, total_loss]):
         loss = total_loss / tf.cast(num_examples, tf.float32)
 
-    return (update_nt(model=model_vars, num_examples=num_examples, loss=loss),
+    return ((update_nt(model=model_vars, num_examples=num_examples,
+                       loss=loss), []),
             stats_nt(num_examples=num_examples, loss=loss))
 
   accumulator_nt = update_nt
@@ -258,13 +267,18 @@ def get_mnist_training_example():
         num_examples=accumulator.num_examples,
         loss=accumulator.loss * scaling_factor)
 
-  report_tff_type = accumulator_tff_type
+  @computations.tf_computation
+  def bitwidth():
+    return []
+
+  update_type = computation_types.NamedTupleType([accumulator_tff_type, []])
   metrics_nt = collections.namedtuple('Metrics', 'num_rounds num_examples loss')
 
   # Pass the newly averaged model along with an incremented round counter over
   # to the next round, and output the counters and loss as server metrics.
-  @computations.tf_computation(server_state_tff_type, report_tff_type)
-  def update(state, report):
+  @computations.tf_computation(server_state_tff_type, update_type)
+  def update(state, update):
+    report = update[0]
     num_rounds = state.num_rounds + 1
     return (server_state_nt(model=report.model, num_rounds=num_rounds),
             metrics_nt(
@@ -273,7 +287,8 @@ def get_mnist_training_example():
                 loss=report.loss))
 
   return canonical_form.CanonicalForm(initialize, prepare, work, zero,
-                                      accumulate, merge, report, update)
+                                      accumulate, merge, report, bitwidth,
+                                      update)
 
 
 def construct_example_training_comp():
