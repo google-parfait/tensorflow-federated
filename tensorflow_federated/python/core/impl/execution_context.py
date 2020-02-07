@@ -25,8 +25,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import executor_factory
-from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
@@ -172,8 +172,8 @@ class ExecutionContext(context_base.Context):
     if arg is not None:
       py_typecheck.check_type(arg, ExecutionContextValue)
       unwrapped_arg = _unwrap_execution_context_value(arg)
-      cardinalities = runtime_utils.infer_cardinalities(unwrapped_arg,
-                                                        arg.type_signature)
+      cardinalities = cardinalities_utils.infer_cardinalities(
+          unwrapped_arg, arg.type_signature)
     else:
       cardinalities = {}
 

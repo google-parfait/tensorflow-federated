@@ -67,6 +67,31 @@ py_library(
 )
 
 py_library(
+    name = "cardinalities_utils",
+    srcs = ["cardinalities_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+    ],
+)
+
+py_test(
+    name = "cardinalities_utils_test",
+    srcs = ["cardinalities_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":cardinalities_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+    ],
+)
+
+py_library(
     name = "sizing_executor",
     srcs = ["sizing_executor.py"],
     srcs_version = "PY3",

@@ -34,7 +34,6 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import runtime_utils
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
@@ -42,6 +41,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -650,8 +650,8 @@ class ReferenceExecutor(context_base.Context):
                                      _handle_callable),
           comp.type_signature.parameter)
       cardinalities.update(
-          runtime_utils.infer_cardinalities(computed_arg.value,
-                                            computed_arg.type_signature))
+          cardinalities_utils.infer_cardinalities(computed_arg.value,
+                                                  computed_arg.type_signature))
     else:
       computed_arg = None
     computed_comp = self._compute(comp, root_context)
