@@ -33,14 +33,16 @@ from tensorflow_federated.python.core.utils import test as core_test
 
 class IntrinsicsTest(parameterized.TestCase):
 
-  def test_federated_broadcast_with_server_all_equal_int(self):
+  def assert_type(self, value, type_string):
+    self.assertEqual(value.type_signature.compact_representation(), type_string)
 
+  def test_federated_broadcast_with_server_all_equal_int(self):
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.SERVER))
     def foo(x):
       return intrinsics.federated_broadcast(x)
 
-    self.assertEqual(str(foo.type_signature), '(int32@SERVER -> int32@CLIENTS)')
+    self.assert_type(foo, '(int32@SERVER -> int32@CLIENTS)')
 
   def test_federated_broadcast_with_server_non_all_equal_int(self):
     with self.assertRaises(TypeError):
@@ -77,10 +79,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
       return intrinsics.federated_eval(rand, placements.CLIENTS)
 
-    self.assertEqual(
-        rand_on_clients.type_signature.compact_representation(),
-        '( -> {float32}@CLIENTS)',
-    )
+    self.assert_type(rand_on_clients, '( -> {float32}@CLIENTS)')
 
   def test_federated_eval_rand_on_server(self):
 
@@ -93,8 +92,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
       return intrinsics.federated_eval(rand, placements.SERVER)
 
-    self.assertEqual(rand_on_server.type_signature.compact_representation(),
-                     '( -> float32@SERVER)')
+    self.assert_type(rand_on_server, '( -> float32@SERVER)')
 
   def test_federated_map_with_client_all_equal_int(self):
 
@@ -104,8 +102,7 @@ class IntrinsicsTest(parameterized.TestCase):
       return intrinsics.federated_map(
           computations.tf_computation(lambda x: x > 10, tf.int32), x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(int32@CLIENTS -> {bool}@CLIENTS)')
+    self.assert_type(foo, '(int32@CLIENTS -> {bool}@CLIENTS)')
 
   def test_federated_map_with_client_non_all_equal_int(self):
 
@@ -115,8 +112,7 @@ class IntrinsicsTest(parameterized.TestCase):
       return intrinsics.federated_map(
           computations.tf_computation(lambda x: x > 10, tf.int32), x)
 
-    self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> {bool}@CLIENTS)')
+    self.assert_type(foo, '({int32}@CLIENTS -> {bool}@CLIENTS)')
 
   def test_federated_map_with_server_int(self):
 
@@ -126,7 +122,7 @@ class IntrinsicsTest(parameterized.TestCase):
       return intrinsics.federated_map(
           computations.tf_computation(lambda x: x > 10, tf.int32), x)
 
-    self.assertEqual(str(foo.type_signature), '(int32@SERVER -> bool@SERVER)')
+    self.assert_type(foo, '(int32@SERVER -> bool@SERVER)')
 
   def test_federated_map_injected_zip_with_server_int(self):
 
@@ -139,8 +135,7 @@ class IntrinsicsTest(parameterized.TestCase):
           computations.tf_computation(lambda x, y: x > 10,
                                       [tf.int32, tf.int32]), [x, y])
 
-    self.assertEqual(
-        str(foo.type_signature), '(<int32@SERVER,int32@SERVER> -> bool@SERVER)')
+    self.assert_type(foo, '(<int32@SERVER,int32@SERVER> -> bool@SERVER)')
 
   def test_federated_map_injected_zip_fails_different_placements(self):
 
@@ -174,8 +169,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_sum(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
+    self.assert_type(foo, '({int32}@CLIENTS -> int32@SERVER)')
 
   def test_federated_sum_with_client_string(self):
     with self.assertRaises(TypeError):
@@ -202,9 +196,8 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x, y):
       return intrinsics.federated_zip([x, y])
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<{int32}@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
+    self.assert_type(
+        foo, '(<{int32}@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
   def test_federated_zip_with_single_unnamed_int_client(self):
 
@@ -214,8 +207,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_zip(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(<{int32}@CLIENTS> -> {<int32>}@CLIENTS)')
+    self.assert_type(foo, '(<{int32}@CLIENTS> -> {<int32>}@CLIENTS)')
 
   def test_federated_zip_with_single_unnamed_int_server(self):
 
@@ -225,8 +217,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_zip(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(<int32@SERVER> -> <int32>@SERVER)')
+    self.assert_type(foo, '(<int32@SERVER> -> <int32>@SERVER)')
 
   def test_federated_zip_with_single_named_bool_clients(self):
 
@@ -236,8 +227,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_zip(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(<a={bool}@CLIENTS> -> {<a=bool>}@CLIENTS)')
+    self.assert_type(foo, '(<a={bool}@CLIENTS> -> {<a=bool>}@CLIENTS)')
 
   def test_federated_zip_with_single_named_bool_server(self):
 
@@ -247,8 +237,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_zip(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(<a=bool@SERVER> -> <a=bool>@SERVER)')
+    self.assert_type(foo, '(<a=bool@SERVER> -> <a=bool>@SERVER)')
 
   def test_federated_zip_with_names_client_non_all_equal_int_and_bool(self):
 
@@ -260,9 +249,8 @@ class IntrinsicsTest(parameterized.TestCase):
       a = {'x': x, 'y': y}
       return intrinsics.federated_zip(a)
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<{int32}@CLIENTS,bool@CLIENTS> -> {<x=int32,y=bool>}@CLIENTS)')
+    self.assert_type(
+        foo, '(<{int32}@CLIENTS,bool@CLIENTS> -> {<x=int32,y=bool>}@CLIENTS)')
 
   def test_federated_zip_with_client_all_equal_int_and_bool(self):
 
@@ -273,9 +261,8 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x, y):
       return intrinsics.federated_zip([x, y])
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<int32@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
+    self.assert_type(
+        foo, '(<int32@CLIENTS,bool@CLIENTS> -> {<int32,bool>}@CLIENTS)')
 
   def test_federated_zip_with_names_client_all_equal_int_and_bool(self):
 
@@ -287,9 +274,8 @@ class IntrinsicsTest(parameterized.TestCase):
       a = {'x': arg[0], 'y': arg[1]}
       return intrinsics.federated_zip(a)
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<int32@CLIENTS,bool@CLIENTS> -> {<x=int32,y=bool>}@CLIENTS)')
+    self.assert_type(
+        foo, '(<int32@CLIENTS,bool@CLIENTS> -> {<x=int32,y=bool>}@CLIENTS)')
 
   def test_federated_zip_with_server_int_and_bool(self):
 
@@ -300,9 +286,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x, y):
       return intrinsics.federated_zip([x, y])
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<int32@SERVER,bool@SERVER> -> <int32,bool>@SERVER)')
+    self.assert_type(foo, '(<int32@SERVER,bool@SERVER> -> <int32,bool>@SERVER)')
 
   def test_federated_zip_with_names_server_int_and_bool(self):
 
@@ -313,9 +297,8 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(arg):
       return intrinsics.federated_zip(arg)
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<a=int32@SERVER,b=bool@SERVER> -> <a=int32,b=bool>@SERVER)')
+    self.assert_type(
+        foo, '(<a=int32@SERVER,b=bool@SERVER> -> <a=int32,b=bool>@SERVER)')
 
   def test_federated_zip_error_different_placements(self):
     with self.assertRaises(TypeError):
@@ -334,8 +317,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_collect(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> int32*@SERVER)')
+    self.assert_type(foo, '({int32}@CLIENTS -> int32*@SERVER)')
 
   def test_federated_collect_with_server_int_fails(self):
     with self.assertRaises(TypeError):
@@ -352,8 +334,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_mean(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
+    self.assert_type(foo, '({float32}@CLIENTS -> float32@SERVER)')
 
   def test_federated_mean_with_all_equal_client_float32_without_weight(self):
     federated_all_equal_float = computation_types.FederatedType(
@@ -363,8 +344,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_mean(x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(float32@CLIENTS -> float32@SERVER)')
+    self.assert_type(foo, '(float32@CLIENTS -> float32@SERVER)')
 
   def test_federated_mean_with_all_equal_client_float32_with_weight(self):
     federated_all_equal_float = computation_types.FederatedType(
@@ -374,8 +354,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_mean(x, x)
 
-    self.assertEqual(
-        str(foo.type_signature), '(float32@CLIENTS -> float32@SERVER)')
+    self.assert_type(foo, '(float32@CLIENTS -> float32@SERVER)')
 
   def test_federated_mean_with_client_tuple_with_int32_weight(self):
 
@@ -387,9 +366,8 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x, y):
       return intrinsics.federated_mean(x, y)
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<{<x=float64,y=float64>}@CLIENTS,{int32}@CLIENTS> '
+    self.assert_type(
+        foo, '(<{<x=float64,y=float64>}@CLIENTS,{int32}@CLIENTS> '
         '-> <x=float64,y=float64>@SERVER)')
 
   def test_federated_mean_with_client_int32_fails(self):
@@ -442,8 +420,7 @@ class IntrinsicsTest(parameterized.TestCase):
       return intrinsics.federated_aggregate(x, Accumulator(0, 0), accumulate,
                                             merge, report)
 
-    self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> float32@SERVER)')
+    self.assert_type(foo, '({int32}@CLIENTS -> float32@SERVER)')
 
   def test_federated_aggregate_with_federated_zero_fails(self):
 
@@ -509,9 +486,7 @@ class IntrinsicsTest(parameterized.TestCase):
       return intrinsics.federated_aggregate(x, build_empty_accumulator(),
                                             accumulate, merge, report)
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '({int32}@CLIENTS -> <samples=int32[?]>@SERVER)')
+    self.assert_type(foo, '({int32}@CLIENTS -> <samples=int32[?]>@SERVER)')
 
   def test_federated_reduce_with_tf_add_raw_constant(self):
 
@@ -521,8 +496,7 @@ class IntrinsicsTest(parameterized.TestCase):
       plus = computations.tf_computation(tf.add, [tf.int32, tf.int32])
       return intrinsics.federated_reduce(x, 0, plus)
 
-    self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
+    self.assert_type(foo, '({int32}@CLIENTS -> int32@SERVER)')
 
   def test_num_over_temperature_threshold_example(self):
 
@@ -539,9 +513,8 @@ class IntrinsicsTest(parameterized.TestCase):
               [temperatures,
                intrinsics.federated_broadcast(threshold)]))
 
-    self.assertEqual(
-        str(foo.type_signature),
-        '(<{float32}@CLIENTS,float32@SERVER> -> int32@SERVER)')
+    self.assert_type(foo,
+                     '(<{float32}@CLIENTS,float32@SERVER> -> int32@SERVER)')
 
   @parameterized.named_parameters(('test_n_2', 2), ('test_n_3', 3),
                                   ('test_n_5', 5))
@@ -552,14 +525,13 @@ class IntrinsicsTest(parameterized.TestCase):
                                                      placements.CLIENTS)
     function_type = computation_types.FunctionType(initial_tuple_type,
                                                    final_fed_type)
-    type_string = str(function_type)
 
     @computations.federated_computation(
         [computation_types.FederatedType(tf.int32, placements.CLIENTS)] * n)
     def foo(x):
       return intrinsics.federated_zip(x)
 
-    self.assertEqual(str(foo.type_signature), type_string)
+    self.assert_type(foo, function_type.compact_representation())
 
   @parameterized.named_parameters(
       ('test_n_2_int', 2,
@@ -588,15 +560,13 @@ class IntrinsicsTest(parameterized.TestCase):
         initial_tuple_type, named_fed_type)
     mixed_function_type = computation_types.FunctionType(
         initial_tuple_type, mixed_fed_type)
-    named_type_string = str(named_function_type)
-    mixed_type_string = str(mixed_function_type)
 
     @computations.federated_computation([fed_type] * n)
     def foo(x):
       arg = {str(k): x[k] for k in range(n)}
       return intrinsics.federated_zip(arg)
 
-    self.assertEqual(str(foo.type_signature), named_type_string)
+    self.assert_type(foo, named_function_type.compact_representation())
 
     def _make_test_tuple(x, k):
       """Make a test tuple with a name if k is even, otherwise unnamed."""
@@ -611,7 +581,7 @@ class IntrinsicsTest(parameterized.TestCase):
           _make_test_tuple(x, k) for k in range(n))
       return intrinsics.federated_zip(arg)
 
-    self.assertEqual(str(bar.type_signature), mixed_type_string)
+    self.assert_type(bar, mixed_function_type.compact_representation())
 
   @parameterized.named_parameters([
       ('test_n_' + str(n) + '_m_' + str(m), n, m)
@@ -628,7 +598,6 @@ class IntrinsicsTest(parameterized.TestCase):
         [[tf.int32, tf.int32]] * n + [tf.int32] * m, placements.CLIENTS)
     function_type = computation_types.FunctionType(initial_tuple_type,
                                                    final_fed_type)
-    type_string = str(function_type)
 
     @computations.federated_computation([
         computation_types.FederatedType(
@@ -638,7 +607,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def baz(x):
       return intrinsics.federated_zip(x)
 
-    self.assertEqual(str(baz.type_signature), type_string)
+    self.assert_type(baz, function_type.compact_representation())
 
   def test_federated_apply_raises_warning(self):
     with warnings.catch_warnings(record=True) as w:
@@ -653,8 +622,7 @@ class IntrinsicsTest(parameterized.TestCase):
       self.assertLen(w, 1)
       self.assertIsInstance(w[0].category(), DeprecationWarning)
       self.assertIn('tff.federated_apply() is deprecated', str(w[0].message))
-      self.assertEqual(
-          str(foo.type_signature), '(int32@SERVER -> int32@SERVER)')
+      self.assert_type(foo, '(int32@SERVER -> int32@SERVER)')
 
   def test_federated_value_with_bool_on_clients(self):
 
@@ -662,7 +630,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_value(x, placements.CLIENTS)
 
-    self.assertEqual(str(foo.type_signature), '(bool -> bool@CLIENTS)')
+    self.assert_type(foo, '(bool -> bool@CLIENTS)')
 
   def test_federated_value_raw_np_scalar(self):
 
@@ -670,10 +638,10 @@ class IntrinsicsTest(parameterized.TestCase):
     def test_np_values():
       floatv = np.float64(0)
       tff_float = intrinsics.federated_value(floatv, placements.SERVER)
-      self.assertEqual(str(tff_float.type_signature), 'float64@SERVER')
+      self.assert_type(tff_float, 'float64@SERVER')
       intv = np.int64(0)
       tff_int = intrinsics.federated_value(intv, placements.SERVER)
-      self.assertEqual(str(tff_int.type_signature), 'int64@SERVER')
+      self.assert_type(tff_int, 'int64@SERVER')
       return (tff_float, tff_int)
 
     floatv, intv = test_np_values()
@@ -693,7 +661,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_value(x, placements.SERVER)
 
-    self.assertEqual(str(foo.type_signature), '(bool -> bool@SERVER)')
+    self.assert_type(foo, '(bool -> bool@SERVER)')
 
   def test_sequence_sum(self):
 
@@ -702,7 +670,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo1(x):
       return intrinsics.sequence_sum(x)
 
-    self.assertEqual(str(foo1.type_signature), '(int32* -> int32)')
+    self.assert_type(foo1, '(int32* -> int32)')
 
     @computations.federated_computation(
         computation_types.FederatedType(
@@ -710,8 +678,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo2(x):
       return intrinsics.sequence_sum(x)
 
-    self.assertEqual(
-        str(foo2.type_signature), '(int32*@SERVER -> int32@SERVER)')
+    self.assert_type(foo2, '(int32*@SERVER -> int32@SERVER)')
 
     @computations.federated_computation(
         computation_types.FederatedType(
@@ -719,8 +686,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo3(x):
       return intrinsics.sequence_sum(x)
 
-    self.assertEqual(
-        str(foo3.type_signature), '({int32*}@CLIENTS -> {int32}@CLIENTS)')
+    self.assert_type(foo3, '({int32*}@CLIENTS -> {int32}@CLIENTS)')
 
   def test_sequence_map(self):
 
@@ -733,7 +699,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo1(x):
       return intrinsics.sequence_map(over_threshold, x)
 
-    self.assertEqual(str(foo1.type_signature), '(int32* -> bool*)')
+    self.assert_type(foo1, '(int32* -> bool*)')
 
     @computations.federated_computation(
         computation_types.FederatedType(
@@ -741,8 +707,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo2(x):
       return intrinsics.sequence_map(over_threshold, x)
 
-    self.assertEqual(
-        str(foo2.type_signature), '(int32*@SERVER -> bool*@SERVER)')
+    self.assert_type(foo2, '(int32*@SERVER -> bool*@SERVER)')
 
     @computations.federated_computation(
         computation_types.FederatedType(
@@ -750,8 +715,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo3(x):
       return intrinsics.sequence_map(over_threshold, x)
 
-    self.assertEqual(
-        str(foo3.type_signature), '({int32*}@CLIENTS -> {bool*}@CLIENTS)')
+    self.assert_type(foo3, '({int32*}@CLIENTS -> {bool*}@CLIENTS)')
 
   def test_sequence_reduce(self):
     add_numbers = computations.tf_computation(tf.add, [tf.int32, tf.int32])
@@ -761,7 +725,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo1(x):
       return intrinsics.sequence_reduce(x, 0, add_numbers)
 
-    self.assertEqual(str(foo1.type_signature), '(int32* -> int32)')
+    self.assert_type(foo1, '(int32* -> int32)')
 
     @computations.federated_computation(
         computation_types.FederatedType(
@@ -769,8 +733,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo2(x):
       return intrinsics.sequence_reduce(x, 0, add_numbers)
 
-    self.assertEqual(
-        str(foo2.type_signature), '(int32*@SERVER -> int32@SERVER)')
+    self.assert_type(foo2, '(int32*@SERVER -> int32@SERVER)')
 
     @computations.federated_computation(
         computation_types.FederatedType(
@@ -778,8 +741,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo3(x):
       return intrinsics.sequence_reduce(x, 0, add_numbers)
 
-    self.assertEqual(
-        str(foo3.type_signature), '({int32*}@CLIENTS -> {int32}@CLIENTS)')
+    self.assert_type(foo3, '({int32*}@CLIENTS -> {int32}@CLIENTS)')
 
   @core_test.executors(
       ('local', executor_stacks.local_executor_factory()),)
