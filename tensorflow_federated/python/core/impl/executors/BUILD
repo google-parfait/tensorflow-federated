@@ -122,3 +122,34 @@ py_test(
         "//tensorflow_federated/python/core/impl:lambda_executor",
     ],
 )
+
+py_library(
+    name = "transforming_executor",
+    srcs = ["transforming_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:computation_impl",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+    ],
+)
+
+py_test(
+    name = "transforming_executor_test",
+    size = "small",
+    srcs = ["transforming_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        ":transforming_executor",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:transformations",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
+    ],
+)

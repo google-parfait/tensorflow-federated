@@ -1006,37 +1006,6 @@ py_test(
 )
 
 py_library(
-    name = "transforming_executor",
-    srcs = ["transforming_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":computation_impl",
-        ":type_utils",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-    ],
-)
-
-py_test(
-    name = "transforming_executor_test",
-    size = "small",
-    srcs = ["transforming_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":transformations",
-        ":transforming_executor",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:type_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-    ],
-)
-
-py_library(
     name = "type_utils",
     srcs = ["type_utils.py"],
     srcs_version = "PY3",
