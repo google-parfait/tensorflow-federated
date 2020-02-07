@@ -21,10 +21,10 @@ from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import sizing_executor
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import sizing_executor
 
 
 def _complete_stack(ex):

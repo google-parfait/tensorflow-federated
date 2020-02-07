@@ -25,8 +25,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import lambda_executor
-from tensorflow_federated.python.core.impl import sizing_executor
 from tensorflow_federated.python.core.impl.executors import caching_executor
+from tensorflow_federated.python.core.impl.executors import sizing_executor
 
 
 class SizingExecutorTest(parameterized.TestCase):
