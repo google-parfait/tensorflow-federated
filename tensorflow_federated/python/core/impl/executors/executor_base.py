@@ -15,6 +15,9 @@
 """A base Python interface for all types of executors."""
 
 import abc
+from typing import Optional
+
+from tensorflow_federated.python.core.impl.executors import executor_value_base as evb
 
 
 class Executor(object, metaclass=abc.ABCMeta):
@@ -27,14 +30,14 @@ class Executor(object, metaclass=abc.ABCMeta):
   # factoring out parts of reference executor's `to_representation_for_type()`.
 
   @abc.abstractmethod
-  async def create_value(self, value, type_spec=None):
+  async def create_value(self, value, type_spec=None) -> evb.ExecutorValue:
     """A coroutine that creates embedded value from `value` of type `type_spec`.
 
     This function is used to embed a value within the executor. The argument
     can be one of the plain Python types, a nested structure, a representation
     of a TFF computation, etc. Once embedded, the value can be further passed
     around within the executor. For functional values, embedding them prior to
-    invocation potentally allows the executor to amortize overhead across
+    invocation potentially allows the executor to amortize overhead across
     multiple calls.
 
     Args:
@@ -44,13 +47,15 @@ class Executor(object, metaclass=abc.ABCMeta):
         value is a instance of `tff.TypedObject`.
 
     Returns:
-      An instance of `executor_value_base.ExecutorValue` that represents the
-      embedded value.
+      An instance of `ExecutorValue` that represents the embedded value.
     """
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def create_call(self, comp, arg=None):
+  async def create_call(self,
+                        comp,
+                        arg: Optional[evb.ExecutorValue] = None
+                       ) -> evb.ExecutorValue:
     """A coroutine that creates a call to `comp` with optional argument `arg`.
 
     Args:
@@ -61,23 +66,24 @@ class Executor(object, metaclass=abc.ABCMeta):
         by calling `create_value()` on it first.
 
     Returns:
-      An instance of `executor_value_base.ExecutorValue` that represents the
+      An instance of `ExecutorValue` that represents the
       constructed vall.
     """
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def create_tuple(self, elements):
+  async def create_tuple(self, elements) -> evb.ExecutorValue:
     """A coroutine that creates a tuple of `elements`.
 
     Args:
-      elements: An enumerable or dict with the elements to create a tuple from.
-        The elements must all have been embedded in this executor by invoking
-        `create_value()` on them first.
+      elements: A collection of `ExecutorValue`s to create a tuple from. The
+        collection may be of any kind accepted by
+        `anonymous_tuple.from_container`, including dictionaries and lists. The
+        `ExecutorValues` in the container must have been created by calling
+        `create_value` on this executor.
 
     Returns:
-      An instance of `executor_value_base.ExecutorValue` that represents the
-      constructed tuple.
+      An instance of `ExecutorValue` that represents the constructed tuple.
     """
     raise NotImplementedError
 
@@ -92,8 +98,7 @@ class Executor(object, metaclass=abc.ABCMeta):
       name: An optional string name. Either this, or `index` must be present.
 
     Returns:
-      An instance of `executor_value_base.ExecutorValue` that represents the
-      constructed selection.
+      An instance of `ExecutorValue` that represents the constructed selection.
     """
     raise NotImplementedError
 

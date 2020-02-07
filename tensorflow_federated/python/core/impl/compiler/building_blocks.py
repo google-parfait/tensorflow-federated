@@ -105,7 +105,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     self._type_signature = type_signature
 
   @property
-  def type_signature(self):
+  def type_signature(self) -> computation_types.Type:
     return self._type_signature
 
   def compact_representation(self):

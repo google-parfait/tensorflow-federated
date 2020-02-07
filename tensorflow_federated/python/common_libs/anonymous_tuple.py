@@ -418,8 +418,9 @@ def from_container(value, recursive=False):
   """Creates an instance of `AnonymousTuple` from a Python container.
 
   By default, this conversion is only performed at the top level for Python
-  dictionaries, `collections.OrderedDict`s, `namedtuple`s, `list`s and
-  `tuple`s. Elements of these structures are not recursively converted.
+  dictionaries, `collections.OrderedDict`s, `namedtuple`s, `list`s,
+  `tuple`s, and `attr.s` classes. Elements of these structures are not
+  recursively converted.
 
   Args:
     value: The Python container to convert.

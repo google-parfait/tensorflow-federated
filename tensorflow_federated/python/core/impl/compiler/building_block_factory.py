@@ -917,6 +917,44 @@ def create_federated_collect(value):
   return building_blocks.Call(intrinsic, value)
 
 
+def create_federated_eval(
+    fn: building_blocks.ComputationBuildingBlock,
+    placement: placement_literals.PlacementLiteral,
+) -> building_blocks.ComputationBuildingBlock:
+  r"""Creates a called federated eval.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    fn: A `building_blocks.ComputationBuildingBlock` to use as the function.
+    placement: A `placement_literals.PlacementLiteral` to use as the placement.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
+  if placement is placement_literals.CLIENTS:
+    uri = intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri
+    all_equal = False
+  elif placement is placement_literals.SERVER:
+    uri = intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri
+    all_equal = True
+  else:
+    raise TypeError('Unsupported placement {}.'.format(placement))
+  result_type = computation_types.FederatedType(
+      fn.type_signature.result, placement, all_equal=all_equal)
+  intrinsic_type = computation_types.FunctionType(fn.type_signature,
+                                                  result_type)
+  intrinsic = building_blocks.Intrinsic(uri, intrinsic_type)
+  return building_blocks.Call(intrinsic, fn)
+
+
 def create_federated_map(fn, arg):
   r"""Creates a called federated map.
 

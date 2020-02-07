@@ -66,6 +66,36 @@ class IntrinsicsTest(parameterized.TestCase):
       def _(x):
         return intrinsics.federated_broadcast(x)
 
+  def test_federated_eval_rand_on_clients(self):
+
+    @computations.federated_computation
+    def rand_on_clients():
+
+      @computations.tf_computation
+      def rand():
+        return tf.random.normal([])
+
+      return intrinsics.federated_eval(rand, placements.CLIENTS)
+
+    self.assertEqual(
+        rand_on_clients.type_signature.compact_representation(),
+        '( -> {float32}@CLIENTS)',
+    )
+
+  def test_federated_eval_rand_on_server(self):
+
+    @computations.federated_computation
+    def rand_on_server():
+
+      @computations.tf_computation
+      def rand():
+        return tf.random.normal([])
+
+      return intrinsics.federated_eval(rand, placements.SERVER)
+
+    self.assertEqual(rand_on_server.type_signature.compact_representation(),
+                     '( -> float32@SERVER)')
+
   def test_federated_map_with_client_all_equal_int(self):
 
     @computations.federated_computation(

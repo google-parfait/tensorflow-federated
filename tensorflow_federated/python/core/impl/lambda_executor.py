@@ -262,14 +262,27 @@ class LambdaExecutor(executor_base.Executor):
       py_typecheck.check_type(arg, LambdaExecutorValue)
       arg_type = arg.type_signature  # pytype: disable=attribute-error
       if not type_utils.is_assignable_from(param_type, arg_type):
+        adjusted_arg_type = arg_type
         if isinstance(arg_type, computation_types.FunctionType):
           # We may have a non-functional type embedded as a no-arg function.
-          arg_type = type_utils.get_argument_type(arg_type)
-        if not type_utils.is_assignable_from(param_type, arg_type):
+          adjusted_arg_type = type_utils.get_argument_type(arg_type)
+
+        # HACK: The second (`or`) check covers the case where a no-arg lambda
+        # was passed to the lambda executor as a value.
+        # `get_function_type` is used above to transform non-function
+        # types into no-arg lambda types, which are unwrapped by
+        # `get_argument_type` above. Since our value of type `( -> T)`
+        # then has an `adjusted_arg_type` of type `T`, the above
+        # check will fail, so we fall back to checking the unadjusted
+        # type. Note: this will permit some values passed in as type `T`
+        # to be used as values of type `( -> T)`.
+        if not (type_utils.is_assignable_from(param_type, adjusted_arg_type) or
+                type_utils.is_assignable_from(param_type, arg_type)):
           raise TypeError('LambdaExecutor asked to create call with '
                           'incompatible type specifications. Function '
                           'takes an argument of type {}, but was supplied '
-                          'an argument of type {}'.format(param_type, arg_type))
+                          'an argument of type {} (or possibly {})'.format(
+                              param_type, adjusted_arg_type, arg_type))
         arg = await self.create_call(arg)
         return await self.create_call(comp, arg)
     else:

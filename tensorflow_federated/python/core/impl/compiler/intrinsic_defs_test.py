@@ -48,6 +48,10 @@ class IntrinsicDefsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('federated_broadcast', 'FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
+      ('federated_eval_at_clients', 'FEDERATED_EVAL_AT_CLIENTS',
+       '(( -> T) -> {T}@CLIENTS)'),
+      ('federated_eval_at_server', 'FEDERATED_EVAL_AT_SERVER',
+       '(( -> T) -> T@SERVER)'),
       ('federated_map', 'FEDERATED_MAP',
        '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
       ('federated_sum', 'FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),

@@ -212,7 +212,7 @@ class SequenceType(Type):
     self._element = to_type(element)
 
   @property
-  def element(self):
+  def element(self) -> Type:
     return self._element
 
   def __repr__(self):
@@ -353,7 +353,7 @@ class FederatedType(Type):
             self._all_equal == other.all_equal)
 
 
-def to_type(spec):
+def to_type(spec) -> Type:
   """Converts the argument into an instance of `tff.Type`.
 
   Examples of arguments convertible to tensor types:
@@ -431,7 +431,7 @@ def to_type(spec):
             py_typecheck.type_string(type(spec))))
 
 
-def _to_type_from_attrs(spec):
+def _to_type_from_attrs(spec) -> Type:
   """Converts an `attr.s` class or instance to a `tff.Type`."""
   if isinstance(spec, type):
     # attrs class type, introspect the attributes for their type annotations.
@@ -453,7 +453,7 @@ def _to_type_from_attrs(spec):
   return NamedTupleTypeWithPyContainerType(elements, the_type)
 
 
-def _string_representation(type_spec, formatted):
+def _string_representation(type_spec, formatted: bool) -> str:
   """Returns the string representation of a TFF `Type`.
 
   This function creates a `list` of strings representing the given `type_spec`;

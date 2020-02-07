@@ -57,6 +57,7 @@ py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
     srcs_version = "PY3",
+    deps = [":executor_value_base"],
 )
 
 py_library(

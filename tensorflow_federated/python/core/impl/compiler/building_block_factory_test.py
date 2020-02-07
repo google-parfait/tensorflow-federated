@@ -949,6 +949,29 @@ class CreateFederatedCollectTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
 
 
+class CreateFederatedEvalTest(absltest.TestCase):
+
+  def assert_type_error(self, fn, placement):
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_eval(fn, placement)
+
+  def test_raises_type_error_with_none_fn(self):
+    self.assert_type_error(None, placement_literals.CLIENTS)
+
+  def test_raises_type_error_with_nonfunctional_fn(self):
+    fn = building_blocks.Data('y', tf.int32)
+    self.assert_type_error(fn, placement_literals.CLIENTS)
+
+  def test_returns_federated_eval(self):
+    fn = building_blocks.Data('y',
+                              computation_types.FunctionType(None, tf.int32))
+    comp = building_block_factory.create_federated_eval(
+        fn, placement_literals.CLIENTS)
+    self.assertEqual(comp.compact_representation(),
+                     'federated_eval_at_clients(y)')
+    self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
+
+
 class CreateFederatedMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):

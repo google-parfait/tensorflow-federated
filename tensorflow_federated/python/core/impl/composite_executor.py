@@ -15,6 +15,7 @@
 """An executor composed of subordinate executors that manage disjoint scopes."""
 
 import asyncio
+from typing import List
 
 import tensorflow as tf
 
@@ -50,7 +51,7 @@ class CompositeValue(executor_value_base.ExecutorValue):
     * An instance of `pb.Computation` in an unparsed form (to be relayed to one
       of the subordinate executors), which must be of a functional type.
 
-    * A single value embedded in the parent executor.
+    * A single `ExecutorValue` embedded in the parent executor.
 
     * An ordinary Python `list` with values embedded in the child executors.
 
@@ -142,6 +143,7 @@ class CompositeExecutor(executor_base.Executor):
   - federated_aggregate
   - federated_apply
   - federated_broadcast
+  - federated_eval
   - federated_map
   - federated_mean
   - federated_sum
@@ -153,7 +155,8 @@ class CompositeExecutor(executor_base.Executor):
   # TODO(b/139129100): Implement the remaining operators (collect, reduce, etc.)
   # for feature parity with the reference executor.
 
-  def __init__(self, parent_executor, child_executors):
+  def __init__(self, parent_executor: executor_base.Executor,
+               child_executors: List[executor_base.Executor]):
     """Creates a composite executor from a collection of subordinate executors.
 
     Args:
@@ -165,7 +168,7 @@ class CompositeExecutor(executor_base.Executor):
 
     Raises:
       ValueError: If `parent_executor` is not an `Executor` instance, or
-        `child_exectuors` is not a list of `Exector` instances.
+        `child_executors` is not a list of `Exector` instances.
     """
     py_typecheck.check_type(parent_executor, executor_base.Executor)
     py_typecheck.check_type(child_executors, list)
@@ -173,28 +176,46 @@ class CompositeExecutor(executor_base.Executor):
       py_typecheck.check_type(e, executor_base.Executor)
     self._parent_executor = parent_executor
     self._child_executors = child_executors
-    self._cardinalities = None
+    self._cardinalities_task = None
 
-  @executor_utils.log_async
   async def _get_cardinalities(self):
-    one_type = type_factory.at_clients(tf.int32, all_equal=True)
-    sum_type = computation_types.FunctionType(
-        type_factory.at_clients(tf.int32), type_factory.at_server(tf.int32))
-    sum_comp = executor_utils.create_intrinsic_comp(
-        intrinsic_defs.FEDERATED_SUM, sum_type)
+    """A coroutine which returns information about the number of child executors.
 
-    async def _child_fn(ex):
-      return await (await ex.create_call(*(await asyncio.gather(
-          ex.create_value(sum_comp, sum_type), ex.create_value(1, one_type))))
-                   ).compute()
+    Returns:
+      An iterable with one value for each element in `self._child_executors`.
+      Each element is a number representing the total number of terminal
+      clients located under the corresponding child executor.
+    """
 
-    def _materialize(v):
-      return v.numpy() if isinstance(v, tf.Tensor) else v
+    async def _get_cardinalities_helper():
+      """Helper function which does the actual work of fetching cardinalities."""
+      one_type = type_factory.at_clients(tf.int32, all_equal=True)
+      sum_type = computation_types.FunctionType(
+          type_factory.at_clients(tf.int32), type_factory.at_server(tf.int32))
+      sum_comp = executor_utils.create_intrinsic_comp(
+          intrinsic_defs.FEDERATED_SUM, sum_type)
 
-    return [
-        _materialize(x) for x in (await asyncio.gather(
-            *[_child_fn(c) for c in self._child_executors]))
-    ]
+      async def _count_leaf_executors(ex):
+        """Counts the total number of leaf executors under `ex`."""
+        one_fut = ex.create_value(1, one_type)
+        sum_comp_fut = ex.create_value(sum_comp, sum_type)
+        one_val, sum_comp_val = tuple(await
+                                      asyncio.gather(one_fut, sum_comp_fut))
+        sum_result = await (await ex.create_call(sum_comp_val,
+                                                 one_val)).compute()
+        if isinstance(sum_result, tf.Tensor):
+          return sum_result.numpy()
+        else:
+          return sum_result
+
+      return await asyncio.gather(
+          *[_count_leaf_executors(c) for c in self._child_executors])
+
+    # Cache the Task that fetches cardinalities.
+    if self._cardinalities_task is None:
+      self._cardinalities_task = asyncio.ensure_future(
+          _get_cardinalities_helper())
+    return await self._cardinalities_task
 
   @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
@@ -246,10 +267,7 @@ class CompositeExecutor(executor_base.Executor):
               ]), type_spec)
         else:
           py_typecheck.check_type(value, list)
-          if self._cardinalities is None:
-            self._cardinalities = asyncio.ensure_future(
-                self._get_cardinalities())
-          cardinalities = await self._cardinalities
+          cardinalities = await self._get_cardinalities()
           py_typecheck.check_len(cardinalities, len(self._child_executors))
           count = sum(cardinalities)
           py_typecheck.check_len(value, count)
@@ -425,6 +443,43 @@ class CompositeExecutor(executor_base.Executor):
     return await self.create_value(
         await arg.compute(),
         type_factory.at_clients(arg.type_signature.member, all_equal=True))
+
+  @executor_utils.log_async
+  async def _eval(self, arg, intrinsic, placement, all_equal):
+    py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
+    py_typecheck.check_type(arg.internal_representation, pb.Computation)
+    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    fn = arg.internal_representation
+    fn_type = arg.type_signature
+    eval_type = computation_types.FunctionType(
+        fn_type,
+        computation_types.FederatedType(
+            fn_type.result, placement, all_equal=all_equal))
+    eval_comp = executor_utils.create_intrinsic_comp(intrinsic, eval_type)
+
+    async def _child_fn(ex):
+      py_typecheck.check_type(ex, executor_base.Executor)
+      create_eval = ex.create_value(eval_comp, eval_type)
+      create_fn = ex.create_value(fn, fn_type)
+      eval_val, fn_val = tuple(await asyncio.gather(create_eval, create_fn))
+      return await ex.create_call(eval_val, fn_val)
+
+    result_vals = await asyncio.gather(
+        *[_child_fn(c) for c in self._child_executors])
+
+    result_type = computation_types.FederatedType(
+        fn_type.result, placement, all_equal=all_equal)
+    return CompositeValue(result_vals, result_type)
+
+  @executor_utils.log_async
+  async def _compute_intrinsic_federated_eval_at_server(self, arg):
+    return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_SERVER,
+                            placement_literals.SERVER, True)
+
+  @executor_utils.log_async
+  async def _compute_intrinsic_federated_eval_at_clients(self, arg):
+    return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS,
+                            placement_literals.CLIENTS, False)
 
   @executor_utils.log_async
   async def _compute_intrinsic_federated_map(self, arg):

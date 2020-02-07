@@ -115,6 +115,25 @@ class IntrinsicFactory(object):
     comp = building_block_factory.create_federated_collect(value)
     return value_impl.ValueImpl(comp, self._context_stack)
 
+  def federated_eval(self, fn, placement):
+    """Implements `federated_eval` as defined in `api/intrinsics.py`."""
+    # TODO(b/113112108): Verify that neither the value, nor any of its parts
+    # are of a federated type.
+
+    fn = value_impl.to_value(fn, None, self._context_stack)
+    py_typecheck.check_type(fn, value_base.Value)
+    py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
+
+    if fn.type_signature.parameter is not None:
+      raise TypeError(
+          '`federated_eval` expects a `fn` that accepts no arguments, but '
+          'the `fn` provided has a parameter of type {}.'.format(
+              fn.type_signature.parameter))
+
+    fn_comp = value_impl.ValueImpl.get_comp(fn)
+    comp = building_block_factory.create_federated_eval(fn_comp, placement)
+    return value_impl.ValueImpl(comp, self._context_stack)
+
   def federated_map(self, fn, arg):
     """Implements `federated_map` as defined in `api/intrinsics.py`."""
     # TODO(b/113112108): Possibly lift the restriction that the mapped value

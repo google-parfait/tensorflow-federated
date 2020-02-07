@@ -228,6 +228,26 @@ FEDERATED_COLLECT = IntrinsicDef(
             computation_types.SequenceType(
                 computation_types.AbstractType('T')))))
 
+# Evaluates a function at the clients.
+#
+# Type signature: (() -> T) -> {T}@CLIENTS
+FEDERATED_EVAL_AT_CLIENTS = IntrinsicDef(
+    'FEDERATED_EVAL_AT_CLIENTS', 'federated_eval_at_clients',
+    computation_types.FunctionType(
+        parameter=computation_types.FunctionType(
+            None, computation_types.AbstractType('T')),
+        result=type_factory.at_clients(computation_types.AbstractType('T'))))
+
+# Evaluates a function at the server.
+#
+# Type signature: (() -> T) -> T@SERVER
+FEDERATED_EVAL_AT_SERVER = IntrinsicDef(
+    'FEDERATED_EVAL_AT_SERVER', 'federated_eval_at_server',
+    computation_types.FunctionType(
+        parameter=computation_types.FunctionType(
+            None, computation_types.AbstractType('T')),
+        result=type_factory.at_server(computation_types.AbstractType('T'))))
+
 # Maps member constituents of a client value pointwise using a given mapping
 # function that operates independently on each client.
 #

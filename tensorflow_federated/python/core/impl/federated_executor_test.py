@@ -297,6 +297,61 @@ class FederatedExecutorTest(parameterized.TestCase):
       self.assertIsInstance(v, eager_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 10)
 
+  def test_federated_eval_at_clients_simple_number(self):
+
+    @computations.federated_computation
+    def comp():
+      return_five = computations.tf_computation(lambda: 5)
+      return intrinsics.federated_eval(return_five, placements.CLIENTS)
+
+    num_clients = 3
+    val = _run_test_comp(comp, num_clients=num_clients)
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
+    self.assertIsInstance(val.internal_representation, list)
+    self.assertLen(val.internal_representation, num_clients)
+    for v in val.internal_representation:
+      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertEqual(v.internal_representation.numpy(), 5)
+
+  def test_federated_eval_at_server_simple_number(self):
+
+    @computations.federated_computation
+    def comp():
+      return_five = computations.tf_computation(lambda: 5)
+      return intrinsics.federated_eval(return_five, placements.SERVER)
+
+    num_clients = 3
+    val = _run_test_comp(comp, num_clients=num_clients)
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertEqual(str(val.type_signature), 'int32@SERVER')
+    self.assertIsInstance(val.internal_representation, list)
+    self.assertLen(val.internal_representation, 1)
+    v = val.internal_representation[0]
+    self.assertIsInstance(v, eager_executor.EagerValue)
+    self.assertEqual(v.internal_representation.numpy(), 5)
+
+  def test_federated_eval_at_clients_random(self):
+
+    @computations.federated_computation
+    def comp():
+      rand = computations.tf_computation(lambda: tf.random.normal([]))
+      return intrinsics.federated_eval(rand, placements.CLIENTS)
+
+    num_clients = 3
+    val = _run_test_comp(comp, num_clients=num_clients)
+    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertEqual(str(val.type_signature), '{float32}@CLIENTS')
+    self.assertIsInstance(val.internal_representation, list)
+    self.assertLen(val.internal_representation, num_clients)
+    previous_values = set()
+    for v in val.internal_representation:
+      self.assertIsInstance(v, eager_executor.EagerValue)
+      number = v.internal_representation.numpy()
+      if number in previous_values:
+        raise Exception('Multiple clients returned same random number')
+      previous_values.add(number)
+
   def test_federated_map_at_server(self):
     loop, ex = _make_test_runtime()
 

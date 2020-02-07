@@ -93,6 +93,28 @@ class CompositeExecutorTest(absltest.TestCase):
 
     self.assertEqual(comp(), 10)
 
+  def test_federated_eval_at_server(self):
+
+    @computations.federated_computation
+    def comp():
+      return_five = computations.tf_computation(lambda: 5)
+      return intrinsics.federated_eval(return_five, placements.SERVER)
+
+    self.assertEqual(comp(), 5)
+
+  def test_federated_eval_at_clients(self):
+
+    @computations.federated_computation
+    def comp():
+      return_five = computations.tf_computation(lambda: 5)
+      return intrinsics.federated_eval(return_five, placements.CLIENTS)
+
+    comp_result = comp()
+    self.assertIsInstance(comp_result, list)
+    self.assertLen(comp_result, self._num_clients)
+    for x in comp_result:
+      self.assertEqual(x, 5)
+
   def test_federated_map(self):
 
     @computations.federated_computation

@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_apply
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
+from tensorflow_federated.python.core.api.intrinsics import federated_eval
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_mean
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce

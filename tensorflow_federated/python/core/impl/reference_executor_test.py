@@ -15,6 +15,7 @@
 
 import collections
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -47,7 +48,7 @@ def zero_for(type_spec, context_stack):
       context_stack)
 
 
-class ReferenceExecutorTest(test.TestCase):
+class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
   def test_computed_value(self):
     v = reference_executor.ComputedValue(10, tf.int32)
@@ -1064,6 +1065,12 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(str(foo(5, 6)), '<5,6>')  # pylint: disable=too-many-function-args
 
+  def assert_list(self, value, expected: str):
+    """Assert that a value is a list with a given string representation."""
+    self.assertIsInstance(value, list)
+    value_str = ','.join(str(x) for x in value).replace(' ', '')
+    self.assertEqual(value_str, expected)
+
   def test_federated_zip_at_clients(self):
 
     @computations.federated_computation([
@@ -1077,9 +1084,7 @@ class ReferenceExecutorTest(test.TestCase):
         str(foo.type_signature),
         '(<{int32}@CLIENTS,{int32}@CLIENTS> -> {<int32,int32>}@CLIENTS)')
     foo_result = foo([[1, 2, 3], [4, 5, 6]])
-    self.assertIsInstance(foo_result, list)
-    foo_result_str = ','.join(str(x) for x in foo_result)
-    self.assertEqual(foo_result_str, '<1,4>,<2,5>,<3,6>')
+    self.assert_list(foo_result, '<1,4>,<2,5>,<3,6>')
 
   def test_federated_aggregate_with_integers(self):
     test_named_tuple = collections.namedtuple('_', ['sum', 'n'])
@@ -1145,9 +1150,59 @@ class ReferenceExecutorTest(test.TestCase):
         '(<{int32}@CLIENTS,int32@SERVER> -> {<int32,int32>}@CLIENTS)')
 
     foo_result = foo([1, 2, 3], 10)
+    self.assert_list(foo_result, '<1,10>,<2,10>,<3,10>')
+
+  @parameterized.named_parameters(
+      ('federated', computations.federated_computation),
+      ('tf', computations.tf_computation),
+  )
+  def test_federated_eval_at_clients_simple_number(self, comp_wrapper):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      del x
+      return_five = comp_wrapper(lambda: 5)
+      return intrinsics.federated_eval(return_five, placements.CLIENTS)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> {int32}@CLIENTS)')
+    foo_result = foo([0, 0, 0])
+    self.assert_list(foo_result, '5,5,5')
+
+  @parameterized.named_parameters(
+      ('federated', computations.federated_computation),
+      ('tf', computations.tf_computation),
+  )
+  def test_federated_eval_at_server_simple_number(self, comp_wrapper):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      del x
+      return_five = comp_wrapper(lambda: 5)
+      return intrinsics.federated_eval(return_five, placements.SERVER)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
+    self.assertEqual(foo([0, 0, 0]), 5)
+
+  def test_federated_eval_at_clients_random(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    def foo(x):
+      del x
+      rand = computations.tf_computation(lambda: tf.random.normal([]))
+      return intrinsics.federated_eval(rand, placements.CLIENTS)
+
+    self.assertEqual(
+        str(foo.type_signature), '({int32}@CLIENTS -> {float32}@CLIENTS)')
+    foo_result = foo([0, 0, 0])
     self.assertIsInstance(foo_result, list)
-    foo_result_str = ','.join(str(x) for x in foo_result)
-    self.assertEqual(foo_result_str, '<1,10>,<2,10>,<3,10>')
+    self.assertLen(foo_result, 3)
+    self.assertNotEqual(foo_result[0], foo_result[1])
+    self.assertNotEqual(foo_result[1], foo_result[2])
 
   def test_with_unequal_tensor_types(self):
 
@@ -1157,9 +1212,7 @@ class ReferenceExecutorTest(test.TestCase):
 
     self.assertEqual(str(foo.type_signature), '( -> float32[?]*)')
     foo_result = foo()
-    self.assertIsInstance(foo_result, list)
-    foo_result_str = ','.join(str(x) for x in foo_result).replace(' ', '')
-    self.assertEqual(foo_result_str, '[10.],[10.],[10.],[10.],[10.]')
+    self.assert_list(foo_result, '[10.],[10.],[10.],[10.],[10.]')
 
   def test_numpy_cast(self):
     self.assertEqual(

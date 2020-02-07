@@ -16,6 +16,7 @@
 
 import abc
 import collections
+from typing import Any
 
 import attr
 import tensorflow as tf
@@ -40,7 +41,11 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
   """A generic base class for values that appear in TFF computations."""
 
-  def __init__(self, comp, context_stack):
+  def __init__(
+      self,
+      comp: building_blocks.ComputationBuildingBlock,
+      context_stack: context_stack_base.ContextStack,
+  ):
     """Constructs a value of the given type.
 
     Args:
@@ -275,7 +280,11 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
       context_stack)
 
 
-def to_value(arg, type_spec, context_stack):
+def to_value(
+    arg: Any,
+    type_spec,
+    context_stack: context_stack_base.ContextStack,
+) -> ValueImpl:
   """Converts the argument into an instance of `tff.Value`.
 
   The types of non-`tff.Value` arguments that are currently convertible to
@@ -292,7 +301,9 @@ def to_value(arg, type_spec, context_stack):
   Args:
     arg: Either an instance of `tff.Value`, or an argument convertible to
       `tff.Value`. The argument must not be `None`.
-    type_spec: A type specifier that allows for disambiguating the target type
+    type_spec: An optional `computation_types.Type` or value convertible to it
+      by `computation_types.to_type` which specifies the desired type signature
+      of the resulting value. This allows for disambiguating the target type
       (e.g., when two TFF types can be mapped to the same Python
       representations), or `None` if none available, in which case TFF tries to
       determine the type of the TFF value automatically.

@@ -431,7 +431,6 @@ def get_named_tuple_element_type(type_spec, name):
                    'of the names {} in the named tuple type.'.format(
                        name, [e[0] for e in elements if e[0]]))
 
-
 T = TypeVar('T')
 
 
@@ -1218,6 +1217,10 @@ def is_concrete_instance_of(type_with_concrete_elements,
       return computation_types.FederatedType(new_member,
                                              abstract_type_spec.placement,
                                              abstract_type_spec.all_equal)
+    elif abstract_type_spec is None:
+      if concrete_type_spec is not None:
+        raise TypeError(type_error_string)
+      return None
     else:
       raise TypeError(
           'Unexpected abstract typespec {}.'.format(abstract_type_spec))
@@ -1371,7 +1374,7 @@ def get_function_type(type_spec):
   """Constructs a functional type signature for `type_spec`.
 
   Given `type_spec` that is `T`, a functional type signature may be either `T`
-  itelf if it is a function, or `( -> T)` otherwise. This allows types from
+  itself if it is a function, or `( -> T)` otherwise. This allows types from
   protos to be matched to how types are represented at the level of the Python
   wrapping.
 

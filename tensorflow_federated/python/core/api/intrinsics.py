@@ -167,6 +167,24 @@ def federated_collect(value):
   return factory.federated_collect(value)
 
 
+def federated_eval(fn, placement):
+  """Evaluates a federated computation at `placement`, returning the result.
+
+  Args:
+    fn: A no-arg TFF computation.
+    placement: The desired result placement (either `tff.SERVER` or
+      `tff.CLIENTS`).
+
+  Returns:
+    A federated value with the given placement `placement`.
+
+  Raises:
+    TypeError: If the arguments are not of the appropriate types.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_eval(fn, placement)
+
+
 def federated_map(mapping_fn, value):
   """Maps a federated value pointwise using a mapping function.
 
@@ -250,6 +268,7 @@ def federated_sum(value):
   return factory.federated_sum(value)
 
 
+# Deprecated, use tff.federated_eval instead.
 def federated_value(value, placement):
   """Returns a federated value at `placement`, with `value` as the constituent.
 
