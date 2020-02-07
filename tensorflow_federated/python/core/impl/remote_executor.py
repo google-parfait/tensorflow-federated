@@ -21,7 +21,6 @@ import threading
 import weakref
 
 import absl.logging as logging
-
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2

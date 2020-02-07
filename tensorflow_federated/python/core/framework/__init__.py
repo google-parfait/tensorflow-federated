@@ -55,9 +55,9 @@ from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_ex
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
+from tensorflow_federated.python.core.impl.executors.lambda_executor import LambdaExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.federated_executor import FederatedExecutor
-from tensorflow_federated.python.core.impl.lambda_executor import LambdaExecutor
 from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.transformations import insert_called_tf_identity_at_leaves

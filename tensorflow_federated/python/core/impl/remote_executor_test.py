@@ -36,8 +36,8 @@ from tensorflow_federated.python.core.impl import executor_factory
 from tensorflow_federated.python.core.impl import executor_service
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
-from tensorflow_federated.python.core.impl import lambda_executor
 from tensorflow_federated.python.core.impl import remote_executor
+from tensorflow_federated.python.core.impl.executors import lambda_executor
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
