@@ -187,13 +187,8 @@ tutorial, as well as in the example models we use for testing in
 ### Converters for Keras
 
 Nearly all the information that's required by TFF can be derived by calling
-`tf.keras` interfaces, so if you have a Keras model, you can rely on either of
-the two methods below to construct a `tff.learning.TrainableModel` instance for
-you:
-
-*   `tff.learning.from_keras_model`
-
-*   `tff.learning.from_compiled_keras_model`
+`tf.keras` interfaces, so if you have a Keras model, you can rely on
+`tff.learning.from_keras_model` to construct a `tff.learning.Model`.
 
 Note that TFF still wants you to provide a constructor - a no-argument *model
 function* such as the following:
@@ -201,8 +196,7 @@ function* such as the following:
 ```python
 def model_fn():
   keras_model = ...
-  keras_model.compile(...)
-  return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+  return tff.learning.from_keras_model(keras_model, sample_batch, loss=...)
 ```
 
 In addition to the model itself, you supply a sample batch of data which TFF
@@ -294,8 +288,9 @@ corresponding to the initialization and iteration, respectively.
 At the moment, TFF provides two builder functions that generate the federated
 computations for federated training and evaluation:
 
-*   `tff.learning.build_federated_averaging_process` takes a *model function*,
-    and returns a stateful `tff.utils.IterativeProcess`.
+*   `tff.learning.build_federated_averaging_process` takes a *model function*
+    and a *client optimizer*, and returns a stateful
+    `tff.utils.IterativeProcess`.
 
 *   `tff.learning.build_federated_evaluation` takes a *model function* and
     returns a single federated computation for federated evaluation of models,
