@@ -442,13 +442,13 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_one_secure_sum(self):
-    secure_sum = test_utils.create_dummy_called_secure_sum()
-    called_intrinsics = building_blocks.Tuple([secure_sum])
+  def test_returns_trees_with_one_federated_secure_sum(self):
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    called_intrinsics = building_blocks.Tuple([federated_secure_sum])
     fn = building_blocks.Lambda('a', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
-    uri = [intrinsic_defs.SECURE_SUM.uri]
+    uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
         comp, uri)
@@ -474,16 +474,16 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_two_secure_sums(self):
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+  def test_returns_trees_with_two_federated_secure_sums(self):
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
-        secure_sum,
-        secure_sum,
+        federated_secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('a', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
-    uri = [intrinsic_defs.SECURE_SUM.uri]
+    uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
         comp, uri)
@@ -531,16 +531,16 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_federated_aggregate_only(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_aggregate_only(
       self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
-        secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
                                 called_intrinsics)
@@ -570,7 +570,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  _var3=_var1[1]\n'
         ' in <\n'
         '  _var3,\n'
-        '  secure_sum(<\n'
+        '  federated_secure_sum(<\n'
         '    data,\n'
         '    data\n'
         '  >)\n'
@@ -578,21 +578,21 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_secure_sum_only(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_secure_sum_only(
       self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
-        secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
-    uri = [intrinsic_defs.SECURE_SUM.uri]
+    uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
         comp, uri)
@@ -625,23 +625,23 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_federated_aggregate_first(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_aggregate_first(
       self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
-        secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
@@ -678,22 +678,22 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_secure_sum_for_secure_sum_first(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_secure_sum_first(
       self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
-        secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
     uri = [
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
     ]
 
@@ -731,23 +731,24 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_two_federated_aggregates_and_one_secure_sum(self):
+  def test_returns_trees_with_two_federated_aggregates_and_one_federated_secure_sum(
+      self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_aggregate,
-        secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
@@ -842,23 +843,24 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         )
     # pyformat: enable
 
-  def test_returns_trees_with_one_federated_aggregate_and_two_secure_sums(self):
+  def test_returns_trees_with_one_federated_aggregate_and_two_federated_secure_sums(
+      self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
-        secure_sum,
-        secure_sum,
+        federated_secure_sum,
+        federated_secure_sum,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
@@ -926,15 +928,16 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_two_secure_sums_and_one_federated_aggregate(self):
+  def test_returns_trees_with_two_federated_secure_sums_and_one_federated_aggregate(
+      self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
-        secure_sum,
-        secure_sum,
+        federated_secure_sum,
+        federated_secure_sum,
         federated_aggregate,
     ])
     fn = building_blocks.Lambda('d', called_intrinsics.type_signature,
@@ -942,7 +945,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
@@ -1010,14 +1013,15 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_trees_with_one_secure_sum_and_two_federated_aggregates(self):
+  def test_returns_trees_with_one_federated_secure_sum_and_two_federated_aggregates(
+      self):
     federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    secure_sum = test_utils.create_dummy_called_secure_sum()
+    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
     called_intrinsics = building_blocks.Tuple([
-        secure_sum,
+        federated_secure_sum,
         federated_aggregate,
         federated_aggregate,
     ])
@@ -1026,7 +1030,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
     before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
@@ -1133,7 +1137,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
     with self.assertRaises(ValueError):

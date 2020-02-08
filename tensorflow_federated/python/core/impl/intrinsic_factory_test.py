@@ -19,13 +19,13 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 
 
-class SecureSumTest(absltest.TestCase):
+class FederatedSecureSumTest(absltest.TestCase):
 
   def test_type_signature_with_int(self):
     value = intrinsics.federated_value(1, placements.CLIENTS)
     bitwidth = 8
 
-    intrinsic = intrinsics.secure_sum(value, bitwidth)
+    intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
 
     self.assertEqual(intrinsic.type_signature.compact_representation(),
                      'int32@SERVER')
@@ -34,7 +34,7 @@ class SecureSumTest(absltest.TestCase):
     value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
     bitwidth = [8, [4, 2]]
 
-    intrinsic = intrinsics.secure_sum(value, bitwidth)
+    intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
 
     self.assertEqual(intrinsic.type_signature.compact_representation(),
                      '<int32,<int32,int32>>@SERVER')
@@ -44,21 +44,21 @@ class SecureSumTest(absltest.TestCase):
     bitwidth = intrinsics.federated_value(1, placements.SERVER)
 
     with self.assertRaises(TypeError):
-      intrinsics.secure_sum(value, bitwidth)
+      intrinsics.federated_secure_sum(value, bitwidth)
 
   def test_raises_type_error_with_bitwith_int_at_server(self):
     value = intrinsics.federated_value(1, placements.CLIENTS)
     bitwidth = intrinsics.federated_value(1, placements.SERVER)
 
     with self.assertRaises(TypeError):
-      intrinsics.secure_sum(value, bitwidth)
+      intrinsics.federated_secure_sum(value, bitwidth)
 
   def test_raises_type_error_with_different_structures(self):
     value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
     bitwidth = 8
 
     with self.assertRaises(TypeError):
-      intrinsics.secure_sum(value, bitwidth)
+      intrinsics.federated_secure_sum(value, bitwidth)
 
 
 if __name__ == '__main__':

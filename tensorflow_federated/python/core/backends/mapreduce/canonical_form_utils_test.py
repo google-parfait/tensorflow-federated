@@ -71,10 +71,10 @@ def get_iterative_process_for_sum_example():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates, client_output = intrinsics.federated_map(work, c3)
-    federated_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     s6 = intrinsics.federated_zip(
-        [server_state, [federated_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output, client_output
 
@@ -106,9 +106,9 @@ def get_iterative_process_for_sum_example_with_no_server_state():
     """The `next` function for `computation_utils.IterativeProcess`."""
     del server_state  # Unused
     client_updates, client_output = intrinsics.federated_map(work, client_data)
-    federated_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.secure_sum(client_updates[1], 8)
-    s5 = intrinsics.federated_zip([federated_update, secure_update])
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    s5 = intrinsics.federated_zip([unsecure_update, secure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s5)
     return new_server_state, server_output, client_output
 
@@ -148,10 +148,10 @@ def get_iterative_process_for_sum_example_with_no_client_output():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
-    federated_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     s6 = intrinsics.federated_zip(
-        [server_state, [federated_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
@@ -191,7 +191,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates, client_output = intrinsics.federated_map(work, c3)
-    secure_update = intrinsics.secure_sum(client_updates, 8)
+    secure_update = intrinsics.federated_secure_sum(client_updates, 8)
     s6 = intrinsics.federated_zip([server_state, secure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output, client_output
@@ -199,7 +199,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
-def get_iterative_process_for_sum_example_with_no_secure_sum():
+def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
   """Returns an iterative process for a sum example."""
 
   @computations.federated_computation
@@ -232,8 +232,8 @@ def get_iterative_process_for_sum_example_with_no_secure_sum():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates, client_output = intrinsics.federated_map(work, c3)
-    federated_update = intrinsics.federated_sum(client_updates)
-    s6 = intrinsics.federated_zip([server_state, federated_update])
+    unsecure_update = intrinsics.federated_sum(client_updates)
+    s6 = intrinsics.federated_zip([server_state, unsecure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output, client_output
 
@@ -273,10 +273,10 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     _, client_output = intrinsics.federated_map(work, c3)
-    federated_update = intrinsics.federated_value(1, placements.SERVER)
+    unsecure_update = intrinsics.federated_value(1, placements.SERVER)
     secure_update = intrinsics.federated_value(1, placements.SERVER)
     s6 = intrinsics.federated_zip(
-        [server_state, [federated_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output, client_output
 
@@ -306,10 +306,10 @@ def get_iterative_process_for_concise_sum_example():
     client_input = intrinsics.federated_broadcast(server_state)
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
-    federated_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.secure_sum(client_updates[1], 8)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     new_server_state = intrinsics.federated_zip(
-        [federated_update, secure_update])
+        [unsecure_update, secure_update])
     server_output = intrinsics.federated_value([], placements.SERVER)
     return new_server_state, server_output
 
@@ -424,9 +424,9 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_federated_aggregate(
         next_tree)
 
-    before_secure_sum, after_secure_sum = (
+    before_federated_secure_sum, after_federated_secure_sum = (
         mapreduce_transformations.force_align_and_split_by_intrinsics(
-            next_tree, [intrinsic_defs.SECURE_SUM.uri]))
+            next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
     self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
     self.assertLen(before_aggregate.result, 2)
@@ -444,15 +444,16 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     )
     # pyformat: enable
 
-    self.assertEqual(before_aggregate.result[1].formatted_representation(),
-                     before_secure_sum.result.formatted_representation())
+    self.assertEqual(
+        before_aggregate.result[1].formatted_representation(),
+        before_federated_secure_sum.result.formatted_representation())
 
     self.assertIsInstance(after_aggregate, building_blocks.Lambda)
     self.assertIsInstance(after_aggregate.result, building_blocks.Call)
     actual_tree, _ = impl_transformations.uniquify_reference_names(
         after_aggregate.result.function)
     expected_tree, _ = impl_transformations.uniquify_reference_names(
-        after_secure_sum)
+        after_federated_secure_sum)
     self.assertEqual(actual_tree.formatted_representation(),
                      expected_tree.formatted_representation())
 
@@ -470,12 +471,12 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
 class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
 
   def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_secure_sum()
+    ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
     next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
 
-    before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_secure_sum(
+    before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum(
         next_tree)
 
     before_federated_aggregate, after_federated_aggregate = (
@@ -536,7 +537,7 @@ class GetTypeInfoTest(common_test.TestCase):
         mapreduce_transformations.force_align_and_split_by_intrinsics(
             after_broadcast, [
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.SECURE_SUM.uri,
+                intrinsic_defs.FEDERATED_SECURE_SUM.uri,
             ]))
 
     type_info = canonical_form_utils._get_type_info(initialize_tree,
@@ -596,8 +597,8 @@ class GetTypeInfoTest(common_test.TestCase):
           'The value of \'{}\' is not equal to the expected value'.format(
               actual_key))
 
-  def test_returns_type_info_for_sum_example_with_no_secure_sum(self):
-    ip = get_iterative_process_for_sum_example_with_no_secure_sum()
+  def test_returns_type_info_for_sum_example_with_no_federated_secure_sum(self):
+    ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
     initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.initialize._computation_proto)
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
@@ -610,7 +611,8 @@ class GetTypeInfoTest(common_test.TestCase):
             next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
     before_aggregate, after_aggregate = (
         canonical_form_utils
-        ._create_before_and_after_aggregate_for_no_secure_sum(after_broadcast))
+        ._create_before_and_after_aggregate_for_no_federated_secure_sum(
+            after_broadcast))
 
     type_info = canonical_form_utils._get_type_info(initialize_tree,
                                                     before_broadcast,
@@ -906,8 +908,8 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
        get_iterative_process_for_sum_example_with_no_client_output()),
       ('sum_example_with_no_federated_aggregate',
        get_iterative_process_for_sum_example_with_no_federated_aggregate()),
-      ('sum_example_with_no_secure_sum',
-       get_iterative_process_for_sum_example_with_no_secure_sum()),
+      ('sum_example_with_no_federated_secure_sum',
+       get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
       ('concise_sum_example',
        get_iterative_process_for_concise_sum_example()),
   )

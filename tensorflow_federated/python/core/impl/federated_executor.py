@@ -706,5 +706,5 @@ class FederatedExecutor(executor_base.Executor):
             placement_literals.SERVER))
 
   @executor_utils.log_async
-  async def _compute_intrinsic_secure_sum(self, arg):
+  async def _compute_intrinsic_federated_secure_sum(self, arg):
     raise NotImplementedError('The secure sum intrinsic is not implemented.')

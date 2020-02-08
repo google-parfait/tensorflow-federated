@@ -572,8 +572,8 @@ class ReferenceExecutor(context_base.Context):
   separate executor optimized for performance. This executor is plugged in as
   the handler of computation invocations at the top level of the context stack.
 
-  NOTE: The `tff.secure_sum()` intrinsic is implemented using a non-secure
-  algorithm in order to enable testing of the semantics of federated
+  NOTE: The `tff.federated_secure_sum()` intrinsic is implemented using a
+  non-secure algorithm in order to enable testing of the semantics of federated
   computaitons using the  secure sum intrinsic.
   """
 
@@ -611,6 +611,8 @@ class ReferenceExecutor(context_base.Context):
             self._federated_map_all_equal,
         intrinsic_defs.FEDERATED_REDUCE.uri:
             self._federated_reduce,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri:
+            self._federated_secure_sum,
         intrinsic_defs.FEDERATED_SUM.uri:
             self._federated_sum,
         intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri:
@@ -627,8 +629,6 @@ class ReferenceExecutor(context_base.Context):
             self._generic_plus,
         intrinsic_defs.GENERIC_ZERO.uri:
             self._generic_zero,
-        intrinsic_defs.SECURE_SUM.uri:
-            self._secure_sum,
         intrinsic_defs.SEQUENCE_MAP.uri:
             self._sequence_map,
         intrinsic_defs.SEQUENCE_REDUCE.uri:
@@ -983,6 +983,13 @@ class ReferenceExecutor(context_base.Context):
                                                   placements.SERVER, True)
     return ComputedValue(result_val, result_type)
 
+  def _federated_secure_sum(self, arg, context):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    py_typecheck.check_len(arg.type_signature, 2)
+    value = ComputedValue(arg.value[0], arg.type_signature[0])
+    return self._federated_sum(value, context)
+
   def _federated_sum(self, arg, context):
     type_utils.check_federated_type(arg.type_signature, None,
                                     placements.CLIENTS, False)
@@ -1083,13 +1090,6 @@ class ReferenceExecutor(context_base.Context):
           'Generic plus not supported for elements of type {}, e.g. {}.'
           'Please file an issue on GitHub if you need this type supported'
           .format(element_type, arg.value[0]))
-
-  def _secure_sum(self, arg, context):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
-    py_typecheck.check_len(arg.type_signature, 2)
-    value = ComputedValue(arg.value[0], arg.type_signature[0])
-    return self._federated_sum(value, context)
 
   def _sequence_map(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)

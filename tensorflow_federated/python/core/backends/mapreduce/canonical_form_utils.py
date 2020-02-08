@@ -76,7 +76,7 @@ def get_iterative_process_for_canonical_form(cf):
     c8 = c4[1]
     s3 = intrinsics.federated_aggregate(c6, cf.zero(), cf.accumulate, cf.merge,
                                         cf.report)
-    s4 = intrinsics.secure_sum(c7, cf.bitwidth())
+    s4 = intrinsics.federated_secure_sum(c7, cf.bitwidth())
     s5 = intrinsics.federated_zip([s3, s4])
     s6 = intrinsics.federated_zip([s1, s5])
     s7 = intrinsics.federated_map(cf.update, s6)
@@ -321,15 +321,15 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
 
   In the first AST, the second element returned by `Lambda`, `Comp`, is the
   result of the before aggregate returned by force aligning and splitting `tree`
-  by `intrinsic_defs.SECURE_SUM.uri` and the first element returned by `Lambda`
-  is an empty structure that represents the argument to the federated
+  by `intrinsic_defs.FEDERATED_SECURE_SUM.uri` and the first element returned by
+  `Lambda` is an empty structure that represents the argument to the federated
   aggregate intrinsic. Therefore, the first AST has a type signature satisfying
   the requirements of before aggregate.
 
   In the second AST, `Comp` is the after aggregate returned by force aligning
-  and splitting `tree` by intrinsic_defs.SECURE_SUM.uri; `Lambda` has a type
-  signature satisfying the requirements of after aggregate; and the argument
-  passed to `Comp` is a selection from the parameter of `Lambda` which
+  and splitting `tree` by intrinsic_defs.FEDERATED_SECURE_SUM.uri; `Lambda` has
+  a type signature satisfying the requirements of after aggregate; and the
+  argument passed to `Comp` is a selection from the parameter of `Lambda` which
   intentionally drops `s3` on the floor.
 
   This function is intended to be used by
@@ -353,7 +353,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsics(
-          tree, [intrinsic_defs.SECURE_SUM.uri]))
+          tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
 
   def _create_empty_function(type_elements):
     ref_name = next(name_generator)
@@ -393,7 +393,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
   return before_aggregate, after_aggregate
 
 
-def _create_before_and_after_aggregate_for_no_secure_sum(tree):
+def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
   r"""Creates a before and after aggregate computations for the given `tree`.
 
   Lambda
@@ -434,10 +434,10 @@ def _create_before_and_after_aggregate_for_no_secure_sum(tree):
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.SECURE_SUM` in `tree`. As a result, this function
-  does not assert that there is no `intrinsic_defs.SECURE_SUM` in `tree` and it
-  does not assert that `tree` has the expected structure, the caller is expected
-  to perform these checks before calling this function.
+  `intrinsic_defs.FEDERATED_SECURE_SUM` in `tree`. As a result, this function
+  does not assert that there is no `intrinsic_defs.FEDERATED_SECURE_SUM` in
+  `tree` and it does not assert that `tree` has the expected structure, the
+  caller is expected to perform these checks before calling this function.
 
   Args:
     tree: An instance of `building_blocks.ComputationBuildingBlock`.
@@ -609,7 +609,7 @@ def _extract_federated_aggregate_functions(before_aggregate):
   return zero, accumulate, merge, report
 
 
-def _extract_secure_sum_functions(before_aggregate):
+def _extract_federated_secure_sum_functions(before_aggregate):
   """Extracts secure sum from `before_aggregate`.
 
   This function is intended to be used by
@@ -629,12 +629,13 @@ def _extract_secure_sum_functions(before_aggregate):
     transformations.CanonicalFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  secure_sum_index_in_before_aggregate_result = 1
-  secure_sum = transformations.select_output_from_lambda(
-      before_aggregate, secure_sum_index_in_before_aggregate_result)
-  bitwidth_index_in_secure_sum_result = 1
+  federated_secure_sum_index_in_before_aggregate_result = 1
+  federated_secure_sum = transformations.select_output_from_lambda(
+      before_aggregate, federated_secure_sum_index_in_before_aggregate_result)
+  bitwidth_index_in_federated_secure_sum_result = 1
   bitwidth_tff = transformations.select_output_from_lambda(
-      secure_sum, bitwidth_index_in_secure_sum_result).result
+      federated_secure_sum,
+      bitwidth_index_in_federated_secure_sum_result).result
 
   return transformations.consolidate_and_extract_local_processing(bitwidth_tff)
 
@@ -731,7 +732,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
                                       cf.accumulate,
                                       cf.merge,
                                       cf.report)
-  s4 = intrinsics.secure_sum(c7, cf.bitwidth())
+  s4 = intrinsics.federated_secure_sum(c7, cf.bitwidth())
   s5 = intrinsics.federated_zip([s3, s4])
   s6 = intrinsics.federated_zip([s1, s5])
   s7 = intrinsics.federated_map(cf.update, s6)
@@ -1008,26 +1009,27 @@ def get_canonical_form_for_iterative_process(iterative_process):
 
   contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
       next_comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
-  contains_secure_sum = tree_analysis.contains_called_intrinsic(
-      next_comp, intrinsic_defs.SECURE_SUM.uri)
-  if contains_federated_aggregate and contains_secure_sum:
+  contains_federated_secure_sum = tree_analysis.contains_called_intrinsic(
+      next_comp, intrinsic_defs.FEDERATED_SECURE_SUM.uri)
+  if contains_federated_aggregate and contains_federated_secure_sum:
     before_aggregate, after_aggregate = (
         transformations.force_align_and_split_by_intrinsics(
             after_broadcast, [
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.SECURE_SUM.uri,
+                intrinsic_defs.FEDERATED_SECURE_SUM.uri,
             ]))
   elif not contains_federated_aggregate:
     before_aggregate, after_aggregate = (
         _create_before_and_after_aggregate_for_no_federated_aggregate(
             after_broadcast))
-  elif not contains_secure_sum:
+  elif not contains_federated_secure_sum:
     before_aggregate, after_aggregate = (
-        _create_before_and_after_aggregate_for_no_secure_sum(after_broadcast))
+        _create_before_and_after_aggregate_for_no_federated_secure_sum(
+            after_broadcast))
   else:
     raise ValueError(
         'Expected an `tff.utils.IterativeProcess` containing at least one '
-        '`federated_aggregate` or `secure_sum`, found none.')
+        '`federated_aggregate` or `federated_secure_sum`, found none.')
 
   type_info = _get_type_info(initialize_comp, before_broadcast, after_broadcast,
                              before_aggregate, after_aggregate)
@@ -1049,7 +1051,7 @@ def get_canonical_form_for_iterative_process(iterative_process):
   _check_type_equal(merge.type_signature, type_info['merge_type'])
   _check_type_equal(report.type_signature, type_info['report_type'])
 
-  bitwidth = _extract_secure_sum_functions(before_aggregate)
+  bitwidth = _extract_federated_secure_sum_functions(before_aggregate)
   _check_type_equal(bitwidth.type_signature, type_info['bitwidth_type'])
 
   update = _extract_update(after_aggregate)

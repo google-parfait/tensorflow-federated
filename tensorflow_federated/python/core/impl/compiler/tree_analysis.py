@@ -94,15 +94,15 @@ def check_intrinsics_whitelisted_for_reduction(comp):
       intrinsic_defs.FEDERATED_AGGREGATE.uri,
       intrinsic_defs.FEDERATED_APPLY.uri,
       intrinsic_defs.FEDERATED_BROADCAST.uri,
-      intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
       intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
+      intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
       intrinsic_defs.FEDERATED_MAP.uri,
       intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+      intrinsic_defs.FEDERATED_SECURE_SUM.uri,
       intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
       intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
       intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
       intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
-      intrinsic_defs.SECURE_SUM.uri,
   )
 
   def _check_whitelisted(comp):

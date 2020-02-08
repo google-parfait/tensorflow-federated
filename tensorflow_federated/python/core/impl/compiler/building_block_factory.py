@@ -1135,6 +1135,38 @@ def create_federated_reduce(value, zero, op):
   return building_blocks.Call(intrinsic, values)
 
 
+def create_federated_secure_sum(value, bitwidth):
+  r"""Creates a called secure sum.
+
+            Call
+           /    \
+  Intrinsic      [Comp, Comp]
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    bitwidth: A `building_blocks.ComputationBuildingBlock` to use as the
+      bitwidth value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(bitwidth, building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placement_literals.SERVER)
+  intrinsic_type = computation_types.FunctionType([
+      type_utils.to_non_all_equal(value.type_signature),
+      bitwidth.type_signature,
+  ], result_type)
+  intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+                                        intrinsic_type)
+  values = building_blocks.Tuple([value, bitwidth])
+  return building_blocks.Call(intrinsic, values)
+
+
 def create_federated_sum(value):
   r"""Creates a called federated sum.
 
@@ -1643,38 +1675,6 @@ def _create_fn_to_append_chain_zipped_values(value):
     result = create_computation_appending(call, sel_1)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, result)
   return fn
-
-
-def create_secure_sum(value, bitwidth):
-  r"""Creates a called secure sum.
-
-            Call
-           /    \
-  Intrinsic      [Comp, Comp]
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
-    bitwidth: A `building_blocks.ComputationBuildingBlock` to use as the
-      bitwidth value.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(bitwidth, building_blocks.ComputationBuildingBlock)
-  result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.SERVER)
-  intrinsic_type = computation_types.FunctionType([
-      type_utils.to_non_all_equal(value.type_signature),
-      bitwidth.type_signature,
-  ], result_type)
-  intrinsic = building_blocks.Intrinsic(intrinsic_defs.SECURE_SUM.uri,
-                                        intrinsic_type)
-  values = building_blocks.Tuple([value, bitwidth])
-  return building_blocks.Call(intrinsic, values)
 
 
 def create_sequence_map(fn, arg):

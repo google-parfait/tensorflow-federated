@@ -54,12 +54,13 @@ class IntrinsicDefsTest(parameterized.TestCase):
        '(( -> T) -> T@SERVER)'),
       ('federated_map', 'FEDERATED_MAP',
        '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
+      ('federated_secure_sum', 'FEDERATED_SECURE_SUM',
+       '(<{T}@CLIENTS,T> -> T@SERVER)'),
       ('federated_sum', 'FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
       ('federated_zip_at_clients', 'FEDERATED_ZIP_AT_CLIENTS',
        '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),
       ('federated_zip_at_server', 'FEDERATED_ZIP_AT_SERVER',
        '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'),
-      ('secure_sum', 'SECURE_SUM', '(<{T}@CLIENTS,T> -> T@SERVER)'),
   )
   def test_type_signature_strings(self, name, type_str):
     intrinsic = getattr(intrinsic_defs, name)

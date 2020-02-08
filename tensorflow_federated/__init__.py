@@ -36,10 +36,10 @@ from tensorflow_federated.python.core.api.intrinsics import federated_eval
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_mean
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce
+from tensorflow_federated.python.core.api.intrinsics import federated_secure_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value
 from tensorflow_federated.python.core.api.intrinsics import federated_zip
-from tensorflow_federated.python.core.api.intrinsics import secure_sum
 from tensorflow_federated.python.core.api.intrinsics import sequence_map
 from tensorflow_federated.python.core.api.intrinsics import sequence_reduce
 from tensorflow_federated.python.core.api.intrinsics import sequence_sum
@@ -88,12 +88,12 @@ _allowed_symbols = [
     "federated_map",
     "federated_mean",
     "federated_reduce",
+    "federated_secure_sum",
     "federated_sum",
     "federated_value",
     "federated_zip",
     "framework",
     "learning",
-    "secure_sum",
     "sequence_map",
     "sequence_reduce",
     "sequence_sum",

@@ -715,8 +715,8 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
   * intrinsic_defs.FEDERATED_APPLY.uri
   * intrinsic_defs.FEDERATED_BROADCAST.uri
   * intrinsic_defs.FEDERATED_MAP.uri
+  * intrinsic_defs.FEDERATED_SECURE_SUM.uri
   * intrinsic_defs.FEDERATED_SUM.uri
-  * intrinsic_defs.SECURE_SUM.uri
   """
 
   def __init__(self, comp, uri):
@@ -738,8 +738,8 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
         intrinsic_defs.FEDERATED_APPLY.uri,
         intrinsic_defs.FEDERATED_BROADCAST.uri,
         intrinsic_defs.FEDERATED_MAP.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
         intrinsic_defs.FEDERATED_SUM.uri,
-        intrinsic_defs.SECURE_SUM.uri,
     )
     if uri not in expected_uri:
       raise ValueError(
