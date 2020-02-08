@@ -54,6 +54,7 @@ flags.DEFINE_string('root_output_dir', '/tmp/emnist_fedavg/',
                     'Root directory for writing experiment output.')
 
 FLAGS = flags.FLAGS
+METRICS_LIST = [tf.keras.metrics.SparseCategoricalAccuracy()]
 
 
 def create_compiled_keras_model():
@@ -63,7 +64,7 @@ def create_compiled_keras_model():
   model.compile(
       loss=tf.keras.losses.sparse_categorical_crossentropy,
       optimizer=utils_impl.create_optimizer_from_flags('client'),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+      metrics=METRICS_LIST)
 
   return model
 
@@ -100,8 +101,12 @@ def run_experiment():
                                        next(iter(example_dataset)))
 
   def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+    keras_model = models.create_original_fedavg_cnn_model()
+    return tff.learning.from_keras_model(
+        keras_model,
+        dummy_batch=sample_batch,
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=METRICS_LIST)
 
   def client_datasets_fn(round_num):
     """Returns a list of client datasets."""
@@ -124,12 +129,15 @@ def run_experiment():
       FLAGS.exp_name, FLAGS.root_output_dir, emnist_test, hparam_dict,
       create_compiled_keras_model())
 
-  optimizer_fn = functools.partial(utils_impl.create_optimizer_from_flags,
-                                   'server')
+  client_optimizer_fn = functools.partial(
+      utils_impl.create_optimizer_from_flags, 'client')
+  server_optimizer_fn = functools.partial(
+      utils_impl.create_optimizer_from_flags, 'server')
 
   training_loops.federated_averaging_training_loop(
       model_fn,
-      optimizer_fn,
+      client_optimizer_fn,
+      server_optimizer_fn,
       client_datasets_fn,
       total_rounds=FLAGS.total_rounds,
       rounds_per_eval=FLAGS.rounds_per_eval,
