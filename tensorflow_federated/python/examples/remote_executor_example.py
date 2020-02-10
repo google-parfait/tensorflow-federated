@@ -60,23 +60,6 @@ def make_federated_data(client_data, client_ids):
   ]
 
 
-def create_compiled_keras_model():
-  """Create compiled Keras model."""
-  model = tf.keras.models.Sequential([
-      tf.keras.layers.Dense(
-          10,
-          activation=tf.nn.softmax,
-          kernel_initializer='zeros',
-          input_shape=(784,))
-  ])
-
-  model.compile(
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-      optimizer=tf.keras.optimizers.SGD(learning_rate=0.02),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-  return model
-
-
 NUM_EPOCHS = 10
 BATCH_SIZE = 20
 
@@ -133,12 +116,24 @@ def main(argv):
       iter(preprocessed_example_dataset).next())
 
   def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Input(shape=(784,)),
+        tf.keras.layers.Dense(10, kernel_initializer='zeros'),
+        tf.keras.layers.Softmax(),
+    ])
+    return tff.learning.from_keras_model(
+        model,
+        dummy_batch=sample_batch,
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-  iterative_process = tff.learning.build_federated_averaging_process(model_fn)
+  iterative_process = tff.learning.build_federated_averaging_process(
+      model_fn,
+      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02))
 
   # Set the default executor to be a RemoteExecutor
+  # TODO(b/149208347): this line must wrap `make_remote_executor` in an
+  # ExecutorFactory to work, this will fail.
   tff.framework.set_default_executor(make_remote_executor)
 
   state = iterative_process.initialize()
