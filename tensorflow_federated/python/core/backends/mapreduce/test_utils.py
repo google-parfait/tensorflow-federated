@@ -318,7 +318,7 @@ def computation_to_building_block(comp):
       comp._computation_proto)  # pylint: disable=protected-access
 
 
-def get_unused_lambda_arg_iterative_process():
+def get_iterative_process_for_example_with_unused_lambda_arg():
   """Returns an iterative process having a Lambda not referencing its arg."""
   server_state_type = computation_types.NamedTupleType([('num_clients',
                                                          tf.int32)])
@@ -363,7 +363,7 @@ def get_unused_lambda_arg_iterative_process():
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
-def get_unused_tf_computation_arg_iterative_process():
+def get_iterative_process_for_example_with_unused_tf_computation_arg():
   """Returns an iterative process with a @tf.function with an unused arg."""
   server_state_type = computation_types.NamedTupleType([('num_clients',
                                                          tf.int32)])

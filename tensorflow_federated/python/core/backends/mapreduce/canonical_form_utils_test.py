@@ -39,7 +39,11 @@ from tensorflow_federated.python.core.utils import computation_utils
 
 
 def get_iterative_process_for_sum_example():
-  """Returns an iterative process for a sum example."""
+  """Returns an iterative process for a sum example.
+
+  This iterative process contains all the components required to compile to
+  `canonical_form.CanonicalForm`.
+  """
 
   @computations.federated_computation
   def init_fn():
@@ -81,42 +85,96 @@ def get_iterative_process_for_sum_example():
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
-def get_iterative_process_for_sum_example_with_no_server_state():
-  """Returns an iterative process for a sum example."""
+def get_iterative_process_for_sum_example_with_no_prepare():
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not have a call to `federated_map` with a prepare
+  function before the `federated_broadcast`.
+  """
 
   @computations.federated_computation
   def init_fn():
     """The `init` function for `computation_utils.IterativeProcess`."""
-    return intrinsics.federated_value([], placements.SERVER)
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return [1, 1], []
+
+  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    # No call to `federated_map` with a `prepare` function.
+    client_input = intrinsics.federated_broadcast(server_state)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates, client_output = intrinsics.federated_map(work, c3)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    s6 = intrinsics.federated_zip(
+        [server_state, [unsecure_update, secure_update]])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_broadcast():
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not have a call to `federated_broadcast`. As a
+  result, this iterative process does not have a call to `federated_map` with a
+  prepare function before the `federated_broadcast`.
+  """
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
     return [1, 1], []
 
-  @computations.tf_computation([tf.int32, tf.int32])
-  def update(global_update):
-    return [], global_update
+  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
 
   @computations.federated_computation([
-      computation_types.FederatedType([], placements.SERVER),
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `computation_utils.IterativeProcess`."""
-    del server_state  # Unused
+    # No call to `federated_map` with prepare.
+    # No call to `federated_broadcast`.
     client_updates, client_output = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
-    s5 = intrinsics.federated_zip([unsecure_update, secure_update])
-    new_server_state, server_output = intrinsics.federated_map(update, s5)
+    s6 = intrinsics.federated_zip(
+        [server_state, [unsecure_update, secure_update]])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output, client_output
 
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
 def get_iterative_process_for_sum_example_with_no_client_output():
-  """Returns an iterative process for a sum example."""
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not return client output from the work function.
+  """
 
   @computations.federated_computation
   def init_fn():
@@ -147,6 +205,7 @@ def get_iterative_process_for_sum_example_with_no_client_output():
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
+    # No client output.
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
@@ -159,7 +218,10 @@ def get_iterative_process_for_sum_example_with_no_client_output():
 
 
 def get_iterative_process_for_sum_example_with_no_federated_aggregate():
-  """Returns an iterative process for a sum example."""
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not have a call to `federated_aggregate`.
+  """
 
   @computations.federated_computation
   def init_fn():
@@ -191,6 +253,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates, client_output = intrinsics.federated_map(work, c3)
+    # No call to `federated_aggregate`.
     secure_update = intrinsics.federated_secure_sum(client_updates, 8)
     s6 = intrinsics.federated_zip([server_state, secure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
@@ -200,7 +263,10 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
 
 
 def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
-  """Returns an iterative process for a sum example."""
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not have a call to `federated_secure_sum`.
+  """
 
   @computations.federated_computation
   def init_fn():
@@ -233,6 +299,7 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates, client_output = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates)
+    # No call to `federated_secure_sum`.
     s6 = intrinsics.federated_zip([server_state, unsecure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output, client_output
@@ -240,8 +307,101 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
+def get_iterative_process_for_sum_example_with_no_update():
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not have a call to `federated_map` with a prepare
+  function before the `federated_broadcast`.
+  """
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return [1, 1], []
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    client_input = intrinsics.federated_broadcast(s2)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates, client_output = intrinsics.federated_map(work, c3)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    new_server_state = intrinsics.federated_zip(
+        [unsecure_update, secure_update])
+    # No call to `federated_map` with an `update` function.
+    server_output = intrinsics.federated_value([], placements.SERVER)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_sum_example_with_no_server_state():
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not use the server state passed into the next
+  function and returns an empty server state from the next function. As a
+  result, this iterative process does not have a call to `federated_broadcast`
+  and it does not have a call to `federated_map` with a prepare function before
+  the `federated_broadcast`.
+  """
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `computation_utils.IterativeProcess`."""
+    return intrinsics.federated_value([], placements.SERVER)
+
+  @computations.tf_computation(tf.int32)
+  def work(client_data):
+    del client_data  # Unused
+    return [1, 1], []
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def update(global_update):
+    return global_update
+
+  @computations.federated_computation([
+      computation_types.FederatedType([], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `computation_utils.IterativeProcess`."""
+    del server_state  # Unused
+    # No call to `federated_map` with prepare.
+    # No call to `federated_broadcast`.
+    client_updates, client_output = intrinsics.federated_map(work, client_data)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    s5 = intrinsics.federated_zip([unsecure_update, secure_update])
+    # Empty server state.
+    new_server_state = intrinsics.federated_value([], placements.SERVER)
+    server_output = intrinsics.federated_map(update, s5)
+    return new_server_state, server_output, client_output
+
+  return computation_utils.IterativeProcess(init_fn, next_fn)
+
+
 def get_iterative_process_for_sum_example_with_no_aggregation():
-  """Returns an iterative process for a sum example."""
+  """Returns an iterative process for a sum example.
+
+  This iterative process does not have a call to `federated_aggregate` or
+  `federated_secure_sum` and as a result it should fail to compile to
+  `canonical_form.CanonicalForm`.
+  """
 
   @computations.federated_computation
   def init_fn():
@@ -273,7 +433,9 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
     _, client_output = intrinsics.federated_map(work, c3)
+    # No call to `federated_aggregate`.
     unsecure_update = intrinsics.federated_value(1, placements.SERVER)
+    # No call to `federated_secure_sum`.
     secure_update = intrinsics.federated_value(1, placements.SERVER)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
@@ -283,18 +445,21 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
   return computation_utils.IterativeProcess(init_fn, next_fn)
 
 
-def get_iterative_process_for_concise_sum_example():
-  """Returns an iterative process for a sum example."""
+def get_iterative_process_for_minimal_sum_example():
+  """Returns an iterative process for a sum example.
+
+  This iterative process contains the fewest components required to compile to
+  `canonical_form.CanonicalForm`.
+  """
 
   @computations.federated_computation
   def init_fn():
     """The `init` function for `computation_utils.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
-  def work(client_data, client_input):
+  @computations.tf_computation(tf.int32)
+  def work(client_data):
     del client_data  # Unused
-    del client_input  # Unused
     return [1, 1]
 
   @computations.federated_computation([
@@ -303,13 +468,15 @@ def get_iterative_process_for_concise_sum_example():
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `computation_utils.IterativeProcess`."""
-    client_input = intrinsics.federated_broadcast(server_state)
-    c3 = intrinsics.federated_zip([client_data, client_input])
-    client_updates = intrinsics.federated_map(work, c3)
+    del server_state  # Unused
+    # No call to `federated_map` with prepare.
+    # No call to `federated_broadcast`.
+    client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     new_server_state = intrinsics.federated_zip(
         [unsecure_update, secure_update])
+    # No call to `federated_map` with an `update` function.
     server_output = intrinsics.federated_value([], placements.SERVER)
     return new_server_state, server_output
 
@@ -558,7 +725,6 @@ class GetTypeInfoTest(common_test.TestCase):
     # to be updated, one recommendation is to print k=\'v\' while iterating
     # over the k-v pairs of the ordereddict.
     # pyformat: disable
-
     expected = collections.OrderedDict(
         initialize_type='( -> <int32,int32>)',
         s1_type='<int32,int32>@SERVER',
@@ -587,80 +753,6 @@ class GetTypeInfoTest(common_test.TestCase):
         s8_type='<int32,int32>@SERVER',
         s9_type='<>@SERVER',
         )
-    # pyformat: enable
-
-    items = zip(actual.items(), expected.items())
-    for (actual_key, actual_value), (expected_key, expected_value) in items:
-      self.assertEqual(actual_key, expected_key)
-      self.assertEqual(
-          actual_value, expected_value,
-          'The value of \'{}\' is not equal to the expected value'.format(
-              actual_key))
-
-  def test_returns_type_info_for_sum_example_with_no_federated_secure_sum(self):
-    ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
-    initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.initialize._computation_proto)
-    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.next._computation_proto)
-    initialize_tree = canonical_form_utils._replace_intrinsics_with_bodies(
-        initialize_tree)
-    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
-    before_broadcast, after_broadcast = (
-        mapreduce_transformations.force_align_and_split_by_intrinsics(
-            next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
-    before_aggregate, after_aggregate = (
-        canonical_form_utils
-        ._create_before_and_after_aggregate_for_no_federated_secure_sum(
-            after_broadcast))
-
-    type_info = canonical_form_utils._get_type_info(initialize_tree,
-                                                    before_broadcast,
-                                                    after_broadcast,
-                                                    before_aggregate,
-                                                    after_aggregate)
-
-    actual = collections.OrderedDict([
-        (label, type_signature.compact_representation())
-        for label, type_signature in type_info.items()
-    ])
-    # Note: THE CONTENTS OF THIS DICTIONARY IS NOT IMPORTANT. The purpose of
-    # this test is not to assert that this value returned by
-    # `canonical_form_utils._get_type_info`, but instead to act as a signal when
-    # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
-    # into a `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs
-    # to be updated, one recommendation is to print k=\'v\' while iterating
-    # over the k-v pairs of the ordereddict.
-    # pyformat: disable
-
-    expected = collections.OrderedDict(
-        initialize_type='( -> int32)',
-        s1_type='int32@SERVER',
-        c1_type='{int32}@CLIENTS',
-        prepare_type='(int32 -> <int32>)',
-        s2_type='<int32>@SERVER',
-        c2_type='<int32>@CLIENTS',
-        c3_type='{<int32,<int32>>}@CLIENTS',
-        work_type='(<int32,<int32>> -> <<<int32,int32>,<>>,<>>)',
-        c4_type='{<<<int32,int32>,<>>,<>>}@CLIENTS',
-        c5_type='{<<int32,int32>,<>>}@CLIENTS',
-        c6_type='{<int32,int32>}@CLIENTS',
-        c7_type='<>@CLIENTS',
-        c8_type='{<>}@CLIENTS',
-        zero_type='( -> <int32,int32>)',
-        accumulate_type='(<<int32,int32>,<int32,int32>> -> <int32,int32>)',
-        merge_type='(<<int32,int32>,<int32,int32>> -> <int32,int32>)',
-        report_type='(<int32,int32> -> <int32,int32>)',
-        s3_type='<int32,int32>@SERVER',
-        bitwidth_type='( -> <>)',
-        s4_type='<>@SERVER',
-        s5_type='<<int32,int32>,<>>@SERVER',
-        s6_type='<int32,<<int32,int32>,<>>>@SERVER',
-        update_type='(<int32,<<int32,int32>,<>>> -> <int32,<>>)',
-        s7_type='<int32,<>>@SERVER',
-        s8_type='int32@SERVER',
-        s9_type='<>@SERVER',
-    )
     # pyformat: enable
 
     items = zip(actual.items(), expected.items())
@@ -819,99 +911,30 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     # Final metric is execution time
     self.assertAlmostEqual(metrics_arrays[2], alt_metrics_arrays[2], delta=1e-3)
 
-  def test_returns_canonical_form_with_next_fn_returning_call_directly(self):
-
-    @computations.federated_computation
-    def init_fn():
-      return intrinsics.federated_value(42, placements.SERVER)
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER),
-        computation_types.FederatedType(
-            computation_types.SequenceType(tf.float32), placements.CLIENTS))
-    def next_fn(server_state, client_data):
-      broadcast_state = intrinsics.federated_broadcast(server_state)
-
-      @computations.tf_computation(tf.int32,
-                                   computation_types.SequenceType(tf.float32))
-      @tf.function
-      def some_transform(x, y):
-        del y  # Unused
-        return x + 1
-
-      client_update = intrinsics.federated_map(some_transform,
-                                               (broadcast_state, client_data))
-      aggregate_update = intrinsics.federated_sum(client_update)
-      server_output = intrinsics.federated_value(1234, placements.SERVER)
-      return aggregate_update, server_output
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER),
-        computation_types.FederatedType(
-            computation_types.SequenceType(tf.float32), placements.CLIENTS))
-    def nested_next_fn(server_state, client_data):
-      return next_fn(server_state, client_data)
-
-    iterative_process = computation_utils.IterativeProcess(
-        init_fn, nested_next_fn)
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(
-        iterative_process)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
-
-  def test_returns_canonical_form_with_unused_federated_arg(self):
-    example_iterative_process = test_utils.get_unused_lambda_arg_iterative_process(
-    )
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(
-        example_iterative_process)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
-
-  def test_returns_canonical_form_with_unused_tf_func_arg(self):
-    example_iterative_process = test_utils.get_unused_tf_computation_arg_iterative_process(
-    )
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(
-        example_iterative_process)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
-
-  def test_returns_canonical_form_with_no_broadcast(self):
-
-    @computations.tf_computation(tf.int32)
-    @tf.function
-    def map_fn(client_val):
-      del client_val  # unused
-      return 1
-
-    @computations.federated_computation
-    def init_fn():
-      return intrinsics.federated_value(False, placements.SERVER)
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.bool, placements.SERVER),
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    def next_fn(server_val, client_val):
-      del server_val  # Unused
-      result_on_clients = intrinsics.federated_map(map_fn, client_val)
-      aggregated_result = intrinsics.federated_sum(result_on_clients)
-      side_output = intrinsics.federated_value(False, placements.SERVER)
-      return side_output, aggregated_result
-
-    ip = computation_utils.IterativeProcess(init_fn, next_fn)
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
-
   # pyformat: disable
   @parameterized.named_parameters(
       ('sum_example',
        get_iterative_process_for_sum_example()),
-      ('sum_example_with_no_server_state',
-       get_iterative_process_for_sum_example_with_no_server_state()),
+      ('sum_example_with_no_prepare',
+       get_iterative_process_for_sum_example_with_no_prepare()),
+      ('sum_example_with_no_broadcast',
+       get_iterative_process_for_sum_example_with_no_broadcast()),
       ('sum_example_with_no_client_output',
        get_iterative_process_for_sum_example_with_no_client_output()),
       ('sum_example_with_no_federated_aggregate',
        get_iterative_process_for_sum_example_with_no_federated_aggregate()),
       ('sum_example_with_no_federated_secure_sum',
        get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
-      ('concise_sum_example',
-       get_iterative_process_for_concise_sum_example()),
+      ('sum_example_with_no_update',
+       get_iterative_process_for_sum_example_with_no_update()),
+      ('sum_example_with_no_server_state',
+       get_iterative_process_for_sum_example_with_no_server_state()),
+      ('minimal_sum_example',
+       get_iterative_process_for_minimal_sum_example()),
+      ('example_with_unused_lambda_arg',
+       test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
+      ('example_with_unused_tf_computation_arg',
+       test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
   )
   # pyformat: enable
   def test_returns_canonical_form(self, ip):
