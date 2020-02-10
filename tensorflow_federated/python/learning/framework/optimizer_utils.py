@@ -18,6 +18,7 @@ import abc
 import collections
 
 import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
@@ -161,38 +162,48 @@ def state_with_new_model_weights(server_state, trainable_weights,
     A new server `ServerState` object which can be passed to the `next` method
     of the iterative process.
   """
-  # TODO(b/123092620): Simplify this.
+  # TODO(b/123092620): This can be simplified if TFF stops exposing
+  # AnonymousTuple.
   py_typecheck.check_type(server_state, anonymous_tuple.AnonymousTuple)
+  leaf_types = (int, float, np.ndarray, tf.Tensor)
 
-  def pack_values(old, new_values, name):
-    """Packs new_values in an OrderedDict matching old."""
-    if len(old) != len(new_values):
-      raise ValueError('Lengths differ for {} weights: {} vs {}'.format(
-          name, len(old), len(new_values)))
-    tuples = []
-    for (key, old_value), new_value in zip(
-        anonymous_tuple.to_elements(old), new_values):
+  def assert_weight_lists_match(old_value, new_value):
+    """Assert two flat lists of ndarrays or tensors match."""
+    if isinstance(new_value, leaf_types) and isinstance(old_value, leaf_types):
       if (old_value.dtype != new_value.dtype or
           old_value.shape != new_value.shape):
-        raise ValueError('The shapes or dtypes do not match for {} weight {}:\n'
-                         'current weights: shape {} dtype {}\n'
-                         '    new weights: shape {} dtype {}'.format(
-                             name, key, old_value.shape, old_value.dtype,
-                             new_value.shape, new_value.dtype))
+        raise TypeError('Element is not the same tensor type. old '
+                        f'({old_value.dtype}, {old_value.shape}) != '
+                        f'new ({new_value.dtype}, {new_value.shape})')
+    elif (isinstance(new_value, collections.Sequence) and
+          isinstance(old_value, anonymous_tuple.AnonymousTuple)):
+      if anonymous_tuple.name_list(old_value):
+        raise TypeError('`tff.learning` does not support named structures of '
+                        'model weights. Received: {old_value}')
+      if len(old_value) != len(new_value):
+        raise TypeError('Model weights have different lengths: '
+                        f'(old) {len(old_value)} != (new) {len(new_value)})\n'
+                        f'Old values: {old_value}\nNew values: {new_value}')
+      for old, new in zip(old_value, new_value):
+        assert_weight_lists_match(old, new)
+    else:
+      raise TypeError('Model weights structures contains types that cannot be '
+                      'handled.\nOld weights structure: {old}\n'
+                      'New weights structure: {new}\n'
+                      'Must be one of (int, float, np.ndarray, tf.Tensor, '
+                      'collections.Sequence)'.format(
+                          old=tf.nest.map_structure(type, old_value),
+                          new=tf.nest.map_structure(type, new_value)))
 
-      tuples.append((key, new_value))
-    return collections.OrderedDict(tuples)
-
-  renamed_new_weights = model_utils.ModelWeights(
-      trainable=pack_values(server_state.model.trainable, trainable_weights,
-                            'trainable'),
-      non_trainable=pack_values(server_state.model.non_trainable,
-                                non_trainable_weights, 'non_trainable'))
+  assert_weight_lists_match(server_state.model.trainable, trainable_weights)
+  assert_weight_lists_match(server_state.model.non_trainable,
+                            non_trainable_weights)
   # TODO(b/123092620): We can't use tff.utils.update_state because this
   # is an AnonymousTuple, not a ServerState. We should do something
   # that doesn't mention every entry in the state.
   return ServerState(
-      model=renamed_new_weights,
+      model=model_utils.ModelWeights(
+          trainable=trainable_weights, non_trainable=non_trainable_weights),
       optimizer_state=server_state.optimizer_state,
       delta_aggregate_state=server_state.delta_aggregate_state,
       model_broadcast_state=server_state.model_broadcast_state)

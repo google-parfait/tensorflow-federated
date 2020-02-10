@@ -80,13 +80,12 @@ state_incrementing_broadcaster = tff.utils.StatefulBroadcastFn(
 class UtilsTest(test.TestCase):
 
   def test_state_with_new_model_weights(self):
-    trainable = [('b', np.array([1.0, 2.0])), ('a', np.array([[1.0]]))]
-    non_trainable = [('c', np.array(1))]
+    trainable = [np.array([1.0, 2.0]), np.array([[1.0]])]
+    non_trainable = [np.array(1)]
     state = anonymous_tuple.from_container(
         optimizer_utils.ServerState(
             model=model_utils.ModelWeights(
-                trainable=collections.OrderedDict(trainable),
-                non_trainable=collections.OrderedDict(non_trainable)),
+                trainable=trainable, non_trainable=non_trainable),
             optimizer_state=[],
             delta_aggregate_state=tf.constant(0),
             model_broadcast_state=tf.constant(0)),
@@ -97,30 +96,35 @@ class UtilsTest(test.TestCase):
         trainable_weights=[np.array([3.0, 3.0]),
                            np.array([[3.0]])],
         non_trainable_weights=[np.array(3)])
-    self.assertEqual(list(new_state.model.trainable.keys()), ['b', 'a'])
-    self.assertEqual(list(new_state.model.non_trainable.keys()), ['c'])
-    self.assertAllClose(new_state.model.trainable['b'], [3.0, 3.0])
-    self.assertAllClose(new_state.model.trainable['a'], [[3.0]])
-    self.assertAllClose(new_state.model.non_trainable['c'], 3)
+    self.assertAllClose(
+        new_state.model.trainable,
+        [np.array([3.0, 3.0]), np.array([[3.0]])])
+    self.assertAllClose(new_state.model.non_trainable, [3])
 
-    with self.assertRaisesRegex(ValueError, 'dtype'):
+    with self.assertRaisesRegex(TypeError, 'tensor type'):
       optimizer_utils.state_with_new_model_weights(
           state,
           trainable_weights=[np.array([3.0, 3.0]),
                              np.array([[3]])],
           non_trainable_weights=[np.array(3.0)])
 
-    with self.assertRaisesRegex(ValueError, 'shape'):
+    with self.assertRaisesRegex(TypeError, 'tensor type'):
       optimizer_utils.state_with_new_model_weights(
           state,
           trainable_weights=[np.array([3.0, 3.0]),
                              np.array([3.0])],
           non_trainable_weights=[np.array(3)])
 
-    with self.assertRaisesRegex(ValueError, 'Lengths differ'):
+    with self.assertRaisesRegex(TypeError, 'different lengths'):
       optimizer_utils.state_with_new_model_weights(
           state,
           trainable_weights=[np.array([3.0, 3.0])],
+          non_trainable_weights=[np.array(3)])
+
+    with self.assertRaisesRegex(TypeError, 'cannot be handled'):
+      optimizer_utils.state_with_new_model_weights(
+          state,
+          trainable_weights={'a': np.array([3.0, 3.0])},
           non_trainable_weights=[np.array(3)])
 
 
