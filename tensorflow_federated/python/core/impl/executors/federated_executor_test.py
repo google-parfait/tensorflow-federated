@@ -29,12 +29,12 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import eager_executor
 from tensorflow_federated.python.core.impl import executor_test_utils
-from tensorflow_federated.python.core.impl import federated_executor
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.executors import federated_executor
 from tensorflow_federated.python.core.impl.executors import lambda_executor
 
 
@@ -552,8 +552,11 @@ class FederatedExecutorTest(parameterized.TestCase):
     executor_test_utils.test_runs_tf(
         self, _make_test_executor(1, use_lambda_executor=True))
 
-  @parameterized.parameters(((1, 2, 3, 4),), (set([1, 2, 3, 4]),),
-                            (frozenset([1, 2, 3, 4]),))
+  @parameterized.named_parameters(
+      ('tuple', (1, 2, 3, 4),),
+      ('set', set([1, 2, 3, 4]),),
+      ('frozenset', frozenset([1, 2, 3, 4]),),
+  )
   def test_with_federated_value_as_a_non_py_list(self, val):
     loop, ex = _make_test_runtime(num_clients=4)
     v = loop.run_until_complete(
