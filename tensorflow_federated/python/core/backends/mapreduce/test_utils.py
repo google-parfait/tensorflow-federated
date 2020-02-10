@@ -76,12 +76,9 @@ def get_temperature_sensor_example():
         'num': np.int32(0),
         'max': np.float32(-459.67)
     }, fn)
-    client_updates = collections.OrderedDict([
-        ('is_over', reduce_result['max'] > state.max_temperature),
-    ])
-    client_outputs = collections.OrderedDict([
-        ('num_readings', reduce_result['num']),
-    ])
+    client_updates = collections.OrderedDict(
+        is_over=reduce_result['max'] > state.max_temperature)
+    client_outputs = collections.OrderedDict(num_readings=reduce_result['num'])
     return ((client_updates, []), client_outputs)
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
@@ -95,29 +92,26 @@ def get_temperature_sensor_example():
 
   @computations.tf_computation
   def zero():
-    return collections.OrderedDict([('num_total', tf.constant(0)),
-                                    ('num_over', tf.constant(0))])
+    return collections.OrderedDict(
+        num_total=tf.constant(0), num_over=tf.constant(0))
 
   @computations.tf_computation(accumulator_type, client_update_type)
   def accumulate(accumulator, update):
-    return collections.OrderedDict([
-        ('num_total', accumulator.num_total + 1),
-        ('num_over', accumulator.num_over + tf.cast(update.is_over, tf.int32))
-    ])
+    return collections.OrderedDict(
+        num_total=accumulator.num_total + 1,
+        num_over=accumulator.num_over + tf.cast(update.is_over, tf.int32))
 
   @computations.tf_computation(accumulator_type, accumulator_type)
   def merge(accumulator1, accumulator2):
-    return collections.OrderedDict([
-        ('num_total', accumulator1.num_total + accumulator2.num_total),
-        ('num_over', accumulator1.num_over + accumulator2.num_over)
-    ])
+    return collections.OrderedDict(
+        num_total=accumulator1.num_total + accumulator2.num_total,
+        num_over=accumulator1.num_over + accumulator2.num_over)
 
   @computations.tf_computation(merge.type_signature.result)
   def report(accumulator):
-    return {
-        'ratio_over_threshold': (tf.cast(accumulator['num_over'], tf.float32) /
-                                 tf.cast(accumulator['num_total'], tf.float32))
-    }
+    return collections.OrderedDict(
+        ratio_over_threshold=(tf.cast(accumulator['num_over'], tf.float32) /
+                              tf.cast(accumulator['num_total'], tf.float32)))
 
   @computations.tf_computation
   def bitwidth():
@@ -294,12 +288,9 @@ def get_mnist_training_example():
 def construct_example_training_comp():
   """Constructs a `computation_utils.IterativeProcess` via the FL API."""
   np.random.seed(0)
-
-  sample_batch = collections.OrderedDict([('x',
-                                           np.array([[1., 1.]],
-                                                    dtype=np.float32)),
-                                          ('y', np.array([[0]],
-                                                         dtype=np.int32))])
+  sample_batch = collections.OrderedDict(
+      x=np.array([[1., 1.]], dtype=np.float32),
+      y=np.array([[0]], dtype=np.int32))
 
   def model_fn():
     """Constructs keras model."""
@@ -311,17 +302,15 @@ def construct_example_training_comp():
             input_shape=(2,))
     ])
 
-    def loss_fn(y_true, y_pred):
-      return tf.reduce_mean(
-          tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
-
-    keras_model.compile(
-        loss=loss_fn,
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
+    return learning.from_keras_model(
+        keras_model,
+        dummy_batch=sample_batch,
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    return learning.from_compiled_keras_model(keras_model, sample_batch)
 
-  return learning.build_federated_averaging_process(model_fn)
+  return learning.build_federated_averaging_process(
+      model_fn,
+      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
 
 def computation_to_building_block(comp):
@@ -351,7 +340,7 @@ def get_unused_lambda_arg_iterative_process():
   @computations.federated_computation
   def init_fn():
     return intrinsics.federated_value(
-        collections.OrderedDict([('num_clients', 0)]), placements.SERVER)
+        collections.OrderedDict(num_clients=0), placements.SERVER)
 
   @computations.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
@@ -361,8 +350,8 @@ def get_unused_lambda_arg_iterative_process():
   def next_fn(server_state, client_val):
     """`next` function for `computation_utils.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
-        collections.OrderedDict([('num_clients',
-                                  count_clients_federated(client_val))]))
+        collections.OrderedDict(
+            num_clients=count_clients_federated(client_val)))
 
     server_output = intrinsics.federated_value((), placements.SERVER)
     server_output = _bind_federated_value(
@@ -398,7 +387,7 @@ def get_unused_tf_computation_arg_iterative_process():
   @computations.federated_computation
   def init_fn():
     return intrinsics.federated_value(
-        collections.OrderedDict([('num_clients', 0)]), placements.SERVER)
+        collections.OrderedDict(num_clients=0), placements.SERVER)
 
   @computations.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
@@ -408,8 +397,8 @@ def get_unused_tf_computation_arg_iterative_process():
   def next_fn(server_state, client_val):
     """`next` function for `computation_utils.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
-        collections.OrderedDict([('num_clients',
-                                  count_clients_federated(client_val))]))
+        collections.OrderedDict(
+            num_clients=count_clients_federated(client_val)))
 
     server_output = intrinsics.federated_value((), placements.SERVER)
     server_output = intrinsics.federated_sum(
