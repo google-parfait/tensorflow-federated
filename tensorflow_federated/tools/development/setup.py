@@ -70,7 +70,7 @@ with open('tensorflow_federated/version.py') as fp:
 
 REQUIRED_PACKAGES = [
     'absl-py~=0.7',
-    'attrs~=18.2',
+    'attrs~=19.3',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
     'grpcio~=1.24.3',
