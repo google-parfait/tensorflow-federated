@@ -1708,31 +1708,66 @@ def unwrap_placement(comp):
           comp.type_signature, _remove_placement_from_type)
       return building_blocks.Reference(comp.name, new_type)
 
-    def _replace_intrinsics_with_functions(comp):
-      """Helper to remove intrinsics from the AST."""
-      if (comp.uri == intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri or
-          comp.uri == intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri or
-          comp.uri == intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri or
-          comp.uri == intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri):
-        arg_name = next(name_generator)
-        arg_type = comp.type_signature.result.member
-        val = building_blocks.Reference(arg_name, arg_type)
-        lam = building_blocks.Lambda(arg_name, arg_type, val)
-        return lam
-      elif comp.uri not in (intrinsic_defs.FEDERATED_MAP.uri,
-                            intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-                            intrinsic_defs.FEDERATED_APPLY.uri):
-        raise ValueError('Disallowed intrinsic: {}'.format(comp))
+    def _identity_function(arg_type):
+      """Creates `lambda x: x` with argument type `arg_type`."""
       arg_name = next(name_generator)
-      tuple_ref = building_blocks.Reference(arg_name, [
-          comp.type_signature.parameter[0],
-          comp.type_signature.parameter[1].member,
-      ])
+      val = building_blocks.Reference(arg_name, arg_type)
+      lam = building_blocks.Lambda(arg_name, arg_type, val)
+      return lam
+
+    def _call_first_with_second_function(fn_type, arg_type):
+      """Creates `lambda x: x[0](x[1])` with the provided ."""
+      arg_name = next(name_generator)
+      tuple_ref = building_blocks.Reference(arg_name, [fn_type, arg_type])
       fn = building_blocks.Selection(tuple_ref, index=0)
       arg = building_blocks.Selection(tuple_ref, index=1)
       called_fn = building_blocks.Call(fn, arg)
       return building_blocks.Lambda(arg_name, tuple_ref.type_signature,
                                     called_fn)
+
+    def _call_function(arg_type):
+      """Creates `lambda x: x()` argument type `arg_type`."""
+      arg_name = next(name_generator)
+      arg_ref = building_blocks.Reference(arg_name, arg_type)
+      called_arg = building_blocks.Call(arg_ref, None)
+      return building_blocks.Lambda(arg_name, arg_type, called_arg)
+
+    def _replace_intrinsics_with_functions(comp):
+      """Helper to remove intrinsics from the AST."""
+      tys = comp.type_signature
+
+      # These functions have no runtime behavior and only exist to adjust
+      # placement. They are replaced here with  `lambda x: x`.
+      identities = [
+          intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
+          intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
+          intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
+          intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
+      ]
+      if comp.uri in identities:
+        return _identity_function(tys.result.member)
+
+      # These functions all `map` a value and are replaced with
+      # `lambda args: args[0](args[1])
+      maps = [
+          intrinsic_defs.FEDERATED_MAP.uri,
+          intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+          intrinsic_defs.FEDERATED_APPLY.uri,
+      ]
+      if comp.uri in maps:
+        return _call_first_with_second_function(tys.parameter[0],
+                                                tys.parameter[1].member)
+
+      # `federated_eval`'s argument must simply be `call`ed and is replaced
+      # with `lambda x: x()`
+      evals = [
+          intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
+          intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
+      ]
+      if comp.uri in evals:
+        return _call_function(tys.parameter)
+
+      raise ValueError('Disallowed intrinsic: {}'.format(comp))
 
     def _remove_lambda_placement(comp):
       """Removes placement from Lambda's parameter."""

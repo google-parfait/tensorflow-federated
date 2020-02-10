@@ -455,7 +455,8 @@ def get_iterative_process_for_minimal_sum_example():
   @computations.federated_computation
   def init_fn():
     """The `init` function for `computation_utils.IterativeProcess`."""
-    return intrinsics.federated_value([0, 0], placements.SERVER)
+    zero = computations.tf_computation(lambda: [0, 0])
+    return intrinsics.federated_eval(zero, placements.SERVER)
 
   @computations.tf_computation(tf.int32)
   def work(client_data):
