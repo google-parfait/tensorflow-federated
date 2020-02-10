@@ -33,8 +33,9 @@ def wrap_data(images, digits):
   output_sequence = []
   for _ in range(10):
     output_sequence.append(
-        collections.OrderedDict([("x", np.array(images, dtype=np.float32)),
-                                 ("y", np.array(digits, dtype=np.int32))]))
+        collections.OrderedDict(
+            x=np.array(images, dtype=np.float32),
+            y=np.array(digits, dtype=np.int32)))
   return output_sequence
 
 
@@ -76,9 +77,9 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
     num_rounds = 10
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([("x", [[1., 2.]] * num_client_samples),
-                                 ("y", [[5.]] * num_client_samples)
-                                ])).batch(batch_size)
+        collections.OrderedDict(
+            x=[[1., 2.]] * num_client_samples,
+            y=[[5.]] * num_client_samples)).batch(batch_size)
 
     federated_ds = [ds] * num_clients
 
@@ -141,16 +142,13 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
               bias_initializer="zeros",
               activation=tf.nn.softmax)
       ])
-
-      model.compile(
-          loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-          optimizer=tf.keras.optimizers.SGD(0.1))
-
-      return keras_utils.from_compiled_keras_model(model,
-                                                   federated_train_data[0][0])
+      return keras_utils.from_keras_model(
+          model,
+          dummy_batch=federated_train_data[0][0],
+          loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
     iterative_process = federated_averaging.build_federated_averaging_process(
-        model_fn)
+        model_fn, client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
     computation_building_stop = time.time()
     building_time = computation_building_stop - computation_building_start
     self.report_benchmark(
