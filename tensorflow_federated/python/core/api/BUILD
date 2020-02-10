@@ -71,7 +71,7 @@ py_test(
         ":value_base",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:executor_stacks",
-        "//tensorflow_federated/python/core/utils:test",
+        "//tensorflow_federated/python/core/impl:test",
     ],
 )
 
@@ -99,7 +99,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:executor_stacks",
-        "//tensorflow_federated/python/core/utils:test",
+        "//tensorflow_federated/python/core/impl:test",
     ],
 )
 

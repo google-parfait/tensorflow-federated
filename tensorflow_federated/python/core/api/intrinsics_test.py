@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import executor_stacks
-from tensorflow_federated.python.core.utils import test as core_test
+from tensorflow_federated.python.core.impl import test as core_test
 
 
 class IntrinsicsTest(parameterized.TestCase):

@@ -619,8 +619,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:test",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/utils:test",
     ],
 )
 
@@ -811,6 +811,21 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+    ],
+)
+
+py_library(
+    name = "test",
+    testonly = True,
+    srcs = ["test.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":context_base",
+        ":context_stack_impl",
+        ":execution_context",
+        ":executor_stacks",
+        ":reference_executor",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 

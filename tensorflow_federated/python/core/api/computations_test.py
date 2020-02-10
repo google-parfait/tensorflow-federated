@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import executor_stacks
-from tensorflow_federated.python.core.utils import test as core_test
+from tensorflow_federated.python.core.impl import test as core_test
 
 
 class TensorFlowComputationsV1OnlyTest(common_test.TestCase):
