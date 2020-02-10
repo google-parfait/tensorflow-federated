@@ -105,6 +105,7 @@ class FederatedEvaluationTest(test.TestCase):
 
     def model_fn():
       keras_model = tf.keras.Sequential([
+          tf.keras.layers.Input(shape=(1,)),
           tf.keras.layers.Dense(
               1,
               kernel_initializer='ones',
@@ -112,16 +113,14 @@ class FederatedEvaluationTest(test.TestCase):
               activation=None)
       ],
                                         name='my_model')
-      keras_model.compile(
-          loss='mean_squared_error',
-          optimizer='sgd',
-          metrics=[tf.keras.metrics.Accuracy()])
-      return keras_utils.from_compiled_keras_model(
+      return keras_utils.from_keras_model(
           keras_model,
-          dummy_batch=collections.OrderedDict([
-              ('x', np.zeros((1, 1), np.float32)),
-              ('y', np.zeros((1, 1), np.float32)),
-          ]))
+          dummy_batch=collections.OrderedDict(
+              x=np.zeros((1, 1), np.float32),
+              y=np.zeros((1, 1), np.float32),
+          ),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[tf.keras.metrics.Accuracy()])
 
     evaluate_comp = federated_evaluation.build_federated_evaluation(model_fn)
     initial_weights = tf.nest.map_structure(
