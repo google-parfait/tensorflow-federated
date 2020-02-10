@@ -86,6 +86,32 @@ py_library(
 )
 
 py_library(
+    name = "executor_factory",
+    srcs = ["executor_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
+    ],
+)
+
+py_test(
+    name = "executor_factory_test",
+    size = "small",
+    srcs = ["executor_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":executor_factory",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/impl:eager_executor",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
+    ],
+)
+
+py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
     srcs_version = "PY3",

@@ -16,7 +16,7 @@
 
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import execution_context
-from tensorflow_federated.python.core.impl import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
 def set_default_executor(executor_factory_instance=None):
