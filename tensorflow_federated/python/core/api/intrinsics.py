@@ -260,7 +260,10 @@ def federated_secure_sum(value, bitwidth):
   documentation for the specific executor or executor stack you plan on using
   for the specific of how it's handled by that executor.
 
-  TODO(b/148147384): Describe the semantics of secure sum intrinsic.
+  The `bitwidth` argument represents the bitwidth of the aggregand, that is the
+  bitwidth of the input `value`. The federated secure sum bitwidth (i.e., the
+  bitwidth of the *sum* of the input `value`s over all clients) will be a
+  function of this bitwidth and the number of participating clients.
 
   Example:
 
@@ -279,7 +282,8 @@ def federated_secure_sum(value, bitwidth):
   weaker privacy properties, consider using `federated_sum`.
 
   Args:
-    value: A value of a TFF federated type placed at the `tff.CLIENTS`.
+    value: An integer value of a TFF federated type placed at the `tff.CLIENTS`,
+      in the range [0, 2^bitwidth - 1].
     bitwidth: An integer or nested structure of integers.
 
   Returns:
