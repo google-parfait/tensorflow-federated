@@ -186,10 +186,10 @@ class FederatedAveragingTrainableModelTffTest(test.TestCase,
         model_fn=model_examples.TrainableLinearRegression)
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
     federated_ds = [ds] * 3
 
     server_state = iterative_process.initialize()
@@ -211,27 +211,26 @@ class FederatedAveragingTrainableModelTffTest(test.TestCase,
        model_examples.build_linear_regression_keras_subclass_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
-    dummy_batch = collections.OrderedDict([
-        ('x', np.zeros([1, 2], np.float32)),
-        ('y', np.zeros([1, 1], np.float32)),
-    ])
+    dummy_batch = collections.OrderedDict(
+        x=np.zeros([1, 2], np.float32), y=np.zeros([1, 1], np.float32))
 
     def model_fn():
       keras_model = build_keras_model_fn(feature_dims=2)
-      keras_model.compile(
-          optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
+      return keras_utils.from_keras_model(
+          keras_model,
+          dummy_batch=dummy_batch,
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[])
-      return keras_utils.from_compiled_keras_model(keras_model, dummy_batch)
 
     iterative_process = federated_averaging.build_federated_averaging_process(
-        model_fn=model_fn)
+        model_fn=model_fn,
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
     federated_ds = [ds] * 3
 
     server_state = iterative_process.initialize()
@@ -246,25 +245,24 @@ class FederatedAveragingTrainableModelTffTest(test.TestCase,
     self.skipTest('https://github.com/tensorflow/federated/issues/783')
 
     def model_fn():
-      dummy_batch = collections.OrderedDict([
-          ('x', tf.constant([['R']], tf.string)),
-          ('y', tf.zeros([1, 1], tf.float32)),
-      ])
+      dummy_batch = collections.OrderedDict(
+          x=tf.constant([['R']], tf.string), y=tf.zeros([1, 1], tf.float32))
       keras_model = model_examples.build_lookup_table_keras_model()
-      keras_model.compile(
-          optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
+      return keras_utils.from_keras_model(
+          keras_model,
+          dummy_batch=dummy_batch,
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[])
-      return keras_utils.from_compiled_keras_model(keras_model, dummy_batch)
 
     iterative_process = federated_averaging.build_federated_averaging_process(
-        model_fn=model_fn)
+        model_fn=model_fn,
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [['R'], ['G'], ['B']]),
-            ('y', [[1.0], [2.0], [3.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[['R'], ['G'], ['B']],
+            y=[[1.0], [2.0], [3.0]],
+        )).batch(2)
     federated_ds = [ds] * 3
 
     server_state = iterative_process.initialize()
@@ -281,10 +279,10 @@ class FederatedAveragingTrainableModelTffTest(test.TestCase,
 
     # Results in empty dataset with correct types and shapes.
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0]]),
-            ('y', [[5.0]]),
-        ])).batch(
+        collections.OrderedDict(
+            x=[[1.0, 2.0]],
+            y=[[5.0]],
+        )).batch(
             5, drop_remainder=True)
     federated_ds = [ds] * 2
 
@@ -306,10 +304,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
     federated_ds = [ds] * 3
 
     server_state = iterative_process.initialize()
@@ -331,10 +329,8 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
        model_examples.build_linear_regression_keras_subclass_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
-    dummy_batch = collections.OrderedDict([
-        ('x', np.zeros([1, 2], np.float32)),
-        ('y', np.zeros([1, 1], np.float32)),
-    ])
+    dummy_batch = collections.OrderedDict(
+        x=np.zeros([1, 2], np.float32), y=np.zeros([1, 1], np.float32))
 
     def model_fn():
       keras_model = build_keras_model_fn(feature_dims=2)
@@ -349,10 +345,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
     federated_ds = [ds] * 3
 
     server_state = iterative_process.initialize()
@@ -367,12 +363,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
     self.skipTest('https://github.com/tensorflow/federated/issues/783')
 
     def model_fn():
-      dummy_batch = collections.OrderedDict([
-          ('x', tf.constant([['R']], tf.string)),
-          ('y', tf.zeros([1, 1], tf.float32)),
-      ])
+      dummy_batch = collections.OrderedDict(
+          x=tf.constant([['R']], tf.string), y=tf.zeros([1, 1], tf.float32))
       keras_model = model_examples.build_lookup_table_keras_model()
-      return keras_utils.from_compiled_keras_model(
+      return keras_utils.from_keras_model(
           keras_model,
           dummy_batch,
           loss=tf.keras.losses.MeanSquaredError(),
@@ -383,10 +377,8 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
 
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [['R'], ['G'], ['B']]),
-            ('y', [[1.0], [2.0], [3.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[['R'], ['G'], ['B']], y=[[1.0], [2.0], [3.0]])).batch(2)
     federated_ds = [ds] * 3
 
     server_state = iterative_process.initialize()
@@ -404,10 +396,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
 
     # Results in empty dataset with correct types and shapes.
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0]]),
-            ('y', [[5.0]]),
-        ])).batch(
+        collections.OrderedDict(
+            x=[[1.0, 2.0]],
+            y=[[5.0]],
+        )).batch(
             5, drop_remainder=True)
     federated_ds = [ds] * 2
 
