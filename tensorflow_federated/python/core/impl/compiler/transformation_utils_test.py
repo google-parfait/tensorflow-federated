@@ -1755,5 +1755,17 @@ class HasUniqueNamesTest(absltest.TestCase):
     self.assertTrue(transformation_utils.has_unique_names(single_block))
 
 
+class GetMapOfUnboundReferencesTest(absltest.TestCase):
+
+  def test_lambda_under_call_to_ref_gets_nothing_unbound(self):
+    y_ref = building_blocks.Reference('y', tf.int32)
+    lambda_1 = building_blocks.Lambda('y', y_ref.type_signature, y_ref)
+    x_ref = building_blocks.Reference('x', tf.int32)
+    call_on_x_ref = building_blocks.Call(lambda_1, x_ref)
+    unbound_refs = transformation_utils.get_map_of_unbound_references(
+        call_on_x_ref)[lambda_1]
+    self.assertEmpty(unbound_refs)
+
+
 if __name__ == '__main__':
   absltest.main()

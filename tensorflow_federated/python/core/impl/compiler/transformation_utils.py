@@ -1186,7 +1186,7 @@ def get_map_of_unbound_references(comp):
       elements = references[comp.result]
       references[comp].update([e for e in elements if e not in names])
     elif isinstance(comp, building_blocks.Call):
-      elements = references[comp.function]
+      elements = references[comp.function].copy()
       if comp.argument is not None:
         elements.update(references[comp.argument])
       references[comp] = elements
