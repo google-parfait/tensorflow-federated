@@ -1013,7 +1013,7 @@ def check_equivalent_types(type1, type2):
     TypeError: If `not are_equivalent_types(type1, type2)`.
   """
   if not are_equivalent_types(type1, type2):
-    raise TypeError('Types {} and {} are not equivalent.')
+    raise TypeError('Types {} and {} are not equivalent.'.format(type1, type2))
 
 
 def is_anon_tuple_with_py_container(value, type_spec):
