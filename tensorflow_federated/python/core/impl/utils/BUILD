@@ -3,6 +3,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/backends:__subpackages__",
     "//tensorflow_federated/python/core/framework:__subpackages__",
     "//tensorflow_federated/python/core/impl/compiler:__subpackages__",
+    "//tensorflow_federated/python/core/impl/executors:__subpackages__",
     "//tensorflow_federated/python/core/impl/utils:__subpackages__",
     "//tensorflow_federated/python/core/impl/wrappers:__subpackages__",
     "//tensorflow_federated/python/core/utils:__subpackages__",
