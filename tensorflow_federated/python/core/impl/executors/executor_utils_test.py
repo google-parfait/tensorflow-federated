@@ -23,7 +23,7 @@ from absl import logging
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl import executor_utils
+from tensorflow_federated.python.core.impl.executors import executor_utils
 
 
 class DebugLoggingTest(absltest.TestCase):

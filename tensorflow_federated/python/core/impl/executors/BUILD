@@ -143,6 +143,34 @@ py_test(
 )
 
 py_library(
+    name = "executor_utils",
+    srcs = ["executor_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        ":executor_value_base",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+    ],
+)
+
+py_test(
+    name = "executor_utils_test",
+    size = "small",
+    srcs = ["executor_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":executor_utils"],
+)
+
+py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
     srcs_version = "PY3",
@@ -155,13 +183,13 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl:executor_utils",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
@@ -202,13 +230,13 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl:executor_utils",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
