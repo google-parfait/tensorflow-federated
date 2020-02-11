@@ -69,18 +69,6 @@ flags.DEFINE_string('root_output_dir', '/tmp/emnist_fedavg/',
 FLAGS = flags.FLAGS
 
 
-def create_compiled_keras_model():
-  """Create compiled keras model based on the original FedAvg CNN."""
-  model = models.create_original_fedavg_cnn_model()
-
-  model.compile(
-      loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=utils_impl.create_optimizer_from_flags('client'),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
-  return model
-
-
 def run_experiment():
   """Data preprocessing and experiment execution."""
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
@@ -134,16 +122,29 @@ def run_experiment():
       (name, FLAGS[name].value) for name in hparam_flags
   ])
 
-  keras_model = create_compiled_keras_model()
+  keras_model = models.create_original_fedavg_cnn_model()
+  keras_model.compile(
+      loss=tf.keras.losses.sparse_categorical_crossentropy,
+      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
   the_metrics_hook = metrics_hook.MetricsHook.build(FLAGS.exp_name,
                                                     FLAGS.root_output_dir,
                                                     emnist_test, hparam_dict,
                                                     keras_model)
 
-  optimizer_fn = functools.partial(utils_impl.create_optimizer_from_flags,
-                                   'server')
+  client_optimizer_fn = functools.partial(
+      utils_impl.create_optimizer_from_flags, 'client')
+  server_optimizer_fn = functools.partial(
+      utils_impl.create_optimizer_from_flags, 'server')
 
-  model = tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+  def model_fn():
+    keras_model = models.create_original_fedavg_cnn_model()
+    return tff.learning.from_keras_model(
+        keras_model,
+        dummy_batch=sample_batch,
+        loss=tf.keras.losses.sparse_categorical_crossentropy,
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+
+  model = model_fn()
   dp_query = tff.utils.build_dp_query(
       FLAGS.clip, FLAGS.noise_multiplier, FLAGS.train_clients_per_round,
       FLAGS.adaptive_clip_learning_rate, FLAGS.target_unclipped_quantile,
@@ -157,14 +158,11 @@ def run_experiment():
 
   dp_aggregate_fn, _ = tff.utils.build_dp_aggregate(dp_query)
 
-  def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
-
   training_loops.federated_averaging_training_loop(
       model_fn,
-      optimizer_fn,
-      client_datasets_fn,
+      client_optimizer_fn=client_optimizer_fn,
+      server_fn=server_optimizer_fn,
+      client_datasets_fn=client_datasets_fn,
       total_rounds=FLAGS.total_rounds,
       rounds_per_eval=FLAGS.rounds_per_eval,
       metrics_hook=the_metrics_hook,
