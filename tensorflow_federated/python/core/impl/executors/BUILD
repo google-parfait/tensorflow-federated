@@ -90,9 +90,9 @@ py_library(
     srcs = ["executor_factory.py"],
     srcs_version = "PY3",
     deps = [
+        ":executor_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
     ],
 )
 
@@ -103,11 +103,42 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":executor_base",
         ":executor_factory",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:eager_executor",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
+    ],
+)
+
+py_library(
+    name = "executor_service",
+    srcs = ["executor_service.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl:executor_service_utils",
+    ],
+)
+
+py_test(
+    name = "executor_service_test",
+    size = "small",
+    srcs = ["executor_service_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        ":executor_service",
+        ":executor_value_base",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:eager_executor",
+        "//tensorflow_federated/python/core/impl:executor_service_utils",
     ],
 )
 

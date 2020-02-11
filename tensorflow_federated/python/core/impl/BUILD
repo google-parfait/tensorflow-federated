@@ -370,37 +370,6 @@ py_test(
 )
 
 py_library(
-    name = "executor_service",
-    srcs = ["executor_service.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":executor_service_utils",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-    ],
-)
-
-py_test(
-    name = "executor_service_test",
-    size = "small",
-    srcs = ["executor_service_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":eager_executor",
-        ":executor_service",
-        ":executor_service_utils",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-    ],
-)
-
-py_library(
     name = "executor_service_utils",
     srcs = ["executor_service_utils.py"],
     srcs_version = "PY3",
@@ -735,7 +704,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_context",
-        ":executor_service",
         ":executor_stacks",
         ":executor_test_utils",
         ":remote_executor",
@@ -745,6 +713,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_service",
         "//tensorflow_federated/python/core/impl/executors:lambda_executor",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
         "@com_google_protobuf//:protobuf_python",
