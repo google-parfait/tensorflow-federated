@@ -23,11 +23,49 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+
+
+class _UnboundRefChecker():
+  """Callable implementing memoized checks for unbound references."""
+
+  # TODO(b/149315253): This is the place to check for the computation we
+  # are about to push down to the target executor making references to
+  # something declared outside of its scope, in which case we'll have to
+  # do a little bit more work to plumb things through. Notice that this is
+  # safe to keep this global cache around, since the check here is for a static
+  # property of the proto.
+
+  def __init__(self):
+    self._evaluated_comps = {}
+
+  def __call__(self, proto):
+    evaluated = self._evaluated_comps.get(proto.SerializeToString())
+    if evaluated is not None:
+      if not evaluated:
+        return
+      tree = building_blocks.ComputationBuildingBlock.from_proto(proto)
+      unbound_refs = evaluated
+    else:
+      tree = building_blocks.ComputationBuildingBlock.from_proto(proto)
+      unbound_ref_map = transformation_utils.get_map_of_unbound_references(tree)
+      self._evaluated_comps.update(
+          {k.proto.SerializeToString(): v for k, v in unbound_ref_map.items()})
+      if not unbound_ref_map[tree]:
+        return
+      unbound_refs = unbound_ref_map[tree]
+    raise ValueError(
+        'We must concretize all unbound references before '
+        'delegating to a subordinate executor, but the '
+        'computation {}  of type spec {} contains unbound references {}.'
+        .format(tree, tree.type_signature, unbound_refs))
+
+
+_check_no_unbound_refs = _UnboundRefChecker()
 
 
 class LambdaExecutorScope(object):
@@ -347,14 +385,8 @@ class LambdaExecutor(executor_base.Executor):
     else:
       py_typecheck.check_type(value_repr, pb.Computation)
 
-      # TODO(b/134543154): This is the place to check for the computation we
-      # are about to push down to the target executor making references to
-      # something declared outside of its scope, in which case we'll have to
-      # do a little bit more work to plumb things through.
+      _check_no_unbound_refs(value_repr)
 
-      value_tree = building_blocks.ComputationBuildingBlock.from_proto(
-          value_repr)
-      tree_analysis.check_contains_no_unbound_references(value_tree)
       return await self._target_executor.create_value(value_repr,
                                                       value.type_signature)
 

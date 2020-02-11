@@ -73,7 +73,7 @@ def _get_hashable_key(value, type_spec):
     else:
       return tuple([_get_hashable_key(x, type_spec.member) for x in value])
   elif isinstance(value, pb.Computation):
-    return str(value)
+    return value.SerializeToString()
   elif isinstance(value, np.ndarray):
     return '<dtype={},shape={},items={}>'.format(value.dtype, value.shape,
                                                  value.flatten())

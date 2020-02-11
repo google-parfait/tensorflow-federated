@@ -278,6 +278,34 @@ class LambdaExecutorTest(absltest.TestCase):
     result = loop.run_until_complete(v3.compute())
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
 
+  def test_raises_with_closure(self):
+    eager_ex = eager_executor.EagerExecutor()
+    federated_ex = federated_executor.FederatedExecutor({
+        None: eager_ex,
+        placement_literals.SERVER: eager_ex,
+    })
+    ex = lambda_executor.LambdaExecutor(federated_ex)
+    loop = asyncio.get_event_loop()
+
+    @computations.federated_computation(tf.int32,
+                                        type_factory.at_server(tf.int32))
+    def foo(x, y):
+
+      @computations.federated_computation(tf.int32)
+      def bar(z):
+        del z
+        return x
+
+      return intrinsics.federated_map(bar, y)
+
+    v1 = loop.run_until_complete(ex.create_value(foo))
+    v2 = loop.run_until_complete(
+        ex.create_value([0, 0],
+                        [tf.int32, type_factory.at_server(tf.int32)]))
+    with self.assertRaisesRegex(ValueError,
+                                'concretize all unbound references'):
+      loop.run_until_complete(ex.create_call(v1, v2))
+
   def test_runs_tf(self):
     executor_test_utils.test_runs_tf(
         self, lambda_executor.LambdaExecutor(eager_executor.EagerExecutor()))
