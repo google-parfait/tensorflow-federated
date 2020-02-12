@@ -16,6 +16,7 @@
 
 from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import execution_context
+from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
@@ -30,6 +31,12 @@ def set_default_executor(executor_factory_instance=None):
     context = None
   elif isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
     context = execution_context.ExecutionContext(executor_factory_instance)
+  elif isinstance(executor_factory_instance,
+                  reference_executor.ReferenceExecutor):
+    # TODO(b/148233458): ReferenceExecutor inherits from ExectionContext and is
+    # used as-is here. The plan is to migrate it to the new Executor base class
+    # and stand it up inside a factory like all other executors.
+    context = executor_factory_instance
   else:
     raise TypeError(
         '`set_default_executor` expects either an '

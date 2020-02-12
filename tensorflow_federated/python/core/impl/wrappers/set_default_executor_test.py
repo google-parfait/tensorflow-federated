@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
@@ -45,6 +46,20 @@ class TestSetDefaultExecutor(absltest.TestCase):
     set_default_executor.set_default_executor()
     self.assertIn('ExecutionContext',
                   str(type(context_stack_impl.context_stack.current).__name__))
+
+  def test_reference_executor(self):
+    set_default_executor.set_default_executor(
+        reference_executor.ReferenceExecutor())
+    self.assertIsInstance(context_stack_impl.context_stack.current,
+                          reference_executor.ReferenceExecutor)
+
+    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    def comp(ds):
+      return ds.take(5).reduce(np.int32(0), lambda x, y: x + y)
+
+    ds = tf.data.Dataset.range(1).map(lambda x: tf.constant(5)).repeat(10)
+    v = comp(ds)
+    self.assertEqual(v, 25)
 
 
 if __name__ == '__main__':

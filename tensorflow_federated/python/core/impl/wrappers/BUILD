@@ -99,6 +99,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
@@ -114,6 +115,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:context_stack_impl",
+        "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
