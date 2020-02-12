@@ -14,4 +14,4 @@
 # limitations under the License.
 """TensorFlow Federated version."""
 
-__version__ = '0.11.0'
+__version__ = '0.12.0'

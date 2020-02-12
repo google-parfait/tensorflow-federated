@@ -1,3 +1,56 @@
+# Release 0.12.0
+
+## Major Features and Improvements
+
+*   Upgraded tensorflow dependency from `2.0.0` to `2.1.0`.
+*   Upgraded tensorflow-addons dependency from `0.6.0` to `0.7.0`.
+*   Upgraded attr dependency from `18.2` to `19.3`.
+*   Upgraded tfmot dependency from `0.1.3` to `0.2.1`.
+*   Added a federated partition of the CIFAR-100 dataset to
+    `tff.simulation.datasets.cifar100`.
+*   Made the high performance, parallel executor the default (replacing the
+    reference executor).
+*   Added a new `tff.learning.build_personalization_eval` for evaluating model
+    personalization strategies.
+*   Added new federated intrinsic `tff.federated_secure_sum`.
+*   `tff.learning.build_federated_averaing_process()` now takes a
+    `client_optimizer_fn` and a `tff.learning.Model`.
+    `tff.learning.TrainableModel` is now deprecated.
+*   Improved performance in the high performance executor stack.
+*   Implemented and exposed `tff.framework.ExecutorFactory`; all
+    `tff.framework...executor_factory` calls now return an instance of this
+    class.
+*   Added `remote_executor_example` binary which demonstrates using the
+    RemoteExecutor across multi-machine deployments.
+*   Added `close()` method to the Executor, allowing subclasses to proactively
+    release resources.
+*   Updated documentation and scripts for creating Docker images of the TFF
+    runtime.
+*   Automatically call `tff.federated_zip` on inputs to other federated
+    intrinsics.
+
+## Breaking Changes
+
+*   Dropped support for Python2.
+*   Renamed `tff.framework.create_local_executor` (and similar methods) to
+    `tff.framework.local_executor_factory`.
+*   Deprecated `federated_apply()`, instead use `federated_map()` for all
+    placements.
+
+## Bug Fixes
+
+*   Fixed problem with different instances of the same model having different
+    named types. `tff.learning.ModelWeights` no longer names the tuple fields
+    returned for model weights, instead relying on an ordered list.
+*   `tff.sequence_*` on unplaced types now correctly returns a `tff.Value`.
+
+## Known Bugs
+
+*   `tff.sequence_*`.. operations are not implemented yet on the new
+    high-performance executor stack.
+*   A subset of previously-allowed lambda captures are no longer supported on
+    the new execution stack.
+
 # Release 0.11.0
 
 ## Major Features and Improvements
