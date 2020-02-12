@@ -348,7 +348,9 @@ class IntrinsicFactory(object):
     if isinstance(arg.type_signature, computation_types.SequenceType):
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
-      return building_block_factory.create_sequence_map(fn, arg)
+      return value_impl.ValueImpl(
+          building_block_factory.create_sequence_map(fn, arg),
+          self._context_stack)
     elif isinstance(arg.type_signature, computation_types.FederatedType):
       parameter_type = computation_types.SequenceType(
           fn.type_signature.parameter)
@@ -395,7 +397,9 @@ class IntrinsicFactory(object):
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
     if isinstance(value.type_signature, computation_types.SequenceType):
-      return building_block_factory.create_sequence_reduce(value, zero, op)
+      return value_impl.ValueImpl(
+          building_block_factory.create_sequence_reduce(value, zero, op),
+          self._context_stack)
     else:
       value_type = computation_types.SequenceType(element_type)
       intrinsic_type = computation_types.FunctionType((
@@ -433,7 +437,9 @@ class IntrinsicFactory(object):
 
     if isinstance(value.type_signature, computation_types.SequenceType):
       value = value_impl.ValueImpl.get_comp(value)
-      return building_block_factory.create_sequence_sum(value)
+      return value_impl.ValueImpl(
+          building_block_factory.create_sequence_sum(value),
+          self._context_stack)
     elif isinstance(value.type_signature, computation_types.FederatedType):
       intrinsic_type = computation_types.FunctionType(
           value.type_signature.member, value.type_signature.member.element)
