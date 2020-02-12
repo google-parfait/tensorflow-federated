@@ -80,8 +80,8 @@ py_library(
     srcs = ["intrinsics.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:intrinsic_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -129,8 +129,8 @@ py_library(
     srcs = ["values.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/core/impl:context_stack_impl",
         "//tensorflow_federated/python/core/impl:value_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 

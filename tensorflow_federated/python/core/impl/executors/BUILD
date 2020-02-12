@@ -2,6 +2,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/api:__subpackages__",
     "//tensorflow_federated/python/core/backends:__subpackages__",
     "//tensorflow_federated/python/core/framework:__subpackages__",
+    "//tensorflow_federated/python/core/impl/context_stack:__subpackages__",
     "//tensorflow_federated/python/core/impl/wrappers:__subpackages__",
     "//tensorflow_federated/python/core/utils:__subpackages__",
     # TODO(b/143772942): This package is temporary and can be removed once all

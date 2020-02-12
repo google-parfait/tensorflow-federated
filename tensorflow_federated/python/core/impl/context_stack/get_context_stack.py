@@ -14,7 +14,7 @@
 # limitations under the License.
 """A utility to get the context stack."""
 
-from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 def get_context_stack():

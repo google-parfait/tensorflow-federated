@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
-from tensorflow_federated.python.core.impl.wrappers import set_default_executor
+from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 
 
 class ExecutorStacksTest(parameterized.TestCase):

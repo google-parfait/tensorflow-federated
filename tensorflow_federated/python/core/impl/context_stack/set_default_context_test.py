@@ -15,21 +15,21 @@
 
 from absl.testing import absltest
 
+from tensorflow_federated.python.core.impl import context_stack_test_utils
 from tensorflow_federated.python.core.impl import execution_context
-from tensorflow_federated.python.core.impl.context_stack_test_utils import TestContext
-from tensorflow_federated.python.core.impl.wrappers.get_context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.wrappers.set_default_context import set_default_context
+from tensorflow_federated.python.core.impl.context_stack import get_context_stack
+from tensorflow_federated.python.core.impl.context_stack import set_default_context
 
 
 class SetDefaultContextTest(absltest.TestCase):
 
   def test_set_dafault_context(self):
-    ctx_stack = get_context_stack()
+    ctx_stack = get_context_stack.get_context_stack()
     self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
-    foo = TestContext('foo')
-    set_default_context(foo)
+    foo = context_stack_test_utils.TestContext('foo')
+    set_default_context.set_default_context(foo)
     self.assertIs(ctx_stack.current, foo)
-    set_default_context()
+    set_default_context.set_default_context()
     self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
 
 

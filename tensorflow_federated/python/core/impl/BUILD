@@ -75,7 +75,6 @@ py_test(
     visibility = [":compiler_visibility"],
     deps = [
         ":compiled_computation_transforms",
-        ":context_stack_impl",
         ":tensorflow_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -87,6 +86,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:proto_transformations",
         "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -115,7 +115,6 @@ py_test(
     deps = [
         ":compiler_pipeline",
         ":computation_impl",
-        ":context_stack_impl",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -123,6 +122,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -161,12 +161,12 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:federated_executor",
         "//tensorflow_federated/python/core/impl/executors:lambda_executor",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -194,10 +194,10 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_impl",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -220,11 +220,11 @@ py_test(
     deps = [
         ":concurrent_executor",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -238,32 +238,6 @@ py_library(
     name = "context_stack_base",
     srcs = ["context_stack_base.py"],
     srcs_version = "PY3",
-)
-
-py_library(
-    name = "context_stack_impl",
-    srcs = ["context_stack_impl.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":context_base",
-        ":context_stack_base",
-        ":execution_context",
-        ":executor_stacks",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-    ],
-)
-
-py_test(
-    name = "context_stack_test",
-    size = "small",
-    srcs = ["context_stack_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        ":context_stack_test_utils",
-        ":execution_context",
-    ],
 )
 
 py_library(
@@ -290,9 +264,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_impl",
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -321,13 +295,13 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":execution_context",
         ":executor_stacks",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -400,7 +374,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
     ],
 )
 
@@ -413,10 +387,10 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )
 
@@ -455,10 +429,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":federated_computation_context",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:value_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -483,9 +457,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":federated_computation_utils",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
     ],
 )
@@ -515,7 +489,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":intrinsic_bodies",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
@@ -524,6 +497,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl:test",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -591,7 +565,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_impl",
         ":intrinsic_bodies",
         ":intrinsic_factory",
         ":reference_executor",
@@ -608,6 +581,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
@@ -646,10 +620,10 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
         "//tensorflow_federated/python/core/impl/executors:lambda_executor",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
         "@com_google_protobuf//:protobuf_python",
     ],
 )
@@ -708,12 +682,12 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -724,11 +698,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":context_base",
-        ":context_stack_impl",
         ":execution_context",
         ":executor_stacks",
         ":reference_executor",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -790,7 +764,6 @@ py_test(
     srcs_version = "PY3",
     visibility = [":compiler_visibility"],
     deps = [
-        ":context_stack_impl",
         ":tensorflow_serialization",
         ":transformations",
         ":type_utils",
@@ -805,6 +778,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
@@ -872,7 +846,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":federated_computation_context",
         ":reference_executor",
         ":transformations",
@@ -883,6 +856,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:value_base",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -908,7 +882,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":context_stack_impl",
         ":value_transformations",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -918,6 +891,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:test_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -944,7 +918,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_impl",
         ":federated_computation_context",
         ":transformations",
         ":value_impl",
@@ -953,5 +926,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )

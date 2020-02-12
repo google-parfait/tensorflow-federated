@@ -45,6 +45,9 @@ from tensorflow_federated.python.core.impl.compiler.type_serialization import se
 from tensorflow_federated.python.core.impl.composite_executor import CompositeExecutor
 from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
 from tensorflow_federated.python.core.impl.context_base import Context
+from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
+from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
+from tensorflow_federated.python.core.impl.context_stack.set_default_executor import set_default_executor
 from tensorflow_federated.python.core.impl.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks import sizing_executor_factory
@@ -75,9 +78,6 @@ from tensorflow_federated.python.core.impl.type_utils import transform_type_post
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.wrappers.computation_wrapper_instances import building_block_to_computation
-from tensorflow_federated.python.core.impl.wrappers.get_context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.wrappers.set_default_context import set_default_context
-from tensorflow_federated.python.core.impl.wrappers.set_default_executor import set_default_executor
 
 # Used by doc generation script.
 _allowed_symbols = [

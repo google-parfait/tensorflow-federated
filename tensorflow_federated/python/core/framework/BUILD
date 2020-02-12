@@ -24,6 +24,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
@@ -34,8 +37,5 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:lambda_executor",
         "//tensorflow_federated/python/core/impl/executors:transforming_executor",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
-        "//tensorflow_federated/python/core/impl/wrappers:get_context_stack",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_context",
-        "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],
 )

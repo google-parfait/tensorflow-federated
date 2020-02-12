@@ -24,7 +24,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
 
@@ -324,24 +324,44 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
     actual_result = wrapped_fn(arg) if parameter_type else wrapped_fn()
     self.assertEqual(actual_result, expected_result)
 
-  def test_polymorphic_function(self):
 
-    class ContextForTest(context_base.Context):
+class PolymorphicFunctionTest(test.TestCase):
+
+  def test_call_returns_result(self):
+
+    class TestContext(context_base.Context):
 
       def ingest(self, val, type_spec):
         return val
 
       def invoke(self, comp, arg):
-        return 'name={},type={},arg={}'.format(
-            comp.name, str(comp.type_signature.parameter), str(arg))
+        return 'name={},type={},arg={}'.format(comp.name,
+                                               comp.type_signature.parameter,
+                                               arg)
+
+    class TestContextStack(context_stack_base.ContextStack):
+
+      def __init__(self):
+        super().__init__()
+        self._context = TestContext()
+
+      @property
+      def current(self):
+        return self._context
+
+      def install(self, ctx):
+        del ctx  # Unused
+        return self._context
+
+    context_stack = TestContextStack()
 
     class TestFunction(function_utils.ConcreteFunction):
 
       def __init__(self, name, parameter_type):
         self._name = name
-        super().__init__(
-            computation_types.FunctionType(parameter_type, tf.string),
-            context_stack_impl.context_stack)
+        type_signature = computation_types.FunctionType(parameter_type,
+                                                        tf.string)
+        super().__init__(type_signature, context_stack)
 
       @property
       def name(self):
@@ -356,54 +376,18 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
         self._count = self._count + 1
         return TestFunction(str(self._count), parameter_type)
 
-    with context_stack_impl.context_stack.install(ContextForTest()):
-      fn = function_utils.PolymorphicFunction(TestFunctionFactory())
-      self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>')
-      self.assertEqual(
-          fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>')
-      self.assertEqual(fn(True), 'name=3,type=<bool>,arg=<True>')
-      self.assertEqual(
-          fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>')
-      self.assertEqual(fn(50), 'name=1,type=<int32>,arg=<50>')
-      self.assertEqual(
-          fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>')
-      self.assertEqual(fn(False), 'name=3,type=<bool>,arg=<False>')
-      self.assertEqual(
-          fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>')
+    fn = function_utils.PolymorphicFunction(TestFunctionFactory())
 
-  def test_concrete_function(self):
-
-    class ContextForTest(context_base.Context):
-
-      def ingest(self, val, type_spec):
-        return val
-
-      def invoke(self, comp, arg):
-        return comp.invoke_fn(arg)
-
-    class TestFunction(function_utils.ConcreteFunction):
-
-      def __init__(self, type_signature, invoke_fn):
-        super().__init__(type_signature, context_stack_impl.context_stack)
-        self._invoke_fn = invoke_fn
-
-      def invoke_fn(self, arg):
-        return self._invoke_fn(arg)
-
-    with context_stack_impl.context_stack.install(ContextForTest()):
-      fn = TestFunction(
-          computation_types.FunctionType(tf.int32, tf.bool), lambda x: x > 10)
-      self.assertEqual(fn(5), False)
-      self.assertEqual(fn(15), True)
-
-      fn = TestFunction(
-          computation_types.FunctionType([('x', tf.int32), ('y', tf.int32)],
-                                         tf.bool), lambda arg: arg.x > arg.y)
-      self.assertEqual(fn(5, 10), False)
-      self.assertEqual(fn(10, 5), True)
-      self.assertEqual(fn(y=10, x=5), False)
-      self.assertEqual(fn(y=5, x=10), True)
-      self.assertEqual(fn(10, y=5), True)
+    self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>')
+    self.assertEqual(
+        fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>')
+    self.assertEqual(fn(True), 'name=3,type=<bool>,arg=<True>')
+    self.assertEqual(fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>')
+    self.assertEqual(fn(50), 'name=1,type=<int32>,arg=<50>')
+    self.assertEqual(
+        fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>')
+    self.assertEqual(fn(False), 'name=3,type=<bool>,arg=<False>')
+    self.assertEqual(fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>')
 
 
 if __name__ == '__main__':

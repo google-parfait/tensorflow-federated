@@ -49,7 +49,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:context_base",
-        "//tensorflow_federated/python/core/impl:context_stack_impl",
+        "//tensorflow_federated/python/core/impl:context_stack_base",
         "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )

@@ -14,7 +14,7 @@
 # limitations under the License.
 """A utility to change the context stack."""
 
-from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 def set_default_context(ctx=None):

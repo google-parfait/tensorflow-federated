@@ -26,12 +26,12 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import federated_executor
 from tensorflow_federated.python.core.impl.executors import lambda_executor
-from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 
 
 def _create_bottom_stack():
