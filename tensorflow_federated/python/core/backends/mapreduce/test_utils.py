@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.utils import computation_utils
+from tensorflow_federated.python.core.templates import iterative_process
 
 
 def get_temperature_sensor_example():
@@ -286,7 +286,7 @@ def get_mnist_training_example():
 
 
 def construct_example_training_comp():
-  """Constructs a `computation_utils.IterativeProcess` via the FL API."""
+  """Constructs a `tff.utils.IterativeProcess` via the FL API."""
   np.random.seed(0)
   sample_batch = collections.OrderedDict(
       x=np.array([[1., 1.]], dtype=np.float32),
@@ -348,7 +348,7 @@ def get_iterative_process_for_example_with_unused_lambda_arg():
           computation_types.SequenceType(tf.string), placements.CLIENTS)
   ])
   def next_fn(server_state, client_val):
-    """`next` function for `computation_utils.IterativeProcess`."""
+    """`next` function for `tff.utils.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
         collections.OrderedDict(
             num_clients=count_clients_federated(client_val)))
@@ -360,7 +360,7 @@ def get_iterative_process_for_example_with_unused_lambda_arg():
 
     return server_update, server_output
 
-  return computation_utils.IterativeProcess(init_fn, next_fn)
+  return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
 def get_iterative_process_for_example_with_unused_tf_computation_arg():
@@ -395,7 +395,7 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
           computation_types.SequenceType(tf.string), placements.CLIENTS)
   ])
   def next_fn(server_state, client_val):
-    """`next` function for `computation_utils.IterativeProcess`."""
+    """`next` function for `tff.utils.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
         collections.OrderedDict(
             num_clients=count_clients_federated(client_val)))
@@ -407,4 +407,4 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
 
     return server_update, server_output
 
-  return computation_utils.IterativeProcess(init_fn, next_fn)
+  return iterative_process.IterativeProcess(init_fn, next_fn)

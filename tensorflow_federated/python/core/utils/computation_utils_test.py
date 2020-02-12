@@ -23,32 +23,9 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import values
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.wrappers import set_default_executor
 from tensorflow_federated.python.core.utils import computation_utils
-
-
-# Create two tff.Computations that perform sum on a sequence: initializes the
-# state to 0 and add each item in a sequence to the state.
-@computations.tf_computation
-def initialize():
-  return tf.constant(0)
-
-
-@computations.tf_computation([tf.int32, tf.int32])
-def add_int32(current, val):
-  return current + val
-
-
-@computations.tf_computation([tf.int32, tf.int32])
-def add_mul_int32(current, val):
-  return current + val, current * val
-
-
-@computations.tf_computation(tf.int32)
-def count_int32(current):
-  return current + 1
 
 
 class ComputationUtilsTest(test.TestCase):
@@ -98,93 +75,6 @@ class ComputationUtilsTest(test.TestCase):
       computation_utils.update_state([1, 2, 3], a=8)
     with self.assertRaisesRegex(KeyError, 'does not contain a field'):
       computation_utils.update_state({'z': 1}, a=8)
-
-  def test_iterative_process_state_only(self):
-    iterative_process = computation_utils.IterativeProcess(
-        initialize, count_int32)
-
-    state = iterative_process.initialize()
-    iterations = 10
-    for _ in range(iterations):
-      # TODO(b/122321354): remove the .item() call on `state` once numpy.int32
-      # type is supported.
-      state = iterative_process.next(state.item())
-    self.assertEqual(state, iterations)
-
-  def test_iterative_process_state_tuple_arg(self):
-    iterative_process = computation_utils.IterativeProcess(
-        initialize, add_int32)
-
-    state = iterative_process.initialize()
-    iterations = 10
-    for val in range(iterations):
-      state = iterative_process.next(state, val)
-    self.assertEqual(state, sum(range(iterations)))
-
-  def test_iterative_process_state_multiple_return_values(self):
-    iterative_process = computation_utils.IterativeProcess(
-        initialize, add_mul_int32)
-
-    state = iterative_process.initialize()
-    iterations = 10
-    for val in range(iterations):
-      state, product = iterative_process.next(state, val)
-    self.assertEqual(state, sum(range(iterations)))
-    self.assertEqual(product, sum(range(iterations - 1)) * (iterations - 1))
-
-  def test_iterative_process_initialize_bad_type(self):
-    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      _ = computation_utils.IterativeProcess(
-          initialize_fn=None, next_fn=add_int32)
-
-    with self.assertRaisesRegex(
-        TypeError, r'initialize_fn must be a no-arg tff.Computation'):
-
-      @computations.federated_computation(tf.int32)
-      def one_arg_initialize(one_arg):
-        del one_arg  # unused
-        return values.to_value(0)
-
-      _ = computation_utils.IterativeProcess(
-          initialize_fn=one_arg_initialize, next_fn=add_int32)
-
-  def test_iterative_process_next_bad_type(self):
-    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      _ = computation_utils.IterativeProcess(
-          initialize_fn=initialize, next_fn=None)
-
-  def test_iterative_process_type_mismatch(self):
-    with self.assertRaisesRegex(
-        TypeError, r'The return type of initialize_fn should match.*'):
-
-      @computations.federated_computation([tf.float32, tf.float32])
-      def add_float32(current, val):
-        return current + val
-
-      _ = computation_utils.IterativeProcess(
-          initialize_fn=initialize, next_fn=add_float32)
-
-    with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn should match the first parameter'):
-
-      @computations.federated_computation(tf.int32)
-      def add_bad_result(_):
-        return 0.0
-
-      _ = computation_utils.IterativeProcess(
-          initialize_fn=initialize, next_fn=add_bad_result)
-
-    with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn should match the first parameter'):
-
-      @computations.federated_computation(tf.int32)
-      def add_bad_multi_result(_):
-        return 0.0, 0
-
-      _ = computation_utils.IterativeProcess(
-          initialize_fn=initialize, next_fn=add_bad_multi_result)
 
 
 def broadcast_initialize_fn():

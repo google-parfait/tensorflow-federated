@@ -54,7 +54,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
-        "//tensorflow_federated/python/core/utils:computation_utils",
+        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
@@ -81,7 +81,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
-        "//tensorflow_federated/python/core/utils:computation_utils",
+        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
@@ -97,7 +97,7 @@ py_library(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/utils:computation_utils",
+        "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning",
     ],
 )

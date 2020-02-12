@@ -37,7 +37,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
-from tensorflow_federated.python.core.utils import computation_utils
+from tensorflow_federated.python.core.templates import iterative_process
 
 
 def get_iterative_process_for_canonical_form(cf):
@@ -84,7 +84,7 @@ def get_iterative_process_for_canonical_form(cf):
     s9 = s7[1]
     return s8, s9, c8
 
-  return computation_utils.IterativeProcess(init_computation, next_computation)
+  return iterative_process.IterativeProcess(init_computation, next_computation)
 
 
 def _check_len(
@@ -962,14 +962,14 @@ def _replace_intrinsics_with_bodies(comp):
   return comp
 
 
-def get_canonical_form_for_iterative_process(iterative_process):
+def get_canonical_form_for_iterative_process(ip):
   """Constructs `tff.backends.mapreduce.CanonicalForm` given iterative process.
 
-  This function transforms computations from the input `iterative_process` into
+  This function transforms computations from the input `ip` into
   an instance of `tff.backends.mapreduce.CanonicalForm`.
 
   Args:
-    iterative_process: An instance of `tff.utils.IterativeProcess`.
+    ip: An instance of `tff.utils.IterativeProcess`.
 
   Returns:
     An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to this
@@ -980,12 +980,12 @@ def get_canonical_form_for_iterative_process(iterative_process):
     transformations.CanonicalFormCompilationError: If the compilation
       process fails.
   """
-  py_typecheck.check_type(iterative_process, computation_utils.IterativeProcess)
+  py_typecheck.check_type(ip, iterative_process.IterativeProcess)
 
   initialize_comp = building_blocks.ComputationBuildingBlock.from_proto(
-      iterative_process.initialize._computation_proto)  # pylint: disable=protected-access
+      ip.initialize._computation_proto)  # pylint: disable=protected-access
   next_comp = building_blocks.ComputationBuildingBlock.from_proto(
-      iterative_process.next._computation_proto)  # pylint: disable=protected-access
+      ip.next._computation_proto)  # pylint: disable=protected-access
   _check_iterative_process_compatible_with_canonical_form(
       initialize_comp, next_comp)
 

@@ -67,7 +67,6 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 6:
 
 # Used by doc generation script.
 _allowed_symbols = [
-    "backends",
     "CLIENTS",
     "Computation",
     "FederatedType",
@@ -79,6 +78,7 @@ _allowed_symbols = [
     "Type",
     "TypedObject",
     "Value",
+    "backends",
     "federated_aggregate",
     "federated_apply",
     "federated_broadcast",

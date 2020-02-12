@@ -15,6 +15,7 @@ py_library(
         ":encoding_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
+        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
@@ -24,7 +25,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:value_base",
@@ -45,7 +45,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/api:values",
         "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl/wrappers:set_default_executor",
     ],

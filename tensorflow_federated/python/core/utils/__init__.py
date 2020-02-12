@@ -20,7 +20,7 @@ the latter is set to private and should remain such. The code in utils must not
 depend on implementation classes. It should be written against the Core API.
 """
 
-from tensorflow_federated.python.core.utils.computation_utils import IterativeProcess
+from tensorflow_federated.python.core.templates.iterative_process import IterativeProcess
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_federated.python.core.utils.computation_utils import update_state
