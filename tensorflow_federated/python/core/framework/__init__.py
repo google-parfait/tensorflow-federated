@@ -55,6 +55,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_ex
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.eager_executor import EagerExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
+from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
@@ -114,11 +115,10 @@ _allowed_symbols = [
     "building_block_to_computation",
     "check_has_unique_names",
     "check_intrinsics_whitelisted_for_reduction",
+    "create_executor_factory",
     "create_federated_map_all_equal",
     "create_federated_map_or_apply",
     "create_federated_zip",
-    "local_executor_factory",
-    "worker_pool_executor_factory",
     "deserialize_type",
     "get_context_stack",
     "get_map_of_unbound_references",
@@ -127,6 +127,7 @@ _allowed_symbols = [
     "is_assignable_from",
     "is_called_intrinsic",
     "is_tensorflow_compatible_type",
+    "local_executor_factory",
     "merge_tuple_intrinsics",
     "remove_lambdas_and_blocks",
     "remove_mapped_or_applied_identity",
@@ -141,4 +142,5 @@ _allowed_symbols = [
     "unique_name_generator",
     "uniquify_reference_names",
     "unwrap_placement",
+    "worker_pool_executor_factory",
 ]

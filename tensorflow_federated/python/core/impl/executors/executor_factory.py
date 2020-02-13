@@ -72,6 +72,14 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
     pass
 
 
+def create_executor_factory(
+    executor_stack_fn: Callable[[CardinalitiesType], executor_base.Executor]
+) -> ExecutorFactory:
+  """Create an `ExecutorFactory` for a given executor stack function."""
+  py_typecheck.check_callable(executor_stack_fn)
+  return ExecutorFactoryImpl(executor_stack_fn)
+
+
 class ExecutorFactoryImpl(ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
