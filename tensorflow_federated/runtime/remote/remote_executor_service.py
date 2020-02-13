@@ -38,7 +38,6 @@ def main(argv):
   tf.compat.v1.enable_v2_behavior()
   executor_factory = framework.local_executor_factory(
       num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
-  executor = executor_factory(None)
   if FLAGS.private_key:
     if FLAGS.certificate_chain:
       with open(FLAGS.private_key, 'rb') as f:
@@ -54,7 +53,9 @@ def main(argv):
           'Private key has been specified, but the certificate chain missing.')
   else:
     credentials = None
-  server_utils.run_server(executor, FLAGS.threads, FLAGS.port, credentials)
+  server_utils.run_server(
+      executor_factory.create_executor({}), FLAGS.threads, FLAGS.port,
+      credentials)
 
 
 if __name__ == '__main__':
