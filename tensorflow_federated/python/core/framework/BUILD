@@ -7,7 +7,6 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
-        "//tensorflow_federated/python/core/impl:composite_executor",
         "//tensorflow_federated/python/core/impl:concurrent_executor",
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
@@ -29,6 +28,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
+        "//tensorflow_federated/python/core/impl/executors:composite_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",

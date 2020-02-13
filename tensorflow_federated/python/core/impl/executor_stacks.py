@@ -16,11 +16,12 @@
 
 import functools
 import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import caching_executor
+from tensorflow_federated.python.core.impl.executors import composite_executor
 from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory

@@ -80,6 +80,48 @@ py_test(
 )
 
 py_library(
+    name = "composite_executor",
+    srcs = ["composite_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
+        "//tensorflow_federated/python/core/impl/executors:executor_utils",
+        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
+    ],
+)
+
+py_test(
+    name = "composite_executor_test",
+    size = "small",
+    srcs = ["composite_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":composite_executor",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:concurrent_executor",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
+        "//tensorflow_federated/python/core/impl/executors:eager_executor",
+        "//tensorflow_federated/python/core/impl/executors:federated_executor",
+        "//tensorflow_federated/python/core/impl/executors:lambda_executor",
+    ],
+)
+
+py_library(
     name = "eager_executor",
     srcs = ["eager_executor.py"],
     srcs_version = "PY3",
