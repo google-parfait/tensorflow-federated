@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class _NestGatherEncoder(object):
   """Structure for holding `tf_computations` needed for encoded_sum."""
   get_params_fn = attr.ib()

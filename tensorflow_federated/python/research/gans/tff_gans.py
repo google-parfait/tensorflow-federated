@@ -42,7 +42,7 @@ def tensor_spec_for_batch(dummy_batch):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=False)
+@attr.s(eq=False, frozen=False)
 class GanFnsAndTypes(object):
   """A container for functions and types need to build TFF GANs.
 

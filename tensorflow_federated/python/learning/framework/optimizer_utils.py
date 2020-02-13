@@ -28,7 +28,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
@@ -129,7 +129,7 @@ def _build_server_optimizer(model, optimizer):
   return (apply_delta, optimizer_vars)
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ServerState(object):
   """Represents the state of the server carried between rounds.
 

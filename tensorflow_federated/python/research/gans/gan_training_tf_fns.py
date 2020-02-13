@@ -40,7 +40,7 @@ def assert_no_anon_tuples(x):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class FromServer(object):
   """Container for data that is broadcast from the server to clients.
 
@@ -62,7 +62,7 @@ class FromServer(object):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=False)
+@attr.s(eq=False, frozen=False)
 class ServerState(object):
   """Container for all server state that must pass from round to round.
 
@@ -100,7 +100,7 @@ class ServerState(object):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Container for data that is sent from clients back to the server..
 

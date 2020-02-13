@@ -40,7 +40,7 @@ def _check_not_exists(f):
     sys.exit(1)
 
 
-@attr.s(cmp=False, frozen=False)
+@attr.s(eq=False, frozen=False)
 class MetricsHook(object):
   """A callback for evaluation.
 

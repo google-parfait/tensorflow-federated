@@ -33,7 +33,7 @@ def model_initializer(model, name=None):
       name=(name or 'model_initializer'))
 
 
-@attr.s(cmp=False, frozen=True, slots=True)
+@attr.s(eq=False, frozen=True, slots=True)
 class ModelWeights(object):
   """A container for the trainable and non-trainable variables of a `Model`.
 

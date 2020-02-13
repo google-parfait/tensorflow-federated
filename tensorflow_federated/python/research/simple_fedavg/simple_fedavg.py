@@ -32,7 +32,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
@@ -50,7 +50,7 @@ class ClientOutput(object):
   model_output = attr.ib()
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ServerState(object):
   """Structure for state on the server.
 

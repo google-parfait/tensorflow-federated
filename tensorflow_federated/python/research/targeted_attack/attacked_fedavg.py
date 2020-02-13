@@ -42,7 +42,7 @@ from tensorflow_federated.python.research.targeted_attack.aggregate_fn import bu
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
@@ -63,7 +63,7 @@ class ClientOutput(object):
   optimizer_output = attr.ib()
 
 
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ServerState(object):
   """Structure for state on the server.
 
