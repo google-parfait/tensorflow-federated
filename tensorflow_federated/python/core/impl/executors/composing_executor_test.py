@@ -26,24 +26,24 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import composite_executor
-from tensorflow_federated.python.core.impl.executors import concurrent_executor
-from tensorflow_federated.python.core.impl.executors import eager_executor
-from tensorflow_federated.python.core.impl.executors import federated_executor
-from tensorflow_federated.python.core.impl.executors import lambda_executor
+from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import federating_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
+from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 
 tf.compat.v1.enable_v2_behavior()
 
 
 def _create_bottom_stack():
-  return lambda_executor.LambdaExecutor(
+  return reference_resolving_executor.ReferenceResolvingExecutor(
       caching_executor.CachingExecutor(
-          concurrent_executor.ConcurrentExecutor(
-              eager_executor.EagerExecutor())))
+          thread_delegating_executor.ThreadDelegatingExecutor(
+              eager_tf_executor.EagerTFExecutor())))
 
 
 def _create_worker_stack():
-  return federated_executor.FederatedExecutor({
+  return federating_executor.FederatingExecutor({
       placement_literals.SERVER: _create_bottom_stack(),
       placement_literals.CLIENTS: [_create_bottom_stack() for _ in range(2)],
       None: _create_bottom_stack()
@@ -51,9 +51,9 @@ def _create_worker_stack():
 
 
 def _create_middle_stack(children):
-  return lambda_executor.LambdaExecutor(
+  return reference_resolving_executor.ReferenceResolvingExecutor(
       caching_executor.CachingExecutor(
-          composite_executor.CompositeExecutor(_create_bottom_stack(),
+          composing_executor.ComposingExecutor(_create_bottom_stack(),
                                                children)))
 
 
@@ -79,7 +79,7 @@ def _invoke(ex, comp, arg=None):
   return loop.run_until_complete(v3.compute())
 
 
-class CompositeExecutorTest(absltest.TestCase):
+class ComposingExecutorTest(absltest.TestCase):
 
   def test_federated_value_at_server(self):
 

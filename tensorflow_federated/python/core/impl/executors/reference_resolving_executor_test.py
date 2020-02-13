@@ -26,17 +26,18 @@ from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
-from tensorflow_federated.python.core.impl.executors import eager_executor
-from tensorflow_federated.python.core.impl.executors import federated_executor
-from tensorflow_federated.python.core.impl.executors import lambda_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import federating_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
 tf.compat.v1.enable_v2_behavior()
 
 
-class LambdaExecutorTest(absltest.TestCase):
+class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_with_no_arg_tf_comp_in_no_arg_fed_comp(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.federated_computation
@@ -49,7 +50,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 10)
 
   def test_with_one_arg_tf_comp_in_no_arg_fed_comp(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
@@ -66,7 +68,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 11)
 
   def test_clear_failure_with_mismatched_types_in_create_call(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.federated_computation(tf.float32)
@@ -79,7 +82,8 @@ class LambdaExecutorTest(absltest.TestCase):
       loop.run_until_complete(ex.create_call(v1, v2))
 
   def test_with_one_arg_tf_comp_in_one_arg_fed_comp(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
@@ -97,7 +101,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 12)
 
   def test_with_one_arg_tf_comp_in_two_arg_fed_comp(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32, tf.int32)
@@ -121,7 +126,8 @@ class LambdaExecutorTest(absltest.TestCase):
         '<20,30,40>')
 
   def test_with_functional_parameter(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
@@ -144,7 +150,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 12)
 
   def test_with_tuples(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32, tf.int32)
@@ -161,7 +168,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 30)
 
   def test_create_selection_with_tuples(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     v1 = loop.run_until_complete(ex.create_value(10, tf.int32))
@@ -177,7 +185,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result1.numpy(), 20)
 
   def test_with_nested_lambdas(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32, tf.int32)
@@ -200,7 +209,8 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 11)
 
   def test_with_block(self):
-    ex = lambda_executor.LambdaExecutor(eager_executor.EagerExecutor())
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     loop = asyncio.get_event_loop()
 
     f_type = computation_types.FunctionType(tf.int32, tf.int32)
@@ -231,12 +241,12 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 12)
 
   def test_with_federated_map(self):
-    eager_ex = eager_executor.EagerExecutor()
-    federated_ex = federated_executor.FederatedExecutor({
+    eager_ex = eager_tf_executor.EagerTFExecutor()
+    federated_ex = federating_executor.FederatingExecutor({
         None: eager_ex,
         placement_literals.SERVER: eager_ex
     })
-    ex = lambda_executor.LambdaExecutor(federated_ex)
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
@@ -255,13 +265,13 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertEqual(result.numpy(), 11)
 
   def test_with_federated_map_and_broadcast(self):
-    eager_ex = eager_executor.EagerExecutor()
-    federated_ex = federated_executor.FederatedExecutor({
+    eager_ex = eager_tf_executor.EagerTFExecutor()
+    federated_ex = federating_executor.FederatingExecutor({
         None: eager_ex,
         placement_literals.SERVER: eager_ex,
         placement_literals.CLIENTS: [eager_ex for _ in range(3)]
     })
-    ex = lambda_executor.LambdaExecutor(federated_ex)
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
@@ -281,12 +291,12 @@ class LambdaExecutorTest(absltest.TestCase):
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
 
   def test_raises_with_closure(self):
-    eager_ex = eager_executor.EagerExecutor()
-    federated_ex = federated_executor.FederatedExecutor({
+    eager_ex = eager_tf_executor.EagerTFExecutor()
+    federated_ex = federating_executor.FederatingExecutor({
         None: eager_ex,
         placement_literals.SERVER: eager_ex,
     })
-    ex = lambda_executor.LambdaExecutor(federated_ex)
+    ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
 
     @computations.federated_computation(tf.int32,
@@ -311,7 +321,9 @@ class LambdaExecutorTest(absltest.TestCase):
 
   def test_runs_tf(self):
     executor_test_utils.test_runs_tf(
-        self, lambda_executor.LambdaExecutor(eager_executor.EagerExecutor()))
+        self,
+        reference_resolving_executor.ReferenceResolvingExecutor(
+            eager_tf_executor.EagerTFExecutor()))
 
 
 if __name__ == '__main__':

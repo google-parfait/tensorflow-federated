@@ -25,7 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executors import executor_base
 
 
-class ConcurrentExecutor(executor_base.Executor):
+class ThreadDelegatingExecutor(executor_base.Executor):
   """The concurrent executor delegates work to a separate thread.
 
   This executor only handles threading. It delegates all execution to an

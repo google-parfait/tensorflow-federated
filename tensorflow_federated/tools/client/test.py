@@ -36,8 +36,9 @@ def main(argv):
   channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
   remote_executor = tff.framework.RemoteExecutor(channel)
   caching_executor = tff.framework.CachingExecutor(remote_executor)
-  lambda_executor = tff.framework.LambdaExecutor(caching_executor)
-  tff.framework.set_default_executor(lambda_executor)
+  reference_resolving_executor = tff.framework.ReferenceResolvingExecutor(
+      caching_executor)
+  tff.framework.set_default_executor(reference_resolving_executor)
   print(tff.federated_computation(lambda: 'Hello World')())
 
 

@@ -68,7 +68,8 @@ def make_remote_executor(inferred_cardinalities):
   """Make remote executor."""
 
   def create_worker_stack_on(ex):
-    return tff.framework.LambdaExecutor(tff.framework.ConcurrentExecutor(ex))
+    return tff.framework.ReferenceResolvingExecutor(
+        tff.framework.ThreadDelegatingExecutor(ex))
 
   client_ex = []
   num_clients = inferred_cardinalities.get(tff.CLIENTS, None)
@@ -83,13 +84,13 @@ def make_remote_executor(inferred_cardinalities):
         create_worker_stack_on(
             tff.framework.RemoteExecutor(channel, rpc_mode='STREAMING')))
 
-  federated_ex = tff.framework.FederatedExecutor({
-      None: create_worker_stack_on(tff.framework.EagerExecutor()),
-      tff.SERVER: create_worker_stack_on(tff.framework.EagerExecutor()),
+  federated_ex = tff.framework.FederatingExecutor({
+      None: create_worker_stack_on(tff.framework.EagerTFExecutor()),
+      tff.SERVER: create_worker_stack_on(tff.framework.EagerTFExecutor()),
       tff.CLIENTS: client_ex,
   })
 
-  return tff.framework.LambdaExecutor(federated_ex)
+  return tff.framework.ReferenceResolvingExecutor(federated_ex)
 
 
 def main(argv):

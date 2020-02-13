@@ -304,7 +304,7 @@ class EagerValue(executor_value_base.ExecutorValue):
     return self._value
 
 
-class EagerExecutor(executor_base.Executor):
+class EagerTFExecutor(executor_base.Executor):
   """The eager executor only runs TensorFlow, synchronously, in eager mode.
 
   TODO(b/134764569): Add support for data as a building block.

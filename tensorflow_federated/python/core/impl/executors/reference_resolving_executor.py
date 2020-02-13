@@ -64,7 +64,7 @@ class _UnboundRefChecker():
 _unbound_refs = _UnboundRefChecker()
 
 
-class LambdaExecutorScope():
+class ReferenceResolvingExecutorScope():
   """Represents a naming scope for computations in the lambda executor."""
 
   def __init__(self, symbols, parent=None):
@@ -72,16 +72,17 @@ class LambdaExecutorScope():
 
     Args:
       symbols: A dict of symbols available in this scope, with keys being
-        strings, and values being instances of `LambdaExecutorValue`.
+        strings, and values being instances of
+        `ReferenceResolvingExecutorValue`.
       parent: The parent scope, or `None` if this is the root.
     """
     super().__init__()
     py_typecheck.check_type(symbols, dict)
     for k, v in symbols.items():
       py_typecheck.check_type(k, str)
-      py_typecheck.check_type(v, LambdaExecutorValue)
+      py_typecheck.check_type(v, ReferenceResolvingExecutorValue)
     if parent is not None:
-      py_typecheck.check_type(parent, LambdaExecutorScope)
+      py_typecheck.check_type(parent, ReferenceResolvingExecutorScope)
     self._parent = parent
     self._symbols = {k: v for k, v in symbols.items()}
 
@@ -92,7 +93,8 @@ class LambdaExecutorScope():
       name: The string name to resolve.
 
     Returns:
-      An instance of `LambdaExecutorValue` corresponding to this name.
+      An instance of `ReferenceResolvingExecutorValue` corresponding to this
+      name.
 
     Raises:
       ValueError: If the name cannot be resolved.
@@ -124,11 +126,11 @@ class ScopedLambda():
   def __init__(
       self,
       comp: pb.Computation,
-      scope: LambdaExecutorScope,
+      scope: ReferenceResolvingExecutorScope,
   ):
     super().__init__()
     py_typecheck.check_type(comp, pb.Computation)
-    py_typecheck.check_type(scope, LambdaExecutorScope)
+    py_typecheck.check_type(scope, ReferenceResolvingExecutorScope)
     self._comp = comp
     self._scope = scope
 
@@ -138,12 +140,12 @@ class ScopedLambda():
 
   async def invoke(
       self,
-      executor: 'LambdaExecutor',
-      parameter_value: 'LambdaExecutorValue',
-  ) -> 'LambdaExecutorValue':
+      executor: 'ReferenceResolvingExecutor',
+      parameter_value: 'ReferenceResolvingExecutorValue',
+  ) -> 'ReferenceResolvingExecutorValue':
     scope = self._scope
     comp_lambda = getattr(self._comp, 'lambda')
-    new_scope = scope if parameter_value is None else LambdaExecutorScope(
+    new_scope = scope if parameter_value is None else ReferenceResolvingExecutorScope(
         {comp_lambda.parameter_name: parameter_value}, scope)
     return await executor._evaluate(comp_lambda.result, new_scope)  # pylint: disable=protected-access
 
@@ -152,7 +154,7 @@ LambdaValueInner = Union[executor_value_base.ExecutorValue, ScopedLambda,
                          anonymous_tuple.AnonymousTuple]
 
 
-class LambdaExecutorValue(executor_value_base.ExecutorValue):
+class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
   """Represents a value embedded in the lambda executor."""
 
   def __init__(self, value: LambdaValueInner, type_spec=None):
@@ -187,7 +189,7 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
       py_typecheck.check_none(type_spec)
       type_elements = []
       for k, v in anonymous_tuple.iter_elements(value):
-        py_typecheck.check_type(v, LambdaExecutorValue)
+        py_typecheck.check_type(v, ReferenceResolvingExecutorValue)
         type_elements.append((k, v.type_signature))
       type_spec = computation_types.NamedTupleType([
           (k, v) if k is not None else v for k, v in type_elements
@@ -227,7 +229,7 @@ class LambdaExecutorValue(executor_value_base.ExecutorValue):
       return anonymous_tuple.AnonymousTuple(zip([k for k, _ in elem], vals))
 
 
-class LambdaExecutor(executor_base.Executor):
+class ReferenceResolvingExecutor(executor_base.Executor):
   """The lambda executor handles lambda expressions and related abstractions.
 
   This executor understands TFF computation compositional constructs, including
@@ -273,26 +275,29 @@ class LambdaExecutor(executor_base.Executor):
       v_el = anonymous_tuple.to_elements(anonymous_tuple.from_container(value))
       vals = await asyncio.gather(
           *[self.create_value(val, t) for (_, val), t in zip(v_el, type_spec)])
-      return LambdaExecutorValue(
+      return ReferenceResolvingExecutorValue(
           anonymous_tuple.AnonymousTuple(
               (name, val) for (name, _), val in zip(v_el, vals)))
     else:
-      return LambdaExecutorValue(await self._target_executor.create_value(
-          value, type_spec))
+      return ReferenceResolvingExecutorValue(await
+                                             self._target_executor.create_value(
+                                                 value, type_spec))
 
   @executor_utils.log_async
   async def create_tuple(self, elements):
-    return LambdaExecutorValue(anonymous_tuple.from_container(elements))
+    return ReferenceResolvingExecutorValue(
+        anonymous_tuple.from_container(elements))
 
   @executor_utils.log_async
   async def create_selection(self, source, index=None, name=None):
-    py_typecheck.check_type(source, LambdaExecutorValue)
+    py_typecheck.check_type(source, ReferenceResolvingExecutorValue)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
     source_repr = source.internal_representation
     if isinstance(source_repr, executor_value_base.ExecutorValue):
-      return LambdaExecutorValue(await self._target_executor.create_selection(
-          source_repr, index=index, name=name))
+      return ReferenceResolvingExecutorValue(
+          await self._target_executor.create_selection(
+              source_repr, index=index, name=name))
     elif isinstance(source_repr, ScopedLambda):
       raise ValueError('Cannot index into a lambda.')
     else:
@@ -308,16 +313,16 @@ class LambdaExecutor(executor_base.Executor):
 
   @executor_utils.log_async
   async def create_call(self, comp, arg=None):
-    py_typecheck.check_type(comp, LambdaExecutorValue)
+    py_typecheck.check_type(comp, ReferenceResolvingExecutorValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
     param_type = comp.type_signature.parameter
     if param_type is None:
       py_typecheck.check_none(arg)
     else:
-      py_typecheck.check_type(arg, LambdaExecutorValue)
+      py_typecheck.check_type(arg, ReferenceResolvingExecutorValue)
       arg_type = arg.type_signature  # pytype: disable=attribute-error
       if not type_utils.is_assignable_from(param_type, arg_type):
-        raise TypeError('LambdaExecutor asked to create call with '
+        raise TypeError('ReferenceResolvingExecutor asked to create call with '
                         'incompatible type specifications. Function '
                         'takes an argument of type {}, but was supplied '
                         'an argument of type {}'.format(param_type, arg_type))
@@ -329,18 +334,20 @@ class LambdaExecutor(executor_base.Executor):
       # the target executor.
       delegated_arg = await self._embed_value_in_target_exec(
           arg) if arg is not None else None
-      return LambdaExecutorValue(await self._target_executor.create_call(
-          comp_repr, delegated_arg))
+      return ReferenceResolvingExecutorValue(await
+                                             self._target_executor.create_call(
+                                                 comp_repr, delegated_arg))
     elif isinstance(comp_repr, ScopedLambda):
       return await comp_repr.invoke(self, arg)
     else:
       raise TypeError(
-          'Unexpected type to LambdaExecutor create_call: {}'.format(
-              type(comp_repr)))
+          'Unexpected type to ReferenceResolvingExecutor create_call: {}'
+          .format(type(comp_repr)))
 
   @executor_utils.log_async
   async def _embed_value_in_target_exec(
-      self, value: LambdaExecutorValue) -> executor_value_base.ExecutorValue:
+      self, value: ReferenceResolvingExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     """Inserts a value into the target executor.
 
     This function is called in order to prepare the argument being passed to a
@@ -348,7 +355,7 @@ class LambdaExecutor(executor_base.Executor):
     function is passed as the `comp` argument to `create_value` above.
 
     Args:
-      value: An instance of `LambdaExecutorValue`.
+      value: An instance of `ReferenceResolvingExecutorValue`.
 
     Returns:
       An instance of `executor_value_base.ExecutorValue` that represents a value
@@ -359,7 +366,7 @@ class LambdaExecutor(executor_base.Executor):
       RuntimeError: Upon encountering a request to delegate a computation that
         is in a form that cannot be delegated.
     """
-    py_typecheck.check_type(value, LambdaExecutorValue)
+    py_typecheck.check_type(value, ReferenceResolvingExecutorValue)
     value_repr = value.internal_representation
     if isinstance(value_repr, executor_value_base.ExecutorValue):
       return value_repr
@@ -396,28 +403,30 @@ class LambdaExecutor(executor_base.Executor):
   async def _evaluate(
       self,
       comp: pb.Computation,
-      scope=LambdaExecutorScope({}),
-  ) -> LambdaExecutorValue:
-    """Transforms `pb.Computation` into a `LambdaExecutorValue`.
+      scope=ReferenceResolvingExecutorScope({}),
+  ) -> ReferenceResolvingExecutorValue:
+    """Transforms `pb.Computation` into a `ReferenceResolvingExecutorValue`.
 
     Args:
       comp: An instance of `pb.Computation` to process.
-      scope: A `LambdaExecutorScope` to process it in. If omitted, defaults to
-        an empty scope.
+      scope: A `ReferenceResolvingExecutorScope` to process it in.
+        If omitted,defaults to an empty scope.
 
     Returns:
-      An instance of `LambdaExecutorValue`.
+      An instance of `ReferenceResolvingExecutorValue`.
     """
     py_typecheck.check_type(comp, pb.Computation)
-    py_typecheck.check_type(scope, LambdaExecutorScope)
+    py_typecheck.check_type(scope, ReferenceResolvingExecutorScope)
     which_computation = comp.WhichOneof('computation')
     if which_computation in ['tensorflow', 'intrinsic', 'data', 'placement']:
       # nothing interesting here-- forward the creation to the child executor
-      return LambdaExecutorValue(await self._target_executor.create_value(
-          comp, type_serialization.deserialize_type(comp.type)))
+      return ReferenceResolvingExecutorValue(
+          await self._target_executor.create_value(
+              comp, type_serialization.deserialize_type(comp.type)))
     elif which_computation == 'lambda':
       type_spec = type_serialization.deserialize_type(comp.type)
-      return LambdaExecutorValue(ScopedLambda(comp, scope), type_spec=type_spec)
+      return ReferenceResolvingExecutorValue(
+          ScopedLambda(comp, scope), type_spec=type_spec)
     elif which_computation == 'reference':
       return scope.resolve_reference(comp.reference.name)
     elif which_computation == 'call':
@@ -447,7 +456,7 @@ class LambdaExecutor(executor_base.Executor):
     elif which_computation == 'block':
       for loc in comp.block.local:
         value = await self._evaluate(loc.value, scope)
-        scope = LambdaExecutorScope({loc.name: value}, scope)
+        scope = ReferenceResolvingExecutorScope({loc.name: value}, scope)
       return await self._evaluate(comp.block.result, scope)
     else:
       raise NotImplementedError(

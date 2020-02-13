@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl.compiler import placement_literals
-from tensorflow_federated.python.core.impl.executors import eager_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
@@ -64,7 +64,7 @@ class ExecutorFactoryImplTest(test.TestCase):
 
     def _stack_fn(x):
       del x  # Unused
-      return eager_executor.EagerExecutor()
+      return eager_tf_executor.EagerTFExecutor()
 
     factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
     self.assertIsInstance(factory, executor_factory.ExecutorFactoryImpl)
@@ -73,7 +73,7 @@ class ExecutorFactoryImplTest(test.TestCase):
 
     def _stack_fn(x):
       del x  # Unused
-      return eager_executor.EagerExecutor()
+      return eager_tf_executor.EagerTFExecutor()
 
     factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
     ex = factory.create_executor({})
@@ -83,13 +83,13 @@ class ExecutorFactoryImplTest(test.TestCase):
 
     def _stack_fn(x):
       del x  # Unused
-      return eager_executor.EagerExecutor()
+      return eager_tf_executor.EagerTFExecutor()
 
     factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
     factory.clean_up_executors()
 
   def test_cleanup_calls_close(self):
-    ex = eager_executor.EagerExecutor()
+    ex = eager_tf_executor.EagerTFExecutor()
     ex.close = mock.MagicMock()
 
     def _stack_fn(x):
@@ -103,7 +103,7 @@ class ExecutorFactoryImplTest(test.TestCase):
 
   def test_construction_with_multiple_cardinalities_reuses_existing_stacks(
       self):
-    ex = eager_executor.EagerExecutor()
+    ex = eager_tf_executor.EagerTFExecutor()
     ex.close = mock.MagicMock()
     num_times_invoked = 0
 

@@ -26,7 +26,7 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import executor_service_utils
-from tensorflow_federated.python.core.impl.executors import eager_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -129,7 +129,7 @@ class ExecutorServiceTest(absltest.TestCase):
     self.assertEqual(value, 10)
 
   def test_executor_service_create_tensor_value(self):
-    env = TestEnv(eager_executor.EagerExecutor())
+    env = TestEnv(eager_tf_executor.EagerTFExecutor())
     value_proto, _ = executor_service_utils.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
     response = env.stub.CreateValue(
@@ -141,7 +141,7 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_create_no_arg_computation_value_and_call(self):
-    env = TestEnv(eager_executor.EagerExecutor())
+    env = TestEnv(eager_tf_executor.EagerTFExecutor())
 
     @computations.tf_computation
     def comp():
@@ -160,7 +160,7 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_value_unavailable_after_dispose(self):
-    env = TestEnv(eager_executor.EagerExecutor())
+    env = TestEnv(eager_tf_executor.EagerTFExecutor())
     value_proto, _ = executor_service_utils.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
     # Create the value
@@ -182,7 +182,7 @@ class ExecutorServiceTest(absltest.TestCase):
       env.get_value_future_directly(value_id)
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
-    env = TestEnv(eager_executor.EagerExecutor())
+    env = TestEnv(eager_tf_executor.EagerTFExecutor())
 
     @computations.tf_computation(tf.int32)
     def comp(x):
@@ -210,7 +210,7 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_create_and_select_from_tuple(self):
-    env = TestEnv(eager_executor.EagerExecutor())
+    env = TestEnv(eager_tf_executor.EagerTFExecutor())
 
     value_proto, _ = executor_service_utils.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(

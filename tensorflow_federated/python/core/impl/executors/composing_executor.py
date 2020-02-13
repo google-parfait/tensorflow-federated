@@ -132,7 +132,7 @@ def _create_lambda_identity_comp(type_spec):
   return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
 
-class CompositeExecutor(executor_base.Executor):
+class ComposingExecutor(executor_base.Executor):
   """An executor composed of subordinate executors that manage disjoint scopes.
 
   This executor can be used to construct multi-level hierarchical aggregation

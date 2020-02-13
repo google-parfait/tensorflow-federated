@@ -22,9 +22,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import concurrent_executor
-from tensorflow_federated.python.core.impl.executors import eager_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -41,7 +41,7 @@ def _invoke(ex, comp, arg=None):
   return loop.run_until_complete(v3.compute())
 
 
-class ConcurrentExecutorTest(absltest.TestCase):
+class ThreadDelegatingExecutorTest(absltest.TestCase):
 
   def test_nondeterminism_with_fake_executor_that_synchronously_sleeps(self):
 
@@ -76,7 +76,8 @@ class ConcurrentExecutorTest(absltest.TestCase):
     def make_output():
       test_ex = FakeExecutor()
       executors = [
-          concurrent_executor.ConcurrentExecutor(test_ex) for _ in range(10)
+          thread_delegating_executor.ThreadDelegatingExecutor(test_ex)
+          for _ in range(10)
       ]
       loop = asyncio.get_event_loop()
       vals = [ex.create_value(idx) for idx, ex in enumerate(executors)]
@@ -92,13 +93,14 @@ class ConcurrentExecutorTest(absltest.TestCase):
         break
     self.assertNotEqual(o1, o2)
 
-  def test_with_eager_executor(self):
+  def test_with_eager_tf_executor(self):
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 
-    ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
+    ex = thread_delegating_executor.ThreadDelegatingExecutor(
+        eager_tf_executor.EagerTFExecutor())
 
     async def compute():
       return await ex.create_selection(
@@ -111,7 +113,7 @@ class ConcurrentExecutorTest(absltest.TestCase):
           name='a')
 
     result = asyncio.get_event_loop().run_until_complete(compute())
-    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
 
   def use_executor(self, ex):
@@ -133,10 +135,11 @@ class ConcurrentExecutorTest(absltest.TestCase):
     return asyncio.get_event_loop().run_until_complete(compute())
 
   def test_close_then_use_executor(self):
-    ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
+    ex = thread_delegating_executor.ThreadDelegatingExecutor(
+        eager_tf_executor.EagerTFExecutor())
     ex.close()
     result = self.use_executor(ex)
-    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
 
   def test_close_then_use_executor_with_cache(self):
@@ -144,8 +147,8 @@ class ConcurrentExecutorTest(absltest.TestCase):
     # concurrent executors and cached executors. This was broken in
     # the past due to interactions between closing, caching, and the
     # concurrent executor. See b/148288711 for context.
-    ex = concurrent_executor.ConcurrentExecutor(
-        caching_executor.CachingExecutor(eager_executor.EagerExecutor()))
+    ex = thread_delegating_executor.ThreadDelegatingExecutor(
+        caching_executor.CachingExecutor(eager_tf_executor.EagerTFExecutor()))
     self.use_executor(ex)
     ex.close()
     self.use_executor(ex)
@@ -156,7 +159,8 @@ class ConcurrentExecutorTest(absltest.TestCase):
     def add_one(x):
       return tf.add(x, 1)
 
-    ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
+    ex = thread_delegating_executor.ThreadDelegatingExecutor(
+        eager_tf_executor.EagerTFExecutor())
 
     async def compute():
       return await ex.create_selection(
@@ -169,15 +173,15 @@ class ConcurrentExecutorTest(absltest.TestCase):
           name='a')
 
     result = asyncio.get_event_loop().run_until_complete(compute())
-    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
 
-    # After this call, the ConcurrentExecutor has been closed, and needs
+    # After this call, the ThreadDelegatingExecutor has been closed, and needs
     # to be re-initialized.
     ex.close()
 
     result = asyncio.get_event_loop().run_until_complete(compute())
-    self.assertIsInstance(result, eager_executor.EagerValue)
+    self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
 
   def test_end_to_end(self):
@@ -186,14 +190,14 @@ class ConcurrentExecutorTest(absltest.TestCase):
     def add_one(x):
       return tf.add(x, 1)
 
-    executor = concurrent_executor.ConcurrentExecutor(
-        eager_executor.EagerExecutor())
+    executor = thread_delegating_executor.ThreadDelegatingExecutor(
+        eager_tf_executor.EagerTFExecutor())
 
     result = _invoke(executor, add_one, 7)
     self.assertEqual(result, 8)
 
-    # After this invocation, the ConcurrentExecutor has been closed, and needs
-    # to be re-initialized.
+    # After this invocation, the ThreadDelegatingExecutor has been closed,
+    # and needs to be re-initialized.
 
     result = _invoke(executor, add_one, 8)
     self.assertEqual(result, 9)

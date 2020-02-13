@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
-from tensorflow_federated.python.core.impl.executors import eager_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 tf.compat.v1.enable_v2_behavior()
@@ -39,7 +39,7 @@ class TestSetDefaultExecutor(absltest.TestCase):
 
     set_default_executor.set_default_executor(
         executor_factory.ExecutorFactoryImpl(
-            lambda _: eager_executor.EagerExecutor()))
+            lambda _: eager_tf_executor.EagerTFExecutor()))
 
     ds = tf.data.Dataset.range(1).map(lambda x: tf.constant(5)).repeat()
     v = comp(ds)

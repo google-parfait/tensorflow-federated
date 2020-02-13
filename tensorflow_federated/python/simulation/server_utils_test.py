@@ -29,7 +29,7 @@ tf.compat.v1.enable_v2_behavior()
 class ServerUtilsTest(test.TestCase):
 
   def test_server_runs(self):
-    ex = framework.EagerExecutor()
+    ex = framework.EagerTFExecutor()
 
     def noarg_run_server():
       server_utils.run_server(ex, 1, 8888)

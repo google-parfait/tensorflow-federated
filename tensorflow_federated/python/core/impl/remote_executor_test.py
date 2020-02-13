@@ -38,7 +38,7 @@ from tensorflow_federated.python.core.impl import remote_executor
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
-from tensorflow_federated.python.core.impl.executors import lambda_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -64,7 +64,8 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   server.start()
   channel = grpc.insecure_channel('localhost:{}'.format(port))
   remote_exec = remote_executor.RemoteExecutor(channel, rpc_mode)
-  executor = lambda_executor.LambdaExecutor(remote_exec)
+  executor = reference_resolving_executor.ReferenceResolvingExecutor(
+      remote_exec)
   set_default_executor.set_default_executor(
       executor_factory.ExecutorFactoryImpl(lambda _: executor))
   try:

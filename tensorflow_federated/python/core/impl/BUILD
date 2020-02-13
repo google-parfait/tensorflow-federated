@@ -277,14 +277,14 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
-        "//tensorflow_federated/python/core/impl/executors:composite_executor",
-        "//tensorflow_federated/python/core/impl/executors:concurrent_executor",
-        "//tensorflow_federated/python/core/impl/executors:eager_executor",
+        "//tensorflow_federated/python/core/impl/executors:composing_executor",
+        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:federated_executor",
-        "//tensorflow_federated/python/core/impl/executors:lambda_executor",
+        "//tensorflow_federated/python/core/impl/executors:federating_executor",
+        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/executors:sizing_executor",
+        "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
     ],
 )
 
@@ -333,7 +333,7 @@ py_test(
         ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/executors:eager_executor",
+        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
     ],
 )
 
@@ -552,7 +552,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
-        "//tensorflow_federated/python/core/impl/executors:lambda_executor",
+        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "@com_google_protobuf//:protobuf_python",
     ],
 )

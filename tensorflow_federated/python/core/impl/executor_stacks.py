@@ -20,24 +20,24 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import composite_executor
-from tensorflow_federated.python.core.impl.executors import concurrent_executor
-from tensorflow_federated.python.core.impl.executors import eager_executor
+from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import federated_executor
-from tensorflow_federated.python.core.impl.executors import lambda_executor
+from tensorflow_federated.python.core.impl.executors import federating_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
+from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 
 
 def _complete_stack(ex):
-  return lambda_executor.LambdaExecutor(
+  return reference_resolving_executor.ReferenceResolvingExecutor(
       caching_executor.CachingExecutor(
-          concurrent_executor.ConcurrentExecutor(ex)))
+          thread_delegating_executor.ThreadDelegatingExecutor(ex)))
 
 
 def _create_bottom_stack(device=None):
-  return _complete_stack(eager_executor.EagerExecutor(device=device))
+  return _complete_stack(eager_tf_executor.EagerTFExecutor(device=device))
 
 
 def _create_federated_stack(num_clients, clients_per_thread, device_scheduler):
@@ -53,7 +53,7 @@ def _create_federated_stack(num_clients, clients_per_thread, device_scheduler):
       placement_literals.SERVER: _create_bottom_stack(),
       None: _create_bottom_stack()
   }
-  return _complete_stack(federated_executor.FederatedExecutor(executor_dict))
+  return _complete_stack(federating_executor.FederatingExecutor(executor_dict))
 
 
 def _create_sizing_stack(num_clients, clients_per_thread):
@@ -69,12 +69,12 @@ def _create_sizing_stack(num_clients, clients_per_thread):
       placement_literals.SERVER: _create_bottom_stack(),
       None: _create_bottom_stack()
   }
-  return _complete_stack(federated_executor.FederatedExecutor(executor_dict))
+  return _complete_stack(federating_executor.FederatingExecutor(executor_dict))
 
 
 def _create_composite_stack(children):
   return _complete_stack(
-      composite_executor.CompositeExecutor(_create_bottom_stack(), children))
+      composing_executor.ComposingExecutor(_create_bottom_stack(), children))
 
 
 def _aggregate_stacks(executors, max_fanout):

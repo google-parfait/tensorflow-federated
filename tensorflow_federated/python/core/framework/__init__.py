@@ -58,16 +58,16 @@ from tensorflow_federated.python.core.impl.executor_stacks import local_executor
 from tensorflow_federated.python.core.impl.executor_stacks import sizing_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
-from tensorflow_federated.python.core.impl.executors.composite_executor import CompositeExecutor
-from tensorflow_federated.python.core.impl.executors.concurrent_executor import ConcurrentExecutor
-from tensorflow_federated.python.core.impl.executors.eager_executor import EagerExecutor
+from tensorflow_federated.python.core.impl.executors.composing_executor import ComposingExecutor
+from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
-from tensorflow_federated.python.core.impl.executors.federated_executor import FederatedExecutor
-from tensorflow_federated.python.core.impl.executors.lambda_executor import LambdaExecutor
+from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingExecutor
+from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor
+from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
 from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
@@ -86,12 +86,12 @@ _allowed_symbols = [
     "CachingExecutor",
     "Call",
     "CompiledComputation",
-    "CompositeExecutor",
+    "ComposingExecutor",
     "ComputationBuildingBlock",
-    "ConcurrentExecutor",
+    "ThreadDelegatingExecutor",
     "Context",
     "ContextStack",
-    "EagerExecutor",
+    "EagerTFExecutor",
     "Executor",
     "ExecutorService",
     "ExecutorValue",
@@ -100,10 +100,10 @@ _allowed_symbols = [
     "FEDERATED_BROADCAST",
     "FEDERATED_MAP",
     "FEDERATED_MAP_ALL_EQUAL",
-    "FederatedExecutor",
+    "FederatingExecutor",
     "Intrinsic",
     "Lambda",
-    "LambdaExecutor",
+    "ReferenceResolvingExecutor",
     "Placement",
     "Reference",
     "RemoteExecutor",

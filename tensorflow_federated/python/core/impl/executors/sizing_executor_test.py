@@ -24,8 +24,8 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import eager_executor
-from tensorflow_federated.python.core.impl.executors import lambda_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 
 tf.compat.v1.enable_v2_behavior()
@@ -34,7 +34,7 @@ tf.compat.v1.enable_v2_behavior()
 class SizingExecutorTest(parameterized.TestCase):
 
   def test_simple(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
 
     tensor_type = computation_types.TensorType(tf.int32, 10)
 
@@ -56,7 +56,7 @@ class SizingExecutorTest(parameterized.TestCase):
     self.assertCountEqual(ex.output_history, [[10, tf.int32]])
 
   def test_string(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     tensor_type = computation_types.TensorType(tf.string, [4])
     strings = ['hi', 'bye', 'tensor', 'federated']
     total_string_length = sum([len(s) for s in strings])
@@ -70,7 +70,7 @@ class SizingExecutorTest(parameterized.TestCase):
     self.assertCountEqual(ex.output_history, [[total_string_length, tf.string]])
 
   def test_different_input_output(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
 
     tensor_type = computation_types.TensorType(tf.int32, 10)
 
@@ -90,7 +90,7 @@ class SizingExecutorTest(parameterized.TestCase):
     self.assertCountEqual(ex.output_history, [[1, tf.int32]])
 
   def test_multiple_inputs(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
 
     int_type = computation_types.TensorType(tf.int32, 10)
     float_type = computation_types.TensorType(tf.float64, 10)
@@ -115,7 +115,7 @@ class SizingExecutorTest(parameterized.TestCase):
     self.assertCountEqual(ex.output_history, [[10, tf.int64]])
 
   def test_nested_tuple(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     a = computation_types.TensorType(tf.int32, [4])
     b = computation_types.TensorType(tf.bool, [2])
     c = computation_types.TensorType(tf.int64, [2, 3])
@@ -141,7 +141,7 @@ class SizingExecutorTest(parameterized.TestCase):
                            [4, tf.int32], [2, tf.bool], [6, tf.int64]])
 
   def test_empty_tuple(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     tup = computation_types.NamedTupleType([])
     empty_dict = collections.OrderedDict()
 
@@ -156,7 +156,7 @@ class SizingExecutorTest(parameterized.TestCase):
     a = computation_types.TensorType(tf.string, [4])
     b = computation_types.TensorType(tf.int64, [2, 3])
     tup = computation_types.NamedTupleType([('a', a), ('b', b)])
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     od = collections.OrderedDict()
     od['a'] = ['some', 'arbitrary', 'string', 'here']
     od['b'] = [[3, 4, 1], [6, 8, -5]]
@@ -171,7 +171,7 @@ class SizingExecutorTest(parameterized.TestCase):
                           [[total_string_length, tf.string], [6, tf.int64]])
 
   def test_unnamed_tuple(self):
-    ex = sizing_executor.SizingExecutor(eager_executor.EagerExecutor())
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     type_spec = computation_types.NamedTupleType([tf.int32, tf.int32])
     value = anonymous_tuple.AnonymousTuple([(None, 0), (None, 1)])
     async def _make():
@@ -187,32 +187,36 @@ class SizingExecutorTest(parameterized.TestCase):
           'testcase_name': 'basic',
           'executor_stack': [sizing_executor.SizingExecutor]
       }, {
-          'testcase_name': 'big_stack',
+          'testcase_name':
+              'big_stack',
           'executor_stack': [
               sizing_executor.SizingExecutor,
-              lambda_executor.LambdaExecutor,
+              reference_resolving_executor.ReferenceResolvingExecutor,
               caching_executor.CachingExecutor,
-              lambda_executor.LambdaExecutor
+              reference_resolving_executor.ReferenceResolvingExecutor
           ]
       }, {
-          'testcase_name': 'big_caching_stack',
+          'testcase_name':
+              'big_caching_stack',
           'executor_stack': [
               sizing_executor.SizingExecutor,
               caching_executor.CachingExecutor,
-              lambda_executor.LambdaExecutor,
+              reference_resolving_executor.ReferenceResolvingExecutor,
               caching_executor.CachingExecutor,
               caching_executor.CachingExecutor,
-              lambda_executor.LambdaExecutor,
+              reference_resolving_executor.ReferenceResolvingExecutor,
               caching_executor.CachingExecutor,
           ]
       }, {
-          'testcase_name': 'lambda_executor',
+          'testcase_name':
+              'reference_resolving_executor',
           'executor_stack': [
               sizing_executor.SizingExecutor,
-              lambda_executor.LambdaExecutor
+              reference_resolving_executor.ReferenceResolvingExecutor
           ]
       }, {
-          'testcase_name': 'caching_executor',
+          'testcase_name':
+              'caching_executor',
           'executor_stack': [
               sizing_executor.SizingExecutor,
               caching_executor.CachingExecutor,
@@ -220,7 +224,7 @@ class SizingExecutorTest(parameterized.TestCase):
       })
   def test_executor_stacks(self, executor_stack):
     assert executor_stack
-    ex = eager_executor.EagerExecutor()
+    ex = eager_tf_executor.EagerTFExecutor()
     for wrapping_executor in reversed(executor_stack):
       ex = wrapping_executor(ex)
     a = computation_types.TensorType(tf.int32, [4])

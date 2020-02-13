@@ -33,35 +33,39 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
-from tensorflow_federated.python.core.impl.executors import eager_executor
-from tensorflow_federated.python.core.impl.executors import federated_executor
-from tensorflow_federated.python.core.impl.executors import lambda_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import federating_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
 tf.compat.v1.enable_v2_behavior()
 
 
 def _make_test_executor(
     num_clients=1,
-    use_lambda_executor=False,
-) -> federated_executor.FederatedExecutor:
-  bottom_ex = eager_executor.EagerExecutor()
-  if use_lambda_executor:
-    bottom_ex = lambda_executor.LambdaExecutor(bottom_ex)
-  return federated_executor.FederatedExecutor({
+    use_reference_resolving_executor=False,
+) -> federating_executor.FederatingExecutor:
+  bottom_ex = eager_tf_executor.EagerTFExecutor()
+  if use_reference_resolving_executor:
+    bottom_ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        bottom_ex)
+  return federating_executor.FederatingExecutor({
       placements.SERVER: bottom_ex,
       placements.CLIENTS: [bottom_ex for _ in range(num_clients)],
       None: bottom_ex
   })
 
 
-Runtime = Tuple[asyncio.AbstractEventLoop, federated_executor.FederatedExecutor]
+Runtime = Tuple[asyncio.AbstractEventLoop,
+                federating_executor.FederatingExecutor]
 
 
-def _make_test_runtime(num_clients=1, use_lambda_executor=False) -> Runtime:
+def _make_test_runtime(num_clients=1,
+                       use_reference_resolving_executor=False) -> Runtime:
   """Creates a test runtime consisting of an event loop and test executor."""
   loop = asyncio.get_event_loop()
   ex = _make_test_executor(
-      num_clients=num_clients, use_lambda_executor=use_lambda_executor)
+      num_clients=num_clients,
+      use_reference_resolving_executor=use_reference_resolving_executor)
   return loop, ex
 
 
@@ -75,10 +79,11 @@ def _run_comp_with_runtime(comp, runtime: Runtime):
   return loop.run_until_complete(call_value())
 
 
-def _run_test_comp(comp, num_clients=1, use_lambda_executor=False):
+def _run_test_comp(comp, num_clients=1, use_reference_resolving_executor=False):
   """Runs a computation (unapplied TFF function) using a test runtime."""
   runtime = _make_test_runtime(
-      num_clients=num_clients, use_lambda_executor=use_lambda_executor)
+      num_clients=num_clients,
+      use_reference_resolving_executor=use_reference_resolving_executor)
   return _run_comp_with_runtime(comp, runtime)
 
 
@@ -86,7 +91,7 @@ def _run_test_comp_produces_federated_value(
     test_instance,
     comp,
     num_clients=1,
-    use_lambda_executor=False,
+    use_reference_resolving_executor=False,
 ):
   """Runs a computation (unapplied TFF function) using a test runtime.
 
@@ -97,15 +102,18 @@ def _run_test_comp_produces_federated_value(
     test_instance: A class with the standard unit testing assertions.
     comp: The computation to run.
     num_clients: The number of clients to use when computing `comp`.
-    use_lambda_executor: Whether or not to include a lambda executor.
+    use_reference_resolving_executor: Whether or not to include an executor
+      to resolve references.
 
   Returns:
     The result of running the computation.
   """
   loop, ex = _make_test_runtime(
-      num_clients=num_clients, use_lambda_executor=use_lambda_executor)
+      num_clients=num_clients,
+      use_reference_resolving_executor=use_reference_resolving_executor)
   val = _run_comp_with_runtime(comp, (loop, ex))
-  test_instance.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+  test_instance.assertIsInstance(val,
+                                 federating_executor.FederatingExecutorValue)
   return loop.run_until_complete(val.compute())
 
 
@@ -113,15 +121,16 @@ def _produce_test_value(
     value,
     type_spec=None,
     num_clients=1,
-    use_lambda_executor=False,
+    use_reference_resolving_executor=False,
 ):
   """Produces a TFF value using a test runtime."""
   loop, ex = _make_test_runtime(
-      num_clients=num_clients, use_lambda_executor=use_lambda_executor)
+      num_clients=num_clients,
+      use_reference_resolving_executor=use_reference_resolving_executor)
   return loop.run_until_complete(ex.create_value(value, type_spec=type_spec))
 
 
-class FederatedExecutorTest(parameterized.TestCase):
+class FederatingExecutorTest(parameterized.TestCase):
 
   def test_executor_create_value_with_valid_intrinsic_def(self):
     val = _produce_test_value(
@@ -130,7 +139,7 @@ class FederatedExecutorTest(parameterized.TestCase):
             [type_factory.unary_op(tf.int32),
              type_factory.at_server(tf.int32)],
             type_factory.at_server(tf.int32)))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(
         str(val.type_signature),
         '(<(int32 -> int32),int32@SERVER> -> int32@SERVER)')
@@ -145,7 +154,7 @@ class FederatedExecutorTest(parameterized.TestCase):
         pb.Computation(
             intrinsic=pb.Intrinsic(uri='generic_zero'),
             type=type_serialization.serialize_type(tf.int32)))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertIs(val.internal_representation, intrinsic_defs.GENERIC_ZERO)
 
@@ -158,12 +167,12 @@ class FederatedExecutorTest(parameterized.TestCase):
 
   def test_executor_create_value_with_server_int(self):
     val = _produce_test_value(10, type_spec=type_factory.at_server(tf.int32))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@SERVER')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 1)
     self.assertIsInstance(val.internal_representation[0],
-                          eager_executor.EagerValue)
+                          eager_tf_executor.EagerValue)
     self.assertEqual(
         val.internal_representation[0].internal_representation.numpy(), 10)
 
@@ -171,12 +180,12 @@ class FederatedExecutorTest(parameterized.TestCase):
     val = _produce_test_value([10, 20, 30],
                               type_spec=type_factory.at_clients(tf.int32),
                               num_clients=3)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 3)
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
     self.assertCountEqual([
         v.internal_representation.numpy() for v in val.internal_representation
     ], [10, 20, 30])
@@ -186,26 +195,26 @@ class FederatedExecutorTest(parameterized.TestCase):
         10,
         type_spec=type_factory.at_clients(tf.int32, all_equal=True),
         num_clients=3)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 3)
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 10)
 
   def test_executor_create_value_with_unplaced_int(self):
     val = _produce_test_value(10, type_spec=tf.int32)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertIsInstance(val.internal_representation,
-                          eager_executor.EagerValue)
+                          eager_tf_executor.EagerValue)
     self.assertEqual(
         val.internal_representation.internal_representation.numpy(), 10)
 
   def test_executor_create_value_with_placement_literal(self):
     val = _produce_test_value(placements.SERVER)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'placement')
     self.assertIs(val.internal_representation, placements.SERVER)
 
@@ -215,10 +224,10 @@ class FederatedExecutorTest(parameterized.TestCase):
       return 10
 
     val = _run_test_comp(comp)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertIsInstance(val.internal_representation,
-                          eager_executor.EagerValue)
+                          eager_tf_executor.EagerValue)
     self.assertEqual(
         val.internal_representation.internal_representation.numpy(), 10)
 
@@ -232,10 +241,10 @@ class FederatedExecutorTest(parameterized.TestCase):
       return add_one(add_one(add_one(10)))
 
     val = _run_test_comp(comp)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertIsInstance(val.internal_representation,
-                          eager_executor.EagerValue)
+                          eager_tf_executor.EagerValue)
     self.assertEqual(
         val.internal_representation.internal_representation.numpy(), 13)
 
@@ -245,12 +254,12 @@ class FederatedExecutorTest(parameterized.TestCase):
       return intrinsics.federated_value(10, placements.SERVER)
 
     val = _run_test_comp(comp)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@SERVER')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 1)
     self.assertIsInstance(val.internal_representation[0],
-                          eager_executor.EagerValue)
+                          eager_tf_executor.EagerValue)
     self.assertEqual(
         val.internal_representation[0].internal_representation.numpy(), 10)
 
@@ -262,7 +271,7 @@ class FederatedExecutorTest(parameterized.TestCase):
           intrinsics.federated_value(10, placements.SERVER))
 
     val = _run_test_comp(comp, num_clients=0)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     with self.assertRaisesRegex(RuntimeError, '0 clients'):
@@ -274,12 +283,12 @@ class FederatedExecutorTest(parameterized.TestCase):
       return intrinsics.federated_value([10, 10], placements.SERVER)
 
     val = _run_test_comp(comp)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), '<int32,int32>@SERVER')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 1)
     self.assertIsInstance(val.internal_representation[0],
-                          eager_executor.EagerValue)
+                          eager_tf_executor.EagerValue)
     inner_eager_value = val.internal_representation[0]
     self.assertLen(inner_eager_value.internal_representation, 2)
     self.assertEqual(inner_eager_value.internal_representation[0].numpy(), 10)
@@ -291,12 +300,12 @@ class FederatedExecutorTest(parameterized.TestCase):
       return intrinsics.federated_value(10, placements.CLIENTS)
 
     val = _run_test_comp(comp, num_clients=3)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 3)
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 10)
 
   def test_federated_eval_at_clients_simple_number(self):
@@ -308,12 +317,12 @@ class FederatedExecutorTest(parameterized.TestCase):
 
     num_clients = 3
     val = _run_test_comp(comp, num_clients=num_clients)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, num_clients)
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 5)
 
   def test_federated_eval_at_server_simple_number(self):
@@ -325,12 +334,12 @@ class FederatedExecutorTest(parameterized.TestCase):
 
     num_clients = 3
     val = _run_test_comp(comp, num_clients=num_clients)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@SERVER')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 1)
     v = val.internal_representation[0]
-    self.assertIsInstance(v, eager_executor.EagerValue)
+    self.assertIsInstance(v, eager_tf_executor.EagerValue)
     self.assertEqual(v.internal_representation.numpy(), 5)
 
   def test_federated_eval_at_clients_random(self):
@@ -342,13 +351,13 @@ class FederatedExecutorTest(parameterized.TestCase):
 
     num_clients = 3
     val = _run_test_comp(comp, num_clients=num_clients)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), '{float32}@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, num_clients)
     previous_values = set()
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
       number = v.internal_representation.numpy()
       if number in previous_values:
         raise Exception('Multiple clients returned same random number')
@@ -367,12 +376,12 @@ class FederatedExecutorTest(parameterized.TestCase):
           add_one, intrinsics.federated_value(10, placements.SERVER))
 
     val = _run_comp_with_runtime(comp, (loop, ex))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@SERVER')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 1)
     v = val.internal_representation[0]
-    self.assertIsInstance(v, eager_executor.EagerValue)
+    self.assertIsInstance(v, eager_tf_executor.EagerValue)
     self.assertEqual(v.internal_representation.numpy(), 11)
     result = loop.run_until_complete(v.compute())
     self.assertEqual(result.numpy(), 11)
@@ -388,12 +397,12 @@ class FederatedExecutorTest(parameterized.TestCase):
           add_one, intrinsics.federated_value(10, placements.CLIENTS))
 
     val = _run_test_comp(comp, num_clients=3)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 3)
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 11)
 
   def test_federated_broadcast(self):
@@ -403,12 +412,12 @@ class FederatedExecutorTest(parameterized.TestCase):
           intrinsics.federated_value(10, placements.SERVER))
 
     val = _run_test_comp(comp, num_clients=3)
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 3)
     for v in val.internal_representation:
-      self.assertIsInstance(v, eager_executor.EagerValue)
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
       self.assertEqual(v.internal_representation.numpy(), 10)
 
   def test_federated_zip(self):
@@ -434,7 +443,7 @@ class FederatedExecutorTest(parameterized.TestCase):
           ] * 2))
       val = loop.run_until_complete(
           ex.create_value(comp.proto, comp.type_signature))
-      self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+      self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
       self.assertEqual(str(val.type_signature), type_string)
       self.assertIsInstance(val.internal_representation, list)
       self.assertLen(val.internal_representation, cardinality)
@@ -512,7 +521,8 @@ class FederatedExecutorTest(parameterized.TestCase):
     self.assertEqual(result.numpy(), 2.5)
 
   def test_federated_weighted_mean_with_floats(self):
-    loop, ex = _make_test_runtime(num_clients=4, use_lambda_executor=True)
+    loop, ex = _make_test_runtime(
+        num_clients=4, use_reference_resolving_executor=True)
 
     v1 = loop.run_until_complete(
         ex.create_value([1.0, 2.0, 3.0, 4.0],
@@ -550,9 +560,9 @@ class FederatedExecutorTest(parameterized.TestCase):
   def test_runs_tf(self):
     executor_test_utils.test_runs_tf(self, _make_test_executor(1))
 
-  def test_runs_tf_with_lambda_executor(self):
+  def test_runs_tf_with_reference_resolving_executor(self):
     executor_test_utils.test_runs_tf(
-        self, _make_test_executor(1, use_lambda_executor=True))
+        self, _make_test_executor(1, use_reference_resolving_executor=True))
 
   @parameterized.named_parameters(
       ('tuple', (1, 2, 3, 4),),
@@ -618,7 +628,7 @@ class FederatedExecutorTest(parameterized.TestCase):
                                    loop.run_until_complete(v4.compute()))
     self.assertCountEqual(result, [5, 10, 3, 2])
 
-  def test_create_selection_by_index_eager_executor_backed(self):
+  def test_create_selection_by_index_eager_tf_executor_backed(self):
     loop, ex = _make_test_runtime()
 
     @computations.tf_computation()
@@ -626,7 +636,7 @@ class FederatedExecutorTest(parameterized.TestCase):
       return (1, 2)
 
     val = loop.run_until_complete(ex.create_value(comp))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     v1 = loop.run_until_complete(ex.create_call(val, None))
     self.assertEqual(str(v1.type_signature), '<int32,int32>')
     selected = loop.run_until_complete(ex.create_selection(v1, index=0))
@@ -634,15 +644,15 @@ class FederatedExecutorTest(parameterized.TestCase):
     result = loop.run_until_complete(selected.compute())
     self.assertEqual(result, 1)
 
-  def test_create_selection_by_index_lambda_executor_backed(self):
-    loop, ex = _make_test_runtime(use_lambda_executor=True)
+  def test_create_selection_by_index_reference_resolving_executor_backed(self):
+    loop, ex = _make_test_runtime(use_reference_resolving_executor=True)
 
     @computations.tf_computation()
     def comp():
       return (1, 2)
 
     val = loop.run_until_complete(ex.create_value(comp))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     v1 = loop.run_until_complete(ex.create_call(val, None))
     self.assertEqual(str(v1.type_signature), '<int32,int32>')
     selected = loop.run_until_complete(ex.create_selection(v1, index=0))
@@ -650,7 +660,7 @@ class FederatedExecutorTest(parameterized.TestCase):
     result = loop.run_until_complete(selected.compute())
     self.assertEqual(result, 1)
 
-  def test_create_selection_by_name_eager_executor_backed(self):
+  def test_create_selection_by_name_eager_tf_executor_backed(self):
     loop, ex = _make_test_runtime()
 
     @computations.tf_computation()
@@ -658,7 +668,7 @@ class FederatedExecutorTest(parameterized.TestCase):
       return anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2)])
 
     val = loop.run_until_complete(ex.create_value(comp))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     v1 = loop.run_until_complete(ex.create_call(val, None))
     self.assertEqual(str(v1.type_signature), '<a=int32,b=int32>')
     selected = loop.run_until_complete(ex.create_selection(v1, name='b'))
@@ -675,13 +685,13 @@ class FederatedExecutorTest(parameterized.TestCase):
       return intrinsics.federated_collect(x)
 
     val = _run_comp_with_runtime(comp, (loop, ex))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     result = loop.run_until_complete(val.compute())
     self.assertEqual([x.numpy() for x in result], [10, 10, 10])
 
     new_ex = _make_test_executor(5)
     val = _run_comp_with_runtime(comp, (loop, new_ex))
-    self.assertIsInstance(val, federated_executor.FederatedExecutorValue)
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     result = loop.run_until_complete(val.compute())
     self.assertEqual([x.numpy() for x in result], [10, 10, 10, 10, 10])
 
