@@ -38,12 +38,6 @@ flags.DEFINE_bool('search_hints', True,
 flags.DEFINE_string('site_path', 'federated/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
-_FUTURE_SYMBOLS = [
-    'absolute_import',
-    'division',
-    'print_function',
-]
-
 
 def generate_api_docs(output_dir):
   """Generates markdown API docs for TFF.
@@ -65,7 +59,7 @@ def generate_api_docs(output_dir):
     module_symbols = [
         x for x in symbols if inspect.ismodule(getattr(module, x))
     ]
-    return set(private_symbols + module_symbols + _FUTURE_SYMBOLS)
+    return set(private_symbols + module_symbols)
 
   doc_generator = generate_lib.DocGenerator(
       root_title='TensorFlow Federated',
@@ -91,6 +85,8 @@ def generate_api_docs(output_dir):
               _ignore_symbols(tff.simulation),
           'tff.simulation.datasets':
               _ignore_symbols(tff.simulation.datasets),
+          'tff.simulation.datasets.cifar100':
+              _get_ignored_symbols(tff.simulation.datasets.cifar100),
           'tff.simulation.datasets.emnist':
               _get_ignored_symbols(tff.simulation.datasets.emnist),
           'tff.simulation.datasets.shakespeare':
