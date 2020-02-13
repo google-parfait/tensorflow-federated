@@ -32,6 +32,24 @@ py_test(
 )
 
 py_library(
+    name = "metrics_manager",
+    srcs = ["metrics_manager.py"],
+    srcs_version = "PY3",
+    deps = [":utils_impl"],
+)
+
+py_test(
+    name = "metrics_manager_test",
+    srcs = ["metrics_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":metrics_manager",
+        ":utils_impl",
+    ],
+)
+
+py_library(
     name = "training_loops",
     srcs = ["training_loops.py"],
     srcs_version = "PY3",
