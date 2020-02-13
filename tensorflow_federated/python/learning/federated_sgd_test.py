@@ -25,6 +25,8 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class FederatedSgdTest(test.TestCase, parameterized.TestCase):
 

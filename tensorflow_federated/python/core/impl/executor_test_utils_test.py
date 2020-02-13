@@ -23,6 +23,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import eager_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class TracingExecutorTest(absltest.TestCase):
 
@@ -57,5 +59,4 @@ class TracingExecutorTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

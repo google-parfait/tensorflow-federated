@@ -19,6 +19,8 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def _make_add_one_graph():
   with tf.Graph().as_default() as graph:

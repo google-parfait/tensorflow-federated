@@ -33,6 +33,8 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class TransformationsTest(absltest.TestCase):
 
@@ -1597,5 +1599,4 @@ class NormalizedBitTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

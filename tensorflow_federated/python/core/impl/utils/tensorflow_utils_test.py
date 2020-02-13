@@ -26,6 +26,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class GraphUtilsTest(test.TestCase):
 

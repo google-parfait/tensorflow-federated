@@ -12,18 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for ExecutorFactory."""
 
 from unittest import mock
 
-from tensorflow_federated.python.common_libs import test as common_test
+import tensorflow as tf
+
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
+tf.compat.v1.enable_v2_behavior()
 
-class ExecutorFactoryImplTest(common_test.TestCase):
+
+class ExecutorFactoryImplTest(test.TestCase):
 
   def test_subclass_base_fails_no_create_method(self):
 
@@ -118,4 +121,4 @@ class ExecutorFactoryImplTest(common_test.TestCase):
 
 
 if __name__ == '__main__':
-  common_test.main()
+  test.main()

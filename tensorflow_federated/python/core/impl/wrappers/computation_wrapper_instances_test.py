@@ -23,6 +23,8 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class ComputationWrapperInstancesTest(test.TestCase):
 

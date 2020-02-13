@@ -26,6 +26,8 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import transforming_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class FakeEx(executor_base.Executor):
 
@@ -90,5 +92,4 @@ class TransformingExecutorTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

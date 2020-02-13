@@ -27,6 +27,8 @@ from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 from tensorflow_federated.python.core.utils import computation_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class ComputationUtilsTest(test.TestCase):
 
@@ -185,7 +187,6 @@ class StatefulAggregateFnTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   # NOTE: num_clients must be explicit here to correctly test the broadcast
   # behavior. Otherwise TFF will infer there are zero clients, which is an
   # error.

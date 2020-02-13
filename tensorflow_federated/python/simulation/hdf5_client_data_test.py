@@ -23,6 +23,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
 
+tf.compat.v1.enable_v2_behavior()
+
 TEST_DATA = {
     'CLIENT A': {
         'w': np.asarray([100, 200, 300], dtype='i8'),
@@ -123,6 +125,4 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
 
 if __name__ == '__main__':
-  # Need eager_mode to iterate over tf.data.Dataset.
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

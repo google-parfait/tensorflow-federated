@@ -24,6 +24,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.utils import federated_aggregations
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class FederatedMinTest(test.TestCase):
 

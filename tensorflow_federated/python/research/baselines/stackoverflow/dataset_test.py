@@ -12,12 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for Stackoverflow data loader."""
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.research.baselines.stackoverflow import dataset
+
+tf.compat.v1.enable_v2_behavior()
 
 VOCAB = ['A', 'B', 'C']
 

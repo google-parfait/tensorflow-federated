@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.common_libs import test as common_test
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import tensorflow_serialization
@@ -32,6 +32,8 @@ from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def _create_compiled_computation(py_fn, arg_type):
   proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
@@ -39,8 +41,7 @@ def _create_compiled_computation(py_fn, arg_type):
   return building_blocks.CompiledComputation(proto)
 
 
-class CompiledComputationTransformsTest(common_test.TestCase,
-                                        parameterized.TestCase):
+class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
 
   def test_select_graph_output_with_none_comp_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -403,7 +404,7 @@ class CompiledComputationTransformsTest(common_test.TestCase,
       test_utils.run_tensorflow(flipped_inputs.proto, expected_result)
 
 
-class WrapParameterAsTupleTest(common_test.TestCase, parameterized.TestCase):
+class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
 
   def test_bind_graph_parameter_as_tuple_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -485,7 +486,7 @@ class WrapParameterAsTupleTest(common_test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
 
-class WrapResultAsTupleTest(common_test.TestCase, parameterized.TestCase):
+class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
 
   def test_bind_graph_result_as_tuple_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -554,7 +555,7 @@ class WrapResultAsTupleTest(common_test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result[0], expected_result)
 
 
-class GraphInputPaddingTest(common_test.TestCase, parameterized.TestCase):
+class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_raises_on_none(self):
     with self.assertRaisesRegex(TypeError, r'Expected.*CompiledComputation'):
@@ -668,7 +669,7 @@ class GraphInputPaddingTest(common_test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
 
-class ConcatenateTFBlocksTest(common_test.TestCase, parameterized.TestCase):
+class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
 
   def test_concatenenate_tensorflow_blocks_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -862,7 +863,7 @@ def _create_simple_selection_from_called_graph():
   return selected_result
 
 
-class SelectionFromCalledTensorFlowBlockTest(common_test.TestCase,
+class SelectionFromCalledTensorFlowBlockTest(test.TestCase,
                                              parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
@@ -951,7 +952,7 @@ def _create_simple_lambda_calling_graph_with_arg_thrown_on_floor():
   return lambda_wrap
 
 
-class LambdaWrappingGraphTest(common_test.TestCase, parameterized.TestCase):
+class LambdaWrappingGraphTest(test.TestCase, parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_lambda_wrapping_graph()
@@ -1031,7 +1032,7 @@ def _create_simple_tuple_of_called_graphs():
   return tuple_of_called_graphs
 
 
-class TupleCalledGraphsTest(common_test.TestCase, parameterized.TestCase):
+class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
 
   def test_empty_tuple(self):
     pattern = building_blocks.Tuple([])
@@ -1257,7 +1258,7 @@ def _construct_permutation_tuple_collection(max_length):
   return permutation_tuples
 
 
-class RemapGraphInputsTest(common_test.TestCase, parameterized.TestCase):
+class RemapGraphInputsTest(test.TestCase, parameterized.TestCase):
 
   def test_raises_on_bad_computation(self):
     tuple_type = computation_types.to_type([tf.int32])
@@ -1405,8 +1406,7 @@ def _create_simple_lambda_call_selection_from_arg():
   return lambda_wrapping_call
 
 
-class LambdaCallSelectionFromArgTest(common_test.TestCase,
-                                     parameterized.TestCase):
+class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_lambda_call_selection_from_arg()
@@ -1517,7 +1517,7 @@ def _create_simple_lambda_call_tuple_of_selections_from_arg():
   return lambda_wrapping_call
 
 
-class LambdaToCalledTupleOfSelectionsFromArgTest(common_test.TestCase,
+class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                  parameterized.TestCase):
 
   def test_transform_raises_on_wrong_lengths(self):
@@ -1742,7 +1742,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(common_test.TestCase,
     self.assertTrue(mutated)
 
 
-class ComposeTensorFlowBlocksTest(common_test.TestCase, parameterized.TestCase):
+class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -1958,7 +1958,7 @@ def _create_simple_called_composition_of_tf_blocks():
   return one
 
 
-class CalledCompositionOfTensorFlowBlocksTest(common_test.TestCase,
+class CalledCompositionOfTensorFlowBlocksTest(test.TestCase,
                                               parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
@@ -2145,7 +2145,7 @@ def _create_simple_called_graph_on_replicated_arg(n_replicates=2):
   return called_tuple_id
 
 
-class CalledGraphOnReplicatedArgTest(common_test.TestCase):
+class CalledGraphOnReplicatedArgTest(test.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_called_graph_on_replicated_arg()
@@ -2276,8 +2276,7 @@ def _create_simple_lambda_wrapping_noarg_graph():
   return lam
 
 
-class LambdaWrappingNoArgGraphTest(common_test.TestCase,
-                                   parameterized.TestCase):
+class LambdaWrappingNoArgGraphTest(test.TestCase, parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_lambda_wrapping_noarg_graph()
@@ -2336,7 +2335,7 @@ class LambdaWrappingNoArgGraphTest(common_test.TestCase,
     self.assertEqual(result, 0)
 
 
-class NestedTupleOfSelectionsAndGraphsTest(common_test.TestCase):
+class NestedTupleOfSelectionsAndGraphsTest(test.TestCase):
 
   def _repack_constant_arg_as_python_structure(self, arg):
     """Repacks the tuple of no-arg functions in a Python structure."""
@@ -2549,4 +2548,4 @@ class NestedTupleOfSelectionsAndGraphsTest(common_test.TestCase):
 
 
 if __name__ == '__main__':
-  common_test.main()
+  test.main()

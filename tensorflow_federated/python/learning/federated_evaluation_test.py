@@ -25,6 +25,8 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class TestModel(model.Model):
 
@@ -146,5 +148,4 @@ class FederatedEvaluationTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   test.main()

@@ -18,6 +18,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class CanonicalFormTest(absltest.TestCase):
 
@@ -51,5 +53,4 @@ class CanonicalFormTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

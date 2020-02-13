@@ -37,6 +37,8 @@ from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import federated_executor
 from tensorflow_federated.python.core.impl.executors import lambda_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def _make_test_executor(
     num_clients=1,
@@ -703,5 +705,4 @@ class FederatedExecutorTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

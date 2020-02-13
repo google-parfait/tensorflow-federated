@@ -40,6 +40,8 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def zero_for(type_spec, context_stack):
   type_spec = computation_types.to_type(type_spec)

@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import eager_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def _get_physical_devices_for_testing():
   result = []
@@ -503,5 +505,4 @@ class EagerExecutorTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

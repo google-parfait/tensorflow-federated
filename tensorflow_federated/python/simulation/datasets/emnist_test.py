@@ -21,6 +21,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import emnist
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class LoadDataTest(tf.test.TestCase, absltest.TestCase):
 
@@ -70,5 +72,4 @@ class LoadDataTest(tf.test.TestCase, absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

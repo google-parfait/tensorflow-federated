@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import lambda_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class SizingExecutorTest(parameterized.TestCase):
 
@@ -247,5 +249,4 @@ class SizingExecutorTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

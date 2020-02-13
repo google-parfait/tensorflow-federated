@@ -31,6 +31,8 @@ from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import lambda_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def _make_executor_and_tracer_for_test(support_lambdas=False):
   tracer = executor_test_utils.TracingExecutor(eager_executor.EagerExecutor())
@@ -414,5 +416,4 @@ class CachingExecutorTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

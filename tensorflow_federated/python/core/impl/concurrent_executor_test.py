@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class ConcurrentExecutorTest(absltest.TestCase):
 
@@ -191,5 +193,4 @@ class ConcurrentExecutorTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

@@ -22,6 +22,8 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class IntegrationTest(test.TestCase):
 

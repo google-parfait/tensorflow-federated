@@ -40,6 +40,8 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import lambda_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def create_remote_executor():
   port = portpicker.pick_unused_port()
@@ -470,5 +472,4 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

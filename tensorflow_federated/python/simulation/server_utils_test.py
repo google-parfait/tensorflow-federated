@@ -12,17 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for server_utils."""
+
 import multiprocessing
 import signal
 import time
 
-from tensorflow_federated.python.common_libs import test as common_test
+import tensorflow as tf
+
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.simulation import server_utils
 
+tf.compat.v1.enable_v2_behavior()
 
-class ServerUtilsTest(common_test.TestCase):
+
+class ServerUtilsTest(test.TestCase):
 
   def test_server_runs(self):
     ex = framework.EagerExecutor()
@@ -44,4 +48,4 @@ class ServerUtilsTest(common_test.TestCase):
 
 
 if __name__ == '__main__':
-  common_test.main()
+  test.main()

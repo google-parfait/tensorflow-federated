@@ -25,6 +25,8 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 # TODO(b/148576550): remove as part of tff.learning.TrainableModel deprecation.
 # Remove after all users have migrated.

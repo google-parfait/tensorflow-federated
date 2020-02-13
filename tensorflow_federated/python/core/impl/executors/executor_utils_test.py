@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for executor_utils."""
 
 import asyncio
 import io
@@ -24,6 +23,8 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.executors import executor_utils
+
+tf.compat.v1.enable_v2_behavior()
 
 
 class DebugLoggingTest(absltest.TestCase):
@@ -103,5 +104,4 @@ class DebugLoggingTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

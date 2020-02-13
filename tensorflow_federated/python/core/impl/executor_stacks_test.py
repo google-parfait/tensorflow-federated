@@ -27,6 +27,8 @@ from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class ExecutorStacksTest(parameterized.TestCase):
 
@@ -145,5 +147,4 @@ class ExecutorStacksTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

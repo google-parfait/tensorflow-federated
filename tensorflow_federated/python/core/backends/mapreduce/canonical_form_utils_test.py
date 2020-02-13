@@ -37,6 +37,8 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def get_iterative_process_for_sum_example():
   """Returns an iterative process for a sum example.
@@ -950,7 +952,6 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   reference_executor = reference_executor.ReferenceExecutor()
   with context_stack_impl.context_stack.install(reference_executor):
     test.main()

@@ -19,6 +19,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import cifar100
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class LoadDataTest(tf.test.TestCase):
 
@@ -92,5 +94,4 @@ class LoadDataTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

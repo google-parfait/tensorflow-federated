@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import test as common_test
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import type_utils
@@ -29,6 +29,8 @@ from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
+
+tf.compat.v1.enable_v2_behavior()
 
 
 def _create_chained_dummy_federated_applys(functions, arg):
@@ -90,7 +92,7 @@ def _create_complex_computation():
   return building_blocks.Lambda('b', tf.int32, tup)
 
 
-class ExtractComputationsTest(common_test.TestCase):
+class ExtractComputationsTest(test.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
@@ -472,7 +474,7 @@ class ExtractComputationsTest(common_test.TestCase):
     self.assertTrue(modified)
 
 
-class ExtractIntrinsicsTest(common_test.TestCase):
+class ExtractIntrinsicsTest(test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1237,7 +1239,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     self.assertFalse(modified)
 
 
-class InlineBlockLocalsTest(common_test.TestCase):
+class InlineBlockLocalsTest(test.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
@@ -1384,7 +1386,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     self.assertFalse(modified)
 
 
-class InlineSelectionsFromTuplesTest(common_test.TestCase):
+class InlineSelectionsFromTuplesTest(test.TestCase):
 
   def test_should_transform_selection_from_tuple(self):
     tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
@@ -1461,7 +1463,7 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
                      expected_blk.compact_representation())
 
 
-class MergeChainedBlocksTest(common_test.TestCase):
+class MergeChainedBlocksTest(test.TestCase):
 
   def test_fails_on_none(self):
     with self.assertRaises(TypeError):
@@ -1532,7 +1534,7 @@ class MergeChainedBlocksTest(common_test.TestCase):
     self.assertTrue(modified)
 
 
-class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
+class MergeChainedFederatedMapOrApplysTest(test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1771,7 +1773,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     self.assertFalse(modified)
 
 
-class MergeTupleIntrinsicsTest(common_test.TestCase):
+class MergeTupleIntrinsicsTest(test.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
@@ -2994,7 +2996,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     self.assertFalse(modified)
 
 
-class RemoveDuplicateBlockLocals(common_test.TestCase):
+class RemoveDuplicateBlockLocals(test.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
@@ -3189,7 +3191,7 @@ class RemoveDuplicateBlockLocals(common_test.TestCase):
     self.assertTrue(modified)
 
 
-class DeduplicateBuildingBlocksTest(common_test.TestCase):
+class DeduplicateBuildingBlocksTest(test.TestCase):
 
   def test_removes_multiple_selections(self):
     id_lam = building_blocks.Lambda(
@@ -3322,7 +3324,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
-class RemoveUnusedBlockLocalsTest(common_test.TestCase):
+class RemoveUnusedBlockLocalsTest(test.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -3410,7 +3412,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
     self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
 
 
-class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
+class ReplaceCalledLambdaWithBlockTest(test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -3511,7 +3513,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     self.assertFalse(modified)
 
 
-class ReplaceSelectionFromTupleWithElementTest(common_test.TestCase):
+class ReplaceSelectionFromTupleWithElementTest(test.TestCase):
 
   def test_fails_on_none_comp(self):
     with self.assertRaises(TypeError):
@@ -3633,7 +3635,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
-class UniquifyReferenceNamesTest(common_test.TestCase):
+class UniquifyReferenceNamesTest(test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -3790,7 +3792,7 @@ def _is_called_graph_pattern(comp):
           isinstance(comp.argument, building_blocks.Reference))
 
 
-class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
+class InsertTensorFlowIdentityAtLeavesTest(test.TestCase):
 
   def test_rasies_on_none(self):
     with self.assertRaises(TypeError):
@@ -4245,7 +4247,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
                      computation_types.FunctionType(tf.int32, tf.int32))
 
 
-class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
+class GroupBlockLocalsByNamespaceTest(test.TestCase):
 
   def test_raises_non_block(self):
     ref = building_blocks.Reference('x', tf.int32)
@@ -4337,4 +4339,4 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
 
 
 if __name__ == '__main__':
-  common_test.main()
+  test.main()

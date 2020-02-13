@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class NoopIngestContextForTest(context_base.Context):
 

@@ -22,6 +22,8 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tf_computation_context
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class TensorFlowComputationContextTest(test.TestCase):
 

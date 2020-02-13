@@ -31,7 +31,6 @@ def main():
 
   This function should only be used if TensorFlow code is being tested.
   """
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
 
 

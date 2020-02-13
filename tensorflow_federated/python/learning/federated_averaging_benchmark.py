@@ -26,6 +26,8 @@ from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 
+tf.compat.v1.enable_v2_behavior()
+
 BATCH_SIZE = 100
 
 

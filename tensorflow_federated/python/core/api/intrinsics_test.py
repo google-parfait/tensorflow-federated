@@ -31,6 +31,8 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import test as core_test
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class IntrinsicsTest(parameterized.TestCase):
 

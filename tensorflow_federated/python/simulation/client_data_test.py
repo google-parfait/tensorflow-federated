@@ -18,6 +18,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import client_data as cd
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 
@@ -187,5 +189,4 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

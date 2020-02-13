@@ -27,6 +27,8 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.utils import differential_privacy
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def wrap_aggregate_fn(dp_aggregate_fn, sample_value):
   tff_types = type_utils.type_from_tensors(sample_value)

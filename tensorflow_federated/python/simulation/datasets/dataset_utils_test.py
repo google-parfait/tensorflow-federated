@@ -20,6 +20,8 @@ import tensorflow as tf
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation.datasets import dataset_utils
 
+tf.compat.v1.enable_v2_behavior()
+
 
 class DatasetUtilsTest(tf.test.TestCase):
 
@@ -130,5 +132,4 @@ class DatasetUtilsTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

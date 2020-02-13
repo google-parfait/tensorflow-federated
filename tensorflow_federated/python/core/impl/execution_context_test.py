@@ -27,6 +27,8 @@ from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
+tf.compat.v1.enable_v2_behavior()
+
 
 def _test_ctx(num_clients=None):
   return execution_context.ExecutionContext(
@@ -184,5 +186,4 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   absltest.main()

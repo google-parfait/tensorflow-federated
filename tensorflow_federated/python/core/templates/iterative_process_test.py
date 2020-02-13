@@ -22,6 +22,8 @@ from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 from tensorflow_federated.python.core.templates import iterative_process
 
+tf.compat.v1.enable_v2_behavior()
+
 
 # Create two tff.Computations that perform sum on a sequence: initializes the
 # state to 0 and add each item in a sequence to the state.
@@ -131,7 +133,6 @@ class IterativeProcessTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   # NOTE: num_clients must be explicit here to correctly test the broadcast
   # behavior. Otherwise TFF will infer there are zero clients, which is an
   # error.
