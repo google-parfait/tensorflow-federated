@@ -38,8 +38,44 @@ from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+# NOTE: not a `ValueImpl` method because of the `__setattr__` override
+def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
+  return (isinstance(
+      vimpl._comp.type_signature,  # pylint: disable=protected-access
+      computation_types.FederatedType) and isinstance(
+          vimpl._comp.type_signature.member,  # pylint: disable=protected-access
+          computation_types.NamedTupleType))
+
+
+# NOTE: not a `ValueImpl` method because of the `__setattr__` override
+def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
+  return isinstance(
+      vimpl._comp.type_signature,  # pylint: disable=protected-access
+      computation_types.NamedTupleType)
+
+
+def _check_is_optionally_federated_named_tuple(
+    vimpl: 'ValueImpl',
+    context_name: str,
+) -> bool:
+  if not (_is_named_tuple(vimpl) or _is_federated_named_tuple(vimpl)):
+    raise TypeError('{} is only supported for named tuples, but the '
+                    'object on which it has been invoked is of type {}.'.format(
+                        context_name, vimpl._comp.type_signature))  # pylint: disable=protected-access
+
+
 class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
-  """A generic base class for values that appear in TFF computations."""
+  """A generic base class for values that appear in TFF computations.
+
+  If the value in this class is of `NamedTupleType` or `FederatedType`
+  containing a `NamedTupleType`, the inner fields can be accessed by name
+  (e.g. `my_value_impl.x = ...` or `y = my_value_impl.y`).
+
+  Note that setting nested fields (e.g. `my_value_impl.x.y = ...`) will not
+  work properly because it translates to
+  `my_value_impl.__getattr__('x').__setattr__('y')`, but the object returned
+  by `__getattr__` cannot proxy writes back to the original `ValueImpl`.
+  """
 
   def __init__(
       self,
@@ -55,6 +91,9 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     """
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+    # We override `__setattr__` for `ValueImpl` and so must assign fields using
+    # the `__setattr__` impl on the superclass (rather than simply using
+    # e.g. `self._comp = comp`.
     super().__setattr__('_comp', comp)
     super().__setattr__('_context_stack', context_stack)
 
@@ -86,18 +125,12 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, str)
-    if (isinstance(self._comp.type_signature, computation_types.FederatedType)
-        and isinstance(self._comp.type_signature.member,
-                       computation_types.NamedTupleType)):
+    _check_is_optionally_federated_named_tuple(self,
+                                               "__getattr__('{}')".format(name))
+    if _is_federated_named_tuple(self):
       return ValueImpl(
           building_block_factory.create_federated_getattr_call(
               self._comp, name), self._context_stack)
-    elif not isinstance(self._comp.type_signature,
-                        computation_types.NamedTupleType):
-      raise TypeError(
-          'Operator getattr() is only supported for named tuples, but the '
-          'object on which it has been invoked is of type {}.'.format(
-              self._comp.type_signature))
     if name not in dir(self._comp.type_signature):
       raise AttributeError(
           'There is no such attribute as \'{}\' in this tuple.'.format(name))
@@ -108,21 +141,14 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __setattr__(self, name, value):
     py_typecheck.check_type(name, str)
+    _check_is_optionally_federated_named_tuple(
+        self, "__setattr__('{}', {})".format(name, value))
     value_comp = ValueImpl.get_comp(to_value(value, None, self._context_stack))
-    if isinstance(self._comp.type_signature,
-                  computation_types.FederatedType) and isinstance(
-                      self._comp.type_signature.member,
-                      computation_types.NamedTupleType):
+    if _is_federated_named_tuple(self):
       new_comp = building_block_factory.create_federated_setattr_call(
           self._comp, name, value_comp)
       super().__setattr__('_comp', new_comp)
       return
-    elif not isinstance(self._comp.type_signature,
-                        computation_types.NamedTupleType):
-      raise TypeError(
-          'Operator setattr() is only supported for named tuples, but the '
-          'object on which it has been invoked is of type {}.'.format(
-              self._comp.type_signature))
     named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
@@ -141,14 +167,11 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __getitem__(self, key):
     py_typecheck.check_type(key, (int, slice))
-    if (isinstance(self._comp.type_signature, computation_types.FederatedType)
-        and isinstance(self._comp.type_signature.member,
-                       computation_types.NamedTupleType)):
+    if _is_federated_named_tuple(self):
       return ValueImpl(
           building_block_factory.create_federated_getitem_call(self._comp, key),
           self._context_stack)
-    if not isinstance(self._comp.type_signature,
-                      computation_types.NamedTupleType):
+    if not _is_named_tuple(self):
       raise TypeError(
           'Operator getitem() is only supported for named tuples, but the '
           'object on which it has been invoked is of type {}.'.format(
