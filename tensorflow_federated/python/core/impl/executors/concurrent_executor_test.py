@@ -21,14 +21,24 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import concurrent_executor
-from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 from tensorflow_federated.python.core.impl.executors import caching_executor
+from tensorflow_federated.python.core.impl.executors import concurrent_executor
 from tensorflow_federated.python.core.impl.executors import eager_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_factory
 
 tf.compat.v1.enable_v2_behavior()
+
+
+def _invoke(ex, comp, arg=None):
+  loop = asyncio.get_event_loop()
+  v1 = loop.run_until_complete(ex.create_value(comp))
+  if arg is not None:
+    type_spec = v1.type_signature.parameter
+    v2 = loop.run_until_complete(ex.create_value(arg, type_spec))
+  else:
+    v2 = None
+  v3 = loop.run_until_complete(ex.create_call(v1, v2))
+  return loop.run_until_complete(v3.compute())
 
 
 class ConcurrentExecutorTest(absltest.TestCase):
@@ -170,26 +180,23 @@ class ConcurrentExecutorTest(absltest.TestCase):
     self.assertIsInstance(result, eager_executor.EagerValue)
     self.assertEqual(result.internal_representation.numpy(), 11)
 
-  # TODO(b/148163833): Move this test to top-level testing directory.
   def test_end_to_end(self):
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 
-    ex = concurrent_executor.ConcurrentExecutor(eager_executor.EagerExecutor())
+    executor = concurrent_executor.ConcurrentExecutor(
+        eager_executor.EagerExecutor())
 
-    set_default_executor.set_default_executor(
-        executor_factory.ExecutorFactoryImpl(lambda _: ex))
-
-    self.assertEqual(add_one(7), 8)
+    result = _invoke(executor, add_one, 7)
+    self.assertEqual(result, 8)
 
     # After this invocation, the ConcurrentExecutor has been closed, and needs
     # to be re-initialized.
 
-    self.assertEqual(add_one(8), 9)
-
-    set_default_executor.set_default_executor()
+    result = _invoke(executor, add_one, 8)
+    self.assertEqual(result, 9)
 
 
 if __name__ == '__main__':

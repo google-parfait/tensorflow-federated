@@ -158,33 +158,6 @@ py_test(
 )
 
 py_library(
-    name = "concurrent_executor",
-    srcs = ["concurrent_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-    ],
-)
-
-py_test(
-    name = "concurrent_executor_test",
-    size = "small",
-    srcs = ["concurrent_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":concurrent_executor",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
-        "//tensorflow_federated/python/core/impl/executors:caching_executor",
-        "//tensorflow_federated/python/core/impl/executors:eager_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-    ],
-)
-
-py_library(
     name = "context_base",
     srcs = ["context_base.py"],
     srcs_version = "PY3",
@@ -301,11 +274,11 @@ py_library(
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
-        ":concurrent_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:composite_executor",
+        "//tensorflow_federated/python/core/impl/executors:concurrent_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",

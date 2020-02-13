@@ -49,7 +49,6 @@ from tensorflow_federated.python.core.impl.compiler.tree_transformations import 
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import unwrap_placement
 from tensorflow_federated.python.core.impl.compiler.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.compiler.type_serialization import serialize_type
-from tensorflow_federated.python.core.impl.concurrent_executor import ConcurrentExecutor
 from tensorflow_federated.python.core.impl.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
@@ -60,6 +59,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import sizing_executo
 from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.composite_executor import CompositeExecutor
+from tensorflow_federated.python.core.impl.executors.concurrent_executor import ConcurrentExecutor
 from tensorflow_federated.python.core.impl.executors.eager_executor import EagerExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory

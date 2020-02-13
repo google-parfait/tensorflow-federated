@@ -84,6 +84,9 @@ py_library(
     srcs = ["composite_executor.py"],
     srcs_version = "PY3",
     deps = [
+        ":executor_base",
+        ":executor_utils",
+        ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -93,9 +96,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_utils",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
     ],
 )
 
@@ -106,18 +106,43 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":caching_executor",
         ":composite_executor",
+        ":concurrent_executor",
+        ":eager_executor",
+        ":federated_executor",
+        ":lambda_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:concurrent_executor",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
-        "//tensorflow_federated/python/core/impl/executors:caching_executor",
-        "//tensorflow_federated/python/core/impl/executors:eager_executor",
-        "//tensorflow_federated/python/core/impl/executors:federated_executor",
-        "//tensorflow_federated/python/core/impl/executors:lambda_executor",
+    ],
+)
+
+py_library(
+    name = "concurrent_executor",
+    srcs = ["concurrent_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "concurrent_executor_test",
+    size = "small",
+    srcs = ["concurrent_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":caching_executor",
+        ":concurrent_executor",
+        ":eager_executor",
+        ":executor_base",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 
